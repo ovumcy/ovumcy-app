@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
@@ -14,10 +15,42 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: "Today" }} />
-      <Tabs.Screen name="calendar" options={{ title: "Calendar" }} />
-      <Tabs.Screen name="stats" options={{ title: "Insights" }} />
-      <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Today",
+          tabBarIcon: ({ color, size }) => (
+            <Feather color={color} name="sun" size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: "Calendar",
+          tabBarIcon: ({ color, size }) => (
+            <Feather color={color} name="calendar" size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="stats"
+        options={{
+          title: "Insights",
+          tabBarIcon: ({ color, size }) => (
+            <Feather color={color} name="bar-chart-2" size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: "Settings",
+          tabBarIcon: ({ color, size }) => (
+            <Feather color={color} name="settings" size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
