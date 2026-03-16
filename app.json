@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "scheme": "ovumcy",
+    "plugins": [
+      "expo-router"
+    ],
+    "name": "Ovumcy",
+    "slug": "ovumcy-app"
+  }
+}
