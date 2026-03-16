@@ -1,5 +1,5 @@
-import { Redirect } from "expo-router";
+import { AppEntryScreen } from "../src/ui/screens/AppEntryScreen";
 
 export default function IndexRoute() {
-  return <Redirect href="/onboarding" />;
+  return <AppEntryScreen />;
 }

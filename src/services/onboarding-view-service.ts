@@ -1,36 +1,158 @@
-import { appInfo } from "../i18n/app-copy";
+import { onboardingCopy } from "../i18n/app-copy";
+import type {
+  AgeGroupOption,
+  OnboardingRecord,
+  OnboardingStepTwoValues,
+  UsageGoal,
+} from "../models/onboarding";
+import {
+  buildCycleGuidanceState,
+  buildDayOptions,
+  createStepTwoDefaults,
+  getOnboardingDateBounds,
+} from "./onboarding-policy";
 
-export type OnboardingShellViewData = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cards: {
+export type OnboardingViewData = {
+  progressLabel: string;
+  stepOne: {
     title: string;
-    description: string;
-  }[];
-  note: string;
-  continueLabel: string;
+    subtitle: string;
+    fieldLabel: string;
+    day1Tip: string;
+    privacy: string;
+    selectedDateLabel: string;
+    changeDateLabel: string;
+    nextLabel: string;
+    dayOptions: ReturnType<typeof buildDayOptions>;
+    minDate: string;
+    maxDate: string;
+  };
+  stepTwo: {
+    title: string;
+    cycleLengthLabel: string;
+    cycleLengthHint: string;
+    periodLengthLabel: string;
+    periodLengthHint: string;
+    autoPeriodFillLabel: string;
+    autoPeriodFillHint: string;
+    irregularCycleLabel: string;
+    irregularCycleHint: string;
+    ageGroupLabel: string;
+    ageGroupHint: string;
+    usageGoalLabel: string;
+    usageGoalHint: string;
+    backLabel: string;
+    finishLabel: string;
+    messages: {
+      errorIncompatible: string;
+      warningApproximate: string;
+      infoAdjusted: string;
+      infoPeriodLong: string;
+      infoCycleShort: string;
+    };
+    ageOptions: {
+      value: AgeGroupOption;
+      label: string;
+    }[];
+    usageGoalOptions: {
+      value: UsageGoal;
+      label: string;
+    }[];
+    initialValues: OnboardingStepTwoValues;
+    guidance: ReturnType<typeof buildCycleGuidanceState>;
+  };
+  errors: {
+    dateRequired: string;
+    invalidLastPeriodStart: string;
+    lastPeriodRange: string;
+    generic: string;
+  };
 };
 
-export function buildOnboardingShellViewData(): OnboardingShellViewData {
+export function buildOnboardingViewData(
+  record: OnboardingRecord,
+  now: Date,
+  locale = "en",
+): OnboardingViewData {
+  const bounds = getOnboardingDateBounds(now);
+  const initialStepTwoValues = createStepTwoDefaults(record);
+  const guidance = buildCycleGuidanceState(
+    initialStepTwoValues.cycleLength,
+    initialStepTwoValues.periodLength,
+  );
+
   return {
-    eyebrow: "Start here",
-    title: "A private cycle tracker that starts on your phone.",
-    description: `${appInfo.name} begins as a local-first app. Core tracking works before sync, before accounts, and before any cloud setup.`,
-    cards: [
-      {
-        title: "Local-first by default",
-        description:
-          "Cycle logs, predictions, and settings are designed to work on-device before optional sync exists.",
+    progressLabel:
+      record.lastPeriodStart === null
+        ? onboardingCopy.progress.step1
+        : onboardingCopy.progress.step2,
+    stepOne: {
+      title: onboardingCopy.step1.title,
+      subtitle: onboardingCopy.step1.subtitle,
+      fieldLabel: onboardingCopy.step1.field,
+      day1Tip: onboardingCopy.step1.day1Tip,
+      privacy: onboardingCopy.step1.privacy,
+      selectedDateLabel: onboardingCopy.step1.selectedDate,
+      changeDateLabel: onboardingCopy.step1.changeDate,
+      nextLabel: onboardingCopy.buttons.next,
+      dayOptions: buildDayOptions(bounds.minDate, bounds.maxDate, locale, {
+        today: onboardingCopy.step1.today,
+        yesterday: onboardingCopy.step1.yesterday,
+        twoDaysAgo: onboardingCopy.step1.twoDaysAgo,
+      }),
+      minDate: bounds.minDate,
+      maxDate: bounds.maxDate,
+    },
+    stepTwo: {
+      title: onboardingCopy.step2.title,
+      cycleLengthLabel: onboardingCopy.step2.cycleLength,
+      cycleLengthHint: onboardingCopy.step2.cycleLengthHint,
+      periodLengthLabel: onboardingCopy.step2.periodLength,
+      periodLengthHint: onboardingCopy.step2.periodLengthHint,
+      autoPeriodFillLabel: onboardingCopy.step2.autoPeriodFill,
+      autoPeriodFillHint: onboardingCopy.step2.autoPeriodFillHint,
+      irregularCycleLabel: onboardingCopy.step2.irregularCycle,
+      irregularCycleHint: onboardingCopy.step2.irregularCycleHint,
+      ageGroupLabel: onboardingCopy.step2.ageGroup,
+      ageGroupHint: onboardingCopy.step2.ageGroupHint,
+      usageGoalLabel: onboardingCopy.step2.usageGoal,
+      usageGoalHint: onboardingCopy.step2.usageGoalHint,
+      backLabel: onboardingCopy.buttons.back,
+      finishLabel: onboardingCopy.buttons.finish,
+      messages: {
+        errorIncompatible: onboardingCopy.step2.errorIncompatible,
+        warningApproximate: onboardingCopy.step2.warningApproximate,
+        infoAdjusted: onboardingCopy.step2.infoAdjusted,
+        infoPeriodLong: onboardingCopy.step2.infoPeriodLong,
+        infoCycleShort: onboardingCopy.step2.infoCycleShort,
       },
-      {
-        title: "One product, several clients",
-        description:
-          "This repo targets iOS and Android first, while keeping a future web client and optional sync contract in mind.",
-      },
-    ],
-    note:
-      "Bootstrap milestone: establish architecture, quality gates, and screen shells before moving real cycle logic into shared service and model modules.",
-    continueLabel: "Continue to app shell",
+      ageOptions: [
+        { value: "under_20", label: onboardingCopy.ageGroup.under20 },
+        { value: "age_20_35", label: onboardingCopy.ageGroup.age20to35 },
+        { value: "age_35_plus", label: onboardingCopy.ageGroup.age35plus },
+      ],
+      usageGoalOptions: [
+        {
+          value: "avoid_pregnancy",
+          label: onboardingCopy.usageGoal.avoidPregnancy,
+        },
+        {
+          value: "trying_to_conceive",
+          label: onboardingCopy.usageGoal.tryingToConceive,
+        },
+        {
+          value: "health",
+          label: onboardingCopy.usageGoal.health,
+        },
+      ],
+      initialValues: initialStepTwoValues,
+      guidance,
+    },
+    errors: {
+      dateRequired: onboardingCopy.errors.dateRequired,
+      invalidLastPeriodStart: onboardingCopy.errors.invalidLastPeriodStart,
+      lastPeriodRange: onboardingCopy.errors.lastPeriodRange,
+      generic: onboardingCopy.errors.generic,
+    },
   };
 }

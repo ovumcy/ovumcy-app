@@ -14,6 +14,9 @@
     "deploy": "npx expo export -p web && npx eas-cli@latest deploy"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-community/slider": "5.0.1",
     "expo": "^54.0.1",
     "expo-constants": "~18.0.13",
     "expo-linking": "~8.0.11",
