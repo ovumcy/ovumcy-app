@@ -14,7 +14,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is still in the foundation stage: onboarding, settings, dashboard, and calendar already work locally, while stats, export, and sync-related surfaces are still evolving.
+The app is still in the early local-first product stage: onboarding, settings, dashboard, calendar, stats, and local export already work on-device, while deeper analytics, encrypted-at-rest hardening, and sync-related surfaces are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -69,7 +69,7 @@ The current `main` branch provides:
 - an Expo and React Native foundation for iOS and Android;
 - a local-first onboarding flow with web-parity structure and copy;
 - native SQLite-backed bootstrap, profile, and day-log persistence;
-- local-first dashboard, calendar, and settings flows backed by the same canonical repositories;
+- local-first dashboard, calendar, settings, and export flows backed by the same canonical repositories;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
 - baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
 

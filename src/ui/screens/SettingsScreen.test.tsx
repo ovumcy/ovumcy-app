@@ -39,6 +39,28 @@ function createStorageMock(overrides = {}) {
       ageGroup: "",
       usageGoal: "health",
     }),
+    readDayLogSummary: jest.fn().mockResolvedValue({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-10",
+      dateTo: "2026-03-10",
+    }),
+    listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+      {
+        date: "2026-03-10",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "Cycle start",
+      },
+    ]),
     ...overrides,
   });
 }
@@ -140,6 +162,34 @@ describe("SettingsScreen", () => {
         expect.objectContaining({
           id: createdRecord.id,
           isArchived: true,
+        }),
+      ),
+    );
+  });
+
+  it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
+    const storage = createStorageMock();
+    const exportDeliveryClient = {
+      deliver: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    render(
+      <SettingsScreen
+        exportDeliveryClient={exportDeliveryClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByText("Settings");
+
+    fireEvent.press(screen.getByTestId("settings-export-json-button"));
+
+    await waitFor(() =>
+      expect(exportDeliveryClient.deliver).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: "ovumcy-export-2026-03-17.json",
+          mimeType: "application/json",
         }),
       ),
     );

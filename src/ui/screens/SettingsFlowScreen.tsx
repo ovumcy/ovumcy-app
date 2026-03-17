@@ -17,6 +17,7 @@ import { ChoiceGroup } from "../components/ChoiceGroup";
 import { FeatureCard } from "../components/FeatureCard";
 import { LabeledSliderField } from "../components/LabeledSliderField";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { colors, spacing } from "../theme/tokens";
 
@@ -31,6 +32,9 @@ type SettingsFlowScreenProps = {
   };
   cycleStatusMessage: string;
   cycleErrorMessage: string;
+  exportErrorMessage: string;
+  exportStatusMessage: string;
+  isExporting: boolean;
   isSavingCycle: boolean;
   isSavingTracking: boolean;
   now: Date;
@@ -43,6 +47,11 @@ type SettingsFlowScreenProps = {
   onCycleLengthChange: (value: number) => void;
   onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
   onDatePickerToggle: () => void;
+  onExportCSV: () => void | Promise<void>;
+  onExportFromDateChange: (value: string) => void;
+  onExportJSON: () => void | Promise<void>;
+  onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
+  onExportToDateChange: (value: string) => void;
   onIrregularCycleChange: (value: boolean) => void;
   onPeriodLengthChange: (value: number) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
@@ -77,6 +86,9 @@ export function SettingsFlowScreen({
   cycleGuidance,
   cycleStatusMessage,
   cycleErrorMessage,
+  exportErrorMessage,
+  exportStatusMessage,
+  isExporting,
   isSavingCycle,
   isSavingTracking,
   now,
@@ -89,6 +101,11 @@ export function SettingsFlowScreen({
   onCycleLengthChange,
   onDatePickerChange,
   onDatePickerToggle,
+  onExportCSV,
+  onExportFromDateChange,
+  onExportJSON,
+  onExportPresetSelect,
+  onExportToDateChange,
   onHideSexChipChange,
   onIrregularCycleChange,
   onPeriodLengthChange,
@@ -287,6 +304,19 @@ export function SettingsFlowScreen({
         rowStatusMessages={rowSymptomStatusMessages}
         viewData={viewData.symptoms}
         visibleState={symptomsState}
+      />
+
+      <SettingsExportSection
+        errorMessage={exportErrorMessage}
+        exportState={state.exportState}
+        isExporting={isExporting}
+        onCSVExport={onExportCSV}
+        onFromDateChange={onExportFromDateChange}
+        onJSONExport={onExportJSON}
+        onPresetSelect={onExportPresetSelect}
+        onToDateChange={onExportToDateChange}
+        statusMessage={exportStatusMessage}
+        viewData={viewData.export}
       />
 
       <FeatureCard

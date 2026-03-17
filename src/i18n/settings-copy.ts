@@ -1,6 +1,7 @@
 export const settingsCopy = {
   title: "Settings",
-  subtitle: "Manage cycle parameters, tracking fields, and local profile behavior.",
+  subtitle:
+    "Manage cycle parameters, tracking fields, export actions, and local profile behavior.",
   common: {
     daysShort: "d",
     changeDate: "Change date",
@@ -114,6 +115,42 @@ export const settingsCopy = {
       duplicateLabel: "That symptom name already exists in your list.",
       saveFailed: "Unable to save this symptom right now. Please try again.",
       notFound: "This symptom could not be found anymore. Reload settings and try again.",
+    },
+  },
+  export: {
+    title: "Export data",
+    subtitle:
+      "Create a local backup or a doctor-friendly table from your recorded entries.",
+    storageHint:
+      "Exports include only manually tracked records. Predictions are not included.",
+    sensitiveHint:
+      "Exported files are sensitive. Save and share them only where you trust the device or destination.",
+    noData:
+      "No tracked entries yet. Once you log days in dashboard or calendar, export becomes available here.",
+    presetLabel: "Presets",
+    presetAll: "All time",
+    preset30: "30 days",
+    preset90: "90 days",
+    preset365: "365 days",
+    fromLabel: "From date",
+    toLabel: "To date",
+    datePlaceholder: "YYYY-MM-DD",
+    summaryTotalTemplate: "Total entries: %d",
+    summaryRangeTemplate: "Date range: %s to %s",
+    summaryRangeEmpty: "Date range: -",
+    csvAction: "Export as CSV",
+    jsonAction: "Export as JSON",
+    csvStatus: "CSV export is ready.",
+    jsonStatus: "JSON backup is ready.",
+    errors: {
+      invalidFromDate: "Use a valid start date.",
+      invalidToDate: "Use a valid end date.",
+      invalidRange: "End date must be on or after start date.",
+      exportFailed: "Unable to prepare your export right now. Please try again.",
+      deliveryUnavailable:
+        "This device cannot open the export destination right now. Try again from a supported browser or share-capable device.",
+      deliveryFailed:
+        "The export file was prepared, but sharing or download failed. Please try again.",
     },
   },
   status: {

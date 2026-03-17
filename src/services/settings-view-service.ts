@@ -1,4 +1,5 @@
 import { settingsCopy } from "../i18n/settings-copy";
+import type { LoadedExportState } from "../models/export";
 import type {
   AgeGroupOption,
   CycleSettingsValues,
@@ -110,6 +111,31 @@ export type SettingsViewData = {
     };
     errors: typeof settingsCopy.symptoms.errors;
   };
+  export: {
+    title: string;
+    subtitle: string;
+    storageHint: string;
+    sensitiveHint: string;
+    noData: string;
+    presetLabel: string;
+    presetOptions: {
+      value: "all" | "30" | "90" | "365";
+      label: string;
+    }[];
+    fromLabel: string;
+    toLabel: string;
+    datePlaceholder: string;
+    summaryTotalTemplate: string;
+    summaryRangeTemplate: string;
+    summaryRangeEmpty: string;
+    csvAction: string;
+    jsonAction: string;
+    status: {
+      csvReady: string;
+      jsonReady: string;
+    };
+    errors: typeof settingsCopy.export.errors;
+  };
   status: typeof settingsCopy.status;
 };
 
@@ -118,6 +144,7 @@ export type LoadedSettingsState = {
   cycleValues: CycleSettingsValues;
   trackingValues: TrackingSettingsValues;
   symptomRecords: SymptomRecord[];
+  exportState: LoadedExportState;
 };
 
 export function buildSettingsViewData(now: Date): SettingsViewData {
@@ -229,6 +256,33 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       },
       errors: settingsCopy.symptoms.errors,
     },
+    export: {
+      title: settingsCopy.export.title,
+      subtitle: settingsCopy.export.subtitle,
+      storageHint: settingsCopy.export.storageHint,
+      sensitiveHint: settingsCopy.export.sensitiveHint,
+      noData: settingsCopy.export.noData,
+      presetLabel: settingsCopy.export.presetLabel,
+      presetOptions: [
+        { value: "all", label: settingsCopy.export.presetAll },
+        { value: "30", label: settingsCopy.export.preset30 },
+        { value: "90", label: settingsCopy.export.preset90 },
+        { value: "365", label: settingsCopy.export.preset365 },
+      ],
+      fromLabel: settingsCopy.export.fromLabel,
+      toLabel: settingsCopy.export.toLabel,
+      datePlaceholder: settingsCopy.export.datePlaceholder,
+      summaryTotalTemplate: settingsCopy.export.summaryTotalTemplate,
+      summaryRangeTemplate: settingsCopy.export.summaryRangeTemplate,
+      summaryRangeEmpty: settingsCopy.export.summaryRangeEmpty,
+      csvAction: settingsCopy.export.csvAction,
+      jsonAction: settingsCopy.export.jsonAction,
+      status: {
+        csvReady: settingsCopy.export.csvStatus,
+        jsonReady: settingsCopy.export.jsonStatus,
+      },
+      errors: settingsCopy.export.errors,
+    },
     status: settingsCopy.status,
   };
 }
@@ -236,6 +290,7 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
 export function createLoadedSettingsState(
   profile: ProfileRecord,
   symptomRecords: SymptomRecord[],
+  exportState: LoadedExportState,
 ): LoadedSettingsState {
   return {
     profile,
@@ -256,6 +311,7 @@ export function createLoadedSettingsState(
       hideSexChip: profile.hideSexChip,
     },
     symptomRecords,
+    exportState,
   };
 }
 

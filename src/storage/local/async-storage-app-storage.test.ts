@@ -148,6 +148,14 @@ describe("async-storage-app-storage", () => {
         isPeriod: true,
       }),
     ]);
+    await expect(
+      storage.readDayLogSummary("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-18",
+      dateTo: "2026-03-18",
+    });
   });
 
   it("persists custom symptom records in the async-storage adapter", async () => {

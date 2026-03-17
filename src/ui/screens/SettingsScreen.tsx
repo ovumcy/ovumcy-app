@@ -4,9 +4,15 @@ import { ActivityIndicator, View } from "react-native";
 
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
+  createPlatformExportDeliveryClient,
+  type ExportDeliveryClient,
+} from "../../services/export-delivery";
+import {
   archiveSettingsSymptom,
   createSettingsSymptom,
   loadSettingsScreenState,
+  prepareSettingsExportArtifact,
+  refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
@@ -29,22 +35,27 @@ import { colors } from "../theme/tokens";
 import { SettingsFlowScreen } from "./SettingsFlowScreen";
 
 type SettingsScreenProps = {
+  exportDeliveryClient?: ExportDeliveryClient;
   storage?: LocalAppStorage;
   now?: Date;
 };
 
 export function SettingsScreen({
+  exportDeliveryClient = createPlatformExportDeliveryClient(),
   storage = appStorage,
   now,
 }: SettingsScreenProps) {
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [isSavingCycle, setIsSavingCycle] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [state, setState] = useState<LoadedSettingsState | null>(null);
   const [cycleErrorMessage, setCycleErrorMessage] = useState("");
   const [cycleStatusMessage, setCycleStatusMessage] = useState("");
+  const [exportErrorMessage, setExportErrorMessage] = useState("");
+  const [exportStatusMessage, setExportStatusMessage] = useState("");
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -65,7 +76,7 @@ export function SettingsScreen({
     useCallback(() => {
       let isMounted = true;
 
-      void loadSettingsScreenState(storage).then((loadedState) => {
+      void loadSettingsScreenState(storage, effectiveNow).then((loadedState) => {
         if (!isMounted) {
           return;
         }
@@ -77,7 +88,7 @@ export function SettingsScreen({
       return () => {
         isMounted = false;
       };
-    }, [storage]),
+    }, [effectiveNow, storage]),
   );
 
   if (isLoading || !state) {
@@ -105,6 +116,11 @@ export function SettingsScreen({
     setRowSymptomStatusMessages({});
   }
 
+  function resetExportMessages() {
+    setExportErrorMessage("");
+    setExportStatusMessage("");
+  }
+
   function symptomErrorMessage(errorCode: string) {
     switch (errorCode) {
       case "label_required":
@@ -120,6 +136,23 @@ export function SettingsScreen({
         return viewData.symptoms.errors.notFound;
       default:
         return viewData.symptoms.errors.saveFailed;
+    }
+  }
+
+  function exportErrorLabel(errorCode: string) {
+    switch (errorCode) {
+      case "invalid_from_date":
+        return viewData.export.errors.invalidFromDate;
+      case "invalid_to_date":
+        return viewData.export.errors.invalidToDate;
+      case "invalid_range":
+        return viewData.export.errors.invalidRange;
+      case "delivery_unavailable":
+        return viewData.export.errors.deliveryUnavailable;
+      case "delivery_failed":
+        return viewData.export.errors.deliveryFailed;
+      default:
+        return viewData.export.errors.exportFailed;
     }
   }
 
@@ -251,6 +284,76 @@ export function SettingsScreen({
     });
   }
 
+  async function handleExportRangeChange(
+    nextValues: LoadedSettingsState["exportState"]["values"],
+  ) {
+    resetExportMessages();
+    const result = await refreshSettingsExportState(
+      storage,
+      readyState,
+      nextValues,
+      effectiveNow,
+    );
+    setState(result.state);
+    if (!result.ok) {
+      setExportErrorMessage(exportErrorLabel(result.errorCode));
+    }
+  }
+
+  async function handleExport(format: "csv" | "json") {
+    resetExportMessages();
+    setIsExporting(true);
+
+    const result = await prepareSettingsExportArtifact(
+      storage,
+      readyState,
+      format,
+      effectiveNow,
+    );
+    setState(result.state);
+    if (!result.ok) {
+      setExportErrorMessage(exportErrorLabel(result.errorCode));
+      setIsExporting(false);
+      return;
+    }
+
+    const deliveryResult = await exportDeliveryClient.deliver(result.artifact);
+    if (!deliveryResult.ok) {
+      setExportErrorMessage(exportErrorLabel(deliveryResult.errorCode));
+      setIsExporting(false);
+      return;
+    }
+
+    setExportStatusMessage(
+      format === "json"
+        ? viewData.export.status.jsonReady
+        : viewData.export.status.csvReady,
+    );
+    setIsExporting(false);
+  }
+
+  function setExportDraftValues(
+    nextValues: LoadedSettingsState["exportState"]["values"],
+  ) {
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            exportState: {
+              ...current.exportState,
+              values: nextValues,
+            },
+          }
+        : current,
+    );
+  }
+
+  function hasCompleteExportDates(
+    values: LoadedSettingsState["exportState"]["values"],
+  ) {
+    return values.fromDate.trim().length === 10 && values.toDate.trim().length === 10;
+  }
+
   return (
     <SettingsFlowScreen
       createSymptomDraft={createSymptomDraft}
@@ -259,6 +362,9 @@ export function SettingsScreen({
       cycleErrorMessage={cycleErrorMessage}
       cycleGuidance={cycleGuidance}
       cycleStatusMessage={cycleStatusMessage}
+      exportErrorMessage={exportErrorMessage}
+      exportStatusMessage={exportStatusMessage}
+      isExporting={isExporting}
       isSavingCycle={isSavingCycle}
       isSavingTracking={isSavingTracking}
       now={effectiveNow}
@@ -355,8 +461,41 @@ export function SettingsScreen({
         setShowDatePicker(false);
       }}
       onDatePickerToggle={() => setShowDatePicker((current) => !current)}
+      onExportCSV={() => handleExport("csv")}
+      onExportFromDateChange={(value) => {
+        const nextValues: LoadedSettingsState["exportState"]["values"] = {
+          ...readyState.exportState.values,
+          preset: "custom",
+          fromDate: value,
+        };
+        resetExportMessages();
+        setExportDraftValues(nextValues);
+        if (hasCompleteExportDates(nextValues)) {
+          void handleExportRangeChange(nextValues);
+        }
+      }}
+      onExportJSON={() => handleExport("json")}
+      onExportPresetSelect={(value) => {
+        void handleExportRangeChange({
+          ...readyState.exportState.values,
+          preset: value,
+        });
+      }}
+      onExportToDateChange={(value) => {
+        const nextValues: LoadedSettingsState["exportState"]["values"] = {
+          ...readyState.exportState.values,
+          preset: "custom",
+          toDate: value,
+        };
+        resetExportMessages();
+        setExportDraftValues(nextValues);
+        if (hasCompleteExportDates(nextValues)) {
+          void handleExportRangeChange(nextValues);
+        }
+      }}
       onHideSexChipChange={(value) => {
         setTrackingStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -371,6 +510,7 @@ export function SettingsScreen({
       }}
       onIrregularCycleChange={(value) => {
         setCycleStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -385,6 +525,7 @@ export function SettingsScreen({
       }}
       onPeriodLengthChange={(value) => {
         setCycleStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -428,6 +569,7 @@ export function SettingsScreen({
       }}
       onTemperatureUnitSelect={(value) => {
         setTrackingStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -442,6 +584,7 @@ export function SettingsScreen({
       }}
       onTrackBBTChange={(value) => {
         setTrackingStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -456,6 +599,7 @@ export function SettingsScreen({
       }}
       onTrackCervicalMucusChange={(value) => {
         setTrackingStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {
@@ -470,6 +614,7 @@ export function SettingsScreen({
       }}
       onUnpredictableCycleChange={(value) => {
         setCycleStatusMessage("");
+        resetExportMessages();
         setState((current) =>
           current
             ? {

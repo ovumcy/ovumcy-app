@@ -5,6 +5,8 @@ import {
   archiveSettingsSymptom,
   createSettingsSymptom,
   loadSettingsScreenState,
+  prepareSettingsExportArtifact,
+  refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
@@ -16,7 +18,9 @@ describe("settings-screen-service", () => {
   it("loads canonical profile state and resolves the default age-group selection like the web app", async () => {
     const storage = createStorageMock();
 
-    await expect(loadSettingsScreenState(storage)).resolves.toEqual(
+    await expect(
+      loadSettingsScreenState(storage, new Date(2026, 2, 18)),
+    ).resolves.toEqual(
       expect.objectContaining({
         profile: expect.objectContaining({
           ageGroup: "",
@@ -28,6 +32,11 @@ describe("settings-screen-service", () => {
         }),
         trackingValues: expect.objectContaining({
           temperatureUnit: "c",
+        }),
+        exportState: expect.objectContaining({
+          values: expect.objectContaining({
+            preset: "all",
+          }),
         }),
         symptomRecords: expect.arrayContaining([
           expect.objectContaining({
@@ -47,6 +56,7 @@ describe("settings-screen-service", () => {
       createLoadedSettingsState(
         await storage.readProfileRecord(),
         createDefaultSymptomRecords(),
+        createExportState(),
       ),
       {
         lastPeriodStart: "2026-03-16",
@@ -93,6 +103,7 @@ describe("settings-screen-service", () => {
         createLoadedSettingsState(
           await storage.readProfileRecord(),
           createDefaultSymptomRecords(),
+          createExportState(),
         ),
         {
           lastPeriodStart: "2025-12-31",
@@ -120,6 +131,7 @@ describe("settings-screen-service", () => {
       createLoadedSettingsState(
         await storage.readProfileRecord(),
         createDefaultSymptomRecords(),
+        createExportState(),
       ),
       {
         trackBBT: true,
@@ -152,6 +164,7 @@ describe("settings-screen-service", () => {
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
       createDefaultSymptomRecords(),
+      createExportState(),
     );
 
     const created = await createSettingsSymptom(storage, initialState, {
@@ -247,6 +260,79 @@ describe("settings-screen-service", () => {
       }),
     });
   });
+
+  it("refreshes export preview state and prepares a JSON artifact through the canonical repositories", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-03-10"),
+          isPeriod: true,
+          notes: "Cycle start",
+        },
+      ]),
+      readDayLogSummary: jest.fn().mockImplementation(async (from?: string, to?: string) => {
+        if (from === "2026-03-10" && to === "2026-03-10") {
+          return {
+            totalEntries: 1,
+            hasData: true,
+            dateFrom: "2026-03-10",
+            dateTo: "2026-03-10",
+          };
+        }
+
+        return {
+          totalEntries: 1,
+          hasData: true,
+          dateFrom: "2026-03-10",
+          dateTo: "2026-03-10",
+        };
+      }),
+    });
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    const refreshed = await refreshSettingsExportState(
+      storage,
+      initialState,
+      {
+        preset: "custom",
+        fromDate: "2026-03-10",
+        toDate: "2026-03-10",
+      },
+      new Date(2026, 2, 18),
+    );
+    expect(refreshed).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        exportState: expect.objectContaining({
+          summary: expect.objectContaining({
+            totalEntries: 1,
+          }),
+        }),
+      }),
+    });
+    if (!refreshed.ok) {
+      throw new Error("Expected refreshed export state");
+    }
+
+    await expect(
+      prepareSettingsExportArtifact(
+        storage,
+        refreshed.state,
+        "json",
+        new Date("2026-03-18T10:00:00.000Z"),
+      ),
+    ).resolves.toEqual({
+      ok: true,
+      state: expect.any(Object),
+      artifact: expect.objectContaining({
+        filename: "ovumcy-export-2026-03-18.json",
+      }),
+    });
+  });
 });
 
 function createStorageMock(overrides = {}) {
@@ -277,6 +363,38 @@ function createStorageMock(overrides = {}) {
     readDayLogRecord: jest
       .fn()
       .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    readDayLogSummary: jest.fn().mockResolvedValue({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-10",
+      dateTo: "2026-03-10",
+    }),
     ...overrides,
   });
+}
+
+function createExportState() {
+  return {
+    values: {
+      preset: "all" as const,
+      fromDate: "2026-03-10",
+      toDate: "2026-03-18",
+    },
+    availableSummary: {
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-10",
+      dateTo: "2026-03-10",
+    },
+    summary: {
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-10",
+      dateTo: "2026-03-10",
+    },
+    bounds: {
+      minDate: "2026-03-10",
+      maxDate: "2026-03-18",
+    },
+  };
 }

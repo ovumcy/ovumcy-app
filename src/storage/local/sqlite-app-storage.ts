@@ -28,6 +28,7 @@ import {
 import type {
   LocalAppStorage,
   LocalBootstrapState,
+  LocalDayLogSummary,
 } from "./storage-contract";
 import { createDefaultBootstrapState } from "./storage-contract";
 
@@ -127,6 +128,12 @@ type LegacyOnboardingProfileRow = {
 
 type CountRow = {
   count: number;
+};
+
+type DayLogSummaryRow = {
+  total_entries: number;
+  date_from: string | null;
+  date_to: string | null;
 };
 
 type DayLogRow = {
@@ -324,6 +331,36 @@ export function createSQLiteAppStorage(
       );
 
       return rows.map((row) => mapDayLogRow(row));
+    },
+
+    async readDayLogSummary(
+      from?: DayLogRecord["date"],
+      to?: DayLogRecord["date"],
+    ): Promise<LocalDayLogSummary> {
+      const database = await getHydratedDatabase();
+      const row = from || to
+        ? await database.getFirstAsync<DayLogSummaryRow>(
+            `SELECT
+              COUNT(*) AS total_entries,
+              MIN(day) AS date_from,
+              MAX(day) AS date_to
+             FROM day_logs
+             WHERE (? IS NULL OR day >= ?)
+               AND (? IS NULL OR day <= ?);`,
+            from ?? null,
+            from ?? null,
+            to ?? null,
+            to ?? null,
+          )
+        : await database.getFirstAsync<DayLogSummaryRow>(
+            `SELECT
+              COUNT(*) AS total_entries,
+              MIN(day) AS date_from,
+              MAX(day) AS date_to
+             FROM day_logs;`,
+          );
+
+      return mapDayLogSummaryRow(row);
     },
 
     async listSymptomRecords(): Promise<SymptomRecord[]> {
@@ -745,4 +782,22 @@ function safeParseStringArray(raw: string): string[] {
   } catch {
     return [];
   }
+}
+
+function mapDayLogSummaryRow(row: DayLogSummaryRow | null): LocalDayLogSummary {
+  if (!row || !Number.isFinite(row.total_entries) || row.total_entries <= 0) {
+    return {
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    };
+  }
+
+  return {
+    totalEntries: row.total_entries,
+    hasData: true,
+    dateFrom: row.date_from,
+    dateTo: row.date_to,
+  };
 }

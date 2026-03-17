@@ -19,6 +19,7 @@ import { sanitizeDayLogRecord } from "../../services/day-log-policy";
 import type {
   LocalAppStorage,
   LocalBootstrapState,
+  LocalDayLogSummary,
 } from "./storage-contract";
 import { createDefaultBootstrapState } from "./storage-contract";
 
@@ -106,10 +107,45 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
       from: DayLogRecord["date"],
       to: DayLogRecord["date"],
     ): Promise<DayLogRecord[]> {
-      return Object.keys(state.dayLogRecords)
-        .filter((date) => date >= from && date <= to)
-        .sort()
-        .map((date) => mergeDayLogRecord(state.dayLogRecords[date], date));
+      return filterSortedDayLogRecords(state.dayLogRecords, from, to)
+        .map((record) => mergeDayLogRecord(record, record.date));
+    },
+
+    async readDayLogSummary(
+      from?: DayLogRecord["date"],
+      to?: DayLogRecord["date"],
+    ): Promise<LocalDayLogSummary> {
+      const records = filterSortedDayLogRecords(
+        state.dayLogRecords,
+        from ?? "0001-01-01",
+        to ?? "9999-12-31",
+      );
+      if (records.length === 0) {
+        return {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        };
+      }
+
+      const firstRecord = records[0];
+      const lastRecord = records[records.length - 1];
+      if (!firstRecord || !lastRecord) {
+        return {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        };
+      }
+
+      return {
+        totalEntries: records.length,
+        hasData: true,
+        dateFrom: firstRecord.date,
+        dateTo: lastRecord.date,
+      };
     },
 
     async listSymptomRecords(): Promise<SymptomRecord[]> {
@@ -126,6 +162,17 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
       };
     },
   };
+}
+
+function filterSortedDayLogRecords(
+  dayLogRecords: Record<string, DayLogRecord>,
+  from: DayLogRecord["date"],
+  to: DayLogRecord["date"],
+): DayLogRecord[] {
+  return Object.keys(dayLogRecords)
+        .filter((date) => date >= from && date <= to)
+        .sort()
+        .map((date) => mergeDayLogRecord(dayLogRecords[date], date));
 }
 
 function createDefaultVolatileWebStorageState(): VolatileWebStorageState {

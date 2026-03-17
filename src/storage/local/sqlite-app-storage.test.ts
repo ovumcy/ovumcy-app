@@ -100,6 +100,29 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         return { count: databaseState.symptomRows.length } as T;
       }
 
+      if (source.includes("COUNT(*) AS total_entries")) {
+        const from = params.length > 0 ? (params[0] as string | null) : null;
+        const to = params.length > 2 ? (params[2] as string | null) : null;
+        const filtered = databaseState.dayLogRows.filter((row) => {
+          if (from && row.day < from) {
+            return false;
+          }
+          if (to && row.day > to) {
+            return false;
+          }
+          return true;
+        });
+
+        const firstRow = filtered[0] ?? null;
+        const lastRow = filtered[filtered.length - 1] ?? null;
+
+        return {
+          total_entries: filtered.length,
+          date_from: firstRow ? firstRow.day : null,
+          date_to: lastRow ? lastRow.day : null,
+        } as T;
+      }
+
       if (source.includes("FROM bootstrap_state WHERE id = 1")) {
         return (databaseState.bootstrapRow as T) ?? null;
       }
@@ -450,6 +473,14 @@ describe("sqlite-app-storage", () => {
         isPeriod: true,
       }),
     ]);
+    await expect(
+      storage.readDayLogSummary("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-17",
+      dateTo: "2026-03-17",
+    });
 
     await storage.deleteDayLogRecord("2026-03-17");
     await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual({

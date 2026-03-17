@@ -80,6 +80,25 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
   ).toBeVisible();
 
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByText("Export data")).toBeVisible();
+  await expect(page.getByText("Total entries: 2")).toBeVisible();
+
+  const [csvDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("settings-export-csv-button").click(),
+  ]);
+  await expect(csvDownload.suggestedFilename()).toContain("ovumcy-export-");
+  await expect(csvDownload.suggestedFilename()).toContain(".csv");
+
+  const [jsonDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("settings-export-json-button").click(),
+  ]);
+  await expect(jsonDownload.suggestedFilename()).toContain("ovumcy-export-");
+  await expect(jsonDownload.suggestedFilename()).toContain(".json");
+
   await page.getByRole("tab", { name: /Insights/ }).click();
 
   await expect(page).toHaveURL(/\/stats$/);

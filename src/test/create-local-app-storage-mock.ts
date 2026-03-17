@@ -30,6 +30,12 @@ export function createLocalAppStorageMock(
     writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
     deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
     listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    readDayLogSummary: jest.fn().mockResolvedValue({
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    }),
     listSymptomRecords: jest.fn().mockResolvedValue(createDefaultSymptomRecords()),
     writeSymptomRecord: jest.fn().mockResolvedValue(undefined),
     ...overrides,

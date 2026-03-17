@@ -1,3 +1,4 @@
+import type { ExportFormat, ExportRangeValues } from "../models/export";
 import type {
   CycleSettingsValues,
   ProfileRecord,
@@ -5,6 +6,11 @@ import type {
 } from "../models/profile";
 import type { SymptomID } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import {
+  type ExportArtifact,
+  buildLocalExportArtifact,
+  loadLocalExportState,
+} from "./export-service";
 import {
   createLoadedSettingsState,
   type LoadedSettingsState,
@@ -26,6 +32,11 @@ import {
 
 type SaveSettingsErrorCode = "invalid_last_period_start" | "generic";
 type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
+type ExportSettingsErrorCode =
+  | "invalid_from_date"
+  | "invalid_to_date"
+  | "invalid_range"
+  | "generic";
 
 type SaveStateResult<ErrorCode extends string> =
   | {
@@ -37,15 +48,28 @@ type SaveStateResult<ErrorCode extends string> =
       errorCode: ErrorCode;
     };
 
+type RefreshExportStateResult =
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: ExportSettingsErrorCode;
+      state: LoadedSettingsState;
+    };
+
 export async function loadSettingsScreenState(
   storage: LocalAppStorage,
+  now: Date,
 ): Promise<LoadedSettingsState> {
-  const [profile, symptomRecords] = await Promise.all([
+  const [profile, symptomRecords, exportResult] = await Promise.all([
     storage.readProfileRecord(),
     storage.listSymptomRecords(),
+    loadLocalExportState(storage, now),
   ]);
 
-  return createLoadedSettingsState(profile, symptomRecords);
+  return createLoadedSettingsState(profile, symptomRecords, exportResult.state);
 }
 
 export async function saveCycleSettings(
@@ -77,7 +101,11 @@ export async function saveCycleSettings(
 
   return {
     ok: true,
-    state: createLoadedSettingsState(nextProfile, currentState.symptomRecords),
+    state: createLoadedSettingsState(
+      nextProfile,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
   };
 }
 
@@ -102,7 +130,11 @@ export async function saveTrackingSettings(
 
   return {
     ok: true,
-    state: createLoadedSettingsState(nextProfile, currentState.symptomRecords),
+    state: createLoadedSettingsState(
+      nextProfile,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
   };
 }
 
@@ -130,7 +162,7 @@ export async function createSettingsSymptom(
     state: createLoadedSettingsState(currentState.profile, [
       ...currentState.symptomRecords,
       result.record,
-    ]),
+    ], currentState.exportState),
   };
 }
 
@@ -165,6 +197,7 @@ export async function updateSettingsSymptom(
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
+      currentState.exportState,
     ),
   };
 }
@@ -195,6 +228,7 @@ export async function archiveSettingsSymptom(
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
+      currentState.exportState,
     ),
   };
 }
@@ -225,7 +259,78 @@ export async function restoreSettingsSymptom(
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
+      currentState.exportState,
     ),
+  };
+}
+
+export async function refreshSettingsExportState(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  exportValues: ExportRangeValues,
+  now: Date,
+): Promise<RefreshExportStateResult> {
+  const result = await loadLocalExportState(storage, now, exportValues);
+  const nextState = createLoadedSettingsState(
+    currentState.profile,
+    currentState.symptomRecords,
+    result.state,
+  );
+  if (result.errorCode) {
+    return {
+      ok: false,
+      errorCode: result.errorCode,
+      state: nextState,
+    };
+  }
+
+  return {
+    ok: true,
+    state: nextState,
+  };
+}
+
+export async function prepareSettingsExportArtifact(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  format: ExportFormat,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      artifact: ExportArtifact;
+    }
+  | {
+      ok: false;
+      errorCode: ExportSettingsErrorCode;
+      state: LoadedSettingsState;
+    }
+> {
+  const result = await buildLocalExportArtifact(
+    storage,
+    currentState.exportState,
+    format,
+    now,
+  );
+  const nextState = createLoadedSettingsState(
+    currentState.profile,
+    currentState.symptomRecords,
+    result.state,
+  );
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      errorCode: result.errorCode,
+      state: nextState,
+    };
+  }
+
+  return {
+    ok: true,
+    artifact: result.artifact,
+    state: nextState,
   };
 }
 

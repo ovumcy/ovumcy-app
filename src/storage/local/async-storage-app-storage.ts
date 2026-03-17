@@ -22,6 +22,7 @@ import { sanitizeDayLogRecord } from "../../services/day-log-policy";
 import type {
   LocalAppStorage,
   LocalBootstrapState,
+  LocalDayLogSummary,
 } from "./storage-contract";
 import { createDefaultBootstrapState } from "./storage-contract";
 
@@ -90,10 +91,45 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
     ): Promise<DayLogRecord[]> {
       const records = await readAsyncStorageDayLogRecords();
 
-      return Object.keys(records)
-        .filter((date) => date >= from && date <= to)
-        .sort()
-        .map((date) => mergeDayLogRecord(records[date], date));
+      return filterSortedDayLogRecords(records, from, to);
+    },
+
+    async readDayLogSummary(
+      from?: DayLogRecord["date"],
+      to?: DayLogRecord["date"],
+    ): Promise<LocalDayLogSummary> {
+      const records = await readAsyncStorageDayLogRecords();
+      const filtered = filterSortedDayLogRecords(
+        records,
+        from ?? "0001-01-01",
+        to ?? "9999-12-31",
+      );
+      if (filtered.length === 0) {
+        return {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        };
+      }
+
+      const firstRecord = filtered[0];
+      const lastRecord = filtered[filtered.length - 1];
+      if (!firstRecord || !lastRecord) {
+        return {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        };
+      }
+
+      return {
+        totalEntries: filtered.length,
+        hasData: true,
+        dateFrom: firstRecord.date,
+        dateTo: lastRecord.date,
+      };
     },
 
     async listSymptomRecords(): Promise<SymptomRecord[]> {
@@ -243,6 +279,17 @@ function mergeDayLogRecord(
     ...parsed,
     date,
   });
+}
+
+function filterSortedDayLogRecords(
+  records: Record<string, DayLogRecord>,
+  from: DayLogRecord["date"],
+  to: DayLogRecord["date"],
+): DayLogRecord[] {
+  return Object.keys(records)
+    .filter((date) => date >= from && date <= to)
+    .sort()
+    .map((date) => mergeDayLogRecord(records[date], date));
 }
 
 function mergeSymptomRecord(record: Partial<SymptomRecord>): SymptomRecord {

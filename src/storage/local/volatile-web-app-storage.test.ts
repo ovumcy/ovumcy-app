@@ -64,6 +64,14 @@ describe("volatile-web-app-storage", () => {
       symptomIDs: ["cramps", "fatigue"],
       notes: "Session-only web note",
     });
+    await expect(
+      storage.readDayLogSummary("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-18",
+      dateTo: "2026-03-18",
+    });
     await expect(storage.listSymptomRecords()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({

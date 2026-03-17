@@ -4,7 +4,7 @@ import { colors, spacing } from "../theme/tokens";
 
 type ChoiceGroupProps<T extends string | number> = {
   options: { value: T; label: string; secondaryLabel?: string }[];
-  selectedValue: T;
+  selectedValue?: T | undefined;
   onSelect: (value: T) => void;
   compact?: boolean;
   testIDPrefix?: string;

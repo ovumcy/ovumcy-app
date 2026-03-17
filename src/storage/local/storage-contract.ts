@@ -15,6 +15,13 @@ export function createDefaultBootstrapState(): LocalBootstrapState {
   };
 }
 
+export type LocalDayLogSummary = {
+  totalEntries: number;
+  hasData: boolean;
+  dateFrom: DayLogRecord["date"] | null;
+  dateTo: DayLogRecord["date"] | null;
+};
+
 export interface LocalAppStorage {
   readBootstrapState(): Promise<LocalBootstrapState>;
   writeBootstrapState(state: LocalBootstrapState): Promise<void>;
@@ -29,6 +36,10 @@ export interface LocalAppStorage {
     from: DayLogRecord["date"],
     to: DayLogRecord["date"],
   ): Promise<DayLogRecord[]>;
+  readDayLogSummary(
+    from?: DayLogRecord["date"],
+    to?: DayLogRecord["date"],
+  ): Promise<LocalDayLogSummary>;
   listSymptomRecords(): Promise<SymptomRecord[]>;
   writeSymptomRecord(record: SymptomRecord): Promise<void>;
 }
