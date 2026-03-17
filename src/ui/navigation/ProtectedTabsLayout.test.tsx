@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 import { Text, View } from "react-native";
 
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ProtectedTabsLayout } from "./ProtectedTabsLayout";
 
@@ -80,6 +81,12 @@ function createStorageMock(
       usageGoal: "health",
     }),
     writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
   };
 }
 

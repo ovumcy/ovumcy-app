@@ -22,6 +22,20 @@ type FakeDatabaseState = {
     track_cervical_mucus: number;
     hide_sex_chip: number;
   } | null;
+  dayLogRows: {
+    day: string;
+    is_period: number;
+    cycle_start: number;
+    is_uncertain: number;
+    flow: string;
+    mood: number;
+    sex_activity: string;
+    bbt: number;
+    cervical_mucus: string;
+    cycle_factor_keys: string;
+    symptom_ids: string;
+    notes: string;
+  }[];
   onboardingRow: {
     last_period_start: string | null;
     cycle_length: number;
@@ -38,6 +52,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
   const databaseState: FakeDatabaseState = {
     bootstrapRow: null,
     profileRow: null,
+    dayLogRows: [],
     onboardingRow: null,
     userVersion: 0,
     ...state,
@@ -54,7 +69,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
       }
     },
 
-    async getFirstAsync<T>(source: string): Promise<T | null> {
+    async getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null> {
       if (source === "PRAGMA user_version;") {
         return { user_version: databaseState.userVersion } as T;
       }
@@ -67,6 +82,10 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         return { count: databaseState.profileRow ? 1 : 0 } as T;
       }
 
+      if (source.includes("COUNT(*) AS count FROM day_logs")) {
+        return { count: databaseState.dayLogRows.length } as T;
+      }
+
       if (source.includes("FROM bootstrap_state WHERE id = 1")) {
         return (databaseState.bootstrapRow as T) ?? null;
       }
@@ -75,11 +94,27 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         return (databaseState.profileRow as T) ?? null;
       }
 
+      if (source.includes("FROM day_logs") && source.includes("WHERE day =")) {
+        const day = String(params[0]);
+        const row = databaseState.dayLogRows.find((entry) => entry.day === day);
+        return (row as T) ?? null;
+      }
+
       if (source.includes("FROM onboarding_profile")) {
         return (databaseState.onboardingRow as T) ?? null;
       }
 
       return null;
+    },
+
+    async getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]> {
+      if (source.includes("FROM day_logs")) {
+        const from = String(params[0]);
+        const to = String(params[1]);
+        return databaseState.dayLogRows.filter((row) => row.day >= from && row.day <= to) as T[];
+      }
+
+      return [];
     },
 
     async runAsync(source: string, ...params: unknown[]) {
@@ -111,6 +146,32 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         if (databaseState.bootstrapRow) {
           databaseState.bootstrapRow.profile_version = Number(params[0]);
         }
+      }
+
+      if (source.includes("INSERT INTO day_logs")) {
+        const nextRow = {
+          day: String(params[0]),
+          is_period: Number(params[1]),
+          cycle_start: Number(params[2]),
+          is_uncertain: Number(params[3]),
+          flow: String(params[4]),
+          mood: Number(params[5]),
+          sex_activity: String(params[6]),
+          bbt: Number(params[7]),
+          cervical_mucus: String(params[8]),
+          cycle_factor_keys: String(params[9]),
+          symptom_ids: String(params[10]),
+          notes: String(params[11]),
+        };
+        databaseState.dayLogRows = databaseState.dayLogRows.filter(
+          (row) => row.day !== nextRow.day,
+        );
+        databaseState.dayLogRows.push(nextRow);
+      }
+
+      if (source.includes("DELETE FROM day_logs")) {
+        const day = String(params[0]);
+        databaseState.dayLogRows = databaseState.dayLogRows.filter((row) => row.day !== day);
       }
 
       return { changes: 1 };
@@ -289,6 +350,73 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+    });
+  });
+
+  it("persists and lists canonical day logs in sqlite", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeDayLogRecord({
+      date: "2026-03-17",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "light",
+      mood: 4,
+      sexActivity: "protected",
+      bbt: 36.55,
+      cervicalMucus: "creamy",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "Localized journal note",
+    });
+
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual({
+      date: "2026-03-17",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "light",
+      mood: 4,
+      sexActivity: "protected",
+      bbt: 36.55,
+      cervicalMucus: "creamy",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "Localized journal note",
+    });
+
+    await expect(
+      storage.listDayLogRecordsInRange("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        date: "2026-03-17",
+        isPeriod: true,
+      }),
+    ]);
+
+    await storage.deleteDayLogRecord("2026-03-17");
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual({
+      date: "2026-03-17",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 0,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
     });
   });
 });

@@ -1,6 +1,11 @@
 import { dashboardCopy } from "../i18n/dashboard-copy";
+import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import {
+  buildDayLogEditorViewData,
+  type DayLogEditorViewData,
+} from "./day-log-editor-service";
 import {
   addDays,
   formatLocalDate,
@@ -17,28 +22,42 @@ export type DashboardViewData = {
     title: string;
     items: { label: string; value: string }[];
   };
-  editor: {
+  journal: {
     title: string;
     description: string;
-    sections: {
-      label: string;
-      detail: string;
-      hidden?: boolean;
-    }[];
+    dateLabel: string;
   };
 };
 
-export async function loadDashboardViewData(
+export type LoadedDashboardState = {
+  profile: ProfileRecord;
+  todayEntry: DayLogRecord;
+  viewData: DashboardViewData;
+  editorViewData: DayLogEditorViewData;
+};
+
+export async function loadDashboardScreenState(
   storage: LocalAppStorage,
   now: Date,
   locale = "en",
-): Promise<DashboardViewData> {
-  const profile = await storage.readProfileRecord();
-  return buildDashboardViewData(profile, now, locale);
+): Promise<LoadedDashboardState> {
+  const today = formatLocalDate(now);
+  const [profile, todayEntry] = await Promise.all([
+    storage.readProfileRecord(),
+    storage.readDayLogRecord(today),
+  ]);
+
+  return {
+    profile,
+    todayEntry,
+    viewData: buildDashboardViewData(profile, todayEntry, now, locale),
+    editorViewData: buildDayLogEditorViewData(profile, today, locale),
+  };
 }
 
 export function buildDashboardViewData(
   profile: ProfileRecord,
+  todayEntry: DayLogRecord,
   now: Date,
   locale = "en",
 ): DashboardViewData {
@@ -79,19 +98,17 @@ export function buildDashboardViewData(
         },
       ],
     },
-    editor: {
+    journal: {
       title: dashboardCopy.todayEditor,
-      description: dashboardCopy.todayEditorHint,
-      sections: buildEditorSections(profile),
+      description: buildJournalDescription(profile, todayEntry),
+      dateLabel: new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }).format(today),
     },
   };
 }
-
-type ProjectedCycleSummary = {
-  currentCycleDay: number | null;
-  nextPeriodDate: string | null;
-  ovulationDate: string | null;
-};
 
 function buildStatusItems(
   profile: ProfileRecord,
@@ -162,55 +179,38 @@ function buildPredictionExplanation(
   return dashboardCopy.cycleFactorsHint;
 }
 
-function buildEditorSections(profile: ProfileRecord) {
-  const sections: {
-    label: string;
-    detail: string;
-    hidden?: boolean;
-  }[] = [
-    { label: dashboardCopy.periodDay, detail: "Visible for new entries." },
-    { label: dashboardCopy.symptoms, detail: "Visible for new entries." },
-    { label: dashboardCopy.mood, detail: "Visible for new entries." },
-    {
-      label: dashboardCopy.cycleFactors,
-      detail: dashboardCopy.cycleFactorsHint,
-    },
+function buildJournalDescription(
+  profile: ProfileRecord,
+  todayEntry: DayLogRecord,
+): string {
+  const sections: string[] = [
+    dashboardCopy.periodDay,
+    dashboardCopy.symptoms,
+    dashboardCopy.mood,
+    dashboardCopy.cycleFactors,
   ];
 
-  if (profile.hideSexChip) {
-    sections.push({
-      label: dashboardCopy.intimacy,
-      detail: dashboardCopy.intimacyHiddenHint,
-      hidden: true,
-    });
-  } else {
-    sections.push({
-      label: dashboardCopy.intimacy,
-      detail: dashboardCopy.sexSettingsHint,
-    });
+  if (!profile.hideSexChip) {
+    sections.push(dashboardCopy.intimacy);
   }
-
   if (profile.trackCervicalMucus) {
-    sections.push({
-      label: dashboardCopy.cervicalMucus,
-      detail: dashboardCopy.cervicalMucusExplainer,
-    });
+    sections.push(dashboardCopy.cervicalMucus);
   }
-
   if (profile.trackBBT) {
-    sections.push({
-      label: dashboardCopy.bbt,
-      detail: `Visible in ${profile.temperatureUnit === "f" ? "°F" : "°C"}.`,
-    });
+    sections.push(dashboardCopy.bbt);
+  }
+  if (todayEntry.notes.trim()) {
+    sections.push(dashboardCopy.notes);
   }
 
-  sections.push({
-    label: dashboardCopy.notes,
-    detail: "Visible for new entries.",
-  });
-
-  return sections;
+  return `Visible today: ${sections.join(", ")}.`;
 }
+
+type ProjectedCycleSummary = {
+  currentCycleDay: number | null;
+  nextPeriodDate: string | null;
+  ovulationDate: string | null;
+};
 
 function projectCurrentCycle(
   profile: ProfileRecord,

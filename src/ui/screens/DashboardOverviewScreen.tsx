@@ -1,15 +1,34 @@
 import { StyleSheet, Text, View } from "react-native";
 
+import type { DayLogRecord } from "../../models/day-log";
+import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
 import type { DashboardViewData } from "../../services/dashboard-view-service";
+import { DayLogEditorCard } from "../components/DayLogEditorCard";
 import { FeatureCard } from "../components/FeatureCard";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { colors, spacing } from "../theme/tokens";
 
 type DashboardOverviewScreenProps = {
+  entryExists: boolean;
+  editorViewData: DayLogEditorViewData;
+  isSaving: boolean;
+  onDelete: () => void | Promise<void>;
+  onPatch: (updates: Partial<DayLogRecord>) => void;
+  onSave: () => void | Promise<void>;
+  record: DayLogRecord;
+  statusMessage: string;
   viewData: DashboardViewData;
 };
 
 export function DashboardOverviewScreen({
+  entryExists,
+  editorViewData,
+  isSaving,
+  onDelete,
+  onPatch,
+  onSave,
+  record,
+  statusMessage,
   viewData,
 }: DashboardOverviewScreenProps) {
   return (
@@ -42,24 +61,21 @@ export function DashboardOverviewScreen({
         </View>
       </FeatureCard>
 
-      <FeatureCard
-        title={viewData.editor.title}
-        description={viewData.editor.description}
-      >
-        <View style={styles.sectionList}>
-          {viewData.editor.sections.map((section) => (
-            <View key={section.label} style={styles.sectionRow}>
-              <View style={styles.sectionCopy}>
-                <Text style={styles.sectionLabel}>
-                  {section.hidden ? "◦ " : ""}
-                  {section.label}
-                </Text>
-                <Text style={styles.sectionDetail}>{section.detail}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </FeatureCard>
+      <DayLogEditorCard
+        entryExists={entryExists}
+        isSaving={isSaving}
+        onDelete={onDelete}
+        onPatch={onPatch}
+        onSave={onSave}
+        record={record}
+        statusMessage={statusMessage}
+        viewData={{
+          ...editorViewData,
+          title: viewData.journal.title,
+          subtitle: viewData.journal.description,
+          dateLabel: viewData.journal.dateLabel,
+        }}
+      />
     </ScreenScaffold>
   );
 }
@@ -107,27 +123,5 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     fontWeight: "700",
-  },
-  sectionList: {
-    gap: spacing.sm,
-  },
-  sectionRow: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 18,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sectionCopy: {
-    gap: 4,
-  },
-  sectionLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  sectionDetail: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
   },
 });

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, spacing } from "../theme/tokens";
 
-type ChoiceGroupProps<T extends string> = {
+type ChoiceGroupProps<T extends string | number> = {
   options: { value: T; label: string; secondaryLabel?: string }[];
   selectedValue: T;
   onSelect: (value: T) => void;
@@ -10,7 +10,7 @@ type ChoiceGroupProps<T extends string> = {
   testIDPrefix?: string;
 };
 
-export function ChoiceGroup<T extends string>({
+export function ChoiceGroup<T extends string | number>({
   options,
   selectedValue,
   onSelect,

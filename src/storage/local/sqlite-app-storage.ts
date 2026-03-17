@@ -1,5 +1,9 @@
 import { openDatabaseAsync } from "expo-sqlite";
 
+import {
+  createEmptyDayLogRecord,
+  type DayLogRecord,
+} from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
   createDefaultProfileRecord,
@@ -9,6 +13,7 @@ import {
   applyOnboardingRecordToProfile,
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
+import { sanitizeDayLogRecord } from "../../services/day-log-policy";
 import { normalizeTemperatureUnit } from "../../services/profile-settings-policy";
 import {
   clearAsyncStorageLocalAppData,
@@ -23,7 +28,7 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -48,6 +53,23 @@ const CREATE_PROFILE_SETTINGS_TABLE = `
     temperature_unit TEXT NOT NULL DEFAULT 'c',
     track_cervical_mucus INTEGER NOT NULL DEFAULT 0,
     hide_sex_chip INTEGER NOT NULL DEFAULT 0
+  );
+`;
+
+const CREATE_DAY_LOGS_TABLE = `
+  CREATE TABLE IF NOT EXISTS day_logs (
+    day TEXT PRIMARY KEY,
+    is_period INTEGER NOT NULL DEFAULT 0,
+    cycle_start INTEGER NOT NULL DEFAULT 0,
+    is_uncertain INTEGER NOT NULL DEFAULT 0,
+    flow TEXT NOT NULL DEFAULT 'none',
+    mood INTEGER NOT NULL DEFAULT 0,
+    sex_activity TEXT NOT NULL DEFAULT 'none',
+    bbt REAL NOT NULL DEFAULT 0,
+    cervical_mucus TEXT NOT NULL DEFAULT 'none',
+    cycle_factor_keys TEXT NOT NULL DEFAULT '[]',
+    symptom_ids TEXT NOT NULL DEFAULT '[]',
+    notes TEXT NOT NULL DEFAULT ''
   );
 `;
 
@@ -85,9 +107,25 @@ type CountRow = {
   count: number;
 };
 
+type DayLogRow = {
+  day: string;
+  is_period: number;
+  cycle_start: number;
+  is_uncertain: number;
+  flow: string;
+  mood: number;
+  sex_activity: string;
+  bbt: number;
+  cervical_mucus: string;
+  cycle_factor_keys: string;
+  symptom_ids: string;
+  notes: string;
+};
+
 export interface LocalAppDatabase {
   execAsync(source: string): Promise<void>;
   getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null>;
+  getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]>;
   runAsync(source: string, ...params: unknown[]): Promise<unknown>;
 }
 
@@ -191,6 +229,69 @@ export function createSQLiteAppStorage(
 
       await this.writeProfileRecord(nextProfile);
     },
+
+    async readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord> {
+      const database = await getHydratedDatabase();
+      const row = await database.getFirstAsync<DayLogRow>(
+        `SELECT
+          day,
+          is_period,
+          cycle_start,
+          is_uncertain,
+          flow,
+          mood,
+          sex_activity,
+          bbt,
+          cervical_mucus,
+          cycle_factor_keys,
+          symptom_ids,
+          notes
+         FROM day_logs
+         WHERE day = ?;`,
+        date,
+      );
+
+      return row ? mapDayLogRow(row) : createEmptyDayLogRecord(date);
+    },
+
+    async writeDayLogRecord(record: DayLogRecord): Promise<void> {
+      const database = await getHydratedDatabase();
+      await upsertDayLogRecord(database, record);
+    },
+
+    async deleteDayLogRecord(date: DayLogRecord["date"]): Promise<void> {
+      const database = await getHydratedDatabase();
+      await database.runAsync("DELETE FROM day_logs WHERE day = ?;", date);
+    },
+
+    async listDayLogRecordsInRange(
+      from: DayLogRecord["date"],
+      to: DayLogRecord["date"],
+    ): Promise<DayLogRecord[]> {
+      const database = await getHydratedDatabase();
+      const rows = await database.getAllAsync<DayLogRow>(
+        `SELECT
+          day,
+          is_period,
+          cycle_start,
+          is_uncertain,
+          flow,
+          mood,
+          sex_activity,
+          bbt,
+          cervical_mucus,
+          cycle_factor_keys,
+          symptom_ids,
+          notes
+         FROM day_logs
+         WHERE day >= ? AND day <= ?
+         ORDER BY day ASC;`,
+        from,
+        to,
+      );
+
+      return rows.map((row) => mapDayLogRow(row));
+    },
   };
 }
 
@@ -224,6 +325,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
   if (currentVersion === 0) {
     await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
     await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
+    await database.execAsync(CREATE_DAY_LOGS_TABLE);
     await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
     return;
   }
@@ -236,15 +338,23 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
       `UPDATE bootstrap_state
        SET profile_version = ?
        WHERE id = 1 AND profile_version < ?;`,
-      DATABASE_VERSION,
-      DATABASE_VERSION,
+      2,
+      2,
     );
-    await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(`PRAGMA user_version = 3;`);
+    return;
+  }
+
+  if (currentVersion === 2) {
+    await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(`PRAGMA user_version = 3;`);
     return;
   }
 
   await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
   await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
+  await database.execAsync(CREATE_DAY_LOGS_TABLE);
   await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
 }
 
@@ -323,7 +433,7 @@ async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
 
 async function readRowCount(
   database: LocalAppDatabase,
-  tableName: "bootstrap_state" | "profile_settings",
+  tableName: "bootstrap_state" | "profile_settings" | "day_logs",
 ): Promise<number> {
   const row = await database.getFirstAsync<CountRow>(
     `SELECT COUNT(*) AS count FROM ${tableName};`,
@@ -396,6 +506,55 @@ async function upsertProfileRecord(
   );
 }
 
+async function upsertDayLogRecord(
+  database: LocalAppDatabase,
+  record: DayLogRecord,
+): Promise<void> {
+  const normalized = sanitizeDayLogRecord(record);
+
+  await database.runAsync(
+    `INSERT INTO day_logs (
+       day,
+       is_period,
+       cycle_start,
+       is_uncertain,
+       flow,
+       mood,
+       sex_activity,
+       bbt,
+       cervical_mucus,
+       cycle_factor_keys,
+       symptom_ids,
+       notes
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(day) DO UPDATE SET
+       is_period = excluded.is_period,
+       cycle_start = excluded.cycle_start,
+       is_uncertain = excluded.is_uncertain,
+       flow = excluded.flow,
+       mood = excluded.mood,
+       sex_activity = excluded.sex_activity,
+       bbt = excluded.bbt,
+       cervical_mucus = excluded.cervical_mucus,
+       cycle_factor_keys = excluded.cycle_factor_keys,
+       symptom_ids = excluded.symptom_ids,
+       notes = excluded.notes;`,
+    normalized.date,
+    normalized.isPeriod ? 1 : 0,
+    normalized.cycleStart ? 1 : 0,
+    normalized.isUncertain ? 1 : 0,
+    normalized.flow,
+    normalized.mood,
+    normalized.sexActivity,
+    normalized.bbt,
+    normalized.cervicalMucus,
+    JSON.stringify(normalized.cycleFactorKeys),
+    JSON.stringify(normalized.symptomIDs),
+    normalized.notes,
+  );
+}
+
 function mapBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
   return {
     hasCompletedOnboarding: row.has_completed_onboarding === 1,
@@ -424,4 +583,37 @@ function mapProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     trackCervicalMucus: row.track_cervical_mucus === 1,
     hideSexChip: row.hide_sex_chip === 1,
   };
+}
+
+function mapDayLogRow(row: DayLogRow): DayLogRecord {
+  const cycleFactorKeys = safeParseStringArray(row.cycle_factor_keys);
+  const symptomIDs = safeParseStringArray(row.symptom_ids);
+
+  return sanitizeDayLogRecord({
+    date: row.day,
+    isPeriod: row.is_period === 1,
+    cycleStart: row.cycle_start === 1,
+    isUncertain: row.is_uncertain === 1,
+    flow: row.flow as DayLogRecord["flow"],
+    mood: row.mood,
+    sexActivity: row.sex_activity as DayLogRecord["sexActivity"],
+    bbt: row.bbt,
+    cervicalMucus: row.cervical_mucus as DayLogRecord["cervicalMucus"],
+    cycleFactorKeys: cycleFactorKeys as DayLogRecord["cycleFactorKeys"],
+    symptomIDs: symptomIDs as DayLogRecord["symptomIDs"],
+    notes: row.notes,
+  });
+}
+
+function safeParseStringArray(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((value): value is string => typeof value === "string");
+  } catch {
+    return [];
+  }
 }

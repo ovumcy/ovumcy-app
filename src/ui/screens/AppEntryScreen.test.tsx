@@ -1,3 +1,4 @@
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import { render, waitFor } from "@testing-library/react-native";
 
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
@@ -45,6 +46,12 @@ function createStorageMock(
       usageGoal: "health",
     }),
     writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
   };
 }
 

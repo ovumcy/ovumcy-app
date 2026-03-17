@@ -37,6 +37,20 @@ describe("async-storage-app-storage", () => {
       ageGroup: "",
       usageGoal: "health",
     });
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual({
+      date: "2026-03-17",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 0,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    });
   });
 
   it("persists bootstrap state and onboarding record locally", async () => {
@@ -83,5 +97,48 @@ describe("async-storage-app-storage", () => {
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
     });
+  });
+
+  it("persists canonical day logs locally on the web fallback", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "spotting",
+      mood: 3,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps", "fatigue"],
+      notes: "Web fallback note",
+    });
+
+    await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "spotting",
+      mood: 3,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps", "fatigue"],
+      notes: "Web fallback note",
+    });
+
+    await expect(
+      storage.listDayLogRecordsInRange("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        date: "2026-03-18",
+        isPeriod: true,
+      }),
+    ]);
   });
 });

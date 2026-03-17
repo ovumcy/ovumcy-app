@@ -1,7 +1,6 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import Slider from "@react-native-community/slider";
 import { type ReactNode, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   useWindowDimensions,
   View,
@@ -30,6 +28,8 @@ import type {
   UsageGoal,
 } from "../../models/onboarding";
 import { onboardingCopy } from "../../i18n/app-copy";
+import { BinaryToggleCard } from "../components/BinaryToggleCard";
+import { LabeledSliderField } from "../components/LabeledSliderField";
 import { colors, spacing } from "../theme/tokens";
 
 export type OnboardingFlowScreenProps = {
@@ -342,45 +342,27 @@ function StepTwoPanel({
 }) {
   return (
     <>
-      <View style={styles.formGroup}>
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>{viewData.stepTwo.cycleLengthLabel}</Text>
-          <Text style={styles.inlineValue}>{stepTwoValues.cycleLength} days</Text>
-        </View>
-        <Slider
-          accessibilityLabel={viewData.stepTwo.cycleLengthLabel}
-          maximumTrackTintColor={colors.border}
-          maximumValue={90}
-          minimumTrackTintColor={colors.accent}
-          minimumValue={15}
-          onValueChange={onCycleLengthChange}
-          step={1}
-          style={styles.slider}
-          testID="onboarding-cycle-length-slider"
-          value={stepTwoValues.cycleLength}
-        />
-        <Text style={styles.helperText}>{viewData.stepTwo.cycleLengthHint}</Text>
-      </View>
+      <LabeledSliderField
+        hint={viewData.stepTwo.cycleLengthHint}
+        label={viewData.stepTwo.cycleLengthLabel}
+        maximumValue={90}
+        minimumValue={15}
+        onValueChange={onCycleLengthChange}
+        testID="onboarding-cycle-length-slider"
+        value={stepTwoValues.cycleLength}
+        valueSuffix=" days"
+      />
 
-      <View style={styles.formGroup}>
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>{viewData.stepTwo.periodLengthLabel}</Text>
-          <Text style={styles.inlineValue}>{stepTwoValues.periodLength} days</Text>
-        </View>
-        <Slider
-          accessibilityLabel={viewData.stepTwo.periodLengthLabel}
-          maximumTrackTintColor={colors.border}
-          maximumValue={14}
-          minimumTrackTintColor={colors.accent}
-          minimumValue={1}
-          onValueChange={onPeriodLengthChange}
-          step={1}
-          style={styles.slider}
-          testID="onboarding-period-length-slider"
-          value={stepTwoValues.periodLength}
-        />
-        <Text style={styles.helperText}>{viewData.stepTwo.periodLengthHint}</Text>
-      </View>
+      <LabeledSliderField
+        hint={viewData.stepTwo.periodLengthHint}
+        label={viewData.stepTwo.periodLengthLabel}
+        maximumValue={14}
+        minimumValue={1}
+        onValueChange={onPeriodLengthChange}
+        testID="onboarding-period-length-slider"
+        value={stepTwoValues.periodLength}
+        valueSuffix=" days"
+      />
 
       <View style={styles.messageStack}>
         {guidance.adjusted ? (
@@ -397,17 +379,21 @@ function StepTwoPanel({
 
       <BinaryToggleCard
         description={viewData.stepTwo.autoPeriodFillHint}
+        descriptionPosition="below"
         icon="🩸"
         label={viewData.stepTwo.autoPeriodFillLabel}
         onValueChange={onAutoPeriodFillChange}
+        testID="onboarding-toggle-auto-period-fill"
         value={stepTwoValues.autoPeriodFill}
       />
 
       <BinaryToggleCard
         description={viewData.stepTwo.irregularCycleHint}
+        descriptionPosition="below"
         icon="〰️"
         label={viewData.stepTwo.irregularCycleLabel}
         onValueChange={onIrregularCycleChange}
+        testID="onboarding-toggle-irregular-cycle"
         value={stepTwoValues.irregularCycle}
       />
 
@@ -494,39 +480,6 @@ function DayOptionButton({
         </Text>
       ) : null}
     </Pressable>
-  );
-}
-
-function BinaryToggleCard({
-  label,
-  icon,
-  description,
-  value,
-  onValueChange,
-}: {
-  label: string;
-  icon: string;
-  description: string;
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-}) {
-  return (
-    <View style={styles.formGroup}>
-      <View style={[styles.toggleShell, value ? styles.toggleShellActive : null]}>
-        <View style={styles.toggleCopy}>
-          <Text style={styles.toggleMain}>
-            {icon} {label}
-          </Text>
-        </View>
-        <Switch
-          onValueChange={onValueChange}
-          thumbColor={value ? colors.accent : "#ffffff"}
-          trackColor={{ false: colors.border, true: colors.accentSoft }}
-          value={value}
-        />
-      </View>
-      <Text style={styles.helperText}>{description}</Text>
-    </View>
   );
 }
 
@@ -786,20 +739,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
-  fieldRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  inlineValue: {
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  slider: {
-    height: 40,
-    width: "100%",
-  },
   messageStack: {
     gap: spacing.xs,
   },
@@ -812,31 +751,6 @@ const styles = StyleSheet.create({
     color: "#b42318",
     fontSize: 14,
     lineHeight: 21,
-  },
-  toggleShell: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 56,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  toggleShellActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accent,
-  },
-  toggleCopy: {
-    flex: 1,
-    paddingRight: spacing.md,
-  },
-  toggleMain: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
   },
   choiceGroup: {
     gap: spacing.sm,

@@ -43,6 +43,7 @@ export function LabeledSliderField({
         step={1}
         style={styles.slider}
         testID={testID}
+        thumbTintColor={colors.accentStrong}
         value={value}
       />
       <Text style={styles.hint}>{hint}</Text>

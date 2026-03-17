@@ -10,6 +10,7 @@ type BinaryToggleCardProps = {
   icon?: string;
   stateText?: string;
   testID?: string;
+  descriptionPosition?: "inside" | "below";
 };
 
 export function BinaryToggleCard({
@@ -20,7 +21,10 @@ export function BinaryToggleCard({
   icon,
   stateText,
   testID,
+  descriptionPosition = "inside",
 }: BinaryToggleCardProps) {
+  const showDescriptionInside = descriptionPosition === "inside";
+
   return (
     <View style={styles.group}>
       <Pressable
@@ -39,7 +43,9 @@ export function BinaryToggleCard({
             {icon ? `${icon} ` : ""}
             {label}
           </Text>
-          <Text style={styles.description}>{description}</Text>
+          {showDescriptionInside ? (
+            <Text style={styles.description}>{description}</Text>
+          ) : null}
           {stateText ? <Text style={styles.state}>{stateText}</Text> : null}
         </View>
         <View style={styles.controlColumn}>
@@ -52,6 +58,9 @@ export function BinaryToggleCard({
           </View>
         </View>
       </Pressable>
+      {!showDescriptionInside ? (
+        <Text style={styles.description}>{description}</Text>
+      ) : null}
     </View>
   );
 }

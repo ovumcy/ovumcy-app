@@ -1,3 +1,4 @@
+import type { DayLogRecord } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import type { ProfileRecord } from "../../models/profile";
 
@@ -20,4 +21,11 @@ export interface LocalAppStorage {
   writeProfileRecord(record: ProfileRecord): Promise<void>;
   readOnboardingRecord(): Promise<OnboardingRecord>;
   writeOnboardingRecord(record: OnboardingRecord): Promise<void>;
+  readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord>;
+  writeDayLogRecord(record: DayLogRecord): Promise<void>;
+  deleteDayLogRecord(date: DayLogRecord["date"]): Promise<void>;
+  listDayLogRecordsInRange(
+    from: DayLogRecord["date"],
+    to: DayLogRecord["date"],
+  ): Promise<DayLogRecord[]>;
 }

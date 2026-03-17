@@ -17,6 +17,20 @@ describe("dashboard-view-service", () => {
         trackCervicalMucus: false,
         hideSexChip: false,
       },
+      {
+        date: "2026-03-17",
+        isPeriod: false,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "none",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
       new Date(2026, 2, 17),
     );
 
@@ -45,24 +59,26 @@ describe("dashboard-view-service", () => {
         trackCervicalMucus: true,
         hideSexChip: true,
       },
+      {
+        date: "2026-03-17",
+        isPeriod: false,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "none",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.editor.sections).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          label: "Intimacy",
-          detail: "This section is hidden in settings.",
-          hidden: true,
-        }),
-        expect.objectContaining({
-          label: "Cervical mucus",
-        }),
-        expect.objectContaining({
-          label: "BBT",
-          detail: "Visible in °F.",
-        }),
-      ]),
-    );
+    expect(viewData.journal.description).toContain("Symptoms");
+    expect(viewData.journal.description).toContain("Cervical mucus");
+    expect(viewData.journal.description).toContain("BBT");
+    expect(viewData.journal.description).not.toContain("Intimacy");
   });
 });

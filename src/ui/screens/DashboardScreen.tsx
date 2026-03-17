@@ -4,9 +4,15 @@ import { ActivityIndicator, View } from "react-native";
 
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
-  loadDashboardViewData,
-  type DashboardViewData,
+  saveDayLogEditorRecord,
+  deleteDayLogEditorRecord,
+  buildNextDayLogRecordPatch,
+} from "../../services/day-log-editor-service";
+import {
+  loadDashboardScreenState,
+  type LoadedDashboardState,
 } from "../../services/dashboard-view-service";
+import { hasDayLogData } from "../../models/day-log";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { colors } from "../theme/tokens";
@@ -23,18 +29,26 @@ export function DashboardScreen({
 }: DashboardScreenProps) {
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
-  const [viewData, setViewData] = useState<DashboardViewData | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [state, setState] = useState<LoadedDashboardState | null>(null);
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const refresh = useCallback(async () => {
+    const loadedState = await loadDashboardScreenState(storage, effectiveNow);
+    setState(loadedState);
+    setIsLoading(false);
+  }, [effectiveNow, storage]);
 
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      void loadDashboardViewData(storage, effectiveNow).then((loadedViewData) => {
+      void loadDashboardScreenState(storage, effectiveNow).then((loadedState) => {
         if (!isMounted) {
           return;
         }
 
-        setViewData(loadedViewData);
+        setState(loadedState);
         setIsLoading(false);
       });
 
@@ -44,7 +58,7 @@ export function DashboardScreen({
     }, [effectiveNow, storage]),
   );
 
-  if (isLoading || !viewData) {
+  if (isLoading || !state) {
     return (
       <ScreenScaffold
         eyebrow="Today"
@@ -58,5 +72,66 @@ export function DashboardScreen({
     );
   }
 
-  return <DashboardOverviewScreen viewData={viewData} />;
+  async function handleSave() {
+    if (!state) {
+      return;
+    }
+    setIsSaving(true);
+    setStatusMessage("");
+
+    const result = await saveDayLogEditorRecord(storage, state.todayEntry);
+
+    if (!result.ok) {
+      setStatusMessage(state.editorViewData.actions.saveFailedLabel);
+      setIsSaving(false);
+      return;
+    }
+
+    await refresh();
+    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setIsSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!state) {
+      return;
+    }
+    setIsSaving(true);
+    setStatusMessage("");
+
+    const success = await deleteDayLogEditorRecord(storage, state.todayEntry.date);
+    if (!success) {
+      setStatusMessage(state.editorViewData.actions.deleteFailedLabel);
+      setIsSaving(false);
+      return;
+    }
+
+    await refresh();
+    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setIsSaving(false);
+  }
+
+  return (
+    <DashboardOverviewScreen
+      entryExists={hasDayLogData(state.todayEntry)}
+      isSaving={isSaving}
+      onDelete={handleDelete}
+      onPatch={(updates) => {
+        setStatusMessage("");
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                todayEntry: buildNextDayLogRecordPatch(current.todayEntry, updates),
+              }
+            : current,
+        );
+      }}
+      onSave={handleSave}
+      record={state.todayEntry}
+      statusMessage={statusMessage}
+      viewData={state.viewData}
+      editorViewData={state.editorViewData}
+    />
+  );
 }

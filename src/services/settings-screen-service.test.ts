@@ -1,3 +1,4 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   loadSettingsScreenState,
@@ -37,6 +38,12 @@ function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorag
       usageGoal: "health",
     }),
     writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
     ...overrides,
   };
 }

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { DashboardScreen } from "./DashboardScreen";
 
@@ -46,6 +47,14 @@ function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorag
       usageGoal: "health",
     }),
     writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) =>
+        createEmptyDayLogRecord(date),
+      ),
+    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -62,7 +71,9 @@ describe("DashboardScreen", () => {
     await screen.findByText("Cycle snapshot");
 
     expect(screen.getByText("This section is hidden in settings.")).toBeTruthy();
-    expect(screen.getByText("Visible in °F.")).toBeTruthy();
+    expect(
+      screen.getByText("Enter a basal body temperature reading for today. °F."),
+    ).toBeTruthy();
     expect(screen.getByText("Cervical mucus")).toBeTruthy();
   });
 

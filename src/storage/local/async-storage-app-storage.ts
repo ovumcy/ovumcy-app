@@ -1,5 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  createEmptyDayLogRecord,
+  type DayLogRecord,
+} from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
   createDefaultProfileRecord,
@@ -10,6 +14,7 @@ import {
   createDefaultOnboardingRecord,
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
+import { sanitizeDayLogRecord } from "../../services/day-log-policy";
 import type {
   LocalAppStorage,
   LocalBootstrapState,
@@ -19,6 +24,7 @@ import { createDefaultBootstrapState } from "./storage-contract";
 export const BOOTSTRAP_STATE_KEY = "ovumcy/bootstrap-state";
 export const PROFILE_RECORD_KEY = "ovumcy/profile-record";
 export const ONBOARDING_RECORD_KEY = "ovumcy/onboarding-record";
+export const DAY_LOG_RECORDS_KEY = "ovumcy/day-log-records";
 
 export function createAsyncStorageAppStorage(): LocalAppStorage {
   return {
@@ -54,6 +60,35 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
       const nextProfile = applyOnboardingRecordToProfile(currentProfile, record);
 
       await AsyncStorage.setItem(PROFILE_RECORD_KEY, JSON.stringify(nextProfile));
+    },
+
+    async readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord> {
+      const records = await readAsyncStorageDayLogRecords();
+      return mergeDayLogRecord(records[date], date);
+    },
+
+    async writeDayLogRecord(record: DayLogRecord): Promise<void> {
+      const records = await readAsyncStorageDayLogRecords();
+      records[record.date] = record;
+      await AsyncStorage.setItem(DAY_LOG_RECORDS_KEY, JSON.stringify(records));
+    },
+
+    async deleteDayLogRecord(date: DayLogRecord["date"]): Promise<void> {
+      const records = await readAsyncStorageDayLogRecords();
+      delete records[date];
+      await AsyncStorage.setItem(DAY_LOG_RECORDS_KEY, JSON.stringify(records));
+    },
+
+    async listDayLogRecordsInRange(
+      from: DayLogRecord["date"],
+      to: DayLogRecord["date"],
+    ): Promise<DayLogRecord[]> {
+      const records = await readAsyncStorageDayLogRecords();
+
+      return Object.keys(records)
+        .filter((date) => date >= from && date <= to)
+        .sort()
+        .map((date) => mergeDayLogRecord(records[date], date));
     },
   };
 }
@@ -109,15 +144,18 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
     BOOTSTRAP_STATE_KEY,
     PROFILE_RECORD_KEY,
     ONBOARDING_RECORD_KEY,
+    DAY_LOG_RECORDS_KEY,
   ]);
   const bootstrapState = entries[0];
   const profileRecord = entries[1];
   const onboardingRecord = entries[2];
+  const dayLogRecords = entries[3];
 
   return (
     bootstrapState?.[1] !== null ||
     profileRecord?.[1] !== null ||
-    onboardingRecord?.[1] !== null
+    onboardingRecord?.[1] !== null ||
+    dayLogRecords?.[1] !== null
   );
 }
 
@@ -126,7 +164,19 @@ export async function clearAsyncStorageLocalAppData(): Promise<void> {
     BOOTSTRAP_STATE_KEY,
     PROFILE_RECORD_KEY,
     ONBOARDING_RECORD_KEY,
+    DAY_LOG_RECORDS_KEY,
   ]);
+}
+
+async function readAsyncStorageDayLogRecords(): Promise<
+  Record<string, DayLogRecord>
+> {
+  const rawValue = await AsyncStorage.getItem(DAY_LOG_RECORDS_KEY);
+  if (!rawValue) {
+    return {};
+  }
+
+  return safeParse<Record<string, DayLogRecord>>(rawValue) ?? {};
 }
 
 function safeParse<T>(rawValue: string): T | null {
@@ -149,4 +199,15 @@ function mergeProfileRecord(
       typeof parsed?.lastPeriodStart === "string" ? parsed.lastPeriodStart : null,
     temperatureUnit: parsed?.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
   };
+}
+
+function mergeDayLogRecord(
+  parsed: Partial<DayLogRecord> | undefined,
+  date: DayLogRecord["date"],
+): DayLogRecord {
+  return sanitizeDayLogRecord({
+    ...createEmptyDayLogRecord(date),
+    ...parsed,
+    date,
+  });
 }

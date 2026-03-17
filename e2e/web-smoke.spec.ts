@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("web shell onboarding reaches dashboard", async ({ page }) => {
+test("web onboarding reaches dashboard and the local journal persists into calendar", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByText("When did your last period start?")).toBeVisible();
@@ -23,12 +23,18 @@ test("web shell onboarding reaches dashboard", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Cycle snapshot")).toBeVisible();
-  await expect(
-    page.getByText(
-      "The full logging editor will live here. Visibility already follows your saved settings.",
-    ),
-  ).toBeVisible();
-  await expect(page.getByText("Period day")).toBeVisible();
+  await expect(page.getByTestId("day-log-save-button")).toBeVisible();
+
+  await page.getByTestId("day-log-period-toggle").click();
+  await page.getByTestId("day-log-save-button").click();
+
+  await expect(page.getByText("Saved locally.")).toBeVisible();
+
+  await page.getByText("Calendar").click();
+
+  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page.getByText("Day details")).toBeVisible();
+  await expect(page.getByTestId("day-log-delete-button").first()).toBeVisible();
 });
 
 test("web shell publishes the canonical favicon", async ({ page }) => {
