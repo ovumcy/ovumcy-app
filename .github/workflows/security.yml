@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   npm-audit-production:
@@ -49,13 +48,6 @@ jobs:
 
       - name: Run Trivy filesystem scan
         run: docker run --rm -v "${{ github.workspace }}:/work" -w /work "${{ env.TRIVY_IMAGE }}" fs --scanners vuln --skip-version-check --severity HIGH,CRITICAL --ignore-unfixed --format sarif --output .tmp/security/trivy-fs.sarif --exit-code 1 .
-
-      - name: Upload Trivy filesystem SARIF
-        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: github/codeql-action/upload-sarif@0d579ffd059c29b07949a3cce3983f0780820c98 # v4.32.6
-        with:
-          sarif_file: .tmp/security/trivy-fs.sarif
-          category: trivy-fs
 
       - name: Upload Trivy filesystem artifacts
         if: always()

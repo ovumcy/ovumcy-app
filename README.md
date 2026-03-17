@@ -1,5 +1,5 @@
 [![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml)
+[![Security](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml)
 [![Status](https://img.shields.io/badge/Status-bootstrap-c7756d)](https://github.com/ovumcy/ovumcy-app)
 [![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020?logo=expo)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
@@ -70,7 +70,7 @@ The current `main` branch provides:
 - a local-first onboarding flow with web-parity structure and copy;
 - native SQLite-backed bootstrap and onboarding persistence;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
-- baseline CI, CodeQL, and browser smoke automation for the web shell.
+- baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
 
 ## Privacy and Security
 
@@ -79,7 +79,8 @@ The current `main` branch provides:
 - Sensitive health baseline data is stored locally on-device.
 - Native bootstrap and onboarding data now live behind a SQLite-backed repository boundary.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
-- Security checks in GitHub Actions cover CodeQL, production dependency audit, and Trivy filesystem scanning.
+- Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
+- Dependabot monitors app dependencies and GitHub Actions updates.
 
 ## Architecture
 
@@ -157,6 +158,9 @@ Current automated baseline:
 - `jest` screen, service, and storage tests
 - `expo-doctor`
 - Playwright web smoke for onboarding and app shell
+- production dependency audit
+- Trivy filesystem scan
+- Dependabot version updates for `npm` and `github-actions`
 
 Manual acceptance guidance lives in [docs/manual-smoke.md](docs/manual-smoke.md).
 
