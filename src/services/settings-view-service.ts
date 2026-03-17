@@ -1,34 +1,201 @@
-export type SettingsShellCard = {
-  title: string;
-  description: string;
-  bullets?: string[];
-};
+import { settingsCopy } from "../i18n/settings-copy";
+import type {
+  AgeGroupOption,
+  CycleSettingsValues,
+  ProfileRecord,
+  TemperatureUnit,
+  TrackingSettingsValues,
+  UsageGoal,
+} from "../models/profile";
+import {
+  buildCycleGuidanceState,
+  getSettingsCycleStartDateBounds,
+  resolveDisplayedAgeGroup,
+} from "./profile-settings-policy";
 
-export type SettingsShellViewData = {
+export type SettingsViewData = {
   eyebrow: string;
   title: string;
   description: string;
-  cards: SettingsShellCard[];
+  common: typeof settingsCopy.common;
+  cycle: {
+    title: string;
+    dateBounds: ReturnType<typeof getSettingsCycleStartDateBounds>;
+    cycleLengthLabel: string;
+    periodLengthLabel: string;
+    lastPeriodStartLabel: string;
+    lastPeriodStartHint: string;
+    autoPeriodFillLabel: string;
+    autoPeriodFillHint: string;
+    irregularCycleLabel: string;
+    irregularCycleHint: string;
+    unpredictableCycleLabel: string;
+    unpredictableCycleHint: string;
+    saveLabel: string;
+    messages: {
+      errorIncompatible: string;
+      warningApproximate: string;
+      infoAdjusted: string;
+      infoPeriodLong: string;
+      infoCycleShort: string;
+    };
+  };
+  ageGroup: {
+    label: string;
+    hint: string;
+    options: { value: AgeGroupOption; label: string }[];
+  };
+  usageGoal: {
+    label: string;
+    hint: string;
+    options: { value: UsageGoal; label: string }[];
+  };
+  tracking: {
+    title: string;
+    subtitle: string;
+    trackBBT: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    trackCervicalMucus: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    hideSexChip: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    temperatureUnit: {
+      label: string;
+      hint: string;
+      options: { value: TemperatureUnit; label: string }[];
+    };
+    saveLabel: string;
+  };
+  status: typeof settingsCopy.status;
 };
 
-export function buildSettingsShellViewData(): SettingsShellViewData {
+export type LoadedSettingsState = {
+  profile: ProfileRecord;
+  cycleValues: CycleSettingsValues;
+  trackingValues: TrackingSettingsValues;
+};
+
+export function buildSettingsViewData(now: Date): SettingsViewData {
   return {
     eyebrow: "Preferences",
-    title: "Settings shell",
-    description:
-      "This screen will manage local tracking preferences, custom symptoms, exports, and later optional sync setup.",
-    cards: [
-      {
-        title: "Tracking toggles",
-        description:
-          "Settings will explain how advanced tracking fields affect new entries without hiding what remains in local history.",
+    title: settingsCopy.title,
+    description: settingsCopy.subtitle,
+    common: settingsCopy.common,
+    cycle: {
+      title: settingsCopy.cycle.title,
+      dateBounds: getSettingsCycleStartDateBounds(now),
+      cycleLengthLabel: settingsCopy.cycle.cycleLength,
+      periodLengthLabel: settingsCopy.cycle.periodLength,
+      lastPeriodStartLabel: settingsCopy.cycle.lastPeriodStart,
+      lastPeriodStartHint: settingsCopy.cycle.lastPeriodStartHint,
+      autoPeriodFillLabel: settingsCopy.cycle.autoPeriodFill,
+      autoPeriodFillHint: settingsCopy.cycle.autoPeriodFillHint,
+      irregularCycleLabel: settingsCopy.cycle.irregularCycle,
+      irregularCycleHint: settingsCopy.cycle.irregularCycleHint,
+      unpredictableCycleLabel: settingsCopy.cycle.unpredictableCycle,
+      unpredictableCycleHint: settingsCopy.cycle.unpredictableCycleHint,
+      saveLabel: settingsCopy.cycle.save,
+      messages: {
+        errorIncompatible: settingsCopy.cycle.errorIncompatible,
+        warningApproximate: settingsCopy.cycle.warningApproximate,
+        infoAdjusted: settingsCopy.cycle.infoAdjusted,
+        infoPeriodLong: settingsCopy.cycle.infoPeriodLong,
+        infoCycleShort: settingsCopy.cycle.infoCycleShort,
       },
-      {
-        title: "Optional sync later",
-        description:
-          "Self-hosted or managed sync should appear here as an additive capability, not as a requirement for core use.",
-        bullets: ["local profile", "custom symptoms", "export and backup"],
+    },
+    ageGroup: {
+      label: settingsCopy.ageGroup.title,
+      hint: settingsCopy.ageGroup.hint,
+      options: [
+        { value: "under_20", label: settingsCopy.ageGroup.under20 },
+        { value: "age_20_35", label: settingsCopy.ageGroup.age20to35 },
+        { value: "age_35_plus", label: settingsCopy.ageGroup.age35plus },
+      ],
+    },
+    usageGoal: {
+      label: settingsCopy.goal.title,
+      hint: settingsCopy.goal.hint,
+      options: [
+        { value: "avoid_pregnancy", label: settingsCopy.goal.avoid },
+        { value: "trying_to_conceive", label: settingsCopy.goal.trying },
+        { value: "health", label: settingsCopy.goal.health },
+      ],
+    },
+    tracking: {
+      title: settingsCopy.tracking.title,
+      subtitle: settingsCopy.tracking.subtitle,
+      trackBBT: {
+        label: settingsCopy.tracking.trackBBT,
+        hint: settingsCopy.tracking.trackBBTHint,
+        stateOn: settingsCopy.tracking.trackBBTStateOn,
+        stateOff: settingsCopy.tracking.trackBBTStateOff,
       },
-    ],
+      trackCervicalMucus: {
+        label: settingsCopy.tracking.trackCervicalMucus,
+        hint: settingsCopy.tracking.trackCervicalMucusHint,
+        stateOn: settingsCopy.tracking.trackCervicalMucusStateOn,
+        stateOff: settingsCopy.tracking.trackCervicalMucusStateOff,
+      },
+      hideSexChip: {
+        label: settingsCopy.tracking.hideSexChip,
+        hint: settingsCopy.tracking.hideSexChipHint,
+        stateOn: settingsCopy.tracking.hideSexChipStateOn,
+        stateOff: settingsCopy.tracking.hideSexChipStateOff,
+      },
+      temperatureUnit: {
+        label: settingsCopy.tracking.temperatureUnit,
+        hint: settingsCopy.tracking.temperatureUnitHint,
+        options: [
+          { value: "c", label: `°C · ${settingsCopy.tracking.temperatureUnitCelsius}` },
+          { value: "f", label: `°F · ${settingsCopy.tracking.temperatureUnitFahrenheit}` },
+        ],
+      },
+      saveLabel: settingsCopy.tracking.save,
+    },
+    status: settingsCopy.status,
   };
+}
+
+export function createLoadedSettingsState(profile: ProfileRecord): LoadedSettingsState {
+  return {
+    profile,
+    cycleValues: {
+      lastPeriodStart: profile.lastPeriodStart,
+      cycleLength: profile.cycleLength,
+      periodLength: profile.periodLength,
+      autoPeriodFill: profile.autoPeriodFill,
+      irregularCycle: profile.irregularCycle,
+      unpredictableCycle: profile.unpredictableCycle,
+      ageGroup: resolveDisplayedAgeGroup(profile.ageGroup),
+      usageGoal: profile.usageGoal,
+    },
+    trackingValues: {
+      trackBBT: profile.trackBBT,
+      temperatureUnit: profile.temperatureUnit,
+      trackCervicalMucus: profile.trackCervicalMucus,
+      hideSexChip: profile.hideSexChip,
+    },
+  };
+}
+
+export function resolveSettingsAgeGroupSelection(
+  cycleValues: CycleSettingsValues,
+): AgeGroupOption {
+  return resolveDisplayedAgeGroup(cycleValues.ageGroup);
+}
+
+export function buildSettingsCycleGuidance(cycleValues: CycleSettingsValues) {
+  return buildCycleGuidanceState(cycleValues.cycleLength, cycleValues.periodLength);
 }

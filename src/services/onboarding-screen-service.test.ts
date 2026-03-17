@@ -14,14 +14,29 @@ function createStorageMock(
   return {
     readBootstrapState: jest.fn().mockResolvedValue({
       hasCompletedOnboarding: false,
-      profileVersion: 1,
+      profileVersion: 2,
     }),
     writeBootstrapState: jest.fn().mockResolvedValue(undefined),
+    readProfileRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    }),
+    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: null,
       cycleLength: 28,
       periodLength: 5,
-      autoPeriodFill: false,
+      autoPeriodFill: true,
       irregularCycle: false,
       ageGroup: "",
       usageGoal: "health",
@@ -38,7 +53,7 @@ function createLoadedState(
     lastPeriodStart: "2026-03-17",
     cycleLength: 28,
     periodLength: 5,
-    autoPeriodFill: false,
+    autoPeriodFill: true,
     irregularCycle: false,
     ageGroup: "",
     usageGoal: "health",
@@ -65,7 +80,7 @@ describe("onboarding-screen-service", () => {
     const storage = createStorageMock({
       readBootstrapState: jest.fn().mockResolvedValue({
         hasCompletedOnboarding: true,
-        profileVersion: 1,
+        profileVersion: 2,
       }),
     });
 
@@ -76,14 +91,19 @@ describe("onboarding-screen-service", () => {
 
   it("loads onboarding state with the next unresolved step", async () => {
     const storage = createStorageMock({
-      readOnboardingRecord: jest.fn().mockResolvedValue({
+      readProfileRecord: jest.fn().mockResolvedValue({
         lastPeriodStart: "2026-03-17",
         cycleLength: 30,
         periodLength: 4,
         autoPeriodFill: true,
         irregularCycle: false,
+        unpredictableCycle: false,
         ageGroup: "",
         usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
       }),
     });
 
@@ -108,7 +128,7 @@ describe("onboarding-screen-service", () => {
         lastPeriodStart: null,
         cycleLength: 28,
         periodLength: 5,
-        autoPeriodFill: false,
+        autoPeriodFill: true,
         irregularCycle: false,
         ageGroup: "",
         usageGoal: "health",
@@ -129,7 +149,7 @@ describe("onboarding-screen-service", () => {
         step: 2,
       }),
     });
-    expect(storage.writeOnboardingRecord).toHaveBeenCalledWith(
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         lastPeriodStart: "2026-03-16",
       }),
@@ -156,9 +176,9 @@ describe("onboarding-screen-service", () => {
     });
     expect(storage.writeBootstrapState).toHaveBeenCalledWith({
       hasCompletedOnboarding: true,
-      profileVersion: 1,
+      profileVersion: 2,
     });
-    expect(storage.writeOnboardingRecord).toHaveBeenCalledWith(
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         cycleLength: 21,
         periodLength: 11,

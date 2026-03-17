@@ -17,8 +17,15 @@ Run on an Android emulator or physical device.
 3. Step 2 renders without clipped sliders, toggles, or buttons.
 4. Finish redirects to dashboard.
 5. Relaunch keeps the completed onboarding state.
-6. Bottom tabs render and switch without broken icons or duplicate labels.
-7. No account, sync, or cloud requirement is shown for core local use.
+6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy.
+7. Settings screen saves cycle parameters locally, and the dashboard snapshot reflects the new values after returning.
+8. Tracking toggles in settings update dashboard visibility correctly:
+   - `Hide intimacy` hides the intimacy section
+   - `Track BBT` shows the BBT section with the selected temperature unit
+   - `Track cervical mucus` shows the cervical-mucus section
+9. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
+10. Bottom tabs render and switch without broken icons or duplicate labels.
+11. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -29,8 +36,15 @@ Run on an iOS simulator or physical device.
 3. Step 2 renders without clipped sliders, toggles, or buttons.
 4. Finish redirects to dashboard.
 5. Relaunch keeps the completed onboarding state.
-6. Bottom tabs render and switch without broken icons or duplicate labels.
-7. No account, sync, or cloud requirement is shown for core local use.
+6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy.
+7. Settings screen saves cycle parameters locally, and the dashboard snapshot reflects the new values after returning.
+8. Tracking toggles in settings update dashboard visibility correctly:
+   - `Hide intimacy` hides the intimacy section
+   - `Track BBT` shows the BBT section with the selected temperature unit
+   - `Track cervical mucus` shows the cervical-mucus section
+9. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
+10. Bottom tabs render and switch without broken icons or duplicate labels.
+11. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -40,6 +54,9 @@ Run when web support, branding, or app-shell navigation is touched.
 2. Manual browser check:
    - `/` opens onboarding on a clean local state
    - onboarding finish leads to dashboard
+   - dashboard renders cycle snapshot and the today-journal editor section
+   - settings saves local profile and dashboard visibility changes follow the saved toggles
+   - enabling `Unpredictable cycle` changes dashboard to facts-only copy
    - favicon is visible on a fresh browser session
    - no broken tab icons or shell glyphs appear
 

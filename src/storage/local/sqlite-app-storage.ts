@@ -1,12 +1,20 @@
 import { openDatabaseAsync } from "expo-sqlite";
 
 import type { OnboardingRecord } from "../../models/onboarding";
-import { createDefaultOnboardingRecord } from "../../services/onboarding-policy";
+import {
+  createDefaultProfileRecord,
+  type ProfileRecord,
+} from "../../models/profile";
+import {
+  applyOnboardingRecordToProfile,
+  profileToOnboardingRecord,
+} from "../../services/onboarding-policy";
+import { normalizeTemperatureUnit } from "../../services/profile-settings-policy";
 import {
   clearAsyncStorageLocalAppData,
   hasAsyncStorageLocalAppData,
   readAsyncStorageBootstrapState,
-  readAsyncStorageOnboardingRecord,
+  readAsyncStorageProfileRecord,
 } from "./async-storage-app-storage";
 import type {
   LocalAppStorage,
@@ -15,26 +23,31 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     has_completed_onboarding INTEGER NOT NULL DEFAULT 0,
-    profile_version INTEGER NOT NULL DEFAULT 1
+    profile_version INTEGER NOT NULL DEFAULT 2
   );
 `;
 
-const CREATE_ONBOARDING_PROFILE_TABLE = `
-  CREATE TABLE IF NOT EXISTS onboarding_profile (
+const CREATE_PROFILE_SETTINGS_TABLE = `
+  CREATE TABLE IF NOT EXISTS profile_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     last_period_start TEXT,
     cycle_length INTEGER NOT NULL,
     period_length INTEGER NOT NULL,
     auto_period_fill INTEGER NOT NULL,
     irregular_cycle INTEGER NOT NULL,
+    unpredictable_cycle INTEGER NOT NULL DEFAULT 0,
     age_group TEXT NOT NULL,
-    usage_goal TEXT NOT NULL
+    usage_goal TEXT NOT NULL,
+    track_bbt INTEGER NOT NULL DEFAULT 0,
+    temperature_unit TEXT NOT NULL DEFAULT 'c',
+    track_cervical_mucus INTEGER NOT NULL DEFAULT 0,
+    hide_sex_chip INTEGER NOT NULL DEFAULT 0
   );
 `;
 
@@ -43,7 +56,22 @@ type BootstrapStateRow = {
   profile_version: number;
 };
 
-type OnboardingProfileRow = {
+type ProfileSettingsRow = {
+  last_period_start: string | null;
+  cycle_length: number;
+  period_length: number;
+  auto_period_fill: number;
+  irregular_cycle: number;
+  unpredictable_cycle: number;
+  age_group: string;
+  usage_goal: string;
+  track_bbt: number;
+  temperature_unit: string;
+  track_cervical_mucus: number;
+  hide_sex_chip: number;
+};
+
+type LegacyOnboardingProfileRow = {
   last_period_start: string | null;
   cycle_length: number;
   period_length: number;
@@ -67,7 +95,7 @@ type LegacyLocalAppStorageSource = {
   clear(): Promise<void>;
   hasData(): Promise<boolean>;
   readBootstrapState(): Promise<LocalBootstrapState>;
-  readOnboardingRecord(): Promise<OnboardingRecord>;
+  readProfileRecord(): Promise<ProfileRecord>;
 };
 
 type CreateSQLiteAppStorageOptions = {
@@ -85,8 +113,8 @@ const defaultLegacyStorageSource: LegacyLocalAppStorageSource = {
   async readBootstrapState() {
     return readAsyncStorageBootstrapState();
   },
-  async readOnboardingRecord() {
-    return readAsyncStorageOnboardingRecord();
+  async readProfileRecord() {
+    return readAsyncStorageProfileRecord();
   },
 };
 
@@ -124,27 +152,44 @@ export function createSQLiteAppStorage(
       await upsertBootstrapState(database, state);
     },
 
-    async readOnboardingRecord(): Promise<OnboardingRecord> {
+    async readProfileRecord(): Promise<ProfileRecord> {
       const database = await getHydratedDatabase();
-      const row = await database.getFirstAsync<OnboardingProfileRow>(
+      const row = await database.getFirstAsync<ProfileSettingsRow>(
         `SELECT
           last_period_start,
           cycle_length,
           period_length,
           auto_period_fill,
           irregular_cycle,
+          unpredictable_cycle,
           age_group,
-          usage_goal
-         FROM onboarding_profile
+          usage_goal,
+          track_bbt,
+          temperature_unit,
+          track_cervical_mucus,
+          hide_sex_chip
+         FROM profile_settings
          WHERE id = 1;`,
       );
 
-      return row ? mapOnboardingProfileRow(row) : createDefaultOnboardingRecord();
+      return row ? mapProfileSettingsRow(row) : createDefaultProfileRecord();
+    },
+
+    async writeProfileRecord(record: ProfileRecord): Promise<void> {
+      const database = await getHydratedDatabase();
+      await upsertProfileRecord(database, record);
+    },
+
+    async readOnboardingRecord(): Promise<OnboardingRecord> {
+      const profile = await this.readProfileRecord();
+      return profileToOnboardingRecord(profile);
     },
 
     async writeOnboardingRecord(record: OnboardingRecord): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertOnboardingRecord(database, record);
+      const currentProfile = await this.readProfileRecord();
+      const nextProfile = applyOnboardingRecordToProfile(currentProfile, record);
+
+      await this.writeProfileRecord(nextProfile);
     },
   };
 }
@@ -176,53 +221,109 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     return;
   }
 
+  if (currentVersion === 0) {
+    await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
+    await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
+    await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    return;
+  }
+
+  if (currentVersion === 1) {
+    await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
+    await migrateV1OnboardingProfile(database);
+    await database.execAsync("DROP TABLE IF EXISTS onboarding_profile;");
+    await database.runAsync(
+      `UPDATE bootstrap_state
+       SET profile_version = ?
+       WHERE id = 1 AND profile_version < ?;`,
+      DATABASE_VERSION,
+      DATABASE_VERSION,
+    );
+    await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    return;
+  }
+
   await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
-  await database.execAsync(CREATE_ONBOARDING_PROFILE_TABLE);
+  await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
   await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+}
+
+async function migrateV1OnboardingProfile(
+  database: LocalAppDatabase,
+): Promise<void> {
+  const legacyRow = await database.getFirstAsync<LegacyOnboardingProfileRow>(
+    `SELECT
+      last_period_start,
+      cycle_length,
+      period_length,
+      auto_period_fill,
+      irregular_cycle,
+      age_group,
+      usage_goal
+     FROM onboarding_profile
+     WHERE id = 1;`,
+  );
+
+  if (!legacyRow) {
+    return;
+  }
+
+  await upsertProfileRecord(
+    database,
+    applyOnboardingRecordToProfile(createDefaultProfileRecord(), {
+      lastPeriodStart: legacyRow.last_period_start,
+      cycleLength: legacyRow.cycle_length,
+      periodLength: legacyRow.period_length,
+      autoPeriodFill: legacyRow.auto_period_fill === 1,
+      irregularCycle: legacyRow.irregular_cycle === 1,
+      ageGroup: legacyRow.age_group as OnboardingRecord["ageGroup"],
+      usageGoal: legacyRow.usage_goal as OnboardingRecord["usageGoal"],
+    }),
+  );
 }
 
 async function maybeMigrateLegacyLocalAppData(
   database: LocalAppDatabase,
   legacyStorageSource: LegacyLocalAppStorageSource,
 ): Promise<void> {
-  const [bootstrapCount, onboardingCount, hasLegacyData] = await Promise.all([
+  const [bootstrapCount, profileCount, hasLegacyData] = await Promise.all([
     readRowCount(database, "bootstrap_state"),
-    readRowCount(database, "onboarding_profile"),
+    readRowCount(database, "profile_settings"),
     legacyStorageSource.hasData(),
   ]);
 
-  if (bootstrapCount > 0 || onboardingCount > 0 || !hasLegacyData) {
+  if (bootstrapCount > 0 || profileCount > 0 || !hasLegacyData) {
     return;
   }
 
-  const [bootstrapState, onboardingRecord] = await Promise.all([
+  const [bootstrapState, profileRecord] = await Promise.all([
     legacyStorageSource.readBootstrapState(),
-    legacyStorageSource.readOnboardingRecord(),
+    legacyStorageSource.readProfileRecord(),
   ]);
 
   await upsertBootstrapState(database, bootstrapState);
-  await upsertOnboardingRecord(database, onboardingRecord);
+  await upsertProfileRecord(database, profileRecord);
   await legacyStorageSource.clear();
 }
 
 async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
-  const [bootstrapCount, onboardingCount] = await Promise.all([
+  const [bootstrapCount, profileCount] = await Promise.all([
     readRowCount(database, "bootstrap_state"),
-    readRowCount(database, "onboarding_profile"),
+    readRowCount(database, "profile_settings"),
   ]);
 
   if (bootstrapCount === 0) {
     await upsertBootstrapState(database, createDefaultBootstrapState());
   }
 
-  if (onboardingCount === 0) {
-    await upsertOnboardingRecord(database, createDefaultOnboardingRecord());
+  if (profileCount === 0) {
+    await upsertProfileRecord(database, createDefaultProfileRecord());
   }
 }
 
 async function readRowCount(
   database: LocalAppDatabase,
-  tableName: "bootstrap_state" | "onboarding_profile",
+  tableName: "bootstrap_state" | "profile_settings",
 ): Promise<number> {
   const row = await database.getFirstAsync<CountRow>(
     `SELECT COUNT(*) AS count FROM ${tableName};`,
@@ -246,55 +347,81 @@ async function upsertBootstrapState(
   );
 }
 
-async function upsertOnboardingRecord(
+async function upsertProfileRecord(
   database: LocalAppDatabase,
-  record: OnboardingRecord,
+  record: ProfileRecord,
 ): Promise<void> {
   await database.runAsync(
-    `INSERT INTO onboarding_profile (
+    `INSERT INTO profile_settings (
        id,
        last_period_start,
        cycle_length,
        period_length,
        auto_period_fill,
        irregular_cycle,
+       unpredictable_cycle,
        age_group,
-       usage_goal
+       usage_goal,
+       track_bbt,
+       temperature_unit,
+       track_cervical_mucus,
+       hide_sex_chip
      )
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        last_period_start = excluded.last_period_start,
        cycle_length = excluded.cycle_length,
        period_length = excluded.period_length,
        auto_period_fill = excluded.auto_period_fill,
        irregular_cycle = excluded.irregular_cycle,
+       unpredictable_cycle = excluded.unpredictable_cycle,
        age_group = excluded.age_group,
-       usage_goal = excluded.usage_goal;`,
+       usage_goal = excluded.usage_goal,
+       track_bbt = excluded.track_bbt,
+       temperature_unit = excluded.temperature_unit,
+       track_cervical_mucus = excluded.track_cervical_mucus,
+       hide_sex_chip = excluded.hide_sex_chip;`,
     record.lastPeriodStart,
     record.cycleLength,
     record.periodLength,
     record.autoPeriodFill ? 1 : 0,
     record.irregularCycle ? 1 : 0,
+    record.unpredictableCycle ? 1 : 0,
     record.ageGroup,
     record.usageGoal,
+    record.trackBBT ? 1 : 0,
+    normalizeTemperatureUnit(record.temperatureUnit),
+    record.trackCervicalMucus ? 1 : 0,
+    record.hideSexChip ? 1 : 0,
   );
 }
 
 function mapBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
   return {
     hasCompletedOnboarding: row.has_completed_onboarding === 1,
-    profileVersion: row.profile_version,
+    profileVersion:
+      Number.isFinite(row.profile_version) && row.profile_version > 0
+        ? row.profile_version
+        : createDefaultBootstrapState().profileVersion,
   };
 }
 
-function mapOnboardingProfileRow(row: OnboardingProfileRow): OnboardingRecord {
+function mapProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
+  const defaults = createDefaultProfileRecord();
+
   return {
+    ...defaults,
     lastPeriodStart: row.last_period_start,
     cycleLength: row.cycle_length,
     periodLength: row.period_length,
     autoPeriodFill: row.auto_period_fill === 1,
     irregularCycle: row.irregular_cycle === 1,
-    ageGroup: row.age_group as OnboardingRecord["ageGroup"],
-    usageGoal: row.usage_goal as OnboardingRecord["usageGoal"],
+    unpredictableCycle: row.unpredictable_cycle === 1,
+    ageGroup: row.age_group as ProfileRecord["ageGroup"],
+    usageGoal: row.usage_goal as ProfileRecord["usageGoal"],
+    trackBBT: row.track_bbt === 1,
+    temperatureUnit: normalizeTemperatureUnit(row.temperature_unit),
+    trackCervicalMucus: row.track_cervical_mucus === 1,
+    hideSexChip: row.hide_sex_chip === 1,
   };
 }

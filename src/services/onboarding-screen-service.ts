@@ -6,7 +6,9 @@ import type {
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { buildInitialBootstrapState } from "./app-bootstrap-service";
 import {
+  applyOnboardingRecordToProfile,
   createStepTwoDefaults,
+  profileToOnboardingRecord,
   resolveOnboardingStep,
   sanitizeStepTwoValues,
   validateStepOneStartDate,
@@ -39,10 +41,11 @@ type FinishOnboardingErrorCode = "date_required" | "generic";
 export async function loadOnboardingScreenState(
   storage: LocalAppStorage,
 ): Promise<LoadOnboardingScreenResult> {
-  const [bootstrapState, record] = await Promise.all([
+  const [bootstrapState, profile] = await Promise.all([
     storage.readBootstrapState(),
-    storage.readOnboardingRecord(),
+    storage.readProfileRecord(),
   ]);
+  const record = profileToOnboardingRecord(profile);
 
   if (bootstrapState.hasCompletedOnboarding) {
     return { kind: "completed" };
@@ -87,7 +90,10 @@ export async function saveOnboardingStepOne(
   };
 
   try {
-    await storage.writeOnboardingRecord(nextRecord);
+    const profile = await storage.readProfileRecord();
+    await storage.writeProfileRecord(
+      applyOnboardingRecordToProfile(profile, nextRecord),
+    );
   } catch {
     return {
       ok: false,
@@ -137,8 +143,11 @@ export async function finishOnboarding(
   };
 
   try {
+    const currentProfile = await storage.readProfileRecord();
     await Promise.all([
-      storage.writeOnboardingRecord(completedRecord),
+      storage.writeProfileRecord(
+        applyOnboardingRecordToProfile(currentProfile, completedRecord),
+      ),
       storage.writeBootstrapState({
         ...buildInitialBootstrapState(),
         hasCompletedOnboarding: true,

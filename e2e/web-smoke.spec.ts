@@ -22,7 +22,13 @@ test("web shell onboarding reaches dashboard", async ({ page }) => {
   await page.getByTestId("onboarding-finish-button").click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByText("Dashboard shell")).toBeVisible();
+  await expect(page.getByText("Cycle snapshot")).toBeVisible();
+  await expect(
+    page.getByText(
+      "The full logging editor will live here. Visibility already follows your saved settings.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText("Period day")).toBeVisible();
 });
 
 test("web shell publishes the canonical favicon", async ({ page }) => {

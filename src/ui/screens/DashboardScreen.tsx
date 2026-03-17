@@ -1,28 +1,62 @@
-import { Text, View } from "react-native";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 
-import { buildDashboardShellViewData } from "../../services/dashboard-view-service";
-import { FeatureCard } from "../components/FeatureCard";
+import { appStorage } from "../../services/app-bootstrap-service";
+import {
+  loadDashboardViewData,
+  type DashboardViewData,
+} from "../../services/dashboard-view-service";
+import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { colors } from "../theme/tokens";
+import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
 
-export function DashboardScreen() {
-  const viewData = buildDashboardShellViewData();
+type DashboardScreenProps = {
+  storage?: LocalAppStorage;
+  now?: Date;
+};
 
-  return (
-    <ScreenScaffold
-      eyebrow={viewData.eyebrow}
-      title={viewData.title}
-      description={viewData.description}
-    >
-      <FeatureCard
-        title={viewData.section.title}
-        description="Mood, flow, symptoms, and advanced tracking fields will live here without needing sync."
-      >
-        <View>
-          {viewData.section.bullets.map((bullet) => (
-            <Text key={bullet}>- {bullet}</Text>
-          ))}
-        </View>
-      </FeatureCard>
-    </ScreenScaffold>
+export function DashboardScreen({
+  storage = appStorage,
+  now,
+}: DashboardScreenProps) {
+  const [effectiveNow] = useState(() => now ?? new Date());
+  const [isLoading, setIsLoading] = useState(true);
+  const [viewData, setViewData] = useState<DashboardViewData | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      void loadDashboardViewData(storage, effectiveNow).then((loadedViewData) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setViewData(loadedViewData);
+        setIsLoading(false);
+      });
+
+      return () => {
+        isMounted = false;
+      };
+    }, [effectiveNow, storage]),
   );
+
+  if (isLoading || !viewData) {
+    return (
+      <ScreenScaffold
+        eyebrow="Today"
+        title="Loading dashboard"
+        description="Preparing your local cycle context."
+      >
+        <View style={{ alignItems: "center", paddingVertical: 24 }}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
+      </ScreenScaffold>
+    );
+  }
+
+  return <DashboardOverviewScreen viewData={viewData} />;
 }

@@ -13,7 +13,7 @@ function createOnboardingRecord(
     lastPeriodStart: null,
     cycleLength: 28,
     periodLength: 5,
-    autoPeriodFill: false,
+    autoPeriodFill: true,
     irregularCycle: false,
     ageGroup: "",
     usageGoal: "health",

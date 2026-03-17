@@ -1,21 +1,31 @@
 import {
-  DEFAULT_CYCLE_LENGTH,
-  DEFAULT_PERIOD_LENGTH,
-  MAX_CYCLE_LENGTH,
-  MAX_PERIOD_LENGTH,
-  MIN_CYCLE_LENGTH,
-  MIN_CYCLE_RESERVE_DAYS,
-  MIN_PERIOD_LENGTH,
   ONBOARDING_LOOKBACK_DAYS,
-  type AgeGroup,
-  type AgeGroupOption,
   type DayOption,
   type LocalDateISO,
   type OnboardingRecord,
   type OnboardingStep,
   type OnboardingStepTwoValues,
-  type UsageGoal,
 } from "../models/onboarding";
+import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import {
+  addDays,
+  buildCycleGuidanceState as buildSharedCycleGuidanceState,
+  clampCycleLength,
+  clampPeriodLength,
+  formatLocalDate,
+  normalizeUsageGoal,
+  parseLocalDate,
+  resolveCycleAndPeriodDefaults as resolveSharedCycleAndPeriodDefaults,
+  resolveDisplayedAgeGroup,
+  sanitizeCycleSettingsValues,
+} from "./profile-settings-policy";
+export {
+  addDays,
+  formatLocalDate,
+  normalizeAgeGroup,
+  normalizeUsageGoal,
+  parseLocalDate,
+} from "./profile-settings-policy";
 
 export type OnboardingDateBounds = {
   minDate: LocalDateISO;
@@ -33,77 +43,27 @@ export type StepOneValidationCode =
   | "invalid_last_period_start"
   | "last_period_range";
 
-export type CycleGuidanceState = {
-  invalid: boolean;
-  warning: boolean;
-  adjusted: boolean;
-  periodLength: number;
-  periodLong: boolean;
-  cycleShort: boolean;
-};
-
-export function normalizeAgeGroup(value: string): AgeGroup {
-  switch (value.trim().toLowerCase()) {
-    case "under_20":
-      return "under_20";
-    case "age_20_35":
-      return "age_20_35";
-    case "age_35_plus":
-      return "age_35_plus";
-    default:
-      return "";
-  }
-}
-
-export function normalizeUsageGoal(value: string): UsageGoal {
-  switch (value.trim().toLowerCase()) {
-    case "avoid_pregnancy":
-      return "avoid_pregnancy";
-    case "trying_to_conceive":
-      return "trying_to_conceive";
-    default:
-      return "health";
-  }
-}
-
-export function resolveDisplayedAgeGroup(ageGroup: AgeGroup): AgeGroupOption {
-  return normalizeAgeGroup(ageGroup) || "age_20_35";
-}
-
 export function clampOnboardingCycleLength(value: number): number {
-  return clampInteger(value, DEFAULT_CYCLE_LENGTH, MIN_CYCLE_LENGTH, MAX_CYCLE_LENGTH);
+  return clampCycleLength(value);
 }
 
 export function clampOnboardingPeriodLength(value: number): number {
-  return clampInteger(value, DEFAULT_PERIOD_LENGTH, MIN_PERIOD_LENGTH, MAX_PERIOD_LENGTH);
-}
-
-export function maxPeriodLengthForCycle(cycleLength: number): number {
-  const safeCycleLength = clampOnboardingCycleLength(cycleLength);
-  const maxPeriodLength = safeCycleLength - MIN_CYCLE_RESERVE_DAYS;
-
-  if (maxPeriodLength < MIN_PERIOD_LENGTH) {
-    return MIN_PERIOD_LENGTH;
-  }
-  if (maxPeriodLength > MAX_PERIOD_LENGTH) {
-    return MAX_PERIOD_LENGTH;
-  }
-  return maxPeriodLength;
+  return clampPeriodLength(value);
 }
 
 export function sanitizeOnboardingCycleAndPeriod(
   cycleLength: number,
   periodLength: number,
 ): Pick<OnboardingStepTwoValues, "cycleLength" | "periodLength"> {
-  const safeCycleLength = clampOnboardingCycleLength(cycleLength);
-  const safePeriodLength = Math.min(
-    clampOnboardingPeriodLength(periodLength),
-    maxPeriodLengthForCycle(safeCycleLength),
-  );
+  const resolved = sanitizeCycleSettingsValues({
+    ...createDefaultProfileRecord(),
+    cycleLength,
+    periodLength,
+  });
 
   return {
-    cycleLength: safeCycleLength,
-    periodLength: safePeriodLength,
+    cycleLength: resolved.cycleLength,
+    periodLength: resolved.periodLength,
   };
 }
 
@@ -111,66 +71,41 @@ export function resolveCycleAndPeriodDefaults(
   cycleLength: number,
   periodLength: number,
 ): Pick<OnboardingStepTwoValues, "cycleLength" | "periodLength"> {
-  const resolvedCycleLength = Number.isFinite(cycleLength)
-    ? clampOnboardingCycleLength(cycleLength)
-    : DEFAULT_CYCLE_LENGTH;
-  const resolvedPeriodLength = Number.isFinite(periodLength)
-    ? clampOnboardingPeriodLength(periodLength)
-    : DEFAULT_PERIOD_LENGTH;
-
-  return {
-    cycleLength: resolvedCycleLength,
-    periodLength: resolvedPeriodLength,
-  };
+  return resolveSharedCycleAndPeriodDefaults(cycleLength, periodLength);
 }
 
 export function buildCycleGuidanceState(
   cycleLength: number,
   periodLength: number,
-): CycleGuidanceState {
-  const safeCycleLength = clampOnboardingCycleLength(cycleLength);
-  const safePeriodLength = clampOnboardingPeriodLength(periodLength);
-  const maxAllowedPeriodLength = maxPeriodLengthForCycle(safeCycleLength);
-  const adjustedPeriodLength = Math.min(safePeriodLength, maxAllowedPeriodLength);
-
-  return {
-    invalid: false,
-    warning: false,
-    adjusted: adjustedPeriodLength !== safePeriodLength,
-    periodLength: adjustedPeriodLength,
-    periodLong: adjustedPeriodLength > 8,
-    cycleShort: safeCycleLength < 24,
-  };
+){
+  return buildSharedCycleGuidanceState(cycleLength, periodLength);
 }
 
 export function sanitizeStepTwoValues(
   values: OnboardingStepTwoValues,
 ): OnboardingStepTwoValues {
-  const sanitizedCycle = buildCycleGuidanceState(
-    values.cycleLength,
-    values.periodLength,
-  );
-
-  return {
-    cycleLength: clampOnboardingCycleLength(values.cycleLength),
-    periodLength: sanitizedCycle.periodLength,
+  const sanitizedCycle = sanitizeCycleSettingsValues({
+    ...createDefaultProfileRecord(),
+    cycleLength: values.cycleLength,
+    periodLength: values.periodLength,
     autoPeriodFill: values.autoPeriodFill,
     irregularCycle: values.irregularCycle,
-    ageGroup: resolveDisplayedAgeGroup(values.ageGroup),
-    usageGoal: normalizeUsageGoal(values.usageGoal),
+    ageGroup: values.ageGroup,
+    usageGoal: values.usageGoal,
+  });
+
+  return {
+    cycleLength: sanitizedCycle.cycleLength,
+    periodLength: sanitizedCycle.periodLength,
+    autoPeriodFill: sanitizedCycle.autoPeriodFill,
+    irregularCycle: sanitizedCycle.irregularCycle,
+    ageGroup: resolveDisplayedAgeGroup(sanitizedCycle.ageGroup),
+    usageGoal: sanitizedCycle.usageGoal,
   };
 }
 
 export function createDefaultOnboardingRecord(): OnboardingRecord {
-  return {
-    lastPeriodStart: null,
-    cycleLength: DEFAULT_CYCLE_LENGTH,
-    periodLength: DEFAULT_PERIOD_LENGTH,
-    autoPeriodFill: false,
-    irregularCycle: false,
-    ageGroup: "",
-    usageGoal: "health",
-  };
+  return profileToOnboardingRecord(createDefaultProfileRecord());
 }
 
 export function createStepTwoDefaults(record: OnboardingRecord): OnboardingStepTwoValues {
@@ -271,43 +206,31 @@ export function buildDayOptions(
   return result;
 }
 
-export function parseLocalDate(value: string): Date | null {
-  const normalized = value.trim();
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(normalized);
-
-  if (!match) {
-    return null;
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  const parsed = new Date(year, month, day);
-
-  if (
-    Number.isNaN(parsed.getTime()) ||
-    parsed.getFullYear() !== year ||
-    parsed.getMonth() !== month ||
-    parsed.getDate() !== day
-  ) {
-    return null;
-  }
-
-  return parsed;
+export function profileToOnboardingRecord(
+  profile: ProfileRecord,
+): OnboardingRecord {
+  return {
+    lastPeriodStart: profile.lastPeriodStart,
+    cycleLength: profile.cycleLength,
+    periodLength: profile.periodLength,
+    autoPeriodFill: profile.autoPeriodFill,
+    irregularCycle: profile.irregularCycle,
+    ageGroup: profile.ageGroup,
+    usageGoal: profile.usageGoal,
+  };
 }
 
-export function formatLocalDate(value: Date): LocalDateISO {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-export function addDays(value: Date, days: number): Date {
-  const next = new Date(value);
-  next.setDate(next.getDate() + days);
-  return atLocalDay(next);
+export function applyOnboardingRecordToProfile(
+  currentProfile: ProfileRecord,
+  onboardingRecord: OnboardingRecord,
+): ProfileRecord {
+  return {
+    ...currentProfile,
+    ...sanitizeCycleSettingsValues({
+      ...currentProfile,
+      ...onboardingRecord,
+    }),
+  };
 }
 
 function resolveRelativeDayLabel(
@@ -360,16 +283,6 @@ function localizedRelativeDayFallback(dayOffset: number, locale: string): string
   }
 
   return "";
-}
-
-function clampInteger(
-  value: number,
-  fallback: number,
-  minValue: number,
-  maxValue: number,
-): number {
-  const numeric = Number.isFinite(value) ? Math.round(value) : fallback;
-  return Math.max(minValue, Math.min(maxValue, numeric));
 }
 
 function atLocalDay(value: Date): Date {

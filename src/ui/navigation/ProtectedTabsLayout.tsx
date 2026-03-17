@@ -7,6 +7,7 @@ import {
   readHasCompletedOnboarding,
 } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { colors } from "../theme/tokens";
 
 type ProtectedTabsLayoutProps = {
   storage?: LocalAppStorage;
@@ -47,7 +48,7 @@ export function ProtectedTabsLayout({
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#166534",
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: "#64748b",
         tabBarStyle: {
           height: 72,
