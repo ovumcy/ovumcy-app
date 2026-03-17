@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 .expo-shared/
+.tmp/
+playwright-report/
+test-results/
 
 # Native
 *.orig.*

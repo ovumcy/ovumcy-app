@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "doctor": "npx expo-doctor",
+    "export:web": "expo export -p web",
+    "e2e:web": "playwright test",
     "deploy": "npx expo export -p web && npx eas-cli@latest deploy"
   },
   "dependencies": {
@@ -35,6 +37,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
