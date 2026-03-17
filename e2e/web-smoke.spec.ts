@@ -1,12 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
-});
-
 test("web onboarding reaches dashboard and the local journal persists into calendar", async ({ page }) => {
   await page.goto("/");
 
@@ -35,6 +28,11 @@ test("web onboarding reaches dashboard and the local journal persists into calen
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(page.getByText("Day details")).toBeVisible();
   await expect(page.getByTestId("day-log-delete-button").first()).toBeVisible();
+
+  await page.reload();
+
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page.getByText("When did your last period start?")).toBeVisible();
 });
 
 test("web shell publishes the canonical favicon", async ({ page }) => {

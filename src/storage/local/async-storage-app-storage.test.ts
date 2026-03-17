@@ -99,7 +99,7 @@ describe("async-storage-app-storage", () => {
     });
   });
 
-  it("persists canonical day logs locally on the web fallback", async () => {
+  it("persists canonical day logs in the legacy async-storage adapter", async () => {
     const storage = createAsyncStorageAppStorage();
 
     await storage.writeDayLogRecord({

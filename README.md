@@ -14,7 +14,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is still in the foundation stage: onboarding and local persistence are implemented, while the broader dashboard, calendar, stats, and settings surfaces are still evolving from shell screens into full product flows.
+The app is still in the foundation stage: onboarding, settings, dashboard, and calendar already work locally, while stats, export, and sync-related surfaces are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -48,7 +48,7 @@ No. Core onboarding and future tracking flows are designed to work without an ac
 
 ### Where is the data stored?
 
-On the device by default. Native platforms now use a local SQLite-backed repository for bootstrap and onboarding state.
+On the device by default. Native platforms use a local SQLite-backed repository for bootstrap, profile, and day-log state. Web preview uses a session-only in-memory adapter and should not be treated as durable secure storage for health data.
 
 ### Is sync required?
 
@@ -68,7 +68,8 @@ The current `main` branch provides:
 
 - an Expo and React Native foundation for iOS and Android;
 - a local-first onboarding flow with web-parity structure and copy;
-- native SQLite-backed bootstrap and onboarding persistence;
+- native SQLite-backed bootstrap, profile, and day-log persistence;
+- local-first dashboard, calendar, and settings flows backed by the same canonical repositories;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
 - baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
 
@@ -77,7 +78,8 @@ The current `main` branch provides:
 - No telemetry or ad trackers by default.
 - Core onboarding and future tracking flows must work without sync or cloud access.
 - Sensitive health baseline data is stored locally on-device.
-- Native bootstrap and onboarding data now live behind a SQLite-backed repository boundary.
+- Native bootstrap, profile, and day-log data now live behind a SQLite-backed repository boundary.
+- Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
 - Dependabot monitors app dependencies and GitHub Actions updates.
@@ -94,7 +96,7 @@ iOS App / Android App / Web Preview
          Local Storage Boundary
                  |
                  v
- Native SQLite / Web fallback storage
+ Native SQLite / Web session-only memory storage
 
 Future optional sync:
 Client Sync Layer -> Self-hosted or managed sync service
@@ -162,6 +164,10 @@ Current automated baseline:
 - Trivy filesystem scan
 - Dependabot version updates for `npm` and `github-actions`
 
+Deployment tooling:
+
+- `npm run deploy` now uses the pinned local `eas-cli` version from the lockfile, not `@latest`.
+
 Manual acceptance guidance lives in [docs/manual-smoke.md](docs/manual-smoke.md).
 
 ## Development
@@ -178,7 +184,7 @@ Recommended working model:
 Near-term work focuses on:
 
 - replacing dashboard, calendar, stats, and settings shells with real local-first product slices;
-- growing local data models beyond onboarding;
+- growing local data models beyond cycle baseline and day logs;
 - adding repeatable Android and iOS smoke discipline;
 - preparing the app for optional future sync without making sync mandatory.
 

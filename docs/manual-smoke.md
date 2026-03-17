@@ -63,6 +63,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - dashboard renders cycle snapshot and the today-journal editor section
    - saving a day entry on the dashboard updates local state without a page error
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
+   - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles
    - enabling `Unpredictable cycle` changes dashboard to facts-only copy
    - favicon is visible on a fresh browser session
@@ -76,3 +77,4 @@ During the same pass, confirm:
 - no sensitive values appear in URLs
 - no debug logging prints health-related onboarding data
 - app behavior still makes sense with sync absent
+- web preview does not retain health data after a browser reload or a new session

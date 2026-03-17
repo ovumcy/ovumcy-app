@@ -1,6 +1,6 @@
 import type { LocalAppStorage } from "./storage-contract";
-import { createAsyncStorageAppStorage } from "./async-storage-app-storage";
+import { createVolatileWebAppStorage } from "./volatile-web-app-storage";
 
 export function createPlatformLocalAppStorage(): LocalAppStorage {
-  return createAsyncStorageAppStorage();
+  return createVolatileWebAppStorage();
 }
