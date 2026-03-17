@@ -1,6 +1,6 @@
 [![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml)
 [![Security](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml)
-[![Status](https://img.shields.io/badge/Status-bootstrap-c7756d)](https://github.com/ovumcy/ovumcy-app)
+[![Status](https://img.shields.io/badge/Status-alpha-c7756d)](https://github.com/ovumcy/ovumcy-app)
 [![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020?logo=expo)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
 [![iOS%20%2B%20Android](https://img.shields.io/badge/iOS%20%2B%20Android-shared-2ea44f)](https://github.com/ovumcy/ovumcy-app)
@@ -14,7 +14,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is still in the early local-first product stage: onboarding, settings, dashboard, calendar, stats, and local export already work on-device, while deeper analytics, encrypted-at-rest hardening, and sync-related surfaces are still evolving.
+The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, and local export already work on-device, while deeper analytics, encrypted-at-rest hardening, and sync-related surfaces are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -68,10 +68,28 @@ The current `main` branch provides:
 
 - an Expo and React Native foundation for iOS and Android;
 - a local-first onboarding flow with web-parity structure and copy;
-- native SQLite-backed bootstrap, profile, and day-log persistence;
-- local-first dashboard, calendar, settings, and export flows backed by the same canonical repositories;
+- native SQLite-backed bootstrap, profile, symptom-catalog, and day-log persistence;
+- local-first dashboard, calendar, settings, stats, custom symptom management, and export flows backed by the same canonical repositories;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
 - baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
+
+## Public Alpha Expectations
+
+`ovumcy-app` can now be reviewed publicly as an early alpha repository.
+
+What is already true on `main`:
+
+- core local use does not require an account, sync, or managed hosting;
+- the main owner flows already exist as working local-first slices instead of shells;
+- CI, browser smoke, and private-repo security automation baselines are in place;
+- web preview is available for fast review, but it is not the durable storage path for sensitive health data.
+
+What this repository still does **not** claim yet:
+
+- encrypted-at-rest hardening for native SQLite;
+- completed Android and iOS manual smoke discipline for every release candidate;
+- sync, account, recovery, or device-linking flows;
+- release-store readiness for broad end-user distribution.
 
 ## Privacy and Security
 
@@ -80,6 +98,7 @@ The current `main` branch provides:
 - Sensitive health baseline data is stored locally on-device.
 - Native bootstrap, profile, and day-log data now live behind a SQLite-backed repository boundary.
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
+- Local CSV and JSON exports are privacy-sensitive artifacts and should be handled like health-data backups.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
 - Dependabot monitors app dependencies and GitHub Actions updates.
@@ -183,9 +202,11 @@ Recommended working model:
 
 Near-term work focuses on:
 
-- replacing dashboard, calendar, stats, and settings shells with real local-first product slices;
-- growing local data models beyond cycle baseline and day logs;
+- growing local insights beyond `stats v1`, including deeper reliability and chart work;
+- adding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
+- growing local data models beyond cycle baseline, day logs, and symptom catalog;
 - adding repeatable Android and iOS smoke discipline;
+- deciding encrypted-at-rest hardening for native local data;
 - preparing the app for optional future sync without making sync mandatory.
 
 ## Related Repositories
