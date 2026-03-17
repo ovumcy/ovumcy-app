@@ -5,13 +5,14 @@ import { ActivityIndicator, View } from "react-native";
 import { onboardingCopy } from "../../i18n/app-copy";
 import {
   appStorage,
-  resolveEntryHref,
+  resolveInitialEntryHref,
 } from "../../services/app-bootstrap-service";
+import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { colors } from "../theme/tokens";
 
 type AppEntryScreenProps = {
-  storage?: typeof appStorage;
+  storage?: LocalAppStorage;
 };
 
 export function AppEntryScreen({
@@ -22,12 +23,12 @@ export function AppEntryScreen({
   useEffect(() => {
     let isMounted = true;
 
-    void storage.readBootstrapState().then((state) => {
+    void resolveInitialEntryHref(storage).then((href) => {
       if (!isMounted) {
         return;
       }
 
-      router.replace(resolveEntryHref(state));
+      router.replace(href);
     });
 
     return () => {

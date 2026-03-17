@@ -5,6 +5,13 @@ export type LocalBootstrapState = {
   profileVersion: number;
 };
 
+export function createDefaultBootstrapState(): LocalBootstrapState {
+  return {
+    hasCompletedOnboarding: false,
+    profileVersion: 1,
+  };
+}
+
 export interface LocalAppStorage {
   readBootstrapState(): Promise<LocalBootstrapState>;
   writeBootstrapState(state: LocalBootstrapState): Promise<void>;

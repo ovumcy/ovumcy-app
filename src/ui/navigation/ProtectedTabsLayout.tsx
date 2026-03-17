@@ -2,10 +2,14 @@ import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
 
-import { appStorage } from "../../services/app-bootstrap-service";
+import {
+  appStorage,
+  readHasCompletedOnboarding,
+} from "../../services/app-bootstrap-service";
+import type { LocalAppStorage } from "../../storage/local/storage-contract";
 
 type ProtectedTabsLayoutProps = {
-  storage?: typeof appStorage;
+  storage?: LocalAppStorage;
 };
 
 export function ProtectedTabsLayout({
@@ -18,12 +22,12 @@ export function ProtectedTabsLayout({
   useEffect(() => {
     let isMounted = true;
 
-    void storage.readBootstrapState().then((state) => {
+    void readHasCompletedOnboarding(storage).then((completed) => {
       if (!isMounted) {
         return;
       }
 
-      setHasCompletedOnboarding(state.hasCompletedOnboarding);
+      setHasCompletedOnboarding(completed);
     });
 
     return () => {

@@ -24,6 +24,7 @@ export const onboardingCopy = {
     yesterday: "Yesterday",
     twoDaysAgo: "2 days ago",
     changeDate: "Choose another date",
+    datePlaceholder: "dd.mm.yyyy",
     selectedDate: "Selected date",
   },
   step2: {

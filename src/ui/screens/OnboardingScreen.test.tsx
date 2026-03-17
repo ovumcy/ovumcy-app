@@ -1,44 +1,82 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
-import type { LocalAppStorage } from "../../storage/local/storage-contract";
-import { OnboardingScreen } from "./OnboardingScreen";
+import type { OnboardingRecord } from "../../models/onboarding";
+import { buildCycleGuidanceState } from "../../services/onboarding-policy";
+import type { LoadedOnboardingState } from "../../services/onboarding-screen-service";
+import { buildOnboardingViewData } from "../../services/onboarding-view-service";
+import { OnboardingFlowScreen } from "./OnboardingFlowScreen";
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    replace: jest.fn(),
-  }),
-}));
-
-function createStorageMock(
-  overrides?: Partial<LocalAppStorage>,
-): LocalAppStorage {
+function createOnboardingRecord(
+  overrides?: Partial<OnboardingRecord>,
+): OnboardingRecord {
   return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: false,
-      profileVersion: 1,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: false,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
+    lastPeriodStart: null,
+    cycleLength: 28,
+    periodLength: 5,
+    autoPeriodFill: false,
+    irregularCycle: false,
+    ageGroup: "",
+    usageGoal: "health",
     ...overrides,
   };
 }
 
-describe("OnboardingScreen", () => {
-  it("renders the step 1 onboarding copy and quick picks", async () => {
-    const storage = createStorageMock();
+function createState(
+  overrides?: Partial<LoadedOnboardingState>,
+): LoadedOnboardingState {
+  const record = createOnboardingRecord();
 
-    render(<OnboardingScreen now={new Date(2026, 2, 17)} storage={storage} />);
+  return {
+    record,
+    selectedDate: record.lastPeriodStart ?? "",
+    step: 1,
+    stepTwoValues: {
+      cycleLength: record.cycleLength,
+      periodLength: record.periodLength,
+      autoPeriodFill: record.autoPeriodFill,
+      irregularCycle: record.irregularCycle,
+      ageGroup: "age_20_35",
+      usageGoal: record.usageGoal,
+    },
+    ...overrides,
+  };
+}
 
-    await screen.findByText("When did your last period start?");
+function renderFlow(state: LoadedOnboardingState) {
+  const now = new Date(2026, 2, 17);
+
+  return render(
+    <OnboardingFlowScreen
+      guidance={buildCycleGuidanceState(
+        state.stepTwoValues.cycleLength,
+        state.stepTwoValues.periodLength,
+      )}
+      isSaving={false}
+      locale="en"
+      now={now}
+      onAutoPeriodFillChange={jest.fn()}
+      onAgeGroupSelect={jest.fn()}
+      onBack={jest.fn()}
+      onCycleLengthChange={jest.fn()}
+      onDateSelected={jest.fn()}
+      onFinish={jest.fn()}
+      onIrregularCycleChange={jest.fn()}
+      onNext={jest.fn()}
+      onPeriodLengthChange={jest.fn()}
+      onUsageGoalSelect={jest.fn()}
+      state={state}
+      stepOneError=""
+      stepTwoError=""
+      viewData={buildOnboardingViewData(state.record, now, "en")}
+    />,
+  );
+}
+
+describe("OnboardingFlowScreen", () => {
+  it("renders the step 1 onboarding copy and quick picks", () => {
+    renderFlow(createState());
+
+    expect(screen.getByText("When did your last period start?")).toBeTruthy();
     expect(screen.getByText("Choose a date from the last 60 days.")).toBeTruthy();
     expect(
       screen.getByText("Day 1 is the first day of full flow, not spotting."),
@@ -47,51 +85,52 @@ describe("OnboardingScreen", () => {
     expect(screen.getByTestId("onboarding-day-option-2026-03-16")).toBeTruthy();
   });
 
-  it("persists local step 2 values and completes onboarding", async () => {
-    const storage = createStorageMock({
-      readOnboardingRecord: jest.fn().mockResolvedValue({
+  it("surfaces step 2 controls and forwards primary callbacks", () => {
+    const onCycleLengthChange = jest.fn();
+    const onFinish = jest.fn();
+    const state = createState({
+      record: createOnboardingRecord({
         lastPeriodStart: "2026-03-17",
-        cycleLength: 28,
-        periodLength: 5,
-        autoPeriodFill: false,
-        irregularCycle: false,
-        ageGroup: "",
-        usageGoal: "health",
       }),
+      selectedDate: "2026-03-17",
+      step: 2,
     });
-    const onFinished = jest.fn();
+    const now = new Date(2026, 2, 17);
 
     render(
-      <OnboardingScreen
-        now={new Date(2026, 2, 17)}
-        onFinished={onFinished}
-        storage={storage}
+      <OnboardingFlowScreen
+        guidance={buildCycleGuidanceState(
+          state.stepTwoValues.cycleLength,
+          state.stepTwoValues.periodLength,
+        )}
+        isSaving={false}
+        locale="en"
+        now={now}
+        onAutoPeriodFillChange={jest.fn()}
+        onAgeGroupSelect={jest.fn()}
+        onBack={jest.fn()}
+        onCycleLengthChange={onCycleLengthChange}
+        onDateSelected={jest.fn()}
+        onFinish={onFinish}
+        onIrregularCycleChange={jest.fn()}
+        onNext={jest.fn()}
+        onPeriodLengthChange={jest.fn()}
+        onUsageGoalSelect={jest.fn()}
+        state={state}
+        stepOneError=""
+        stepTwoError=""
+        viewData={buildOnboardingViewData(state.record, now, "en")}
       />,
     );
-
-    await screen.findByText("Set up cycle parameters");
 
     fireEvent(
       screen.getByTestId("onboarding-cycle-length-slider"),
       "valueChange",
       35,
     );
-    expect(screen.getByText("35 days")).toBeTruthy();
-
     fireEvent(screen.getByTestId("onboarding-finish-button"), "onPress");
 
-    await waitFor(() =>
-      expect(storage.writeBootstrapState).toHaveBeenCalledWith({
-        hasCompletedOnboarding: true,
-        profileVersion: 1,
-      }),
-    );
-    expect(storage.writeOnboardingRecord).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        cycleLength: 35,
-        lastPeriodStart: "2026-03-17",
-      }),
-    );
-    expect(onFinished).toHaveBeenCalled();
+    expect(onCycleLengthChange).toHaveBeenCalledWith(35);
+    expect(onFinish).toHaveBeenCalled();
   });
 });

@@ -3,8 +3,19 @@
     "scheme": "ovumcy",
     "plugins": [
       "expo-router",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-sqlite"
     ],
+    "icon": "./assets/branding/ovumcy-icon-512.png",
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",
+        "backgroundColor": "#f7f0e6"
+      }
+    },
+    "web": {
+      "favicon": "./assets/branding/ovumcy-icon-192.png"
+    },
     "name": "Ovumcy",
     "slug": "ovumcy-app"
   }

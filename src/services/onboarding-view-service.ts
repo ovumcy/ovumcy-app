@@ -20,6 +20,7 @@ export type OnboardingViewData = {
     fieldLabel: string;
     day1Tip: string;
     privacy: string;
+    datePlaceholder: string;
     selectedDateLabel: string;
     changeDateLabel: string;
     nextLabel: string;
@@ -92,6 +93,7 @@ export function buildOnboardingViewData(
       fieldLabel: onboardingCopy.step1.field,
       day1Tip: onboardingCopy.step1.day1Tip,
       privacy: onboardingCopy.step1.privacy,
+      datePlaceholder: onboardingCopy.step1.datePlaceholder,
       selectedDateLabel: onboardingCopy.step1.selectedDate,
       changeDateLabel: onboardingCopy.step1.changeDate,
       nextLabel: onboardingCopy.buttons.next,
