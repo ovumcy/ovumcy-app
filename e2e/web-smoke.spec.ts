@@ -36,11 +36,31 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByText("Cycle snapshot")).toBeVisible();
   await expect(page.getByTestId("day-log-save-button")).toBeVisible();
+  await expect(page.getByText("Symptoms", { exact: true })).toBeVisible();
 
-  await page.getByText("Calendar").click();
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await page.getByTestId("settings-symptom-create-name-input").fill("Jaw pain");
+  await page.getByTestId("settings-symptom-create-action-button").click();
+  await expect(page.getByText("Jaw pain")).toBeVisible();
+
+  await page.getByRole("tab", { name: /Today/ }).click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(
+    page.locator('[data-testid^="day-log-symptom-"]').filter({
+      hasText: "Jaw pain",
+    }).first(),
+  ).toBeVisible();
+
+  await page.getByRole("tab", { name: /Calendar/ }).click();
 
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(page.getByText("Day details")).toBeVisible();
+  await expect(
+    page.locator('[data-testid^="day-log-symptom-"]').filter({
+      hasText: "Jaw pain",
+    }).first(),
+  ).toBeVisible();
   if (previousCycleStart.slice(0, 7) !== formatLocalDate(today).slice(0, 7)) {
     await page.getByTestId("calendar-prev-button").click();
   }
@@ -60,7 +80,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
   ).toBeVisible();
 
-  await page.getByText("Insights").click();
+  await page.getByRole("tab", { name: /Insights/ }).click();
 
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.getByText("Prediction reliability")).toBeVisible();

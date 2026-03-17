@@ -28,8 +28,10 @@ Run on an Android emulator or physical device.
    - `Track cervical mucus` shows the cervical-mucus section
 12. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
 13. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
-14. Bottom tabs render and switch without broken icons or duplicate labels.
-15. No account, sync, or cloud requirement is shown for core local use.
+14. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
+15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
+16. Bottom tabs render and switch without broken icons or duplicate labels.
+17. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -51,8 +53,10 @@ Run on an iOS simulator or physical device.
    - `Track cervical mucus` shows the cervical-mucus section
 12. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
 13. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
-14. Bottom tabs render and switch without broken icons or duplicate labels.
-15. No account, sync, or cloud requirement is shown for core local use.
+14. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
+15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
+16. Bottom tabs render and switch without broken icons or duplicate labels.
+17. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -66,6 +70,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - saving a day entry on the dashboard updates local state without a page error
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
    - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
+   - settings can create a custom symptom and that symptom appears in dashboard and calendar day editors for new entries
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles
    - enabling `Unpredictable cycle` changes dashboard to facts-only copy

@@ -4,9 +4,13 @@ import { ActivityIndicator, View } from "react-native";
 
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
+  archiveSettingsSymptom,
+  createSettingsSymptom,
   loadSettingsScreenState,
+  restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
+  updateSettingsSymptom,
 } from "../../services/settings-screen-service";
 import {
   buildSettingsCycleGuidance,
@@ -14,6 +18,11 @@ import {
   type LoadedSettingsState,
 } from "../../services/settings-view-service";
 import { formatLocalDate } from "../../services/profile-settings-policy";
+import {
+  createDefaultSymptomDraft,
+  type SymptomDraftValues,
+} from "../../services/symptom-policy";
+import type { SymptomID } from "../../models/symptom";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { colors } from "../theme/tokens";
@@ -37,6 +46,20 @@ export function SettingsScreen({
   const [cycleErrorMessage, setCycleErrorMessage] = useState("");
   const [cycleStatusMessage, setCycleStatusMessage] = useState("");
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
+  const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
+    () => createDefaultSymptomDraft(),
+  );
+  const [createSymptomErrorMessage, setCreateSymptomErrorMessage] = useState("");
+  const [createSymptomStatusMessage, setCreateSymptomStatusMessage] = useState("");
+  const [rowSymptomDrafts, setRowSymptomDrafts] = useState<
+    Record<string, SymptomDraftValues>
+  >({});
+  const [rowSymptomErrorMessages, setRowSymptomErrorMessages] = useState<
+    Record<string, string>
+  >({});
+  const [rowSymptomStatusMessages, setRowSymptomStatusMessages] = useState<
+    Record<string, string>
+  >({});
 
   useFocusEffect(
     useCallback(() => {
@@ -75,6 +98,31 @@ export function SettingsScreen({
   const viewData = buildSettingsViewData(effectiveNow);
   const cycleGuidance = buildSettingsCycleGuidance(readyState.cycleValues);
 
+  function resetSymptomMessages() {
+    setCreateSymptomErrorMessage("");
+    setCreateSymptomStatusMessage("");
+    setRowSymptomErrorMessages({});
+    setRowSymptomStatusMessages({});
+  }
+
+  function symptomErrorMessage(errorCode: string) {
+    switch (errorCode) {
+      case "label_required":
+        return viewData.symptoms.errors.labelRequired;
+      case "label_too_long":
+        return viewData.symptoms.errors.labelTooLong;
+      case "label_invalid_characters":
+        return viewData.symptoms.errors.labelInvalidCharacters;
+      case "duplicate_label":
+        return viewData.symptoms.errors.duplicateLabel;
+      case "not_found":
+      case "builtin_edit_forbidden":
+        return viewData.symptoms.errors.notFound;
+      default:
+        return viewData.symptoms.errors.saveFailed;
+    }
+  }
+
   async function handleSaveCycleSettings() {
     setIsSavingCycle(true);
     setCycleErrorMessage("");
@@ -82,7 +130,7 @@ export function SettingsScreen({
 
     const result = await saveCycleSettings(
       storage,
-      readyState.profile,
+      readyState,
       readyState.cycleValues,
       effectiveNow,
     );
@@ -107,7 +155,7 @@ export function SettingsScreen({
 
     const result = await saveTrackingSettings(
       storage,
-      readyState.profile,
+      readyState,
       readyState.trackingValues,
     );
     if (!result.ok) {
@@ -121,8 +169,93 @@ export function SettingsScreen({
     setIsSavingTracking(false);
   }
 
+  async function handleCreateSymptom() {
+    resetSymptomMessages();
+
+    const result = await createSettingsSymptom(storage, readyState, createSymptomDraft);
+    if (!result.ok) {
+      setCreateSymptomErrorMessage(symptomErrorMessage(result.errorCode));
+      return;
+    }
+
+    setState(result.state);
+    setCreateSymptomDraft(createDefaultSymptomDraft());
+    setCreateSymptomStatusMessage(viewData.symptoms.status.created);
+  }
+
+  async function handleUpdateSymptom(symptomID: SymptomID) {
+    resetSymptomMessages();
+    const currentRecord = readyState.symptomRecords.find(
+      (record) => record.id === symptomID,
+    );
+    if (!currentRecord) {
+      setRowSymptomErrorMessages({
+        [symptomID]: viewData.symptoms.errors.notFound,
+      });
+      return;
+    }
+
+    const payload: SymptomDraftValues = rowSymptomDrafts[symptomID] ?? {
+      label: currentRecord.label,
+      icon: currentRecord.icon,
+    };
+
+    const result = await updateSettingsSymptom(storage, readyState, symptomID, payload);
+    if (!result.ok) {
+      setRowSymptomErrorMessages({
+        [symptomID]: symptomErrorMessage(result.errorCode),
+      });
+      return;
+    }
+
+    setState(result.state);
+    setRowSymptomDrafts((current) => {
+      const next = { ...current };
+      delete next[symptomID];
+      return next;
+    });
+    setRowSymptomStatusMessages({
+      [symptomID]: viewData.symptoms.status.updated,
+    });
+  }
+
+  async function handleArchiveSymptom(symptomID: SymptomID) {
+    resetSymptomMessages();
+    const result = await archiveSettingsSymptom(storage, readyState, symptomID);
+    if (!result.ok) {
+      setRowSymptomErrorMessages({
+        [symptomID]: symptomErrorMessage(result.errorCode),
+      });
+      return;
+    }
+
+    setState(result.state);
+    setRowSymptomStatusMessages({
+      [symptomID]: viewData.symptoms.status.archived,
+    });
+  }
+
+  async function handleRestoreSymptom(symptomID: SymptomID) {
+    resetSymptomMessages();
+    const result = await restoreSettingsSymptom(storage, readyState, symptomID);
+    if (!result.ok) {
+      setRowSymptomErrorMessages({
+        [symptomID]: symptomErrorMessage(result.errorCode),
+      });
+      return;
+    }
+
+    setState(result.state);
+    setRowSymptomStatusMessages({
+      [symptomID]: viewData.symptoms.status.restored,
+    });
+  }
+
   return (
     <SettingsFlowScreen
+      createSymptomDraft={createSymptomDraft}
+      createSymptomErrorMessage={createSymptomErrorMessage}
+      createSymptomStatusMessage={createSymptomStatusMessage}
       cycleErrorMessage={cycleErrorMessage}
       cycleGuidance={cycleGuidance}
       cycleStatusMessage={cycleStatusMessage}
@@ -144,6 +277,7 @@ export function SettingsScreen({
             : current,
         );
       }}
+      onArchiveSymptom={handleArchiveSymptom}
       onAutoPeriodFillChange={(value) => {
         setCycleStatusMessage("");
         setState((current) =>
@@ -172,6 +306,15 @@ export function SettingsScreen({
               }
             : current,
         );
+      }}
+      onCreateSymptom={handleCreateSymptom}
+      onCreateSymptomDraftChange={(updates) => {
+        setCreateSymptomErrorMessage("");
+        setCreateSymptomStatusMessage("");
+        setCreateSymptomDraft((current) => ({
+          ...current,
+          ...updates,
+        }));
       }}
       onCycleLengthChange={(value) => {
         setCycleStatusMessage("");
@@ -254,8 +397,35 @@ export function SettingsScreen({
             : current,
         );
       }}
+      onRestoreSymptom={handleRestoreSymptom}
       onSaveCycleSettings={handleSaveCycleSettings}
       onSaveTrackingSettings={handleSaveTrackingSettings}
+      onSymptomDraftChange={(symptomID, updates) => {
+        setRowSymptomErrorMessages((current) => {
+          const next = { ...current };
+          delete next[symptomID];
+          return next;
+        });
+        setRowSymptomStatusMessages((current) => {
+          const next = { ...current };
+          delete next[symptomID];
+          return next;
+        });
+        setRowSymptomDrafts((current) => {
+          const existingRecord = readyState.symptomRecords.find(
+            (record) => record.id === symptomID,
+          );
+          return {
+            ...current,
+            [symptomID]: {
+              label: current[symptomID]?.label ?? existingRecord?.label ?? "",
+              icon: current[symptomID]?.icon ?? existingRecord?.icon ?? "✨",
+              ...current[symptomID],
+              ...updates,
+            },
+          };
+        });
+      }}
       onTemperatureUnitSelect={(value) => {
         setTrackingStatusMessage("");
         setState((current) =>
@@ -312,6 +482,7 @@ export function SettingsScreen({
             : current,
         );
       }}
+      onUpdateSymptom={handleUpdateSymptom}
       onUsageGoalSelect={(value) => {
         setCycleStatusMessage("");
         setState((current) =>
@@ -326,6 +497,9 @@ export function SettingsScreen({
             : current,
         );
       }}
+      rowSymptomDrafts={rowSymptomDrafts}
+      rowSymptomErrorMessages={rowSymptomErrorMessages}
+      rowSymptomStatusMessages={rowSymptomStatusMessages}
       showDatePicker={showDatePicker}
       state={readyState}
       trackingStatusMessage={trackingStatusMessage}

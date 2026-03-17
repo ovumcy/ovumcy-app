@@ -8,6 +8,10 @@ import {
   type ProfileRecord,
 } from "../../models/profile";
 import {
+  createDefaultSymptomRecords,
+  type SymptomRecord,
+} from "../../models/symptom";
+import {
   applyOnboardingRecordToProfile,
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
@@ -22,6 +26,7 @@ type VolatileWebStorageState = {
   bootstrapState: LocalBootstrapState;
   profileRecord: ProfileRecord;
   dayLogRecords: Record<string, DayLogRecord>;
+  symptomRecords: SymptomRecord[];
 };
 
 export function createVolatileWebAppStorage(): LocalAppStorage {
@@ -106,6 +111,20 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
         .sort()
         .map((date) => mergeDayLogRecord(state.dayLogRecords[date], date));
     },
+
+    async listSymptomRecords(): Promise<SymptomRecord[]> {
+      return state.symptomRecords.map((record) => mergeSymptomRecord(record));
+    },
+
+    async writeSymptomRecord(record: SymptomRecord): Promise<void> {
+      state = {
+        ...state,
+        symptomRecords: [
+          ...state.symptomRecords.filter((current) => current.id !== record.id),
+          mergeSymptomRecord(record),
+        ],
+      };
+    },
   };
 }
 
@@ -114,6 +133,7 @@ function createDefaultVolatileWebStorageState(): VolatileWebStorageState {
     bootstrapState: createDefaultBootstrapState(),
     profileRecord: createDefaultProfileRecord(),
     dayLogRecords: {},
+    symptomRecords: createDefaultSymptomRecords(),
   };
 }
 
@@ -138,4 +158,37 @@ function mergeDayLogRecord(
     ...record,
     date,
   });
+}
+
+function mergeSymptomRecord(record: Partial<SymptomRecord>): SymptomRecord {
+  const defaults = createSymptomRecordFallback();
+
+  return {
+    ...defaults,
+    ...record,
+    id: typeof record.id === "string" ? record.id : defaults.id,
+    slug: typeof record.slug === "string" ? record.slug : defaults.slug,
+    label: typeof record.label === "string" ? record.label : defaults.label,
+    icon: typeof record.icon === "string" ? record.icon : defaults.icon,
+    color: typeof record.color === "string" ? record.color : defaults.color,
+    isArchived: record.isArchived === true,
+    sortOrder:
+      typeof record.sortOrder === "number" && Number.isFinite(record.sortOrder)
+        ? record.sortOrder
+        : defaults.sortOrder,
+    isDefault: record.isDefault === true,
+  };
+}
+
+function createSymptomRecordFallback(): SymptomRecord {
+  return {
+    id: "custom_unknown",
+    slug: "custom-unknown",
+    label: "Custom symptom",
+    icon: "✨",
+    color: "#E8799F",
+    isArchived: false,
+    sortOrder: createDefaultSymptomRecords().length,
+    isDefault: false,
+  };
 }

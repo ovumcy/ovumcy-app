@@ -1,8 +1,7 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
-import { createEmptyDayLogRecord } from "../../models/day-log";
-import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
@@ -15,13 +14,8 @@ jest.mock("expo-router", () => {
   };
 });
 
-function createStorageMock(): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
     readProfileRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
       cycleLength: 28,
@@ -36,7 +30,6 @@ function createStorageMock(): LocalAppStorage {
       trackCervicalMucus: false,
       hideSexChip: false,
     }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
       cycleLength: 28,
@@ -46,14 +39,8 @@ function createStorageMock(): LocalAppStorage {
       ageGroup: "",
       usageGoal: "health",
     }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
-  };
+    ...overrides,
+  });
 }
 
 describe("SettingsScreen", () => {
@@ -113,6 +100,46 @@ describe("SettingsScreen", () => {
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           trackBBT: true,
+        }),
+      ),
+    );
+  });
+
+  it("creates and archives a custom symptom through the settings flow", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Settings");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-symptom-create-name-input"),
+      "Jaw pain",
+    );
+    fireEvent.press(screen.getByTestId("settings-symptom-create-icon-🔥"));
+    fireEvent.press(screen.getByTestId("settings-symptom-create-action-button"));
+
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          label: "Jaw pain",
+          icon: "🔥",
+          isArchived: false,
+        }),
+      ),
+    );
+
+    const createdRecord = (
+      storage.writeSymptomRecord as jest.Mock
+    ).mock.calls[0][0];
+
+    fireEvent.press(screen.getByTestId(`settings-symptom-archive-${createdRecord.id}`));
+
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: createdRecord.id,
+          isArchived: true,
         }),
       ),
     );

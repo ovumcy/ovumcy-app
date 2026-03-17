@@ -3,6 +3,7 @@ import type {
   ProfileRecord,
   TrackingSettingsValues,
 } from "../models/profile";
+import type { SymptomID } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   createLoadedSettingsState,
@@ -14,31 +15,45 @@ import {
   sanitizeCycleSettingsValues,
   sanitizeTrackingSettingsValues,
 } from "./profile-settings-policy";
+import {
+  archiveCustomSymptomRecord,
+  createCustomSymptomRecord,
+  restoreCustomSymptomRecord,
+  updateCustomSymptomRecord,
+  type SymptomDraftValues,
+  type SymptomValidationErrorCode,
+} from "./symptom-policy";
 
 type SaveSettingsErrorCode = "invalid_last_period_start" | "generic";
+type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
 
-export async function loadSettingsScreenState(
-  storage: LocalAppStorage,
-): Promise<LoadedSettingsState> {
-  const profile = await storage.readProfileRecord();
-  return createLoadedSettingsState(profile);
-}
-
-export async function saveCycleSettings(
-  storage: LocalAppStorage,
-  currentProfile: ProfileRecord,
-  cycleValues: CycleSettingsValues,
-  now: Date,
-): Promise<
+type SaveStateResult<ErrorCode extends string> =
   | {
       ok: true;
       state: LoadedSettingsState;
     }
   | {
       ok: false;
-      errorCode: SaveSettingsErrorCode;
-    }
-> {
+      errorCode: ErrorCode;
+    };
+
+export async function loadSettingsScreenState(
+  storage: LocalAppStorage,
+): Promise<LoadedSettingsState> {
+  const [profile, symptomRecords] = await Promise.all([
+    storage.readProfileRecord(),
+    storage.listSymptomRecords(),
+  ]);
+
+  return createLoadedSettingsState(profile, symptomRecords);
+}
+
+export async function saveCycleSettings(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  cycleValues: CycleSettingsValues,
+  now: Date,
+): Promise<SaveStateResult<SaveSettingsErrorCode>> {
   if (!isValidCycleStartDate(cycleValues.lastPeriodStart, now)) {
     return {
       ok: false,
@@ -47,7 +62,7 @@ export async function saveCycleSettings(
   }
 
   const nextProfile: ProfileRecord = {
-    ...currentProfile,
+    ...currentState.profile,
     ...sanitizeCycleSettingsValues(cycleValues),
   };
 
@@ -62,26 +77,17 @@ export async function saveCycleSettings(
 
   return {
     ok: true,
-    state: createLoadedSettingsState(nextProfile),
+    state: createLoadedSettingsState(nextProfile, currentState.symptomRecords),
   };
 }
 
 export async function saveTrackingSettings(
   storage: LocalAppStorage,
-  currentProfile: ProfileRecord,
+  currentState: LoadedSettingsState,
   trackingValues: TrackingSettingsValues,
-): Promise<
-  | {
-      ok: true;
-      state: LoadedSettingsState;
-    }
-  | {
-      ok: false;
-      errorCode: SaveSettingsErrorCode;
-    }
-> {
+): Promise<SaveStateResult<SaveSettingsErrorCode>> {
   const nextProfile: ProfileRecord = {
-    ...currentProfile,
+    ...currentState.profile,
     ...sanitizeTrackingSettingsValues(trackingValues),
   };
 
@@ -96,7 +102,130 @@ export async function saveTrackingSettings(
 
   return {
     ok: true,
-    state: createLoadedSettingsState(nextProfile),
+    state: createLoadedSettingsState(nextProfile, currentState.symptomRecords),
+  };
+}
+
+export async function createSettingsSymptom(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  draft: SymptomDraftValues,
+): Promise<SaveStateResult<SaveSymptomErrorCode>> {
+  const result = createCustomSymptomRecord(currentState.symptomRecords, draft);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    await storage.writeSymptomRecord(result.record);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(currentState.profile, [
+      ...currentState.symptomRecords,
+      result.record,
+    ]),
+  };
+}
+
+export async function updateSettingsSymptom(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  symptomID: SymptomID,
+  draft: SymptomDraftValues,
+): Promise<SaveStateResult<SaveSymptomErrorCode>> {
+  const result = updateCustomSymptomRecord(
+    currentState.symptomRecords,
+    symptomID,
+    draft,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    await storage.writeSymptomRecord(result.record);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      currentState.symptomRecords.map((record) =>
+        record.id === symptomID ? result.record : record,
+      ),
+    ),
+  };
+}
+
+export async function archiveSettingsSymptom(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  symptomID: SymptomID,
+): Promise<SaveStateResult<SaveSymptomErrorCode>> {
+  const result = archiveCustomSymptomRecord(currentState.symptomRecords, symptomID);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    await storage.writeSymptomRecord(result.record);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      currentState.symptomRecords.map((record) =>
+        record.id === symptomID ? result.record : record,
+      ),
+    ),
+  };
+}
+
+export async function restoreSettingsSymptom(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  symptomID: SymptomID,
+): Promise<SaveStateResult<SaveSymptomErrorCode>> {
+  const result = restoreCustomSymptomRecord(currentState.symptomRecords, symptomID);
+  if (!result.ok) {
+    return result;
+  }
+
+  try {
+    await storage.writeSymptomRecord(result.record);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      currentState.symptomRecords.map((record) =>
+        record.id === symptomID ? result.record : record,
+      ),
+    ),
   };
 }
 

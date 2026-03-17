@@ -36,6 +36,16 @@ type FakeDatabaseState = {
     symptom_ids: string;
     notes: string;
   }[];
+  symptomRows: {
+    id: string;
+    slug: string;
+    label: string;
+    icon: string;
+    color: string;
+    is_default: number;
+    is_archived: number;
+    sort_order: number;
+  }[];
   onboardingRow: {
     last_period_start: string | null;
     cycle_length: number;
@@ -53,6 +63,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
     bootstrapRow: null,
     profileRow: null,
     dayLogRows: [],
+    symptomRows: [],
     onboardingRow: null,
     userVersion: 0,
     ...state,
@@ -85,6 +96,9 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
       if (source.includes("COUNT(*) AS count FROM day_logs")) {
         return { count: databaseState.dayLogRows.length } as T;
       }
+      if (source.includes("COUNT(*) AS count FROM symptoms")) {
+        return { count: databaseState.symptomRows.length } as T;
+      }
 
       if (source.includes("FROM bootstrap_state WHERE id = 1")) {
         return (databaseState.bootstrapRow as T) ?? null;
@@ -112,6 +126,15 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         const from = String(params[0]);
         const to = String(params[1]);
         return databaseState.dayLogRows.filter((row) => row.day >= from && row.day <= to) as T[];
+      }
+      if (source.includes("FROM symptoms")) {
+        return [...databaseState.symptomRows]
+          .sort((left, right) => {
+            if (left.sort_order !== right.sort_order) {
+              return left.sort_order - right.sort_order;
+            }
+            return left.label.localeCompare(right.label, "en", { sensitivity: "base" });
+          }) as T[];
       }
 
       return [];
@@ -172,6 +195,22 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
       if (source.includes("DELETE FROM day_logs")) {
         const day = String(params[0]);
         databaseState.dayLogRows = databaseState.dayLogRows.filter((row) => row.day !== day);
+      }
+      if (source.includes("INSERT INTO symptoms")) {
+        const nextRow = {
+          id: String(params[0]),
+          slug: String(params[1]),
+          label: String(params[2]),
+          icon: String(params[3]),
+          color: String(params[4]),
+          is_default: Number(params[5]),
+          is_archived: Number(params[6]),
+          sort_order: Number(params[7]),
+        };
+        databaseState.symptomRows = databaseState.symptomRows.filter(
+          (row) => row.id !== nextRow.id,
+        );
+        databaseState.symptomRows.push(nextRow);
       }
 
       return { changes: 1 };
@@ -301,6 +340,15 @@ describe("sqlite-app-storage", () => {
       trackCervicalMucus: false,
       hideSexChip: false,
     });
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "cramps",
+          label: "Cramps",
+          isDefault: true,
+        }),
+      ]),
+    );
   });
 
   it("persists bootstrap and canonical profile updates in sqlite", async () => {
@@ -418,5 +466,44 @@ describe("sqlite-app-storage", () => {
       symptomIDs: [],
       notes: "",
     });
+  });
+
+  it("persists custom symptoms alongside the seeded built-in catalog", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeSymptomRecord({
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    });
+
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "cramps",
+          isDefault: true,
+        }),
+        expect.objectContaining({
+          id: "custom_jaw_pain",
+          label: "Jaw pain",
+          icon: "🔥",
+          isArchived: false,
+          isDefault: false,
+        }),
+      ]),
+    );
   });
 });

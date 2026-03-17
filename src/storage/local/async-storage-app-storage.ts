@@ -6,6 +6,10 @@ import {
 } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
+  createDefaultSymptomRecords,
+  type SymptomRecord,
+} from "../../models/symptom";
+import {
   createDefaultProfileRecord,
   type ProfileRecord,
 } from "../../models/profile";
@@ -25,6 +29,7 @@ export const BOOTSTRAP_STATE_KEY = "ovumcy/bootstrap-state";
 export const PROFILE_RECORD_KEY = "ovumcy/profile-record";
 export const ONBOARDING_RECORD_KEY = "ovumcy/onboarding-record";
 export const DAY_LOG_RECORDS_KEY = "ovumcy/day-log-records";
+export const SYMPTOM_RECORDS_KEY = "ovumcy/symptom-records";
 
 export function createAsyncStorageAppStorage(): LocalAppStorage {
   return {
@@ -90,6 +95,17 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
         .sort()
         .map((date) => mergeDayLogRecord(records[date], date));
     },
+
+    async listSymptomRecords(): Promise<SymptomRecord[]> {
+      return readAsyncStorageSymptomRecords();
+    },
+
+    async writeSymptomRecord(record: SymptomRecord): Promise<void> {
+      const records = await readAsyncStorageSymptomRecords();
+      const nextRecords = records.filter((current) => current.id !== record.id);
+      nextRecords.push(mergeSymptomRecord(record));
+      await AsyncStorage.setItem(SYMPTOM_RECORDS_KEY, JSON.stringify(nextRecords));
+    },
   };
 }
 
@@ -145,6 +161,7 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
     PROFILE_RECORD_KEY,
     ONBOARDING_RECORD_KEY,
     DAY_LOG_RECORDS_KEY,
+    SYMPTOM_RECORDS_KEY,
   ]);
   const bootstrapState = entries[0];
   const profileRecord = entries[1];
@@ -155,7 +172,8 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
     bootstrapState?.[1] !== null ||
     profileRecord?.[1] !== null ||
     onboardingRecord?.[1] !== null ||
-    dayLogRecords?.[1] !== null
+    dayLogRecords?.[1] !== null ||
+    entries[4]?.[1] !== null
   );
 }
 
@@ -165,6 +183,7 @@ export async function clearAsyncStorageLocalAppData(): Promise<void> {
     PROFILE_RECORD_KEY,
     ONBOARDING_RECORD_KEY,
     DAY_LOG_RECORDS_KEY,
+    SYMPTOM_RECORDS_KEY,
   ]);
 }
 
@@ -177,6 +196,20 @@ async function readAsyncStorageDayLogRecords(): Promise<
   }
 
   return safeParse<Record<string, DayLogRecord>>(rawValue) ?? {};
+}
+
+async function readAsyncStorageSymptomRecords(): Promise<SymptomRecord[]> {
+  const rawValue = await AsyncStorage.getItem(SYMPTOM_RECORDS_KEY);
+  if (!rawValue) {
+    return createDefaultSymptomRecords();
+  }
+
+  const parsed = safeParse<Partial<SymptomRecord>[]>(rawValue);
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    return createDefaultSymptomRecords();
+  }
+
+  return parsed.map((record) => mergeSymptomRecord(record));
 }
 
 function safeParse<T>(rawValue: string): T | null {
@@ -210,4 +243,37 @@ function mergeDayLogRecord(
     ...parsed,
     date,
   });
+}
+
+function mergeSymptomRecord(record: Partial<SymptomRecord>): SymptomRecord {
+  const defaults = createSymptomRecordFallback();
+
+  return {
+    ...defaults,
+    ...record,
+    id: typeof record.id === "string" ? record.id : defaults.id,
+    slug: typeof record.slug === "string" ? record.slug : defaults.slug,
+    label: typeof record.label === "string" ? record.label : defaults.label,
+    icon: typeof record.icon === "string" ? record.icon : defaults.icon,
+    color: typeof record.color === "string" ? record.color : defaults.color,
+    isArchived: record.isArchived === true,
+    sortOrder:
+      typeof record.sortOrder === "number" && Number.isFinite(record.sortOrder)
+        ? record.sortOrder
+        : defaults.sortOrder,
+    isDefault: record.isDefault === true,
+  };
+}
+
+function createSymptomRecordFallback(): SymptomRecord {
+  return {
+    id: "custom_unknown",
+    slug: "custom-unknown",
+    label: "Custom symptom",
+    icon: "✨",
+    color: "#E8799F",
+    isArchived: false,
+    sortOrder: createDefaultSymptomRecords().length,
+    isDefault: false,
+  };
 }

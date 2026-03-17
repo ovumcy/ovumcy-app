@@ -39,7 +39,7 @@ describe("day-log-policy", () => {
       bbt: 0,
       cervicalMucus: "none",
       cycleFactorKeys: ["travel"],
-      symptomIDs: ["cramps", "bloating"],
+      symptomIDs: ["cramps", "unknown", "bloating"],
       notes: "a".repeat(2000),
     });
   });

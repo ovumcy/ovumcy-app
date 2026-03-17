@@ -1,8 +1,8 @@
 import * as React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 
-import { createEmptyDayLogRecord } from "../../models/day-log";
-import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { createDefaultSymptomRecords } from "../../models/symptom";
+import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
@@ -15,13 +15,8 @@ jest.mock("expo-router", () => {
   };
 });
 
-function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
     readProfileRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
       cycleLength: 28,
@@ -36,7 +31,6 @@ function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorag
       trackCervicalMucus: true,
       hideSexChip: true,
     }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
       cycleLength: 28,
@@ -46,17 +40,8 @@ function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorag
       ageGroup: "",
       usageGoal: "health",
     }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) =>
-        createEmptyDayLogRecord(date),
-      ),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
     ...overrides,
-  };
+  });
 }
 
 describe("DashboardScreen", () => {
@@ -106,5 +91,31 @@ describe("DashboardScreen", () => {
         "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
       ),
     ).toBeTruthy();
+  });
+
+  it("renders custom symptom options from the shared symptom catalog", async () => {
+    render(
+      <DashboardScreen
+        now={new Date(2026, 2, 17)}
+        storage={createStorageMock({
+          listSymptomRecords: jest.fn().mockResolvedValue([
+            ...createDefaultSymptomRecords(),
+            {
+              id: "custom_jaw_pain",
+              slug: "jaw-pain",
+              label: "Jaw pain",
+              icon: "🔥",
+              color: "#E8799F",
+              isArchived: false,
+              sortOrder: 999,
+              isDefault: false,
+            },
+          ]),
+        })}
+      />,
+    );
+
+    await screen.findByText("Cycle snapshot");
+    expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 });

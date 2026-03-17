@@ -1,7 +1,6 @@
 import { dayLogCopy } from "../i18n/day-log-copy";
 import {
   DAY_CYCLE_FACTOR_KEYS,
-  DAY_SYMPTOM_DEFINITIONS,
   type DayCervicalMucus,
   type DayCycleFactorKey,
   type DayFlow,
@@ -10,6 +9,7 @@ import {
   type DaySymptomID,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildDayLogVisibility,
@@ -17,6 +17,10 @@ import {
   trimDayLogNotes,
 } from "./day-log-policy";
 import { parseLocalDate } from "./profile-settings-policy";
+import {
+  buildEntryPickerSymptoms,
+  filterKnownSymptomIDs,
+} from "./symptom-policy";
 
 export type DayLogEditorViewData = {
   title: string;
@@ -71,6 +75,7 @@ export type DayLogEditorViewData = {
 export type LoadedDayLogEditorState = {
   profile: ProfileRecord;
   record: DayLogRecord;
+  symptomRecords: SymptomRecord[];
   viewData: DayLogEditorViewData;
 };
 
@@ -79,15 +84,27 @@ export async function loadDayLogEditorState(
   date: DayLogRecord["date"],
   locale = "en",
 ): Promise<LoadedDayLogEditorState> {
-  const [profile, record] = await Promise.all([
+  const [profile, record, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(date),
+    storage.listSymptomRecords(),
   ]);
+  const filteredRecord: DayLogRecord = {
+    ...record,
+    symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
+  };
 
   return {
     profile,
-    record,
-    viewData: buildDayLogEditorViewData(profile, date, locale),
+    record: filteredRecord,
+    symptomRecords,
+    viewData: buildDayLogEditorViewData(
+      profile,
+      date,
+      symptomRecords,
+      filteredRecord.symptomIDs,
+      locale,
+    ),
   };
 }
 
@@ -95,7 +112,11 @@ export async function saveDayLogEditorRecord(
   storage: LocalAppStorage,
   record: DayLogRecord,
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
-  const normalized = sanitizeDayLogRecord(record);
+  const symptomRecords = await storage.listSymptomRecords();
+  const normalized = sanitizeDayLogRecord({
+    ...record,
+    symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
+  });
 
   try {
     await storage.writeDayLogRecord(normalized);
@@ -124,8 +145,12 @@ export async function deleteDayLogEditorRecord(
 export function buildDayLogEditorViewData(
   profile: ProfileRecord,
   date: DayLogRecord["date"],
+  symptomRecords: readonly SymptomRecord[],
+  selectedSymptomIDs: readonly DaySymptomID[] = [],
   locale = "en",
 ): DayLogEditorViewData {
+  const pickerSymptoms = buildEntryPickerSymptoms(symptomRecords, selectedSymptomIDs);
+
   return {
     title: dayLogCopy.title,
     subtitle: dayLogCopy.subtitle,
@@ -168,7 +193,7 @@ export function buildDayLogEditorViewData(
         label: dayLogCopy.options.cycleFactors[value].label,
         icon: dayLogCopy.options.cycleFactors[value].icon,
       })),
-      symptoms: DAY_SYMPTOM_DEFINITIONS.map((definition) => ({
+      symptoms: pickerSymptoms.map((definition) => ({
         value: definition.id,
         label: definition.label,
         icon: definition.icon,

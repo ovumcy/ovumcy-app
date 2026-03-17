@@ -64,6 +64,14 @@ describe("volatile-web-app-storage", () => {
       symptomIDs: ["cramps", "fatigue"],
       notes: "Session-only web note",
     });
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "cramps",
+          isDefault: true,
+        }),
+      ]),
+    );
   });
 
   it("does not persist sensitive health data across a new web app instance", async () => {
@@ -108,5 +116,39 @@ describe("volatile-web-app-storage", () => {
       symptomIDs: [],
       notes: "",
     });
+  });
+
+  it("keeps custom symptoms only for the current web session", async () => {
+    const firstSession = createVolatileWebAppStorage();
+
+    await firstSession.writeSymptomRecord({
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    });
+
+    await expect(firstSession.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "custom_jaw_pain",
+          label: "Jaw pain",
+        }),
+      ]),
+    );
+
+    const nextSession = createVolatileWebAppStorage();
+
+    await expect(nextSession.listSymptomRecords()).resolves.not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "custom_jaw_pain",
+        }),
+      ]),
+    );
   });
 });

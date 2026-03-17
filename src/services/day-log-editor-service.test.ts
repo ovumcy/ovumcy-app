@@ -1,52 +1,11 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   buildNextDayLogRecordPatch,
   loadDayLogEditorState,
   saveDayLogEditorRecord,
 } from "./day-log-editor-service";
-
-function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
-    readProfileRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: true,
-      temperatureUnit: "f",
-      trackCervicalMucus: false,
-      hideSexChip: true,
-    }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
-    ...overrides,
-  };
-}
 
 describe("day-log-editor-service", () => {
   it("loads visibility and unit-aware hints from the canonical profile", async () => {
@@ -88,4 +47,80 @@ describe("day-log-editor-service", () => {
       }),
     );
   });
+
+  it("shows custom symptoms for new entries and keeps selected archived symptoms available", async () => {
+    const customSymptom: SymptomRecord = {
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    };
+    const archivedSymptom: SymptomRecord = {
+      ...customSymptom,
+      id: "custom_old",
+      slug: "old-symptom",
+      label: "Old symptom",
+      isArchived: true,
+      sortOrder: 1000,
+    };
+    const storage = createStorageMock({
+      listSymptomRecords: jest
+        .fn()
+        .mockResolvedValue([
+          ...createDefaultSymptomRecords(),
+          customSymptom,
+          archivedSymptom,
+        ]),
+      readDayLogRecord: jest.fn().mockResolvedValue({
+        ...createEmptyDayLogRecord("2026-03-17"),
+        symptomIDs: ["custom_old", "fatigue"],
+      }),
+    });
+
+    const state = await loadDayLogEditorState(storage, "2026-03-17");
+
+    expect(state.viewData.options.symptoms).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "custom_jaw_pain", label: "Jaw pain" }),
+        expect.objectContaining({ value: "custom_old", label: "Old symptom" }),
+        expect.objectContaining({ value: "fatigue", label: "Fatigue" }),
+      ]),
+    );
+  });
 });
+
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
+    readProfileRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: false,
+      hideSexChip: true,
+    }),
+    readOnboardingRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+    }),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    ...overrides,
+  });
+}

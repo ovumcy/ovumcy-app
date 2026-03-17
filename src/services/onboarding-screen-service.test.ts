@@ -1,6 +1,6 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { OnboardingRecord } from "../models/onboarding";
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   finishOnboarding,
   loadOnboardingScreenState,
@@ -8,50 +8,6 @@ import {
   saveOnboardingStepOne,
   type LoadedOnboardingState,
 } from "./onboarding-screen-service";
-
-function createStorageMock(
-  overrides?: Partial<LocalAppStorage>,
-): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: false,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
-    readProfileRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-    }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
-    ...overrides,
-  };
-}
 
 function createLoadedState(
   overrides?: Partial<LoadedOnboardingState>,
@@ -193,3 +149,39 @@ describe("onboarding-screen-service", () => {
     );
   });
 });
+
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
+    readBootstrapState: jest.fn().mockResolvedValue({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+    }),
+    readProfileRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    }),
+    readOnboardingRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+    }),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    ...overrides,
+  });
+}

@@ -2,8 +2,7 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react-native";
 import { Text, View } from "react-native";
 
-import { createEmptyDayLogRecord } from "../../models/day-log";
-import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { ProtectedTabsLayout } from "./ProtectedTabsLayout";
 
 const mockReact = React;
@@ -47,47 +46,13 @@ jest.mock("expo-router", () => {
   };
 });
 
-function createStorageMock(
-  hasCompletedOnboarding: boolean,
-): LocalAppStorage {
-  return {
+function createStorageMock(hasCompletedOnboarding: boolean) {
+  return createLocalAppStorageMock({
     readBootstrapState: jest.fn().mockResolvedValue({
       hasCompletedOnboarding,
       profileVersion: 2,
     }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
-    readProfileRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-    }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
-  };
+  });
 }
 
 describe("ProtectedTabsLayout", () => {

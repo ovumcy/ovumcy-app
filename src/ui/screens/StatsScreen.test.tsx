@@ -2,7 +2,7 @@ import * as React from "react";
 import { render, screen } from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
-import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { StatsScreen } from "./StatsScreen";
 
 const mockUseEffect = React.useEffect;
@@ -15,15 +15,8 @@ jest.mock("expo-router", () => {
   };
 });
 
-function createStorageMock(
-  overrides?: Partial<LocalAppStorage>,
-): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
     readProfileRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-01-17",
       cycleLength: 28,
@@ -38,7 +31,6 @@ function createStorageMock(
       trackCervicalMucus: false,
       hideSexChip: false,
     }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-01-17",
       cycleLength: 28,
@@ -48,15 +40,8 @@ function createStorageMock(
       ageGroup: "",
       usageGoal: "health",
     }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
     ...overrides,
-  };
+  });
 }
 
 describe("StatsScreen", () => {

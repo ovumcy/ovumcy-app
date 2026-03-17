@@ -51,6 +51,14 @@ describe("async-storage-app-storage", () => {
       symptomIDs: [],
       notes: "",
     });
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "cramps",
+          isDefault: true,
+        }),
+      ]),
+    );
   });
 
   it("persists bootstrap state and onboarding record locally", async () => {
@@ -140,5 +148,31 @@ describe("async-storage-app-storage", () => {
         isPeriod: true,
       }),
     ]);
+  });
+
+  it("persists custom symptom records in the async-storage adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeSymptomRecord({
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    });
+
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "custom_jaw_pain",
+          label: "Jaw pain",
+          icon: "🔥",
+          isArchived: false,
+        }),
+      ]),
+    );
   });
 });

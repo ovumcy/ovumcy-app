@@ -10,6 +10,10 @@ import {
   type ProfileRecord,
 } from "../../models/profile";
 import {
+  createDefaultSymptomRecords,
+  type SymptomRecord,
+} from "../../models/symptom";
+import {
   applyOnboardingRecordToProfile,
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
@@ -28,7 +32,7 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -71,6 +75,24 @@ const CREATE_DAY_LOGS_TABLE = `
     symptom_ids TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT ''
   );
+`;
+
+const CREATE_SYMPTOMS_TABLE = `
+  CREATE TABLE IF NOT EXISTS symptoms (
+    id TEXT PRIMARY KEY,
+    slug TEXT NOT NULL,
+    label TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    is_archived INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL
+  );
+`;
+
+const CREATE_SYMPTOMS_SLUG_INDEX = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_symptoms_slug
+  ON symptoms(slug);
 `;
 
 type BootstrapStateRow = {
@@ -120,6 +142,17 @@ type DayLogRow = {
   cycle_factor_keys: string;
   symptom_ids: string;
   notes: string;
+};
+
+type SymptomRow = {
+  id: string;
+  slug: string;
+  label: string;
+  icon: string;
+  color: string;
+  is_default: number;
+  is_archived: number;
+  sort_order: number;
 };
 
 export interface LocalAppDatabase {
@@ -292,6 +325,32 @@ export function createSQLiteAppStorage(
 
       return rows.map((row) => mapDayLogRow(row));
     },
+
+    async listSymptomRecords(): Promise<SymptomRecord[]> {
+      const database = await getHydratedDatabase();
+      const rows = await database.getAllAsync<SymptomRow>(
+        `SELECT
+          id,
+          slug,
+          label,
+          icon,
+          color,
+          is_default,
+          is_archived,
+          sort_order
+         FROM symptoms
+         ORDER BY sort_order ASC, label COLLATE NOCASE ASC, id ASC;`,
+      );
+
+      return rows.length > 0
+        ? rows.map((row) => mapSymptomRow(row))
+        : createDefaultSymptomRecords();
+    },
+
+    async writeSymptomRecord(record: SymptomRecord): Promise<void> {
+      const database = await getHydratedDatabase();
+      await upsertSymptomRecord(database, record);
+    },
   };
 }
 
@@ -326,6 +385,8 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
     await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(CREATE_SYMPTOMS_TABLE);
+    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
     await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
     return;
   }
@@ -342,19 +403,32 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
       2,
     );
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
-    await database.execAsync(`PRAGMA user_version = 3;`);
+    await database.execAsync(CREATE_SYMPTOMS_TABLE);
+    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
+    await database.execAsync(`PRAGMA user_version = 4;`);
     return;
   }
 
   if (currentVersion === 2) {
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
-    await database.execAsync(`PRAGMA user_version = 3;`);
+    await database.execAsync(CREATE_SYMPTOMS_TABLE);
+    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
+    await database.execAsync(`PRAGMA user_version = 4;`);
+    return;
+  }
+
+  if (currentVersion === 3) {
+    await database.execAsync(CREATE_SYMPTOMS_TABLE);
+    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
+    await database.execAsync(`PRAGMA user_version = 4;`);
     return;
   }
 
   await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
   await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
   await database.execAsync(CREATE_DAY_LOGS_TABLE);
+  await database.execAsync(CREATE_SYMPTOMS_TABLE);
+  await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
   await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
 }
 
@@ -417,9 +491,10 @@ async function maybeMigrateLegacyLocalAppData(
 }
 
 async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
-  const [bootstrapCount, profileCount] = await Promise.all([
+  const [bootstrapCount, profileCount, symptomCount] = await Promise.all([
     readRowCount(database, "bootstrap_state"),
     readRowCount(database, "profile_settings"),
+    readRowCount(database, "symptoms"),
   ]);
 
   if (bootstrapCount === 0) {
@@ -429,11 +504,17 @@ async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
   if (profileCount === 0) {
     await upsertProfileRecord(database, createDefaultProfileRecord());
   }
+
+  if (symptomCount === 0) {
+    for (const record of createDefaultSymptomRecords()) {
+      await upsertSymptomRecord(database, record);
+    }
+  }
 }
 
 async function readRowCount(
   database: LocalAppDatabase,
-  tableName: "bootstrap_state" | "profile_settings" | "day_logs",
+  tableName: "bootstrap_state" | "profile_settings" | "day_logs" | "symptoms",
 ): Promise<number> {
   const row = await database.getFirstAsync<CountRow>(
     `SELECT COUNT(*) AS count FROM ${tableName};`,
@@ -555,6 +636,41 @@ async function upsertDayLogRecord(
   );
 }
 
+async function upsertSymptomRecord(
+  database: LocalAppDatabase,
+  record: SymptomRecord,
+): Promise<void> {
+  await database.runAsync(
+    `INSERT INTO symptoms (
+       id,
+       slug,
+       label,
+       icon,
+       color,
+       is_default,
+       is_archived,
+       sort_order
+     )
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       slug = excluded.slug,
+       label = excluded.label,
+       icon = excluded.icon,
+       color = excluded.color,
+       is_default = excluded.is_default,
+       is_archived = excluded.is_archived,
+       sort_order = excluded.sort_order;`,
+    record.id,
+    record.slug,
+    record.label,
+    record.icon,
+    record.color,
+    record.isDefault ? 1 : 0,
+    record.isArchived ? 1 : 0,
+    record.sortOrder,
+  );
+}
+
 function mapBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
   return {
     hasCompletedOnboarding: row.has_completed_onboarding === 1,
@@ -603,6 +719,19 @@ function mapDayLogRow(row: DayLogRow): DayLogRecord {
     symptomIDs: symptomIDs as DayLogRecord["symptomIDs"],
     notes: row.notes,
   });
+}
+
+function mapSymptomRow(row: SymptomRow): SymptomRecord {
+  return {
+    id: row.id,
+    slug: row.slug,
+    label: row.label,
+    icon: row.icon,
+    color: row.color,
+    isDefault: row.is_default === 1,
+    isArchived: row.is_archived === 1,
+    sortOrder: row.sort_order,
+  };
 }
 
 function safeParseStringArray(raw: string): string[] {

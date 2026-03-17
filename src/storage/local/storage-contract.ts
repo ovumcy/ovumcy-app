@@ -1,6 +1,7 @@
 import type { DayLogRecord } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import type { ProfileRecord } from "../../models/profile";
+import type { SymptomRecord } from "../../models/symptom";
 
 export type LocalBootstrapState = {
   hasCompletedOnboarding: boolean;
@@ -28,4 +29,6 @@ export interface LocalAppStorage {
     from: DayLogRecord["date"],
     to: DayLogRecord["date"],
   ): Promise<DayLogRecord[]>;
+  listSymptomRecords(): Promise<SymptomRecord[]>;
+  writeSymptomRecord(record: SymptomRecord): Promise<void>;
 }

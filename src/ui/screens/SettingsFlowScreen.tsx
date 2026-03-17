@@ -3,20 +3,27 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
-import type {
-  LoadedSettingsState,
-  SettingsViewData,
-} from "../../services/settings-view-service";
+import type { SymptomID } from "../../models/symptom";
+import type { SymptomDraftValues } from "../../services/symptom-policy";
 import { parseLocalDate } from "../../services/profile-settings-policy";
+import {
+  buildSettingsSymptomsState,
+  type LoadedSettingsState,
+  type SettingsViewData,
+} from "../../services/settings-view-service";
 import { AppButton } from "../components/AppButton";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
 import { FeatureCard } from "../components/FeatureCard";
 import { LabeledSliderField } from "../components/LabeledSliderField";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { colors, spacing } from "../theme/tokens";
 
 type SettingsFlowScreenProps = {
+  createSymptomDraft: SymptomDraftValues;
+  createSymptomErrorMessage: string;
+  createSymptomStatusMessage: string;
   cycleGuidance: {
     adjusted: boolean;
     periodLong: boolean;
@@ -28,21 +35,35 @@ type SettingsFlowScreenProps = {
   isSavingTracking: boolean;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
+  onArchiveSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onAutoPeriodFillChange: (value: boolean) => void;
   onClearLastPeriodStart: () => void;
+  onCreateSymptom: () => void | Promise<void>;
+  onCreateSymptomDraftChange: (updates: Partial<SymptomDraftValues>) => void;
   onCycleLengthChange: (value: number) => void;
   onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
   onDatePickerToggle: () => void;
   onIrregularCycleChange: (value: boolean) => void;
+  onPeriodLengthChange: (value: number) => void;
+  onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onSaveCycleSettings: () => void | Promise<void>;
   onSaveTrackingSettings: () => void | Promise<void>;
-  onTemperatureUnitSelect: (value: LoadedSettingsState["trackingValues"]["temperatureUnit"]) => void;
+  onSymptomDraftChange: (
+    symptomID: SymptomID,
+    updates: Partial<SymptomDraftValues>,
+  ) => void;
+  onTemperatureUnitSelect: (
+    value: LoadedSettingsState["trackingValues"]["temperatureUnit"],
+  ) => void;
   onTrackBBTChange: (value: boolean) => void;
   onTrackCervicalMucusChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
-  onPeriodLengthChange: (value: number) => void;
   onUnpredictableCycleChange: (value: boolean) => void;
+  onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
+  rowSymptomDrafts: Record<string, SymptomDraftValues>;
+  rowSymptomErrorMessages: Record<string, string>;
+  rowSymptomStatusMessages: Record<string, string>;
   showDatePicker: boolean;
   state: LoadedSettingsState;
   trackingStatusMessage: string;
@@ -50,6 +71,9 @@ type SettingsFlowScreenProps = {
 };
 
 export function SettingsFlowScreen({
+  createSymptomDraft,
+  createSymptomErrorMessage,
+  createSymptomStatusMessage,
   cycleGuidance,
   cycleStatusMessage,
   cycleErrorMessage,
@@ -57,21 +81,30 @@ export function SettingsFlowScreen({
   isSavingTracking,
   now,
   onAgeGroupSelect,
+  onArchiveSymptom,
   onAutoPeriodFillChange,
   onClearLastPeriodStart,
+  onCreateSymptom,
+  onCreateSymptomDraftChange,
   onCycleLengthChange,
   onDatePickerChange,
   onDatePickerToggle,
   onHideSexChipChange,
   onIrregularCycleChange,
   onPeriodLengthChange,
+  onRestoreSymptom,
   onSaveCycleSettings,
   onSaveTrackingSettings,
+  onSymptomDraftChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
   onTrackCervicalMucusChange,
   onUnpredictableCycleChange,
+  onUpdateSymptom,
   onUsageGoalSelect,
+  rowSymptomDrafts,
+  rowSymptomErrorMessages,
+  rowSymptomStatusMessages,
   showDatePicker,
   state,
   trackingStatusMessage,
@@ -84,6 +117,7 @@ export function SettingsFlowScreen({
   const displayedDate = selectedDate
     ? formatLongDate(selectedDate)
     : viewData.common.changeDate;
+  const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
 
   return (
     <ScreenScaffold
@@ -237,6 +271,23 @@ export function SettingsFlowScreen({
           testID="settings-save-cycle-button"
         />
       </FeatureCard>
+
+      <SettingsSymptomsSection
+        createDraft={createSymptomDraft}
+        createErrorMessage={createSymptomErrorMessage}
+        createStatusMessage={createSymptomStatusMessage}
+        onArchive={onArchiveSymptom}
+        onCreate={onCreateSymptom}
+        onCreateDraftChange={onCreateSymptomDraftChange}
+        onRestore={onRestoreSymptom}
+        onRowDraftChange={onSymptomDraftChange}
+        onUpdate={onUpdateSymptom}
+        rowDrafts={rowSymptomDrafts}
+        rowErrorMessages={rowSymptomErrorMessages}
+        rowStatusMessages={rowSymptomStatusMessages}
+        viewData={viewData.symptoms}
+        visibleState={symptomsState}
+      />
 
       <FeatureCard
         title={viewData.tracking.title}

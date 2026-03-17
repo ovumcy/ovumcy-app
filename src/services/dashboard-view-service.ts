@@ -10,6 +10,7 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
+import { filterKnownSymptomIDs } from "./symptom-policy";
 import {
   formatLocalDate,
   parseLocalDate,
@@ -48,25 +49,36 @@ export async function loadDashboardScreenState(
   const rangeStart = formatLocalDate(
     new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()),
   );
-  const [profile, todayEntry, historyRecords] = await Promise.all([
+  const [profile, todayEntry, historyRecords, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(today),
     storage.listDayLogRecordsInRange(rangeStart, today),
+    storage.listSymptomRecords(),
   ]);
+  const filteredTodayEntry: DayLogRecord = {
+    ...todayEntry,
+    symptomIDs: filterKnownSymptomIDs(symptomRecords, todayEntry.symptomIDs),
+  };
   const history = buildCycleHistorySummary(profile, historyRecords, now);
 
   return {
     profile,
-    todayEntry,
+    todayEntry: filteredTodayEntry,
     viewData: buildDashboardViewData(
       profile,
-      todayEntry,
+      filteredTodayEntry,
       historyRecords,
       history,
       now,
       locale,
     ),
-    editorViewData: buildDayLogEditorViewData(profile, today, locale),
+    editorViewData: buildDayLogEditorViewData(
+      profile,
+      today,
+      symptomRecords,
+      filteredTodayEntry.symptomIDs,
+      locale,
+    ),
   };
 }
 

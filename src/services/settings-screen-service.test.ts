@@ -1,70 +1,42 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { createDefaultSymptomRecords } from "../models/symptom";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
+  archiveSettingsSymptom,
+  createSettingsSymptom,
   loadSettingsScreenState,
+  restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
+  updateSettingsSymptom,
 } from "./settings-screen-service";
-
-function createStorageMock(overrides?: Partial<LocalAppStorage>): LocalAppStorage {
-  return {
-    readBootstrapState: jest.fn().mockResolvedValue({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-    }),
-    writeBootstrapState: jest.fn().mockResolvedValue(undefined),
-    readProfileRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-    }),
-    writeProfileRecord: jest.fn().mockResolvedValue(undefined),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
-    readDayLogRecord: jest
-      .fn()
-      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
-    writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
-    ...overrides,
-  };
-}
+import { createLoadedSettingsState } from "./settings-view-service";
 
 describe("settings-screen-service", () => {
   it("loads canonical profile state and resolves the default age-group selection like the web app", async () => {
     const storage = createStorageMock();
 
-    await expect(loadSettingsScreenState(storage)).resolves.toEqual({
-      profile: expect.objectContaining({
-        ageGroup: "",
-        trackBBT: false,
+    await expect(loadSettingsScreenState(storage)).resolves.toEqual(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          ageGroup: "",
+          trackBBT: false,
+        }),
+        cycleValues: expect.objectContaining({
+          ageGroup: "age_20_35",
+          autoPeriodFill: true,
+        }),
+        trackingValues: expect.objectContaining({
+          temperatureUnit: "c",
+        }),
+        symptomRecords: expect.arrayContaining([
+          expect.objectContaining({
+            id: "cramps",
+            isDefault: true,
+          }),
+        ]),
       }),
-      cycleValues: expect.objectContaining({
-        ageGroup: "age_20_35",
-        autoPeriodFill: true,
-      }),
-      trackingValues: expect.objectContaining({
-        temperatureUnit: "c",
-      }),
-    });
+    );
   });
 
   it("validates and persists cycle settings through the canonical profile repository", async () => {
@@ -72,7 +44,10 @@ describe("settings-screen-service", () => {
 
     const result = await saveCycleSettings(
       storage,
-      await storage.readProfileRecord(),
+      createLoadedSettingsState(
+        await storage.readProfileRecord(),
+        createDefaultSymptomRecords(),
+      ),
       {
         lastPeriodStart: "2026-03-16",
         cycleLength: 21,
@@ -115,7 +90,10 @@ describe("settings-screen-service", () => {
     await expect(
       saveCycleSettings(
         storage,
-        await storage.readProfileRecord(),
+        createLoadedSettingsState(
+          await storage.readProfileRecord(),
+          createDefaultSymptomRecords(),
+        ),
         {
           lastPeriodStart: "2025-12-31",
           cycleLength: 28,
@@ -139,7 +117,10 @@ describe("settings-screen-service", () => {
 
     const result = await saveTrackingSettings(
       storage,
-      await storage.readProfileRecord(),
+      createLoadedSettingsState(
+        await storage.readProfileRecord(),
+        createDefaultSymptomRecords(),
+      ),
       {
         trackBBT: true,
         temperatureUnit: "F" as "f",
@@ -165,4 +146,137 @@ describe("settings-screen-service", () => {
       }),
     );
   });
+
+  it("creates, updates, archives, and restores custom symptoms through the canonical repository", async () => {
+    const storage = createStorageMock();
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSymptomRecords(),
+    );
+
+    const created = await createSettingsSymptom(storage, initialState, {
+      label: "Jaw pain",
+      icon: "🔥",
+    });
+    expect(created).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        symptomRecords: expect.arrayContaining([
+          expect.objectContaining({
+            label: "Jaw pain",
+            icon: "🔥",
+            isArchived: false,
+          }),
+        ]),
+      }),
+    });
+    expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: "Jaw pain",
+        icon: "🔥",
+        isArchived: false,
+      }),
+    );
+    if (!created.ok) {
+      throw new Error("Expected a created settings symptom");
+    }
+
+    const createdRecord = created.state.symptomRecords.find(
+      (record) => record.label === "Jaw pain",
+    );
+    if (!createdRecord) {
+      throw new Error("Expected the new custom symptom to exist");
+    }
+
+    const updated = await updateSettingsSymptom(
+      storage,
+      created.state,
+      createdRecord.id,
+      {
+        label: "Jaw tension",
+        icon: "⚡",
+      },
+    );
+    expect(updated).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        symptomRecords: expect.arrayContaining([
+          expect.objectContaining({
+            id: createdRecord.id,
+            label: "Jaw tension",
+            icon: "⚡",
+          }),
+        ]),
+      }),
+    });
+    if (!updated.ok) {
+      throw new Error("Expected an updated settings symptom");
+    }
+
+    const archived = await archiveSettingsSymptom(
+      storage,
+      updated.state,
+      createdRecord.id,
+    );
+    expect(archived).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        symptomRecords: expect.arrayContaining([
+          expect.objectContaining({
+            id: createdRecord.id,
+            isArchived: true,
+          }),
+        ]),
+      }),
+    });
+    if (!archived.ok) {
+      throw new Error("Expected an archived settings symptom");
+    }
+
+    await expect(
+      restoreSettingsSymptom(storage, archived.state, createdRecord.id),
+    ).resolves.toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        symptomRecords: expect.arrayContaining([
+          expect.objectContaining({
+            id: createdRecord.id,
+            isArchived: false,
+          }),
+        ]),
+      }),
+    });
+  });
 });
+
+function createStorageMock(overrides = {}) {
+  return createLocalAppStorageMock({
+    readProfileRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    }),
+    readOnboardingRecord: jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+    }),
+    readDayLogRecord: jest
+      .fn()
+      .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
+    ...overrides,
+  });
+}

@@ -7,11 +7,14 @@ import type {
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
+import type { SymptomRecord } from "../models/symptom";
+import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
 import {
   buildCycleGuidanceState,
   getSettingsCycleStartDateBounds,
   resolveDisplayedAgeGroup,
 } from "./profile-settings-policy";
+import { splitCustomSymptoms } from "./symptom-policy";
 
 export type SettingsViewData = {
   eyebrow: string;
@@ -78,6 +81,35 @@ export type SettingsViewData = {
     };
     saveLabel: string;
   };
+  symptoms: {
+    title: string;
+    subtitle: string;
+    activeHeading: string;
+    activeHint: string;
+    activeItem: string;
+    archivedHeading: string;
+    archivedHint: string;
+    archivedItem: string;
+    archivedBadge: string;
+    empty: string;
+    emptyActive: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    nameHint: string;
+    iconLabel: string;
+    addLabel: string;
+    saveLabel: string;
+    hideLabel: string;
+    restoreLabel: string;
+    iconOptions: { value: string; label: string }[];
+    status: {
+      created: string;
+      updated: string;
+      archived: string;
+      restored: string;
+    };
+    errors: typeof settingsCopy.symptoms.errors;
+  };
   status: typeof settingsCopy.status;
 };
 
@@ -85,6 +117,7 @@ export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
   trackingValues: TrackingSettingsValues;
+  symptomRecords: SymptomRecord[];
 };
 
 export function buildSettingsViewData(now: Date): SettingsViewData {
@@ -164,11 +197,46 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       },
       saveLabel: settingsCopy.tracking.save,
     },
+    symptoms: {
+      title: settingsCopy.symptoms.title,
+      subtitle: settingsCopy.symptoms.subtitle,
+      activeHeading: settingsCopy.symptoms.activeHeading,
+      activeHint: settingsCopy.symptoms.activeHint,
+      activeItem: settingsCopy.symptoms.activeItem,
+      archivedHeading: settingsCopy.symptoms.archivedHeading,
+      archivedHint: settingsCopy.symptoms.archivedHint,
+      archivedItem: settingsCopy.symptoms.archivedItem,
+      archivedBadge: settingsCopy.symptoms.archivedBadge,
+      empty: settingsCopy.symptoms.empty,
+      emptyActive: settingsCopy.symptoms.emptyActive,
+      nameLabel: settingsCopy.symptoms.name,
+      namePlaceholder: settingsCopy.symptoms.namePlaceholder,
+      nameHint: settingsCopy.symptoms.nameHint,
+      iconLabel: settingsCopy.symptoms.icon,
+      addLabel: settingsCopy.symptoms.add,
+      saveLabel: settingsCopy.symptoms.save,
+      hideLabel: settingsCopy.symptoms.hide,
+      restoreLabel: settingsCopy.symptoms.restore,
+      iconOptions: SYMPTOM_ICON_CATALOG.map((value) => ({
+        value,
+        label: value,
+      })),
+      status: {
+        created: settingsCopy.symptoms.created,
+        updated: settingsCopy.symptoms.updated,
+        archived: settingsCopy.symptoms.archived,
+        restored: settingsCopy.symptoms.restored,
+      },
+      errors: settingsCopy.symptoms.errors,
+    },
     status: settingsCopy.status,
   };
 }
 
-export function createLoadedSettingsState(profile: ProfileRecord): LoadedSettingsState {
+export function createLoadedSettingsState(
+  profile: ProfileRecord,
+  symptomRecords: SymptomRecord[],
+): LoadedSettingsState {
   return {
     profile,
     cycleValues: {
@@ -187,7 +255,12 @@ export function createLoadedSettingsState(profile: ProfileRecord): LoadedSetting
       trackCervicalMucus: profile.trackCervicalMucus,
       hideSexChip: profile.hideSexChip,
     },
+    symptomRecords,
   };
+}
+
+export function buildSettingsSymptomsState(symptomRecords: readonly SymptomRecord[]) {
+  return splitCustomSymptoms(symptomRecords);
 }
 
 export function resolveSettingsAgeGroupSelection(

@@ -11,6 +11,7 @@ import {
   type DayLogEditorViewData,
 } from "./day-log-editor-service";
 import { formatLocalDate } from "./profile-settings-policy";
+import { filterKnownSymptomIDs } from "./symptom-policy";
 
 export type CalendarDayCellViewData = {
   date: string;
@@ -70,16 +71,27 @@ export async function loadCalendarScreenState(
   const monthRangeStart = formatLocalDate(startOfMonth(monthStart));
   const monthRangeEnd = formatLocalDate(endOfMonth(monthStart));
 
-  const [profile, logs, selectedRecord] = await Promise.all([
+  const [profile, logs, selectedRecord, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
     storage.listDayLogRecordsInRange(monthRangeStart, monthRangeEnd),
     storage.readDayLogRecord(activeDate),
+    storage.listSymptomRecords(),
   ]);
+  const filteredSelectedRecord: DayLogRecord = {
+    ...selectedRecord,
+    symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
+  };
 
   return {
     profile,
-    selectedRecord,
-    editorViewData: buildDayLogEditorViewData(profile, activeDate, locale),
+    selectedRecord: filteredSelectedRecord,
+    editorViewData: buildDayLogEditorViewData(
+      profile,
+      activeDate,
+      symptomRecords,
+      filteredSelectedRecord.symptomIDs,
+      locale,
+    ),
     viewData: buildCalendarViewData(
       profile,
       logs,

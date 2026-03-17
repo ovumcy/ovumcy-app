@@ -4,16 +4,15 @@ import {
   DAY_CYCLE_FACTOR_KEYS,
   DAY_FLOW_VALUES,
   DAY_SEX_ACTIVITY_VALUES,
-  DAY_SYMPTOM_DEFINITIONS,
   MAX_DAY_NOTES_LENGTH,
   type DayCervicalMucus,
   type DayCycleFactorKey,
   type DayFlow,
   type DayLogRecord,
   type DaySexActivity,
-  type DaySymptomID,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { normalizeDayLogSymptomIDs } from "./symptom-policy";
 
 const MIN_DAY_BBT_CELSIUS = 34;
 const MAX_DAY_BBT_CELSIUS = 43;
@@ -23,10 +22,6 @@ export type DayLogVisibility = {
   showBBT: boolean;
   showCervicalMucus: boolean;
 };
-
-const supportedSymptomIDs = new Set<DaySymptomID>(
-  DAY_SYMPTOM_DEFINITIONS.map((definition) => definition.id),
-);
 
 export function buildDayLogVisibility(profile: ProfileRecord): DayLogVisibility {
   return {
@@ -52,7 +47,7 @@ export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
     bbt: normalizeDayBBT(record.bbt),
     cervicalMucus: normalizeDayCervicalMucus(record.cervicalMucus),
     cycleFactorKeys: normalizeDayCycleFactorKeys(record.cycleFactorKeys),
-    symptomIDs: normalizeDaySymptomIDs(record.symptomIDs),
+    symptomIDs: normalizeDayLogSymptomIDs(record.symptomIDs),
     notes: normalizedNotes,
   };
 }
@@ -123,18 +118,4 @@ export function normalizeDayCycleFactorKeys(
   }
 
   return DAY_CYCLE_FACTOR_KEYS.filter((value) => selected.has(value));
-}
-
-export function normalizeDaySymptomIDs(values: readonly string[]): DaySymptomID[] {
-  const selected = new Set<DaySymptomID>();
-
-  for (const value of values) {
-    if (supportedSymptomIDs.has(value as DaySymptomID)) {
-      selected.add(value as DaySymptomID);
-    }
-  }
-
-  return DAY_SYMPTOM_DEFINITIONS.map((definition) => definition.id).filter((id) =>
-    selected.has(id),
-  );
 }
