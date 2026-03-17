@@ -1,13 +1,32 @@
 import { expect, test } from "@playwright/test";
 
-test("web onboarding reaches dashboard and the local journal persists into calendar", async ({ page }) => {
+function formatLocalDate(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function addDays(value: Date, days: number): Date {
+  const next = new Date(value);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+test("web onboarding reaches dashboard and stats unlock after local cycle history is logged", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -56));
+  const previousCycleStart = formatLocalDate(addDays(today, -28));
+
   await page.goto("/");
 
   await expect(page.getByText("When did your last period start?")).toBeVisible();
   await expect(page.getByText("Step 1 of 2")).toBeVisible();
   await expect(page.getByText("dd.mm.yyyy")).toBeVisible();
 
-  await page.locator('[data-testid^="onboarding-day-option-"]').first().click();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByText("Next").click();
 
   await expect(page.getByText("Set up cycle parameters")).toBeVisible();
@@ -18,16 +37,34 @@ test("web onboarding reaches dashboard and the local journal persists into calen
   await expect(page.getByText("Cycle snapshot")).toBeVisible();
   await expect(page.getByTestId("day-log-save-button")).toBeVisible();
 
-  await page.getByTestId("day-log-period-toggle").click();
-  await page.getByTestId("day-log-save-button").click();
-
-  await expect(page.getByText("Saved locally.")).toBeVisible();
-
   await page.getByText("Calendar").click();
 
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(page.getByText("Day details")).toBeVisible();
-  await expect(page.getByTestId("day-log-delete-button").first()).toBeVisible();
+  if (previousCycleStart.slice(0, 7) !== formatLocalDate(today).slice(0, 7)) {
+    await page.getByTestId("calendar-prev-button").click();
+  }
+
+  await page.getByTestId(`calendar-day-${previousCycleStart}`).click();
+  await page.getByTestId("day-log-period-toggle").last().click();
+  await page.getByTestId("day-log-save-button").last().click();
+
+  await expect(page.getByText("Saved locally.")).toBeVisible();
+
+  await page.getByTestId("calendar-today-button").click();
+  await page.getByTestId("day-log-period-toggle").last().click();
+  await page.getByTestId("day-log-save-button").last().click();
+
+  await expect(page.getByText("Saved locally.")).toBeVisible();
+  await expect(
+    page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
+  ).toBeVisible();
+
+  await page.getByText("Insights").click();
+
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(page.getByText("Prediction reliability")).toBeVisible();
+  await expect(page.getByText("Last cycle length")).toBeVisible();
 
   await page.reload();
 

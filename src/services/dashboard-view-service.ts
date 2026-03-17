@@ -7,7 +7,10 @@ import {
   type DayLogEditorViewData,
 } from "./day-log-editor-service";
 import {
-  addDays,
+  buildCycleHistorySummary,
+  buildCurrentCycleProjection,
+} from "./cycle-history-service";
+import {
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -42,15 +45,27 @@ export async function loadDashboardScreenState(
   locale = "en",
 ): Promise<LoadedDashboardState> {
   const today = formatLocalDate(now);
-  const [profile, todayEntry] = await Promise.all([
+  const rangeStart = formatLocalDate(
+    new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()),
+  );
+  const [profile, todayEntry, historyRecords] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(today),
+    storage.listDayLogRecordsInRange(rangeStart, today),
   ]);
+  const history = buildCycleHistorySummary(profile, historyRecords, now);
 
   return {
     profile,
     todayEntry,
-    viewData: buildDashboardViewData(profile, todayEntry, now, locale),
+    viewData: buildDashboardViewData(
+      profile,
+      todayEntry,
+      historyRecords,
+      history,
+      now,
+      locale,
+    ),
     editorViewData: buildDayLogEditorViewData(profile, today, locale),
   };
 }
@@ -58,11 +73,18 @@ export async function loadDashboardScreenState(
 export function buildDashboardViewData(
   profile: ProfileRecord,
   todayEntry: DayLogRecord,
+  historyRecords: DayLogRecord[],
+  history: ReturnType<typeof buildCycleHistorySummary>,
   now: Date,
   locale = "en",
 ): DashboardViewData {
-  const today = atLocalDay(now);
-  const projectedCycle = projectCurrentCycle(profile, today);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const projectedCycle = buildCurrentCycleProjection(
+    profile,
+    history,
+    historyRecords,
+    now,
+  );
   const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
@@ -112,7 +134,7 @@ export function buildDashboardViewData(
 
 function buildStatusItems(
   profile: ProfileRecord,
-  summary: ProjectedCycleSummary,
+  summary: ReturnType<typeof buildCurrentCycleProjection>,
   locale: string,
 ): string[] {
   if (profile.unpredictableCycle) {
@@ -158,7 +180,7 @@ function buildStatusItems(
 
 function buildPredictionExplanation(
   profile: ProfileRecord,
-  summary: ProjectedCycleSummary,
+  summary: ReturnType<typeof buildCurrentCycleProjection>,
 ): string {
   if (profile.unpredictableCycle) {
     return dashboardCopy.factsOnlyHint;
@@ -206,54 +228,6 @@ function buildJournalDescription(
   return `Visible today: ${sections.join(", ")}.`;
 }
 
-type ProjectedCycleSummary = {
-  currentCycleDay: number | null;
-  nextPeriodDate: string | null;
-  ovulationDate: string | null;
-};
-
-function projectCurrentCycle(
-  profile: ProfileRecord,
-  today: Date,
-): ProjectedCycleSummary {
-  if (!profile.lastPeriodStart) {
-    return {
-      currentCycleDay: null,
-      nextPeriodDate: null,
-      ovulationDate: null,
-    };
-  }
-
-  const lastPeriodStart = parseLocalDate(profile.lastPeriodStart);
-  if (!lastPeriodStart) {
-    return {
-      currentCycleDay: null,
-      nextPeriodDate: null,
-      ovulationDate: null,
-    };
-  }
-
-  const cycleLength = Math.max(1, profile.cycleLength);
-  let cycleStart = atLocalDay(lastPeriodStart);
-
-  while (addDays(cycleStart, cycleLength) <= today) {
-    cycleStart = addDays(cycleStart, cycleLength);
-  }
-
-  const currentCycleDay =
-    Math.floor((today.getTime() - cycleStart.getTime()) / 86400000) + 1;
-  const nextPeriodDate = formatLocalDate(addDays(cycleStart, cycleLength));
-  const ovulationOffset = Math.max(cycleLength - 14, 1);
-
-  return {
-    currentCycleDay,
-    nextPeriodDate,
-    ovulationDate: profile.irregularCycle
-      ? null
-      : formatLocalDate(addDays(cycleStart, ovulationOffset)),
-  };
-}
-
 function formatDisplayDate(value: string, locale: string): string {
   const parsed = parseLocalDate(value);
   if (!parsed) {
@@ -264,8 +238,4 @@ function formatDisplayDate(value: string, locale: string): string {
     day: "numeric",
     month: "short",
   }).format(parsed);
-}
-
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }

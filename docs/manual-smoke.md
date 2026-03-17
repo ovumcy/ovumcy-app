@@ -27,8 +27,9 @@ Run on an Android emulator or physical device.
    - `Track BBT` shows the BBT section with the selected temperature unit
    - `Track cervical mucus` shows the cervical-mucus section
 12. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
-13. Bottom tabs render and switch without broken icons or duplicate labels.
-14. No account, sync, or cloud requirement is shown for core local use.
+13. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
+14. Bottom tabs render and switch without broken icons or duplicate labels.
+15. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -49,8 +50,9 @@ Run on an iOS simulator or physical device.
    - `Track BBT` shows the BBT section with the selected temperature unit
    - `Track cervical mucus` shows the cervical-mucus section
 12. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
-13. Bottom tabs render and switch without broken icons or duplicate labels.
-14. No account, sync, or cloud requirement is shown for core local use.
+13. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
+14. Bottom tabs render and switch without broken icons or duplicate labels.
+15. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -63,6 +65,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - dashboard renders cycle snapshot and the today-journal editor section
    - saving a day entry on the dashboard updates local state without a page error
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
+   - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles
    - enabling `Unpredictable cycle` changes dashboard to facts-only copy
