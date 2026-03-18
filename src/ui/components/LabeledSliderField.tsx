@@ -5,13 +5,14 @@ import { colors, spacing } from "../theme/tokens";
 
 type LabeledSliderFieldProps = {
   label: string;
-  hint: string;
+  hint?: string;
   minimumValue: number;
   maximumValue: number;
   value: number;
   onValueChange: (value: number) => void;
   testID: string;
   valueSuffix?: string;
+  showRange?: boolean;
 };
 
 export function LabeledSliderField({
@@ -23,6 +24,7 @@ export function LabeledSliderField({
   onValueChange,
   testID,
   valueSuffix = "",
+  showRange = false,
 }: LabeledSliderFieldProps) {
   return (
     <View style={styles.group}>
@@ -46,7 +48,19 @@ export function LabeledSliderField({
         thumbTintColor={colors.accentStrong}
         value={value}
       />
-      <Text style={styles.hint}>{hint}</Text>
+      {showRange ? (
+        <View style={styles.rangeRow}>
+          <Text style={styles.rangeLabel}>
+            {minimumValue}
+            {valueSuffix}
+          </Text>
+          <Text style={styles.rangeLabel}>
+            {maximumValue}
+            {valueSuffix}
+          </Text>
+        </View>
+      ) : null}
+      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -74,9 +88,18 @@ const styles = StyleSheet.create({
     height: 32,
     width: "100%",
   },
+  rangeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  rangeLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   hint: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 19,
   },
 });

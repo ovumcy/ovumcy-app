@@ -1,9 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { appInfo } from "../../i18n/app-copy";
 import type { DayLogRecord } from "../../models/day-log";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
 import type { DashboardViewData } from "../../services/dashboard-view-service";
+import { BrandLockup } from "../components/BrandLockup";
 import { DayLogEditorCard } from "../components/DayLogEditorCard";
 import { colors, spacing } from "../theme/tokens";
 
@@ -16,6 +18,7 @@ type DashboardOverviewScreenProps = {
   onSave: () => void | Promise<void>;
   record: DayLogRecord;
   statusMessage: string;
+  statusTone?: "success" | "error" | undefined;
   viewData: DashboardViewData;
 };
 
@@ -28,6 +31,7 @@ export function DashboardOverviewScreen({
   onSave,
   record,
   statusMessage,
+  statusTone,
   viewData,
 }: DashboardOverviewScreenProps) {
   const insets = useSafeAreaInsets();
@@ -42,6 +46,8 @@ export function DashboardOverviewScreen({
       style={styles.screen}
     >
       <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+        <BrandLockup subtitle={appInfo.tagline} />
+
         <View style={styles.statusLine}>
           {viewData.statusItems.map((item, index) => (
             <View key={item} style={styles.statusItemRow}>
@@ -51,7 +57,9 @@ export function DashboardOverviewScreen({
           ))}
         </View>
 
-        <Text style={styles.helperText}>{viewData.predictionExplanation}</Text>
+        {viewData.predictionExplanation ? (
+          <Text style={styles.helperText}>{viewData.predictionExplanation}</Text>
+        ) : null}
 
         <DayLogEditorCard
           entryExists={entryExists}
@@ -61,6 +69,7 @@ export function DashboardOverviewScreen({
           onSave={onSave}
           record={record}
           statusMessage={statusMessage}
+          statusTone={statusTone}
           viewData={{
             ...editorViewData,
             title: viewData.journal.title,

@@ -162,11 +162,11 @@ function buildPredictionExplanation(
   }
 
   if (!profile.lastPeriodStart) {
-    return dashboardCopy.nextPeriodPrompt;
+    return "";
   }
 
   if (profile.irregularCycle) {
-    return dashboardCopy.nextPeriodNeedsCycles;
+    return "";
   }
 
   if (!summary.ovulationDate) {

@@ -23,6 +23,11 @@ type CalendarScreenProps = {
   now?: Date;
 };
 
+type EditorStatusState = {
+  message: string;
+  tone: "success" | "error";
+} | null;
+
 export function CalendarScreen({
   storage = appStorage,
   now,
@@ -35,7 +40,7 @@ export function CalendarScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedCalendarState | null>(null);
-  const [statusMessage, setStatusMessage] = useState("");
+  const [status, setStatus] = useState<EditorStatusState>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -85,17 +90,23 @@ export function CalendarScreen({
       return;
     }
     setIsSaving(true);
-    setStatusMessage("");
+    setStatus(null);
 
     const result = await saveDayLogEditorRecord(storage, state.selectedRecord);
     if (!result.ok) {
-      setStatusMessage(state.editorViewData.actions.saveFailedLabel);
+      setStatus({
+        message: state.editorViewData.actions.saveFailedLabel,
+        tone: "error",
+      });
       setIsSaving(false);
       return;
     }
 
     await refreshForActiveSelection();
-    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setStatus({
+      message: state.editorViewData.actions.savedLabel,
+      tone: "success",
+    });
     setIsSaving(false);
   }
 
@@ -104,17 +115,23 @@ export function CalendarScreen({
       return;
     }
     setIsSaving(true);
-    setStatusMessage("");
+    setStatus(null);
 
     const success = await deleteDayLogEditorRecord(storage, state.selectedRecord.date);
     if (!success) {
-      setStatusMessage(state.editorViewData.actions.deleteFailedLabel);
+      setStatus({
+        message: state.editorViewData.actions.deleteFailedLabel,
+        tone: "error",
+      });
       setIsSaving(false);
       return;
     }
 
     await refreshForActiveSelection();
-    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setStatus({
+      message: state.editorViewData.actions.deletedLabel,
+      tone: "success",
+    });
     setIsSaving(false);
   }
 
@@ -125,11 +142,11 @@ export function CalendarScreen({
       isSaving={isSaving}
       onDelete={handleDelete}
       onNextMonth={() => {
-        setStatusMessage("");
+        setStatus(null);
         setMonthValue(state.viewData.nextMonthValue);
       }}
       onPatch={(updates) => {
-        setStatusMessage("");
+        setStatus(null);
         setState((current) =>
           current
             ? {
@@ -143,22 +160,23 @@ export function CalendarScreen({
         );
       }}
       onPrevMonth={() => {
-        setStatusMessage("");
+        setStatus(null);
         setMonthValue(state.viewData.prevMonthValue);
       }}
       onSave={handleSave}
       onSelectDay={(date) => {
-        setStatusMessage("");
+        setStatus(null);
         setSelectedDate(date);
       }}
       onToday={() => {
         const today = formatLocalDate(effectiveNow);
-        setStatusMessage("");
+        setStatus(null);
         setMonthValue(today.slice(0, 7));
         setSelectedDate(today);
       }}
       record={state.selectedRecord ?? createEmptyDayLogRecord(selectedDate)}
-      statusMessage={statusMessage}
+      statusMessage={status?.message ?? ""}
+      statusTone={status?.tone}
       viewData={state.viewData}
     />
   );

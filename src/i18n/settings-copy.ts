@@ -4,7 +4,7 @@ export const settingsCopy = {
     "Manage cycle parameters, tracking fields, export actions, and local profile behavior.",
   common: {
     daysShort: "d",
-    changeDate: "Change date",
+    changeDate: "Open calendar",
     clearDate: "Clear date",
     saving: "Saving...",
   },

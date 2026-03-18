@@ -23,7 +23,7 @@ export const onboardingCopy = {
     today: "Today",
     yesterday: "Yesterday",
     twoDaysAgo: "2 days ago",
-    changeDate: "Choose another date",
+    changeDate: "Open calendar",
     datePlaceholder: "dd.mm.yyyy",
     selectedDate: "Selected date",
   },

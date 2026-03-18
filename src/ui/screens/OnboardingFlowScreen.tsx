@@ -30,7 +30,9 @@ import type {
 } from "../../models/onboarding";
 import { onboardingCopy } from "../../i18n/app-copy";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
+import { ChoiceGroup } from "../components/ChoiceGroup";
 import { LabeledSliderField } from "../components/LabeledSliderField";
+import { StatusBanner } from "../components/StatusBanner";
 import { colors, spacing } from "../theme/tokens";
 
 export type OnboardingFlowScreenProps = {
@@ -257,6 +259,11 @@ function StepOnePanel({
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{viewData.stepOne.fieldLabel}</Text>
         <View style={styles.dateFieldShell}>
+          {selectedDateValue ? (
+            <Text style={styles.selectedDateLabel}>
+              {viewData.stepOne.selectedDateLabel}
+            </Text>
+          ) : null}
           <Text
             style={[
               styles.dateFieldValue,
@@ -301,7 +308,9 @@ function StepOnePanel({
         ))}
       </ScrollView>
 
-      {stepOneError ? <Text style={styles.errorText}>{stepOneError}</Text> : null}
+      {stepOneError ? (
+        <StatusBanner message={stepOneError} tone="error" testID="onboarding-step-one-error" />
+      ) : null}
 
       <PrimaryButton
         disabled={isSaving}
@@ -345,22 +354,22 @@ function StepTwoPanel({
   return (
     <>
       <LabeledSliderField
-        hint={viewData.stepTwo.cycleLengthHint}
         label={viewData.stepTwo.cycleLengthLabel}
         maximumValue={90}
         minimumValue={15}
         onValueChange={onCycleLengthChange}
+        showRange
         testID="onboarding-cycle-length-slider"
         value={stepTwoValues.cycleLength}
         valueSuffix=" days"
       />
 
       <LabeledSliderField
-        hint={viewData.stepTwo.periodLengthHint}
         label={viewData.stepTwo.periodLengthLabel}
         maximumValue={14}
         minimumValue={1}
         onValueChange={onPeriodLengthChange}
+        showRange
         testID="onboarding-period-length-slider"
         value={stepTwoValues.periodLength}
         valueSuffix=" days"
@@ -376,8 +385,10 @@ function StepTwoPanel({
         {guidance.cycleShort ? (
           <Text style={styles.infoText}>{viewData.stepTwo.messages.infoCycleShort}</Text>
         ) : null}
-        {stepTwoError ? <Text style={styles.errorText}>{stepTwoError}</Text> : null}
       </View>
+      {stepTwoError ? (
+        <StatusBanner message={stepTwoError} tone="error" testID="onboarding-step-two-error" />
+      ) : null}
 
       <BinaryToggleCard
         description={viewData.stepTwo.autoPeriodFillHint}
@@ -401,22 +412,23 @@ function StepTwoPanel({
 
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{viewData.stepTwo.ageGroupLabel}</Text>
-        <Text style={styles.helperText}>{viewData.stepTwo.ageGroupHint}</Text>
         <ChoiceGroup
-          compact
+          layout="stack"
           onSelect={onAgeGroupSelect}
           options={viewData.stepTwo.ageOptions}
           selectedValue={stepTwoValues.ageGroup}
+          testIDPrefix="onboarding-age-group"
         />
       </View>
 
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{viewData.stepTwo.usageGoalLabel}</Text>
-        <Text style={styles.helperText}>{viewData.stepTwo.usageGoalHint}</Text>
         <ChoiceGroup
+          layout="stack"
           onSelect={onUsageGoalSelect}
           options={viewData.stepTwo.usageGoalOptions}
           selectedValue={stepTwoValues.usageGoal}
+          testIDPrefix="onboarding-usage-goal"
         />
       </View>
 
@@ -482,45 +494,6 @@ function DayOptionButton({
         </Text>
       ) : null}
     </Pressable>
-  );
-}
-
-function ChoiceGroup<T extends string>({
-  options,
-  selectedValue,
-  onSelect,
-  compact = false,
-}: {
-  options: { value: T; label: string }[];
-  selectedValue: T;
-  onSelect: (value: T) => void;
-  compact?: boolean;
-}) {
-  return (
-    <View style={[styles.choiceGroup, compact ? styles.choiceGroupCompact : null]}>
-      {options.map((option) => (
-        <Pressable
-          key={option.value}
-          accessibilityRole="radio"
-          accessibilityState={{ checked: selectedValue === option.value }}
-          onPress={() => onSelect(option.value)}
-          style={[
-            styles.choiceTile,
-            compact ? styles.choiceTileCompact : null,
-            selectedValue === option.value ? styles.choiceTileActive : null,
-          ]}
-        >
-          <Text
-            style={[
-              styles.choiceTileLabel,
-              selectedValue === option.value ? styles.choiceTileLabelActive : null,
-            ]}
-          >
-            {option.label}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
   );
 }
 
@@ -604,10 +577,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 18,
     borderWidth: 1,
-    gap: 10,
+    gap: 8,
     maxWidth: 840,
     overflow: "hidden",
-    padding: 18,
+    padding: 16,
     width: "100%",
   },
   loadingBlock: {
@@ -615,10 +588,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
   },
   panel: {
-    gap: 10,
+    gap: 8,
   },
   progressBlock: {
-    gap: 8,
+    gap: 6,
   },
   kicker: {
     color: colors.accent,
@@ -651,13 +624,13 @@ const styles = StyleSheet.create({
   },
   heroMuted: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 20,
   },
   helperText: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 19,
   },
   formGroup: {
     gap: spacing.sm,
@@ -667,9 +640,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    gap: 6,
+    gap: 4,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
+  },
+  selectedDateLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
   },
   dateFieldValue: {
     color: colors.text,
@@ -695,7 +675,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   dayOptionScroll: {
-    maxHeight: 276,
+    maxHeight: 232,
   },
   dayOptionButton: {
     backgroundColor: colors.surface,
@@ -703,9 +683,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 40,
     paddingHorizontal: 8,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   dayOptionButtonThreeColumns: {
     flexBasis: "31.8%",
@@ -717,7 +697,7 @@ const styles = StyleSheet.create({
     flexBasis: "15.8%",
   },
   dayOptionButtonToday: {
-    minHeight: 46,
+    minHeight: 42,
   },
   dayOptionButtonActive: {
     backgroundColor: colors.accentSoft,
@@ -746,48 +726,12 @@ const styles = StyleSheet.create({
   },
   infoText: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  errorText: {
-    color: "#b42318",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  choiceGroup: {
-    gap: spacing.sm,
-  },
-  choiceGroupCompact: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  choiceTile: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  choiceTileCompact: {
-    flexBasis: "31%",
-    flexGrow: 1,
-  },
-  choiceTileActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentStrong,
-  },
-  choiceTileLabel: {
-    color: colors.text,
     fontSize: 13,
-    fontWeight: "600",
-  },
-  choiceTileLabelActive: {
-    color: colors.accentStrong,
+    lineHeight: 19,
   },
   buttonRow: {
     flexDirection: "row",
-    gap: spacing.xs,
+    gap: 10,
   },
   primaryButton: {
     alignItems: "center",
@@ -796,9 +740,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    minHeight: 44,
+    minHeight: 42,
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 9,
     shadowColor: colors.accentStrong,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
@@ -816,9 +760,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    minHeight: 44,
+    minHeight: 42,
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   secondaryButtonText: {
     color: colors.text,

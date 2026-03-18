@@ -5,6 +5,7 @@ import type { SettingsViewData } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
+import { StatusBanner } from "./StatusBanner";
 import { colors, spacing } from "../theme/tokens";
 
 type SettingsExportSectionProps = {
@@ -105,9 +106,19 @@ export function SettingsExportSection({
             <Text style={styles.summaryText}>{summaryRange}</Text>
           </View>
 
-          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <StatusBanner
+              message={errorMessage}
+              tone="error"
+              testID="settings-export-error-banner"
+            />
+          ) : null}
           {statusMessage ? (
-            <Text style={styles.successText}>{statusMessage}</Text>
+            <StatusBanner
+              message={statusMessage}
+              tone="success"
+              testID="settings-export-status-banner"
+            />
           ) : null}
 
           <View style={styles.actionsRow}>
@@ -213,16 +224,5 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     gap: spacing.sm,
-  },
-  errorText: {
-    color: "#b42318",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  successText: {
-    color: colors.accentStrong,
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 21,
   },
 });

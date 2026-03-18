@@ -28,6 +28,7 @@ type CalendarOverviewScreenProps = {
   onToday: () => void;
   record: DayLogRecord;
   statusMessage: string;
+  statusTone?: "success" | "error" | undefined;
   viewData: CalendarViewData;
 };
 
@@ -44,6 +45,7 @@ export function CalendarOverviewScreen({
   onToday,
   record,
   statusMessage,
+  statusTone,
   viewData,
 }: CalendarOverviewScreenProps) {
   const { width } = useWindowDimensions();
@@ -120,6 +122,7 @@ export function CalendarOverviewScreen({
               onSave={onSave}
               record={record}
               statusMessage={statusMessage}
+              statusTone={statusTone}
               viewData={{
                 ...editorViewData,
                 title: viewData.editor.title,

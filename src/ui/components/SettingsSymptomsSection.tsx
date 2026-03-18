@@ -7,6 +7,7 @@ import type { SettingsViewData } from "../../services/settings-view-service";
 import { buildSettingsSymptomsState } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { FeatureCard } from "./FeatureCard";
+import { StatusBanner } from "./StatusBanner";
 import { colors, spacing } from "../theme/tokens";
 
 type SettingsSymptomsSectionProps = {
@@ -244,8 +245,20 @@ function SymptomEditorCard({
         </View>
       </View>
 
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-      {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
+      {errorMessage ? (
+        <StatusBanner
+          message={errorMessage}
+          tone="error"
+          testID={`${testIDPrefix}-error-banner`}
+        />
+      ) : null}
+      {statusMessage ? (
+        <StatusBanner
+          message={statusMessage}
+          tone="success"
+          testID={`${testIDPrefix}-status-banner`}
+        />
+      ) : null}
 
       <View style={styles.actions}>
         <AppButton
@@ -362,16 +375,6 @@ const styles = StyleSheet.create({
   },
   iconOptionText: {
     fontSize: 18,
-  },
-  errorText: {
-    color: "#b42318",
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  statusText: {
-    color: colors.accentStrong,
-    fontSize: 13,
-    fontWeight: "600",
   },
   actions: {
     gap: spacing.sm,

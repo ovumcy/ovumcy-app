@@ -96,4 +96,49 @@ describe("dashboard-view-service", () => {
     expect(viewData.journal.description).toContain("BBT");
     expect(viewData.journal.description).not.toContain("Intimacy");
   });
+
+  it("does not duplicate irregular-cycle reliability hints", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 29,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-03-10",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17));
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords[0]!,
+      historyRecords,
+      history,
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData.statusItems).toContain("3 cycles are needed for a reliable range");
+    expect(viewData.predictionExplanation).toBe("");
+  });
 });

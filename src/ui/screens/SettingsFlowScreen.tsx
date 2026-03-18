@@ -19,6 +19,7 @@ import { LabeledSliderField } from "../components/LabeledSliderField";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
+import { StatusBanner } from "../components/StatusBanner";
 import {
   buildAccountStatusRows,
   buildInterfaceStatusRows,
@@ -164,22 +165,22 @@ export function SettingsFlowScreen({
         testID="settings-cycle-section"
       >
         <LabeledSliderField
-          hint=""
           label={viewData.cycle.cycleLengthLabel}
           maximumValue={90}
           minimumValue={15}
           onValueChange={(value) => onCycleLengthChange(Math.round(value))}
+          showRange
           testID="settings-cycle-length-slider"
           value={state.cycleValues.cycleLength}
           valueSuffix={` ${viewData.common.daysShort}`}
         />
 
         <LabeledSliderField
-          hint=""
           label={viewData.cycle.periodLengthLabel}
           maximumValue={14}
           minimumValue={1}
           onValueChange={(value) => onPeriodLengthChange(Math.round(value))}
+          showRange
           testID="settings-period-length-slider"
           value={state.cycleValues.periodLength}
           valueSuffix={` ${viewData.common.daysShort}`}
@@ -240,13 +241,21 @@ export function SettingsFlowScreen({
           {cycleGuidance.cycleShort ? (
             <Text style={styles.infoText}>{viewData.cycle.messages.infoCycleShort}</Text>
           ) : null}
-          {cycleErrorMessage ? (
-            <Text style={styles.errorText}>{cycleErrorMessage}</Text>
-          ) : null}
-          {cycleStatusMessage ? (
-            <Text style={styles.successText}>{cycleStatusMessage}</Text>
-          ) : null}
         </View>
+        {cycleErrorMessage ? (
+          <StatusBanner
+            message={cycleErrorMessage}
+            tone="error"
+            testID="settings-cycle-error-banner"
+          />
+        ) : null}
+        {cycleStatusMessage ? (
+          <StatusBanner
+            message={cycleStatusMessage}
+            tone="success"
+            testID="settings-cycle-status-banner"
+          />
+        ) : null}
 
         <BinaryToggleCard
           description={viewData.cycle.autoPeriodFillHint}
@@ -282,7 +291,7 @@ export function SettingsFlowScreen({
           <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>
           <Text style={styles.helperText}>{viewData.ageGroup.hint}</Text>
           <ChoiceGroup
-            layout="grid3"
+            layout="stack"
             onSelect={onAgeGroupSelect}
             options={viewData.ageGroup.options}
             selectedValue={state.cycleValues.ageGroup}
@@ -386,7 +395,11 @@ export function SettingsFlowScreen({
         </View>
 
         {trackingStatusMessage ? (
-          <Text style={styles.successText}>{trackingStatusMessage}</Text>
+          <StatusBanner
+            message={trackingStatusMessage}
+            tone="success"
+            testID="settings-tracking-status-banner"
+          />
         ) : null}
 
         <AppButton
@@ -499,16 +512,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 21,
-  },
-  errorText: {
-    color: "#b42318",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  successText: {
-    color: colors.accentStrong,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "600",
   },
 });

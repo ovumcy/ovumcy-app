@@ -2,6 +2,7 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { SettingsViewData } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
+import { StatusBanner } from "./StatusBanner";
 import { colors, spacing } from "../theme/tokens";
 
 type SettingsDangerZoneSectionProps = {
@@ -51,8 +52,20 @@ export function SettingsDangerZoneSection({
           <Text style={styles.hint}>{viewData.confirmationHint}</Text>
         </View>
 
-        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-        {statusMessage ? <Text style={styles.successText}>{statusMessage}</Text> : null}
+        {errorMessage ? (
+          <StatusBanner
+            message={errorMessage}
+            tone="error"
+            testID="settings-danger-error-banner"
+          />
+        ) : null}
+        {statusMessage ? (
+          <StatusBanner
+            message={statusMessage}
+            tone="success"
+            testID="settings-danger-status-banner"
+          />
+        ) : null}
 
         <AppButton
           disabled={isClearingData}
@@ -131,17 +144,6 @@ const styles = StyleSheet.create({
   hint: {
     color: colors.textMuted,
     fontSize: 12,
-    lineHeight: 18,
-  },
-  errorText: {
-    color: "#b42318",
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  successText: {
-    color: colors.accentStrong,
-    fontSize: 13,
-    fontWeight: "600",
     lineHeight: 18,
   },
 });

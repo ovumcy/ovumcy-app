@@ -70,13 +70,13 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("day-log-period-toggle").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
-  await expect(page.getByText("Saved locally.")).toBeVisible();
+  await expect(page.getByText("Entry saved locally.")).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
   await page.getByTestId("day-log-period-toggle").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
-  await expect(page.getByText("Saved locally.")).toBeVisible();
+  await expect(page.getByText("Entry saved locally.")).toBeVisible();
   await expect(
     page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
   ).toBeVisible();

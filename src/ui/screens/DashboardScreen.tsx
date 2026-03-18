@@ -23,6 +23,11 @@ type DashboardScreenProps = {
   now?: Date;
 };
 
+type EditorStatusState = {
+  message: string;
+  tone: "success" | "error";
+} | null;
+
 export function DashboardScreen({
   storage = appStorage,
   now,
@@ -31,7 +36,7 @@ export function DashboardScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedDashboardState | null>(null);
-  const [statusMessage, setStatusMessage] = useState("");
+  const [status, setStatus] = useState<EditorStatusState>(null);
 
   const refresh = useCallback(async () => {
     const loadedState = await loadDashboardScreenState(storage, effectiveNow);
@@ -77,18 +82,24 @@ export function DashboardScreen({
       return;
     }
     setIsSaving(true);
-    setStatusMessage("");
+    setStatus(null);
 
     const result = await saveDayLogEditorRecord(storage, state.todayEntry);
 
     if (!result.ok) {
-      setStatusMessage(state.editorViewData.actions.saveFailedLabel);
+      setStatus({
+        message: state.editorViewData.actions.saveFailedLabel,
+        tone: "error",
+      });
       setIsSaving(false);
       return;
     }
 
     await refresh();
-    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setStatus({
+      message: state.editorViewData.actions.savedLabel,
+      tone: "success",
+    });
     setIsSaving(false);
   }
 
@@ -97,17 +108,23 @@ export function DashboardScreen({
       return;
     }
     setIsSaving(true);
-    setStatusMessage("");
+    setStatus(null);
 
     const success = await deleteDayLogEditorRecord(storage, state.todayEntry.date);
     if (!success) {
-      setStatusMessage(state.editorViewData.actions.deleteFailedLabel);
+      setStatus({
+        message: state.editorViewData.actions.deleteFailedLabel,
+        tone: "error",
+      });
       setIsSaving(false);
       return;
     }
 
     await refresh();
-    setStatusMessage(state.editorViewData.actions.savedLabel);
+    setStatus({
+      message: state.editorViewData.actions.deletedLabel,
+      tone: "success",
+    });
     setIsSaving(false);
   }
 
@@ -117,7 +134,7 @@ export function DashboardScreen({
       isSaving={isSaving}
       onDelete={handleDelete}
       onPatch={(updates) => {
-        setStatusMessage("");
+        setStatus(null);
         setState((current) =>
           current
             ? {
@@ -129,7 +146,8 @@ export function DashboardScreen({
       }}
       onSave={handleSave}
       record={state.todayEntry}
-      statusMessage={statusMessage}
+      statusMessage={status?.message ?? ""}
+      statusTone={status?.tone}
       viewData={state.viewData}
       editorViewData={state.editorViewData}
     />

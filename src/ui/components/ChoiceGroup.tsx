@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     gap: 2,
-    minHeight: 44,
+    minHeight: 40,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   tileGridTwo: {
     flexBasis: "48%",
@@ -116,13 +116,13 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   secondaryLabel: {
     color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
   },
   labelActive: {
     color: colors.accentStrong,

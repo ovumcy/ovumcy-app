@@ -7,6 +7,7 @@ import { BinaryToggleCard } from "./BinaryToggleCard";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
 import { MultiSelectChipGroup } from "./MultiSelectChipGroup";
+import { StatusBanner } from "./StatusBanner";
 import { colors, spacing } from "../theme/tokens";
 
 type DayLogEditorCardProps = {
@@ -14,6 +15,7 @@ type DayLogEditorCardProps = {
   isSaving: boolean;
   record: DayLogRecord;
   statusMessage: string;
+  statusTone?: "success" | "error" | undefined;
   viewData: DayLogEditorViewData;
   onDelete?: () => void | Promise<void>;
   onPatch: (updates: Partial<DayLogRecord>) => void;
@@ -25,6 +27,7 @@ export function DayLogEditorCard({
   isSaving,
   record,
   statusMessage,
+  statusTone = "success",
   viewData,
   onDelete,
   onPatch,
@@ -36,13 +39,25 @@ export function DayLogEditorCard({
       description={`${viewData.subtitle} ${viewData.dateLabel}`}
     >
       <BinaryToggleCard
-        description={record.isPeriod ? viewData.labels.flow : viewData.labels.periodOffHint}
         icon="🩸"
         label={viewData.labels.periodDay}
         onValueChange={(value) => onPatch({ isPeriod: value })}
         testID="day-log-period-toggle"
         value={record.isPeriod}
       />
+
+      {record.isPeriod ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
+          <ChoiceGroup
+            compact
+            onSelect={(value) => onPatch({ flow: value })}
+            options={viewData.options.flow}
+            selectedValue={record.flow}
+            testIDPrefix="day-log-flow"
+          />
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>{viewData.labels.symptoms}</Text>
@@ -87,19 +102,6 @@ export function DayLogEditorCard({
           testIDPrefix="day-log-factor"
         />
       </View>
-
-      {record.isPeriod ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
-          <ChoiceGroup
-            compact
-            onSelect={(value) => onPatch({ flow: value })}
-            options={viewData.options.flow}
-            selectedValue={record.flow}
-            testIDPrefix="day-log-flow"
-          />
-        </View>
-      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
@@ -193,7 +195,9 @@ export function DayLogEditorCard({
         ) : null}
       </View>
 
-      {statusMessage ? <Text style={styles.status}>{statusMessage}</Text> : null}
+      {statusMessage ? (
+        <StatusBanner message={statusMessage} tone={statusTone} testID="day-log-status-banner" />
+      ) : null}
       {onDelete ? <Text style={styles.deleteHint}>{viewData.labels.deleteHint}</Text> : null}
     </FeatureCard>
   );
@@ -229,11 +233,6 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.sm,
-  },
-  status: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
   },
   deleteHint: {
     color: colors.textMuted,
