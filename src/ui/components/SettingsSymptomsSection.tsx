@@ -46,7 +46,11 @@ export function SettingsSymptomsSection({
   visibleState,
 }: SettingsSymptomsSectionProps) {
   return (
-    <FeatureCard title={viewData.title} description={viewData.subtitle}>
+    <FeatureCard
+      description={viewData.subtitle}
+      testID="settings-symptoms-section"
+      title={viewData.title}
+    >
       <View style={styles.stack}>
         <SymptomEditorCard
           actionLabel={viewData.addLabel}

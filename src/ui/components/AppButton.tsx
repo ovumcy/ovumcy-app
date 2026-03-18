@@ -1,13 +1,13 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import { colors } from "../theme/tokens";
 
 type AppButtonProps = {
   label: string;
   onPress: () => void | Promise<void>;
   disabled?: boolean;
   testID?: string;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "danger";
 };
 
 export function AppButton({
@@ -23,7 +23,11 @@ export function AppButton({
       onPress={onPress}
       style={[
         styles.base,
-        variant === "primary" ? styles.primary : styles.secondary,
+        variant === "primary"
+          ? styles.primary
+          : variant === "danger"
+            ? styles.danger
+            : styles.secondary,
         disabled ? styles.disabled : null,
       ]}
       testID={testID}
@@ -31,7 +35,11 @@ export function AppButton({
       <Text
         style={[
           styles.label,
-          variant === "primary" ? styles.primaryLabel : styles.secondaryLabel,
+          variant === "primary"
+            ? styles.primaryLabel
+            : variant === "danger"
+              ? styles.dangerLabel
+              : styles.secondaryLabel,
         ]}
       >
         {label}
@@ -45,8 +53,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
   primary: {
     backgroundColor: colors.accent,
@@ -60,8 +69,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.9)",
     borderColor: colors.border,
   },
+  danger: {
+    backgroundColor: "#b91c1c",
+    borderColor: "#991b1b",
+  },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   primaryLabel: {
@@ -69,6 +82,9 @@ const styles = StyleSheet.create({
   },
   secondaryLabel: {
     color: colors.text,
+  },
+  dangerLabel: {
+    color: "#ffffff",
   },
   disabled: {
     opacity: 0.6,

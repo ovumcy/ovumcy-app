@@ -159,4 +159,40 @@ describe("volatile-web-app-storage", () => {
       ]),
     );
   });
+
+  it("clears in-memory web state explicitly when the danger flow requests it", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "medium",
+      mood: 4,
+      sexActivity: "unprotected",
+      bbt: 36.8,
+      cervicalMucus: "eggwhite",
+      cycleFactorKeys: ["travel"],
+      symptomIDs: ["fatigue"],
+      notes: "Explicitly wiped",
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+    });
+    await expect(storage.readDayLogSummary()).resolves.toEqual({
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    });
+  });
 });

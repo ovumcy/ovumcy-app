@@ -183,4 +183,63 @@ describe("async-storage-app-storage", () => {
       ]),
     );
   });
+
+  it("clears local async-storage data and falls back to defaults", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+    });
+    await storage.writeOnboardingRecord({
+      lastPeriodStart: "2026-03-14",
+      cycleLength: 30,
+      periodLength: 6,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "spotting",
+      mood: 3,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps", "fatigue"],
+      notes: "Clear me",
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual({
+      lastPeriodStart: null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    });
+    await expect(storage.readDayLogSummary()).resolves.toEqual({
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    });
+  });
 });

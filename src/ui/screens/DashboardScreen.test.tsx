@@ -53,7 +53,7 @@ describe("DashboardScreen", () => {
       />,
     );
 
-    await screen.findByText("Cycle snapshot");
+    await screen.findByTestId("day-log-save-button");
 
     expect(screen.getByText("This section is hidden in settings.")).toBeTruthy();
     expect(
@@ -115,7 +115,7 @@ describe("DashboardScreen", () => {
       />,
     );
 
-    await screen.findByText("Cycle snapshot");
+    await screen.findByTestId("day-log-save-button");
     expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 });

@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { OnboardingViewData } from "../../services/onboarding-view-service";
 import type { LoadedOnboardingState } from "../../services/onboarding-screen-service";
@@ -120,12 +121,8 @@ export function OnboardingFlowScreen({
       progressLabel={
         state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2
       }
-      subtitle={
-        state.step === 1
-          ? viewData.stepOne.subtitle
-          : viewData.stepTwo.cycleLengthHint
-      }
       title={state.step === 1 ? viewData.stepOne.title : viewData.stepTwo.title}
+      {...(state.step === 1 ? { subtitle: viewData.stepOne.subtitle } : {})}
     >
       {state.step === 1 ? (
         <StepOnePanel
@@ -179,10 +176,15 @@ function OnboardingShell({
   subtitle?: string;
   children: ReactNode;
 }) {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={styles.screenContent}
+        contentContainerStyle={[
+          styles.screenContent,
+          { paddingTop: insets.top + 12, paddingBottom: Math.max(insets.bottom + 18, 24) },
+        ]}
         showsVerticalScrollIndicator={false}
         style={styles.screen}
       >
@@ -594,18 +596,18 @@ const styles = StyleSheet.create({
   },
   screenContent: {
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
   },
   heroCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 32,
+    borderRadius: 18,
     borderWidth: 1,
-    gap: spacing.lg,
-    maxWidth: 860,
+    gap: 10,
+    maxWidth: 840,
     overflow: "hidden",
-    padding: spacing.lg,
+    padding: 18,
     width: "100%",
   },
   loadingBlock: {
@@ -613,10 +615,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
   },
   panel: {
-    gap: spacing.md,
+    gap: 10,
   },
   progressBlock: {
-    gap: spacing.sm,
+    gap: 8,
   },
   kicker: {
     color: colors.accent,
@@ -627,8 +629,8 @@ const styles = StyleSheet.create({
   },
   progressPanel: {
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 20,
-    padding: spacing.sm,
+    borderRadius: 14,
+    padding: 6,
   },
   progressTrack: {
     backgroundColor: "rgba(232,196,168,0.35)",
@@ -643,14 +645,14 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.text,
-    fontSize: 34,
+    fontSize: 26,
     fontWeight: "800",
-    lineHeight: 40,
+    lineHeight: 31,
   },
   heroMuted: {
     color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 21,
   },
   helperText: {
     color: colors.textMuted,
@@ -663,15 +665,15 @@ const styles = StyleSheet.create({
   dateFieldShell: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   dateFieldValue: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   dateFieldValueMuted: {
@@ -679,43 +681,43 @@ const styles = StyleSheet.create({
   },
   secondaryLinkButton: {
     alignSelf: "flex-start",
-    paddingTop: spacing.xs,
+    paddingTop: 4,
   },
   secondaryLinkButtonText: {
     color: colors.accent,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
   },
   dayOptionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: 6,
     paddingRight: 4,
   },
   dayOptionScroll: {
-    maxHeight: 288,
+    maxHeight: 276,
   },
   dayOptionButton: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 48,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
   },
   dayOptionButtonThreeColumns: {
-    flexBasis: "31%",
+    flexBasis: "31.8%",
   },
   dayOptionButtonFourColumns: {
-    flexBasis: "23.5%",
+    flexBasis: "23.75%",
   },
   dayOptionButtonSixColumns: {
-    flexBasis: "15.5%",
+    flexBasis: "15.8%",
   },
   dayOptionButtonToday: {
-    minHeight: 54,
+    minHeight: 46,
   },
   dayOptionButtonActive: {
     backgroundColor: colors.accentSoft,
@@ -723,12 +725,12 @@ const styles = StyleSheet.create({
   },
   dayOptionLabel: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "700",
   },
   dayOptionSecondaryLabel: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 10,
     marginTop: 2,
   },
   dayOptionLabelActive: {
@@ -736,7 +738,7 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
   },
   messageStack: {
@@ -762,10 +764,10 @@ const styles = StyleSheet.create({
   choiceTile: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   choiceTileCompact: {
     flexBasis: "31%",
@@ -777,7 +779,7 @@ const styles = StyleSheet.create({
   },
   choiceTileLabel: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "600",
   },
   choiceTileLabelActive: {
@@ -785,7 +787,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   primaryButton: {
     alignItems: "center",
@@ -794,8 +796,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     shadowColor: colors.accentStrong,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.22,
@@ -803,7 +806,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   secondaryButton: {
@@ -813,12 +816,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    minHeight: 44,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
   },
   secondaryButtonText: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   buttonDisabled: {

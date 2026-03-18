@@ -43,7 +43,11 @@ export function SettingsExportSection({
   ]);
 
   return (
-    <FeatureCard title={viewData.title} description={viewData.subtitle}>
+    <FeatureCard
+      description={viewData.subtitle}
+      testID="settings-export-section"
+      title={viewData.title}
+    >
       <Text style={styles.helperText}>{viewData.storageHint}</Text>
       <Text style={styles.helperText}>{viewData.sensitiveHint}</Text>
 
@@ -52,7 +56,7 @@ export function SettingsExportSection({
           <View style={styles.formGroup}>
             <Text style={styles.fieldLabel}>{viewData.presetLabel}</Text>
             <ChoiceGroup
-              compact
+              layout="grid2"
               onSelect={onPresetSelect}
               options={viewData.presetOptions}
               selectedValue={
@@ -119,6 +123,13 @@ export function SettingsExportSection({
               label={viewData.jsonAction}
               onPress={onJSONExport}
               testID="settings-export-json-button"
+            />
+            <AppButton
+              disabled
+              label={viewData.pdfAction}
+              onPress={() => undefined}
+              testID="settings-export-pdf-button"
+              variant="secondary"
             />
           </View>
         </>

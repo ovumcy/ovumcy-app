@@ -25,9 +25,7 @@ export type CalendarDayCellViewData = {
 };
 
 export type CalendarViewData = {
-  eyebrow: string;
   title: string;
-  description: string;
   monthLabel: string;
   monthValue: string;
   selectedDate: string;
@@ -133,9 +131,7 @@ export function buildCalendarViewData(
   }
 
   return {
-    eyebrow: calendarCopy.eyebrow,
     title: calendarCopy.title,
-    description: calendarCopy.subtitle,
     monthLabel: new Intl.DateTimeFormat(locale, {
       month: "long",
       year: "numeric",

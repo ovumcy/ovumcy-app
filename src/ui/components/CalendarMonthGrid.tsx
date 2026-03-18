@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { CalendarDayCellViewData } from "../../services/calendar-view-service";
@@ -14,6 +15,26 @@ export function CalendarMonthGrid({
   days,
   onSelectDay,
 }: CalendarMonthGridProps) {
+  const [gridWidth, setGridWidth] = useState(0);
+  const metrics = useMemo(() => {
+    if (gridWidth <= 0) {
+      return {
+        cellWidth: undefined,
+        cellMinHeight: 68,
+        showTodayPill: true,
+      };
+    }
+
+    const gap = spacing.xs;
+    const cellWidth = (gridWidth - gap * 6) / 7;
+
+    return {
+      cellWidth,
+      cellMinHeight: Math.max(60, Math.min(74, Math.round(cellWidth * 1.08))),
+      showTodayPill: cellWidth >= 54,
+    };
+  }, [gridWidth]);
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.weekdayRow}>
@@ -24,7 +45,10 @@ export function CalendarMonthGrid({
         ))}
       </View>
 
-      <View style={styles.grid}>
+      <View
+        onLayout={(event) => setGridWidth(event.nativeEvent.layout.width)}
+        style={styles.grid}
+      >
         {days.map((day) => (
           <Pressable
             key={day.date}
@@ -32,6 +56,12 @@ export function CalendarMonthGrid({
             onPress={() => onSelectDay(day.date)}
             style={[
               styles.cell,
+              metrics.cellWidth
+                ? {
+                    minHeight: metrics.cellMinHeight,
+                    width: metrics.cellWidth,
+                  }
+                : null,
               !day.isCurrentMonth ? styles.cellOutsideMonth : null,
               day.isPeriod ? styles.cellPeriod : null,
               day.isSelected ? styles.cellSelected : null,
@@ -48,7 +78,9 @@ export function CalendarMonthGrid({
               >
                 {day.label}
               </Text>
-              {day.isToday ? <Text style={styles.todayPill}>Today</Text> : null}
+              {day.isToday && metrics.showTodayPill ? (
+                <Text style={styles.todayPill}>Today</Text>
+              ) : null}
             </View>
 
             <View style={styles.markers}>
@@ -84,7 +116,7 @@ const styles = StyleSheet.create({
   weekdayLabel: {
     color: colors.textMuted,
     flex: 1,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     textAlign: "center",
     textTransform: "uppercase",
@@ -92,17 +124,17 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   cell: {
     backgroundColor: colors.surfaceStrong,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 12,
     borderWidth: 1,
-    flexBasis: "13.8%",
-    gap: spacing.xs,
-    minHeight: 72,
-    padding: spacing.sm,
+    gap: 5,
+    minHeight: 68,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
   },
   cellOutsideMonth: {
     opacity: 0.48,
@@ -111,15 +143,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentSoft,
   },
   cellSelected: {
-    borderColor: colors.accentStrong,
+    borderColor: "#487ad1",
     borderWidth: 2,
   },
   cellHeader: {
-    gap: 4,
+    alignItems: "flex-start",
+    gap: 2,
   },
   dayLabel: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
   },
   dayLabelMuted: {
@@ -135,22 +168,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     color: colors.textMuted,
-    fontSize: 10,
+    fontSize: 8,
     fontWeight: "700",
     overflow: "hidden",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
   },
   markers: {
     flexDirection: "row",
-    gap: 6,
+    gap: 4,
     marginTop: "auto",
   },
   dataMarker: {
     backgroundColor: colors.accentStrong,
     borderRadius: 999,
-    height: 8,
-    width: 8,
+    height: 7,
+    width: 7,
   },
   heartMarker: {
     color: colors.accentStrong,

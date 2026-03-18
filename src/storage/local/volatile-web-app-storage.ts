@@ -54,6 +54,10 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
       };
     },
 
+    async clearAllLocalData(): Promise<void> {
+      state = createDefaultVolatileWebStorageState();
+    },
+
     async readProfileRecord(): Promise<ProfileRecord> {
       return mergeProfileRecord(state.profileRecord);
     },

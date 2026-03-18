@@ -25,6 +25,7 @@ export type LocalDayLogSummary = {
 export interface LocalAppStorage {
   readBootstrapState(): Promise<LocalBootstrapState>;
   writeBootstrapState(state: LocalBootstrapState): Promise<void>;
+  clearAllLocalData(): Promise<void>;
   readProfileRecord(): Promise<ProfileRecord>;
   writeProfileRecord(record: ProfileRecord): Promise<void>;
   readOnboardingRecord(): Promise<OnboardingRecord>;

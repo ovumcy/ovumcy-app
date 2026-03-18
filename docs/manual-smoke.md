@@ -31,8 +31,10 @@ Run on an Android emulator or physical device.
 14. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
 15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 16. Settings export section shows the current entry summary, and both `Export as CSV` and `Export as JSON` open a local share or save flow without leaking data into a URL.
-17. Bottom tabs render and switch without broken icons or duplicate labels.
-18. No account, sync, or cloud requirement is shown for core local use.
+17. Settings shows explicit `Interface` and `Account & Sync` status sections instead of silently missing web-only account controls.
+18. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+19. Bottom tabs render and switch without broken icons or duplicate labels.
+20. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -57,8 +59,10 @@ Run on an iOS simulator or physical device.
 14. Settings allows creating a custom symptom, and the new symptom appears in the dashboard and calendar day editor for new entries.
 15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 16. Settings export section shows the current entry summary, and both `Export as CSV` and `Export as JSON` open a local share or save flow without leaking data into a URL.
-17. Bottom tabs render and switch without broken icons or duplicate labels.
-18. No account, sync, or cloud requirement is shown for core local use.
+17. Settings shows explicit `Interface` and `Account & Sync` status sections instead of silently missing web-only account controls.
+18. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+19. Bottom tabs render and switch without broken icons or duplicate labels.
+20. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -73,7 +77,9 @@ Run when web support, branding, or app-shell navigation is touched.
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
    - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
    - settings can create a custom symptom and that symptom appears in dashboard and calendar day editors for new entries
+   - settings shows explicit `Interface` and `Account & Sync` status blocks
    - settings export summary reflects the current logged range, and CSV/JSON downloads succeed with local file downloads instead of opening sensitive data in the URL
+   - danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the browser shell to onboarding
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles
    - enabling `Unpredictable cycle` changes dashboard to facts-only copy

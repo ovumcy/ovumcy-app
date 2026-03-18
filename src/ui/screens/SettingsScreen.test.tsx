@@ -5,12 +5,16 @@ import { createLocalAppStorageMock } from "../../test/create-local-app-storage-m
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
+const mockReplace = jest.fn();
 
 jest.mock("expo-router", () => {
   return {
     useFocusEffect: (effect: () => void | (() => void)) => {
       mockUseEffect(effect, [effect]);
     },
+    useRouter: () => ({
+      replace: mockReplace,
+    }),
   };
 });
 
@@ -66,6 +70,10 @@ function createStorageMock(overrides = {}) {
 }
 
 describe("SettingsScreen", () => {
+  beforeEach(() => {
+    mockReplace.mockReset();
+  });
+
   it("saves cycle settings through the canonical profile repository", async () => {
     const storage = createStorageMock();
 
@@ -193,5 +201,55 @@ describe("SettingsScreen", () => {
         }),
       ),
     );
+  });
+
+  it("renders the app-equivalent interface, account, export, and danger sections", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Settings");
+
+    expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-account-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-export-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
+  });
+
+  it("requires typed confirmation before clearing all local data", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Settings");
+
+    fireEvent.press(screen.getByTestId("settings-clear-data-button"));
+
+    expect(
+      screen.getByText("Type CLEAR exactly to confirm local data removal."),
+    ).toBeTruthy();
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("clears local data and returns to onboarding after confirmation", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Settings");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-clear-data-confirmation-input"),
+      "CLEAR",
+    );
+    fireEvent.press(screen.getByTestId("settings-clear-data-button"));
+
+    await waitFor(() => expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
   });
 });

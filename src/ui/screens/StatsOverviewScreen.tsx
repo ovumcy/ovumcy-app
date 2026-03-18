@@ -1,4 +1,9 @@
-import { StyleSheet, Text, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 import type { StatsViewData } from "../../services/stats-view-service";
 import { FeatureCard } from "../components/FeatureCard";
@@ -10,9 +15,13 @@ type StatsOverviewScreenProps = {
 };
 
 export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
+  const { width } = useWindowDimensions();
+  const cardColumns = width >= 1080 ? 4 : width >= 760 ? 2 : 1;
+  const cardWidth =
+    cardColumns === 4 ? "23.5%" : cardColumns === 2 ? "48.5%" : "100%";
+
   return (
     <ScreenScaffold
-      eyebrow={viewData.eyebrow}
       title={viewData.title}
       description={viewData.description}
     >
@@ -69,7 +78,7 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
         <>
           <View style={styles.cardGrid}>
             {viewData.topCards.map((card) => (
-              <View key={card.key} style={styles.statCard}>
+              <View key={card.key} style={[styles.statCard, { width: cardWidth }]}>
                 <Text style={styles.cardLabel}>{card.title}</Text>
                 <Text style={styles.cardValue}>{card.value}</Text>
                 {card.description ? (
@@ -180,10 +189,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 28,
+    borderRadius: 22,
     borderWidth: 1,
     overflow: "hidden",
-    padding: spacing.lg,
+    padding: 20,
     width: "100%",
   },
   emptyOrb: {
@@ -267,10 +276,10 @@ const styles = StyleSheet.create({
   noticePanel: {
     backgroundColor: colors.surfaceStrong,
     borderColor: colors.border,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   noticeText: {
     color: colors.textMuted,
@@ -278,15 +287,17 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   cardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md,
   },
   statCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
     gap: spacing.sm,
-    padding: spacing.lg,
+    padding: 16,
   },
   cardLabel: {
     color: colors.textMuted,
@@ -309,9 +320,9 @@ const styles = StyleSheet.create({
   },
   panel: {
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 18,
+    borderRadius: 14,
     gap: spacing.sm,
-    padding: spacing.md,
+    padding: 14,
   },
   row: {
     alignItems: "center",

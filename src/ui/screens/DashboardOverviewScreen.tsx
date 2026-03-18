@@ -1,11 +1,10 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { DayLogRecord } from "../../models/day-log";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
 import type { DashboardViewData } from "../../services/dashboard-view-service";
 import { DayLogEditorCard } from "../components/DayLogEditorCard";
-import { FeatureCard } from "../components/FeatureCard";
-import { ScreenScaffold } from "../components/ScreenScaffold";
 import { colors, spacing } from "../theme/tokens";
 
 type DashboardOverviewScreenProps = {
@@ -31,97 +30,88 @@ export function DashboardOverviewScreen({
   statusMessage,
   viewData,
 }: DashboardOverviewScreenProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <ScreenScaffold
-      eyebrow={viewData.eyebrow}
-      title={viewData.title}
-      description={viewData.description}
+    <ScrollView
+      contentContainerStyle={[
+        styles.screenContent,
+        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
+      ]}
+      showsVerticalScrollIndicator={false}
+      style={styles.screen}
     >
-      <View style={styles.statusLine}>
-        {viewData.statusItems.map((item) => (
-          <View key={item} style={styles.statusChip}>
-            <Text style={styles.statusChipText}>{item}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.helperText}>{viewData.predictionExplanation}</Text>
-
-      <FeatureCard
-        title={viewData.snapshot.title}
-        description="Resolved from your saved local cycle settings."
-      >
-        <View style={styles.snapshotGrid}>
-          {viewData.snapshot.items.map((item) => (
-            <View key={item.label} style={styles.snapshotItem}>
-              <Text style={styles.snapshotLabel}>{item.label}</Text>
-              <Text style={styles.snapshotValue}>{item.value}</Text>
+      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.statusLine}>
+          {viewData.statusItems.map((item, index) => (
+            <View key={item} style={styles.statusItemRow}>
+              {index > 0 ? <Text style={styles.statusSeparator}>·</Text> : null}
+              <Text style={styles.statusText}>{item}</Text>
             </View>
           ))}
         </View>
-      </FeatureCard>
 
-      <DayLogEditorCard
-        entryExists={entryExists}
-        isSaving={isSaving}
-        onDelete={onDelete}
-        onPatch={onPatch}
-        onSave={onSave}
-        record={record}
-        statusMessage={statusMessage}
-        viewData={{
-          ...editorViewData,
-          title: viewData.journal.title,
-          subtitle: viewData.journal.description,
-          dateLabel: viewData.journal.dateLabel,
-        }}
-      />
-    </ScreenScaffold>
+        <Text style={styles.helperText}>{viewData.predictionExplanation}</Text>
+
+        <DayLogEditorCard
+          entryExists={entryExists}
+          isSaving={isSaving}
+          onDelete={onDelete}
+          onPatch={onPatch}
+          onSave={onSave}
+          record={record}
+          statusMessage={statusMessage}
+          viewData={{
+            ...editorViewData,
+            title: viewData.journal.title,
+            subtitle: viewData.journal.description,
+            dateLabel: viewData.journal.dateLabel,
+          }}
+        />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screenContent: {
+    paddingBottom: spacing.xl,
+  },
+  container: {
+    alignSelf: "center",
+    gap: spacing.md,
+    maxWidth: 980,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    width: "100%",
+  },
   statusLine: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    gap: 6,
   },
-  statusChip: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 10,
+  statusItemRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
-  statusChipText: {
-    color: colors.text,
-    fontSize: 13,
+  statusSeparator: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  statusText: {
+    color: colors.textMuted,
+    fontSize: 14,
     fontWeight: "600",
   },
   helperText: {
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 21,
-  },
-  snapshotGrid: {
-    gap: spacing.sm,
-  },
-  snapshotItem: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 18,
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  snapshotLabel: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  snapshotValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
   },
 });

@@ -17,7 +17,13 @@ import { ChoiceGroup } from "../components/ChoiceGroup";
 import { FeatureCard } from "../components/FeatureCard";
 import { LabeledSliderField } from "../components/LabeledSliderField";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
+import {
+  buildAccountStatusRows,
+  buildInterfaceStatusRows,
+  SettingsStatusSection,
+} from "../components/SettingsStatusSection";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { colors, spacing } from "../theme/tokens";
 
@@ -25,6 +31,9 @@ type SettingsFlowScreenProps = {
   createSymptomDraft: SymptomDraftValues;
   createSymptomErrorMessage: string;
   createSymptomStatusMessage: string;
+  clearDataConfirmationValue: string;
+  clearDataErrorMessage: string;
+  clearDataStatusMessage: string;
   cycleGuidance: {
     adjusted: boolean;
     periodLong: boolean;
@@ -41,6 +50,8 @@ type SettingsFlowScreenProps = {
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
   onArchiveSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onAutoPeriodFillChange: (value: boolean) => void;
+  onClearDataConfirmationChange: (value: string) => void;
+  onClearAllData: () => void | Promise<void>;
   onClearLastPeriodStart: () => void;
   onCreateSymptom: () => void | Promise<void>;
   onCreateSymptomDraftChange: (updates: Partial<SymptomDraftValues>) => void;
@@ -77,12 +88,16 @@ type SettingsFlowScreenProps = {
   state: LoadedSettingsState;
   trackingStatusMessage: string;
   viewData: SettingsViewData;
+  isClearingData: boolean;
 };
 
 export function SettingsFlowScreen({
   createSymptomDraft,
   createSymptomErrorMessage,
   createSymptomStatusMessage,
+  clearDataConfirmationValue,
+  clearDataErrorMessage,
+  clearDataStatusMessage,
   cycleGuidance,
   cycleStatusMessage,
   cycleErrorMessage,
@@ -91,10 +106,13 @@ export function SettingsFlowScreen({
   isExporting,
   isSavingCycle,
   isSavingTracking,
+  isClearingData,
   now,
   onAgeGroupSelect,
   onArchiveSymptom,
   onAutoPeriodFillChange,
+  onClearDataConfirmationChange,
+  onClearAllData,
   onClearLastPeriodStart,
   onCreateSymptom,
   onCreateSymptomDraftChange,
@@ -138,13 +156,12 @@ export function SettingsFlowScreen({
 
   return (
     <ScreenScaffold
-      eyebrow={viewData.eyebrow}
       title={viewData.title}
       description={viewData.description}
     >
       <FeatureCard
         title={viewData.cycle.title}
-        description={viewData.cycle.lastPeriodStartHint}
+        testID="settings-cycle-section"
       >
         <LabeledSliderField
           hint=""
@@ -233,6 +250,7 @@ export function SettingsFlowScreen({
 
         <BinaryToggleCard
           description={viewData.cycle.autoPeriodFillHint}
+          descriptionPosition="below"
           icon="🩸"
           label={viewData.cycle.autoPeriodFillLabel}
           onValueChange={onAutoPeriodFillChange}
@@ -242,6 +260,7 @@ export function SettingsFlowScreen({
 
         <BinaryToggleCard
           description={viewData.cycle.irregularCycleHint}
+          descriptionPosition="below"
           icon="〰️"
           label={viewData.cycle.irregularCycleLabel}
           onValueChange={onIrregularCycleChange}
@@ -251,6 +270,7 @@ export function SettingsFlowScreen({
 
         <BinaryToggleCard
           description={viewData.cycle.unpredictableCycleHint}
+          descriptionPosition="below"
           icon="∞"
           label={viewData.cycle.unpredictableCycleLabel}
           onValueChange={onUnpredictableCycleChange}
@@ -262,7 +282,7 @@ export function SettingsFlowScreen({
           <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>
           <Text style={styles.helperText}>{viewData.ageGroup.hint}</Text>
           <ChoiceGroup
-            compact
+            layout="grid3"
             onSelect={onAgeGroupSelect}
             options={viewData.ageGroup.options}
             selectedValue={state.cycleValues.ageGroup}
@@ -306,22 +326,10 @@ export function SettingsFlowScreen({
         visibleState={symptomsState}
       />
 
-      <SettingsExportSection
-        errorMessage={exportErrorMessage}
-        exportState={state.exportState}
-        isExporting={isExporting}
-        onCSVExport={onExportCSV}
-        onFromDateChange={onExportFromDateChange}
-        onJSONExport={onExportJSON}
-        onPresetSelect={onExportPresetSelect}
-        onToDateChange={onExportToDateChange}
-        statusMessage={exportStatusMessage}
-        viewData={viewData.export}
-      />
-
       <FeatureCard
         title={viewData.tracking.title}
         description={viewData.tracking.subtitle}
+        testID="settings-tracking-section"
       >
         <BinaryToggleCard
           description={viewData.tracking.trackBBT.hint}
@@ -369,7 +377,7 @@ export function SettingsFlowScreen({
           <Text style={styles.fieldLabel}>{viewData.tracking.temperatureUnit.label}</Text>
           <Text style={styles.helperText}>{viewData.tracking.temperatureUnit.hint}</Text>
           <ChoiceGroup
-            compact
+            layout="grid2"
             onSelect={onTemperatureUnitSelect}
             options={viewData.tracking.temperatureUnit.options}
             selectedValue={state.trackingValues.temperatureUnit}
@@ -389,6 +397,44 @@ export function SettingsFlowScreen({
           variant="secondary"
         />
       </FeatureCard>
+
+      <SettingsStatusSection
+        description={viewData.interface.subtitle}
+        rows={buildInterfaceStatusRows(viewData.interface)}
+        testID="settings-interface-section"
+        title={viewData.interface.title}
+      />
+
+      <SettingsStatusSection
+        description={viewData.account.subtitle}
+        hint={viewData.account.actionsHint}
+        rows={buildAccountStatusRows(viewData.account)}
+        testID="settings-account-section"
+        title={viewData.account.title}
+      />
+
+      <SettingsExportSection
+        errorMessage={exportErrorMessage}
+        exportState={state.exportState}
+        isExporting={isExporting}
+        onCSVExport={onExportCSV}
+        onFromDateChange={onExportFromDateChange}
+        onJSONExport={onExportJSON}
+        onPresetSelect={onExportPresetSelect}
+        onToDateChange={onExportToDateChange}
+        statusMessage={exportStatusMessage}
+        viewData={viewData.export}
+      />
+
+      <SettingsDangerZoneSection
+        confirmationValue={clearDataConfirmationValue}
+        errorMessage={clearDataErrorMessage}
+        isClearingData={isClearingData}
+        onChangeConfirmationValue={onClearDataConfirmationChange}
+        onSubmit={onClearAllData}
+        statusMessage={clearDataStatusMessage}
+        viewData={viewData.danger}
+      />
     </ScreenScaffold>
   );
 }
@@ -418,7 +464,7 @@ const styles = StyleSheet.create({
   dateFieldShell: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     gap: spacing.xs,
     paddingHorizontal: spacing.md,

@@ -18,7 +18,6 @@ import {
 import { splitCustomSymptoms } from "./symptom-policy";
 
 export type SettingsViewData = {
-  eyebrow: string;
   title: string;
   description: string;
   common: typeof settingsCopy.common;
@@ -82,6 +81,21 @@ export type SettingsViewData = {
     };
     saveLabel: string;
   };
+  interface: {
+    title: string;
+    subtitle: string;
+    languageLabel: string;
+    languageValue: string;
+    themeLabel: string;
+    themeValue: string;
+  };
+  account: {
+    title: string;
+    subtitle: string;
+    statusLabel: string;
+    statusValue: string;
+    actionsHint: string;
+  };
   symptoms: {
     title: string;
     subtitle: string;
@@ -130,11 +144,27 @@ export type SettingsViewData = {
     summaryRangeEmpty: string;
     csvAction: string;
     jsonAction: string;
+    pdfAction: string;
     status: {
       csvReady: string;
       jsonReady: string;
     };
     errors: typeof settingsCopy.export.errors;
+  };
+  danger: {
+    title: string;
+    subtitle: string;
+    clearTitle: string;
+    clearSubtitle: string;
+    confirmationLabel: string;
+    confirmationPlaceholder: string;
+    confirmationHint: string;
+    action: string;
+    status: {
+      success: string;
+      invalidConfirmation: string;
+      failed: string;
+    };
   };
   status: typeof settingsCopy.status;
 };
@@ -149,7 +179,6 @@ export type LoadedSettingsState = {
 
 export function buildSettingsViewData(now: Date): SettingsViewData {
   return {
-    eyebrow: "Preferences",
     title: settingsCopy.title,
     description: settingsCopy.subtitle,
     common: settingsCopy.common,
@@ -224,6 +253,21 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       },
       saveLabel: settingsCopy.tracking.save,
     },
+    interface: {
+      title: settingsCopy.interface.title,
+      subtitle: settingsCopy.interface.subtitle,
+      languageLabel: settingsCopy.interface.languageLabel,
+      languageValue: settingsCopy.interface.languageValue,
+      themeLabel: settingsCopy.interface.themeLabel,
+      themeValue: settingsCopy.interface.themeValue,
+    },
+    account: {
+      title: settingsCopy.account.title,
+      subtitle: settingsCopy.account.subtitle,
+      statusLabel: settingsCopy.account.statusLabel,
+      statusValue: settingsCopy.account.statusValue,
+      actionsHint: settingsCopy.account.actionsHint,
+    },
     symptoms: {
       title: settingsCopy.symptoms.title,
       subtitle: settingsCopy.symptoms.subtitle,
@@ -277,11 +321,27 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       summaryRangeEmpty: settingsCopy.export.summaryRangeEmpty,
       csvAction: settingsCopy.export.csvAction,
       jsonAction: settingsCopy.export.jsonAction,
+      pdfAction: settingsCopy.export.pdfAction,
       status: {
         csvReady: settingsCopy.export.csvStatus,
         jsonReady: settingsCopy.export.jsonStatus,
       },
       errors: settingsCopy.export.errors,
+    },
+    danger: {
+      title: settingsCopy.danger.title,
+      subtitle: settingsCopy.danger.subtitle,
+      clearTitle: settingsCopy.danger.clearTitle,
+      clearSubtitle: settingsCopy.danger.clearSubtitle,
+      confirmationLabel: settingsCopy.danger.confirmationLabel,
+      confirmationPlaceholder: settingsCopy.danger.confirmationPlaceholder,
+      confirmationHint: settingsCopy.danger.confirmationHint,
+      action: settingsCopy.danger.action,
+      status: {
+        success: settingsCopy.danger.success,
+        invalidConfirmation: settingsCopy.danger.invalidConfirmation,
+        failed: settingsCopy.danger.failed,
+      },
     },
     status: settingsCopy.status,
   };

@@ -1,8 +1,4 @@
 export const dashboardCopy = {
-  eyebrow: "Today",
-  title: "Today journal",
-  subtitle:
-    "Your local-first dashboard keeps cycle context and owner-only tracking fields together.",
   cycleDay: "Cycle day",
   nextPeriod: "Next period",
   nextPeriodUnknown: "unknown",
@@ -15,16 +11,7 @@ export const dashboardCopy = {
   predictionsOff: "Predictions off",
   factsOnlyHint:
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
-  cycleSnapshot: "Cycle snapshot",
-  averageCycle: "Average cycle",
-  averagePeriod: "Period length",
-  lastPeriodStart: "Last period start",
-  cycleModeRegular: "Regular cycle mode",
-  cycleModeIrregular: "Irregular cycle mode",
-  cycleModeUnpredictable: "Unpredictable cycle mode",
   todayEditor: "Today journal",
-  todayEditorHint:
-    "The full logging editor will live here. Visibility already follows your saved settings.",
   periodDay: "Period day",
   symptoms: "Symptoms",
   mood: "Mood",
@@ -39,5 +26,4 @@ export const dashboardCopy = {
     "Cervical mucus means vaginal discharge. Egg-white mucus usually appears near peak fertility.",
   bbt: "BBT",
   notes: "Notes",
-  noDate: "-",
 } as const;

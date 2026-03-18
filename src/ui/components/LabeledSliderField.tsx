@@ -62,16 +62,16 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
   },
   inlineValue: {
     color: colors.textMuted,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   slider: {
-    height: 40,
+    height: 32,
     width: "100%",
   },
   hint: {

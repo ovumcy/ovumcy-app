@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
@@ -18,6 +18,10 @@ import {
   saveTrackingSettings,
   updateSettingsSymptom,
 } from "../../services/settings-screen-service";
+import {
+  clearAllLocalSettingsData,
+  isClearLocalDataConfirmationValid,
+} from "../../services/settings-danger-zone-service";
 import {
   buildSettingsCycleGuidance,
   buildSettingsViewData,
@@ -45,15 +49,20 @@ export function SettingsScreen({
   storage = appStorage,
   now,
 }: SettingsScreenProps) {
+  const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isSavingCycle, setIsSavingCycle] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
+  const [isClearingData, setIsClearingData] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [state, setState] = useState<LoadedSettingsState | null>(null);
   const [cycleErrorMessage, setCycleErrorMessage] = useState("");
   const [cycleStatusMessage, setCycleStatusMessage] = useState("");
+  const [clearDataConfirmationValue, setClearDataConfirmationValue] = useState("");
+  const [clearDataErrorMessage, setClearDataErrorMessage] = useState("");
+  const [clearDataStatusMessage, setClearDataStatusMessage] = useState("");
   const [exportErrorMessage, setExportErrorMessage] = useState("");
   const [exportStatusMessage, setExportStatusMessage] = useState("");
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
@@ -94,7 +103,6 @@ export function SettingsScreen({
   if (isLoading || !state) {
     return (
       <ScreenScaffold
-        eyebrow="Preferences"
         title="Loading settings"
         description="Preparing your local cycle settings."
       >
@@ -119,6 +127,11 @@ export function SettingsScreen({
   function resetExportMessages() {
     setExportErrorMessage("");
     setExportStatusMessage("");
+  }
+
+  function resetClearDataMessages() {
+    setClearDataErrorMessage("");
+    setClearDataStatusMessage("");
   }
 
   function symptomErrorMessage(errorCode: string) {
@@ -332,6 +345,41 @@ export function SettingsScreen({
     setIsExporting(false);
   }
 
+  async function handleClearAllData() {
+    resetClearDataMessages();
+
+    if (!isClearLocalDataConfirmationValid(clearDataConfirmationValue)) {
+      setClearDataErrorMessage(viewData.danger.status.invalidConfirmation);
+      return;
+    }
+
+    setIsClearingData(true);
+
+    const result = await clearAllLocalSettingsData(storage);
+    if (!result.ok) {
+      setClearDataErrorMessage(viewData.danger.status.failed);
+      setIsClearingData(false);
+      return;
+    }
+
+    setClearDataStatusMessage(viewData.danger.status.success);
+    setState(null);
+    setCreateSymptomDraft(createDefaultSymptomDraft());
+    setCreateSymptomErrorMessage("");
+    setCreateSymptomStatusMessage("");
+    setRowSymptomDrafts({});
+    setRowSymptomErrorMessages({});
+    setRowSymptomStatusMessages({});
+    setCycleErrorMessage("");
+    setCycleStatusMessage("");
+    setTrackingStatusMessage("");
+    resetExportMessages();
+    setShowDatePicker(false);
+    setClearDataConfirmationValue("");
+    setIsClearingData(false);
+    router.replace("/onboarding");
+  }
+
   function setExportDraftValues(
     nextValues: LoadedSettingsState["exportState"]["values"],
   ) {
@@ -359,11 +407,15 @@ export function SettingsScreen({
       createSymptomDraft={createSymptomDraft}
       createSymptomErrorMessage={createSymptomErrorMessage}
       createSymptomStatusMessage={createSymptomStatusMessage}
+      clearDataConfirmationValue={clearDataConfirmationValue}
+      clearDataErrorMessage={clearDataErrorMessage}
+      clearDataStatusMessage={clearDataStatusMessage}
       cycleErrorMessage={cycleErrorMessage}
       cycleGuidance={cycleGuidance}
       cycleStatusMessage={cycleStatusMessage}
       exportErrorMessage={exportErrorMessage}
       exportStatusMessage={exportStatusMessage}
+      isClearingData={isClearingData}
       isExporting={isExporting}
       isSavingCycle={isSavingCycle}
       isSavingTracking={isSavingTracking}
@@ -398,6 +450,11 @@ export function SettingsScreen({
             : current,
         );
       }}
+      onClearDataConfirmationChange={(value) => {
+        resetClearDataMessages();
+        setClearDataConfirmationValue(value);
+      }}
+      onClearAllData={handleClearAllData}
       onClearLastPeriodStart={() => {
         setCycleErrorMessage("");
         setCycleStatusMessage("");

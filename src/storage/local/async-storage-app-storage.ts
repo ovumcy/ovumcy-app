@@ -48,6 +48,10 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
       );
     },
 
+    async clearAllLocalData(): Promise<void> {
+      await clearAsyncStorageLocalAppData();
+    },
+
     async readProfileRecord(): Promise<ProfileRecord> {
       return readAsyncStorageProfileRecord();
     },

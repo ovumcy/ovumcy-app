@@ -17,15 +17,8 @@ import {
 } from "./profile-settings-policy";
 
 export type DashboardViewData = {
-  eyebrow: string;
-  title: string;
-  description: string;
   statusItems: string[];
   predictionExplanation: string;
-  snapshot: {
-    title: string;
-    items: { label: string; value: string }[];
-  };
   journal: {
     title: string;
     description: string;
@@ -100,38 +93,8 @@ export function buildDashboardViewData(
   const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
-    eyebrow: dashboardCopy.eyebrow,
-    title: dashboardCopy.title,
-    description: dashboardCopy.subtitle,
     statusItems,
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle),
-    snapshot: {
-      title: dashboardCopy.cycleSnapshot,
-      items: [
-        {
-          label: dashboardCopy.averageCycle,
-          value: `${profile.cycleLength} d`,
-        },
-        {
-          label: dashboardCopy.averagePeriod,
-          value: `${profile.periodLength} d`,
-        },
-        {
-          label: dashboardCopy.lastPeriodStart,
-          value: profile.lastPeriodStart
-            ? formatDisplayDate(profile.lastPeriodStart, locale)
-            : dashboardCopy.noDate,
-        },
-        {
-          label: "Mode",
-          value: profile.unpredictableCycle
-            ? dashboardCopy.cycleModeUnpredictable
-            : profile.irregularCycle
-              ? dashboardCopy.cycleModeIrregular
-              : dashboardCopy.cycleModeRegular,
-        },
-      ],
-    },
     journal: {
       title: dashboardCopy.todayEditor,
       description: buildJournalDescription(profile, todayEntry),

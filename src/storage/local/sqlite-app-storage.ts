@@ -1,4 +1,4 @@
-import { openDatabaseAsync } from "expo-sqlite";
+import { deleteDatabaseAsync, openDatabaseAsync } from "expo-sqlite";
 
 import {
   createEmptyDayLogRecord,
@@ -167,6 +167,7 @@ export interface LocalAppDatabase {
   getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null>;
   getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]>;
   runAsync(source: string, ...params: unknown[]): Promise<unknown>;
+  closeAsync?(): Promise<void>;
 }
 
 type LegacyLocalAppStorageSource = {
@@ -177,6 +178,7 @@ type LegacyLocalAppStorageSource = {
 };
 
 type CreateSQLiteAppStorageOptions = {
+  deleteDatabase?: () => Promise<void>;
   legacyStorageSource?: LegacyLocalAppStorageSource;
   openDatabase?: () => Promise<LocalAppDatabase>;
 };
@@ -199,6 +201,7 @@ const defaultLegacyStorageSource: LegacyLocalAppStorageSource = {
 export function createSQLiteAppStorage(
   options: CreateSQLiteAppStorageOptions = {},
 ): LocalAppStorage {
+  const deleteDatabase = options.deleteDatabase ?? deleteLocalAppDatabase;
   const openDatabase = options.openDatabase ?? openLocalAppDatabase;
   const legacyStorageSource =
     options.legacyStorageSource ?? defaultLegacyStorageSource;
@@ -228,6 +231,23 @@ export function createSQLiteAppStorage(
     async writeBootstrapState(state: LocalBootstrapState): Promise<void> {
       const database = await getHydratedDatabase();
       await upsertBootstrapState(database, state);
+    },
+
+    async clearAllLocalData(): Promise<void> {
+      const database = await getHydratedDatabase();
+      hydratedDatabasePromise = null;
+
+      try {
+        if (typeof database.closeAsync === "function") {
+          await database.closeAsync();
+        }
+
+        await deleteDatabase();
+        await legacyStorageSource.clear();
+      } catch (error) {
+        hydratedDatabasePromise = null;
+        throw error;
+      }
     },
 
     async readProfileRecord(): Promise<ProfileRecord> {
@@ -393,6 +413,10 @@ export function createSQLiteAppStorage(
 
 async function openLocalAppDatabase(): Promise<LocalAppDatabase> {
   return openDatabaseAsync(DATABASE_NAME);
+}
+
+async function deleteLocalAppDatabase(): Promise<void> {
+  await deleteDatabaseAsync(DATABASE_NAME);
 }
 
 async function hydrateLocalAppDatabase(

@@ -34,12 +34,13 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("onboarding-finish-button").click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByText("Cycle snapshot")).toBeVisible();
   await expect(page.getByTestId("day-log-save-button")).toBeVisible();
   await expect(page.getByText("Symptoms", { exact: true })).toBeVisible();
 
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByText("Interface")).toBeVisible();
+  await expect(page.getByText("Account & sync")).toBeVisible();
   await page.getByTestId("settings-symptom-create-name-input").fill("Jaw pain");
   await page.getByTestId("settings-symptom-create-action-button").click();
   await expect(page.getByText("Jaw pain")).toBeVisible();
@@ -84,6 +85,10 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByText("Export data")).toBeVisible();
   await expect(page.getByText("Total entries: 2")).toBeVisible();
+  await expect(page.getByTestId("settings-export-pdf-button")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
 
   const [csvDownload] = await Promise.all([
     page.waitForEvent("download"),
@@ -104,6 +109,14 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.getByText("Prediction reliability")).toBeVisible();
   await expect(page.getByText("Last cycle length")).toBeVisible();
+
+  await page.getByRole("tab", { name: /Settings/ }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await page.getByTestId("settings-clear-data-confirmation-input").fill("CLEAR");
+  await page.getByTestId("settings-clear-data-button").click();
+
+  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page.getByText("When did your last period start?")).toBeVisible();
 
   await page.reload();
 

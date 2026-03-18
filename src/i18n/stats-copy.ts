@@ -1,5 +1,4 @@
 export const statsCopy = {
-  eyebrow: "Insights",
   title: "Insights",
   subtitle: "See how your cycle length, phases, and recorded factors change over time.",
   noData: "-",

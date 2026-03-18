@@ -39,14 +39,16 @@ export function BinaryToggleCard({
         testID={testID}
       >
         <View style={styles.copy}>
-          <Text style={styles.label}>
-            {icon ? `${icon} ` : ""}
-            {label}
-          </Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>
+              {icon ? `${icon} ` : ""}
+              {label}
+            </Text>
+            {stateText ? <Text style={styles.stateBadge}>{stateText}</Text> : null}
+          </View>
           {showDescriptionInside ? (
             <Text style={styles.description}>{description}</Text>
           ) : null}
-          {stateText ? <Text style={styles.state}>{stateText}</Text> : null}
         </View>
         <View style={styles.controlColumn}>
           <View
@@ -71,55 +73,70 @@ const styles = StyleSheet.create({
   },
   shell: {
     alignItems: "center",
-    backgroundColor: colors.surface,
+    backgroundColor: "rgba(255, 248, 240, 0.82)",
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 999,
     borderWidth: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    minHeight: 56,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
   shellActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentStrong,
+    backgroundColor: "rgba(255, 240, 236, 0.96)",
+    borderColor: "rgba(199,117,109,0.52)",
   },
   shellPressed: {
     opacity: 0.92,
   },
   copy: {
     flex: 1,
-    gap: 4,
-    paddingRight: spacing.md,
+    gap: 3,
+    paddingRight: spacing.sm,
+  },
+  labelRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
   },
   label: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
   description: {
     color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  state: {
+  stateBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.58)",
+    borderColor: "rgba(188,165,138,0.32)",
+    borderRadius: 999,
+    borderWidth: 1,
     color: colors.textMuted,
     fontSize: 12,
-    lineHeight: 18,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+    textTransform: "uppercase",
   },
   controlColumn: {
     alignItems: "center",
   },
   toggleTrack: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
+    backgroundColor: "rgba(218,205,189,0.36)",
+    borderColor: "rgba(188,165,138,0.48)",
     borderRadius: 999,
     borderWidth: 1,
-    height: 26,
+    height: 22,
     justifyContent: "center",
     paddingHorizontal: 2,
-    width: 48,
+    width: 42,
   },
   toggleTrackActive: {
     backgroundColor: colors.accentSecondary,
@@ -128,8 +145,8 @@ const styles = StyleSheet.create({
   toggleThumb: {
     backgroundColor: colors.surface,
     borderRadius: 999,
-    height: 20,
-    width: 20,
+    height: 16,
+    width: 16,
   },
   toggleThumbActive: {
     alignSelf: "flex-end",

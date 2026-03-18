@@ -28,7 +28,6 @@ export type StatsTopCardViewData = {
 };
 
 export type StatsViewData = {
-  eyebrow: string;
   title: string;
   description: string;
   hasInsights: boolean;
@@ -122,7 +121,6 @@ export function buildStatsViewData(
 
   if (!history.hasInsights) {
     return {
-      eyebrow: statsCopy.eyebrow,
       title: statsCopy.title,
       description: statsCopy.subtitle,
       hasInsights: false,
@@ -148,7 +146,6 @@ export function buildStatsViewData(
   const factorContext = buildStatsFactorContext(profile, history, records, now);
 
   return {
-    eyebrow: statsCopy.eyebrow,
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,

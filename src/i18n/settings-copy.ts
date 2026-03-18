@@ -79,6 +79,25 @@ export const settingsCopy = {
     temperatureUnitFahrenheit: "Fahrenheit",
     save: "Save tracking",
   },
+  interface: {
+    title: "Interface",
+    subtitle:
+      "Mobile follows the device for language and appearance until app-level overrides are added.",
+    languageLabel: "Language",
+    languageValue: "Uses the device language right now.",
+    themeLabel: "Appearance",
+    themeValue: "Uses the system light or dark preference right now.",
+  },
+  account: {
+    title: "Account & sync",
+    subtitle:
+      "This app is still local-first. No account is connected on this device.",
+    statusLabel: "Current status",
+    statusValue:
+      "All tracking stays local on this device unless optional sync is added later.",
+    actionsHint:
+      "Sign-in, recovery, and logout will appear here once account-backed sync exists.",
+  },
   symptoms: {
     title: "Custom symptoms",
     subtitle: "Create short private labels for patterns you want to log.",
@@ -140,6 +159,7 @@ export const settingsCopy = {
     summaryRangeEmpty: "Date range: -",
     csvAction: "Export as CSV",
     jsonAction: "Export as JSON",
+    pdfAction: "PDF coming later",
     csvStatus: "CSV export is ready.",
     jsonStatus: "JSON backup is ready.",
     errors: {
@@ -152,6 +172,23 @@ export const settingsCopy = {
       deliveryFailed:
         "The export file was prepared, but sharing or download failed. Please try again.",
     },
+  },
+  danger: {
+    title: "Danger zone",
+    subtitle:
+      "Closing the app does not clear local data. Use this only when you want to erase local health records from this device.",
+    clearTitle: "Clear all local data",
+    clearSubtitle:
+      "Removes onboarding, profile settings, daily logs, custom symptoms, and local export state, then returns the app to onboarding.",
+    confirmationLabel: "Type CLEAR to confirm",
+    confirmationPlaceholder: "CLEAR",
+    confirmationHint:
+      "This action cannot be undone from the app. Export a backup first if you want to keep your records.",
+    action: "Clear local data",
+    success: "Local data cleared. Returning to onboarding.",
+    invalidConfirmation: "Type CLEAR exactly to confirm local data removal.",
+    failed:
+      "Unable to clear local data right now. Please try again.",
   },
   status: {
     cycleSaved: "Cycle settings updated successfully.",

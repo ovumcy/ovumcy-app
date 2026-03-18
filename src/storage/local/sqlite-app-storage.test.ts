@@ -216,8 +216,21 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
       }
 
       if (source.includes("DELETE FROM day_logs")) {
+        if (!source.includes("WHERE day =")) {
+          databaseState.dayLogRows = [];
+          return { changes: 1 };
+        }
         const day = String(params[0]);
         databaseState.dayLogRows = databaseState.dayLogRows.filter((row) => row.day !== day);
+      }
+      if (source.includes("DELETE FROM bootstrap_state")) {
+        databaseState.bootstrapRow = null;
+      }
+      if (source.includes("DELETE FROM profile_settings")) {
+        databaseState.profileRow = null;
+      }
+      if (source.includes("DELETE FROM symptoms")) {
+        databaseState.symptomRows = [];
       }
       if (source.includes("INSERT INTO symptoms")) {
         const nextRow = {
@@ -237,6 +250,10 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
       }
 
       return { changes: 1 };
+    },
+
+    async closeAsync() {
+      return undefined;
     },
   };
 }
@@ -536,5 +553,153 @@ describe("sqlite-app-storage", () => {
         }),
       ]),
     );
+  });
+
+  it("clears local data and reseeds canonical defaults", async () => {
+    const deleteDatabase = jest.fn().mockResolvedValue(undefined);
+    const legacyStorageSource = {
+      clear: jest.fn().mockResolvedValue(undefined),
+      hasData: jest.fn().mockResolvedValue(false),
+      readBootstrapState: jest.fn(),
+      readProfileRecord: jest.fn(),
+    };
+    const storage = createSQLiteAppStorage({
+      deleteDatabase,
+      legacyStorageSource,
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+    });
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-15",
+      cycleLength: 31,
+      periodLength: 6,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-17",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "heavy",
+      mood: 5,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "eggwhite",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "Reset me",
+    });
+    await storage.writeSymptomRecord({
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual({
+      lastPeriodStart: null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+    });
+    await expect(storage.readDayLogSummary()).resolves.toEqual({
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    });
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({
+          id: "custom_jaw_pain",
+        }),
+      ]),
+    );
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "cramps",
+          isDefault: true,
+        }),
+      ]),
+    );
+    expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
+    expect(deleteDatabase).toHaveBeenCalledTimes(1);
+  });
+
+  it("reopens the native sqlite database after clearing local data", async () => {
+    const deleteDatabase = jest.fn().mockResolvedValue(undefined);
+    let openDatabaseCallCount = 0;
+    const closeAsync = jest.fn().mockResolvedValue(undefined);
+    const legacyStorageSource = {
+      clear: jest.fn().mockResolvedValue(undefined),
+      hasData: jest.fn().mockResolvedValue(false),
+      readBootstrapState: jest.fn(),
+      readProfileRecord: jest.fn(),
+    };
+    const storage = createSQLiteAppStorage({
+      deleteDatabase,
+      legacyStorageSource,
+      openDatabase: async () => {
+        openDatabaseCallCount += 1;
+        const database = createFakeDatabase();
+        return {
+          ...database,
+          closeAsync,
+        };
+      },
+    });
+
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-15",
+      cycleLength: 31,
+      periodLength: 6,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+    });
+
+    await storage.clearAllLocalData();
+    await storage.readBootstrapState();
+
+    expect(closeAsync).toHaveBeenCalledTimes(1);
+    expect(deleteDatabase).toHaveBeenCalledTimes(1);
+    expect(openDatabaseCallCount).toBe(2);
   });
 });

@@ -1,4 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 import { colors, spacing } from "../theme/tokens";
 
@@ -6,6 +12,7 @@ type ChoiceGroupProps<T extends string | number> = {
   options: { value: T; label: string; secondaryLabel?: string }[];
   selectedValue?: T | undefined;
   onSelect: (value: T) => void;
+  layout?: "stack" | "grid2" | "grid3";
   compact?: boolean;
   testIDPrefix?: string;
 };
@@ -14,11 +21,31 @@ export function ChoiceGroup<T extends string | number>({
   options,
   selectedValue,
   onSelect,
+  layout = "stack",
   compact = false,
   testIDPrefix,
 }: ChoiceGroupProps<T>) {
+  const { width } = useWindowDimensions();
+  const resolvedColumnCount =
+    layout === "grid2"
+      ? 2
+      : layout === "grid3"
+        ? width >= 520
+          ? 3
+          : 1
+        : compact
+          ? width >= 520
+            ? 3
+            : 2
+          : 1;
+
   return (
-    <View style={[styles.group, compact ? styles.groupCompact : null]}>
+    <View
+      style={[
+        styles.group,
+        resolvedColumnCount > 1 ? styles.groupWrapped : null,
+      ]}
+    >
       {options.map((option) => (
         <Pressable
           key={option.value}
@@ -27,7 +54,8 @@ export function ChoiceGroup<T extends string | number>({
           onPress={() => onSelect(option.value)}
           style={[
             styles.tile,
-            compact ? styles.tileCompact : null,
+            resolvedColumnCount === 2 ? styles.tileGridTwo : null,
+            resolvedColumnCount === 3 ? styles.tileGridThree : null,
             selectedValue === option.value ? styles.tileActive : null,
           ]}
           testID={testIDPrefix ? `${testIDPrefix}-${option.value}` : undefined}
@@ -60,20 +88,25 @@ const styles = StyleSheet.create({
   group: {
     gap: spacing.sm,
   },
-  groupCompact: {
+  groupWrapped: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
   tile: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  tileCompact: {
+  tileGridTwo: {
+    flexBasis: "48%",
+    flexGrow: 1,
+  },
+  tileGridThree: {
     flexBasis: "31%",
     flexGrow: 1,
   },
@@ -83,13 +116,13 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   secondaryLabel: {
     color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   labelActive: {
     color: colors.accentStrong,
