@@ -2,6 +2,7 @@ import { dayLogCopy } from "../i18n/day-log-copy";
 import { statsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import type { SymptomRecord } from "../models/symptom";
 import {
   STATS_FACTOR_CONTEXT_WINDOW_DAYS,
   type StatsComparisonKind,
@@ -18,6 +19,15 @@ import {
   shouldShowIrregularityNotice,
   shouldShowIrregularModeRecommendation,
 } from "./cycle-history-service";
+import {
+  buildLastCycleSymptomFrequency,
+  buildStatsBBTSeries,
+  buildStatsPhaseMoodInsights,
+  buildStatsPhaseSymptomInsights,
+  buildStatsSymptomFrequency,
+  buildStatsSymptomPatterns,
+  buildStatsTrendPoints,
+} from "./stats-insights-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 export type StatsTopCardViewData = {
@@ -39,6 +49,93 @@ export type StatsViewData = {
     hint: string;
   };
   notices: string[];
+  trendChart?: {
+    title: string;
+    legendActualLabel: string;
+    legendAverageLabel: string;
+    baselineValue: number | null;
+    points: {
+      key: string;
+      label: string;
+      value: number;
+    }[];
+    valueSuffix: string;
+    emptyLabel: string;
+  };
+  symptomFrequency?: {
+    title: string;
+    emptyLabel: string;
+    items: {
+      id: string;
+      icon: string;
+      label: string;
+      frequencySummary: string;
+    }[];
+  };
+  lastCycleSymptoms?: {
+    title: string;
+    subtitle: string;
+    emptyLabel: string;
+    items: {
+      id: string;
+      icon: string;
+      label: string;
+      frequencySummary: string;
+    }[];
+  };
+  symptomPatterns?: {
+    title: string;
+    subtitle: string;
+    items: {
+      id: string;
+      icon: string;
+      label: string;
+      summary: string;
+    }[];
+  };
+  phaseMoodInsights?: {
+    title: string;
+    subtitle: string;
+    items: {
+      key: StatsPhase;
+      phase: string;
+      icon: string;
+      hasData: boolean;
+      averageMood: string;
+      percentage: number;
+      countLabel: string;
+      emptyLabel: string;
+    }[];
+  };
+  phaseSymptomInsights?: {
+    title: string;
+    subtitle: string;
+    items: {
+      key: StatsPhase;
+      phase: string;
+      icon: string;
+      hasData: boolean;
+      totalDaysLabel: string;
+      emptyLabel: string;
+      symptoms: {
+        id: string;
+        icon: string;
+        label: string;
+        percentageLabel: string;
+      }[];
+    }[];
+  };
+  bbtTrend?: {
+    title: string;
+    caption: string;
+    unitLabel: string;
+    valueSuffix: string;
+    points: {
+      key: string;
+      label: string;
+      value: number;
+    }[];
+  };
   topCards: StatsTopCardViewData[];
   cycleOverview?: {
     title: string;
@@ -86,6 +183,7 @@ export type StatsViewData = {
 export type LoadedStatsState = {
   profile: ProfileRecord;
   records: DayLogRecord[];
+  symptomRecords: SymptomRecord[];
   viewData: StatsViewData;
 };
 
@@ -99,21 +197,24 @@ export async function loadStatsScreenState(
     new Date(today.getFullYear() - 2, today.getMonth(), today.getDate()),
   );
   const rangeEnd = formatLocalDate(today);
-  const [profile, records] = await Promise.all([
+  const [profile, records, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
     storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
+    storage.listSymptomRecords(),
   ]);
 
   return {
     profile,
     records,
-    viewData: buildStatsViewData(profile, records, now, locale),
+    symptomRecords,
+    viewData: buildStatsViewData(profile, records, symptomRecords, now, locale),
   };
 }
 
 export function buildStatsViewData(
   profile: ProfileRecord,
   records: DayLogRecord[],
+  symptomRecords: SymptomRecord[],
   now: Date,
   locale = "en",
 ): StatsViewData {
@@ -144,12 +245,128 @@ export function buildStatsViewData(
   const projection = buildCurrentCycleProjection(profile, history, records, now);
   const reliability = buildStatsReliability(profile, history);
   const factorContext = buildStatsFactorContext(profile, history, records, now);
+  const trendPoints = buildStatsTrendPoints(history, locale);
+  const symptomFrequency = buildStatsSymptomFrequency(records, symptomRecords);
+  const lastCycleSymptoms = buildLastCycleSymptomFrequency(
+    history,
+    records,
+    symptomRecords,
+  );
+  const symptomPatterns = buildStatsSymptomPatterns(history, records, symptomRecords);
+  const phaseMoodInsights = buildStatsPhaseMoodInsights(history, records);
+  const phaseSymptomInsights = buildStatsPhaseSymptomInsights(
+    history,
+    records,
+    symptomRecords,
+  );
+  const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
 
   return {
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,
     notices: buildStatsNotices(profile, history),
+    trendChart: {
+      title: statsCopy.cycleTrend,
+      legendActualLabel: statsCopy.chartActualLabel,
+      legendAverageLabel: statsCopy.chartAverageLabel,
+      baselineValue:
+        history.averageCycleLength > 0 ? history.averageCycleLength : null,
+      points: trendPoints.map((point) => ({
+        key: point.key,
+        label: point.label,
+        value: point.value,
+      })),
+      valueSuffix: "d",
+      emptyLabel: statsCopy.noCycleData,
+    },
+    symptomFrequency: {
+      title: statsCopy.symptomFrequency,
+      emptyLabel: statsCopy.noSymptomData,
+      items: symptomFrequency.map((item) => ({
+        id: item.id,
+        icon: item.icon,
+        label: item.label,
+        frequencySummary: item.frequencySummary,
+      })),
+    },
+    lastCycleSymptoms: {
+      title: statsCopy.lastCycleSymptomsTitle,
+      subtitle: statsCopy.lastCycleSymptomsSubtitle,
+      emptyLabel: statsCopy.noCycleSymptomData,
+      items: lastCycleSymptoms.map((item) => ({
+        id: item.id,
+        icon: item.icon,
+        label: item.label,
+        frequencySummary: item.frequencySummary,
+      })),
+    },
+    symptomPatterns: {
+      title: statsCopy.symptomPatternsTitle,
+      subtitle: statsCopy.symptomPatternsSubtitle,
+      items: symptomPatterns.map((item) => ({
+        id: item.id,
+        icon: item.icon,
+        label: item.label,
+        summary:
+          item.dayStart === item.dayEnd
+            ? statsCopy.symptomPatternDay(item.dayStart)
+            : statsCopy.symptomPatternDays(item.dayStart, item.dayEnd),
+      })),
+    },
+    phaseMoodInsights: {
+      title: statsCopy.phaseMoodTitle,
+      subtitle: statsCopy.phaseMoodSubtitle,
+      items: phaseMoodInsights.map((item) => ({
+        key: item.phase,
+        phase: statsCopy.phaseLabels[item.phase],
+        icon: statsCopy.phaseIcons[item.phase],
+        hasData: item.hasData,
+        averageMood: item.hasData ? `${item.averageMood.toFixed(1)} / 5` : "",
+        percentage: item.percentage,
+        countLabel: statsCopy.phaseMoodCount(item.entryCount),
+        emptyLabel: statsCopy.phaseMoodEmpty,
+      })),
+    },
+    phaseSymptomInsights: {
+      title: statsCopy.phaseSymptomsTitle,
+      subtitle: statsCopy.phaseSymptomsSubtitle,
+      items: phaseSymptomInsights.map((item) => ({
+        key: item.phase,
+        phase: statsCopy.phaseLabels[item.phase],
+        icon: statsCopy.phaseIcons[item.phase],
+        hasData: item.hasData,
+        totalDaysLabel: statsCopy.phaseSymptomsDays(item.totalDays),
+        emptyLabel: statsCopy.phaseSymptomsEmpty,
+        symptoms: item.items.map((symptom) => ({
+          id: symptom.id,
+          icon: symptom.icon,
+          label: symptom.label,
+          percentageLabel: `${Math.round(symptom.percentage)}%`,
+        })),
+      })),
+    },
+    ...(bbtSeries.length > 0
+      ? {
+          bbtTrend: {
+            title: statsCopy.bbtTitle,
+            caption: statsCopy.bbtCaption,
+            unitLabel:
+              profile.temperatureUnit === "f"
+                ? statsCopy.bbtUnitFahrenheit
+                : statsCopy.bbtUnitCelsius,
+            valueSuffix:
+              profile.temperatureUnit === "f"
+                ? statsCopy.bbtUnitFahrenheit
+                : statsCopy.bbtUnitCelsius,
+            points: bbtSeries.map((point) => ({
+              key: point.key,
+              label: point.label,
+              value: point.value,
+            })),
+          },
+        }
+      : {}),
     topCards: buildTopCards(profile, history, projection, reliability),
     cycleOverview: {
       title: statsCopy.cycleLengthCard,

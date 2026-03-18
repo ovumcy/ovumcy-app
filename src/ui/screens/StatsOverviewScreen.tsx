@@ -1,13 +1,9 @@
-import {
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import type { StatsViewData } from "../../services/stats-view-service";
 import { FeatureCard } from "../components/FeatureCard";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { StatsBarChart } from "../components/StatsBarChart";
 import { colors, spacing } from "../theme/tokens";
 
 type StatsOverviewScreenProps = {
@@ -19,12 +15,12 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
   const cardColumns = width >= 1080 ? 4 : width >= 760 ? 2 : 1;
   const cardWidth =
     cardColumns === 4 ? "23.5%" : cardColumns === 2 ? "48.5%" : "100%";
+  const pairWidth = width >= 920 ? "48.5%" : "100%";
+  const trendPrimaryWidth = width >= 1080 ? "65.5%" : "100%";
+  const trendSecondaryWidth = width >= 1080 ? "32.5%" : "100%";
 
   return (
-    <ScreenScaffold
-      title={viewData.title}
-      description={viewData.description}
-    >
+    <ScreenScaffold title={viewData.title} description={viewData.description}>
       {!viewData.hasInsights && viewData.emptyState ? (
         <FeatureCard
           title={viewData.emptyState.title}
@@ -62,7 +58,9 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
                 ]}
               />
             </View>
-            <Text style={styles.progressLabel}>{viewData.emptyState.progressLabel}</Text>
+            <Text style={styles.progressLabel}>
+              {viewData.emptyState.progressLabel}
+            </Text>
             <Text style={styles.helperText}>{viewData.emptyState.hint}</Text>
           </View>
         </FeatureCard>
@@ -89,24 +87,33 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
           </View>
 
           {viewData.cycleOverview ? (
-            <FeatureCard
-              title={viewData.cycleOverview.title}
-              description="Built from your completed local cycle history."
-            >
+            <FeatureCard title={viewData.cycleOverview.title}>
               <View style={styles.overviewGrid}>
                 <View style={styles.panel}>
                   <View style={styles.row}>
-                    <Text style={styles.rowLabel}>{viewData.cycleOverview.averageLabel}</Text>
-                    <Text style={styles.rowValue}>{viewData.cycleOverview.averageValue}</Text>
+                    <Text style={styles.rowLabel}>
+                      {viewData.cycleOverview.averageLabel}
+                    </Text>
+                    <Text style={styles.rowValue}>
+                      {viewData.cycleOverview.averageValue}
+                    </Text>
                   </View>
                   <View style={styles.row}>
-                    <Text style={styles.rowLabel}>{viewData.cycleOverview.medianLabel}</Text>
-                    <Text style={styles.rowValue}>{viewData.cycleOverview.medianValue}</Text>
+                    <Text style={styles.rowLabel}>
+                      {viewData.cycleOverview.medianLabel}
+                    </Text>
+                    <Text style={styles.rowValue}>
+                      {viewData.cycleOverview.medianValue}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.panel}>
-                  <Text style={styles.cardLabel}>{viewData.cycleOverview.rangeTitle}</Text>
-                  <Text style={styles.cardValue}>{viewData.cycleOverview.rangeValue}</Text>
+                  <Text style={styles.cardLabel}>
+                    {viewData.cycleOverview.rangeTitle}
+                  </Text>
+                  <Text style={styles.cardValue}>
+                    {viewData.cycleOverview.rangeValue}
+                  </Text>
                 </View>
               </View>
             </FeatureCard>
@@ -152,7 +159,9 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
                     <View key={`${cycle.startDate}-${cycle.title}`} style={styles.panel}>
                       <View style={styles.row}>
                         <Text style={styles.cardLabel}>{cycle.title}</Text>
-                        <Text style={styles.helperText}>{cycle.comparisonLabel}</Text>
+                        <Text style={styles.helperText}>
+                          {cycle.comparisonLabel}
+                        </Text>
                       </View>
                       <Text style={styles.helperText}>
                         {cycle.startDate} to {cycle.endDate}
@@ -174,9 +183,273 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
               <Text style={styles.helperText}>{viewData.factorContext.hint}</Text>
             </FeatureCard>
           ) : null}
+
+          <View style={styles.sectionGrid}>
+            {viewData.lastCycleSymptoms ? (
+              <View style={{ width: pairWidth }}>
+                <FeatureCard
+                  title={viewData.lastCycleSymptoms.title}
+                  description={viewData.lastCycleSymptoms.subtitle}
+                  testID="stats-last-cycle-symptoms"
+                >
+                  {viewData.lastCycleSymptoms.items.length > 0 ? (
+                    <View style={styles.listStack}>
+                      {viewData.lastCycleSymptoms.items.map((item) => (
+                        <SymptomRow
+                          key={item.id}
+                          frequencySummary={item.frequencySummary}
+                          icon={item.icon}
+                          label={item.label}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <InsightEmptyState
+                      icon="🧾"
+                      label={viewData.lastCycleSymptoms.emptyLabel}
+                    />
+                  )}
+                </FeatureCard>
+              </View>
+            ) : null}
+
+            {viewData.bbtTrend ? (
+              <View style={{ width: pairWidth }}>
+                <FeatureCard
+                  title={viewData.bbtTrend.title}
+                  description={viewData.bbtTrend.caption}
+                  testID="stats-bbt-trend"
+                >
+                  <StatsBarChart
+                    accentColor={colors.accentSecondary}
+                    emptyLabel={viewData.trendChart?.emptyLabel ?? ""}
+                    points={viewData.bbtTrend.points}
+                    scaleMode="range"
+                    testID="stats-bbt-chart"
+                    valueDecimals={1}
+                    valueSuffix={` ${viewData.bbtTrend.unitLabel}`}
+                  />
+                </FeatureCard>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.sectionGrid}>
+            {viewData.trendChart ? (
+              <View style={{ width: trendPrimaryWidth }}>
+                <FeatureCard
+                  title={viewData.trendChart.title}
+                  testID="stats-trend-section"
+                >
+                  <View style={styles.legendRow}>
+                    <View style={styles.legendItem}>
+                      <View
+                        style={[styles.legendDot, styles.legendDotActual]}
+                      />
+                      <Text style={styles.helperText}>
+                        {viewData.trendChart.legendActualLabel}
+                      </Text>
+                    </View>
+                    {viewData.trendChart.baselineValue !== null ? (
+                      <View style={styles.legendItem}>
+                        <View style={styles.legendLine} />
+                        <Text style={styles.helperText}>
+                          {viewData.trendChart.legendAverageLabel}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <StatsBarChart
+                    baselineValue={viewData.trendChart.baselineValue}
+                    emptyLabel={viewData.trendChart.emptyLabel}
+                    points={viewData.trendChart.points}
+                    testID="stats-trend-chart"
+                    valueSuffix={` ${viewData.trendChart.valueSuffix}`}
+                  />
+                </FeatureCard>
+              </View>
+            ) : null}
+
+            {viewData.symptomFrequency ? (
+              <View style={{ width: trendSecondaryWidth }}>
+                <FeatureCard
+                  title={viewData.symptomFrequency.title}
+                  testID="stats-symptom-frequency"
+                >
+                  {viewData.symptomFrequency.items.length > 0 ? (
+                    <View style={styles.listStack}>
+                      {viewData.symptomFrequency.items.map((item) => (
+                        <SymptomRow
+                          key={item.id}
+                          frequencySummary={item.frequencySummary}
+                          icon={item.icon}
+                          label={item.label}
+                        />
+                      ))}
+                    </View>
+                  ) : (
+                    <InsightEmptyState
+                      icon="🧾"
+                      label={viewData.symptomFrequency.emptyLabel}
+                    />
+                  )}
+                </FeatureCard>
+              </View>
+            ) : null}
+          </View>
+
+          {viewData.symptomPatterns && viewData.symptomPatterns.items.length > 0 ? (
+            <FeatureCard
+              title={viewData.symptomPatterns.title}
+              description={viewData.symptomPatterns.subtitle}
+              testID="stats-symptom-patterns"
+            >
+              <View style={styles.sectionGrid}>
+                {viewData.symptomPatterns.items.map((item) => (
+                  <View key={item.id} style={[styles.panel, { width: pairWidth }]}>
+                    <View style={styles.metaRow}>
+                      <Text style={styles.metaIcon}>{item.icon}</Text>
+                      <Text style={styles.metaLabel}>{item.label}</Text>
+                    </View>
+                    <Text style={styles.helperText}>{item.summary}</Text>
+                  </View>
+                ))}
+              </View>
+            </FeatureCard>
+          ) : null}
+
+          {hasAnyPhaseInsights(viewData) ? (
+            <View style={styles.sectionGrid}>
+              {viewData.phaseMoodInsights &&
+              viewData.phaseMoodInsights.items.some((item) => item.hasData) ? (
+                <View style={{ width: pairWidth }}>
+                  <FeatureCard
+                    title={viewData.phaseMoodInsights.title}
+                    description={viewData.phaseMoodInsights.subtitle}
+                    testID="stats-phase-mood"
+                  >
+                    <View style={styles.sectionGrid}>
+                      {viewData.phaseMoodInsights.items.map((item) => (
+                        <View
+                          key={item.key}
+                          style={[styles.panel, { width: pairWidth }]}
+                        >
+                          <View style={styles.metaRow}>
+                            <Text style={styles.metaIcon}>{item.icon}</Text>
+                            <Text style={styles.metaLabel}>{item.phase}</Text>
+                          </View>
+                          {item.hasData ? (
+                            <>
+                              <View style={styles.meterTrack}>
+                                <View
+                                  style={[
+                                    styles.meterFill,
+                                    { width: `${item.percentage}%` },
+                                  ]}
+                                />
+                              </View>
+                              <Text style={styles.rowValue}>{item.averageMood}</Text>
+                              <Text style={styles.helperText}>
+                                {item.countLabel}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text style={styles.helperText}>{item.emptyLabel}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </FeatureCard>
+                </View>
+              ) : null}
+
+              {viewData.phaseSymptomInsights &&
+              viewData.phaseSymptomInsights.items.some((item) => item.hasData) ? (
+                <View style={{ width: pairWidth }}>
+                  <FeatureCard
+                    title={viewData.phaseSymptomInsights.title}
+                    description={viewData.phaseSymptomInsights.subtitle}
+                    testID="stats-phase-symptoms"
+                  >
+                    <View style={styles.listStack}>
+                      {viewData.phaseSymptomInsights.items.map((item) => (
+                        <View key={item.key} style={styles.panel}>
+                          <View style={styles.metaRow}>
+                            <Text style={styles.metaIcon}>{item.icon}</Text>
+                            <Text style={styles.metaLabel}>{item.phase}</Text>
+                          </View>
+                          {item.hasData ? (
+                            <>
+                              <View style={styles.listStack}>
+                                {item.symptoms.map((symptom) => (
+                                  <SymptomRow
+                                    key={symptom.id}
+                                    frequencySummary={symptom.percentageLabel}
+                                    icon={symptom.icon}
+                                    label={symptom.label}
+                                  />
+                                ))}
+                              </View>
+                              <Text style={styles.helperText}>
+                                {item.totalDaysLabel}
+                              </Text>
+                            </>
+                          ) : (
+                            <Text style={styles.helperText}>{item.emptyLabel}</Text>
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </FeatureCard>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ) : null}
     </ScreenScaffold>
+  );
+}
+
+function InsightEmptyState({
+  icon,
+  label,
+}: {
+  icon: string;
+  label: string;
+}) {
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateIcon}>{icon}</Text>
+      <Text style={styles.helperText}>{label}</Text>
+    </View>
+  );
+}
+
+function SymptomRow({
+  frequencySummary,
+  icon,
+  label,
+}: {
+  frequencySummary: string;
+  icon: string;
+  label: string;
+}) {
+  return (
+    <View style={styles.symptomRow}>
+      <View style={styles.metaRow}>
+        <Text style={styles.metaIcon}>{icon}</Text>
+        <Text style={styles.metaLabel}>{label}</Text>
+      </View>
+      <Text style={styles.helperText}>{frequencySummary}</Text>
+    </View>
+  );
+}
+
+function hasAnyPhaseInsights(viewData: StatsViewData): boolean {
+  return Boolean(
+    viewData.phaseMoodInsights?.items.some((item) => item.hasData) ||
+      viewData.phaseSymptomInsights?.items.some((item) => item.hasData),
   );
 }
 
@@ -368,5 +641,82 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 20,
+  },
+  sectionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  listStack: {
+    gap: spacing.sm,
+  },
+  symptomRow: {
+    alignItems: "center",
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 14,
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  metaRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: spacing.sm,
+  },
+  metaIcon: {
+    fontSize: 16,
+  },
+  metaLabel: {
+    color: colors.text,
+    flexShrink: 1,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  emptyState: {
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  emptyStateIcon: {
+    fontSize: 22,
+  },
+  legendRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.md,
+  },
+  legendItem: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  legendDot: {
+    borderRadius: 4,
+    height: 10,
+    width: 10,
+  },
+  legendDotActual: {
+    backgroundColor: colors.accentStrong,
+  },
+  legendLine: {
+    borderColor: colors.textMuted,
+    borderStyle: "dashed",
+    borderTopWidth: 2,
+    opacity: 0.6,
+    width: 24,
+  },
+  meterTrack: {
+    backgroundColor: colors.surfaceStrong,
+    borderRadius: 999,
+    height: 10,
+    overflow: "hidden",
+  },
+  meterFill: {
+    backgroundColor: colors.accentStrong,
+    borderRadius: 999,
+    height: "100%",
   },
 });

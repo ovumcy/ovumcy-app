@@ -68,12 +68,14 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.getByTestId(`calendar-day-${previousCycleStart}`).click();
   await page.getByTestId("day-log-period-toggle").last().click();
+  await page.getByTestId("day-log-symptom-cramps").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
   await expect(page.getByText("Entry saved locally.")).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
   await page.getByTestId("day-log-period-toggle").last().click();
+  await page.getByTestId("day-log-symptom-cramps").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
   await expect(page.getByText("Entry saved locally.")).toBeVisible();
@@ -108,7 +110,12 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await expect(page).toHaveURL(/\/stats$/);
   await expect(page.getByText("Prediction reliability")).toBeVisible();
-  await expect(page.getByText("Last cycle length")).toBeVisible();
+  await expect(page.getByText("Cycle trend")).toBeVisible();
+  await expect(page.getByText("Symptom frequency")).toBeVisible();
+  await expect(page.getByText("Last cycle symptoms")).toBeVisible();
+  await expect(
+    page.getByTestId("stats-symptom-frequency").getByText("Cramps"),
+  ).toBeVisible();
 
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);

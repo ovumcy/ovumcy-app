@@ -57,13 +57,13 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-empty-hero")).toBeTruthy();
   });
 
-  it("renders stats cards and factor context from local history", async () => {
+  it("renders stats v2 sections after local history is available", async () => {
     render(
       <StatsScreen
         now={new Date(2026, 2, 17)}
         storage={createStorageMock({
           readProfileRecord: jest.fn().mockResolvedValue({
-            lastPeriodStart: "2025-12-10",
+            lastPeriodStart: "2026-01-17",
             cycleLength: 28,
             periodLength: 5,
             autoPeriodFill: true,
@@ -71,30 +71,40 @@ describe("StatsScreen", () => {
             unpredictableCycle: false,
             ageGroup: "",
             usageGoal: "health",
-            trackBBT: false,
+            trackBBT: true,
             temperatureUnit: "c",
             trackCervicalMucus: false,
             hideSexChip: false,
           }),
           listDayLogRecordsInRange: jest.fn().mockResolvedValue([
             {
-              ...createEmptyDayLogRecord("2026-01-08"),
+              ...createEmptyDayLogRecord("2026-01-17"),
+              isPeriod: true,
+            },
+            {
+              ...createEmptyDayLogRecord("2026-01-18"),
+              symptomIDs: ["cramps"],
+              mood: 2,
+            },
+            {
+              ...createEmptyDayLogRecord("2026-02-14"),
               isPeriod: true,
               cycleFactorKeys: ["stress"],
             },
             {
-              ...createEmptyDayLogRecord("2026-02-12"),
-              isPeriod: true,
-              cycleFactorKeys: ["stress", "travel"],
+              ...createEmptyDayLogRecord("2026-02-15"),
+              symptomIDs: ["cramps"],
+              mood: 4,
+              cycleFactorKeys: ["travel"],
             },
             {
               ...createEmptyDayLogRecord("2026-03-14"),
               isPeriod: true,
-              cycleFactorKeys: ["travel"],
             },
             {
-              ...createEmptyDayLogRecord("2026-03-16"),
-              cycleFactorKeys: ["travel"],
+              ...createEmptyDayLogRecord("2026-03-15"),
+              bbt: 36.48,
+              symptomIDs: ["headache"],
             },
           ]),
         })}
@@ -102,7 +112,11 @@ describe("StatsScreen", () => {
     );
 
     await screen.findByText("Prediction reliability");
-    expect(screen.getByText("Variable pattern")).toBeTruthy();
+    expect(screen.getByText("Cycle trend")).toBeTruthy();
+    expect(screen.getByText("Symptom frequency")).toBeTruthy();
+    expect(screen.getByText("Last cycle symptoms")).toBeTruthy();
+    expect(screen.getByText("Phase moods")).toBeTruthy();
+    expect(screen.getByText("BBT trend")).toBeTruthy();
     expect(screen.getByText("Recent cycle factors")).toBeTruthy();
   });
 });

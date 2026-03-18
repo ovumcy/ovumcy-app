@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { createDefaultSymptomRecords } from "../models/symptom";
 import { buildStatsViewData } from "./stats-view-service";
 
 function createProfileRecord(
@@ -38,6 +39,7 @@ describe("buildStatsViewData", () => {
     const viewData = buildStatsViewData(
       createProfileRecord(),
       [],
+      createDefaultSymptomRecords(),
       new Date(2026, 2, 17),
     );
 
@@ -46,15 +48,38 @@ describe("buildStatsViewData", () => {
     expect(viewData.emptyState?.progressLabel).toBe("Completed cycles: 0 / 2");
   });
 
-  it("shows reliability and cycle overview after two completed cycles", () => {
+  it("builds trend, symptom, phase, and bbt insight sections after local history unlocks stats", () => {
     const viewData = buildStatsViewData(
-      createProfileRecord(),
+      createProfileRecord({
+        trackBBT: true,
+      }),
       [
+        createPeriodRecord("2026-01-17"),
+        {
+          ...createEmptyDayLogRecord("2026-01-18"),
+          flow: "medium",
+          mood: 2,
+          symptomIDs: ["cramps"],
+        },
         createPeriodRecord("2026-02-14"),
-        createPeriodRecord("2026-02-15"),
+        {
+          ...createEmptyDayLogRecord("2026-02-15"),
+          flow: "light",
+          mood: 4,
+          symptomIDs: ["cramps"],
+        },
         createPeriodRecord("2026-03-14"),
-        createPeriodRecord("2026-03-15"),
+        {
+          ...createEmptyDayLogRecord("2026-03-15"),
+          bbt: 36.45,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-16"),
+          bbt: 36.62,
+          symptomIDs: ["headache"],
+        },
       ],
+      createDefaultSymptomRecords(),
       new Date(2026, 2, 17),
     );
 
@@ -67,7 +92,28 @@ describe("buildStatsViewData", () => {
         }),
       ]),
     );
-    expect(viewData.cycleOverview?.rangeValue).toBe("Your cycles: 28 to 28 days");
+    expect(viewData.trendChart?.title).toBe("Cycle trend");
+    expect(viewData.trendChart?.points).toHaveLength(2);
+    expect(viewData.symptomFrequency?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps" }),
+      ]),
+    );
+    expect(viewData.lastCycleSymptoms?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps" }),
+      ]),
+    );
+    expect(viewData.symptomPatterns?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps" }),
+      ]),
+    );
+    expect(viewData.phaseMoodInsights?.items.some((item) => item.hasData)).toBe(true);
+    expect(viewData.phaseSymptomInsights?.items.some((item) => item.hasData)).toBe(
+      true,
+    );
+    expect(viewData.bbtTrend?.points).toHaveLength(2);
   });
 
   it("switches to facts-only copy when unpredictable mode is enabled", () => {
@@ -79,6 +125,7 @@ describe("buildStatsViewData", () => {
         createPeriodRecord("2026-02-14"),
         createPeriodRecord("2026-03-14"),
       ],
+      createDefaultSymptomRecords(),
       new Date(2026, 2, 17),
     );
 
@@ -113,6 +160,7 @@ describe("buildStatsViewData", () => {
           cycleFactorKeys: ["travel"],
         },
       ],
+      createDefaultSymptomRecords(),
       new Date(2026, 2, 17),
     );
 
@@ -122,6 +170,8 @@ describe("buildStatsViewData", () => {
         expect.objectContaining({ key: "travel" }),
       ]),
     );
-    expect(viewData.notices).toContain("After 35, cycle variability naturally increases.");
+    expect(viewData.notices).toContain(
+      "After 35, cycle variability naturally increases.",
+    );
   });
 });
