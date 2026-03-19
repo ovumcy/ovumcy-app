@@ -159,9 +159,10 @@ export const settingsCopy = {
     summaryRangeEmpty: "Date range: -",
     csvAction: "Export as CSV",
     jsonAction: "Export as JSON",
-    pdfAction: "PDF coming later",
+    pdfAction: "Export as PDF",
     csvStatus: "CSV export is ready.",
     jsonStatus: "JSON backup is ready.",
+    pdfStatus: "PDF report is ready.",
     errors: {
       invalidFromDate: "Use a valid start date.",
       invalidToDate: "Use a valid end date.",

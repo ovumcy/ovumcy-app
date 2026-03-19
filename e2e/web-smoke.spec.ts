@@ -102,10 +102,6 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByText("Export data")).toBeVisible();
   await expect(page.getByText("Total entries: 2")).toBeVisible();
-  await expect(page.getByTestId("settings-export-pdf-button")).toHaveAttribute(
-    "aria-disabled",
-    "true",
-  );
 
   const [csvDownload] = await Promise.all([
     page.waitForEvent("download"),
@@ -120,6 +116,13 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   ]);
   await expect(jsonDownload.suggestedFilename()).toContain("ovumcy-export-");
   await expect(jsonDownload.suggestedFilename()).toContain(".json");
+
+  const [pdfDownload] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("settings-export-pdf-button").click(),
+  ]);
+  await expect(pdfDownload.suggestedFilename()).toContain("ovumcy-export-");
+  await expect(pdfDownload.suggestedFilename()).toContain(".pdf");
 
   await page.getByRole("tab", { name: /Insights/ }).click();
 

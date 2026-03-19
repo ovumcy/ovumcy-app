@@ -15,6 +15,7 @@ type SettingsExportSectionProps = {
   onCSVExport: () => void | Promise<void>;
   onFromDateChange: (value: string) => void;
   onJSONExport: () => void | Promise<void>;
+  onPDFExport: () => void | Promise<void>;
   onPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onToDateChange: (value: string) => void;
   statusMessage: string;
@@ -28,6 +29,7 @@ export function SettingsExportSection({
   onCSVExport,
   onFromDateChange,
   onJSONExport,
+  onPDFExport,
   onPresetSelect,
   onToDateChange,
   statusMessage,
@@ -136,9 +138,9 @@ export function SettingsExportSection({
               testID="settings-export-json-button"
             />
             <AppButton
-              disabled
+              disabled={isExporting}
               label={viewData.pdfAction}
-              onPress={() => undefined}
+              onPress={onPDFExport}
               testID="settings-export-pdf-button"
               variant="secondary"
             />

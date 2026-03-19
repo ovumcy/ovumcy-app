@@ -1,9 +1,13 @@
 import type { DayLogRecord } from "./day-log";
-import type { LocalDateISO, ProfileRecord } from "./profile";
+import type {
+  LocalDateISO,
+  ProfileRecord,
+  TemperatureUnit,
+} from "./profile";
 import type { SymptomRecord } from "./symptom";
 
 export const EXPORT_PRESET_VALUES = ["all", "30", "90", "365", "custom"] as const;
-export const EXPORT_FORMAT_VALUES = ["csv", "json"] as const;
+export const EXPORT_FORMAT_VALUES = ["csv", "json", "pdf"] as const;
 
 export type ExportPreset = (typeof EXPORT_PRESET_VALUES)[number];
 export type ExportFormat = (typeof EXPORT_FORMAT_VALUES)[number];
@@ -25,6 +29,8 @@ export type ExportDateBounds = {
   minDate: LocalDateISO | null;
   maxDate: LocalDateISO | null;
 };
+
+export type ExportArtifactContent = string | Uint8Array;
 
 export type LoadedExportState = {
   values: ExportRangeValues;
@@ -78,4 +84,51 @@ export type ExportBackupEnvelope = {
   profile: ProfileRecord;
   symptoms: SymptomRecord[];
   dayLogs: DayLogRecord[];
+};
+
+export type ExportPDFCycleDay = {
+  date: LocalDateISO;
+  cycleDay: number;
+  isPeriod: boolean;
+  flow: string;
+  moodRating: number;
+  sexActivity: string;
+  bbt: number;
+  cervicalMucus: string;
+  cycleFactors: string[];
+  symptoms: string[];
+  notes: string;
+};
+
+export type ExportPDFCalendarDay = {
+  date: LocalDateISO;
+  isPeriod: boolean;
+  hasData: boolean;
+};
+
+export type ExportPDFCycle = {
+  startDate: LocalDateISO;
+  endDate: LocalDateISO;
+  cycleLength: number;
+  periodLength: number;
+  entries: ExportPDFCycleDay[];
+};
+
+export type ExportPDFSummary = {
+  loggedDays: number;
+  completedCycles: number;
+  averageCycleLength: number;
+  averagePeriodLength: number;
+  averageMood: number;
+  hasAverageMood: boolean;
+  rangeStart: LocalDateISO | "";
+  rangeEnd: LocalDateISO | "";
+};
+
+export type ExportPDFReport = {
+  generatedAt: string;
+  summary: ExportPDFSummary;
+  calendarDays: ExportPDFCalendarDay[];
+  cycles: ExportPDFCycle[];
+  temperatureUnit: TemperatureUnit;
 };

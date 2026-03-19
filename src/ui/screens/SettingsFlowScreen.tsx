@@ -69,6 +69,7 @@ type SettingsFlowScreenProps = {
   onExportCSV: () => void | Promise<void>;
   onExportFromDateChange: (value: string) => void;
   onExportJSON: () => void | Promise<void>;
+  onExportPDF: () => void | Promise<void>;
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
   onIrregularCycleChange: (value: boolean) => void;
@@ -130,6 +131,7 @@ export function SettingsFlowScreen({
   onExportCSV,
   onExportFromDateChange,
   onExportJSON,
+  onExportPDF,
   onExportPresetSelect,
   onExportToDateChange,
   onHideSexChipChange,
@@ -451,6 +453,7 @@ export function SettingsFlowScreen({
         onCSVExport={onExportCSV}
         onFromDateChange={onExportFromDateChange}
         onJSONExport={onExportJSON}
+        onPDFExport={onExportPDF}
         onPresetSelect={onExportPresetSelect}
         onToDateChange={onExportToDateChange}
         statusMessage={exportStatusMessage}

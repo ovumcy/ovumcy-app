@@ -7,6 +7,7 @@ import {
   createPlatformExportDeliveryClient,
   type ExportDeliveryClient,
 } from "../../services/export-delivery";
+import type { ExportServiceDependencies } from "../../services/export-service";
 import {
   archiveSettingsSymptom,
   createSettingsSymptom,
@@ -40,12 +41,14 @@ import { SettingsFlowScreen } from "./SettingsFlowScreen";
 
 type SettingsScreenProps = {
   exportDeliveryClient?: ExportDeliveryClient;
+  exportServiceDependencies?: ExportServiceDependencies;
   storage?: LocalAppStorage;
   now?: Date;
 };
 
 export function SettingsScreen({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
+  exportServiceDependencies,
   storage = appStorage,
   now,
 }: SettingsScreenProps) {
@@ -313,7 +316,7 @@ export function SettingsScreen({
     }
   }
 
-  async function handleExport(format: "csv" | "json") {
+  async function handleExport(format: "csv" | "json" | "pdf") {
     resetExportMessages();
     setIsExporting(true);
 
@@ -322,6 +325,7 @@ export function SettingsScreen({
       readyState,
       format,
       effectiveNow,
+      exportServiceDependencies,
     );
     setState(result.state);
     if (!result.ok) {
@@ -340,7 +344,9 @@ export function SettingsScreen({
     setExportStatusMessage(
       format === "json"
         ? viewData.export.status.jsonReady
-        : viewData.export.status.csvReady,
+        : format === "pdf"
+          ? viewData.export.status.pdfReady
+          : viewData.export.status.csvReady,
     );
     setIsExporting(false);
   }
@@ -532,6 +538,7 @@ export function SettingsScreen({
         }
       }}
       onExportJSON={() => handleExport("json")}
+      onExportPDF={() => handleExport("pdf")}
       onExportPresetSelect={(value) => {
         void handleExportRangeChange({
           ...readyState.exportState.values,

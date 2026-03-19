@@ -52,6 +52,9 @@ describe("export-service", () => {
     if (!result.ok) {
       throw new Error("expected a JSON artifact");
     }
+    if (typeof result.artifact.content !== "string") {
+      throw new Error("expected JSON export content to stay text");
+    }
 
     const payload = JSON.parse(result.artifact.content);
     expect(payload).toEqual(
@@ -96,6 +99,36 @@ describe("export-service", () => {
     expect(result.artifact.content).toContain("2026-03-18");
     expect(result.artifact.content).toContain("Jaw pain");
     expect(result.artifact.content).toContain("Yes");
+  });
+
+  it("builds a PDF artifact through the shared PDF content builder", async () => {
+    const storage = createStorageMock();
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "pdf",
+      new Date("2026-03-18T10:00:00.000Z"),
+      {
+        buildPDFContent: jest
+          .fn()
+          .mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46])),
+      },
+    );
+
+    if (!result.ok) {
+      throw new Error("expected a PDF artifact");
+    }
+
+    expect(result.artifact).toEqual({
+      filename: "ovumcy-export-2026-03-18.pdf",
+      mimeType: "application/pdf",
+      content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+    });
   });
 });
 

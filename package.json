@@ -16,10 +16,12 @@
     "deploy": "npm run export:web && npx eas-cli@18.4.0 deploy"
   },
   "dependencies": {
+    "@pdf-lib/fontkit": "^1.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-community/slider": "5.0.1",
     "expo": "^54.0.1",
+    "expo-asset": "~12.0.12",
     "expo-constants": "~18.0.13",
     "expo-file-system": "~19.0.21",
     "expo-linking": "~8.0.11",
@@ -27,6 +29,7 @@
     "expo-sharing": "~14.0.8",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
+    "pdf-lib": "^1.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",

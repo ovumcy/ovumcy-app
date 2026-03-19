@@ -145,10 +145,11 @@ export type SettingsViewData = {
     csvAction: string;
     jsonAction: string;
     pdfAction: string;
-    status: {
-      csvReady: string;
-      jsonReady: string;
-    };
+      status: {
+        csvReady: string;
+        jsonReady: string;
+        pdfReady: string;
+      };
     errors: typeof settingsCopy.export.errors;
   };
   danger: {
@@ -325,6 +326,7 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       status: {
         csvReady: settingsCopy.export.csvStatus,
         jsonReady: settingsCopy.export.jsonStatus,
+        pdfReady: settingsCopy.export.pdfStatus,
       },
       errors: settingsCopy.export.errors,
     },

@@ -8,6 +8,7 @@ import type { SymptomID } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   type ExportArtifact,
+  type ExportServiceDependencies,
   buildLocalExportArtifact,
   loadLocalExportState,
 } from "./export-service";
@@ -295,6 +296,7 @@ export async function prepareSettingsExportArtifact(
   currentState: LoadedSettingsState,
   format: ExportFormat,
   now: Date,
+  dependencies: ExportServiceDependencies = {},
 ): Promise<
   | {
       ok: true;
@@ -312,6 +314,7 @@ export async function prepareSettingsExportArtifact(
     currentState.exportState,
     format,
     now,
+    dependencies,
   );
   const nextState = createLoadedSettingsState(
     currentState.profile,

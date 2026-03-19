@@ -203,6 +203,39 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("prepares a PDF export through the settings flow and hands it to the delivery client", async () => {
+    const storage = createStorageMock();
+    const buildPDFContent = jest
+      .fn()
+      .mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+    const exportDeliveryClient = {
+      deliver: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    render(
+      <SettingsScreen
+        exportDeliveryClient={exportDeliveryClient}
+        exportServiceDependencies={{ buildPDFContent }}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByText("Settings");
+
+    fireEvent.press(screen.getByTestId("settings-export-pdf-button"));
+
+    await waitFor(() =>
+      expect(exportDeliveryClient.deliver).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: "ovumcy-export-2026-03-17.pdf",
+          mimeType: "application/pdf",
+        }),
+      ),
+    );
+    expect(buildPDFContent).toHaveBeenCalledTimes(1);
+  });
+
   it("renders the app-equivalent interface, account, export, and danger sections", async () => {
     const storage = createStorageMock();
 

@@ -1,4 +1,5 @@
 import type {
+  ExportArtifactContent,
   ExportBackupEnvelope,
   ExportCSVRow,
   ExportDataSummary,
@@ -11,6 +12,7 @@ import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import type { ExportPDFBuildInput } from "./export-pdf-service";
 import {
   applyExportPreset,
   createDefaultExportRangeValues,
@@ -26,7 +28,11 @@ import { normalizeSymptomLabelKey } from "./symptom-policy";
 export type ExportArtifact = {
   filename: string;
   mimeType: string;
-  content: string;
+  content: ExportArtifactContent;
+};
+
+export type ExportServiceDependencies = {
+  buildPDFContent?: (input: ExportPDFBuildInput) => Promise<Uint8Array>;
 };
 
 export type LoadExportStateResult = {
@@ -154,6 +160,7 @@ export async function buildLocalExportArtifact(
   state: LoadedExportState,
   format: ExportFormat,
   now: Date,
+  dependencies: ExportServiceDependencies = {},
 ): Promise<BuildExportArtifactResult> {
   const refreshed = await loadLocalExportState(storage, now, state.values);
   const validation = validateExportRangeValues(refreshed.state.values, refreshed.state.bounds);
@@ -182,13 +189,21 @@ export async function buildLocalExportArtifact(
             refreshed.state.summary,
             now,
           )
-        : buildCSVArtifact(
-            profile,
-            symptomRecords,
-            dayLogs,
-            refreshed.state.values,
-            now,
-          );
+        : format === "csv"
+          ? buildCSVArtifact(
+              profile,
+              symptomRecords,
+              dayLogs,
+              refreshed.state.values,
+              now,
+            )
+          : await buildPDFArtifact(
+              profile,
+              symptomRecords,
+              dayLogs,
+              now,
+              dependencies.buildPDFContent ?? defaultBuildPDFContent,
+            );
 
     return {
       ok: true,
@@ -270,6 +285,34 @@ function buildCSVArtifact(
     mimeType: "text/csv",
     content: serializeExportCSV(headerLabels, rows, values),
   };
+}
+
+async function buildPDFArtifact(
+  profile: ProfileRecord,
+  symptomRecords: SymptomRecord[],
+  dayLogs: DayLogRecord[],
+  now: Date,
+  buildPDFContent: (input: ExportPDFBuildInput) => Promise<Uint8Array>,
+): Promise<ExportArtifact> {
+  const content = await buildPDFContent({
+    now,
+    dayLogs,
+    profile,
+    symptomRecords,
+  });
+
+  return {
+    filename: buildExportFilename("pdf", now),
+    mimeType: "application/pdf",
+    content,
+  };
+}
+
+async function defaultBuildPDFContent(
+  input: ExportPDFBuildInput,
+): Promise<Uint8Array> {
+  const module = await import("./export-pdf-service");
+  return module.buildExportPDFContent(input);
 }
 
 export function buildExportCSVRows(

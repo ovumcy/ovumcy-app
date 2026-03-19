@@ -20,7 +20,7 @@ export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
       }
 
       try {
-        const blob = new Blob([artifact.content], { type: artifact.mimeType });
+        const blob = new Blob([toBlobPart(artifact.content)], { type: artifact.mimeType });
         const objectURL = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = objectURL;
@@ -42,4 +42,15 @@ export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
       }
     },
   };
+}
+
+function toBlobPart(content: ExportArtifact["content"]): BlobPart {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  return content.buffer.slice(
+    content.byteOffset,
+    content.byteOffset + content.byteLength,
+  ) as ArrayBuffer;
 }
