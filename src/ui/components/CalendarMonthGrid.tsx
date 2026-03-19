@@ -6,7 +6,7 @@ import { colors, spacing } from "../theme/tokens";
 
 type CalendarMonthGridProps = {
   days: CalendarDayCellViewData[];
-  onSelectDay: (date: string) => void;
+  onSelectDay: (day: CalendarDayCellViewData) => void;
 };
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,7 +20,7 @@ export function CalendarMonthGrid({
     if (gridWidth <= 0) {
       return {
         cellWidth: undefined,
-        cellMinHeight: 68,
+        cellMinHeight: 76,
         showTodayPill: true,
       };
     }
@@ -30,8 +30,8 @@ export function CalendarMonthGrid({
 
     return {
       cellWidth,
-      cellMinHeight: Math.max(60, Math.min(74, Math.round(cellWidth * 1.08))),
-      showTodayPill: cellWidth >= 54,
+      cellMinHeight: Math.max(70, Math.min(84, Math.round(cellWidth * 1.08))),
+      showTodayPill: cellWidth >= 58,
     };
   }, [gridWidth]);
 
@@ -53,7 +53,7 @@ export function CalendarMonthGrid({
           <Pressable
             key={day.date}
             accessibilityRole="button"
-            onPress={() => onSelectDay(day.date)}
+            onPress={() => onSelectDay(day)}
             style={[
               styles.cell,
               metrics.cellWidth
@@ -63,7 +63,15 @@ export function CalendarMonthGrid({
                   }
                 : null,
               !day.isCurrentMonth ? styles.cellOutsideMonth : null,
-              day.isPeriod ? styles.cellPeriod : null,
+              day.stateKey === "period" ? styles.cellPeriod : null,
+              day.stateKey === "predicted" ? styles.cellPredicted : null,
+              day.stateKey === "pre_fertile" ? styles.cellPreFertile : null,
+              day.stateKey === "fertility_edge" ? styles.cellFertilityEdge : null,
+              day.stateKey === "fertility_peak" ? styles.cellFertilityPeak : null,
+              day.stateKey === "ovulation" ? styles.cellOvulation : null,
+              day.stateKey === "ovulation_tentative"
+                ? styles.cellOvulationTentative
+                : null,
               day.isSelected ? styles.cellSelected : null,
             ]}
             testID={`calendar-day-${day.date}`}
@@ -79,7 +87,9 @@ export function CalendarMonthGrid({
                 {day.label}
               </Text>
               {day.isToday && metrics.showTodayPill ? (
-                <Text style={styles.todayPill}>Today</Text>
+                <View style={styles.todayPill}>
+                  <Text style={styles.todayPillText}>Today</Text>
+                </View>
               ) : null}
             </View>
 
@@ -88,6 +98,18 @@ export function CalendarMonthGrid({
                 <View
                   style={styles.dataMarker}
                   testID={`calendar-marker-data-${day.date}`}
+                />
+              ) : null}
+              {day.hasOvulationMarker ? (
+                <View
+                  style={styles.ovulationMarker}
+                  testID={`calendar-marker-ovulation-${day.date}`}
+                />
+              ) : null}
+              {day.hasTentativeOvulationMarker ? (
+                <View
+                  style={styles.ovulationDash}
+                  testID={`calendar-marker-ovulation-tentative-${day.date}`}
                 />
               ) : null}
               {day.hasSex ? (
@@ -127,14 +149,14 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   cell: {
-    backgroundColor: colors.surfaceStrong,
+    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    gap: 5,
-    minHeight: 68,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
+    gap: 6,
+    minHeight: 76,
+    paddingHorizontal: 8,
+    paddingVertical: 7,
   },
   cellOutsideMonth: {
     opacity: 0.48,
@@ -142,13 +164,38 @@ const styles = StyleSheet.create({
   cellPeriod: {
     backgroundColor: colors.accentSoft,
   },
+  cellPredicted: {
+    backgroundColor: colors.surfaceStrong,
+  },
+  cellPreFertile: {
+    borderColor: colors.accentSecondary,
+  },
+  cellFertilityEdge: {
+    backgroundColor: "#fff1e4",
+    borderColor: "#e7b88f",
+  },
+  cellFertilityPeak: {
+    backgroundColor: "#ffe7dd",
+    borderColor: "#dd9b81",
+  },
+  cellOvulation: {
+    backgroundColor: "#fff3ea",
+    borderColor: colors.accentStrong,
+  },
+  cellOvulationTentative: {
+    backgroundColor: "#fff8f2",
+    borderColor: colors.accentSecondary,
+    borderStyle: "dashed",
+  },
   cellSelected: {
     borderColor: "#487ad1",
     borderWidth: 2,
   },
   cellHeader: {
     alignItems: "flex-start",
-    gap: 2,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 20,
   },
   dayLabel: {
     color: colors.text,
@@ -162,19 +209,20 @@ const styles = StyleSheet.create({
     color: colors.accentStrong,
   },
   todayPill: {
-    alignSelf: "flex-start",
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
     borderRadius: 999,
     borderWidth: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  todayPillText: {
     color: colors.textMuted,
     fontSize: 8,
     fontWeight: "700",
-    overflow: "hidden",
-    paddingHorizontal: 4,
-    paddingVertical: 1,
   },
   markers: {
+    alignItems: "center",
     flexDirection: "row",
     gap: 4,
     marginTop: "auto",
@@ -184,6 +232,18 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     height: 7,
     width: 7,
+  },
+  ovulationMarker: {
+    backgroundColor: "#f0906f",
+    borderRadius: 999,
+    height: 9,
+    width: 9,
+  },
+  ovulationDash: {
+    backgroundColor: "#e0a37d",
+    borderRadius: 999,
+    height: 3,
+    width: 12,
   },
   heartMarker: {
     color: colors.accentStrong,

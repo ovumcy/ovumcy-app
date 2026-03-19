@@ -1,7 +1,15 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
@@ -16,7 +24,6 @@ import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
 import { FeatureCard } from "../components/FeatureCard";
 import { LabeledSliderField } from "../components/LabeledSliderField";
-import { ScreenScaffold } from "../components/ScreenScaffold";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { StatusBanner } from "../components/StatusBanner";
@@ -150,18 +157,29 @@ export function SettingsFlowScreen({
     ? parseLocalDate(state.cycleValues.lastPeriodStart)
     : null;
   const supportsNativeDatePicker = Platform.OS !== "web";
+  const insets = useSafeAreaInsets();
   const displayedDate = selectedDate
     ? formatLongDate(selectedDate)
     : viewData.common.changeDate;
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
 
   return (
-    <ScreenScaffold
-      title={viewData.title}
-      description={viewData.description}
+    <ScrollView
+      contentContainerStyle={[
+        styles.screenContent,
+        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
+      ]}
+      showsVerticalScrollIndicator={false}
+      style={styles.screen}
     >
+      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{viewData.title}</Text>
+        <Text style={styles.headerDescription}>{viewData.description}</Text>
+      </View>
+
       <FeatureCard
-        title={viewData.cycle.title}
+        title={`🗓️ ${viewData.cycle.title}`}
         testID="settings-cycle-section"
       >
         <LabeledSliderField
@@ -291,7 +309,7 @@ export function SettingsFlowScreen({
           <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>
           <Text style={styles.helperText}>{viewData.ageGroup.hint}</Text>
           <ChoiceGroup
-            layout="stack"
+            layout="grid3"
             onSelect={onAgeGroupSelect}
             options={viewData.ageGroup.options}
             selectedValue={state.cycleValues.ageGroup}
@@ -336,7 +354,7 @@ export function SettingsFlowScreen({
       />
 
       <FeatureCard
-        title={viewData.tracking.title}
+        title={`🧪 ${viewData.tracking.title}`}
         description={viewData.tracking.subtitle}
         testID="settings-tracking-section"
       >
@@ -415,7 +433,7 @@ export function SettingsFlowScreen({
         description={viewData.interface.subtitle}
         rows={buildInterfaceStatusRows(viewData.interface)}
         testID="settings-interface-section"
-        title={viewData.interface.title}
+        title={`🎛️ ${viewData.interface.title}`}
       />
 
       <SettingsStatusSection
@@ -423,7 +441,7 @@ export function SettingsFlowScreen({
         hint={viewData.account.actionsHint}
         rows={buildAccountStatusRows(viewData.account)}
         testID="settings-account-section"
-        title={viewData.account.title}
+        title={`👤 ${viewData.account.title}`}
       />
 
       <SettingsExportSection
@@ -448,7 +466,8 @@ export function SettingsFlowScreen({
         statusMessage={clearDataStatusMessage}
         viewData={viewData.danger}
       />
-    </ScreenScaffold>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -461,6 +480,35 @@ function formatLongDate(value: Date): string {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screenContent: {
+    paddingBottom: spacing.xl,
+  },
+  container: {
+    alignSelf: "center",
+    gap: spacing.md,
+    maxWidth: 1080,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    width: "100%",
+  },
+  header: {
+    gap: 6,
+  },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 29,
+    fontWeight: "800",
+    lineHeight: 34,
+  },
+  headerDescription: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
   formGroup: {
     gap: spacing.sm,
   },

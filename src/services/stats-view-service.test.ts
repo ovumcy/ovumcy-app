@@ -137,6 +137,9 @@ describe("buildStatsViewData", () => {
         }),
       ]),
     );
+    expect(viewData.predictionExplanation).toBe(
+      "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
+    );
     expect(
       viewData.topCards.find((card) => card.title === "Prediction reliability"),
     ).toBeUndefined();

@@ -30,9 +30,9 @@ export function ChoiceGroup<T extends string | number>({
     layout === "grid2"
       ? 2
       : layout === "grid3"
-        ? width >= 520
+        ? width >= 340
           ? 3
-          : 1
+          : 2
         : compact
           ? width >= 520
             ? 3

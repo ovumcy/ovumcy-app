@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -8,49 +9,73 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { DayLogRecord } from "../../models/day-log";
-import type { CalendarViewData } from "../../services/calendar-view-service";
+import type {
+  CalendarDaySummaryViewData,
+  CalendarDayCellViewData,
+  CalendarViewData,
+} from "../../services/calendar-view-service";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
+import type { ManualCycleStartViewData } from "../../services/manual-cycle-start-service";
 import { AppButton } from "../components/AppButton";
+import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
-import { DayLogEditorCard } from "../components/DayLogEditorCard";
 import { colors, spacing } from "../theme/tokens";
 
 type CalendarOverviewScreenProps = {
   entryExists: boolean;
   editorViewData: DayLogEditorViewData;
+  isEditing: boolean;
   isSaving: boolean;
+  manualCycleStart?: ManualCycleStartViewData | null;
+  onAddEntry: () => void;
+  onCancelEdit: () => void;
   onDelete: () => void | Promise<void>;
+  onManualCycleStart?: (() => void | Promise<void>) | undefined;
   onNextMonth: () => void;
   onPatch: (updates: Partial<DayLogRecord>) => void;
   onPrevMonth: () => void;
   onSave: () => void | Promise<void>;
-  onSelectDay: (date: string) => void;
+  onSelectDay: (day: CalendarDayCellViewData) => void;
+  onStartEdit: () => void;
   onToday: () => void;
   record: DayLogRecord;
   statusMessage: string;
   statusTone?: "success" | "error" | undefined;
+  summaryViewData: CalendarDaySummaryViewData;
   viewData: CalendarViewData;
 };
 
 export function CalendarOverviewScreen({
   entryExists,
   editorViewData,
+  isEditing,
   isSaving,
+  manualCycleStart,
+  onAddEntry,
+  onCancelEdit,
   onDelete,
+  onManualCycleStart,
   onNextMonth,
   onPatch,
   onPrevMonth,
   onSave,
   onSelectDay,
+  onStartEdit,
   onToday,
   record,
   statusMessage,
   statusTone,
+  summaryViewData,
   viewData,
 }: CalendarOverviewScreenProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWide = width >= 960;
+  const manualCycleStartProps =
+    manualCycleStart !== undefined ? { manualCycleStart } : {};
+  const manualCycleStartHandlerProps = onManualCycleStart
+    ? { onManualCycleStart }
+    : {};
 
   return (
     <ScrollView
@@ -94,45 +119,79 @@ export function CalendarOverviewScreen({
               <CalendarMonthGrid days={viewData.days} onSelectDay={onSelectDay} />
 
               <View style={styles.legend}>
-                <View style={styles.legendItem}>
+                <LegendItem label={viewData.legend.recordedPeriod}>
                   <View style={[styles.legendDot, styles.legendDotPeriod]} />
-                  <Text style={styles.legendLabel}>{viewData.legend.recordedPeriod}</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={styles.legendDot} />
-                  <Text style={styles.legendLabel}>{viewData.legend.loggedEntry}</Text>
-                </View>
-                <View style={styles.legendItem}>
+                </LegendItem>
+                {!viewData.isPredictionDisabled ? (
+                  <>
+                    <LegendItem label={viewData.legend.predictedPeriod}>
+                      <View style={[styles.legendDot, styles.legendDotPredicted]} />
+                    </LegendItem>
+                    <LegendItem label={viewData.legend.lowProbability}>
+                      <View style={styles.legendOutline} />
+                    </LegendItem>
+                    <LegendItem label={viewData.legend.fertilityEdge}>
+                      <View style={[styles.legendDot, styles.legendDotFertilityEdge]} />
+                    </LegendItem>
+                    <LegendItem label={viewData.legend.fertilityPeak}>
+                      <View style={[styles.legendDot, styles.legendDotFertilityPeak]} />
+                    </LegendItem>
+                    <LegendItem label={viewData.legend.ovulation}>
+                      <View style={styles.legendOvulationDot} />
+                    </LegendItem>
+                    <LegendItem label={viewData.legend.ovulationTentative}>
+                      <View style={styles.legendOvulationDash} />
+                    </LegendItem>
+                  </>
+                ) : null}
+                <LegendItem label={viewData.legend.loggedEntry}>
+                  <View style={styles.legendDataMarker} />
+                </LegendItem>
+                <LegendItem label={viewData.legend.sexLogged}>
                   <Text style={styles.legendHeart}>♥</Text>
-                  <Text style={styles.legendLabel}>{viewData.legend.sexLogged}</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <Text style={styles.legendTodayPill}>{viewData.legend.today}</Text>
-                </View>
+                </LegendItem>
               </View>
             </View>
           </View>
 
           <View style={styles.editorColumn}>
-            <DayLogEditorCard
+            <CalendarDayPanel
+              editorViewData={editorViewData}
               entryExists={entryExists}
+              isEditing={isEditing}
               isSaving={isSaving}
+              onAdd={onAddEntry}
+              onCancel={onCancelEdit}
               onDelete={onDelete}
+              onEdit={onStartEdit}
               onPatch={onPatch}
               onSave={onSave}
               record={record}
               statusMessage={statusMessage}
               statusTone={statusTone}
-              viewData={{
-                ...editorViewData,
-                title: viewData.editor.title,
-                subtitle: viewData.editor.description,
-              }}
+              summaryViewData={summaryViewData}
+              {...manualCycleStartProps}
+              {...manualCycleStartHandlerProps}
             />
           </View>
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+function LegendItem({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <View style={styles.legendItem}>
+      {children}
+      <Text style={styles.legendLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -210,8 +269,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
+  legendLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
   legendDot: {
-    backgroundColor: colors.accentStrong,
     borderRadius: 999,
     height: 8,
     width: 8,
@@ -219,26 +282,43 @@ const styles = StyleSheet.create({
   legendDotPeriod: {
     backgroundColor: "#c7756d",
   },
-  legendLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
+  legendDotPredicted: {
+    backgroundColor: colors.accentSecondary,
+  },
+  legendDotFertilityEdge: {
+    backgroundColor: "#e7b88f",
+  },
+  legendDotFertilityPeak: {
+    backgroundColor: "#dd9b81",
+  },
+  legendOutline: {
+    borderColor: colors.accentSecondary,
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 10,
+    width: 10,
+  },
+  legendOvulationDot: {
+    backgroundColor: "#f0906f",
+    borderRadius: 999,
+    height: 10,
+    width: 10,
+  },
+  legendOvulationDash: {
+    backgroundColor: "#e0a37d",
+    borderRadius: 999,
+    height: 3,
+    width: 12,
+  },
+  legendDataMarker: {
+    backgroundColor: colors.accentStrong,
+    borderRadius: 999,
+    height: 8,
+    width: 8,
   },
   legendHeart: {
     color: colors.accentStrong,
     fontSize: 12,
     fontWeight: "700",
-  },
-  legendTodayPill: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: "700",
-    overflow: "hidden",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
 });

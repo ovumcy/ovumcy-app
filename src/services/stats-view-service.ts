@@ -19,6 +19,7 @@ import {
   shouldShowIrregularityNotice,
   shouldShowIrregularModeRecommendation,
 } from "./cycle-history-service";
+import { buildPredictionExplanation } from "./prediction-explanation-service";
 import {
   buildLastCycleSymptomFrequency,
   buildStatsBBTSeries,
@@ -41,6 +42,7 @@ export type StatsViewData = {
   title: string;
   description: string;
   hasInsights: boolean;
+  predictionExplanation?: string;
   emptyState?: {
     title: string;
     body: string;
@@ -265,6 +267,7 @@ export function buildStatsViewData(
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,
+    predictionExplanation: buildPredictionExplanation(profile, projection),
     notices: buildStatsNotices(profile, history),
     trendChart: {
       title: statsCopy.cycleTrend,

@@ -1,8 +1,14 @@
-import { StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { StatsViewData } from "../../services/stats-view-service";
 import { FeatureCard } from "../components/FeatureCard";
-import { ScreenScaffold } from "../components/ScreenScaffold";
 import { StatsBarChart } from "../components/StatsBarChart";
 import { colors, spacing } from "../theme/tokens";
 
@@ -12,6 +18,7 @@ type StatsOverviewScreenProps = {
 
 export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const cardColumns = width >= 1080 ? 4 : width >= 760 ? 2 : 1;
   const cardWidth =
     cardColumns === 4 ? "23.5%" : cardColumns === 2 ? "48.5%" : "100%";
@@ -20,7 +27,20 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
   const trendSecondaryWidth = width >= 1080 ? "32.5%" : "100%";
 
   return (
-    <ScreenScaffold title={viewData.title} description={viewData.description}>
+    <ScrollView
+      contentContainerStyle={[
+        styles.screenContent,
+        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
+      ]}
+      showsVerticalScrollIndicator={false}
+      style={styles.screen}
+    >
+      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{viewData.title}</Text>
+          <Text style={styles.headerDescription}>{viewData.description}</Text>
+        </View>
+
       {!viewData.hasInsights && viewData.emptyState ? (
         <FeatureCard
           title={viewData.emptyState.title}
@@ -64,6 +84,12 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
             <Text style={styles.helperText}>{viewData.emptyState.hint}</Text>
           </View>
         </FeatureCard>
+      ) : null}
+
+      {viewData.predictionExplanation ? (
+        <View style={styles.noticePanel}>
+          <Text style={styles.noticeText}>{viewData.predictionExplanation}</Text>
+        </View>
       ) : null}
 
       {viewData.notices.map((notice) => (
@@ -407,7 +433,8 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
           ) : null}
         </>
       ) : null}
-    </ScreenScaffold>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -454,6 +481,35 @@ function hasAnyPhaseInsights(viewData: StatsViewData): boolean {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screenContent: {
+    paddingBottom: spacing.xl,
+  },
+  container: {
+    alignSelf: "center",
+    gap: spacing.md,
+    maxWidth: 1080,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    width: "100%",
+  },
+  header: {
+    gap: 6,
+  },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 29,
+    fontWeight: "800",
+    lineHeight: 34,
+  },
+  headerDescription: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+  },
   emptyHero: {
     alignItems: "center",
     gap: spacing.md,
@@ -569,7 +625,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 16,
     borderWidth: 1,
-    gap: spacing.sm,
+    gap: spacing.xs,
     padding: 16,
   },
   cardLabel: {

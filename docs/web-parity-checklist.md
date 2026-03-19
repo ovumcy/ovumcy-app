@@ -207,6 +207,9 @@ before and after UI changes.
 - Day editor:
   - separate aside/card
   - should not be pushed far below the month grid on mobile
+  - defaults to view-first summary mode for days that already have data
+  - empty past or current days may open directly in edit mode
+  - summary mode shows `Edit entry` / `Add entry`, not a permanently open editor
 
 ### Stats
 
@@ -223,6 +226,10 @@ before and after UI changes.
 - Top cards:
   - `3` or `4` columns on desktop depending on reliability card
   - compact `stat-card` geometry
+- Unlock thresholds:
+  - `< 2 completed cycles`: empty hero only
+  - `2 completed cycles`: top cards, cycle overview, trend, symptom frequency
+  - `3+ completed cycles`: stronger reliability state and deeper stats sections as data allows
 
 ### Settings
 
@@ -327,11 +334,13 @@ before and after UI changes.
 - `src/ui/screens/CalendarOverviewScreen.tsx`
   - wraps month grid in an extra card hierarchy
   - action ordering and hierarchy do not match web
+  - day panel is always editable instead of being view-first by default
 - `src/ui/components/CalendarMonthGrid.tsx`
   - cells are too tall and capsule-like
   - selected state reads as a long vertical capsule instead of a compact ring
   - markers and today pill density are weaker than web
   - day editor is effectively pushed too far below the grid on mobile
+  - prediction states are far simpler than the canonical web state machine
 
 ### Stats
 

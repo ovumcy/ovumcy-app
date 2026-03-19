@@ -36,6 +36,17 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByTestId("day-log-save-button")).toBeVisible();
   await expect(page.getByText("Symptoms", { exact: true })).toBeVisible();
+  await expect(page.getByTestId("dashboard-manual-cycle-start-button")).toBeVisible();
+
+  await page.getByTestId("dashboard-quick-action-period").click();
+  await expect(page.getByText("Flow")).toBeVisible();
+  await page.getByTestId("day-log-symptom-cramps").first().click();
+  await page.getByTestId("day-log-save-button").click();
+
+  await expect(page.getByText("Entry saved locally.")).toBeVisible();
+
+  await page.getByTestId("dashboard-manual-cycle-start-button").click();
+  await expect(page.getByText("Cycle start updated locally.")).toBeVisible();
 
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);
@@ -56,29 +67,33 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByRole("tab", { name: /Calendar/ }).click();
 
   await expect(page).toHaveURL(/\/calendar$/);
-  await expect(page.getByText("Day details")).toBeVisible();
-  await expect(
-    page.locator('[data-testid^="day-log-symptom-"]').filter({
-      hasText: "Jaw pain",
-    }).first(),
-  ).toBeVisible();
+  await expect(page.getByTestId("calendar-day-panel")).toBeVisible();
+  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
+  await expect(page.getByTestId("calendar-day-cycle-start-button")).toBeVisible();
   if (previousCycleStart.slice(0, 7) !== formatLocalDate(today).slice(0, 7)) {
     await page.getByTestId("calendar-prev-button").click();
   }
 
   await page.getByTestId(`calendar-day-${previousCycleStart}`).click();
+  await expect(page.getByTestId("calendar-day-add-button")).toBeVisible();
+  await expect(
+    page.getByTestId("calendar-day-cycle-start-button"),
+  ).toBeVisible();
+  await page.getByTestId("calendar-day-add-button").click();
+  await expect(
+    page.locator('[data-testid^="day-log-symptom-"]').filter({
+      hasText: "Jaw pain",
+    }).last(),
+  ).toBeVisible();
   await page.getByTestId("day-log-period-toggle").last().click();
   await page.getByTestId("day-log-symptom-cramps").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
   await expect(page.getByText("Entry saved locally.")).toBeVisible();
+  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
-  await page.getByTestId("day-log-period-toggle").last().click();
-  await page.getByTestId("day-log-symptom-cramps").last().click();
-  await page.getByTestId("day-log-save-button").last().click();
-
-  await expect(page.getByText("Entry saved locally.")).toBeVisible();
+  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
   await expect(
     page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
   ).toBeVisible();

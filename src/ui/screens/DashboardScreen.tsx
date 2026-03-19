@@ -2,19 +2,25 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { dashboardCopy } from "../../i18n/dashboard-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
-  saveDayLogEditorRecord,
   deleteDayLogEditorRecord,
   buildNextDayLogRecordPatch,
+  saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
 import {
   loadDashboardScreenState,
   type LoadedDashboardState,
 } from "../../services/dashboard-view-service";
+import {
+  applyManualCycleStart,
+  buildManualCycleStartViewData,
+} from "../../services/manual-cycle-start-service";
 import { hasDayLogData } from "../../models/day-log";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { openConfirmation } from "../confirm/open-confirmation";
 import { colors } from "../theme/tokens";
 import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
 
@@ -77,6 +83,13 @@ export function DashboardScreen({
     );
   }
 
+  const manualCycleStart = buildManualCycleStartViewData(
+    state.profile,
+    state.historyRecords,
+    state.todayEntry,
+    effectiveNow,
+  );
+
   async function handleSave() {
     if (!state) {
       return;
@@ -128,11 +141,67 @@ export function DashboardScreen({
     setIsSaving(false);
   }
 
+  async function handleManualCycleStart() {
+    if (!state || !manualCycleStart) {
+      return;
+    }
+
+    let replaceExisting = false;
+    let markUncertain = false;
+
+    for (const prompt of manualCycleStart.prompts) {
+      const confirmed = await openConfirmation(prompt.message, prompt.acceptLabel);
+      if (!confirmed) {
+        return;
+      }
+
+      if (prompt.kind === "replace_existing") {
+        replaceExisting = true;
+      }
+      if (prompt.kind === "short_gap") {
+        markUncertain = true;
+      }
+    }
+
+    setIsSaving(true);
+    setStatus(null);
+
+    const result = await applyManualCycleStart(
+      storage,
+      state.profile,
+      state.historyRecords,
+      state.todayEntry,
+      effectiveNow,
+      "en",
+      {
+        markUncertain,
+        replaceExisting,
+      },
+    );
+
+    if (!result.ok) {
+      setStatus({
+        message: result.errorMessage,
+        tone: "error",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    await refresh();
+    setStatus({
+      message: dashboardCopy.manualCycleStartSaved,
+      tone: "success",
+    });
+    setIsSaving(false);
+  }
+
   return (
     <DashboardOverviewScreen
       entryExists={hasDayLogData(state.todayEntry)}
       isSaving={isSaving}
       onDelete={handleDelete}
+      onManualCycleStart={handleManualCycleStart}
       onPatch={(updates) => {
         setStatus(null);
         setState((current) =>
@@ -148,6 +217,7 @@ export function DashboardScreen({
       record={state.todayEntry}
       statusMessage={status?.message ?? ""}
       statusTone={status?.tone}
+      manualCycleStart={manualCycleStart}
       viewData={state.viewData}
       editorViewData={state.editorViewData}
     />

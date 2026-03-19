@@ -1,4 +1,5 @@
 import { dashboardCopy } from "../i18n/dashboard-copy";
+import { statsCopy } from "../i18n/stats-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
@@ -10,6 +11,7 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
+import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { filterKnownSymptomIDs } from "./symptom-policy";
 import {
   formatLocalDate,
@@ -17,16 +19,20 @@ import {
 } from "./profile-settings-policy";
 
 export type DashboardViewData = {
+  phaseStatus: {
+    icon: string;
+    label: string;
+  };
   statusItems: string[];
   predictionExplanation: string;
   journal: {
     title: string;
-    description: string;
     dateLabel: string;
   };
 };
 
 export type LoadedDashboardState = {
+  historyRecords: DayLogRecord[];
   profile: ProfileRecord;
   todayEntry: DayLogRecord;
   viewData: DashboardViewData;
@@ -55,11 +61,11 @@ export async function loadDashboardScreenState(
   const history = buildCycleHistorySummary(profile, historyRecords, now);
 
   return {
+    historyRecords,
     profile,
     todayEntry: filteredTodayEntry,
     viewData: buildDashboardViewData(
       profile,
-      filteredTodayEntry,
       historyRecords,
       history,
       now,
@@ -77,7 +83,6 @@ export async function loadDashboardScreenState(
 
 export function buildDashboardViewData(
   profile: ProfileRecord,
-  todayEntry: DayLogRecord,
   historyRecords: DayLogRecord[],
   history: ReturnType<typeof buildCycleHistorySummary>,
   now: Date,
@@ -93,17 +98,26 @@ export function buildDashboardViewData(
   const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
+    phaseStatus: buildPhaseStatus(projectedCycle.currentPhase),
     statusItems,
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle),
     journal: {
       title: dashboardCopy.todayEditor,
-      description: buildJournalDescription(profile, todayEntry),
       dateLabel: new Intl.DateTimeFormat(locale, {
         day: "numeric",
         month: "long",
         year: "numeric",
       }).format(today),
     },
+  };
+}
+
+function buildPhaseStatus(
+  phase: ReturnType<typeof buildCurrentCycleProjection>["currentPhase"],
+) {
+  return {
+    icon: statsCopy.phaseIcons[phase],
+    label: statsCopy.phaseLabels[phase],
   };
 }
 
@@ -148,59 +162,11 @@ function buildStatusItems(
     items.push(
       `${dashboardCopy.ovulation}: ${formatDisplayDate(summary.ovulationDate, locale)}`,
     );
+  } else {
+    items.push(`${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`);
   }
 
   return items;
-}
-
-function buildPredictionExplanation(
-  profile: ProfileRecord,
-  summary: ReturnType<typeof buildCurrentCycleProjection>,
-): string {
-  if (profile.unpredictableCycle) {
-    return dashboardCopy.factsOnlyHint;
-  }
-
-  if (!profile.lastPeriodStart) {
-    return "";
-  }
-
-  if (profile.irregularCycle) {
-    return "";
-  }
-
-  if (!summary.ovulationDate) {
-    return dashboardCopy.ovulationUnavailable;
-  }
-
-  return dashboardCopy.cycleFactorsHint;
-}
-
-function buildJournalDescription(
-  profile: ProfileRecord,
-  todayEntry: DayLogRecord,
-): string {
-  const sections: string[] = [
-    dashboardCopy.periodDay,
-    dashboardCopy.symptoms,
-    dashboardCopy.mood,
-    dashboardCopy.cycleFactors,
-  ];
-
-  if (!profile.hideSexChip) {
-    sections.push(dashboardCopy.intimacy);
-  }
-  if (profile.trackCervicalMucus) {
-    sections.push(dashboardCopy.cervicalMucus);
-  }
-  if (profile.trackBBT) {
-    sections.push(dashboardCopy.bbt);
-  }
-  if (todayEntry.notes.trim()) {
-    sections.push(dashboardCopy.notes);
-  }
-
-  return `Visible today: ${sections.join(", ")}.`;
 }
 
 function formatDisplayDate(value: string, locale: string): string {

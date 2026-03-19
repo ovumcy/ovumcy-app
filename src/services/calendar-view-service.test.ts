@@ -49,6 +49,7 @@ describe("calendar-view-service", () => {
           isPeriod: true,
           hasData: true,
           hasSex: true,
+          openEditDirectly: false,
         }),
       ]),
     );

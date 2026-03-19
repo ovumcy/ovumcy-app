@@ -287,7 +287,7 @@ function buildCompletedCycleSummaries(
   }));
 }
 
-function collectCycleStartDates(
+export function collectCycleStartDates(
   profile: ProfileRecord,
   records: DayLogRecord[],
   todayValue: string,
@@ -512,8 +512,16 @@ function resolveCurrentCycleAnchorDate(
   records: DayLogRecord[],
   todayValue: string,
 ): string | null {
-  const starts = collectCycleStartDates(profile, records, todayValue).filter(
-    (value) => value <= todayValue,
+  return resolveLatestCycleStartAnchorBeforeOrOn(profile, records, todayValue);
+}
+
+export function resolveLatestCycleStartAnchorBeforeOrOn(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  dayValue: string,
+): string | null {
+  const starts = collectCycleStartDates(profile, records, dayValue).filter(
+    (value) => value <= dayValue,
   );
   return starts.length > 0 ? (starts[starts.length - 1] ?? null) : null;
 }

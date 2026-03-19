@@ -37,12 +37,15 @@ describe("dashboard-view-service", () => {
 
     const viewData = buildDashboardViewData(
       profile,
-      todayEntry,
       historyRecords,
       buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17)),
       new Date(2026, 2, 17),
     );
 
+    expect(viewData.phaseStatus).toEqual({
+      icon: "◌",
+      label: "Unknown",
+    });
     expect(viewData.statusItems).toEqual([
       "Next period: unknown",
       "Predictions off",
@@ -52,7 +55,7 @@ describe("dashboard-view-service", () => {
     );
   });
 
-  it("mirrors web visibility rules for intimacy, BBT, and cervical mucus", () => {
+  it("uses a date-only journal header and exposes the projected current phase", () => {
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-03-10",
       cycleLength: 29,
@@ -85,16 +88,19 @@ describe("dashboard-view-service", () => {
 
     const viewData = buildDashboardViewData(
       profile,
-      todayEntry,
       historyRecords,
       buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17)),
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.journal.description).toContain("Symptoms");
-    expect(viewData.journal.description).toContain("Cervical mucus");
-    expect(viewData.journal.description).toContain("BBT");
-    expect(viewData.journal.description).not.toContain("Intimacy");
+    expect(viewData.phaseStatus).toEqual({
+      icon: "🌱",
+      label: "Follicular",
+    });
+    expect(viewData.journal).toEqual({
+      title: "Today journal",
+      dateLabel: "March 17, 2026",
+    });
   });
 
   it("does not duplicate irregular-cycle reliability hints", () => {
@@ -132,7 +138,6 @@ describe("dashboard-view-service", () => {
     const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17));
     const viewData = buildDashboardViewData(
       profile,
-      historyRecords[0]!,
       historyRecords,
       history,
       new Date(2026, 2, 17),

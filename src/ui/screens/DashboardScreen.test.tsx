@@ -1,5 +1,5 @@
 import * as React from "react";
-import { render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
@@ -117,5 +117,22 @@ describe("DashboardScreen", () => {
 
     await screen.findByTestId("day-log-save-button");
     expect(screen.getByText("Jaw pain")).toBeTruthy();
+  });
+
+  it("shows quick actions and reveals flow controls when period is toggled from the shortcut", async () => {
+    render(
+      <DashboardScreen
+        now={new Date(2026, 2, 17)}
+        storage={createStorageMock()}
+      />,
+    );
+
+    await screen.findByTestId("dashboard-quick-action-period");
+    expect(screen.getByTestId("dashboard-manual-cycle-start-button")).toBeTruthy();
+    expect(screen.queryByText("Flow")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+
+    expect(screen.getByText("Flow")).toBeTruthy();
   });
 });

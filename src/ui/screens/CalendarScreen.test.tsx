@@ -105,7 +105,40 @@ describe("CalendarScreen", () => {
     await screen.findByText("Calendar");
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
+    await screen.findByText("Daily log");
+    expect(screen.getByText("Old symptom")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+
     await screen.findByText("Jaw pain");
     expect(screen.getByText("Old symptom")).toBeTruthy();
+  });
+
+  it("keeps existing days in summary mode until edit is requested and shows manual cycle start", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Calendar");
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+
+    await screen.findByTestId("calendar-day-panel");
+    expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy();
+    expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy();
+    expect(screen.queryByTestId("day-log-save-button")).toBeNull();
+  });
+
+  it("keeps empty days in summary mode until add entry is requested", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByText("Calendar");
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+
+    await screen.findByTestId("calendar-day-panel");
+    expect(screen.getByTestId("calendar-day-add-button")).toBeTruthy();
+    expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy();
+    expect(screen.queryByTestId("day-log-save-button")).toBeNull();
   });
 });
