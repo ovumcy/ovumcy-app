@@ -20,7 +20,7 @@
     "@noble/hashes": "^2.0.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-community/datetimepicker": "8.4.7",
     "@react-native-community/slider": "5.0.1",
     "@scure/bip39": "^2.0.1",
     "expo": "^54.0.1",
@@ -33,15 +33,15 @@
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
     "pdf-lib": "^1.17.1",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
+    "react": "19.1.5",
+    "react-dom": "19.1.5",
+    "react-native": "0.81.6",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.0",
-    "react-native-worklets": "0.5.1"
+    "react-native-worklets": "0.5.2"
   },
   "private": true,
   "devDependencies": {
@@ -52,7 +52,7 @@
     "eslint": "^9.39.4",
     "eslint-config-expo": "~10.0.0",
     "jest-expo": "~54.0.17",
-    "react-test-renderer": "^19.1.0",
+    "react-test-renderer": "^19.1.5",
     "typescript": "^5.9.3"
   }
 }
