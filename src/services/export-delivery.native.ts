@@ -17,8 +17,10 @@ export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
         };
       }
 
+      let file: File | null = null;
+
       try {
-        const file = new File(Paths.cache, artifact.filename);
+        file = new File(Paths.cache, artifact.filename);
         if (file.exists) {
           file.delete();
         }
@@ -39,6 +41,14 @@ export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
           ok: false,
           errorCode: "delivery_failed",
         };
+      } finally {
+        if (file?.exists) {
+          try {
+            file.delete();
+          } catch {
+            // Best-effort cleanup for privacy-sensitive temp export files.
+          }
+        }
       }
     },
   };

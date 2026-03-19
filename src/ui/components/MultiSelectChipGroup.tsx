@@ -5,11 +5,11 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type MultiSelectChipGroupProps<T extends string> = {
-  options: ReadonlyArray<{
+  options: readonly {
     value: T;
     label: string;
     icon?: string;
-  }>;
+  }[];
   selectedValues: readonly T[];
   onToggle: (value: T) => void;
   compact?: boolean;
@@ -57,41 +57,41 @@ export function MultiSelectChipGroup<T extends string>({
 
 const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
-  group: {
-    gap: spacing.sm,
-  },
-  groupCompact: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  chip: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  chipCompact: {
-    flexBasis: "31%",
-    flexGrow: 1,
-  },
-  chipActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentStrong,
-  },
-  icon: {
-    fontSize: 16,
-  },
-  label: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  labelActive: {
-    color: colors.accentStrong,
-  },
+    group: {
+      gap: spacing.sm,
+    },
+    groupCompact: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+    },
+    chip: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      flexDirection: "row",
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    chipCompact: {
+      flexBasis: "31%",
+      flexGrow: 1,
+    },
+    chipActive: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentStrong,
+    },
+    icon: {
+      fontSize: 16,
+    },
+    label: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    labelActive: {
+      color: colors.accentStrong,
+    },
   });

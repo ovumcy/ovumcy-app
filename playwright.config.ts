@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const port = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 4173);
+const retainDebugArtifacts = !process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -13,9 +14,9 @@ export default defineConfig({
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
-    screenshot: "only-on-failure",
-    trace: "retain-on-failure",
-    video: "retain-on-failure",
+    screenshot: retainDebugArtifacts ? "only-on-failure" : "off",
+    trace: retainDebugArtifacts ? "retain-on-failure" : "off",
+    video: retainDebugArtifacts ? "retain-on-failure" : "off",
   },
   webServer: {
     command: "npm run export:web && node ./scripts/serve-dist.mjs",

@@ -59,20 +59,20 @@ export type DayLogEditorViewData = {
     deleteFailedLabel: string;
   };
   options: {
-    mood: ReadonlyArray<{ value: number; label: string }>;
-    flow: ReadonlyArray<{ value: DayFlow; label: string }>;
-    sexActivity: ReadonlyArray<{ value: DaySexActivity; label: string }>;
-    cervicalMucus: ReadonlyArray<{ value: DayCervicalMucus; label: string }>;
-    cycleFactors: ReadonlyArray<{
+    mood: readonly { value: number; label: string }[];
+    flow: readonly { value: DayFlow; label: string }[];
+    sexActivity: readonly { value: DaySexActivity; label: string }[];
+    cervicalMucus: readonly { value: DayCervicalMucus; label: string }[];
+    cycleFactors: readonly {
       value: DayCycleFactorKey;
       label: string;
       icon: string;
-    }>;
-    symptoms: ReadonlyArray<{
+    }[];
+    symptoms: readonly {
       value: DaySymptomID;
       label: string;
       icon: string;
-    }>;
+    }[];
   };
 };
 
