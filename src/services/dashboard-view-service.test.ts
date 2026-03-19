@@ -18,6 +18,8 @@ describe("dashboard-view-service", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     };
     const todayEntry: DayLogRecord = {
       date: "2026-03-17",
@@ -69,6 +71,8 @@ describe("dashboard-view-service", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     };
     const todayEntry: DayLogRecord = {
       date: "2026-03-17",
@@ -117,6 +121,8 @@ describe("dashboard-view-service", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     };
     const historyRecords: DayLogRecord[] = [
       {

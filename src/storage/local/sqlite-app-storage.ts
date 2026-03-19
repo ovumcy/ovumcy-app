@@ -7,6 +7,8 @@ import {
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
   createDefaultProfileRecord,
+  normalizeInterfaceLanguage,
+  normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -33,7 +35,7 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -57,7 +59,9 @@ const CREATE_PROFILE_SETTINGS_TABLE = `
     track_bbt INTEGER NOT NULL DEFAULT 0,
     temperature_unit TEXT NOT NULL DEFAULT 'c',
     track_cervical_mucus INTEGER NOT NULL DEFAULT 0,
-    hide_sex_chip INTEGER NOT NULL DEFAULT 0
+    hide_sex_chip INTEGER NOT NULL DEFAULT 0,
+    language_override TEXT,
+    theme_override TEXT
   );
 `;
 
@@ -114,6 +118,8 @@ type ProfileSettingsRow = {
   temperature_unit: string;
   track_cervical_mucus: number;
   hide_sex_chip: number;
+  language_override: string | null;
+  theme_override: string | null;
 };
 
 type LegacyOnboardingProfileRow = {
@@ -265,7 +271,9 @@ export function createSQLiteAppStorage(
           track_bbt,
           temperature_unit,
           track_cervical_mucus,
-          hide_sex_chip
+          hide_sex_chip,
+          language_override,
+          theme_override
          FROM profile_settings
          WHERE id = 1;`,
       );
@@ -466,22 +474,30 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 4;`);
+    await database.execAsync(`PRAGMA user_version = 5;`);
     return;
   }
 
   if (currentVersion === 2) {
+    await migrateV4InterfacePreferences(database);
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 4;`);
+    await database.execAsync(`PRAGMA user_version = 5;`);
     return;
   }
 
   if (currentVersion === 3) {
+    await migrateV4InterfacePreferences(database);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 4;`);
+    await database.execAsync(`PRAGMA user_version = 5;`);
+    return;
+  }
+
+  if (currentVersion === 4) {
+    await migrateV4InterfacePreferences(database);
+    await database.execAsync(`PRAGMA user_version = 5;`);
     return;
   }
 
@@ -524,6 +540,17 @@ async function migrateV1OnboardingProfile(
       ageGroup: legacyRow.age_group as OnboardingRecord["ageGroup"],
       usageGoal: legacyRow.usage_goal as OnboardingRecord["usageGoal"],
     }),
+  );
+}
+
+async function migrateV4InterfacePreferences(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await database.execAsync(
+    "ALTER TABLE profile_settings ADD COLUMN language_override TEXT;",
+  );
+  await database.execAsync(
+    "ALTER TABLE profile_settings ADD COLUMN theme_override TEXT;",
   );
 }
 
@@ -617,9 +644,11 @@ async function upsertProfileRecord(
        track_bbt,
        temperature_unit,
        track_cervical_mucus,
-       hide_sex_chip
+       hide_sex_chip,
+       language_override,
+       theme_override
      )
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        last_period_start = excluded.last_period_start,
        cycle_length = excluded.cycle_length,
@@ -632,7 +661,9 @@ async function upsertProfileRecord(
        track_bbt = excluded.track_bbt,
        temperature_unit = excluded.temperature_unit,
        track_cervical_mucus = excluded.track_cervical_mucus,
-       hide_sex_chip = excluded.hide_sex_chip;`,
+       hide_sex_chip = excluded.hide_sex_chip,
+       language_override = excluded.language_override,
+       theme_override = excluded.theme_override;`,
     record.lastPeriodStart,
     record.cycleLength,
     record.periodLength,
@@ -645,6 +676,8 @@ async function upsertProfileRecord(
     normalizeTemperatureUnit(record.temperatureUnit),
     record.trackCervicalMucus ? 1 : 0,
     record.hideSexChip ? 1 : 0,
+    normalizeInterfaceLanguage(record.languageOverride),
+    normalizeThemePreference(record.themeOverride),
   );
 }
 
@@ -759,6 +792,8 @@ function mapProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     temperatureUnit: normalizeTemperatureUnit(row.temperature_unit),
     trackCervicalMucus: row.track_cervical_mucus === 1,
     hideSexChip: row.hide_sex_chip === 1,
+    languageOverride: normalizeInterfaceLanguage(row.language_override),
+    themeOverride: normalizeThemePreference(row.theme_override),
   };
 }
 

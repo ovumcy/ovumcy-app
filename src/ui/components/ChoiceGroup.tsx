@@ -6,10 +6,16 @@ import {
   useWindowDimensions,
 } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type ChoiceGroupProps<T extends string | number> = {
-  options: { value: T; label: string; secondaryLabel?: string }[];
+  options: ReadonlyArray<{
+    value: T;
+    label: string;
+    secondaryLabel?: string;
+  }>;
   selectedValue?: T | undefined;
   onSelect: (value: T) => void;
   layout?: "stack" | "grid2" | "grid3";
@@ -25,6 +31,7 @@ export function ChoiceGroup<T extends string | number>({
   compact = false,
   testIDPrefix,
 }: ChoiceGroupProps<T>) {
+  const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
   const resolvedColumnCount =
     layout === "grid2"
@@ -84,7 +91,8 @@ export function ChoiceGroup<T extends string | number>({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   group: {
     gap: spacing.sm,
   },
@@ -127,4 +135,4 @@ const styles = StyleSheet.create({
   labelActive: {
     color: colors.accentStrong,
   },
-});
+  });

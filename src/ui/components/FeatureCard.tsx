@@ -1,7 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type FeatureCardProps = PropsWithChildren<{
   title: string;
@@ -15,6 +16,8 @@ export function FeatureCard({
   testID,
   children,
 }: FeatureCardProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.card} testID={testID}>
       <View style={styles.header}>
@@ -26,7 +29,8 @@ export function FeatureCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -51,4 +55,4 @@ const styles = StyleSheet.create({
   content: {
     gap: 10,
   },
-});
+  });

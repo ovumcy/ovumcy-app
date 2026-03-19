@@ -1,13 +1,15 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type MultiSelectChipGroupProps<T extends string> = {
-  options: {
+  options: ReadonlyArray<{
     value: T;
     label: string;
     icon?: string;
-  }[];
+  }>;
   selectedValues: readonly T[];
   onToggle: (value: T) => void;
   compact?: boolean;
@@ -21,6 +23,7 @@ export function MultiSelectChipGroup<T extends string>({
   compact = false,
   testIDPrefix,
 }: MultiSelectChipGroupProps<T>) {
+  const styles = useThemedStyles(createStyles);
   const selected = new Set(selectedValues);
 
   return (
@@ -52,7 +55,8 @@ export function MultiSelectChipGroup<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   group: {
     gap: spacing.sm,
   },
@@ -90,4 +94,4 @@ const styles = StyleSheet.create({
   labelActive: {
     color: colors.accentStrong,
   },
-});
+  });

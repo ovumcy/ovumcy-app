@@ -59,6 +59,8 @@ describe("day-log-policy", () => {
         temperatureUnit: "f",
         trackCervicalMucus: false,
         hideSexChip: true,
+        languageOverride: null,
+        themeOverride: null,
       }),
     ).toEqual({
       showSexActivity: false,

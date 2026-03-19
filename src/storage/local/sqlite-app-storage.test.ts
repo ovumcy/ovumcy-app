@@ -21,6 +21,8 @@ type FakeDatabaseState = {
     temperature_unit: string;
     track_cervical_mucus: number;
     hide_sex_chip: number;
+    language_override: string | null;
+    theme_override: string | null;
   } | null;
   dayLogRows: {
     day: string;
@@ -73,6 +75,18 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
     async execAsync(source: string) {
       if (source.startsWith("PRAGMA user_version =")) {
         databaseState.userVersion = Number(source.replace(/\D/g, ""));
+      }
+
+      if (source.includes("ALTER TABLE profile_settings ADD COLUMN language_override")) {
+        if (databaseState.profileRow) {
+          databaseState.profileRow.language_override ??= null;
+        }
+      }
+
+      if (source.includes("ALTER TABLE profile_settings ADD COLUMN theme_override")) {
+        if (databaseState.profileRow) {
+          databaseState.profileRow.theme_override ??= null;
+        }
       }
 
       if (source.includes("DROP TABLE IF EXISTS onboarding_profile")) {
@@ -185,6 +199,8 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
           temperature_unit: String(params[9]),
           track_cervical_mucus: Number(params[10]),
           hide_sex_chip: Number(params[11]),
+          language_override: (params[12] as string | null) ?? null,
+          theme_override: (params[13] as string | null) ?? null,
         };
       }
 
@@ -280,6 +296,8 @@ describe("sqlite-app-storage", () => {
         temperatureUnit: "f",
         trackCervicalMucus: true,
         hideSexChip: true,
+        languageOverride: null,
+        themeOverride: null,
       }),
     };
     const storage = createSQLiteAppStorage({
@@ -304,6 +322,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     });
     expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
   });
@@ -348,6 +368,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
   });
 
@@ -379,6 +401,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.listSymptomRecords()).resolves.toEqual(
       expect.arrayContaining([
@@ -419,6 +443,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     });
 
     await expect(storage.readBootstrapState()).resolves.toEqual({
@@ -438,6 +464,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     });
   });
 
@@ -586,6 +614,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-17",
@@ -631,6 +661,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.readDayLogSummary()).resolves.toEqual({
       totalEntries: 0,
@@ -693,6 +725,8 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
     });
 
     await storage.clearAllLocalData();

@@ -1,5 +1,5 @@
-import { dashboardCopy } from "../i18n/dashboard-copy";
-import { statsCopy } from "../i18n/stats-copy";
+import { getDashboardCopy } from "../i18n/dashboard-copy";
+import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
@@ -25,6 +25,11 @@ export type DashboardViewData = {
   };
   statusItems: string[];
   predictionExplanation: string;
+  quickActions: {
+    period: string;
+    mood: string;
+    symptom: string;
+  };
   journal: {
     title: string;
     dateLabel: string;
@@ -88,6 +93,7 @@ export function buildDashboardViewData(
   now: Date,
   locale = "en",
 ): DashboardViewData {
+  const dashboardCopy = getDashboardCopy(locale);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const projectedCycle = buildCurrentCycleProjection(
     profile,
@@ -98,9 +104,14 @@ export function buildDashboardViewData(
   const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
-    phaseStatus: buildPhaseStatus(projectedCycle.currentPhase),
+    phaseStatus: buildPhaseStatus(projectedCycle.currentPhase, locale),
     statusItems,
-    predictionExplanation: buildPredictionExplanation(profile, projectedCycle),
+    predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
+    quickActions: {
+      period: dashboardCopy.quickActions.period,
+      mood: dashboardCopy.quickActions.mood,
+      symptom: dashboardCopy.quickActions.symptom,
+    },
     journal: {
       title: dashboardCopy.todayEditor,
       dateLabel: new Intl.DateTimeFormat(locale, {
@@ -114,7 +125,9 @@ export function buildDashboardViewData(
 
 function buildPhaseStatus(
   phase: ReturnType<typeof buildCurrentCycleProjection>["currentPhase"],
+  locale = "en",
 ) {
+  const statsCopy = getStatsCopy(locale);
   return {
     icon: statsCopy.phaseIcons[phase],
     label: statsCopy.phaseLabels[phase],
@@ -126,6 +139,8 @@ function buildStatusItems(
   summary: ReturnType<typeof buildCurrentCycleProjection>,
   locale: string,
 ): string[] {
+  const dashboardCopy = getDashboardCopy(locale);
+
   if (profile.unpredictableCycle) {
     return [
       `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,

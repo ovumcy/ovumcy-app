@@ -2,14 +2,14 @@ import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-import { onboardingCopy } from "../../i18n/app-copy";
+import { getShellCopy } from "../../i18n/shell-copy";
 import {
   appStorage,
   resolveInitialEntryHref,
 } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
-import { colors } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 
 type AppEntryScreenProps = {
   storage?: LocalAppStorage;
@@ -18,7 +18,9 @@ type AppEntryScreenProps = {
 export function AppEntryScreen({
   storage = appStorage,
 }: AppEntryScreenProps) {
+  const { colors, language } = useAppPreferences();
   const router = useRouter();
+  const shellCopy = getShellCopy(language);
 
   useEffect(() => {
     let isMounted = true;
@@ -39,8 +41,8 @@ export function AppEntryScreen({
   return (
     <ScreenScaffold
       eyebrow="Ovumcy"
-      title={onboardingCopy.loading}
-      description="Preparing your local-first app shell."
+      title={shellCopy.loading.appShellTitle}
+      description={shellCopy.loading.appShellDescription}
     >
       <View style={{ alignItems: "center", paddingVertical: 24 }}>
         <ActivityIndicator color={colors.accent} size="large" />

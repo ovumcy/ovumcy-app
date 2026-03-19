@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import type { InterfaceLanguage, ThemePreference } from "../../models/profile";
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
 import { parseLocalDate } from "../../services/profile-settings-policy";
@@ -26,14 +27,16 @@ import { FeatureCard } from "../components/FeatureCard";
 import { LabeledSliderField } from "../components/LabeledSliderField";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
+import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
 import { StatusBanner } from "../components/StatusBanner";
 import {
   buildAccountStatusRows,
-  buildInterfaceStatusRows,
   SettingsStatusSection,
 } from "../components/SettingsStatusSection";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsFlowScreenProps = {
   createSymptomDraft: SymptomDraftValues;
@@ -51,9 +54,13 @@ type SettingsFlowScreenProps = {
   cycleErrorMessage: string;
   exportErrorMessage: string;
   exportStatusMessage: string;
+  interfaceErrorMessage: string;
+  interfaceStatusMessage: string;
   isExporting: boolean;
   isSavingCycle: boolean;
+  isSavingInterface: boolean;
   isSavingTracking: boolean;
+  locale: string;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
   onArchiveSymptom: (symptomID: SymptomID) => void | Promise<void>;
@@ -72,10 +79,13 @@ type SettingsFlowScreenProps = {
   onExportPDF: () => void | Promise<void>;
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
+  onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
+  onInterfaceThemeSelect: (value: ThemePreference) => void;
   onIrregularCycleChange: (value: boolean) => void;
   onPeriodLengthChange: (value: number) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onSaveCycleSettings: () => void | Promise<void>;
+  onSaveInterfaceSettings: () => void | Promise<void>;
   onSaveTrackingSettings: () => void | Promise<void>;
   onSymptomDraftChange: (
     symptomID: SymptomID,
@@ -112,10 +122,14 @@ export function SettingsFlowScreen({
   cycleErrorMessage,
   exportErrorMessage,
   exportStatusMessage,
+  interfaceErrorMessage,
+  interfaceStatusMessage,
   isExporting,
   isSavingCycle,
+  isSavingInterface,
   isSavingTracking,
   isClearingData,
+  locale,
   now,
   onAgeGroupSelect,
   onArchiveSymptom,
@@ -134,11 +148,14 @@ export function SettingsFlowScreen({
   onExportPDF,
   onExportPresetSelect,
   onExportToDateChange,
+  onInterfaceLanguageSelect,
+  onInterfaceThemeSelect,
   onHideSexChipChange,
   onIrregularCycleChange,
   onPeriodLengthChange,
   onRestoreSymptom,
   onSaveCycleSettings,
+  onSaveInterfaceSettings,
   onSaveTrackingSettings,
   onSymptomDraftChange,
   onTemperatureUnitSelect,
@@ -155,14 +172,15 @@ export function SettingsFlowScreen({
   trackingStatusMessage,
   viewData,
 }: SettingsFlowScreenProps) {
+  const styles = useThemedStyles(createStyles);
   const selectedDate = state.cycleValues.lastPeriodStart
     ? parseLocalDate(state.cycleValues.lastPeriodStart)
     : null;
   const supportsNativeDatePicker = Platform.OS !== "web";
   const insets = useSafeAreaInsets();
   const displayedDate = selectedDate
-    ? formatLongDate(selectedDate)
-    : viewData.common.changeDate;
+    ? formatLongDate(selectedDate, locale)
+    : viewData.common.notSet;
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
 
   return (
@@ -215,7 +233,7 @@ export function SettingsFlowScreen({
                 !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
               ]}
             >
-              {state.cycleValues.lastPeriodStart ? displayedDate : "Not set"}
+              {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
             </Text>
             <View style={styles.dateActionRow}>
               {supportsNativeDatePicker ? (
@@ -431,11 +449,15 @@ export function SettingsFlowScreen({
         />
       </FeatureCard>
 
-      <SettingsStatusSection
-        description={viewData.interface.subtitle}
-        rows={buildInterfaceStatusRows(viewData.interface)}
-        testID="settings-interface-section"
-        title={`🎛️ ${viewData.interface.title}`}
+      <SettingsInterfaceSection
+        errorMessage={interfaceErrorMessage}
+        isSaving={isSavingInterface}
+        onLanguageSelect={onInterfaceLanguageSelect}
+        onSave={onSaveInterfaceSettings}
+        onThemeSelect={onInterfaceThemeSelect}
+        statusMessage={interfaceStatusMessage}
+        value={state.interfaceValues}
+        viewData={viewData.interface}
       />
 
       <SettingsStatusSection
@@ -474,94 +496,95 @@ export function SettingsFlowScreen({
   );
 }
 
-function formatLongDate(value: Date): string {
-  return new Intl.DateTimeFormat("en", {
+function formatLongDate(value: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(value);
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screenContent: {
-    paddingBottom: spacing.xl,
-  },
-  container: {
-    alignSelf: "center",
-    gap: spacing.md,
-    maxWidth: 1080,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    width: "100%",
-  },
-  header: {
-    gap: 6,
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 29,
-    fontWeight: "800",
-    lineHeight: 34,
-  },
-  headerDescription: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  formGroup: {
-    gap: spacing.sm,
-  },
-  fieldLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  helperText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  dateFieldShell: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  dateFieldValue: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  dateFieldValueMuted: {
-    color: colors.textMuted,
-  },
-  dateActionRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  inlineAction: {
-    alignSelf: "flex-start",
-    paddingTop: spacing.xs,
-  },
-  inlineActionText: {
-    color: colors.accent,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  messageStack: {
-    gap: spacing.xs,
-  },
-  infoText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    screenContent: {
+      paddingBottom: spacing.xl,
+    },
+    container: {
+      alignSelf: "center",
+      gap: spacing.md,
+      maxWidth: 1080,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      width: "100%",
+    },
+    header: {
+      gap: 6,
+    },
+    headerTitle: {
+      color: colors.text,
+      fontSize: 29,
+      fontWeight: "800",
+      lineHeight: 34,
+    },
+    headerDescription: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    formGroup: {
+      gap: spacing.sm,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    helperText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    dateFieldShell: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    dateFieldValue: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    dateFieldValueMuted: {
+      color: colors.textMuted,
+    },
+    dateActionRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
+    inlineAction: {
+      alignSelf: "flex-start",
+      paddingTop: spacing.xs,
+    },
+    inlineActionText: {
+      color: colors.accent,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    messageStack: {
+      gap: spacing.xs,
+    },
+    infoText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+  });

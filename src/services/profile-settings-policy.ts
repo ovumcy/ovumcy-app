@@ -10,10 +10,13 @@ import {
   type AgeGroup,
   type AgeGroupOption,
   type CycleSettingsValues,
+  type InterfaceSettingsValues,
   type LocalDateISO,
   type TemperatureUnit,
   type TrackingSettingsValues,
   type UsageGoal,
+  normalizeInterfaceLanguage,
+  normalizeThemePreference,
 } from "../models/profile";
 
 export type CycleGuidanceState = {
@@ -121,6 +124,15 @@ export function sanitizeTrackingSettingsValues(
     temperatureUnit: normalizeTemperatureUnit(values.temperatureUnit),
     trackCervicalMucus: values.trackCervicalMucus,
     hideSexChip: values.hideSexChip,
+  };
+}
+
+export function sanitizeInterfaceSettingsValues(
+  values: InterfaceSettingsValues,
+): InterfaceSettingsValues {
+  return {
+    languageOverride: normalizeInterfaceLanguage(values.languageOverride),
+    themeOverride: normalizeThemePreference(values.themeOverride),
   };
 }
 

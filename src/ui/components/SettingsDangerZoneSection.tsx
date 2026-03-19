@@ -3,7 +3,9 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { StatusBanner } from "./StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsDangerZoneSectionProps = {
   confirmationValue: string;
@@ -24,6 +26,9 @@ export function SettingsDangerZoneSection({
   statusMessage,
   viewData,
 }: SettingsDangerZoneSectionProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.card} testID="settings-danger-zone-section">
       <View style={styles.header}>
@@ -79,71 +84,82 @@ export function SettingsDangerZoneSection({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#fff7f7",
-    borderColor: "rgba(220, 38, 38, 0.22)",
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: 18,
-  },
-  header: {
-    gap: 4,
-  },
-  title: {
-    color: "#b91c1c",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  panel: {
-    backgroundColor: "rgba(255, 244, 244, 0.92)",
-    borderColor: "rgba(185, 28, 28, 0.12)",
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: 14,
-  },
-  panelHeader: {
-    gap: 4,
-  },
-  panelTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  panelSubtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  formGroup: {
-    gap: 6,
-  },
-  label: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  hint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#fff7f7" : "rgba(72, 27, 35, 0.9)",
+      borderColor:
+        colors.background === "#fff9f0"
+          ? "rgba(220, 38, 38, 0.22)"
+          : "rgba(248, 113, 113, 0.28)",
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.md,
+      padding: 18,
+    },
+    header: {
+      gap: 4,
+    },
+    title: {
+      color: colors.background === "#fff9f0" ? "#b91c1c" : "#fca5a5",
+      fontSize: 17,
+      fontWeight: "700",
+    },
+    subtitle: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    panel: {
+      backgroundColor:
+        colors.background === "#fff9f0"
+          ? "rgba(255, 244, 244, 0.92)"
+          : "rgba(49, 23, 31, 0.92)",
+      borderColor:
+        colors.background === "#fff9f0"
+          ? "rgba(185, 28, 28, 0.12)"
+          : "rgba(248, 113, 113, 0.18)",
+      borderRadius: 14,
+      borderWidth: 1,
+      gap: spacing.sm,
+      padding: 14,
+    },
+    panelHeader: {
+      gap: 4,
+    },
+    panelTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    panelSubtitle: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    formGroup: {
+      gap: 6,
+    },
+    label: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 14,
+      borderWidth: 1,
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    hint: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+  });

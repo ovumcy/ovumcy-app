@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { colors } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type AppButtonProps = {
   label: string;
@@ -17,6 +18,8 @@ export function AppButton({
   testID,
   variant = "primary",
 }: AppButtonProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       disabled={disabled}
@@ -48,7 +51,8 @@ export function AppButton({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   base: {
     alignItems: "center",
     borderRadius: 999,
@@ -89,4 +93,4 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
-});
+  });

@@ -1,10 +1,14 @@
-import { settingsCopy } from "../i18n/settings-copy";
+import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
+import { getSettingsCopy } from "../i18n/settings-copy";
 import type { LoadedExportState } from "../models/export";
 import type {
   AgeGroupOption,
   CycleSettingsValues,
+  InterfaceLanguage,
+  InterfaceSettingsValues,
   ProfileRecord,
   TemperatureUnit,
+  ThemePreference,
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
@@ -17,10 +21,12 @@ import {
 } from "./profile-settings-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
 
+type SettingsCopy = ReturnType<typeof getSettingsCopy>;
+
 export type SettingsViewData = {
   title: string;
   description: string;
-  common: typeof settingsCopy.common;
+  common: SettingsCopy["common"];
   cycle: {
     title: string;
     dateBounds: ReturnType<typeof getSettingsCycleStartDateBounds>;
@@ -85,9 +91,17 @@ export type SettingsViewData = {
     title: string;
     subtitle: string;
     languageLabel: string;
-    languageValue: string;
+    languageHint: string;
+    languageOptions: { value: InterfaceLanguage; label: string }[];
     themeLabel: string;
-    themeValue: string;
+    themeHint: string;
+    themeOptions: { value: ThemePreference; label: string }[];
+    saveLabel: string;
+    status: {
+      saved: string;
+      languageSaved: string;
+      themeSaved: string;
+    };
   };
   account: {
     title: string;
@@ -123,7 +137,7 @@ export type SettingsViewData = {
       archived: string;
       restored: string;
     };
-    errors: typeof settingsCopy.symptoms.errors;
+    errors: SettingsCopy["symptoms"]["errors"];
   };
   export: {
     title: string;
@@ -150,7 +164,7 @@ export type SettingsViewData = {
         jsonReady: string;
         pdfReady: string;
       };
-    errors: typeof settingsCopy.export.errors;
+    errors: SettingsCopy["export"]["errors"];
   };
   danger: {
     title: string;
@@ -167,18 +181,24 @@ export type SettingsViewData = {
       failed: string;
     };
   };
-  status: typeof settingsCopy.status;
+  status: SettingsCopy["status"];
 };
 
 export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
+  interfaceValues: InterfaceSettingsValues;
   trackingValues: TrackingSettingsValues;
   symptomRecords: SymptomRecord[];
   exportState: LoadedExportState;
 };
 
-export function buildSettingsViewData(now: Date): SettingsViewData {
+export function buildSettingsViewData(
+  now: Date,
+  locale = "en",
+): SettingsViewData {
+  const settingsCopy = getSettingsCopy(locale);
+
   return {
     title: settingsCopy.title,
     description: settingsCopy.subtitle,
@@ -258,9 +278,24 @@ export function buildSettingsViewData(now: Date): SettingsViewData {
       title: settingsCopy.interface.title,
       subtitle: settingsCopy.interface.subtitle,
       languageLabel: settingsCopy.interface.languageLabel,
-      languageValue: settingsCopy.interface.languageValue,
+      languageHint: settingsCopy.interface.languageHint,
+      languageOptions: [
+        { value: "en", label: APP_LANGUAGE_LABELS.en },
+        { value: "ru", label: APP_LANGUAGE_LABELS.ru },
+        { value: "es", label: APP_LANGUAGE_LABELS.es },
+      ],
       themeLabel: settingsCopy.interface.themeLabel,
-      themeValue: settingsCopy.interface.themeValue,
+      themeHint: settingsCopy.interface.themeHint,
+      themeOptions: [
+        { value: "light", label: settingsCopy.interface.themeLight },
+        { value: "dark", label: settingsCopy.interface.themeDark },
+      ],
+      saveLabel: settingsCopy.interface.save,
+      status: {
+        saved: settingsCopy.interface.saved,
+        languageSaved: settingsCopy.interface.languageSaved,
+        themeSaved: settingsCopy.interface.themeSaved,
+      },
     },
     account: {
       title: settingsCopy.account.title,
@@ -365,6 +400,10 @@ export function createLoadedSettingsState(
       unpredictableCycle: profile.unpredictableCycle,
       ageGroup: resolveDisplayedAgeGroup(profile.ageGroup),
       usageGoal: profile.usageGoal,
+    },
+    interfaceValues: {
+      languageOverride: profile.languageOverride,
+      themeOverride: profile.themeOverride,
     },
     trackingValues: {
       trackBBT: profile.trackBBT,

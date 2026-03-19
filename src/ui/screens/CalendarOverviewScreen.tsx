@@ -19,7 +19,9 @@ import type { ManualCycleStartViewData } from "../../services/manual-cycle-start
 import { AppButton } from "../components/AppButton";
 import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarOverviewScreenProps = {
   entryExists: boolean;
@@ -68,6 +70,7 @@ export function CalendarOverviewScreen({
   summaryViewData,
   viewData,
 }: CalendarOverviewScreenProps) {
+  const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWide = width >= 960;
@@ -116,38 +119,42 @@ export function CalendarOverviewScreen({
         <View style={[styles.mainGrid, isWide ? styles.mainGridWide : null]}>
           <View style={styles.monthColumn}>
             <View style={styles.monthCard}>
-              <CalendarMonthGrid days={viewData.days} onSelectDay={onSelectDay} />
+              <CalendarMonthGrid
+                days={viewData.days}
+                onSelectDay={onSelectDay}
+                todayLabel={viewData.legend.today}
+              />
 
               <View style={styles.legend}>
-                <LegendItem label={viewData.legend.recordedPeriod}>
+                <LegendItem label={viewData.legend.recordedPeriod} styles={styles}>
                   <View style={[styles.legendDot, styles.legendDotPeriod]} />
                 </LegendItem>
                 {!viewData.isPredictionDisabled ? (
                   <>
-                    <LegendItem label={viewData.legend.predictedPeriod}>
+                    <LegendItem label={viewData.legend.predictedPeriod} styles={styles}>
                       <View style={[styles.legendDot, styles.legendDotPredicted]} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.lowProbability}>
+                    <LegendItem label={viewData.legend.lowProbability} styles={styles}>
                       <View style={styles.legendOutline} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.fertilityEdge}>
+                    <LegendItem label={viewData.legend.fertilityEdge} styles={styles}>
                       <View style={[styles.legendDot, styles.legendDotFertilityEdge]} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.fertilityPeak}>
+                    <LegendItem label={viewData.legend.fertilityPeak} styles={styles}>
                       <View style={[styles.legendDot, styles.legendDotFertilityPeak]} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.ovulation}>
+                    <LegendItem label={viewData.legend.ovulation} styles={styles}>
                       <View style={styles.legendOvulationDot} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.ovulationTentative}>
+                    <LegendItem label={viewData.legend.ovulationTentative} styles={styles}>
                       <View style={styles.legendOvulationDash} />
                     </LegendItem>
                   </>
                 ) : null}
-                <LegendItem label={viewData.legend.loggedEntry}>
+                <LegendItem label={viewData.legend.loggedEntry} styles={styles}>
                   <View style={styles.legendDataMarker} />
                 </LegendItem>
-                <LegendItem label={viewData.legend.sexLogged}>
+                <LegendItem label={viewData.legend.sexLogged} styles={styles}>
                   <Text style={styles.legendHeart}>♥</Text>
                 </LegendItem>
               </View>
@@ -183,9 +190,11 @@ export function CalendarOverviewScreen({
 function LegendItem({
   children,
   label,
+  styles,
 }: {
   children: ReactNode;
   label: string;
+  styles: ReturnType<typeof createStyles>;
 }) {
   return (
     <View style={styles.legendItem}>
@@ -195,130 +204,131 @@ function LegendItem({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screenContent: {
-    paddingBottom: spacing.xl,
-  },
-  container: {
-    alignSelf: "center",
-    gap: spacing.md,
-    maxWidth: 1100,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    width: "100%",
-  },
-  headerCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.sm,
-    padding: 16,
-  },
-  headerCopy: {
-    gap: 4,
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  headerDescription: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  actions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  mainGrid: {
-    gap: 20,
-  },
-  mainGridWide: {
-    flexDirection: "row",
-  },
-  monthColumn: {
-    flex: 2,
-    minWidth: 0,
-  },
-  monthCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: 16,
-  },
-  editorColumn: {
-    flex: 1,
-    minWidth: 0,
-  },
-  legend: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  legendItem: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  legendLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  legendDot: {
-    borderRadius: 999,
-    height: 8,
-    width: 8,
-  },
-  legendDotPeriod: {
-    backgroundColor: "#c7756d",
-  },
-  legendDotPredicted: {
-    backgroundColor: colors.accentSecondary,
-  },
-  legendDotFertilityEdge: {
-    backgroundColor: "#e7b88f",
-  },
-  legendDotFertilityPeak: {
-    backgroundColor: "#dd9b81",
-  },
-  legendOutline: {
-    borderColor: colors.accentSecondary,
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 10,
-    width: 10,
-  },
-  legendOvulationDot: {
-    backgroundColor: "#f0906f",
-    borderRadius: 999,
-    height: 10,
-    width: 10,
-  },
-  legendOvulationDash: {
-    backgroundColor: "#e0a37d",
-    borderRadius: 999,
-    height: 3,
-    width: 12,
-  },
-  legendDataMarker: {
-    backgroundColor: colors.accentStrong,
-    borderRadius: 999,
-    height: 8,
-    width: 8,
-  },
-  legendHeart: {
-    color: colors.accentStrong,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    screenContent: {
+      paddingBottom: spacing.xl,
+    },
+    container: {
+      alignSelf: "center",
+      gap: spacing.md,
+      maxWidth: 1100,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      width: "100%",
+    },
+    headerCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.sm,
+      padding: 16,
+    },
+    headerCopy: {
+      gap: 4,
+    },
+    headerTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "700",
+    },
+    headerDescription: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    actions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    mainGrid: {
+      gap: 20,
+    },
+    mainGridWide: {
+      flexDirection: "row",
+    },
+    monthColumn: {
+      flex: 2,
+      minWidth: 0,
+    },
+    monthCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.md,
+      padding: 16,
+    },
+    editorColumn: {
+      flex: 1,
+      minWidth: 0,
+    },
+    legend: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    legendItem: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    legendLabel: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: "600",
+    },
+    legendDot: {
+      borderRadius: 999,
+      height: 8,
+      width: 8,
+    },
+    legendDotPeriod: {
+      backgroundColor: "#c7756d",
+    },
+    legendDotPredicted: {
+      backgroundColor: colors.accentSecondary,
+    },
+    legendDotFertilityEdge: {
+      backgroundColor: "#e7b88f",
+    },
+    legendDotFertilityPeak: {
+      backgroundColor: "#dd9b81",
+    },
+    legendOutline: {
+      borderColor: colors.accentSecondary,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 10,
+      width: 10,
+    },
+    legendOvulationDot: {
+      backgroundColor: "#f0906f",
+      borderRadius: 999,
+      height: 10,
+      width: 10,
+    },
+    legendOvulationDash: {
+      backgroundColor: "#e0a37d",
+      borderRadius: 999,
+      height: 3,
+      width: 12,
+    },
+    legendDataMarker: {
+      backgroundColor: colors.accentStrong,
+      borderRadius: 999,
+      height: 8,
+      width: 8,
+    },
+    legendHeart: {
+      color: colors.accentStrong,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+  });

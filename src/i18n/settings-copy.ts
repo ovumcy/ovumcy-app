@@ -1,4 +1,8 @@
-export const settingsCopy = {
+import type { InterfaceLanguage } from "../models/profile";
+import type { WidenLiteral } from "./catalog-types";
+import { resolveCopyLanguage } from "./runtime";
+
+const settingsCopyEn = {
   title: "Settings",
   subtitle:
     "Manage cycle parameters, tracking fields, export actions, and local profile behavior.",
@@ -6,6 +10,7 @@ export const settingsCopy = {
     daysShort: "d",
     changeDate: "Open calendar",
     clearDate: "Clear date",
+    notSet: "Not set",
     saving: "Saving...",
   },
   cycle: {
@@ -81,12 +86,17 @@ export const settingsCopy = {
   },
   interface: {
     title: "Interface",
-    subtitle:
-      "Mobile follows the device for language and appearance until app-level overrides are added.",
+    subtitle: "Control app language and appearance on this device.",
     languageLabel: "Language",
-    languageValue: "Uses the device language right now.",
-    themeLabel: "Appearance",
-    themeValue: "Uses the system light or dark preference right now.",
+    languageHint: "Saved only on this device.",
+    themeLabel: "Theme",
+    themeHint: "Saved only on this device.",
+    save: "Save interface",
+    themeLight: "Light",
+    themeDark: "Dark",
+    saved: "Interface settings updated for this device.",
+    languageSaved: "Language updated for this device.",
+    themeSaved: "Theme updated for this device.",
   },
   account: {
     title: "Account & sync",
@@ -199,3 +209,430 @@ export const settingsCopy = {
     saveFailed: "Unable to save your settings. Please try again.",
   },
 } as const;
+
+type SettingsCopy = WidenLiteral<typeof settingsCopyEn>;
+
+const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
+  en: settingsCopyEn,
+  ru: {
+    title: "Настройки",
+    subtitle:
+      "Управляйте параметрами цикла, полями трекинга, экспортом и локальным поведением профиля.",
+    common: {
+      daysShort: "д",
+      changeDate: "Открыть календарь",
+      clearDate: "Очистить дату",
+      notSet: "Не задано",
+      saving: "Сохранение...",
+    },
+    cycle: {
+      title: "Параметры цикла",
+      cycleLength: "Типичная длина цикла",
+      periodLength: "Длительность менструации",
+      lastPeriodStart: "Дата начала последней менструации",
+      lastPeriodStartHint:
+        "Необязательно. Используется как запасная точка отсчёта, если в журнале ещё нет отмеченного начала цикла.",
+      errorIncompatible:
+        "Длительность менструации несовместима с длиной цикла. Менструация не может занимать почти весь цикл.",
+      warningApproximate:
+        "С такими значениями овуляцию нельзя вычислить надёжно. Предсказание будет приблизительным.",
+      infoAdjusted:
+        "Длительность менструации была автоматически скорректирована, чтобы до следующего цикла оставалось минимум 10 дней.",
+      infoPeriodLong:
+        "Длительность более 8 дней может указывать на нерегулярность; обсудите это с врачом.",
+      infoCycleShort:
+        "Цикл короче 24 дней встречается реже; обсудите это с врачом.",
+      autoPeriodFill: "Автозаполнение дней менструации",
+      autoPeriodFillHint:
+        "Когда опция включена, отметка первого дня автоматически заполнит следующие дни по длительности менструации.",
+      irregularCycle: "У меня нерегулярный цикл",
+      irregularCycleHint:
+        "Включите, если ваши циклы отличаются больше чем на 7 дней. Для следующей менструации и овуляции будут использоваться диапазоны вместо одной даты.",
+      unpredictableCycle: "Мой цикл непредсказуем (СПКЯ, перименопауза и т. д.)",
+      unpredictableCycleHint:
+        "Полностью отключает предсказания дат и оставляет dashboard сфокусированным только на записанных фактах.",
+      save: "Сохранить изменения",
+    },
+    ageGroup: {
+      title: "Возрастная группа",
+      hint: "Необязательно. Если вам 35+, Ovumcy расширяет диапазон предсказания ещё на один день.",
+      under20: "Младше 20",
+      age20to35: "20-35",
+      age35plus: "35+",
+    },
+    goal: {
+      title: "Цель использования",
+      hint: "Необязательно. Это меняет формулировки о фертильных днях в UI, но не алгоритм.",
+      avoid: "Избежать беременности",
+      trying: "Пытаюсь зачать",
+      health: "Отслеживать здоровье",
+    },
+    tracking: {
+      title: "Дополнительный трекинг",
+      subtitle:
+        "Включите owner-only поля, которые хотите видеть в дневных записях. Существующие значения останутся в приватной истории.",
+      trackBBT: "Показывать поле БТТ",
+      trackBBTHint:
+        "Добавляет поле базальной температуры в dashboard и редактирование дня в календаре. Сохранённые значения останутся в истории и экспорте.",
+      trackBBTStateOn: "Сейчас видно в dashboard и редакторе дня календаря.",
+      trackBBTStateOff: "Сейчас скрыто из новых записей dashboard и календаря.",
+      trackCervicalMucus: "Показывать поле цервикальной слизи",
+      trackCervicalMucusHint:
+        "Добавляет варианты цервикальной слизи в dashboard и редактирование дня. Сохранённые значения остаются в приватной истории.",
+      trackCervicalMucusStateOn:
+        "Сейчас видно в dashboard и редакторе дня календаря.",
+      trackCervicalMucusStateOff:
+        "Сейчас скрыто из новых записей dashboard и календаря.",
+      hideSexChip: "Скрыть раздел близости",
+      hideSexChipHint:
+        "Убирает раздел близости из новых записей dashboard и календаря. Сохранённая активность остаётся в приватной истории.",
+      hideSexChipStateOn:
+        "Сейчас скрыто в dashboard и редакторе дня календаря.",
+      hideSexChipStateOff:
+        "Сейчас видно в dashboard и редакторе дня календаря.",
+      temperatureUnit: "Единица БТТ",
+      temperatureUnitHint: "Используется, когда поле БТТ видно.",
+      temperatureUnitCelsius: "Цельсий",
+      temperatureUnitFahrenheit: "Фаренгейт",
+      save: "Сохранить трекинг",
+    },
+    interface: {
+      title: "Интерфейс",
+      subtitle: "Управляйте языком приложения и темой на этом устройстве.",
+      languageLabel: "Язык",
+      languageHint: "Сохраняется только на этом устройстве.",
+      themeLabel: "Тема",
+      themeHint: "Сохраняется только на этом устройстве.",
+      save: "Сохранить интерфейс",
+      themeLight: "Светлая",
+      themeDark: "Тёмная",
+      saved: "Настройки интерфейса обновлены для этого устройства.",
+      languageSaved: "Язык обновлён для этого устройства.",
+      themeSaved: "Тема обновлена для этого устройства.",
+    },
+    account: {
+      title: "Аккаунт и sync",
+      subtitle:
+        "Это приложение пока local-first. На этом устройстве аккаунт не подключён.",
+      statusLabel: "Текущий статус",
+      statusValue:
+        "Все записи остаются локально на этом устройстве, пока позже не будет добавлен optional sync.",
+      actionsHint:
+        "Вход, восстановление и logout появятся здесь, когда появится account-backed sync.",
+    },
+    symptoms: {
+      title: "Пользовательские симптомы",
+      subtitle: "Создавайте короткие приватные названия для паттернов, которые хотите отмечать.",
+      name: "Название симптома",
+      namePlaceholder: "Скованность в суставах",
+      nameHint: "Используйте не более 40 символов. Для длинных деталей используйте заметки.",
+      icon: "Иконка",
+      add: "Добавить симптом",
+      save: "Сохранить симптом",
+      hide: "Скрыть",
+      restore: "Восстановить",
+      activeHeading: "Видно в новых записях",
+      activeHint: "Активные пользовательские симптомы появляются в dashboard и календаре.",
+      activeItem: "Видно в новых записях",
+      archivedHeading: "Скрыто из новых записей",
+      archivedHint: "Старые записи сохранят их. Восстановите симптом, когда захотите вернуть его в picker.",
+      archivedItem: "Скрыто из новых записей",
+      archivedBadge: "Скрыто",
+      empty: "Пока нет пользовательских симптомов. Добавьте один выше, чтобы он появился в новых записях.",
+      emptyActive:
+        "Сейчас нет видимых пользовательских симптомов. Восстановите один ниже или добавьте новый выше.",
+      created: "Пользовательский симптом добавлен.",
+      updated: "Пользовательский симптом обновлён.",
+      archived: "Пользовательский симптом скрыт.",
+      restored: "Пользовательский симптом восстановлен.",
+      confirmHide:
+        "Скрыть этот симптом из новых записей? Прошлые записи его сохранят.",
+      errors: {
+        labelRequired: "Название обязательно.",
+        labelTooLong:
+          "Используйте не более 40 символов. Для длинных деталей используйте заметки.",
+        labelInvalidCharacters:
+          "Используйте только обычный текст. Угловые скобки и управляющие символы запрещены.",
+        duplicateLabel: "Такое название уже есть в вашем списке.",
+        saveFailed: "Сейчас не удалось сохранить симптом. Попробуйте ещё раз.",
+        notFound: "Этот симптом больше не найден. Перезагрузите настройки и попробуйте снова.",
+      },
+    },
+    export: {
+      title: "Экспорт данных",
+      subtitle:
+        "Создайте локальный бэкап или дружественную для врача таблицу по записанным дням.",
+      storageHint:
+        "Экспорт включает только вручную записанные данные. Предсказания не включаются.",
+      sensitiveHint:
+        "Экспортированные файлы чувствительны. Сохраняйте и отправляйте их только туда, где доверяете устройству или получателю.",
+      noData:
+        "Пока нет записанных дней. После записей в dashboard или календаре экспорт станет доступен здесь.",
+      presetLabel: "Пресеты",
+      presetAll: "За всё время",
+      preset30: "30 дней",
+      preset90: "90 дней",
+      preset365: "365 дней",
+      fromLabel: "Дата начала",
+      toLabel: "Дата конца",
+      datePlaceholder: "ГГГГ-ММ-ДД",
+      summaryTotalTemplate: "Всего записей: %d",
+      summaryRangeTemplate: "Диапазон дат: %s — %s",
+      summaryRangeEmpty: "Диапазон дат: -",
+      csvAction: "Экспорт CSV",
+      jsonAction: "Экспорт JSON",
+      pdfAction: "Экспорт PDF",
+      csvStatus: "CSV-экспорт готов.",
+      jsonStatus: "JSON-бэкап готов.",
+      pdfStatus: "PDF-отчёт готов.",
+      errors: {
+        invalidFromDate: "Введите корректную начальную дату.",
+        invalidToDate: "Введите корректную конечную дату.",
+        invalidRange: "Дата окончания должна быть не раньше даты начала.",
+        exportFailed: "Не удалось подготовить экспорт. Попробуйте ещё раз.",
+        deliveryUnavailable:
+          "Это устройство сейчас не может открыть экспорт. Попробуйте из поддерживаемого браузера или на устройстве с share/save.",
+        deliveryFailed:
+          "Файл был подготовлен, но download или share завершился неудачно. Попробуйте ещё раз.",
+      },
+    },
+    danger: {
+      title: "Опасная зона",
+      subtitle:
+        "Закрытие приложения не очищает локальные данные. Используйте это только если хотите удалить локальные health records с устройства.",
+      clearTitle: "Очистить все локальные данные",
+      clearSubtitle:
+        "Удаляет onboarding, настройки профиля, дневные записи, пользовательские симптомы и локальное состояние экспорта, затем возвращает приложение в onboarding.",
+      confirmationLabel: "Введите CLEAR для подтверждения",
+      confirmationPlaceholder: "CLEAR",
+      confirmationHint:
+        "Это действие нельзя отменить из приложения. Сначала экспортируйте бэкап, если хотите сохранить записи.",
+      action: "Очистить локальные данные",
+      success: "Локальные данные очищены. Возвращаемся в onboarding.",
+      invalidConfirmation: "Введите CLEAR точно, чтобы подтвердить удаление локальных данных.",
+      failed:
+        "Сейчас не удалось очистить локальные данные. Попробуйте ещё раз.",
+    },
+    status: {
+      cycleSaved: "Настройки цикла успешно обновлены.",
+      trackingSaved: "Настройки трекинга обновлены.",
+      invalidLastPeriodStart:
+        "Введите корректную дату начала последней менструации, не в будущем.",
+      saveFailed: "Не удалось сохранить настройки. Попробуйте ещё раз.",
+    },
+  },
+  es: {
+    title: "Ajustes",
+    subtitle:
+      "Gestiona parámetros del ciclo, campos de seguimiento, acciones de exportación y el comportamiento local del perfil.",
+    common: {
+      daysShort: "d",
+      changeDate: "Abrir calendario",
+      clearDate: "Borrar fecha",
+      notSet: "Sin definir",
+      saving: "Guardando...",
+    },
+    cycle: {
+      title: "Parámetros del ciclo",
+      cycleLength: "Duración habitual del ciclo",
+      periodLength: "Duración del período",
+      lastPeriodStart: "Fecha de inicio del último período",
+      lastPeriodStartHint:
+        "Opcional. Se usa como referencia si tu diario todavía no tiene un inicio de ciclo marcado.",
+      errorIncompatible:
+        "La duración del período es incompatible con la duración del ciclo. La menstruación no puede ocupar casi todo el ciclo.",
+      warningApproximate:
+        "Con estos valores no se puede calcular la ovulación con fiabilidad. La predicción será aproximada.",
+      infoAdjusted:
+        "La duración del período se ajustó automáticamente para que queden al menos 10 días antes del siguiente ciclo.",
+      infoPeriodLong:
+        "Una duración superior a 8 días puede indicar irregularidades; coméntalo con un médico.",
+      infoCycleShort:
+        "Un ciclo más corto de 24 días es menos común; coméntalo con un médico.",
+      autoPeriodFill: "Autocompletar días de período",
+      autoPeriodFillHint:
+        "Cuando está activado, marcar el primer día completa automáticamente los siguientes días según la duración del período.",
+      irregularCycle: "Tengo un ciclo irregular",
+      irregularCycleHint:
+        "Actívalo si tus ciclos varían más de 7 días. Se usarán rangos para el próximo período y la ovulación.",
+      unpredictableCycle: "Mi ciclo es impredecible (SOP, perimenopausia, etc.)",
+      unpredictableCycleHint:
+        "Desactiva por completo las predicciones de fechas y mantiene el dashboard centrado en los hechos registrados.",
+      save: "Guardar cambios",
+    },
+    ageGroup: {
+      title: "Grupo de edad",
+      hint: "Opcional. Si tienes 35+, Ovumcy amplía el rango de predicción un día más.",
+      under20: "Menos de 20",
+      age20to35: "20-35",
+      age35plus: "35+",
+    },
+    goal: {
+      title: "Objetivo de uso",
+      hint: "Opcional. Esto cambia cómo se explican los días fértiles en la UI. No cambia el algoritmo.",
+      avoid: "Evitar embarazo",
+      trying: "Intentar concebir",
+      health: "Seguir mi salud",
+    },
+    tracking: {
+      title: "Seguimiento adicional",
+      subtitle:
+        "Activa los campos owner-only que quieras en el registro diario. Los valores existentes siguen en tu historial privado.",
+      trackBBT: "Mostrar campo de TCB",
+      trackBBTHint:
+        "Añade un campo de temperatura basal al dashboard y a la edición diaria del calendario. Los valores guardados siguen apareciendo en el historial y en las exportaciones.",
+      trackBBTStateOn: "Actualmente visible en el dashboard y en el editor diario del calendario.",
+      trackBBTStateOff: "Actualmente oculto de las nuevas entradas del dashboard y del calendario.",
+      trackCervicalMucus: "Mostrar campo de moco cervical",
+      trackCervicalMucusHint:
+        "Añade opciones de moco cervical al dashboard y a la edición diaria del calendario. Los valores guardados permanecen en tu historial privado.",
+      trackCervicalMucusStateOn:
+        "Actualmente visible en el dashboard y en el editor diario del calendario.",
+      trackCervicalMucusStateOff:
+        "Actualmente oculto de las nuevas entradas del dashboard y del calendario.",
+      hideSexChip: "Ocultar sección de intimidad",
+      hideSexChipHint:
+        "Elimina la sección de intimidad de nuevas entradas del dashboard y del calendario. La actividad guardada sigue apareciendo en tu historial privado.",
+      hideSexChipStateOn:
+        "Actualmente oculta en el dashboard y en el editor diario del calendario.",
+      hideSexChipStateOff:
+        "Actualmente visible en el dashboard y en el editor diario del calendario.",
+      temperatureUnit: "Unidad de TCB",
+      temperatureUnitHint: "Se usa cuando el campo de TCB está visible.",
+      temperatureUnitCelsius: "Celsius",
+      temperatureUnitFahrenheit: "Fahrenheit",
+      save: "Guardar seguimiento",
+    },
+    interface: {
+      title: "Interfaz",
+      subtitle: "Controla el idioma y la apariencia de la app en este dispositivo.",
+      languageLabel: "Idioma",
+      languageHint: "Se guarda solo en este dispositivo.",
+      themeLabel: "Tema",
+      themeHint: "Se guarda solo en este dispositivo.",
+      save: "Guardar interfaz",
+      themeLight: "Claro",
+      themeDark: "Oscuro",
+      saved: "La interfaz se actualizó para este dispositivo.",
+      languageSaved: "Idioma actualizado para este dispositivo.",
+      themeSaved: "Tema actualizado para este dispositivo.",
+    },
+    account: {
+      title: "Cuenta y sync",
+      subtitle:
+        "Esta app sigue siendo local-first. No hay ninguna cuenta conectada en este dispositivo.",
+      statusLabel: "Estado actual",
+      statusValue:
+        "Todo el seguimiento permanece local en este dispositivo hasta que se añada un sync opcional.",
+      actionsHint:
+        "El inicio de sesión, la recuperación y el logout aparecerán aquí cuando exista un sync con cuenta.",
+    },
+    symptoms: {
+      title: "Síntomas personalizados",
+      subtitle: "Crea etiquetas privadas y cortas para patrones que quieras registrar.",
+      name: "Nombre del síntoma",
+      namePlaceholder: "Rigidez articular",
+      nameHint: "Usa 40 caracteres o menos. Para detalles largos, usa notas.",
+      icon: "Icono",
+      add: "Añadir síntoma",
+      save: "Guardar síntoma",
+      hide: "Ocultar",
+      restore: "Restaurar",
+      activeHeading: "Visible en nuevas entradas",
+      activeHint: "Los síntomas personalizados activos aparecen en dashboard y calendario.",
+      activeItem: "Visible en nuevas entradas",
+      archivedHeading: "Archivado en nuevas entradas",
+      archivedHint: "Los registros pasados los mantienen. Restaura uno cuando quieras devolverlo al selector.",
+      archivedItem: "Oculto en nuevas entradas",
+      archivedBadge: "Oculto",
+      empty: "Todavía no hay síntomas personalizados. Añade uno arriba para usarlo en nuevas entradas.",
+      emptyActive:
+        "Ahora no hay síntomas personalizados visibles. Restaura uno abajo o añade uno nuevo arriba.",
+      created: "Síntoma personalizado añadido.",
+      updated: "Síntoma personalizado actualizado.",
+      archived: "Síntoma personalizado ocultado.",
+      restored: "Síntoma personalizado restaurado.",
+      confirmHide:
+        "¿Ocultar este síntoma personalizado de nuevas entradas? Los registros pasados lo conservarán.",
+      errors: {
+        labelRequired: "El nombre es obligatorio.",
+        labelTooLong:
+          "Usa 40 caracteres o menos. Para detalles largos, usa notas.",
+        labelInvalidCharacters:
+          "Usa solo texto simple. No se permiten corchetes angulares ni caracteres de control.",
+        duplicateLabel: "Ese nombre ya existe en tu lista.",
+        saveFailed: "No se pudo guardar este síntoma ahora. Inténtalo de nuevo.",
+        notFound: "No se pudo encontrar este síntoma. Recarga ajustes e inténtalo de nuevo.",
+      },
+    },
+    export: {
+      title: "Exportar datos",
+      subtitle:
+        "Crea una copia local o una tabla útil para el médico a partir de tus registros.",
+      storageHint:
+        "Las exportaciones incluyen solo registros introducidos manualmente. Las predicciones no se incluyen.",
+      sensitiveHint:
+        "Los archivos exportados son sensibles. Guárdalos y compártelos solo donde confíes en el dispositivo o destino.",
+      noData:
+        "Todavía no hay entradas registradas. Cuando registres días en dashboard o calendario, la exportación aparecerá aquí.",
+      presetLabel: "Preajustes",
+      presetAll: "Todo el tiempo",
+      preset30: "30 días",
+      preset90: "90 días",
+      preset365: "365 días",
+      fromLabel: "Desde",
+      toLabel: "Hasta",
+      datePlaceholder: "AAAA-MM-DD",
+      summaryTotalTemplate: "Entradas totales: %d",
+      summaryRangeTemplate: "Rango de fechas: %s a %s",
+      summaryRangeEmpty: "Rango de fechas: -",
+      csvAction: "Exportar CSV",
+      jsonAction: "Exportar JSON",
+      pdfAction: "Exportar PDF",
+      csvStatus: "La exportación CSV está lista.",
+      jsonStatus: "La copia JSON está lista.",
+      pdfStatus: "El informe PDF está listo.",
+      errors: {
+        invalidFromDate: "Usa una fecha inicial válida.",
+        invalidToDate: "Usa una fecha final válida.",
+        invalidRange: "La fecha final debe ser igual o posterior a la inicial.",
+        exportFailed: "No se pudo preparar la exportación. Inténtalo de nuevo.",
+        deliveryUnavailable:
+          "Este dispositivo no puede abrir el destino de exportación ahora. Inténtalo desde un navegador compatible o un dispositivo con share/save.",
+        deliveryFailed:
+          "El archivo se preparó, pero la descarga o el compartir fallaron. Inténtalo de nuevo.",
+      },
+    },
+    danger: {
+      title: "Zona de peligro",
+      subtitle:
+        "Cerrar la app no borra los datos locales. Usa esto solo si quieres borrar los registros de salud de este dispositivo.",
+      clearTitle: "Borrar todos los datos locales",
+      clearSubtitle:
+        "Elimina onboarding, ajustes del perfil, registros diarios, síntomas personalizados y estado local de exportación, y devuelve la app al onboarding.",
+      confirmationLabel: "Escribe CLEAR para confirmar",
+      confirmationPlaceholder: "CLEAR",
+      confirmationHint:
+        "Esta acción no se puede deshacer desde la app. Exporta una copia antes si quieres conservar los registros.",
+      action: "Borrar datos locales",
+      success: "Datos locales borrados. Volviendo al onboarding.",
+      invalidConfirmation:
+        "Escribe CLEAR exactamente para confirmar la eliminación de datos locales.",
+      failed:
+        "No se pudieron borrar los datos locales ahora. Inténtalo de nuevo.",
+    },
+    status: {
+      cycleSaved: "Ajustes del ciclo actualizados correctamente.",
+      trackingSaved: "Ajustes de seguimiento actualizados.",
+      invalidLastPeriodStart:
+        "Introduce una fecha válida del último período que no esté en el futuro.",
+      saveFailed: "No se pudieron guardar los ajustes. Inténtalo de nuevo.",
+    },
+  },
+};
+
+export function getSettingsCopy(language: string | null | undefined) {
+  return settingsCopyCatalog[resolveCopyLanguage(language)];
+}
+
+export const settingsCopy = settingsCopyEn;

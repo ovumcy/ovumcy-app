@@ -30,6 +30,8 @@ function createStorageMock(overrides = {}) {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
+      languageOverride: "en",
+      themeOverride: "light",
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
@@ -55,11 +57,9 @@ describe("DashboardScreen", () => {
 
     await screen.findByTestId("day-log-save-button");
 
-    expect(screen.getByText("This section is hidden in settings.")).toBeTruthy();
-    expect(
-      screen.getByText("Enter a basal body temperature reading for today. °F."),
-    ).toBeTruthy();
-    expect(screen.getByText("Cervical mucus")).toBeTruthy();
+    expect(screen.queryByTestId("day-log-sex-none")).toBeNull();
+    expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
+    expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
   });
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {
@@ -80,17 +80,16 @@ describe("DashboardScreen", () => {
             temperatureUnit: "c",
             trackCervicalMucus: false,
             hideSexChip: false,
+            languageOverride: "en",
+            themeOverride: "light",
           }),
         })}
       />,
     );
 
-    await waitFor(() => expect(screen.getByText("Predictions off")).toBeTruthy());
-    expect(
-      screen.getByText(
-        "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
-      ),
-    ).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId("dashboard-prediction-explanation")).toBeTruthy(),
+    );
   });
 
   it("renders custom symptom options from the shared symptom catalog", async () => {
@@ -129,10 +128,10 @@ describe("DashboardScreen", () => {
 
     await screen.findByTestId("dashboard-quick-action-period");
     expect(screen.getByTestId("dashboard-manual-cycle-start-button")).toBeTruthy();
-    expect(screen.queryByText("Flow")).toBeNull();
+    expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
 
     fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
-    expect(screen.getByText("Flow")).toBeTruthy();
+    expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
   });
 });

@@ -3,6 +3,7 @@ import { Alert, Platform } from "react-native";
 export function openConfirmation(
   message: string,
   acceptLabel: string,
+  cancelLabel = "Cancel",
 ): Promise<boolean> {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     return Promise.resolve(window.confirm(message));
@@ -21,7 +22,7 @@ export function openConfirmation(
     Alert.alert("", message, [
       {
         style: "cancel",
-        text: "Cancel",
+        text: cancelLabel,
         onPress: () => finish(false),
       },
       {

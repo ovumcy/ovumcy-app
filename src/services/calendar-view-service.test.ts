@@ -16,6 +16,8 @@ describe("calendar-view-service", () => {
         temperatureUnit: "c",
         trackCervicalMucus: false,
         hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
       },
       [
         {

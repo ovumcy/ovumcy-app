@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { createEmptyDayLogRecord, hasDayLogData } from "../../models/day-log";
-import { dashboardCopy } from "../../i18n/dashboard-copy";
+import { getDashboardCopy } from "../../i18n/dashboard-copy";
+import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
   loadCalendarScreenState,
@@ -21,7 +22,7 @@ import { formatLocalDate } from "../../services/profile-settings-policy";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
-import { colors } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { CalendarOverviewScreen } from "./CalendarOverviewScreen";
 
 type CalendarScreenProps = {
@@ -40,6 +41,7 @@ export function CalendarScreen({
   storage = appStorage,
   now,
 }: CalendarScreenProps) {
+  const { colors, language } = useAppPreferences();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [monthValue, setMonthValue] = useState(() =>
     formatLocalDate(effectiveNow).slice(0, 7),
@@ -50,32 +52,38 @@ export function CalendarScreen({
   const [state, setState] = useState<LoadedCalendarState | null>(null);
   const [status, setStatus] = useState<EditorStatusState>(null);
   const [editorMode, setEditorMode] = useState<CalendarEditorMode>("view");
+  const shellCopy = getShellCopy(language);
+  const dashboardCopy = getDashboardCopy(language);
 
   useEffect(() => {
     let isMounted = true;
 
-    void loadCalendarScreenState(storage, effectiveNow, monthValue, selectedDate).then(
-      (loadedState) => {
-        if (!isMounted) {
-          return;
-        }
+    void loadCalendarScreenState(
+      storage,
+      effectiveNow,
+      monthValue,
+      selectedDate,
+      language,
+    ).then((loadedState) => {
+      if (!isMounted) {
+        return;
+      }
 
-        setState(loadedState);
-        setIsLoading(false);
-      },
-    );
+      setState(loadedState);
+      setIsLoading(false);
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [effectiveNow, monthValue, selectedDate, storage]);
+  }, [effectiveNow, language, monthValue, selectedDate, storage]);
 
   if (isLoading || !state) {
     return (
       <ScreenScaffold
-        eyebrow="History"
-        title="Loading calendar"
-        description="Preparing your local month view."
+        eyebrow={shellCopy.tabs.calendar}
+        title={shellCopy.loading.calendarTitle}
+        description={shellCopy.loading.calendarDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
           <ActivityIndicator color={colors.accent} size="large" />
@@ -97,6 +105,7 @@ export function CalendarScreen({
       effectiveNow,
       monthValue,
       selectedDate,
+      language,
     );
     setState(loadedState);
   }
@@ -162,7 +171,11 @@ export function CalendarScreen({
     let markUncertain = false;
 
     for (const prompt of manualCycleStart.prompts) {
-      const confirmed = await openConfirmation(prompt.message, prompt.acceptLabel);
+      const confirmed = await openConfirmation(
+        prompt.message,
+        prompt.acceptLabel,
+        dashboardCopy.cancelAction,
+      );
       if (!confirmed) {
         return;
       }
@@ -184,7 +197,7 @@ export function CalendarScreen({
       state.records,
       state.selectedRecord,
       effectiveNow,
-      "en",
+      language,
       {
         markUncertain,
         replaceExisting,

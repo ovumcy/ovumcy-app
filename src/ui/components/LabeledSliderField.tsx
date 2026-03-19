@@ -1,7 +1,9 @@
 import Slider from "@react-native-community/slider";
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 type LabeledSliderFieldProps = {
   label: string;
@@ -26,6 +28,9 @@ export function LabeledSliderField({
   valueSuffix = "",
   showRange = false,
 }: LabeledSliderFieldProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.group}>
       <View style={styles.row}>
@@ -65,7 +70,8 @@ export function LabeledSliderField({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   group: {
     gap: spacing.sm,
   },
@@ -102,4 +108,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
-});
+  });

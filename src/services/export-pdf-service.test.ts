@@ -34,6 +34,8 @@ describe("export-pdf-service", () => {
         temperatureUnit: "c",
         trackCervicalMucus: true,
         hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
       },
       symptomRecords: [...symptoms, jawPain],
       dayLogs: [
@@ -140,6 +142,8 @@ describe("export-pdf-service", () => {
           temperatureUnit: "c",
           trackCervicalMucus: true,
           hideSexChip: false,
+          languageOverride: null,
+          themeOverride: null,
         },
         symptomRecords: symptoms,
         dayLogs: [

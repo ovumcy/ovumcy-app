@@ -1,4 +1,4 @@
-import { onboardingCopy } from "../i18n/app-copy";
+import { getOnboardingCopy } from "../i18n/app-copy";
 import type {
   AgeGroupOption,
   OnboardingRecord,
@@ -31,6 +31,7 @@ export type OnboardingViewData = {
   stepTwo: {
     title: string;
     cycleLengthLabel: string;
+    daysShort: string;
     cycleLengthHint: string;
     periodLengthLabel: string;
     periodLengthHint: string;
@@ -75,6 +76,7 @@ export function buildOnboardingViewData(
   now: Date,
   locale = "en",
 ): OnboardingViewData {
+  const onboardingCopy = getOnboardingCopy(locale);
   const bounds = getOnboardingDateBounds(now);
   const initialStepTwoValues = createStepTwoDefaults(record);
   const guidance = buildCycleGuidanceState(
@@ -108,6 +110,7 @@ export function buildOnboardingViewData(
     stepTwo: {
       title: onboardingCopy.step2.title,
       cycleLengthLabel: onboardingCopy.step2.cycleLength,
+      daysShort: onboardingCopy.step2.daysShort,
       cycleLengthHint: onboardingCopy.step2.cycleLengthHint,
       periodLengthLabel: onboardingCopy.step2.periodLength,
       periodLengthHint: onboardingCopy.step2.periodLengthHint,

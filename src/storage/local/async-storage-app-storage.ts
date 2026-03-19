@@ -11,6 +11,8 @@ import {
 } from "../../models/symptom";
 import {
   createDefaultProfileRecord,
+  normalizeInterfaceLanguage,
+  normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -271,6 +273,8 @@ function mergeProfileRecord(
     lastPeriodStart:
       typeof parsed?.lastPeriodStart === "string" ? parsed.lastPeriodStart : null,
     temperatureUnit: parsed?.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
+    languageOverride: normalizeInterfaceLanguage(parsed?.languageOverride),
+    themeOverride: normalizeThemePreference(parsed?.themeOverride),
   };
 }
 

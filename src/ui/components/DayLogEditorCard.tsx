@@ -16,7 +16,9 @@ import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
 import { MultiSelectChipGroup } from "./MultiSelectChipGroup";
 import { StatusBanner } from "./StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type DayLogEditorCardProps = {
   cancelLabel?: string;
@@ -63,6 +65,7 @@ export function DayLogEditorCard({
   onPatch,
   onSave,
 }: DayLogEditorCardProps) {
+  const styles = useThemedStyles(createStyles);
   const showsCalendarOrder = variant === "calendar";
   const [isNotesOpen, setIsNotesOpen] = useState(record.notes.trim().length > 0);
   const headerDescription = [viewData.subtitle, viewData.dateLabel]
@@ -284,20 +287,14 @@ export function DayLogEditorCard({
       <View style={styles.actions}>
         <AppButton
           disabled={isSaving}
-          label={
-            isSaving
-              ? "Saving..."
-              : entryExists
-                ? viewData.actions.updateLabel
-                : viewData.actions.saveLabel
-          }
+          label={entryExists ? viewData.actions.updateLabel : viewData.actions.saveLabel}
           onPress={onSave}
           testID="day-log-save-button"
         />
         {onCancel ? (
           <AppButton
             disabled={isSaving}
-            label={cancelLabel ?? "Cancel"}
+            label={cancelLabel ?? ""}
             onPress={onCancel}
             testID="day-log-cancel-button"
             variant="secondary"
@@ -325,54 +322,55 @@ export function DayLogEditorCard({
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    gap: spacing.sm,
-  },
-  sectionLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  sectionHint: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 15,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  notesInput: {
-    minHeight: 112,
-    textAlignVertical: "top",
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-  notesToggle: {
-    alignSelf: "flex-start",
-  },
-  notesToggleText: {
-    color: colors.accentStrong,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  notesSection: {
-    gap: spacing.sm,
-  },
-  deleteHint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  dangerSection: {
-    gap: spacing.xs,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    section: {
+      gap: spacing.sm,
+    },
+    sectionLabel: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    sectionHint: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      color: colors.text,
+      fontSize: 15,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    notesInput: {
+      minHeight: 112,
+      textAlignVertical: "top",
+    },
+    actions: {
+      gap: spacing.sm,
+    },
+    notesToggle: {
+      alignSelf: "flex-start",
+    },
+    notesToggleText: {
+      color: colors.accentStrong,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    notesSection: {
+      gap: spacing.sm,
+    },
+    deleteHint: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    dangerSection: {
+      gap: spacing.xs,
+    },
+  });

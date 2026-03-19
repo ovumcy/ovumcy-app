@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { dashboardCopy } from "../../i18n/dashboard-copy";
 import type { DayLogRecord } from "../../models/day-log";
 import type { ManualCycleStartViewData } from "../../services/manual-cycle-start-service";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
@@ -12,7 +11,9 @@ import {
   type DayLogEditorSectionKey,
 } from "../components/DayLogEditorCard";
 import { ManualCycleStartAction } from "../components/ManualCycleStartAction";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type DashboardQuickActionKey = "period" | "mood" | "symptom";
 
@@ -45,6 +46,7 @@ export function DashboardOverviewScreen({
   viewData,
   manualCycleStart,
 }: DashboardOverviewScreenProps) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const editorCardOffsetRef = useRef(0);
@@ -103,25 +105,27 @@ export function DashboardOverviewScreen({
         </View>
 
         {viewData.predictionExplanation ? (
-          <Text style={styles.helperText}>{viewData.predictionExplanation}</Text>
+          <Text style={styles.helperText} testID="dashboard-prediction-explanation">
+            {viewData.predictionExplanation}
+          </Text>
         ) : null}
 
         <View style={styles.quickActions}>
           <QuickActionButton
             icon="🩸"
-            label={dashboardCopy.quickActions.period}
+            label={viewData.quickActions.period}
             onPress={() => handleQuickAction("period")}
             testID="dashboard-quick-action-period"
           />
           <QuickActionButton
             icon="😊"
-            label={dashboardCopy.quickActions.mood}
+            label={viewData.quickActions.mood}
             onPress={() => handleQuickAction("mood")}
             testID="dashboard-quick-action-mood"
           />
           <QuickActionButton
             icon="💊"
-            label={dashboardCopy.quickActions.symptom}
+            label={viewData.quickActions.symptom}
             onPress={() => handleQuickAction("symptom")}
             testID="dashboard-quick-action-symptom"
           />
@@ -177,6 +181,8 @@ function QuickActionButton({
   onPress: () => void;
   testID: string;
 }) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <Pressable
       accessibilityLabel={label}
@@ -190,71 +196,69 @@ function QuickActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screenContent: {
-    paddingBottom: spacing.xl,
-  },
-  container: {
-    alignSelf: "center",
-    gap: spacing.md,
-    maxWidth: 980,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    width: "100%",
-  },
-  statusLine: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  statusItemRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  statusSeparator: {
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  statusIcon: {
-    color: colors.textMuted,
-    fontSize: 14,
-  },
-  statusText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  helperText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  quickActions: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  quickActionButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 20,
-    lineHeight: 20,
-    overflow: "hidden",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  quickActionIcon: {
-    color: colors.text,
-    fontSize: 20,
-    lineHeight: 20,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    screenContent: {
+      paddingBottom: spacing.xl,
+    },
+    container: {
+      alignSelf: "center",
+      gap: spacing.md,
+      maxWidth: 980,
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      width: "100%",
+    },
+    statusLine: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+    },
+    statusItemRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 6,
+    },
+    statusSeparator: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    statusIcon: {
+      color: colors.textMuted,
+      fontSize: 14,
+    },
+    statusText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    helperText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    quickActions: {
+      flexDirection: "row",
+      gap: spacing.sm,
+    },
+    quickActionButton: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      overflow: "hidden",
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    quickActionIcon: {
+      color: colors.text,
+      fontSize: 20,
+      lineHeight: 20,
+    },
+  });

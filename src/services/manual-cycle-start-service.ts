@@ -1,4 +1,4 @@
-import { dashboardCopy } from "../i18n/dashboard-copy";
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
@@ -52,6 +52,8 @@ export function buildManualCycleStartViewData(
   now: Date,
   locale = "en",
 ): ManualCycleStartViewData | null {
+  const dashboardCopy = getDashboardCopy(locale);
+
   if (!isAllowedManualCycleStartDate(record.date, now)) {
     return null;
   }
@@ -112,6 +114,8 @@ export async function applyManualCycleStart(
     replaceExisting: boolean;
   },
 ): Promise<ManualCycleStartResult> {
+  const dashboardCopy = getDashboardCopy(locale);
+
   if (!isAllowedManualCycleStartDate(record.date, now)) {
     return {
       ok: false,

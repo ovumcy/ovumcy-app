@@ -8,7 +8,9 @@ import { buildSettingsSymptomsState } from "../../services/settings-view-service
 import { AppButton } from "./AppButton";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsSymptomsSectionProps = {
   createDraft: SymptomDraftValues;
@@ -46,6 +48,8 @@ export function SettingsSymptomsSection({
   viewData,
   visibleState,
 }: SettingsSymptomsSectionProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <FeatureCard
       description={viewData.subtitle}
@@ -193,6 +197,8 @@ function SymptomEditorCard({
   testIDPrefix,
   title,
 }: SymptomEditorCardProps) {
+  const styles = useThemedStyles(createStyles);
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -273,110 +279,111 @@ function SymptomEditorCard({
   );
 }
 
-const styles = StyleSheet.create({
-  stack: {
-    gap: spacing.md,
-  },
-  groupHeader: {
-    gap: spacing.xs,
-  },
-  groupTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  groupHint: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  cardHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "space-between",
-  },
-  cardTitleBlock: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  cardSubtitle: {
-    color: colors.textMuted,
-    fontSize: 13,
-  },
-  archivedBadge: {
-    color: colors.accentStrong,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  formGroup: {
-    gap: spacing.xs,
-  },
-  fieldLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 15,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  helperText: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  iconRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  iconOption: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: "center",
-    minWidth: 44,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  iconOptionSelected: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentStrong,
-  },
-  iconOptionText: {
-    fontSize: 18,
-  },
-  actions: {
-    gap: spacing.sm,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    stack: {
+      gap: spacing.md,
+    },
+    groupHeader: {
+      gap: spacing.xs,
+    },
+    groupTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    groupHint: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    emptyCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      gap: spacing.xs,
+      padding: spacing.md,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      gap: spacing.md,
+      padding: spacing.md,
+    },
+    cardHeader: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: spacing.sm,
+      justifyContent: "space-between",
+    },
+    cardTitleBlock: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    cardTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    cardSubtitle: {
+      color: colors.textMuted,
+      fontSize: 13,
+    },
+    archivedBadge: {
+      color: colors.accentStrong,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    formGroup: {
+      gap: spacing.xs,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      color: colors.text,
+      fontSize: 15,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    helperText: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    iconRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+    iconOption: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      justifyContent: "center",
+      minWidth: 44,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+    },
+    iconOptionSelected: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentStrong,
+    },
+    iconOptionText: {
+      fontSize: 18,
+    },
+    actions: {
+      gap: spacing.sm,
+    },
+  });

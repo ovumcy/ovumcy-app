@@ -1,6 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type BinaryToggleCardProps = {
   label: string;
@@ -23,6 +25,7 @@ export function BinaryToggleCard({
   testID,
   descriptionPosition = "inside",
 }: BinaryToggleCardProps) {
+  const styles = useThemedStyles(createStyles);
   const descriptionText = description?.trim() ?? "";
   const showDescriptionInside = descriptionPosition === "inside";
   const showDescription = descriptionText.length > 0;
@@ -69,7 +72,8 @@ export function BinaryToggleCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   group: {
     gap: spacing.sm,
   },
@@ -154,4 +158,4 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     backgroundColor: colors.accentStrong,
   },
-});
+  });

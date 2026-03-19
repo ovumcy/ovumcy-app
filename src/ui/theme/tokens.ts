@@ -1,4 +1,4 @@
-export const colors = {
+export const lightColors = {
   background: "#fff9f0",
   surface: "#ffffff",
   surfaceMuted: "#fff4e8",
@@ -11,6 +11,24 @@ export const colors = {
   accentSoft: "#f4e1cd",
   border: "#ecd9c6",
 };
+
+export const darkColors = {
+  background: "#18141f",
+  surface: "#241f2f",
+  surfaceMuted: "#2b2439",
+  surfaceStrong: "#2f283e",
+  text: "#efe6df",
+  textMuted: "#cbbfb7",
+  accent: "#d2935c",
+  accentSecondary: "#a87a57",
+  accentStrong: "#f0b57f",
+  accentSoft: "#433024",
+  border: "#65547e",
+};
+
+export type AppThemeColors = typeof lightColors;
+
+export const colors = lightColors;
 
 export const spacing = {
   xs: 8,

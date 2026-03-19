@@ -2,7 +2,8 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-import { dashboardCopy } from "../../i18n/dashboard-copy";
+import { getDashboardCopy } from "../../i18n/dashboard-copy";
+import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
   deleteDayLogEditorRecord,
@@ -21,7 +22,7 @@ import { hasDayLogData } from "../../models/day-log";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
-import { colors } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
 
 type DashboardScreenProps = {
@@ -38,43 +39,52 @@ export function DashboardScreen({
   storage = appStorage,
   now,
 }: DashboardScreenProps) {
+  const { colors, language } = useAppPreferences();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedDashboardState | null>(null);
   const [status, setStatus] = useState<EditorStatusState>(null);
+  const shellCopy = getShellCopy(language);
+  const dashboardCopy = getDashboardCopy(language);
 
   const refresh = useCallback(async () => {
-    const loadedState = await loadDashboardScreenState(storage, effectiveNow);
+    const loadedState = await loadDashboardScreenState(
+      storage,
+      effectiveNow,
+      language,
+    );
     setState(loadedState);
     setIsLoading(false);
-  }, [effectiveNow, storage]);
+  }, [effectiveNow, language, storage]);
 
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      void loadDashboardScreenState(storage, effectiveNow).then((loadedState) => {
-        if (!isMounted) {
-          return;
-        }
+      void loadDashboardScreenState(storage, effectiveNow, language).then(
+        (loadedState) => {
+          if (!isMounted) {
+            return;
+          }
 
-        setState(loadedState);
-        setIsLoading(false);
-      });
+          setState(loadedState);
+          setIsLoading(false);
+        },
+      );
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, storage]),
+    }, [effectiveNow, language, storage]),
   );
 
   if (isLoading || !state) {
     return (
       <ScreenScaffold
-        eyebrow="Today"
-        title="Loading dashboard"
-        description="Preparing your local cycle context."
+        eyebrow={shellCopy.tabs.dashboard}
+        title={shellCopy.loading.dashboardTitle}
+        description={shellCopy.loading.dashboardDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
           <ActivityIndicator color={colors.accent} size="large" />
@@ -150,7 +160,11 @@ export function DashboardScreen({
     let markUncertain = false;
 
     for (const prompt of manualCycleStart.prompts) {
-      const confirmed = await openConfirmation(prompt.message, prompt.acceptLabel);
+      const confirmed = await openConfirmation(
+        prompt.message,
+        prompt.acceptLabel,
+        dashboardCopy.cancelAction,
+      );
       if (!confirmed) {
         return;
       }
@@ -172,7 +186,7 @@ export function DashboardScreen({
       state.historyRecords,
       state.todayEntry,
       effectiveNow,
-      "en",
+      language,
       {
         markUncertain,
         replaceExisting,

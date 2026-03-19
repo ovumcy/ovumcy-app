@@ -30,6 +30,8 @@ function createStorageMock(overrides = {}) {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-01-17",
@@ -53,7 +55,7 @@ describe("StatsScreen", () => {
       />,
     );
 
-    await screen.findByText("Keep logging to unlock insights");
+    await screen.findByTestId("stats-empty-hero");
     expect(screen.getByTestId("stats-empty-hero")).toBeTruthy();
   });
 
@@ -75,6 +77,8 @@ describe("StatsScreen", () => {
             temperatureUnit: "c",
             trackCervicalMucus: false,
             hideSexChip: false,
+            languageOverride: "en",
+            themeOverride: "light",
           }),
           listDayLogRecordsInRange: jest.fn().mockResolvedValue([
             {
@@ -111,12 +115,12 @@ describe("StatsScreen", () => {
       />,
     );
 
-    await screen.findByText("Prediction reliability");
-    expect(screen.getByText("Cycle trend")).toBeTruthy();
-    expect(screen.getByText("Symptom frequency")).toBeTruthy();
-    expect(screen.getByText("Last cycle symptoms")).toBeTruthy();
-    expect(screen.getByText("Phase moods")).toBeTruthy();
-    expect(screen.getByText("BBT trend")).toBeTruthy();
-    expect(screen.getByText("Recent cycle factors")).toBeTruthy();
+    await screen.findByTestId("stats-trend-section");
+    expect(screen.getByTestId("stats-trend-section")).toBeTruthy();
+    expect(screen.getByTestId("stats-symptom-frequency")).toBeTruthy();
+    expect(screen.getByTestId("stats-last-cycle-symptoms")).toBeTruthy();
+    expect(screen.getByTestId("stats-phase-mood")).toBeTruthy();
+    expect(screen.getByTestId("stats-bbt-trend")).toBeTruthy();
+    expect(screen.getByTestId("stats-factor-context")).toBeTruthy();
   });
 });

@@ -33,6 +33,8 @@ function createStorageMock(overrides = {}) {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
@@ -79,7 +81,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent(
       screen.getByTestId("settings-cycle-length-slider"),
@@ -102,7 +104,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-temperature-unit-f"));
     fireEvent.press(screen.getByTestId("settings-save-tracking-button"));
@@ -121,7 +123,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-track-bbt"));
     fireEvent.press(screen.getByTestId("settings-save-tracking-button"));
@@ -140,7 +142,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-symptom-create-name-input"),
@@ -189,7 +191,7 @@ describe("SettingsScreen", () => {
       />,
     );
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-export-json-button"));
 
@@ -221,7 +223,7 @@ describe("SettingsScreen", () => {
       />,
     );
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-export-pdf-button"));
 
@@ -241,7 +243,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
     expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
@@ -258,13 +260,12 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-clear-data-button"));
 
-    expect(
-      screen.getByText("Type CLEAR exactly to confirm local data removal."),
-    ).toBeTruthy();
+    expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-clear-data-confirmation-input")).toBeTruthy();
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
@@ -274,7 +275,7 @@ describe("SettingsScreen", () => {
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Settings");
+    await screen.findByTestId("settings-cycle-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-clear-data-confirmation-input"),

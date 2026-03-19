@@ -20,6 +20,8 @@ function createStorageMock() {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
@@ -55,7 +57,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Calendar");
+    await screen.findByTestId("calendar-prev-button");
 
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
@@ -102,16 +104,17 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Calendar");
+    await screen.findByTestId("calendar-prev-button");
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
-    await screen.findByText("Daily log");
+    await screen.findByTestId("calendar-day-panel");
     expect(screen.getByText("Old symptom")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
 
-    await screen.findByText("Jaw pain");
+    await screen.findByTestId("day-log-save-button");
     expect(screen.getByText("Old symptom")).toBeTruthy();
+    expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 
   it("keeps existing days in summary mode until edit is requested and shows manual cycle start", async () => {
@@ -119,7 +122,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Calendar");
+    await screen.findByTestId("calendar-prev-button");
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await screen.findByTestId("calendar-day-panel");
@@ -133,7 +136,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByText("Calendar");
+    await screen.findByTestId("calendar-prev-button");
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
 
     await screen.findByTestId("calendar-day-panel");

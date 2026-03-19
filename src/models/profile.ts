@@ -17,6 +17,11 @@ export type AgeGroupOption = Exclude<AgeGroup, "">;
 export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 
 export type TemperatureUnit = "c" | "f";
+export type InterfaceLanguage = "en" | "ru" | "es";
+export type ThemePreference = "light" | "dark";
+
+export const SUPPORTED_INTERFACE_LANGUAGES = ["en", "ru", "es"] as const;
+export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
 
 export type ProfileRecord = {
   lastPeriodStart: LocalDateISO | null;
@@ -31,6 +36,8 @@ export type ProfileRecord = {
   temperatureUnit: TemperatureUnit;
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
+  languageOverride: InterfaceLanguage | null;
+  themeOverride: ThemePreference | null;
 };
 
 export type CycleSettingsValues = Pick<
@@ -50,6 +57,35 @@ export type TrackingSettingsValues = Pick<
   "trackBBT" | "temperatureUnit" | "trackCervicalMucus" | "hideSexChip"
 >;
 
+export type InterfaceSettingsValues = Pick<
+  ProfileRecord,
+  "languageOverride" | "themeOverride"
+>;
+
+export function normalizeInterfaceLanguage(
+  value: string | null | undefined,
+): InterfaceLanguage | null {
+  if (!value) {
+    return null;
+  }
+
+  return SUPPORTED_INTERFACE_LANGUAGES.includes(value as InterfaceLanguage)
+    ? (value as InterfaceLanguage)
+    : null;
+}
+
+export function normalizeThemePreference(
+  value: string | null | undefined,
+): ThemePreference | null {
+  if (!value) {
+    return null;
+  }
+
+  return SUPPORTED_THEME_PREFERENCES.includes(value as ThemePreference)
+    ? (value as ThemePreference)
+    : null;
+}
+
 export function createDefaultProfileRecord(): ProfileRecord {
   return {
     lastPeriodStart: null,
@@ -64,5 +100,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     temperatureUnit: DEFAULT_TEMPERATURE_UNIT,
     trackCervicalMucus: false,
     hideSexChip: false,
+    languageOverride: null,
+    themeOverride: null,
   };
 }

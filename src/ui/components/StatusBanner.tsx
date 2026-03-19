@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type StatusBannerProps = {
   message: string;
@@ -13,6 +15,7 @@ export function StatusBanner({
   tone = "info",
   testID,
 }: StatusBannerProps) {
+  const styles = useThemedStyles(createStyles);
   if (!message) {
     return null;
   }
@@ -46,7 +49,8 @@ export function StatusBanner({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   banner: {
     borderRadius: 14,
     borderWidth: 1,
@@ -97,4 +101,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-});
+  });

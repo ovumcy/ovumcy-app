@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 export type StatsBarChartPoint = {
   key: string;
@@ -24,7 +26,7 @@ type StatsBarChartProps = {
 };
 
 export function StatsBarChart({
-  accentColor = colors.accentStrong,
+  accentColor,
   baselineValue,
   emptyLabel,
   points,
@@ -33,6 +35,10 @@ export function StatsBarChart({
   valueDecimals = 0,
   valueSuffix,
 }: StatsBarChartProps) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useAppTheme();
+  const resolvedAccentColor = accentColor ?? colors.accentStrong;
+
   if (points.length === 0) {
     return (
       <Text style={styles.emptyLabel} testID={testID}>
@@ -76,9 +82,9 @@ export function StatsBarChart({
                 <View style={styles.barTrack}>
                   <View
                     style={[
-                      styles.bar,
+                        styles.bar,
                       {
-                        backgroundColor: accentColor,
+                        backgroundColor: resolvedAccentColor,
                         height: `${Math.min(height, 100)}%`,
                       },
                     ]}
@@ -132,70 +138,71 @@ function formatValue(
   return `${formatted}${valueSuffix}`;
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-  },
-  chartShell: {
-    backgroundColor: colors.surfaceStrong,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    minHeight: 208,
-    overflow: "hidden",
-    padding: spacing.md,
-    position: "relative",
-  },
-  baseline: {
-    borderColor: colors.textMuted,
-    borderStyle: "dashed",
-    borderTopWidth: 1,
-    left: spacing.md,
-    opacity: 0.45,
-    position: "absolute",
-    right: spacing.md,
-  },
-  columns: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    flexGrow: 1,
-    gap: spacing.sm,
-    height: "100%",
-  },
-  column: {
-    alignItems: "center",
-    flex: 1,
-    gap: 6,
-    justifyContent: "flex-end",
-  },
-  valueLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  barTrack: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 999,
-    justifyContent: "flex-end",
-    overflow: "hidden",
-    padding: 4,
-    width: "100%",
-    height: BAR_TRACK_HEIGHT,
-  },
-  bar: {
-    borderRadius: 999,
-    minHeight: 8,
-    width: "100%",
-  },
-  axisLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  emptyLabel: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: spacing.sm,
+    },
+    chartShell: {
+      backgroundColor: colors.surfaceStrong,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      minHeight: 208,
+      overflow: "hidden",
+      padding: spacing.md,
+      position: "relative",
+    },
+    baseline: {
+      borderColor: colors.textMuted,
+      borderStyle: "dashed",
+      borderTopWidth: 1,
+      left: spacing.md,
+      opacity: 0.45,
+      position: "absolute",
+      right: spacing.md,
+    },
+    columns: {
+      alignItems: "flex-end",
+      flexDirection: "row",
+      flexGrow: 1,
+      gap: spacing.sm,
+      height: "100%",
+    },
+    column: {
+      alignItems: "center",
+      flex: 1,
+      gap: 6,
+      justifyContent: "flex-end",
+    },
+    valueLabel: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    barTrack: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 999,
+      justifyContent: "flex-end",
+      overflow: "hidden",
+      padding: 4,
+      width: "100%",
+      height: BAR_TRACK_HEIGHT,
+    },
+    bar: {
+      borderRadius: 999,
+      minHeight: 8,
+      width: "100%",
+    },
+    axisLabel: {
+      color: colors.textMuted,
+      fontSize: 12,
+      fontWeight: "600",
+      textAlign: "center",
+    },
+    emptyLabel: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+  });

@@ -1,5 +1,5 @@
-import { dayLogCopy } from "../i18n/day-log-copy";
-import { statsCopy } from "../i18n/stats-copy";
+import { getDayLogCopy } from "../i18n/day-log-copy";
+import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
@@ -220,6 +220,8 @@ export function buildStatsViewData(
   now: Date,
   locale = "en",
 ): StatsViewData {
+  const statsCopy = getStatsCopy(locale);
+  const dayLogCopy = getDayLogCopy(locale);
   const history = buildCycleHistorySummary(profile, records, now);
 
   if (!history.hasInsights) {
@@ -267,8 +269,8 @@ export function buildStatsViewData(
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,
-    predictionExplanation: buildPredictionExplanation(profile, projection),
-    notices: buildStatsNotices(profile, history),
+    predictionExplanation: buildPredictionExplanation(profile, projection, locale),
+    notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
       title: statsCopy.cycleTrend,
       legendActualLabel: statsCopy.chartActualLabel,
@@ -370,7 +372,13 @@ export function buildStatsViewData(
           },
         }
       : {}),
-    topCards: buildTopCards(profile, history, projection, reliability),
+    topCards: buildTopCards(
+      profile,
+      history,
+      projection,
+      reliability,
+      statsCopy,
+    ),
     cycleOverview: {
       title: statsCopy.cycleLengthCard,
       averageLabel: statsCopy.averageLabel,
@@ -438,6 +446,7 @@ function buildTopCards(
   history: ReturnType<typeof buildCycleHistorySummary>,
   projection: StatsCycleProjection,
   reliability: ReturnType<typeof buildStatsReliability>,
+  statsCopy: ReturnType<typeof getStatsCopy>,
 ): StatsTopCardViewData[] {
   const cards: StatsTopCardViewData[] = [
     {
@@ -473,7 +482,7 @@ function buildTopCards(
     cards.push({
       key: "current-phase",
       title: statsCopy.currentPhase,
-      value: buildPhaseValue(projection.currentPhase),
+      value: buildPhaseValue(projection.currentPhase, statsCopy),
       ...(description ? { description } : {}),
     });
   }
@@ -501,6 +510,7 @@ function buildTopCards(
 function buildStatsNotices(
   profile: ProfileRecord,
   history: ReturnType<typeof buildCycleHistorySummary>,
+  statsCopy: ReturnType<typeof getStatsCopy>,
 ): string[] {
   const notices: string[] = [];
 
@@ -522,7 +532,10 @@ function buildStatsNotices(
   return notices;
 }
 
-function buildPhaseValue(phase: StatsPhase): string {
+function buildPhaseValue(
+  phase: StatsPhase,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): string {
   return `${statsCopy.phaseIcons[phase]} ${statsCopy.phaseLabels[phase]}`;
 }
 

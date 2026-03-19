@@ -1,6 +1,7 @@
 import type { ExportFormat, ExportRangeValues } from "../models/export";
 import type {
   CycleSettingsValues,
+  InterfaceSettingsValues,
   ProfileRecord,
   TrackingSettingsValues,
 } from "../models/profile";
@@ -20,6 +21,7 @@ import {
   getSettingsCycleStartDateBounds,
   parseLocalDate,
   sanitizeCycleSettingsValues,
+  sanitizeInterfaceSettingsValues,
   sanitizeTrackingSettingsValues,
 } from "./profile-settings-policy";
 import {
@@ -118,6 +120,35 @@ export async function saveTrackingSettings(
   const nextProfile: ProfileRecord = {
     ...currentState.profile,
     ...sanitizeTrackingSettingsValues(trackingValues),
+  };
+
+  try {
+    await storage.writeProfileRecord(nextProfile);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      nextProfile,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
+  };
+}
+
+export async function saveInterfaceSettings(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  interfaceValues: InterfaceSettingsValues,
+): Promise<SaveStateResult<SaveSettingsErrorCode>> {
+  const nextProfile: ProfileRecord = {
+    ...currentState.profile,
+    ...sanitizeInterfaceSettingsValues(interfaceValues),
   };
 
   try {

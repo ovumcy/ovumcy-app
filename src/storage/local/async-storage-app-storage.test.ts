@@ -27,6 +27,8 @@ describe("async-storage-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.readOnboardingRecord()).resolves.toEqual({
       lastPeriodStart: null,
@@ -95,6 +97,8 @@ describe("async-storage-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.readOnboardingRecord()).resolves.toEqual({
       lastPeriodStart: "2026-03-14",
@@ -234,6 +238,8 @@ describe("async-storage-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.readDayLogSummary()).resolves.toEqual({
       totalEntries: 0,

@@ -9,7 +9,9 @@ import { DayLogEditorCard } from "./DayLogEditorCard";
 import { FeatureCard } from "./FeatureCard";
 import { ManualCycleStartAction } from "./ManualCycleStartAction";
 import { StatusBanner } from "./StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarDayPanelProps = {
   entryExists: boolean;
@@ -48,6 +50,8 @@ export function CalendarDayPanel({
   onPatch,
   onSave,
 }: CalendarDayPanelProps) {
+  const styles = useThemedStyles(createStyles);
+
   if (isEditing) {
     const deleteProps = onDelete ? { onDelete } : {};
 
@@ -151,45 +155,46 @@ export function CalendarDayPanel({
   );
 }
 
-const styles = StyleSheet.create({
-  editingStack: {
-    gap: spacing.md,
-  },
-  summaryCard: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    gap: spacing.sm,
-    padding: 14,
-  },
-  summaryRow: {
-    gap: 4,
-  },
-  summaryLabel: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  summaryValue: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  summarySection: {
-    gap: 4,
-  },
-  emptyState: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    padding: 14,
-  },
-  emptyStateText: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  actionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    editingStack: {
+      gap: spacing.md,
+    },
+    summaryCard: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 14,
+      gap: spacing.sm,
+      padding: 14,
+    },
+    summaryRow: {
+      gap: 4,
+    },
+    summaryLabel: {
+      color: colors.textMuted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    summaryValue: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    summarySection: {
+      gap: 4,
+    },
+    emptyState: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 14,
+      padding: 14,
+    },
+    emptyStateText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    actionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+    },
+  });

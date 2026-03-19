@@ -5,6 +5,8 @@ import {
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
   createDefaultProfileRecord,
+  normalizeInterfaceLanguage,
+  normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -197,6 +199,8 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     lastPeriodStart:
       typeof record.lastPeriodStart === "string" ? record.lastPeriodStart : null,
     temperatureUnit: record.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
+    languageOverride: normalizeInterfaceLanguage(record.languageOverride),
+    themeOverride: normalizeThemePreference(record.themeOverride),
   };
 }
 

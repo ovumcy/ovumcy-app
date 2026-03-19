@@ -1,7 +1,9 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type { ManualCycleStartViewData } from "../../services/manual-cycle-start-service";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 import { AppButton } from "./AppButton";
 
 type ManualCycleStartActionProps = {
@@ -17,6 +19,7 @@ export function ManualCycleStartAction({
   testID,
   viewData,
 }: ManualCycleStartActionProps) {
+  const styles = useThemedStyles(createStyles);
   const notices = [
     viewData.notices.future,
     viewData.notices.suggestion,
@@ -47,16 +50,17 @@ export function ManualCycleStartAction({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
-  noticeGroup: {
-    gap: spacing.xs,
-  },
-  noticeText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    container: {
+      gap: spacing.sm,
+    },
+    noticeGroup: {
+      gap: spacing.xs,
+    },
+    noticeText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+  });

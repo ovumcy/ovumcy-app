@@ -1,4 +1,4 @@
-import { calendarCopy } from "../i18n/calendar-copy";
+import { getCalendarCopy } from "../i18n/calendar-copy";
 import {
   hasDayLogData,
   hasDayLogSex,
@@ -168,6 +168,7 @@ export function buildCalendarViewData(
   selectedDate: string,
   locale = "en",
 ): CalendarViewData {
+  const calendarCopy = getCalendarCopy(locale);
   const history = buildCycleHistorySummary(profile, records, today);
   const projection = buildCurrentCycleProjection(profile, history, records, today);
   const predictionMaps = buildCalendarPredictionMaps(
@@ -248,6 +249,7 @@ function buildCalendarDaySummaryViewData(
   editorViewData: DayLogEditorViewData,
   locale: string,
 ): CalendarDaySummaryViewData {
+  const calendarCopy = getCalendarCopy(locale);
   const selectedSymptoms = editorViewData.options.symptoms
     .filter((option) => record.symptomIDs.includes(option.value))
     .map((option) => option.label);

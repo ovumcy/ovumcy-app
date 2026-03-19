@@ -28,12 +28,15 @@ import type {
   OnboardingStepTwoValues,
   UsageGoal,
 } from "../../models/onboarding";
-import { onboardingCopy } from "../../i18n/app-copy";
+import { getAppInfo, getOnboardingCopy } from "../../i18n/app-copy";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
 import { LabeledSliderField } from "../components/LabeledSliderField";
 import { StatusBanner } from "../components/StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 export type OnboardingFlowScreenProps = {
   guidance: ReturnType<typeof buildCycleGuidanceState>;
@@ -57,10 +60,17 @@ export type OnboardingFlowScreenProps = {
 };
 
 export function OnboardingLoadingScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { colors, language } = useAppPreferences();
+  const onboardingCopy = getOnboardingCopy(language);
+  const appInfo = getAppInfo(language);
+
   return (
     <OnboardingShell
-      progressLabel="Ovumcy"
-      subtitle="Preparing your private onboarding flow."
+      progressLabel={appInfo.name}
+      progressPercent={0}
+      styles={styles}
+      subtitle={appInfo.tagline}
       title={onboardingCopy.loading}
     >
       <View style={styles.loadingBlock}>
@@ -90,8 +100,10 @@ export function OnboardingFlowScreen({
   stepTwoError,
   viewData,
 }: OnboardingFlowScreenProps) {
+  const styles = useThemedStyles(createStyles);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const { width } = useWindowDimensions();
+  const onboardingCopy = getOnboardingCopy(locale);
   const selectedDate = parseLocalDate(state.selectedDate);
   const dayOptionColumns = width >= 1180 ? 6 : width >= 820 ? 4 : 3;
   const displayedDate = useMemo(() => {
@@ -120,9 +132,9 @@ export function OnboardingFlowScreen({
 
   return (
     <OnboardingShell
-      progressLabel={
-        state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2
-      }
+      progressLabel={state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2}
+      progressPercent={state.step === 1 ? 50 : 100}
+      styles={styles}
       title={state.step === 1 ? viewData.stepOne.title : viewData.stepTwo.title}
       {...(state.step === 1 ? { subtitle: viewData.stepOne.subtitle } : {})}
     >
@@ -143,6 +155,7 @@ export function OnboardingFlowScreen({
           selectedDateValue={state.selectedDate}
           showDatePicker={showDatePicker}
           stepOneError={stepOneError}
+          styles={styles}
           supportsNativeDatePicker={supportsNativeDatePicker}
           viewData={viewData}
         />
@@ -160,6 +173,7 @@ export function OnboardingFlowScreen({
           onUsageGoalSelect={onUsageGoalSelect}
           stepTwoError={stepTwoError}
           stepTwoValues={state.stepTwoValues}
+          styles={styles}
           viewData={viewData}
         />
       )}
@@ -169,14 +183,18 @@ export function OnboardingFlowScreen({
 
 function OnboardingShell({
   progressLabel,
+  progressPercent,
   title,
   subtitle,
   children,
+  styles,
 }: {
   progressLabel: string;
+  progressPercent: number;
   title: string;
   subtitle?: string;
   children: ReactNode;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -198,10 +216,7 @@ function OnboardingShell({
                 <View
                   style={[
                     styles.progressFill,
-                    {
-                      width:
-                        progressLabel === onboardingCopy.progress.step1 ? "50%" : "100%",
-                    },
+                    { width: `${progressPercent}%` },
                   ]}
                 />
               </View>
@@ -232,6 +247,7 @@ function StepOnePanel({
   selectedDateValue,
   showDatePicker,
   stepOneError,
+  styles,
   supportsNativeDatePicker,
   viewData,
 }: {
@@ -248,6 +264,7 @@ function StepOnePanel({
   selectedDateValue: string;
   showDatePicker: boolean;
   stepOneError: string;
+  styles: ReturnType<typeof createStyles>;
   supportsNativeDatePicker: boolean;
   viewData: OnboardingViewData;
 }) {
@@ -304,6 +321,7 @@ function StepOnePanel({
             isSelected={selectedDateValue === option.value}
             onPress={() => onDayOptionPress(option.value)}
             option={option}
+            styles={styles}
           />
         ))}
       </ScrollView>
@@ -316,6 +334,7 @@ function StepOnePanel({
         disabled={isSaving}
         label={viewData.stepOne.nextLabel}
         onPress={onNext}
+        styles={styles}
         testID="onboarding-next-button"
       />
     </>
@@ -335,6 +354,7 @@ function StepTwoPanel({
   onUsageGoalSelect,
   stepTwoError,
   stepTwoValues,
+  styles,
   viewData,
 }: {
   guidance: ReturnType<typeof buildCycleGuidanceState>;
@@ -349,6 +369,7 @@ function StepTwoPanel({
   onUsageGoalSelect: (value: UsageGoal) => void;
   stepTwoError: string;
   stepTwoValues: OnboardingStepTwoValues;
+  styles: ReturnType<typeof createStyles>;
   viewData: OnboardingViewData;
 }) {
   return (
@@ -361,7 +382,7 @@ function StepTwoPanel({
         showRange
         testID="onboarding-cycle-length-slider"
         value={stepTwoValues.cycleLength}
-        valueSuffix=" days"
+        valueSuffix={` ${viewData.stepTwo.daysShort}`}
       />
 
       <LabeledSliderField
@@ -372,7 +393,7 @@ function StepTwoPanel({
         showRange
         testID="onboarding-period-length-slider"
         value={stepTwoValues.periodLength}
-        valueSuffix=" days"
+        valueSuffix={` ${viewData.stepTwo.daysShort}`}
       />
 
       <View style={styles.messageStack}>
@@ -436,12 +457,14 @@ function StepTwoPanel({
         <SecondaryButton
           label={viewData.stepTwo.backLabel}
           onPress={onBack}
+          styles={styles}
           testID="onboarding-back-button"
         />
         <PrimaryButton
           disabled={isSaving}
           label={viewData.stepTwo.finishLabel}
           onPress={onFinish}
+          styles={styles}
           testID="onboarding-finish-button"
         />
       </View>
@@ -454,11 +477,13 @@ function DayOptionButton({
   option,
   isSelected,
   onPress,
+  styles,
 }: {
   columns: number;
   option: DayOption;
   isSelected: boolean;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
 }) {
   const widthStyle =
     columns >= 6
@@ -501,11 +526,13 @@ function PrimaryButton({
   label,
   onPress,
   disabled,
+  styles,
   testID,
 }: {
   label: string;
   onPress: () => void;
   disabled?: boolean;
+  styles: ReturnType<typeof createStyles>;
   testID?: string;
 }) {
   return (
@@ -523,10 +550,12 @@ function PrimaryButton({
 function SecondaryButton({
   label,
   onPress,
+  styles,
   testID,
 }: {
   label: string;
   onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
   testID?: string;
 }) {
   return (
@@ -562,214 +591,215 @@ function formatLongDate(value: Date, locale: string): string {
   }).format(value);
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  screenContent: {
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-  },
-  heroCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: 8,
-    maxWidth: 840,
-    overflow: "hidden",
-    padding: 16,
-    width: "100%",
-  },
-  loadingBlock: {
-    alignItems: "center",
-    paddingVertical: spacing.xl,
-  },
-  panel: {
-    gap: 8,
-  },
-  progressBlock: {
-    gap: 6,
-  },
-  kicker: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
-  },
-  progressPanel: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    padding: 6,
-  },
-  progressTrack: {
-    backgroundColor: "rgba(232,196,168,0.35)",
-    borderRadius: 999,
-    height: 8,
-    overflow: "hidden",
-  },
-  progressFill: {
-    backgroundColor: "#d4a574",
-    borderRadius: 999,
-    height: 8,
-  },
-  heroTitle: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
-    lineHeight: 31,
-  },
-  heroMuted: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  helperText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  formGroup: {
-    gap: spacing.sm,
-  },
-  dateFieldShell: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  selectedDateLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    textTransform: "uppercase",
-  },
-  dateFieldValue: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  dateFieldValueMuted: {
-    color: colors.textMuted,
-  },
-  secondaryLinkButton: {
-    alignSelf: "flex-start",
-    paddingTop: 4,
-  },
-  secondaryLinkButtonText: {
-    color: colors.accent,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  dayOptionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    paddingRight: 4,
-  },
-  dayOptionScroll: {
-    maxHeight: 232,
-  },
-  dayOptionButton: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    justifyContent: "center",
-    minHeight: 40,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  dayOptionButtonThreeColumns: {
-    flexBasis: "31.8%",
-  },
-  dayOptionButtonFourColumns: {
-    flexBasis: "23.75%",
-  },
-  dayOptionButtonSixColumns: {
-    flexBasis: "15.8%",
-  },
-  dayOptionButtonToday: {
-    minHeight: 42,
-  },
-  dayOptionButtonActive: {
-    backgroundColor: colors.accentSoft,
-    borderColor: colors.accentStrong,
-  },
-  dayOptionLabel: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  dayOptionSecondaryLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    marginTop: 2,
-  },
-  dayOptionLabelActive: {
-    color: colors.accentStrong,
-  },
-  fieldLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  messageStack: {
-    gap: spacing.xs,
-  },
-  infoText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  primaryButton: {
-    alignItems: "center",
-    backgroundColor: colors.accent,
-    borderColor: colors.accentStrong,
-    borderRadius: 999,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 42,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-    shadowColor: colors.accentStrong,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-  },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    flex: 1,
-    minHeight: 42,
-    paddingHorizontal: 18,
-    paddingVertical: 9,
-  },
-  secondaryButtonText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    screenContent: {
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 18,
+    },
+    heroCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      gap: 8,
+      maxWidth: 840,
+      overflow: "hidden",
+      padding: 16,
+      width: "100%",
+    },
+    loadingBlock: {
+      alignItems: "center",
+      paddingVertical: spacing.xl,
+    },
+    panel: {
+      gap: 8,
+    },
+    progressBlock: {
+      gap: 6,
+    },
+    kicker: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: "700",
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    progressPanel: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 14,
+      padding: 6,
+    },
+    progressTrack: {
+      backgroundColor: "rgba(232,196,168,0.35)",
+      borderRadius: 999,
+      height: 8,
+      overflow: "hidden",
+    },
+    progressFill: {
+      backgroundColor: colors.accent,
+      borderRadius: 999,
+      height: 8,
+    },
+    heroTitle: {
+      color: colors.text,
+      fontSize: 26,
+      fontWeight: "800",
+      lineHeight: 31,
+    },
+    heroMuted: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    helperText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    formGroup: {
+      gap: spacing.sm,
+    },
+    dateFieldShell: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    selectedDateLabel: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 0.3,
+      textTransform: "uppercase",
+    },
+    dateFieldValue: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    dateFieldValueMuted: {
+      color: colors.textMuted,
+    },
+    secondaryLinkButton: {
+      alignSelf: "flex-start",
+      paddingTop: 4,
+    },
+    secondaryLinkButtonText: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    dayOptionGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 6,
+      paddingRight: 4,
+    },
+    dayOptionScroll: {
+      maxHeight: 232,
+    },
+    dayOptionButton: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      justifyContent: "center",
+      minHeight: 40,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    dayOptionButtonThreeColumns: {
+      flexBasis: "31.8%",
+    },
+    dayOptionButtonFourColumns: {
+      flexBasis: "23.75%",
+    },
+    dayOptionButtonSixColumns: {
+      flexBasis: "15.8%",
+    },
+    dayOptionButtonToday: {
+      minHeight: 42,
+    },
+    dayOptionButtonActive: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentStrong,
+    },
+    dayOptionLabel: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+    dayOptionSecondaryLabel: {
+      color: colors.textMuted,
+      fontSize: 10,
+      marginTop: 2,
+    },
+    dayOptionLabelActive: {
+      color: colors.accentStrong,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    messageStack: {
+      gap: spacing.xs,
+    },
+    infoText: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    buttonRow: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    primaryButton: {
+      alignItems: "center",
+      backgroundColor: colors.accent,
+      borderColor: colors.accentStrong,
+      borderRadius: 999,
+      borderWidth: 1,
+      flex: 1,
+      minHeight: 42,
+      paddingHorizontal: 18,
+      paddingVertical: 9,
+      shadowColor: colors.accentStrong,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.22,
+      shadowRadius: 16,
+    },
+    primaryButtonText: {
+      color: "#ffffff",
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    secondaryButton: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flex: 1,
+      minHeight: 42,
+      paddingHorizontal: 18,
+      paddingVertical: 9,
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+  });

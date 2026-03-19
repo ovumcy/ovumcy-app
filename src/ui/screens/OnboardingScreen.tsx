@@ -16,6 +16,7 @@ import {
   OnboardingFlowScreen,
   OnboardingLoadingScreen,
 } from "./OnboardingFlowScreen";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 
 type OnboardingScreenProps = {
   storage?: LocalAppStorage;
@@ -29,7 +30,7 @@ export function OnboardingScreen({
   onFinished,
 }: OnboardingScreenProps) {
   const router = useRouter();
-  const locale = useMemo(() => resolveLocale(), []);
+  const { language: locale } = useAppPreferences();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedOnboardingState | null>(null);
@@ -237,12 +238,4 @@ function navigateToDashboard(
   }
 
   router.replace("/(tabs)/dashboard");
-}
-
-function resolveLocale(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale || "en";
-  } catch {
-    return "en";
-  }
 }

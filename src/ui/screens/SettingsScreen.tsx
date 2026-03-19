@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
   createPlatformExportDeliveryClient,
@@ -16,6 +17,7 @@ import {
   refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
+  saveInterfaceSettings,
   saveTrackingSettings,
   updateSettingsSymptom,
 } from "../../services/settings-screen-service";
@@ -36,7 +38,7 @@ import {
 import type { SymptomID } from "../../models/symptom";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
-import { colors } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsFlowScreen } from "./SettingsFlowScreen";
 
 type SettingsScreenProps = {
@@ -52,11 +54,18 @@ export function SettingsScreen({
   storage = appStorage,
   now,
 }: SettingsScreenProps) {
+  const {
+    colors,
+    language,
+    refreshPreferences,
+    syncProfilePreferences,
+  } = useAppPreferences();
   const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [isSavingCycle, setIsSavingCycle] = useState(false);
+  const [isSavingInterface, setIsSavingInterface] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -68,6 +77,8 @@ export function SettingsScreen({
   const [clearDataStatusMessage, setClearDataStatusMessage] = useState("");
   const [exportErrorMessage, setExportErrorMessage] = useState("");
   const [exportStatusMessage, setExportStatusMessage] = useState("");
+  const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
+  const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -83,6 +94,7 @@ export function SettingsScreen({
   const [rowSymptomStatusMessages, setRowSymptomStatusMessages] = useState<
     Record<string, string>
   >({});
+  const shellCopy = getShellCopy(language);
 
   useFocusEffect(
     useCallback(() => {
@@ -106,8 +118,8 @@ export function SettingsScreen({
   if (isLoading || !state) {
     return (
       <ScreenScaffold
-        title="Loading settings"
-        description="Preparing your local cycle settings."
+        title={shellCopy.loading.settingsTitle}
+        description={shellCopy.loading.settingsDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
           <ActivityIndicator color={colors.accent} size="large" />
@@ -117,7 +129,7 @@ export function SettingsScreen({
   }
 
   const readyState = state;
-  const viewData = buildSettingsViewData(effectiveNow);
+  const viewData = buildSettingsViewData(effectiveNow, language);
   const cycleGuidance = buildSettingsCycleGuidance(readyState.cycleValues);
 
   function resetSymptomMessages() {
@@ -216,6 +228,28 @@ export function SettingsScreen({
     setState(result.state);
     setTrackingStatusMessage(viewData.status.trackingSaved);
     setIsSavingTracking(false);
+  }
+
+  async function handleSaveInterfaceSettings() {
+    setIsSavingInterface(true);
+    setInterfaceErrorMessage("");
+    setInterfaceStatusMessage("");
+
+    const result = await saveInterfaceSettings(
+      storage,
+      readyState,
+      readyState.interfaceValues,
+    );
+    if (!result.ok) {
+      setInterfaceErrorMessage(viewData.status.saveFailed);
+      setIsSavingInterface(false);
+      return;
+    }
+
+    setState(result.state);
+    syncProfilePreferences(result.state.profile);
+    setInterfaceStatusMessage(viewData.interface.status.saved);
+    setIsSavingInterface(false);
   }
 
   async function handleCreateSymptom() {
@@ -378,10 +412,13 @@ export function SettingsScreen({
     setRowSymptomStatusMessages({});
     setCycleErrorMessage("");
     setCycleStatusMessage("");
+    setInterfaceErrorMessage("");
+    setInterfaceStatusMessage("");
     setTrackingStatusMessage("");
     resetExportMessages();
     setShowDatePicker(false);
     setClearDataConfirmationValue("");
+    await refreshPreferences();
     setIsClearingData(false);
     router.replace("/onboarding");
   }
@@ -421,10 +458,14 @@ export function SettingsScreen({
       cycleStatusMessage={cycleStatusMessage}
       exportErrorMessage={exportErrorMessage}
       exportStatusMessage={exportStatusMessage}
+      interfaceErrorMessage={interfaceErrorMessage}
+      interfaceStatusMessage={interfaceStatusMessage}
       isClearingData={isClearingData}
       isExporting={isExporting}
       isSavingCycle={isSavingCycle}
+      isSavingInterface={isSavingInterface}
       isSavingTracking={isSavingTracking}
+      locale={language}
       now={effectiveNow}
       onAgeGroupSelect={(value) => {
         setCycleErrorMessage("");
@@ -557,6 +598,36 @@ export function SettingsScreen({
           void handleExportRangeChange(nextValues);
         }
       }}
+      onInterfaceLanguageSelect={(value) => {
+        setInterfaceErrorMessage("");
+        setInterfaceStatusMessage("");
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                interfaceValues: {
+                  ...current.interfaceValues,
+                  languageOverride: value,
+                },
+              }
+            : current,
+        );
+      }}
+      onInterfaceThemeSelect={(value) => {
+        setInterfaceErrorMessage("");
+        setInterfaceStatusMessage("");
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                interfaceValues: {
+                  ...current.interfaceValues,
+                  themeOverride: value,
+                },
+              }
+            : current,
+        );
+      }}
       onHideSexChipChange={(value) => {
         setTrackingStatusMessage("");
         resetExportMessages();
@@ -604,6 +675,7 @@ export function SettingsScreen({
       }}
       onRestoreSymptom={handleRestoreSymptom}
       onSaveCycleSettings={handleSaveCycleSettings}
+      onSaveInterfaceSettings={handleSaveInterfaceSettings}
       onSaveTrackingSettings={handleSaveTrackingSettings}
       onSymptomDraftChange={(symptomID, updates) => {
         setRowSymptomErrorMessages((current) => {

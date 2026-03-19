@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { CalendarDayCellViewData } from "../../services/calendar-view-service";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarMonthGridProps = {
   days: CalendarDayCellViewData[];
   onSelectDay: (day: CalendarDayCellViewData) => void;
+  todayLabel: string;
 };
 
 const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -14,7 +17,9 @@ const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export function CalendarMonthGrid({
   days,
   onSelectDay,
+  todayLabel,
 }: CalendarMonthGridProps) {
+  const styles = useThemedStyles(createStyles);
   const [gridWidth, setGridWidth] = useState(0);
   const metrics = useMemo(() => {
     if (gridWidth <= 0) {
@@ -88,7 +93,7 @@ export function CalendarMonthGrid({
               </Text>
               {day.isToday && metrics.showTodayPill ? (
                 <View style={styles.todayPill}>
-                  <Text style={styles.todayPillText}>Today</Text>
+                  <Text style={styles.todayPillText}>{todayLabel}</Text>
                 </View>
               ) : null}
             </View>
@@ -128,126 +133,134 @@ export function CalendarMonthGrid({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    gap: spacing.sm,
-  },
-  weekdayRow: {
-    flexDirection: "row",
-  },
-  weekdayLabel: {
-    color: colors.textMuted,
-    flex: 1,
-    fontSize: 10,
-    fontWeight: "700",
-    textAlign: "center",
-    textTransform: "uppercase",
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  cell: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 6,
-    minHeight: 76,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-  },
-  cellOutsideMonth: {
-    opacity: 0.48,
-  },
-  cellPeriod: {
-    backgroundColor: colors.accentSoft,
-  },
-  cellPredicted: {
-    backgroundColor: colors.surfaceStrong,
-  },
-  cellPreFertile: {
-    borderColor: colors.accentSecondary,
-  },
-  cellFertilityEdge: {
-    backgroundColor: "#fff1e4",
-    borderColor: "#e7b88f",
-  },
-  cellFertilityPeak: {
-    backgroundColor: "#ffe7dd",
-    borderColor: "#dd9b81",
-  },
-  cellOvulation: {
-    backgroundColor: "#fff3ea",
-    borderColor: colors.accentStrong,
-  },
-  cellOvulationTentative: {
-    backgroundColor: "#fff8f2",
-    borderColor: colors.accentSecondary,
-    borderStyle: "dashed",
-  },
-  cellSelected: {
-    borderColor: "#487ad1",
-    borderWidth: 2,
-  },
-  cellHeader: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    minHeight: 20,
-  },
-  dayLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  dayLabelMuted: {
-    color: colors.textMuted,
-  },
-  dayLabelSelected: {
-    color: colors.accentStrong,
-  },
-  todayPill: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  todayPillText: {
-    color: colors.textMuted,
-    fontSize: 8,
-    fontWeight: "700",
-  },
-  markers: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-    marginTop: "auto",
-  },
-  dataMarker: {
-    backgroundColor: colors.accentStrong,
-    borderRadius: 999,
-    height: 7,
-    width: 7,
-  },
-  ovulationMarker: {
-    backgroundColor: "#f0906f",
-    borderRadius: 999,
-    height: 9,
-    width: 9,
-  },
-  ovulationDash: {
-    backgroundColor: "#e0a37d",
-    borderRadius: 999,
-    height: 3,
-    width: 12,
-  },
-  heartMarker: {
-    color: colors.accentStrong,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    wrapper: {
+      gap: spacing.sm,
+    },
+    weekdayRow: {
+      flexDirection: "row",
+    },
+    weekdayLabel: {
+      color: colors.textMuted,
+      flex: 1,
+      fontSize: 10,
+      fontWeight: "700",
+      textAlign: "center",
+      textTransform: "uppercase",
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
+    },
+    cell: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 14,
+      borderWidth: 1,
+      gap: 6,
+      minHeight: 76,
+      paddingHorizontal: 8,
+      paddingVertical: 7,
+    },
+    cellOutsideMonth: {
+      opacity: 0.48,
+    },
+    cellPeriod: {
+      backgroundColor: colors.accentSoft,
+    },
+    cellPredicted: {
+      backgroundColor: colors.surfaceStrong,
+    },
+    cellPreFertile: {
+      borderColor: colors.accentSecondary,
+    },
+    cellFertilityEdge: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#fff1e4" : "rgba(95, 71, 51, 0.78)",
+      borderColor: colors.accentSecondary,
+    },
+    cellFertilityPeak: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#ffe7dd" : "rgba(108, 62, 54, 0.82)",
+      borderColor:
+        colors.background === "#fff9f0" ? "#dd9b81" : colors.accentStrong,
+    },
+    cellOvulation: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#fff3ea" : "rgba(83, 58, 44, 0.82)",
+      borderColor: colors.accentStrong,
+    },
+    cellOvulationTentative: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#fff8f2" : "rgba(56, 43, 32, 0.82)",
+      borderColor: colors.accentSecondary,
+      borderStyle: "dashed",
+    },
+    cellSelected: {
+      borderColor: colors.accentStrong,
+      borderWidth: 2,
+    },
+    cellHeader: {
+      alignItems: "flex-start",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      minHeight: 20,
+    },
+    dayLabel: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+    },
+    dayLabelMuted: {
+      color: colors.textMuted,
+    },
+    dayLabelSelected: {
+      color: colors.accentStrong,
+    },
+    todayPill: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 5,
+      paddingVertical: 1,
+    },
+    todayPillText: {
+      color: colors.textMuted,
+      fontSize: 8,
+      fontWeight: "700",
+    },
+    markers: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: 4,
+      marginTop: "auto",
+    },
+    dataMarker: {
+      backgroundColor: colors.accentStrong,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
+    },
+    ovulationMarker: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#f0906f" : colors.accentStrong,
+      borderRadius: 999,
+      height: 9,
+      width: 9,
+    },
+    ovulationDash: {
+      backgroundColor:
+        colors.background === "#fff9f0" ? "#e0a37d" : colors.accentSecondary,
+      borderRadius: 999,
+      height: 3,
+      width: 12,
+    },
+    heartMarker: {
+      color: colors.accentStrong,
+      fontSize: 12,
+      fontWeight: "700",
+    },
+  });

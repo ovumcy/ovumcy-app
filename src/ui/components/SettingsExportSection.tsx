@@ -6,7 +6,9 @@ import { AppButton } from "./AppButton";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsExportSectionProps = {
   errorMessage: string;
@@ -35,6 +37,8 @@ export function SettingsExportSection({
   statusMessage,
   viewData,
 }: SettingsExportSectionProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const hasAnyData = exportState.availableSummary.hasData;
   const summaryRange = buildSummaryRangeLabel(
     viewData.summaryRangeTemplate,
@@ -77,10 +81,10 @@ export function SettingsExportSection({
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                keyboardType="numbers-and-punctuation"
-                onChangeText={onFromDateChange}
-                placeholder={viewData.datePlaceholder}
-                placeholderTextColor={colors.textMuted}
+            keyboardType="numbers-and-punctuation"
+            onChangeText={onFromDateChange}
+            placeholder={viewData.datePlaceholder}
+            placeholderTextColor={colors.textMuted}
                 style={styles.dateInput}
                 testID="settings-export-from-input"
                 value={exportState.values.fromDate}
@@ -176,55 +180,56 @@ function formatTemplate(template: string, values: string[]): string {
   });
 }
 
-const styles = StyleSheet.create({
-  formGroup: {
-    gap: spacing.sm,
-  },
-  rangeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  rangeColumn: {
-    flexBasis: "48%",
-    flexGrow: 1,
-  },
-  fieldLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  helperText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  dateInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: "600",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  summaryCard: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  summaryText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  actionsRow: {
-    gap: spacing.sm,
-  },
-});
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
+    formGroup: {
+      gap: spacing.sm,
+    },
+    rangeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.md,
+    },
+    rangeColumn: {
+      flexBasis: "48%",
+      flexGrow: 1,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    helperText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    dateInput: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    summaryCard: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.border,
+      borderRadius: 18,
+      borderWidth: 1,
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    summaryText: {
+      color: colors.textMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    actionsRow: {
+      gap: spacing.sm,
+    },
+  });

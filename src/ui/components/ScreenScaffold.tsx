@@ -8,7 +8,9 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, spacing } from "../theme/tokens";
+import type { AppThemeColors } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type ScreenScaffoldProps = PropsWithChildren<{
   eyebrow?: string;
@@ -26,6 +28,7 @@ export function ScreenScaffold({
 }: ScreenScaffoldProps) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(createStyles);
   const isCompact = width < 768;
   const topPadding = (isCompact ? 16 : 20) + insets.top;
   const bottomPadding = Math.max(insets.bottom + 16, 28);
@@ -64,7 +67,8 @@ export function ScreenScaffold({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppThemeColors) =>
+  StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -122,4 +126,4 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: spacing.sm,
   },
-});
+  });

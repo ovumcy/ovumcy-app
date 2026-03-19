@@ -19,6 +19,8 @@ function createProfileRecord(
     temperatureUnit: "c",
     trackCervicalMucus: false,
     hideSexChip: false,
+    languageOverride: null,
+    themeOverride: null,
     ...overrides,
   };
 }

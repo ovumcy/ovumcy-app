@@ -49,6 +49,8 @@ describe("volatile-web-app-storage", () => {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
     });
     await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual({
       date: "2026-03-18",

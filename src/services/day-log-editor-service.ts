@@ -1,4 +1,4 @@
-import { dayLogCopy } from "../i18n/day-log-copy";
+import { getDayLogCopy } from "../i18n/day-log-copy";
 import {
   DAY_CYCLE_FACTOR_KEYS,
   type DayCervicalMucus,
@@ -59,20 +59,20 @@ export type DayLogEditorViewData = {
     deleteFailedLabel: string;
   };
   options: {
-    mood: { value: number; label: string }[];
-    flow: { value: DayFlow; label: string }[];
-    sexActivity: { value: DaySexActivity; label: string }[];
-    cervicalMucus: { value: DayCervicalMucus; label: string }[];
-    cycleFactors: {
+    mood: ReadonlyArray<{ value: number; label: string }>;
+    flow: ReadonlyArray<{ value: DayFlow; label: string }>;
+    sexActivity: ReadonlyArray<{ value: DaySexActivity; label: string }>;
+    cervicalMucus: ReadonlyArray<{ value: DayCervicalMucus; label: string }>;
+    cycleFactors: ReadonlyArray<{
       value: DayCycleFactorKey;
       label: string;
       icon: string;
-    }[];
-    symptoms: {
+    }>;
+    symptoms: ReadonlyArray<{
       value: DaySymptomID;
       label: string;
       icon: string;
-    }[];
+    }>;
   };
 };
 
@@ -153,6 +153,7 @@ export function buildDayLogEditorViewData(
   selectedSymptomIDs: readonly DaySymptomID[] = [],
   locale = "en",
 ): DayLogEditorViewData {
+  const dayLogCopy = getDayLogCopy(locale);
   const pickerSymptoms = buildEntryPickerSymptoms(symptomRecords, selectedSymptomIDs);
 
   return {

@@ -2,12 +2,13 @@ import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
 
+import { getShellCopy } from "../../i18n/shell-copy";
 import {
   appStorage,
   readHasCompletedOnboarding,
 } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
-import { colors } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 
 type ProtectedTabsLayoutProps = {
   storage?: LocalAppStorage;
@@ -16,9 +17,11 @@ type ProtectedTabsLayoutProps = {
 export function ProtectedTabsLayout({
   storage = appStorage,
 }: ProtectedTabsLayoutProps) {
+  const { colors, language } = useAppPreferences();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<
     boolean | null
   >(null);
+  const shellCopy = getShellCopy(language);
 
   useEffect(() => {
     let isMounted = true;
@@ -60,7 +63,7 @@ export function ProtectedTabsLayout({
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Today",
+          title: shellCopy.tabs.dashboard,
           tabBarIcon: ({ color, size }) => (
             <Feather color={color} name="sun" size={size} />
           ),
@@ -69,7 +72,7 @@ export function ProtectedTabsLayout({
       <Tabs.Screen
         name="calendar"
         options={{
-          title: "Calendar",
+          title: shellCopy.tabs.calendar,
           tabBarIcon: ({ color, size }) => (
             <Feather color={color} name="calendar" size={size} />
           ),
@@ -78,7 +81,7 @@ export function ProtectedTabsLayout({
       <Tabs.Screen
         name="stats"
         options={{
-          title: "Insights",
+          title: shellCopy.tabs.stats,
           tabBarIcon: ({ color, size }) => (
             <Feather color={color} name="bar-chart-2" size={size} />
           ),
@@ -87,7 +90,7 @@ export function ProtectedTabsLayout({
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: shellCopy.tabs.settings,
           tabBarIcon: ({ color, size }) => (
             <Feather color={color} name="settings" size={size} />
           ),
