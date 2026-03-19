@@ -51,12 +51,37 @@ export function ProtectedTabsLayout({
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: "#64748b",
+        sceneStyle: { backgroundColor: "transparent" },
+        tabBarActiveBackgroundColor: colors.accentSoft,
+        tabBarActiveTintColor: colors.text,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarItemStyle: {
+          borderRadius: 12,
+          marginHorizontal: 2,
+          marginVertical: 2,
+          paddingVertical: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "700",
+        },
         tabBarStyle: {
-          height: 72,
-          paddingTop: 8,
+          backgroundColor: colors.headerBg,
+          borderColor: colors.headerBorder,
+          borderRadius: 16,
+          borderTopWidth: 1,
+          bottom: 12,
+          height: 70,
+          left: 12,
           paddingBottom: 8,
+          paddingHorizontal: 6,
+          paddingTop: 8,
+          position: "absolute",
+          right: 12,
+          shadowColor: colors.shadowSoft,
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.85,
+          shadowRadius: 24,
         },
       }}
     >

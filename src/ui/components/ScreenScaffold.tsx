@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
+import { AppScreenSurface } from "./AppScreenSurface";
 
 type ScreenScaffoldProps = PropsWithChildren<{
   eyebrow?: string;
@@ -34,36 +35,38 @@ export function ScreenScaffold({
   const bottomPadding = Math.max(insets.bottom + 16, 28);
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
-      style={styles.screen}
-      showsVerticalScrollIndicator={false}
-    >
-      <View
-        style={[
-          styles.container,
-          isCompact ? styles.containerCompact : styles.containerWide,
-          { paddingTop: topPadding },
-        ]}
+    <AppScreenSurface>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        style={styles.screen}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.hero, isCompact ? styles.heroCompact : null]}>
-          {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-          <Text style={[styles.title, isCompact ? styles.titleCompact : null]}>
-            {title}
-          </Text>
-          <Text
-            style={[
-              styles.description,
-              isCompact ? styles.descriptionCompact : null,
-            ]}
-          >
-            {description}
-          </Text>
+        <View
+          style={[
+            styles.container,
+            isCompact ? styles.containerCompact : styles.containerWide,
+            { paddingTop: topPadding },
+          ]}
+        >
+          <View style={[styles.hero, isCompact ? styles.heroCompact : null]}>
+            {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
+            <Text style={[styles.title, isCompact ? styles.titleCompact : null]}>
+              {title}
+            </Text>
+            <Text
+              style={[
+                styles.description,
+                isCompact ? styles.descriptionCompact : null,
+              ]}
+            >
+              {description}
+            </Text>
+          </View>
+          <View style={styles.body}>{children}</View>
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
         </View>
-        <View style={styles.body}>{children}</View>
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </AppScreenSurface>
   );
 }
 
@@ -71,7 +74,7 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: "transparent",
   },
   content: {
     flexGrow: 1,

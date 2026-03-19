@@ -70,8 +70,8 @@ const createStyles = (colors: AppThemeColors) =>
     shadowRadius: 16,
   },
   secondary: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceTint,
+    borderColor: colors.lineSoft,
   },
   danger: {
     backgroundColor: "#b91c1c",

@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { StatsViewData } from "../../services/stats-view-service";
 import { FeatureCard } from "../components/FeatureCard";
+import { AppScreenSurface } from "../components/AppScreenSurface";
 import { StatsBarChart } from "../components/StatsBarChart";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
@@ -31,15 +32,16 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
   const trendSecondaryWidth = width >= 1080 ? "32.5%" : "100%";
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.screenContent,
-        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
-      ]}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+    <AppScreenSurface>
+      <ScrollView
+        contentContainerStyle={[
+          styles.screenContent,
+          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+        ]}
+        showsVerticalScrollIndicator={false}
+        style={styles.screen}
+      >
+        <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{viewData.title}</Text>
           <Text style={styles.headerDescription}>{viewData.description}</Text>
@@ -442,8 +444,9 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
           ) : null}
           </>
         ) : null}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </AppScreenSurface>
   );
 }
 
@@ -497,7 +500,7 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: "transparent",
     },
     screenContent: {
       paddingBottom: spacing.xl,
@@ -530,12 +533,16 @@ const createStyles = (colors: AppThemeColors) =>
     },
     emptyHeroCard: {
       alignItems: "center",
-      backgroundColor: colors.surfaceMuted,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
       borderRadius: 22,
       borderWidth: 1,
       overflow: "hidden",
       padding: 20,
+      shadowColor: colors.shadowSoft,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.82,
+      shadowRadius: 24,
       width: "100%",
     },
     emptyOrb: {
@@ -617,8 +624,8 @@ const createStyles = (colors: AppThemeColors) =>
       fontWeight: "700",
     },
     noticePanel: {
-      backgroundColor: colors.surfaceStrong,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
       borderRadius: 16,
       borderWidth: 1,
       paddingHorizontal: 14,
@@ -635,12 +642,16 @@ const createStyles = (colors: AppThemeColors) =>
       gap: spacing.md,
     },
     statCard: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
+      borderRadius: 18,
       borderWidth: 1,
       gap: spacing.xs,
       padding: 16,
+      shadowColor: colors.shadowSoft,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.78,
+      shadowRadius: 18,
     },
     cardLabel: {
       color: colors.textMuted,

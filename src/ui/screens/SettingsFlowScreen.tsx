@@ -21,6 +21,7 @@ import {
   type SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "../components/AppButton";
+import { AppScreenSurface } from "../components/AppScreenSurface";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
 import { FeatureCard } from "../components/FeatureCard";
@@ -184,15 +185,16 @@ export function SettingsFlowScreen({
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.screenContent,
-        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
-      ]}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+    <AppScreenSurface>
+      <ScrollView
+        contentContainerStyle={[
+          styles.screenContent,
+          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+        ]}
+        showsVerticalScrollIndicator={false}
+        style={styles.screen}
+      >
+        <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>{viewData.title}</Text>
         <Text style={styles.headerDescription}>{viewData.description}</Text>
@@ -491,8 +493,9 @@ export function SettingsFlowScreen({
         statusMessage={clearDataStatusMessage}
         viewData={viewData.danger}
       />
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </AppScreenSurface>
   );
 }
 
@@ -508,7 +511,7 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: "transparent",
     },
     screenContent: {
       paddingBottom: spacing.xl,
@@ -549,8 +552,8 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 21,
     },
     dateFieldShell: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
       borderRadius: 16,
       borderWidth: 1,
       gap: spacing.xs,

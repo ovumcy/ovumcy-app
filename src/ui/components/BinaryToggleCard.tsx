@@ -79,8 +79,8 @@ const createStyles = (colors: AppThemeColors) =>
   },
   shell: {
     alignItems: "center",
-    backgroundColor: "rgba(255, 248, 240, 0.82)",
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceTint,
+    borderColor: colors.lineSoft,
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: "row",
@@ -119,7 +119,7 @@ const createStyles = (colors: AppThemeColors) =>
   },
   stateBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.58)",
+    backgroundColor: colors.surfaceElevated,
     borderColor: "rgba(188,165,138,0.32)",
     borderRadius: 999,
     borderWidth: 1,
@@ -149,7 +149,7 @@ const createStyles = (colors: AppThemeColors) =>
     borderColor: colors.accentStrong,
   },
   toggleThumb: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceElevated,
     borderRadius: 999,
     height: 14,
     width: 14,

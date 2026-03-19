@@ -338,8 +338,8 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 21,
     },
     input: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
       borderRadius: 18,
       borderWidth: 1,
       color: colors.text,
@@ -371,6 +371,9 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 18,
     },
     dangerSection: {
+      borderTopColor: colors.lineSoft,
+      borderTopWidth: 1,
       gap: spacing.xs,
+      paddingTop: spacing.sm,
     },
   });

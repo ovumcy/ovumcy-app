@@ -32,12 +32,16 @@ export function FeatureCard({
 const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
+    backgroundColor: colors.surfaceElevated,
+    borderColor: colors.lineSoft,
+    borderRadius: 18,
     borderWidth: 1,
     gap: 10,
     padding: 18,
+    shadowColor: colors.shadowSoft,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.8,
+    shadowRadius: 24,
   },
   header: {
     gap: 4,

@@ -41,7 +41,7 @@ const createStyles = (colors: AppThemeColors) =>
       gap: 1,
     },
     title: {
-      color: colors.text,
+      color: colors.brand,
       fontSize: 18,
       fontWeight: "800",
     },

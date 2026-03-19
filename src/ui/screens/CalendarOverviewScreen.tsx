@@ -17,6 +17,7 @@ import type {
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
 import type { ManualCycleStartViewData } from "../../services/manual-cycle-start-service";
 import { AppButton } from "../components/AppButton";
+import { AppScreenSurface } from "../components/AppScreenSurface";
 import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
 import type { AppThemeColors } from "../theme/tokens";
@@ -81,15 +82,16 @@ export function CalendarOverviewScreen({
     : {};
 
   return (
-    <ScrollView
-      contentContainerStyle={[
-        styles.screenContent,
-        { paddingBottom: Math.max(insets.bottom + 16, spacing.xl) },
-      ]}
-      showsVerticalScrollIndicator={false}
-      style={styles.screen}
-    >
-      <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
+    <AppScreenSurface>
+      <ScrollView
+        contentContainerStyle={[
+          styles.screenContent,
+          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+        ]}
+        showsVerticalScrollIndicator={false}
+        style={styles.screen}
+      >
+        <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerCard}>
           <View style={styles.headerCopy}>
             <Text style={styles.headerTitle}>{viewData.title}</Text>
@@ -182,8 +184,9 @@ export function CalendarOverviewScreen({
             />
           </View>
         </View>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </AppScreenSurface>
   );
 }
 
@@ -208,7 +211,7 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: "transparent",
     },
     screenContent: {
       paddingBottom: spacing.xl,
@@ -222,12 +225,16 @@ const createStyles = (colors: AppThemeColors) =>
       width: "100%",
     },
     headerCard: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
+      borderRadius: 18,
       borderWidth: 1,
       gap: spacing.sm,
       padding: 16,
+      shadowColor: colors.shadowSoft,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.82,
+      shadowRadius: 24,
     },
     headerCopy: {
       gap: 4,
@@ -258,12 +265,16 @@ const createStyles = (colors: AppThemeColors) =>
       minWidth: 0,
     },
     monthCard: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
+      borderRadius: 18,
       borderWidth: 1,
       gap: spacing.md,
       padding: 16,
+      shadowColor: colors.shadowSoft,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.82,
+      shadowRadius: 24,
     },
     editorColumn: {
       flex: 1,

@@ -161,8 +161,10 @@ const createStyles = (colors: AppThemeColors) =>
       gap: spacing.md,
     },
     summaryCard: {
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: colors.surfaceTint,
       borderRadius: 14,
+      borderColor: colors.lineSoft,
+      borderWidth: 1,
       gap: spacing.sm,
       padding: 14,
     },
@@ -183,8 +185,10 @@ const createStyles = (colors: AppThemeColors) =>
       gap: 4,
     },
     emptyState: {
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: colors.surfaceTint,
       borderRadius: 14,
+      borderColor: colors.lineSoft,
+      borderWidth: 1,
       padding: 14,
     },
     emptyStateText: {

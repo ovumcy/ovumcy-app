@@ -32,6 +32,7 @@ import { getAppInfo, getOnboardingCopy } from "../../i18n/app-copy";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
 import { LabeledSliderField } from "../components/LabeledSliderField";
+import { AppScreenSurface } from "../components/AppScreenSurface";
 import { StatusBanner } from "../components/StatusBanner";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import type { AppThemeColors } from "../theme/tokens";
@@ -199,37 +200,42 @@ function OnboardingShell({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.screenContent,
-          { paddingTop: insets.top + 12, paddingBottom: Math.max(insets.bottom + 18, 24) },
-        ]}
-        showsVerticalScrollIndicator={false}
-        style={styles.screen}
-      >
-        <View style={styles.heroCard}>
-          <View style={styles.progressBlock}>
-            <Text style={styles.kicker}>{progressLabel}</Text>
-            <View style={styles.progressPanel}>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${progressPercent}%` },
-                  ]}
-                />
+    <AppScreenSurface>
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.screenContent,
+            {
+              paddingTop: insets.top + 12,
+              paddingBottom: Math.max(insets.bottom + 18, 24),
+            },
+          ]}
+          showsVerticalScrollIndicator={false}
+          style={styles.screen}
+        >
+          <View style={styles.heroCard}>
+            <View style={styles.progressBlock}>
+              <Text style={styles.kicker}>{progressLabel}</Text>
+              <View style={styles.progressPanel}>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { width: `${progressPercent}%` },
+                    ]}
+                  />
+                </View>
               </View>
             </View>
+            <View style={styles.panel}>
+              <Text style={styles.heroTitle}>{title}</Text>
+              {subtitle ? <Text style={styles.heroMuted}>{subtitle}</Text> : null}
+              {children}
+            </View>
           </View>
-          <View style={styles.panel}>
-            <Text style={styles.heroTitle}>{title}</Text>
-            {subtitle ? <Text style={styles.heroMuted}>{subtitle}</Text> : null}
-            {children}
-          </View>
-        </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </AppScreenSurface>
   );
 }
 
@@ -595,7 +601,7 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: "transparent",
     },
     screenContent: {
       alignItems: "center",
@@ -603,14 +609,18 @@ const createStyles = (colors: AppThemeColors) =>
       paddingVertical: 18,
     },
     heroCard: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 18,
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
+      borderRadius: 20,
       borderWidth: 1,
       gap: 8,
       maxWidth: 840,
       overflow: "hidden",
       padding: 16,
+      shadowColor: colors.shadowSoft,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.82,
+      shadowRadius: 26,
       width: "100%",
     },
     loadingBlock: {
@@ -631,7 +641,7 @@ const createStyles = (colors: AppThemeColors) =>
       textTransform: "uppercase",
     },
     progressPanel: {
-      backgroundColor: colors.surfaceMuted,
+      backgroundColor: colors.surfaceTint,
       borderRadius: 14,
       padding: 6,
     },
@@ -666,8 +676,8 @@ const createStyles = (colors: AppThemeColors) =>
       gap: spacing.sm,
     },
     dateFieldShell: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
       borderRadius: 12,
       borderWidth: 1,
       gap: 4,
@@ -708,8 +718,8 @@ const createStyles = (colors: AppThemeColors) =>
       maxHeight: 232,
     },
     dayOptionButton: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
       borderRadius: 12,
       borderWidth: 1,
       justifyContent: "center",
