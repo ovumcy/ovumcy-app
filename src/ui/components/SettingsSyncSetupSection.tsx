@@ -55,7 +55,7 @@ export function SettingsSyncSetupSection({
     <FeatureCard
       description={viewData.subtitle}
       testID="settings-sync-section"
-      title={`🔐 ${viewData.title}`}
+      title={viewData.title}
     >
       <View style={styles.stack}>
         <View style={styles.formGroup}>

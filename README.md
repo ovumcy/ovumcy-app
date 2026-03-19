@@ -16,7 +16,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and local encrypted sync setup already work on-device, while account-backed sync transport and deeper analytics are still evolving.
+The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and local encrypted sync setup already work on-device, while account-backed sync transport and multi-device restore are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -37,10 +37,11 @@ Ovumcy App is designed around three constraints:
 | --- | --- | --- |
 | Works without an account | :white_check_mark: | :white_check_mark: |
 | Local-first device storage | :white_check_mark: | :x: |
-| Self-hosted by the user or operator | Future sync layer | :white_check_mark: |
+| Local encrypted sync setup | :white_check_mark: | Not applicable |
+| Real self-hosted or managed sync transport | Planned | Server-side product |
 | iOS and Android client | :white_check_mark: | Browser only |
 | Server required for core onboarding and tracking | :x: | :white_check_mark: |
-| Optional sync planned | :white_check_mark: | Not applicable |
+| Optional sync architecture | :white_check_mark: | Not applicable |
 
 ## Short FAQ
 
@@ -90,7 +91,8 @@ What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
 - connected account auth, real sync transport, or multi-device restore flows;
-- release-store readiness for broad end-user distribution.
+- release-store readiness for broad end-user distribution;
+- a standalone community or managed sync server in this repository.
 
 ## Privacy and Security
 
@@ -204,7 +206,6 @@ Recommended working model:
 
 Near-term work focuses on:
 
-- growing local insights beyond `stats v1`, including deeper reliability and chart work;
 - adding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
 - growing local data models beyond cycle baseline, day logs, and symptom catalog;
 - adding repeatable Android and iOS smoke discipline;

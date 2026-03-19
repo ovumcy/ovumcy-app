@@ -295,72 +295,29 @@ before and after UI changes.
   scroll.
 - Native controls may replace browser controls only if geometry, color, and
   density remain aligned with the web contract.
-- Until app-level language and theme overrides exist, the mobile app may use a
-  read-only `Interface` status section instead of interactive switches.
-- Until account-backed sync exists, the mobile app may replace web
-  profile/password/recovery/logout controls with a read-only `Account & Sync`
-  status section. The absence of auth must be explicit, not silent.
+- Until account-backed sync transport exists, the mobile app may replace web
+  profile/password/recovery/logout controls with a real local encrypted sync
+  setup section that covers mode selection, endpoint input, device label, and
+  one-time recovery phrase preparation. The absence of live account auth must be
+  explicit, not silent.
 - Until account deletion exists, the mobile app danger zone may expose a
   destructive `Clear all local data` flow instead of `Delete account`.
-- Until PDF export exists in the app, the `PDF` action may render as an honest
-  disabled affordance rather than disappearing.
+- Mobile bottom tabs remain a platform-specific navigation deviation from the
+  web nav chrome.
 
-## Current App Delta
+## Current App State
 
-### Shared Wrapper Drift
+- Core onboarding, dashboard, calendar, insights, settings, and export flows
+  now align closely with the canonical web contract.
+- Remaining deviations are intentional product-capability gaps, not silent UI
+  drift:
+  - account-backed auth and recovery flows are replaced by local encrypted sync
+    setup only;
+  - account deletion remains a local clear-data flow;
+  - mobile bottom tabs remain platform-native chrome.
 
-- `src/ui/components/ScreenScaffold.tsx`
-  - adds a large generic hero stack before every screen body
-  - inflates mobile vertical rhythm beyond the web contract
-- `src/ui/components/FeatureCard.tsx`
-  - adds an extra card wrapper pattern that often duplicates web section chrome
+## Remaining Product Gaps
 
-### Onboarding
-
-- `src/ui/screens/OnboardingFlowScreen.tsx`
-  - step 1 is too tall and sparse
-  - date shell and CTA consume too much height
-  - day chips feel larger and more poster-like than web
-  - progress shell and overall hero spacing are too loose
-
-### Dashboard
-
-- `src/ui/screens/DashboardOverviewScreen.tsx`
-  - adds a snapshot card above the main journal
-  - current first fold is less data-first than web
-
-### Calendar
-
-- `src/ui/screens/CalendarOverviewScreen.tsx`
-  - wraps month grid in an extra card hierarchy
-  - action ordering and hierarchy do not match web
-  - day panel is always editable instead of being view-first by default
-- `src/ui/components/CalendarMonthGrid.tsx`
-  - cells are too tall and capsule-like
-  - selected state reads as a long vertical capsule instead of a compact ring
-  - markers and today pill density are weaker than web
-  - day editor is effectively pushed too far below the grid on mobile
-  - prediction states are far simpler than the canonical web state machine
-
-### Stats
-
-- `src/ui/screens/StatsOverviewScreen.tsx`
-  - structure is closer to web than calendar or onboarding
-  - density still trends too card-heavy and vertically padded
-
-### Settings
-
-- `src/ui/screens/SettingsFlowScreen.tsx`
-  - must keep section order, density, and explicit app deviations aligned with
-    the checklist above
-  - cannot silently omit interface, account, or danger responsibilities once
-    the screen aims for web parity
-
-## Blocking Parity Priorities
-
-1. Onboarding density and first-fold hierarchy
-2. Calendar cell geometry and selected-day editor placement
-3. Shared screen/card wrapper density
-4. Dashboard first-fold hierarchy
-5. Settings section order and density
-6. Stats spacing cleanup after the shared wrapper fix
+1. Account-backed sync transport and multi-device restore
+2. Delete-account semantics beyond local clear-data
+3. A future non-mobile nav model if the app ever stops using native tabs
