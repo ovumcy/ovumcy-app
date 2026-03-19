@@ -12,6 +12,7 @@ import type {
   SyncSecretsRecord,
   WrappedSyncKeyMetadata,
 } from "../sync/sync-contract";
+import { decryptPayload, encryptPayload } from "./payload-crypto";
 
 const DEVICE_ID_BYTE_LENGTH = 16;
 const DEVICE_SECRET_BYTE_LENGTH = 32;
@@ -107,26 +108,14 @@ export function encryptSyncPayload(
   masterKeyHex: string,
   payload: Uint8Array,
 ): EncryptedSyncEnvelope {
-  const nonce = getRandomBytes(XCHACHA_NONCE_BYTE_LENGTH);
-  const ciphertext = xchacha20poly1305(hexToBytes(masterKeyHex), nonce).encrypt(
-    payload,
-  );
-
-  return {
-    algorithm: "xchacha20poly1305",
-    nonceHex: bytesToHex(nonce),
-    ciphertextHex: bytesToHex(ciphertext),
-  };
+  return encryptPayload(masterKeyHex, payload);
 }
 
 export function decryptSyncPayload(
   masterKeyHex: string,
   envelope: EncryptedSyncEnvelope,
 ): Uint8Array {
-  return xchacha20poly1305(
-    hexToBytes(masterKeyHex),
-    hexToBytes(envelope.nonceHex),
-  ).decrypt(hexToBytes(envelope.ciphertextHex));
+  return decryptPayload(masterKeyHex, envelope);
 }
 
 function createDeviceIdentity(deviceLabel: string, now: Date): SyncDeviceIdentity {

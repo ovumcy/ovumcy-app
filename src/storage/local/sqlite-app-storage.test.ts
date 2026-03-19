@@ -2,6 +2,7 @@ import {
   createSQLiteAppStorage,
   type LocalAppDatabase,
 } from "./sqlite-app-storage";
+import type { LocalDataKeyStore } from "../../security/local-data-key-store";
 
 type FakeDatabaseState = {
   bootstrapRow: {
@@ -23,6 +24,7 @@ type FakeDatabaseState = {
     hide_sex_chip: number;
     language_override: string | null;
     theme_override: string | null;
+    encrypted_payload?: string | null;
   } | null;
   dayLogRows: {
     day: string;
@@ -37,6 +39,7 @@ type FakeDatabaseState = {
     cycle_factor_keys: string;
     symptom_ids: string;
     notes: string;
+    encrypted_payload?: string | null;
   }[];
   symptomRows: {
     id: string;
@@ -47,6 +50,7 @@ type FakeDatabaseState = {
     is_default: number;
     is_archived: number;
     sort_order: number;
+    encrypted_payload?: string | null;
   }[];
   onboardingRow: {
     last_period_start: string | null;
@@ -60,7 +64,7 @@ type FakeDatabaseState = {
   userVersion: number;
 };
 
-function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabase {
+function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
   const databaseState: FakeDatabaseState = {
     bootstrapRow: null,
     profileRow: null,
@@ -71,7 +75,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
     ...state,
   };
 
-  return {
+  const database: LocalAppDatabase = {
     async execAsync(source: string) {
       if (source.startsWith("PRAGMA user_version =")) {
         databaseState.userVersion = Number(source.replace(/\D/g, ""));
@@ -87,6 +91,26 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
         if (databaseState.profileRow) {
           databaseState.profileRow.theme_override ??= null;
         }
+      }
+
+      if (source.includes("ALTER TABLE profile_settings ADD COLUMN encrypted_payload")) {
+        if (databaseState.profileRow) {
+          databaseState.profileRow.encrypted_payload ??= null;
+        }
+      }
+
+      if (source.includes("ALTER TABLE day_logs ADD COLUMN encrypted_payload")) {
+        databaseState.dayLogRows = databaseState.dayLogRows.map((row) => ({
+          ...row,
+          encrypted_payload: row.encrypted_payload ?? null,
+        }));
+      }
+
+      if (source.includes("ALTER TABLE symptoms ADD COLUMN encrypted_payload")) {
+        databaseState.symptomRows = databaseState.symptomRows.map((row) => ({
+          ...row,
+          encrypted_payload: row.encrypted_payload ?? null,
+        }));
       }
 
       if (source.includes("DROP TABLE IF EXISTS onboarding_profile")) {
@@ -135,6 +159,42 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
           date_from: firstRow ? firstRow.day : null,
           date_to: lastRow ? lastRow.day : null,
         } as T;
+      }
+
+      if (
+        source.includes("SELECT encrypted_payload FROM profile_settings") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        if (databaseState.profileRow?.encrypted_payload) {
+          return {
+            encrypted_payload: databaseState.profileRow.encrypted_payload,
+          } as T;
+        }
+        return null;
+      }
+
+      if (
+        source.includes("SELECT encrypted_payload FROM day_logs") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        const row = databaseState.dayLogRows.find(
+          (entry) => entry.encrypted_payload,
+        );
+        return row
+          ? ({ encrypted_payload: row.encrypted_payload ?? null } as T)
+          : null;
+      }
+
+      if (
+        source.includes("SELECT encrypted_payload FROM symptoms") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        const row = databaseState.symptomRows.find(
+          (entry) => entry.encrypted_payload,
+        );
+        return row
+          ? ({ encrypted_payload: row.encrypted_payload ?? null } as T)
+          : null;
       }
 
       if (source.includes("FROM bootstrap_state WHERE id = 1")) {
@@ -201,6 +261,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
           hide_sex_chip: Number(params[11]),
           language_override: (params[12] as string | null) ?? null,
           theme_override: (params[13] as string | null) ?? null,
+          encrypted_payload: (params[14] as string | null) ?? null,
         };
       }
 
@@ -224,6 +285,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
           cycle_factor_keys: String(params[9]),
           symptom_ids: String(params[10]),
           notes: String(params[11]),
+          encrypted_payload: (params[12] as string | null) ?? null,
         };
         databaseState.dayLogRows = databaseState.dayLogRows.filter(
           (row) => row.day !== nextRow.day,
@@ -258,6 +320,7 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
           is_default: Number(params[5]),
           is_archived: Number(params[6]),
           sort_order: Number(params[7]),
+          encrypted_payload: (params[8] as string | null) ?? null,
         };
         databaseState.symptomRows = databaseState.symptomRows.filter(
           (row) => row.id !== nextRow.id,
@@ -271,6 +334,35 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
     async closeAsync() {
       return undefined;
     },
+  };
+
+  return {
+    database,
+    state: databaseState,
+  };
+}
+
+function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabase {
+  return createInspectableFakeDatabase(state).database;
+}
+
+function createFakeLocalDataKeyStore(
+  initialKey: string | null = null,
+): LocalDataKeyStore & {
+  clearLocalDataKey: jest.Mock;
+  readLocalDataKey: jest.Mock;
+  writeLocalDataKey: jest.Mock;
+} {
+  let keyHex = initialKey;
+
+  return {
+    clearLocalDataKey: jest.fn(async () => {
+      keyHex = null;
+    }),
+    readLocalDataKey: jest.fn(async () => keyHex),
+    writeLocalDataKey: jest.fn(async (nextKeyHex: string) => {
+      keyHex = nextKeyHex;
+    }),
   };
 }
 
@@ -544,6 +636,76 @@ describe("sqlite-app-storage", () => {
     });
   });
 
+  it("stores sensitive local records in encrypted payload columns instead of plaintext", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-15",
+      cycleLength: 31,
+      periodLength: 6,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+      languageOverride: "en",
+      themeOverride: "dark",
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-17",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "heavy",
+      mood: 5,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "eggwhite",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "Reset me",
+    });
+    await storage.writeSymptomRecord({
+      id: "custom_jaw_pain",
+      slug: "jaw-pain",
+      label: "Jaw pain",
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 999,
+      isDefault: false,
+    });
+
+    expect(inspected.state.profileRow?.encrypted_payload).toEqual(expect.any(String));
+    expect(inspected.state.profileRow?.encrypted_payload).not.toContain("2026-03-15");
+    expect(inspected.state.profileRow?.last_period_start).toBeNull();
+
+    expect(inspected.state.dayLogRows[0]?.encrypted_payload).toEqual(expect.any(String));
+    expect(inspected.state.dayLogRows[0]?.encrypted_payload).not.toContain("Reset me");
+    expect(inspected.state.dayLogRows[0]?.notes).toBe("");
+
+    const customSymptomRow = inspected.state.symptomRows.find(
+      (row) => row.id === "custom_jaw_pain",
+    );
+    expect(customSymptomRow?.encrypted_payload).toEqual(expect.any(String));
+    expect(customSymptomRow?.encrypted_payload).not.toContain("Jaw pain");
+    expect(customSymptomRow?.label).toBe("");
+    expect(customSymptomRow?.slug).toBe("custom_jaw_pain");
+  });
+
   it("persists custom symptoms alongside the seeded built-in catalog", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
@@ -735,5 +897,98 @@ describe("sqlite-app-storage", () => {
     expect(closeAsync).toHaveBeenCalledTimes(1);
     expect(deleteDatabase).toHaveBeenCalledTimes(1);
     expect(openDatabaseCallCount).toBe(2);
+  });
+
+  it("creates and clears the local encrypted-at-rest key through the storage lifecycle", async () => {
+    const localDataKeyStore = createFakeLocalDataKeyStore();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore,
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-15",
+      cycleLength: 31,
+      periodLength: 6,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+      languageOverride: "en",
+      themeOverride: "dark",
+    });
+
+    expect(localDataKeyStore.writeLocalDataKey).toHaveBeenCalledTimes(1);
+    expect(localDataKeyStore.readLocalDataKey).toHaveBeenCalled();
+
+    await storage.clearAllLocalData();
+
+    expect(localDataKeyStore.clearLocalDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets encrypted local data if the secure local key is unavailable", async () => {
+    const localDataKeyStore = createFakeLocalDataKeyStore(null);
+    const inspected = createInspectableFakeDatabase({
+      bootstrapRow: {
+        has_completed_onboarding: 1,
+        profile_version: 2,
+      },
+      profileRow: {
+        last_period_start: null,
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: JSON.stringify({
+          algorithm: "xchacha20poly1305",
+          nonceHex: "aa",
+          ciphertextHex: "bb",
+        }),
+      },
+    });
+
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore,
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({
+        lastPeriodStart: null,
+        cycleLength: 28,
+        periodLength: 5,
+      }),
+    );
+    expect(localDataKeyStore.writeLocalDataKey).toHaveBeenCalledTimes(1);
   });
 });

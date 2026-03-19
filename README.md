@@ -16,7 +16,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, and local encrypted sync setup already work on-device, while account-backed sync transport, encrypted-at-rest hardening, and deeper analytics are still evolving.
+The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and local encrypted sync setup already work on-device, while account-backed sync transport and deeper analytics are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -88,7 +88,6 @@ What is already true on `main`:
 
 What this repository still does **not** claim yet:
 
-- encrypted-at-rest hardening for native SQLite;
 - completed Android and iOS manual smoke discipline for every release candidate;
 - connected account auth, real sync transport, or multi-device restore flows;
 - release-store readiness for broad end-user distribution.
@@ -98,7 +97,7 @@ What this repository still does **not** claim yet:
 - No telemetry or ad trackers by default.
 - Core onboarding and future tracking flows must work without sync or cloud access.
 - Sensitive health baseline data is stored locally on-device.
-- Native bootstrap, profile, and day-log data now live behind a SQLite-backed repository boundary.
+- Native bootstrap, profile, day-log, and symptom data now live behind a SQLite-backed repository boundary with encrypted-at-rest payloads and secure local key storage.
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
 - Local encrypted sync setup keeps non-secret preferences in canonical local storage and stores wrapped secrets only in secure storage.
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
@@ -209,7 +208,6 @@ Near-term work focuses on:
 - adding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
 - growing local data models beyond cycle baseline, day logs, and symptom catalog;
 - adding repeatable Android and iOS smoke discipline;
-- deciding encrypted-at-rest hardening for native local data;
 - wiring the current encrypted sync foundation into a real self-hosted or managed sync server without making sync mandatory.
 
 ## Related Repositories
