@@ -51,4 +51,40 @@ describe("sync-crypto", () => {
       unwrapMasterKeyWithRecoveryPhrase(recoveryPhrase, rewrapped),
     ).toBe(record.masterKeyHex);
   });
+
+  it("rejects invalid recovery phrases before wrapping or unwrapping keys", () => {
+    const { recoveryPhrase, record } = createSyncSecretsRecord(
+      "Phone",
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+    const invalidPhrase = recoveryPhrase
+      .split(" ")
+      .slice(0, 11)
+      .join(" ");
+
+    expect(() =>
+      wrapMasterKeyWithRecoveryPhrase(invalidPhrase, record.masterKeyHex),
+    ).toThrow("invalid_recovery_phrase");
+    expect(() =>
+      unwrapMasterKeyWithRecoveryPhrase(invalidPhrase, record.wrappedKey),
+    ).toThrow("invalid_recovery_phrase");
+  });
+
+  it("fails to unwrap a master key with the wrong recovery phrase", () => {
+    const first = createSyncSecretsRecord(
+      "Phone",
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+    const second = createSyncSecretsRecord(
+      "Tablet",
+      new Date("2026-03-19T08:20:00.000Z"),
+    );
+
+    expect(() =>
+      unwrapMasterKeyWithRecoveryPhrase(
+        second.recoveryPhrase,
+        first.record.wrappedKey,
+      ),
+    ).toThrow();
+  });
 });

@@ -22,7 +22,7 @@ import {
   loadSyncSetupState,
   prepareSyncSetup,
   type PrepareSyncSetupErrorCode,
-} from "./sync-setup-service";
+} from "../sync/sync-setup-service";
 import {
   getSettingsCycleStartDateBounds,
   parseLocalDate,

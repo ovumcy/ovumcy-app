@@ -1,5 +1,5 @@
-import type { SyncSecretsRecord } from "../models/sync";
 import { createSyncSecretStore, type SyncSecretStore } from "../security/sync-secret-store";
+import type { SyncSecretsRecord } from "../sync/sync-contract";
 
 export function createSyncSecretStoreMock(
   initialRecord: SyncSecretsRecord | null = null,

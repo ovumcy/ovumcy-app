@@ -1,4 +1,4 @@
-import type { SyncSecretsRecord } from "../models/sync";
+import type { SyncSecretsRecord } from "../sync/sync-contract";
 
 const SYNC_SECRET_STORE_KEY = "ovumcy.sync-secrets";
 

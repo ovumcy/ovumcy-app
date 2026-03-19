@@ -2,7 +2,7 @@ import {
   MANAGED_SYNC_BASE_URL,
   type NormalizedSyncEndpoint,
   type SyncMode,
-} from "../models/sync";
+} from "./sync-contract";
 
 export type NormalizeSyncEndpointErrorCode =
   | "endpoint_required"

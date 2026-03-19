@@ -1,7 +1,7 @@
 import type { DayLogRecord } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import type { ProfileRecord } from "../../models/profile";
-import type { SyncPreferencesRecord } from "../../models/sync";
+import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { SymptomRecord } from "../../models/symptom";
 
 export type LocalBootstrapState = {

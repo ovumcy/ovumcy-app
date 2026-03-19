@@ -16,7 +16,7 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, and local export already work on-device, while deeper analytics, encrypted-at-rest hardening, and sync-related surfaces are still evolving.
+The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, and local encrypted sync setup already work on-device, while account-backed sync transport, encrypted-at-rest hardening, and deeper analytics are still evolving.
 
 The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
 
@@ -54,7 +54,7 @@ On the device by default. Native platforms use a local SQLite-backed repository 
 
 ### Is sync required?
 
-No. Sync is planned as an optional later capability, not a dependency for core use.
+No. Core tracking stays local-first. The app now includes local encrypted sync setup and recovery-phrase preparation, but account-backed sync transport is still an optional later capability.
 
 ### Does Ovumcy App use telemetry or ad trackers?
 
@@ -90,7 +90,7 @@ What this repository still does **not** claim yet:
 
 - encrypted-at-rest hardening for native SQLite;
 - completed Android and iOS manual smoke discipline for every release candidate;
-- sync, account, recovery, or device-linking flows;
+- connected account auth, real sync transport, or multi-device restore flows;
 - release-store readiness for broad end-user distribution.
 
 ## Privacy and Security
@@ -100,7 +100,8 @@ What this repository still does **not** claim yet:
 - Sensitive health baseline data is stored locally on-device.
 - Native bootstrap, profile, and day-log data now live behind a SQLite-backed repository boundary.
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
-- Local CSV and JSON exports are privacy-sensitive artifacts and should be handled like health-data backups.
+- Local encrypted sync setup keeps non-secret preferences in canonical local storage and stores wrapped secrets only in secure storage.
+- Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
 - Dependabot monitors app dependencies and GitHub Actions updates.
@@ -120,7 +121,7 @@ iOS App / Android App / Web Preview
  Native SQLite / Web session-only memory storage
 
 Future optional sync:
-Client Sync Layer -> Self-hosted or managed sync service
+Local Sync Setup -> Account/Auth Transport -> Self-hosted or managed sync service
 ```
 
 - `app/`: Expo Router route files and navigation only.
@@ -128,7 +129,7 @@ Client Sync Layer -> Self-hosted or managed sync service
 - `src/services/`: reusable product logic and view-data assembly.
 - `src/storage/`: local repositories, persistence contracts, and migrations.
 - `src/ui/`: shared design tokens, components, and screen presentation.
-- `src/sync/`: reserved for future optional sync.
+- `src/sync/`: optional sync contracts, endpoint policy, and setup orchestration.
 
 ## Tech Stack
 
@@ -209,7 +210,7 @@ Near-term work focuses on:
 - growing local data models beyond cycle baseline, day logs, and symptom catalog;
 - adding repeatable Android and iOS smoke discipline;
 - deciding encrypted-at-rest hardening for native local data;
-- preparing the app for optional future sync without making sync mandatory.
+- wiring the current encrypted sync foundation into a real self-hosted or managed sync server without making sync mandatory.
 
 ## Related Repositories
 

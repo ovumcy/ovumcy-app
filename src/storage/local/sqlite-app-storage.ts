@@ -16,7 +16,7 @@ import {
   normalizeSyncMode,
   normalizeSyncSetupStatus,
   type SyncPreferencesRecord,
-} from "../../models/sync";
+} from "../../sync/sync-contract";
 import {
   createDefaultSymptomRecords,
   type SymptomRecord,

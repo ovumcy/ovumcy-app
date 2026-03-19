@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 
-import type { SyncPreferencesRecord } from "../../models/sync";
 import type { SettingsViewData } from "../../services/settings-view-service";
+import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";

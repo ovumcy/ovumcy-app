@@ -5,7 +5,7 @@ import {
   createDefaultSyncPreferencesRecord,
   type SyncPreferencesRecord,
   type SyncSecretsRecord,
-} from "../models/sync";
+} from "./sync-contract";
 import { normalizeSyncEndpoint } from "./sync-endpoint-policy";
 
 export type LoadSyncSetupStateResult = {

@@ -4,7 +4,6 @@ import { ActivityIndicator, View } from "react-native";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
-import { syncSecretStore as defaultSyncSecretStore } from "../../services/app-sync-service";
 import {
   createPlatformExportDeliveryClient,
   type ExportDeliveryClient,
@@ -23,6 +22,7 @@ import {
   saveTrackingSettings,
   updateSettingsSymptom,
 } from "../../services/settings-screen-service";
+import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import {
   clearAllLocalSettingsData,
   isClearLocalDataConfirmationValid,

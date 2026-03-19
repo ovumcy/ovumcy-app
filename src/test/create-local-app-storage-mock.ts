@@ -1,6 +1,6 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord } from "../models/profile";
-import { createDefaultSyncPreferencesRecord } from "../models/sync";
+import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultOnboardingRecord } from "../services/onboarding-policy";
 import {

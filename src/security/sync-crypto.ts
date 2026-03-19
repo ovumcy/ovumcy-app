@@ -11,7 +11,7 @@ import type {
   SyncDeviceIdentity,
   SyncSecretsRecord,
   WrappedSyncKeyMetadata,
-} from "../models/sync";
+} from "../sync/sync-contract";
 
 const DEVICE_ID_BYTE_LENGTH = 16;
 const DEVICE_SECRET_BYTE_LENGTH = 32;

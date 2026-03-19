@@ -12,9 +12,9 @@ import type {
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
-import type { SyncMode, SyncPreferencesRecord } from "../models/sync";
 import type { SymptomRecord } from "../models/symptom";
 import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
+import type { SyncMode, SyncPreferencesRecord } from "../sync/sync-contract";
 import {
   buildCycleGuidanceState,
   getSettingsCycleStartDateBounds,

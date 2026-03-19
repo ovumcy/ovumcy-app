@@ -1,4 +1,4 @@
-import { createDefaultSyncPreferencesRecord } from "../models/sync";
+import { createDefaultSyncPreferencesRecord } from "./sync-contract";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { loadSyncSetupState, prepareSyncSetup } from "./sync-setup-service";
@@ -84,6 +84,30 @@ describe("sync-setup-service", () => {
       ok: false,
       errorCode: "device_label_required",
     });
+    expect(await secretStore.readSyncSecrets()).toBeNull();
+  });
+
+  it("rejects invalid self-hosted endpoints before persisting any sync state", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await prepareSyncSetup(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "https://",
+        deviceLabel: "Pixel 7",
+      },
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "invalid_endpoint",
+    });
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
     expect(await secretStore.readSyncSecrets()).toBeNull();
   });
 });

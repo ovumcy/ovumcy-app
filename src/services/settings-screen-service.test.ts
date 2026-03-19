@@ -1,5 +1,5 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
-import { createDefaultSyncPreferencesRecord } from "../models/sync";
+import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
