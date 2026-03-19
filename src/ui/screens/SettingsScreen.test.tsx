@@ -2,10 +2,13 @@ import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
+import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
 const mockReplace = jest.fn();
+
+jest.setTimeout(15000);
 
 jest.mock("expo-router", () => {
   return {
@@ -177,6 +180,43 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("prepares local encrypted sync and reveals the recovery phrase once", async () => {
+    const storage = createStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-sync-device-label-input"),
+      "Pixel 7",
+    );
+    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+
+    await waitFor(() =>
+      expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mode: "managed",
+          normalizedEndpoint: "https://sync.ovumcy.com",
+          deviceLabel: "Pixel 7",
+          setupStatus: "local_ready",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-sync-recovery-phrase").props.children)
+        .toEqual(expect.any(String)),
+    );
+    await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
+  });
+
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
     const storage = createStorageMock();
     const exportDeliveryClient = {
@@ -238,7 +278,7 @@ describe("SettingsScreen", () => {
     expect(buildPDFContent).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the app-equivalent interface, account, export, and danger sections", async () => {
+  it("renders the app-equivalent interface, sync, export, and danger sections", async () => {
     const storage = createStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -249,7 +289,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
     expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
     expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-account-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-section")).toBeTruthy();
     expect(screen.getByTestId("settings-export-section")).toBeTruthy();
     expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
     expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
@@ -270,10 +310,36 @@ describe("SettingsScreen", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("clears local data and returns to onboarding after confirmation", async () => {
+  it("clears local data, wipes sync secrets, and returns to onboarding after confirmation", async () => {
     const storage = createStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Phone",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+    });
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -285,5 +351,6 @@ describe("SettingsScreen", () => {
 
     await waitFor(() => expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
+    await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();
   });
 });

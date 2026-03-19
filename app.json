@@ -4,7 +4,8 @@
     "plugins": [
       "expo-router",
       "@react-native-community/datetimepicker",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-secure-store"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
     "android": {

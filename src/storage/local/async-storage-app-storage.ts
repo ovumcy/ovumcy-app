@@ -16,6 +16,12 @@ import {
   type ProfileRecord,
 } from "../../models/profile";
 import {
+  createDefaultSyncPreferencesRecord,
+  normalizeSyncMode,
+  normalizeSyncSetupStatus,
+  type SyncPreferencesRecord,
+} from "../../models/sync";
+import {
   applyOnboardingRecordToProfile,
   createDefaultOnboardingRecord,
   profileToOnboardingRecord,
@@ -33,6 +39,7 @@ export const PROFILE_RECORD_KEY = "ovumcy/profile-record";
 export const ONBOARDING_RECORD_KEY = "ovumcy/onboarding-record";
 export const DAY_LOG_RECORDS_KEY = "ovumcy/day-log-records";
 export const SYMPTOM_RECORDS_KEY = "ovumcy/symptom-records";
+export const SYNC_PREFERENCES_RECORD_KEY = "ovumcy/sync-preferences";
 
 export function createAsyncStorageAppStorage(): LocalAppStorage {
   return {
@@ -60,6 +67,17 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
 
     async writeProfileRecord(record: ProfileRecord): Promise<void> {
       await AsyncStorage.setItem(PROFILE_RECORD_KEY, JSON.stringify(record));
+    },
+
+    async readSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
+      return readAsyncStorageSyncPreferencesRecord();
+    },
+
+    async writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void> {
+      await AsyncStorage.setItem(
+        SYNC_PREFERENCES_RECORD_KEY,
+        JSON.stringify(record),
+      );
     },
 
     async readOnboardingRecord(): Promise<OnboardingRecord> {
@@ -204,6 +222,7 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
     ONBOARDING_RECORD_KEY,
     DAY_LOG_RECORDS_KEY,
     SYMPTOM_RECORDS_KEY,
+    SYNC_PREFERENCES_RECORD_KEY,
   ]);
   const bootstrapState = entries[0];
   const profileRecord = entries[1];
@@ -215,7 +234,8 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
     profileRecord?.[1] !== null ||
     onboardingRecord?.[1] !== null ||
     dayLogRecords?.[1] !== null ||
-    entries[4]?.[1] !== null
+    entries[4]?.[1] !== null ||
+    entries[5]?.[1] !== null
   );
 }
 
@@ -226,7 +246,19 @@ export async function clearAsyncStorageLocalAppData(): Promise<void> {
     ONBOARDING_RECORD_KEY,
     DAY_LOG_RECORDS_KEY,
     SYMPTOM_RECORDS_KEY,
+    SYNC_PREFERENCES_RECORD_KEY,
   ]);
+}
+
+export async function readAsyncStorageSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
+  const rawValue = await AsyncStorage.getItem(SYNC_PREFERENCES_RECORD_KEY);
+  if (!rawValue) {
+    return createDefaultSyncPreferencesRecord();
+  }
+
+  return mergeSyncPreferencesRecord(
+    safeParse<Partial<SyncPreferencesRecord>>(rawValue),
+  );
 }
 
 async function readAsyncStorageDayLogRecords(): Promise<
@@ -275,6 +307,34 @@ function mergeProfileRecord(
     temperatureUnit: parsed?.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
     languageOverride: normalizeInterfaceLanguage(parsed?.languageOverride),
     themeOverride: normalizeThemePreference(parsed?.themeOverride),
+  };
+}
+
+function mergeSyncPreferencesRecord(
+  parsed: Partial<SyncPreferencesRecord> | null,
+): SyncPreferencesRecord {
+  const defaults = createDefaultSyncPreferencesRecord();
+
+  return {
+    ...defaults,
+    ...parsed,
+    mode: normalizeSyncMode(parsed?.mode),
+    endpointInput:
+      typeof parsed?.endpointInput === "string"
+        ? parsed.endpointInput
+        : defaults.endpointInput,
+    normalizedEndpoint:
+      typeof parsed?.normalizedEndpoint === "string" &&
+      parsed.normalizedEndpoint.trim().length > 0
+        ? parsed.normalizedEndpoint
+        : defaults.normalizedEndpoint,
+    deviceLabel:
+      typeof parsed?.deviceLabel === "string"
+        ? parsed.deviceLabel
+        : defaults.deviceLabel,
+    setupStatus: normalizeSyncSetupStatus(parsed?.setupStatus),
+    preparedAt:
+      typeof parsed?.preparedAt === "string" ? parsed.preparedAt : null,
   };
 }
 

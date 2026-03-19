@@ -1,3 +1,4 @@
+import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 
 export const CLEAR_LOCAL_DATA_CONFIRMATION = "CLEAR";
@@ -8,6 +9,7 @@ export function isClearLocalDataConfirmationValid(value: string): boolean {
 
 export async function clearAllLocalSettingsData(
   storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
 ): Promise<
   | {
       ok: true;
@@ -19,6 +21,7 @@ export async function clearAllLocalSettingsData(
 > {
   try {
     await storage.clearAllLocalData();
+    await secretStore.clearSyncSecrets();
     return { ok: true };
   } catch {
     return {

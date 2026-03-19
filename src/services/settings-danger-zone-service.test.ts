@@ -1,4 +1,5 @@
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
+import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   clearAllLocalSettingsData,
   CLEAR_LOCAL_DATA_CONFIRMATION,
@@ -17,19 +18,22 @@ describe("settings-danger-zone-service", () => {
 
   it("clears all local app data through the canonical storage boundary", async () => {
     const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
 
-    await expect(clearAllLocalSettingsData(storage)).resolves.toEqual({
+    await expect(clearAllLocalSettingsData(storage, secretStore)).resolves.toEqual({
       ok: true,
     });
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
   });
 
   it("returns a stable error code when the storage reset fails", async () => {
     const storage = createLocalAppStorageMock({
       clearAllLocalData: jest.fn().mockRejectedValue(new Error("boom")),
     });
+    const secretStore = createSyncSecretStoreMock();
 
-    await expect(clearAllLocalSettingsData(storage)).resolves.toEqual({
+    await expect(clearAllLocalSettingsData(storage, secretStore)).resolves.toEqual({
       ok: false,
       errorCode: "generic",
     });

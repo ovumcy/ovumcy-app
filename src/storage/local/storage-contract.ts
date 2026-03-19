@@ -1,6 +1,7 @@
 import type { DayLogRecord } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import type { ProfileRecord } from "../../models/profile";
+import type { SyncPreferencesRecord } from "../../models/sync";
 import type { SymptomRecord } from "../../models/symptom";
 
 export type LocalBootstrapState = {
@@ -28,6 +29,8 @@ export interface LocalAppStorage {
   clearAllLocalData(): Promise<void>;
   readProfileRecord(): Promise<ProfileRecord>;
   writeProfileRecord(record: ProfileRecord): Promise<void>;
+  readSyncPreferencesRecord(): Promise<SyncPreferencesRecord>;
+  writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void>;
   readOnboardingRecord(): Promise<OnboardingRecord>;
   writeOnboardingRecord(record: OnboardingRecord): Promise<void>;
   readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord>;

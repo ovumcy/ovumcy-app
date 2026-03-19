@@ -10,6 +10,12 @@ import {
   type ProfileRecord,
 } from "../../models/profile";
 import {
+  createDefaultSyncPreferencesRecord,
+  normalizeSyncMode,
+  normalizeSyncSetupStatus,
+  type SyncPreferencesRecord,
+} from "../../models/sync";
+import {
   createDefaultSymptomRecords,
   type SymptomRecord,
 } from "../../models/symptom";
@@ -28,6 +34,7 @@ import { createDefaultBootstrapState } from "./storage-contract";
 type VolatileWebStorageState = {
   bootstrapState: LocalBootstrapState;
   profileRecord: ProfileRecord;
+  syncPreferencesRecord: SyncPreferencesRecord;
   dayLogRecords: Record<string, DayLogRecord>;
   symptomRecords: SymptomRecord[];
 };
@@ -68,6 +75,17 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
       state = {
         ...state,
         profileRecord: mergeProfileRecord(record),
+      };
+    },
+
+    async readSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
+      return mergeSyncPreferencesRecord(state.syncPreferencesRecord);
+    },
+
+    async writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void> {
+      state = {
+        ...state,
+        syncPreferencesRecord: mergeSyncPreferencesRecord(record),
       };
     },
 
@@ -185,6 +203,7 @@ function createDefaultVolatileWebStorageState(): VolatileWebStorageState {
   return {
     bootstrapState: createDefaultBootstrapState(),
     profileRecord: createDefaultProfileRecord(),
+    syncPreferencesRecord: createDefaultSyncPreferencesRecord(),
     dayLogRecords: {},
     symptomRecords: createDefaultSymptomRecords(),
   };
@@ -201,6 +220,33 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     temperatureUnit: record.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
+  };
+}
+
+function mergeSyncPreferencesRecord(
+  record: Partial<SyncPreferencesRecord>,
+): SyncPreferencesRecord {
+  const defaults = createDefaultSyncPreferencesRecord();
+
+  return {
+    ...defaults,
+    ...record,
+    mode: normalizeSyncMode(record.mode),
+    endpointInput:
+      typeof record.endpointInput === "string"
+        ? record.endpointInput
+        : defaults.endpointInput,
+    normalizedEndpoint:
+      typeof record.normalizedEndpoint === "string" &&
+      record.normalizedEndpoint.trim().length > 0
+        ? record.normalizedEndpoint
+        : defaults.normalizedEndpoint,
+    deviceLabel:
+      typeof record.deviceLabel === "string"
+        ? record.deviceLabel
+        : defaults.deviceLabel,
+    setupStatus: normalizeSyncSetupStatus(record.setupStatus),
+    preparedAt: typeof record.preparedAt === "string" ? record.preparedAt : null,
   };
 }
 

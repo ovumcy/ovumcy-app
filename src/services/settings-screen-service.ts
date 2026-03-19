@@ -6,6 +6,7 @@ import type {
   TrackingSettingsValues,
 } from "../models/profile";
 import type { SymptomID } from "../models/symptom";
+import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   type ExportArtifact,
@@ -17,6 +18,11 @@ import {
   createLoadedSettingsState,
   type LoadedSettingsState,
 } from "./settings-view-service";
+import {
+  loadSyncSetupState,
+  prepareSyncSetup,
+  type PrepareSyncSetupErrorCode,
+} from "./sync-setup-service";
 import {
   getSettingsCycleStartDateBounds,
   parseLocalDate,
@@ -64,15 +70,23 @@ type RefreshExportStateResult =
 
 export async function loadSettingsScreenState(
   storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
   now: Date,
 ): Promise<LoadedSettingsState> {
-  const [profile, symptomRecords, exportResult] = await Promise.all([
+  const [profile, syncState, symptomRecords, exportResult] = await Promise.all([
     storage.readProfileRecord(),
+    loadSyncSetupState(storage, secretStore),
     storage.listSymptomRecords(),
     loadLocalExportState(storage, now),
   ]);
 
-  return createLoadedSettingsState(profile, symptomRecords, exportResult.state);
+  return createLoadedSettingsState(
+    profile,
+    syncState.preferences,
+    syncState.hasStoredSecrets,
+    symptomRecords,
+    exportResult.state,
+  );
 }
 
 export async function saveCycleSettings(
@@ -106,6 +120,8 @@ export async function saveCycleSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
     ),
@@ -135,6 +151,8 @@ export async function saveTrackingSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
     ),
@@ -164,6 +182,8 @@ export async function saveInterfaceSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
     ),
@@ -191,10 +211,13 @@ export async function createSettingsSymptom(
 
   return {
     ok: true,
-    state: createLoadedSettingsState(currentState.profile, [
-      ...currentState.symptomRecords,
-      result.record,
-    ], currentState.exportState),
+    state: createLoadedSettingsState(
+      currentState.profile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
+      [...currentState.symptomRecords, result.record],
+      currentState.exportState,
+    ),
   };
 }
 
@@ -226,6 +249,8 @@ export async function updateSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -257,6 +282,8 @@ export async function archiveSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -288,6 +315,8 @@ export async function restoreSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
+      currentState.syncPreferences,
+      currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -305,6 +334,8 @@ export async function refreshSettingsExportState(
   const result = await loadLocalExportState(storage, now, exportValues);
   const nextState = createLoadedSettingsState(
     currentState.profile,
+    currentState.syncPreferences,
+    currentState.hasStoredSyncSecrets,
     currentState.symptomRecords,
     result.state,
   );
@@ -349,6 +380,8 @@ export async function prepareSettingsExportArtifact(
   );
   const nextState = createLoadedSettingsState(
     currentState.profile,
+    currentState.syncPreferences,
+    currentState.hasStoredSyncSecrets,
     currentState.symptomRecords,
     result.state,
   );
@@ -365,6 +398,48 @@ export async function prepareSettingsExportArtifact(
     ok: true,
     artifact: result.artifact,
     state: nextState,
+  };
+}
+
+export async function prepareSettingsSyncSetup(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      recoveryPhrase: string;
+      regenerated: boolean;
+    }
+  | {
+      ok: false;
+      errorCode: PrepareSyncSetupErrorCode;
+    }
+> {
+  const regenerated = currentState.hasStoredSyncSecrets;
+  const result = await prepareSyncSetup(
+    storage,
+    secretStore,
+    currentState.syncPreferences,
+    now,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
+    recoveryPhrase: result.recoveryPhrase,
+    regenerated,
   };
 }
 

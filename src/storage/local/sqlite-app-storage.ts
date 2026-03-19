@@ -12,6 +12,12 @@ import {
   type ProfileRecord,
 } from "../../models/profile";
 import {
+  createDefaultSyncPreferencesRecord,
+  normalizeSyncMode,
+  normalizeSyncSetupStatus,
+  type SyncPreferencesRecord,
+} from "../../models/sync";
+import {
   createDefaultSymptomRecords,
   type SymptomRecord,
 } from "../../models/symptom";
@@ -35,7 +41,7 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -79,6 +85,18 @@ const CREATE_DAY_LOGS_TABLE = `
     cycle_factor_keys TEXT NOT NULL DEFAULT '[]',
     symptom_ids TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT ''
+  );
+`;
+
+const CREATE_SYNC_PREFERENCES_TABLE = `
+  CREATE TABLE IF NOT EXISTS sync_preferences (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    mode TEXT NOT NULL DEFAULT 'managed',
+    endpoint_input TEXT NOT NULL DEFAULT '',
+    normalized_endpoint TEXT NOT NULL DEFAULT 'https://sync.ovumcy.com',
+    device_label TEXT NOT NULL DEFAULT '',
+    setup_status TEXT NOT NULL DEFAULT 'not_configured',
+    prepared_at TEXT
   );
 `;
 
@@ -134,6 +152,15 @@ type LegacyOnboardingProfileRow = {
 
 type CountRow = {
   count: number;
+};
+
+type SyncPreferencesRow = {
+  mode: string;
+  endpoint_input: string;
+  normalized_endpoint: string;
+  device_label: string;
+  setup_status: string;
+  prepared_at: string | null;
 };
 
 type DayLogSummaryRow = {
@@ -284,6 +311,28 @@ export function createSQLiteAppStorage(
     async writeProfileRecord(record: ProfileRecord): Promise<void> {
       const database = await getHydratedDatabase();
       await upsertProfileRecord(database, record);
+    },
+
+    async readSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
+      const database = await getHydratedDatabase();
+      const row = await database.getFirstAsync<SyncPreferencesRow>(
+        `SELECT
+          mode,
+          endpoint_input,
+          normalized_endpoint,
+          device_label,
+          setup_status,
+          prepared_at
+         FROM sync_preferences
+         WHERE id = 1;`,
+      );
+
+      return row ? mapSyncPreferencesRow(row) : createDefaultSyncPreferencesRecord();
+    },
+
+    async writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void> {
+      const database = await getHydratedDatabase();
+      await upsertSyncPreferencesRecord(database, record);
     },
 
     async readOnboardingRecord(): Promise<OnboardingRecord> {
@@ -454,6 +503,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
     await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
     await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
@@ -472,38 +522,49 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
       2,
     );
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 5;`);
+    await database.execAsync(`PRAGMA user_version = 6;`);
     return;
   }
 
   if (currentVersion === 2) {
     await migrateV4InterfacePreferences(database);
     await database.execAsync(CREATE_DAY_LOGS_TABLE);
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 5;`);
+    await database.execAsync(`PRAGMA user_version = 6;`);
     return;
   }
 
   if (currentVersion === 3) {
     await migrateV4InterfacePreferences(database);
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 5;`);
+    await database.execAsync(`PRAGMA user_version = 6;`);
     return;
   }
 
   if (currentVersion === 4) {
     await migrateV4InterfacePreferences(database);
-    await database.execAsync(`PRAGMA user_version = 5;`);
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
+    await database.execAsync(`PRAGMA user_version = 6;`);
+    return;
+  }
+
+  if (currentVersion === 5) {
+    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
+    await database.execAsync(`PRAGMA user_version = 6;`);
     return;
   }
 
   await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
   await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
   await database.execAsync(CREATE_DAY_LOGS_TABLE);
+  await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
   await database.execAsync(CREATE_SYMPTOMS_TABLE);
   await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
   await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
@@ -579,9 +640,10 @@ async function maybeMigrateLegacyLocalAppData(
 }
 
 async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
-  const [bootstrapCount, profileCount, symptomCount] = await Promise.all([
+  const [bootstrapCount, profileCount, syncPreferencesCount, symptomCount] = await Promise.all([
     readRowCount(database, "bootstrap_state"),
     readRowCount(database, "profile_settings"),
+    readRowCount(database, "sync_preferences"),
     readRowCount(database, "symptoms"),
   ]);
 
@@ -593,6 +655,10 @@ async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
     await upsertProfileRecord(database, createDefaultProfileRecord());
   }
 
+  if (syncPreferencesCount === 0) {
+    await upsertSyncPreferencesRecord(database, createDefaultSyncPreferencesRecord());
+  }
+
   if (symptomCount === 0) {
     for (const record of createDefaultSymptomRecords()) {
       await upsertSymptomRecord(database, record);
@@ -602,7 +668,12 @@ async function ensureSeedRows(database: LocalAppDatabase): Promise<void> {
 
 async function readRowCount(
   database: LocalAppDatabase,
-  tableName: "bootstrap_state" | "profile_settings" | "day_logs" | "symptoms",
+  tableName:
+    | "bootstrap_state"
+    | "profile_settings"
+    | "day_logs"
+    | "sync_preferences"
+    | "symptoms",
 ): Promise<number> {
   const row = await database.getFirstAsync<CountRow>(
     `SELECT COUNT(*) AS count FROM ${tableName};`,
@@ -678,6 +749,37 @@ async function upsertProfileRecord(
     record.hideSexChip ? 1 : 0,
     normalizeInterfaceLanguage(record.languageOverride),
     normalizeThemePreference(record.themeOverride),
+  );
+}
+
+async function upsertSyncPreferencesRecord(
+  database: LocalAppDatabase,
+  record: SyncPreferencesRecord,
+): Promise<void> {
+  await database.runAsync(
+    `INSERT INTO sync_preferences (
+       id,
+       mode,
+       endpoint_input,
+       normalized_endpoint,
+       device_label,
+       setup_status,
+       prepared_at
+     )
+     VALUES (1, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       mode = excluded.mode,
+       endpoint_input = excluded.endpoint_input,
+       normalized_endpoint = excluded.normalized_endpoint,
+       device_label = excluded.device_label,
+       setup_status = excluded.setup_status,
+       prepared_at = excluded.prepared_at;`,
+    normalizeSyncMode(record.mode),
+    record.endpointInput,
+    record.normalizedEndpoint,
+    record.deviceLabel,
+    normalizeSyncSetupStatus(record.setupStatus),
+    record.preparedAt,
   );
 }
 
@@ -794,6 +896,24 @@ function mapProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     hideSexChip: row.hide_sex_chip === 1,
     languageOverride: normalizeInterfaceLanguage(row.language_override),
     themeOverride: normalizeThemePreference(row.theme_override),
+  };
+}
+
+function mapSyncPreferencesRow(row: SyncPreferencesRow): SyncPreferencesRecord {
+  const defaults = createDefaultSyncPreferencesRecord();
+
+  return {
+    ...defaults,
+    mode: normalizeSyncMode(row.mode),
+    endpointInput: row.endpoint_input,
+    normalizedEndpoint:
+      typeof row.normalized_endpoint === "string" &&
+      row.normalized_endpoint.trim().length > 0
+        ? row.normalized_endpoint
+        : defaults.normalizedEndpoint,
+    deviceLabel: row.device_label,
+    setupStatus: normalizeSyncSetupStatus(row.setup_status),
+    preparedAt: row.prepared_at,
   };
 }
 

@@ -1,11 +1,14 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
+import { createDefaultSyncPreferencesRecord } from "../models/sync";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
+import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   archiveSettingsSymptom,
   createSettingsSymptom,
   loadSettingsScreenState,
   prepareSettingsExportArtifact,
+  prepareSettingsSyncSetup,
   refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
@@ -17,9 +20,10 @@ import { createLoadedSettingsState } from "./settings-view-service";
 describe("settings-screen-service", () => {
   it("loads canonical profile state and resolves the default age-group selection like the web app", async () => {
     const storage = createStorageMock();
+    const secretStore = createSyncSecretStoreMock();
 
     await expect(
-      loadSettingsScreenState(storage, new Date(2026, 2, 18)),
+      loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
     ).resolves.toEqual(
       expect.objectContaining({
         profile: expect.objectContaining({
@@ -30,6 +34,11 @@ describe("settings-screen-service", () => {
           ageGroup: "age_20_35",
           autoPeriodFill: true,
         }),
+        syncPreferences: expect.objectContaining({
+          mode: "managed",
+          setupStatus: "not_configured",
+        }),
+        hasStoredSyncSecrets: false,
         trackingValues: expect.objectContaining({
           temperatureUnit: "c",
         }),
@@ -55,6 +64,8 @@ describe("settings-screen-service", () => {
       storage,
       createLoadedSettingsState(
         await storage.readProfileRecord(),
+        createDefaultSyncPreferencesRecord(),
+        false,
         createDefaultSymptomRecords(),
         createExportState(),
       ),
@@ -102,6 +113,8 @@ describe("settings-screen-service", () => {
         storage,
         createLoadedSettingsState(
           await storage.readProfileRecord(),
+          createDefaultSyncPreferencesRecord(),
+          false,
           createDefaultSymptomRecords(),
           createExportState(),
         ),
@@ -130,6 +143,8 @@ describe("settings-screen-service", () => {
       storage,
       createLoadedSettingsState(
         await storage.readProfileRecord(),
+        createDefaultSyncPreferencesRecord(),
+        false,
         createDefaultSymptomRecords(),
         createExportState(),
       ),
@@ -163,6 +178,8 @@ describe("settings-screen-service", () => {
     const storage = createStorageMock();
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
       createDefaultSymptomRecords(),
       createExportState(),
     );
@@ -290,6 +307,8 @@ describe("settings-screen-service", () => {
     });
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
       createDefaultSymptomRecords(),
       createExportState(),
     );
@@ -333,6 +352,49 @@ describe("settings-screen-service", () => {
       }),
     });
   });
+
+  it("prepares local encrypted sync state through settings services without faking account auth", async () => {
+    const storage = createStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    const result = await prepareSettingsSyncSetup(
+      storage,
+      secretStore,
+      initialState,
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        syncPreferences: expect.objectContaining({
+          normalizedEndpoint: "http://192.168.1.20:8080",
+          setupStatus: "local_ready",
+        }),
+        hasStoredSyncSecrets: true,
+      }),
+      regenerated: false,
+      recoveryPhrase: expect.any(String),
+    });
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deviceLabel: "Pixel 7",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+      }),
+    );
+  });
 });
 
 function createStorageMock(overrides = {}) {
@@ -350,6 +412,8 @@ function createStorageMock(overrides = {}) {
       temperatureUnit: "c",
       trackCervicalMucus: false,
       hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",

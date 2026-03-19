@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from "react-native";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
+import { syncSecretStore as defaultSyncSecretStore } from "../../services/app-sync-service";
 import {
   createPlatformExportDeliveryClient,
   type ExportDeliveryClient,
@@ -14,6 +15,7 @@ import {
   createSettingsSymptom,
   loadSettingsScreenState,
   prepareSettingsExportArtifact,
+  prepareSettingsSyncSetup,
   refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
@@ -36,6 +38,7 @@ import {
   type SymptomDraftValues,
 } from "../../services/symptom-policy";
 import type { SymptomID } from "../../models/symptom";
+import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
@@ -45,6 +48,7 @@ type SettingsScreenProps = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies;
   storage?: LocalAppStorage;
+  syncSecretStore?: SyncSecretStore;
   now?: Date;
 };
 
@@ -52,6 +56,7 @@ export function SettingsScreen({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
   storage = appStorage,
+  syncSecretStore = defaultSyncSecretStore,
   now,
 }: SettingsScreenProps) {
   const {
@@ -75,10 +80,14 @@ export function SettingsScreen({
   const [clearDataConfirmationValue, setClearDataConfirmationValue] = useState("");
   const [clearDataErrorMessage, setClearDataErrorMessage] = useState("");
   const [clearDataStatusMessage, setClearDataStatusMessage] = useState("");
+  const [accountErrorMessage, setAccountErrorMessage] = useState("");
+  const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [exportErrorMessage, setExportErrorMessage] = useState("");
   const [exportStatusMessage, setExportStatusMessage] = useState("");
+  const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
   const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
   const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
+  const [isPreparingSync, setIsPreparingSync] = useState(false);
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -100,19 +109,20 @@ export function SettingsScreen({
     useCallback(() => {
       let isMounted = true;
 
-      void loadSettingsScreenState(storage, effectiveNow).then((loadedState) => {
+      void loadSettingsScreenState(storage, syncSecretStore, effectiveNow).then((loadedState) => {
         if (!isMounted) {
           return;
         }
 
         setState(loadedState);
+        setGeneratedRecoveryPhrase("");
         setIsLoading(false);
       });
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, storage]),
+    }, [effectiveNow, storage, syncSecretStore]),
   );
 
   if (isLoading || !state) {
@@ -142,6 +152,12 @@ export function SettingsScreen({
   function resetExportMessages() {
     setExportErrorMessage("");
     setExportStatusMessage("");
+  }
+
+  function resetAccountMessages() {
+    setAccountErrorMessage("");
+    setAccountStatusMessage("");
+    setGeneratedRecoveryPhrase("");
   }
 
   function resetClearDataMessages() {
@@ -181,6 +197,23 @@ export function SettingsScreen({
         return viewData.export.errors.deliveryFailed;
       default:
         return viewData.export.errors.exportFailed;
+    }
+  }
+
+  function syncErrorLabel(errorCode: string) {
+    switch (errorCode) {
+      case "device_label_required":
+        return viewData.account.errors.deviceLabelRequired;
+      case "endpoint_required":
+        return viewData.account.errors.endpointRequired;
+      case "invalid_endpoint":
+        return viewData.account.errors.invalidEndpoint;
+      case "unsupported_scheme":
+        return viewData.account.errors.unsupportedScheme;
+      case "insecure_public_http":
+        return viewData.account.errors.insecurePublicHttp;
+      default:
+        return viewData.account.errors.saveFailed;
     }
   }
 
@@ -250,6 +283,32 @@ export function SettingsScreen({
     syncProfilePreferences(result.state.profile);
     setInterfaceStatusMessage(viewData.interface.status.saved);
     setIsSavingInterface(false);
+  }
+
+  async function handlePrepareSyncSetup() {
+    resetAccountMessages();
+    setIsPreparingSync(true);
+
+    const result = await prepareSettingsSyncSetup(
+      storage,
+      syncSecretStore,
+      readyState,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setIsPreparingSync(false);
+      return;
+    }
+
+    setState(result.state);
+    setGeneratedRecoveryPhrase(result.recoveryPhrase);
+    setAccountStatusMessage(
+      result.regenerated
+        ? viewData.account.status.regenerated
+        : viewData.account.status.prepared,
+    );
+    setIsPreparingSync(false);
   }
 
   async function handleCreateSymptom() {
@@ -395,7 +454,7 @@ export function SettingsScreen({
 
     setIsClearingData(true);
 
-    const result = await clearAllLocalSettingsData(storage);
+    const result = await clearAllLocalSettingsData(storage, syncSecretStore);
     if (!result.ok) {
       setClearDataErrorMessage(viewData.danger.status.failed);
       setIsClearingData(false);
@@ -412,6 +471,7 @@ export function SettingsScreen({
     setRowSymptomStatusMessages({});
     setCycleErrorMessage("");
     setCycleStatusMessage("");
+    resetAccountMessages();
     setInterfaceErrorMessage("");
     setInterfaceStatusMessage("");
     setTrackingStatusMessage("");
@@ -453,15 +513,19 @@ export function SettingsScreen({
       clearDataConfirmationValue={clearDataConfirmationValue}
       clearDataErrorMessage={clearDataErrorMessage}
       clearDataStatusMessage={clearDataStatusMessage}
+      accountErrorMessage={accountErrorMessage}
+      accountStatusMessage={accountStatusMessage}
       cycleErrorMessage={cycleErrorMessage}
       cycleGuidance={cycleGuidance}
       cycleStatusMessage={cycleStatusMessage}
       exportErrorMessage={exportErrorMessage}
       exportStatusMessage={exportStatusMessage}
+      generatedRecoveryPhrase={generatedRecoveryPhrase}
       interfaceErrorMessage={interfaceErrorMessage}
       interfaceStatusMessage={interfaceStatusMessage}
       isClearingData={isClearingData}
       isExporting={isExporting}
+      isPreparingSync={isPreparingSync}
       isSavingCycle={isSavingCycle}
       isSavingInterface={isSavingInterface}
       isSavingTracking={isSavingTracking}
@@ -598,6 +662,7 @@ export function SettingsScreen({
           void handleExportRangeChange(nextValues);
         }
       }}
+      onPrepareSyncSetup={handlePrepareSyncSetup}
       onInterfaceLanguageSelect={(value) => {
         setInterfaceErrorMessage("");
         setInterfaceStatusMessage("");
@@ -677,6 +742,50 @@ export function SettingsScreen({
       onSaveCycleSettings={handleSaveCycleSettings}
       onSaveInterfaceSettings={handleSaveInterfaceSettings}
       onSaveTrackingSettings={handleSaveTrackingSettings}
+      onSyncDeviceLabelChange={(value) => {
+        resetAccountMessages();
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                syncPreferences: {
+                  ...current.syncPreferences,
+                  deviceLabel: value,
+                },
+              }
+            : current,
+        );
+      }}
+      onSyncEndpointChange={(value) => {
+        resetAccountMessages();
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                syncPreferences: {
+                  ...current.syncPreferences,
+                  endpointInput: value,
+                },
+              }
+            : current,
+        );
+      }}
+      onSyncModeSelect={(value) => {
+        resetAccountMessages();
+        setState((current) =>
+          current
+            ? {
+                ...current,
+                syncPreferences: {
+                  ...current.syncPreferences,
+                  mode: value,
+                  endpointInput:
+                    value === "managed" ? "" : current.syncPreferences.endpointInput,
+                },
+              }
+            : current,
+        );
+      }}
       onSymptomDraftChange={(symptomID, updates) => {
         setRowSymptomErrorMessages((current) => {
           const next = { ...current };

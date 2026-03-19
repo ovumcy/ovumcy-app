@@ -16,10 +16,13 @@
     "deploy": "npm run export:web && npx eas-cli@18.4.0 deploy"
   },
   "dependencies": {
+    "@noble/ciphers": "^2.1.1",
+    "@noble/hashes": "^2.0.1",
     "@pdf-lib/fontkit": "^1.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-native-community/slider": "5.0.1",
+    "@scure/bip39": "^2.0.1",
     "expo": "^54.0.1",
     "expo-asset": "~12.0.12",
     "expo-constants": "~18.0.13",

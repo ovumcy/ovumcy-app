@@ -12,6 +12,7 @@ import type {
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
+import type { SyncMode, SyncPreferencesRecord } from "../models/sync";
 import type { SymptomRecord } from "../models/symptom";
 import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
 import {
@@ -106,9 +107,42 @@ export type SettingsViewData = {
   account: {
     title: string;
     subtitle: string;
-    statusLabel: string;
-    statusValue: string;
-    actionsHint: string;
+    modeLabel: string;
+    modeOptions: { value: SyncMode; label: string }[];
+    managedHint: string;
+    selfHostedHint: string;
+    endpointLabel: string;
+    endpointHint: string;
+    endpointPlaceholder: string;
+    deviceLabel: string;
+    deviceHint: string;
+    devicePlaceholder: string;
+    stateLabel: string;
+    stateReady: string;
+    stateMissing: string;
+    modeRowLabel: string;
+    endpointRowLabel: string;
+    encryptionRowLabel: string;
+    encryptionReady: string;
+    encryptionMissing: string;
+    recoveryTitle: string;
+    recoveryHint: string;
+    recoveryNotice: string;
+    recoveryShownOnce: string;
+    prepareLabel: string;
+    regenerateLabel: string;
+    status: {
+      prepared: string;
+      regenerated: string;
+    };
+    errors: {
+      deviceLabelRequired: string;
+      endpointRequired: string;
+      invalidEndpoint: string;
+      unsupportedScheme: string;
+      insecurePublicHttp: string;
+      saveFailed: string;
+    };
   };
   symptoms: {
     title: string;
@@ -188,6 +222,8 @@ export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
+  syncPreferences: SyncPreferencesRecord;
+  hasStoredSyncSecrets: boolean;
   trackingValues: TrackingSettingsValues;
   symptomRecords: SymptomRecord[];
   exportState: LoadedExportState;
@@ -300,9 +336,45 @@ export function buildSettingsViewData(
     account: {
       title: settingsCopy.account.title,
       subtitle: settingsCopy.account.subtitle,
-      statusLabel: settingsCopy.account.statusLabel,
-      statusValue: settingsCopy.account.statusValue,
-      actionsHint: settingsCopy.account.actionsHint,
+      modeLabel: settingsCopy.account.modeLabel,
+      modeOptions: [
+        { value: "managed", label: settingsCopy.account.modeManaged },
+        { value: "self_hosted", label: settingsCopy.account.modeSelfHosted },
+      ],
+      managedHint: settingsCopy.account.managedHint,
+      selfHostedHint: settingsCopy.account.selfHostedHint,
+      endpointLabel: settingsCopy.account.endpointLabel,
+      endpointHint: settingsCopy.account.endpointHint,
+      endpointPlaceholder: settingsCopy.account.endpointPlaceholder,
+      deviceLabel: settingsCopy.account.deviceLabel,
+      deviceHint: settingsCopy.account.deviceHint,
+      devicePlaceholder: settingsCopy.account.devicePlaceholder,
+      stateLabel: settingsCopy.account.stateLabel,
+      stateReady: settingsCopy.account.stateReady,
+      stateMissing: settingsCopy.account.stateMissing,
+      modeRowLabel: settingsCopy.account.modeRowLabel,
+      endpointRowLabel: settingsCopy.account.endpointRowLabel,
+      encryptionRowLabel: settingsCopy.account.encryptionRowLabel,
+      encryptionReady: settingsCopy.account.encryptionReady,
+      encryptionMissing: settingsCopy.account.encryptionMissing,
+      recoveryTitle: settingsCopy.account.recoveryTitle,
+      recoveryHint: settingsCopy.account.recoveryHint,
+      recoveryNotice: settingsCopy.account.recoveryNotice,
+      recoveryShownOnce: settingsCopy.account.recoveryShownOnce,
+      prepareLabel: settingsCopy.account.prepareLabel,
+      regenerateLabel: settingsCopy.account.regenerateLabel,
+      status: {
+        prepared: settingsCopy.account.prepared,
+        regenerated: settingsCopy.account.regenerated,
+      },
+      errors: {
+        deviceLabelRequired: settingsCopy.account.errors.deviceLabelRequired,
+        endpointRequired: settingsCopy.account.errors.endpointRequired,
+        invalidEndpoint: settingsCopy.account.errors.invalidEndpoint,
+        unsupportedScheme: settingsCopy.account.errors.unsupportedScheme,
+        insecurePublicHttp: settingsCopy.account.errors.insecurePublicHttp,
+        saveFailed: settingsCopy.account.errors.saveFailed,
+      },
     },
     symptoms: {
       title: settingsCopy.symptoms.title,
@@ -386,6 +458,8 @@ export function buildSettingsViewData(
 
 export function createLoadedSettingsState(
   profile: ProfileRecord,
+  syncPreferences: SyncPreferencesRecord,
+  hasStoredSyncSecrets: boolean,
   symptomRecords: SymptomRecord[],
   exportState: LoadedExportState,
 ): LoadedSettingsState {
@@ -405,6 +479,8 @@ export function createLoadedSettingsState(
       languageOverride: profile.languageOverride,
       themeOverride: profile.themeOverride,
     },
+    syncPreferences,
+    hasStoredSyncSecrets,
     trackingValues: {
       trackBBT: profile.trackBBT,
       temperatureUnit: profile.temperatureUnit,

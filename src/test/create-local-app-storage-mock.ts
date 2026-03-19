@@ -1,5 +1,6 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord } from "../models/profile";
+import { createDefaultSyncPreferencesRecord } from "../models/sync";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultOnboardingRecord } from "../services/onboarding-policy";
 import {
@@ -23,6 +24,10 @@ export function createLocalAppStorageMock(
     clearAllLocalData: jest.fn().mockResolvedValue(undefined),
     readProfileRecord: jest.fn().mockResolvedValue(defaultProfile),
     writeProfileRecord: jest.fn().mockResolvedValue(undefined),
+    readSyncPreferencesRecord: jest
+      .fn()
+      .mockResolvedValue(createDefaultSyncPreferencesRecord()),
+    writeSyncPreferencesRecord: jest.fn().mockResolvedValue(undefined),
     readOnboardingRecord: jest.fn().mockResolvedValue(defaultOnboarding),
     writeOnboardingRecord: jest.fn().mockResolvedValue(undefined),
     readDayLogRecord: jest

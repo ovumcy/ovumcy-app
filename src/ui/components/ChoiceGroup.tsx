@@ -11,11 +11,11 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type ChoiceGroupProps<T extends string | number> = {
-  options: ReadonlyArray<{
+  options: readonly {
     value: T;
     label: string;
     secondaryLabel?: string;
-  }>;
+  }[];
   selectedValue?: T | undefined;
   onSelect: (value: T) => void;
   layout?: "stack" | "grid2" | "grid3";

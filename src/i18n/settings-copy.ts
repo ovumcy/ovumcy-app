@@ -101,12 +101,47 @@ const settingsCopyEn = {
   account: {
     title: "Account & sync",
     subtitle:
-      "This app is still local-first. No account is connected on this device.",
-    statusLabel: "Current status",
-    statusValue:
-      "All tracking stays local on this device unless optional sync is added later.",
-    actionsHint:
-      "Sign-in, recovery, and logout will appear here once account-backed sync exists.",
+      "Prepare encrypted sync on this device first. Account connection arrives after a sync server is configured.",
+    modeLabel: "Sync mode",
+    modeManaged: "Ovumcy Cloud",
+    modeSelfHosted: "Self-hosted",
+    managedHint:
+      "Uses the official Ovumcy Cloud endpoint when managed sync becomes available on this device.",
+    selfHostedHint:
+      "Use a host, IP:port, or full URL. Public http is rejected; localhost and private-network http are allowed.",
+    endpointLabel: "Server endpoint",
+    endpointHint: "Required only for self-hosted sync.",
+    endpointPlaceholder: "sync.example.com or 192.168.1.20:8080",
+    deviceLabel: "Device label",
+    deviceHint:
+      "Shown later in connected device lists and encrypted recovery flows.",
+    devicePlaceholder: "Pixel 7",
+    stateLabel: "Sync setup state",
+    stateReady: "Encrypted sync is prepared on this device.",
+    stateMissing: "Encrypted sync has not been prepared on this device yet.",
+    modeRowLabel: "Mode",
+    endpointRowLabel: "Endpoint",
+    encryptionRowLabel: "Encryption",
+    encryptionReady: "Recovery materials are stored locally on this device.",
+    encryptionMissing: "No local sync key is prepared yet.",
+    recoveryTitle: "Recovery phrase",
+    recoveryHint:
+      "Write down the 12 words exactly and keep them offline. If you lose every device and this phrase, synced data cannot be recovered.",
+    recoveryNotice:
+      "This screen shows the recovery phrase only when you prepare or recreate local sync keys.",
+    recoveryShownOnce: "Shown only once after generation.",
+    prepareLabel: "Prepare encrypted sync",
+    regenerateLabel: "Recreate local sync keys",
+    prepared: "Encrypted sync prepared on this device.",
+    regenerated: "Local sync keys recreated for this device.",
+    errors: {
+      deviceLabelRequired: "Device label is required.",
+      endpointRequired: "Enter a sync server endpoint.",
+      invalidEndpoint: "Enter a valid host, IP address, or full URL.",
+      unsupportedScheme: "Only https and approved local-network http endpoints are supported.",
+      insecurePublicHttp: "Public sync endpoints must use https.",
+      saveFailed: "Unable to prepare encrypted sync right now. Please try again.",
+    },
   },
   symptoms: {
     title: "Custom symptoms",
@@ -313,12 +348,49 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     account: {
       title: "Аккаунт и sync",
       subtitle:
-        "Это приложение пока local-first. На этом устройстве аккаунт не подключён.",
-      statusLabel: "Текущий статус",
-      statusValue:
-        "Все записи остаются локально на этом устройстве, пока позже не будет добавлен optional sync.",
-      actionsHint:
-        "Вход, восстановление и logout появятся здесь, когда появится account-backed sync.",
+        "Сначала подготовьте зашифрованный sync на этом устройстве. Подключение аккаунта появится после настройки sync-сервера.",
+      modeLabel: "Режим sync",
+      modeManaged: "Ovumcy Cloud",
+      modeSelfHosted: "Self-hosted",
+      managedHint:
+        "Использует официальный endpoint Ovumcy Cloud, когда managed sync станет доступен на этом устройстве.",
+      selfHostedHint:
+        "Используйте host, IP:port или полный URL. Публичный http отклоняется; localhost и private-network http разрешены.",
+      endpointLabel: "Endpoint сервера",
+      endpointHint: "Нужен только для self-hosted sync.",
+      endpointPlaceholder: "sync.example.com или 192.168.1.20:8080",
+      deviceLabel: "Название устройства",
+      deviceHint:
+        "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
+      devicePlaceholder: "Pixel 7",
+      stateLabel: "Состояние sync setup",
+      stateReady: "Зашифрованный sync подготовлен на этом устройстве.",
+      stateMissing: "Зашифрованный sync на этом устройстве ещё не подготовлен.",
+      modeRowLabel: "Режим",
+      endpointRowLabel: "Endpoint",
+      encryptionRowLabel: "Шифрование",
+      encryptionReady: "Recovery-материалы локально сохранены на этом устройстве.",
+      encryptionMissing: "Локальный sync key ещё не подготовлен.",
+      recoveryTitle: "Recovery phrase",
+      recoveryHint:
+        "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
+      recoveryNotice:
+        "Этот экран показывает recovery phrase только когда вы подготавливаете или пересоздаёте локальные sync keys.",
+      recoveryShownOnce: "Показывается только один раз после генерации.",
+      prepareLabel: "Подготовить зашифрованный sync",
+      regenerateLabel: "Пересоздать локальные sync keys",
+      prepared: "Зашифрованный sync подготовлен на этом устройстве.",
+      regenerated: "Локальные sync keys пересозданы для этого устройства.",
+      errors: {
+        deviceLabelRequired: "Название устройства обязательно.",
+        endpointRequired: "Введите endpoint sync-сервера.",
+        invalidEndpoint: "Введите корректный host, IP-адрес или полный URL.",
+        unsupportedScheme:
+          "Поддерживаются только https и разрешённые local-network http endpoint.",
+        insecurePublicHttp: "Публичные sync endpoint должны использовать https.",
+        saveFailed:
+          "Сейчас не удалось подготовить зашифрованный sync. Попробуйте ещё раз.",
+      },
     },
     symptoms: {
       title: "Пользовательские симптомы",
@@ -520,12 +592,49 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     account: {
       title: "Cuenta y sync",
       subtitle:
-        "Esta app sigue siendo local-first. No hay ninguna cuenta conectada en este dispositivo.",
-      statusLabel: "Estado actual",
-      statusValue:
-        "Todo el seguimiento permanece local en este dispositivo hasta que se añada un sync opcional.",
-      actionsHint:
-        "El inicio de sesión, la recuperación y el logout aparecerán aquí cuando exista un sync con cuenta.",
+        "Primero prepara el sync cifrado en este dispositivo. La conexión de cuenta llegará después de configurar un servidor de sync.",
+      modeLabel: "Modo de sync",
+      modeManaged: "Ovumcy Cloud",
+      modeSelfHosted: "Self-hosted",
+      managedHint:
+        "Usa el endpoint oficial de Ovumcy Cloud cuando el sync gestionado esté disponible en este dispositivo.",
+      selfHostedHint:
+        "Usa un host, IP:puerto o URL completa. El http público se rechaza; localhost y redes privadas sí se permiten.",
+      endpointLabel: "Endpoint del servidor",
+      endpointHint: "Solo es necesario para sync self-hosted.",
+      endpointPlaceholder: "sync.example.com o 192.168.1.20:8080",
+      deviceLabel: "Etiqueta del dispositivo",
+      deviceHint:
+        "Más tarde aparecerá en las listas de dispositivos conectados y en los flujos de recuperación cifrada.",
+      devicePlaceholder: "Pixel 7",
+      stateLabel: "Estado del sync",
+      stateReady: "El sync cifrado está preparado en este dispositivo.",
+      stateMissing: "El sync cifrado todavía no está preparado en este dispositivo.",
+      modeRowLabel: "Modo",
+      endpointRowLabel: "Endpoint",
+      encryptionRowLabel: "Cifrado",
+      encryptionReady: "Los materiales de recuperación se guardan localmente en este dispositivo.",
+      encryptionMissing: "Todavía no se ha preparado una clave local de sync.",
+      recoveryTitle: "Frase de recuperación",
+      recoveryHint:
+        "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
+      recoveryNotice:
+        "Esta pantalla muestra la frase de recuperación solo cuando preparas o recreas las claves locales de sync.",
+      recoveryShownOnce: "Se muestra solo una vez después de generarse.",
+      prepareLabel: "Preparar sync cifrado",
+      regenerateLabel: "Recrear claves locales de sync",
+      prepared: "El sync cifrado quedó preparado en este dispositivo.",
+      regenerated: "Las claves locales de sync se recrearon para este dispositivo.",
+      errors: {
+        deviceLabelRequired: "La etiqueta del dispositivo es obligatoria.",
+        endpointRequired: "Introduce un endpoint del servidor de sync.",
+        invalidEndpoint: "Introduce un host, una IP o una URL completa válidos.",
+        unsupportedScheme:
+          "Solo se admiten https y endpoints http aprobados para red local.",
+        insecurePublicHttp: "Los endpoints públicos de sync deben usar https.",
+        saveFailed:
+          "No se pudo preparar el sync cifrado ahora. Inténtalo de nuevo.",
+      },
     },
     symptoms: {
       title: "Síntomas personalizados",

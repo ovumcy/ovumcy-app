@@ -51,7 +51,10 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByTestId("settings-interface-section")).toBeVisible();
-  await expect(page.getByTestId("settings-account-section")).toBeVisible();
+  await expect(page.getByTestId("settings-sync-section")).toBeVisible();
+  await page.getByTestId("settings-sync-device-label-input").fill("Browser test");
+  await page.getByTestId("settings-sync-prepare-button").click();
+  await expect(page.getByTestId("settings-sync-recovery-card")).toBeVisible();
   await page.getByTestId("settings-symptom-create-name-input").fill("Jaw pain");
   await page.getByTestId("settings-symptom-create-action-button").click();
   await expect(page.getByText("Jaw pain")).toBeVisible();

@@ -29,11 +29,8 @@ import { LabeledSliderField } from "../components/LabeledSliderField";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
+import { SettingsSyncSetupSection } from "../components/SettingsSyncSetupSection";
 import { StatusBanner } from "../components/StatusBanner";
-import {
-  buildAccountStatusRows,
-  SettingsStatusSection,
-} from "../components/SettingsStatusSection";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
@@ -46,6 +43,8 @@ type SettingsFlowScreenProps = {
   clearDataConfirmationValue: string;
   clearDataErrorMessage: string;
   clearDataStatusMessage: string;
+  accountErrorMessage: string;
+  accountStatusMessage: string;
   cycleGuidance: {
     adjusted: boolean;
     periodLong: boolean;
@@ -55,9 +54,11 @@ type SettingsFlowScreenProps = {
   cycleErrorMessage: string;
   exportErrorMessage: string;
   exportStatusMessage: string;
+  generatedRecoveryPhrase: string;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
   isExporting: boolean;
+  isPreparingSync: boolean;
   isSavingCycle: boolean;
   isSavingInterface: boolean;
   isSavingTracking: boolean;
@@ -80,6 +81,7 @@ type SettingsFlowScreenProps = {
   onExportPDF: () => void | Promise<void>;
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
+  onPrepareSyncSetup: () => void | Promise<void>;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onIrregularCycleChange: (value: boolean) => void;
@@ -88,6 +90,9 @@ type SettingsFlowScreenProps = {
   onSaveCycleSettings: () => void | Promise<void>;
   onSaveInterfaceSettings: () => void | Promise<void>;
   onSaveTrackingSettings: () => void | Promise<void>;
+  onSyncDeviceLabelChange: (value: string) => void;
+  onSyncEndpointChange: (value: string) => void;
+  onSyncModeSelect: (value: LoadedSettingsState["syncPreferences"]["mode"]) => void;
   onSymptomDraftChange: (
     symptomID: SymptomID,
     updates: Partial<SymptomDraftValues>,
@@ -112,6 +117,8 @@ type SettingsFlowScreenProps = {
 };
 
 export function SettingsFlowScreen({
+  accountErrorMessage,
+  accountStatusMessage,
   createSymptomDraft,
   createSymptomErrorMessage,
   createSymptomStatusMessage,
@@ -123,9 +130,11 @@ export function SettingsFlowScreen({
   cycleErrorMessage,
   exportErrorMessage,
   exportStatusMessage,
+  generatedRecoveryPhrase,
   interfaceErrorMessage,
   interfaceStatusMessage,
   isExporting,
+  isPreparingSync,
   isSavingCycle,
   isSavingInterface,
   isSavingTracking,
@@ -149,6 +158,7 @@ export function SettingsFlowScreen({
   onExportPDF,
   onExportPresetSelect,
   onExportToDateChange,
+  onPrepareSyncSetup,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
   onHideSexChipChange,
@@ -158,6 +168,9 @@ export function SettingsFlowScreen({
   onSaveCycleSettings,
   onSaveInterfaceSettings,
   onSaveTrackingSettings,
+  onSyncDeviceLabelChange,
+  onSyncEndpointChange,
+  onSyncModeSelect,
   onSymptomDraftChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
@@ -462,12 +475,19 @@ export function SettingsFlowScreen({
         viewData={viewData.interface}
       />
 
-      <SettingsStatusSection
-        description={viewData.account.subtitle}
-        hint={viewData.account.actionsHint}
-        rows={buildAccountStatusRows(viewData.account)}
-        testID="settings-account-section"
-        title={`👤 ${viewData.account.title}`}
+      <SettingsSyncSetupSection
+        errorMessage={accountErrorMessage}
+        generatedRecoveryPhrase={generatedRecoveryPhrase}
+        hasStoredSyncSecrets={state.hasStoredSyncSecrets}
+        isPreparing={isPreparingSync}
+        notSetLabel={viewData.common.notSet}
+        onDeviceLabelChange={onSyncDeviceLabelChange}
+        onEndpointChange={onSyncEndpointChange}
+        onModeSelect={onSyncModeSelect}
+        onPrepare={onPrepareSyncSetup}
+        preferences={state.syncPreferences}
+        statusMessage={accountStatusMessage}
+        viewData={viewData.account}
       />
 
       <SettingsExportSection
