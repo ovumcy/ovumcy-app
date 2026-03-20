@@ -1,10 +1,6 @@
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from "@react-native-community/datetimepicker";
 import { type ReactNode, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,9 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { OnboardingViewData } from "../../services/onboarding-view-service";
 import type { LoadedOnboardingState } from "../../services/onboarding-screen-service";
 import {
-  addDays,
   buildCycleGuidanceState,
-  formatLocalDate,
   parseLocalDate,
 } from "../../services/onboarding-policy";
 import type {
@@ -43,7 +37,6 @@ export type OnboardingFlowScreenProps = {
   guidance: ReturnType<typeof buildCycleGuidanceState>;
   isSaving: boolean;
   locale: string;
-  now: Date;
   onAutoPeriodFillChange: (value: boolean) => void;
   onAgeGroupSelect: (value: AgeGroupOption) => void;
   onBack: () => void;
@@ -63,12 +56,13 @@ export type OnboardingFlowScreenProps = {
 export function OnboardingLoadingScreen() {
   const styles = useThemedStyles(createStyles);
   const { colors, language } = useAppPreferences();
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const onboardingCopy = getOnboardingCopy(language);
   const appInfo = getAppInfo(language);
 
   return (
     <OnboardingShell
+      compact={width < 430}
       progressLabel={appInfo.name}
       progressPercent={0}
       screenHeight={height}
@@ -87,7 +81,6 @@ export function OnboardingFlowScreen({
   guidance,
   isSaving,
   locale,
-  now,
   onAutoPeriodFillChange,
   onAgeGroupSelect,
   onBack,
@@ -104,10 +97,10 @@ export function OnboardingFlowScreen({
   viewData,
 }: OnboardingFlowScreenProps) {
   const styles = useThemedStyles(createStyles);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const { height, width } = useWindowDimensions();
   const onboardingCopy = getOnboardingCopy(locale);
   const selectedDate = parseLocalDate(state.selectedDate);
+  const compactLayout = width < 430;
   const dayOptionColumns = width >= 1180 ? 6 : width >= 820 ? 4 : 3;
   const displayedDate = useMemo(() => {
     if (selectedDate === null) {
@@ -116,25 +109,9 @@ export function OnboardingFlowScreen({
 
     return formatLongDate(selectedDate, locale);
   }, [locale, selectedDate, viewData.stepOne.datePlaceholder]);
-  const supportsNativeDatePicker = Platform.OS !== "web";
-  const datePickerBounds = useMemo(
-    () => ({
-      ...(parseLocalDate(viewData.stepOne.maxDate)
-        ? {
-            maximumDate: parseLocalDate(viewData.stepOne.maxDate) as Date,
-          }
-        : {}),
-      ...(parseLocalDate(viewData.stepOne.minDate)
-        ? {
-            minimumDate: parseLocalDate(viewData.stepOne.minDate) as Date,
-          }
-        : {}),
-    }),
-    [viewData.stepOne.maxDate, viewData.stepOne.minDate],
-  );
-
   return (
     <OnboardingShell
+      compact={compactLayout}
       progressLabel={state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2}
       progressPercent={state.step === 1 ? 50 : 100}
       screenHeight={height}
@@ -144,27 +121,20 @@ export function OnboardingFlowScreen({
     >
       {state.step === 1 ? (
         <StepOnePanel
-          datePickerBounds={datePickerBounds}
+          compact={compactLayout}
           displayedDate={displayedDate}
           isSaving={isSaving}
-          now={now}
-          onDatePickerChange={(event, value) =>
-            handleDatePickerChange(event, value, setShowDatePicker, onDateSelected)
-          }
-          onDatePickerToggle={() => setShowDatePicker((current) => !current)}
           onDayOptionPress={onDateSelected}
           onNext={onNext}
           dayOptionColumns={dayOptionColumns}
-          selectedDate={selectedDate}
           selectedDateValue={state.selectedDate}
-          showDatePicker={showDatePicker}
           stepOneError={stepOneError}
           styles={styles}
-          supportsNativeDatePicker={supportsNativeDatePicker}
           viewData={viewData}
         />
       ) : (
         <StepTwoPanel
+          compact={compactLayout}
           guidance={guidance}
           isSaving={isSaving}
           onAutoPeriodFillChange={onAutoPeriodFillChange}
@@ -186,6 +156,7 @@ export function OnboardingFlowScreen({
 }
 
 function OnboardingShell({
+  compact,
   progressLabel,
   progressPercent,
   screenHeight,
@@ -194,6 +165,7 @@ function OnboardingShell({
   children,
   styles,
 }: {
+  compact: boolean;
   progressLabel: string;
   progressPercent: number;
   screenHeight: number;
@@ -215,9 +187,10 @@ function OnboardingShell({
         <ScrollView
           contentContainerStyle={[
             styles.screenContent,
+            compact ? styles.screenContentCompact : null,
             {
-              paddingTop: insets.top + 12,
-              paddingBottom: Math.max(insets.bottom + 18, 24),
+              paddingTop: insets.top + (compact ? 10 : 12),
+              paddingBottom: Math.max(insets.bottom + (compact ? 14 : 18), compact ? 18 : 24),
             },
           ]}
           showsVerticalScrollIndicator={false}
@@ -226,12 +199,13 @@ function OnboardingShell({
           <View
             style={[
               styles.heroCard,
+              compact ? styles.heroCardCompact : null,
               minCardHeight > 0 ? { minHeight: minCardHeight } : null,
             ]}
           >
-            <View style={styles.progressBlock}>
-              <Text style={styles.kicker}>{progressLabel}</Text>
-              <View style={styles.progressPanel}>
+            <View style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}>
+              <Text style={[styles.kicker, compact ? styles.kickerCompact : null]}>{progressLabel}</Text>
+              <View style={[styles.progressPanel, compact ? styles.progressPanelCompact : null]}>
                 <View style={styles.progressTrack}>
                   <View
                     style={[
@@ -242,9 +216,13 @@ function OnboardingShell({
                 </View>
               </View>
             </View>
-            <View style={styles.panel}>
-              <Text style={styles.heroTitle}>{title}</Text>
-              {subtitle ? <Text style={styles.heroMuted}>{subtitle}</Text> : null}
+            <View style={[styles.panel, compact ? styles.panelCompact : null]}>
+              <Text style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}>{title}</Text>
+              {subtitle ? (
+                <Text style={[styles.heroMuted, compact ? styles.heroMutedCompact : null]}>
+                  {subtitle}
+                </Text>
+              ) : null}
               {children}
             </View>
           </View>
@@ -255,38 +233,26 @@ function OnboardingShell({
 }
 
 function StepOnePanel({
-  datePickerBounds,
+  compact,
   displayedDate,
   isSaving,
-  now,
-  onDatePickerToggle,
   onDayOptionPress,
-  onDatePickerChange,
   onNext,
   dayOptionColumns,
-  selectedDate,
   selectedDateValue,
-  showDatePicker,
   stepOneError,
   styles,
-  supportsNativeDatePicker,
   viewData,
 }: {
-  datePickerBounds: { maximumDate?: Date; minimumDate?: Date };
+  compact: boolean;
   displayedDate: string;
   isSaving: boolean;
-  now: Date;
-  onDatePickerToggle: () => void;
   onDayOptionPress: (value: string) => void;
-  onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
   onNext: () => void | Promise<void>;
   dayOptionColumns: number;
-  selectedDate: Date | null;
   selectedDateValue: string;
-  showDatePicker: boolean;
   stepOneError: string;
   styles: ReturnType<typeof createStyles>;
-  supportsNativeDatePicker: boolean;
   viewData: OnboardingViewData;
 }) {
   const { height: windowHeight } = useWindowDimensions();
@@ -321,44 +287,35 @@ function StepOnePanel({
 
   return (
     <>
-      <Text style={styles.helperText}>{viewData.stepOne.day1Tip}</Text>
-      <Text style={styles.helperText}>{viewData.stepOne.privacy}</Text>
+      <Text style={[styles.helperText, compact ? styles.helperTextCompact : null]}>
+        {viewData.stepOne.day1Tip}
+      </Text>
+      <Text style={[styles.helperText, compact ? styles.helperTextCompact : null]}>
+        {viewData.stepOne.privacy}
+      </Text>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.fieldLabel}>{viewData.stepOne.fieldLabel}</Text>
-        {supportsNativeDatePicker ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onDatePickerToggle}
-            style={styles.dateFieldShell}
-            testID="onboarding-date-field-button"
-          >
-            {dateFieldContent}
-          </Pressable>
-        ) : (
-          <View style={styles.dateFieldShell}>{dateFieldContent}</View>
-        )}
-        {supportsNativeDatePicker && showDatePicker ? (
-          <DateTimePicker
-            display="default"
-            mode="date"
-            onChange={onDatePickerChange}
-            value={selectedDate ?? parseLocalDate(viewData.stepOne.maxDate) ?? addDays(now, 0)}
-            {...datePickerBounds}
-          />
-        ) : null}
+      <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
+        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
+          {viewData.stepOne.fieldLabel}
+        </Text>
+        <View style={[styles.dateFieldShell, compact ? styles.dateFieldShellCompact : null]}>
+          {dateFieldContent}
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.dayOptionGrid}
+        contentContainerStyle={[styles.dayOptionGrid, compact ? styles.dayOptionGridCompact : null]}
         nestedScrollEnabled
         onLayout={(event) => setDayOptionGridWidth(event.nativeEvent.layout.width)}
         persistentScrollbar
         showsVerticalScrollIndicator
         style={[
           styles.dayOptionScroll,
+          compact ? styles.dayOptionScrollCompact : null,
           {
-            maxHeight: Math.max(272, Math.min(388, Math.round(windowHeight * 0.4))),
+            maxHeight: compact
+              ? Math.max(232, Math.min(320, Math.round(windowHeight * 0.34)))
+              : Math.max(272, Math.min(388, Math.round(windowHeight * 0.4))),
           },
         ]}
       >
@@ -371,6 +328,7 @@ function StepOnePanel({
             option={option}
             width={dayOptionWidth}
             styles={styles}
+            compact={compact}
           />
         ))}
       </ScrollView>
@@ -385,12 +343,14 @@ function StepOnePanel({
         onPress={onNext}
         styles={styles}
         testID="onboarding-next-button"
+        compact={compact}
       />
     </>
   );
 }
 
 function StepTwoPanel({
+  compact,
   guidance,
   isSaving,
   onAutoPeriodFillChange,
@@ -406,6 +366,7 @@ function StepTwoPanel({
   styles,
   viewData,
 }: {
+  compact: boolean;
   guidance: ReturnType<typeof buildCycleGuidanceState>;
   isSaving: boolean;
   onAutoPeriodFillChange: (value: boolean) => void;
@@ -424,6 +385,7 @@ function StepTwoPanel({
   return (
     <>
       <LabeledSliderField
+        compact={compact}
         label={viewData.stepTwo.cycleLengthLabel}
         maximumValue={90}
         minimumValue={15}
@@ -434,6 +396,7 @@ function StepTwoPanel({
       />
 
       <LabeledSliderField
+        compact={compact}
         label={viewData.stepTwo.periodLengthLabel}
         maximumValue={14}
         minimumValue={1}
@@ -443,15 +406,21 @@ function StepTwoPanel({
         valueSuffix={` ${viewData.stepTwo.daysShort}`}
       />
 
-      <View style={styles.messageStack}>
+      <View style={[styles.messageStack, compact ? styles.messageStackCompact : null]}>
         {guidance.adjusted ? (
-          <Text style={styles.infoText}>{viewData.stepTwo.messages.infoAdjusted}</Text>
+          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+            {viewData.stepTwo.messages.infoAdjusted}
+          </Text>
         ) : null}
         {guidance.periodLong ? (
-          <Text style={styles.infoText}>{viewData.stepTwo.messages.infoPeriodLong}</Text>
+          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+            {viewData.stepTwo.messages.infoPeriodLong}
+          </Text>
         ) : null}
         {guidance.cycleShort ? (
-          <Text style={styles.infoText}>{viewData.stepTwo.messages.infoCycleShort}</Text>
+          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+            {viewData.stepTwo.messages.infoCycleShort}
+          </Text>
         ) : null}
       </View>
       {stepTwoError ? (
@@ -459,6 +428,7 @@ function StepTwoPanel({
       ) : null}
 
       <BinaryToggleCard
+        compact={compact}
         description={viewData.stepTwo.autoPeriodFillHint}
         descriptionPosition="below"
         icon="🩸"
@@ -469,6 +439,7 @@ function StepTwoPanel({
       />
 
       <BinaryToggleCard
+        compact={compact}
         description={viewData.stepTwo.irregularCycleHint}
         descriptionPosition="below"
         icon="〰️"
@@ -478,10 +449,14 @@ function StepTwoPanel({
         value={stepTwoValues.irregularCycle}
       />
 
-      <View style={styles.formGroup}>
-        <Text style={styles.fieldLabel}>{viewData.stepTwo.ageGroupLabel}</Text>
+      <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
+        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
+          {viewData.stepTwo.ageGroupLabel}
+        </Text>
         <ChoiceGroup
-          layout="stack"
+          compact={compact}
+          contentAlign={compact ? "center" : "leading"}
+          layout={compact ? "grid3" : "stack"}
           onSelect={onAgeGroupSelect}
           options={viewData.stepTwo.ageOptions}
           selectedValue={stepTwoValues.ageGroup}
@@ -489,10 +464,14 @@ function StepTwoPanel({
         />
       </View>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.fieldLabel}>{viewData.stepTwo.usageGoalLabel}</Text>
+      <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
+        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
+          {viewData.stepTwo.usageGoalLabel}
+        </Text>
         <ChoiceGroup
-          layout="stack"
+          compact={compact}
+          contentAlign={compact ? "center" : "leading"}
+          layout={compact ? "grid2" : "stack"}
           onSelect={onUsageGoalSelect}
           options={viewData.stepTwo.usageGoalOptions}
           selectedValue={stepTwoValues.usageGoal}
@@ -500,14 +479,16 @@ function StepTwoPanel({
         />
       </View>
 
-      <View style={styles.buttonRow}>
+      <View style={[styles.buttonRow, compact ? styles.buttonRowCompact : null]}>
         <SecondaryButton
+          compact={compact}
           label={viewData.stepTwo.backLabel}
           onPress={onBack}
           styles={styles}
           testID="onboarding-back-button"
         />
         <PrimaryButton
+          compact={compact}
           disabled={isSaving}
           label={viewData.stepTwo.finishLabel}
           onPress={onFinish}
@@ -520,6 +501,7 @@ function StepTwoPanel({
 }
 
 function DayOptionButton({
+  compact,
   columns,
   option,
   isSelected,
@@ -527,6 +509,7 @@ function DayOptionButton({
   width,
   styles,
 }: {
+  compact: boolean;
   columns: number;
   option: DayOption;
   isSelected: boolean;
@@ -550,6 +533,7 @@ function DayOptionButton({
       onPress={onPress}
       style={[
         styles.dayOptionButton,
+        compact ? styles.dayOptionButtonCompact : null,
         widthStyle,
         option.isToday ? styles.dayOptionButtonToday : null,
         isSelected ? styles.dayOptionButtonActive : null,
@@ -563,6 +547,7 @@ function DayOptionButton({
         <Text
           style={[
             styles.dayOptionSecondaryLabel,
+            compact ? styles.dayOptionSecondaryLabelCompact : null,
             isSelected ? styles.dayOptionLabelActive : null,
           ]}
         >
@@ -574,12 +559,14 @@ function DayOptionButton({
 }
 
 function PrimaryButton({
+  compact = false,
   label,
   onPress,
   disabled,
   styles,
   testID,
 }: {
+  compact?: boolean;
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -590,7 +577,11 @@ function PrimaryButton({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      style={[styles.primaryButton, disabled ? styles.buttonDisabled : null]}
+      style={[
+        styles.primaryButton,
+        compact ? styles.primaryButtonCompact : null,
+        disabled ? styles.buttonDisabled : null,
+      ]}
       testID={testID}
     >
       <Text style={styles.primaryButtonText}>{label}</Text>
@@ -599,39 +590,27 @@ function PrimaryButton({
 }
 
 function SecondaryButton({
+  compact = false,
   label,
   onPress,
   styles,
   testID,
 }: {
+  compact?: boolean;
   label: string;
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
   testID?: string;
 }) {
   return (
-    <Pressable onPress={onPress} style={styles.secondaryButton} testID={testID}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.secondaryButton, compact ? styles.secondaryButtonCompact : null]}
+      testID={testID}
+    >
       <Text style={styles.secondaryButtonText}>{label}</Text>
     </Pressable>
   );
-}
-
-function handleDatePickerChange(
-  event: DateTimePickerEvent,
-  value: Date | undefined,
-  setVisible: (value: boolean) => void,
-  onValidDate: (iso: string) => void,
-) {
-  if (event.type === "dismissed") {
-    setVisible(false);
-    return;
-  }
-
-  if (value) {
-    onValidDate(formatLocalDate(value));
-  }
-
-  setVisible(false);
 }
 
 function formatLongDate(value: Date, locale: string): string {
@@ -655,6 +634,10 @@ const createStyles = (colors: AppThemeColors) =>
       paddingVertical: 18,
       width: "100%",
     },
+    screenContentCompact: {
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
     heroCard: {
       backgroundColor: colors.surfaceElevated,
       borderColor: colors.lineSoft,
@@ -670,6 +653,11 @@ const createStyles = (colors: AppThemeColors) =>
       shadowRadius: 26,
       width: "100%",
     },
+    heroCardCompact: {
+      borderRadius: 18,
+      gap: 6,
+      padding: 14,
+    },
     loadingBlock: {
       alignItems: "center",
       paddingVertical: spacing.xl,
@@ -678,8 +666,14 @@ const createStyles = (colors: AppThemeColors) =>
       flex: 1,
       gap: 8,
     },
+    panelCompact: {
+      gap: 6,
+    },
     progressBlock: {
       gap: 6,
+    },
+    progressBlockCompact: {
+      gap: 4,
     },
     kicker: {
       color: colors.accent,
@@ -688,10 +682,16 @@ const createStyles = (colors: AppThemeColors) =>
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
+    kickerCompact: {
+      fontSize: 12,
+    },
     progressPanel: {
       backgroundColor: colors.surfaceTint,
       borderRadius: 14,
       padding: 6,
+    },
+    progressPanelCompact: {
+      padding: 5,
     },
     progressTrack: {
       backgroundColor: "rgba(232,196,168,0.35)",
@@ -710,18 +710,33 @@ const createStyles = (colors: AppThemeColors) =>
       fontWeight: "800",
       lineHeight: 31,
     },
+    heroTitleCompact: {
+      fontSize: 23,
+      lineHeight: 28,
+    },
     heroMuted: {
       color: colors.textMuted,
       fontSize: 13,
       lineHeight: 20,
+    },
+    heroMutedCompact: {
+      fontSize: 12,
+      lineHeight: 18,
     },
     helperText: {
       color: colors.textMuted,
       fontSize: 13,
       lineHeight: 19,
     },
+    helperTextCompact: {
+      fontSize: 12,
+      lineHeight: 17,
+    },
     formGroup: {
       gap: spacing.sm,
+    },
+    formGroupCompact: {
+      gap: spacing.xs,
     },
     dateFieldShell: {
       backgroundColor: colors.surfaceTint,
@@ -733,6 +748,11 @@ const createStyles = (colors: AppThemeColors) =>
       minHeight: 72,
       paddingHorizontal: 12,
       paddingVertical: 9,
+    },
+    dateFieldShellCompact: {
+      minHeight: 64,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
     },
     selectedDateLabel: {
       color: colors.textMuted,
@@ -754,9 +774,15 @@ const createStyles = (colors: AppThemeColors) =>
       flexWrap: "wrap",
       gap: 6,
     },
+    dayOptionGridCompact: {
+      gap: 4,
+    },
     dayOptionScroll: {
       flexGrow: 1,
       minHeight: 272,
+    },
+    dayOptionScrollCompact: {
+      minHeight: 232,
     },
     dayOptionButton: {
       backgroundColor: colors.surfaceTint,
@@ -767,6 +793,12 @@ const createStyles = (colors: AppThemeColors) =>
       minHeight: 40,
       paddingHorizontal: 8,
       paddingVertical: 6,
+    },
+    dayOptionButtonCompact: {
+      borderRadius: 10,
+      minHeight: 36,
+      paddingHorizontal: 6,
+      paddingVertical: 5,
     },
     dayOptionButtonThreeColumns: {
       flexBasis: "31.8%",
@@ -794,6 +826,10 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 10,
       marginTop: 2,
     },
+    dayOptionSecondaryLabelCompact: {
+      fontSize: 9,
+      marginTop: 1,
+    },
     dayOptionLabelActive: {
       color: colors.accentStrong,
     },
@@ -802,17 +838,30 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 13,
       fontWeight: "700",
     },
+    fieldLabelCompact: {
+      fontSize: 12,
+    },
     messageStack: {
       gap: spacing.xs,
+    },
+    messageStackCompact: {
+      gap: 4,
     },
     infoText: {
       color: colors.textMuted,
       fontSize: 13,
       lineHeight: 19,
     },
+    infoTextCompact: {
+      fontSize: 12,
+      lineHeight: 17,
+    },
     buttonRow: {
       flexDirection: "row",
       gap: 10,
+    },
+    buttonRowCompact: {
+      gap: 8,
     },
     primaryButton: {
       alignItems: "center",
@@ -821,6 +870,7 @@ const createStyles = (colors: AppThemeColors) =>
       borderRadius: 999,
       borderWidth: 1,
       flex: 1,
+      justifyContent: "center",
       minHeight: 42,
       paddingHorizontal: 18,
       paddingVertical: 9,
@@ -829,10 +879,16 @@ const createStyles = (colors: AppThemeColors) =>
       shadowOpacity: 0.22,
       shadowRadius: 16,
     },
+    primaryButtonCompact: {
+      minHeight: 40,
+      paddingHorizontal: 16,
+      paddingVertical: 0,
+    },
     primaryButtonText: {
       color: "#ffffff",
       fontSize: 14,
       fontWeight: "700",
+      textAlign: "center",
     },
     secondaryButton: {
       alignItems: "center",
@@ -841,14 +897,21 @@ const createStyles = (colors: AppThemeColors) =>
       borderRadius: 999,
       borderWidth: 1,
       flex: 1,
+      justifyContent: "center",
       minHeight: 42,
       paddingHorizontal: 18,
       paddingVertical: 9,
+    },
+    secondaryButtonCompact: {
+      minHeight: 40,
+      paddingHorizontal: 16,
+      paddingVertical: 0,
     },
     secondaryButtonText: {
       color: colors.text,
       fontSize: 14,
       fontWeight: "700",
+      textAlign: "center",
     },
     buttonDisabled: {
       opacity: 0.6,

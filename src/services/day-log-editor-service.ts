@@ -35,8 +35,6 @@ export type DayLogEditorViewData = {
     cycleFactorsHint: string;
     flow: string;
     intimacy: string;
-    intimacyHiddenHint: string;
-    intimacyVisibleHint: string;
     cervicalMucus: string;
     cervicalMucusExplainer: string;
     bbt: string;
@@ -171,8 +169,6 @@ export function buildDayLogEditorViewData(
       cycleFactorsHint: dayLogCopy.cycleFactorsHint,
       flow: dayLogCopy.flow,
       intimacy: dayLogCopy.intimacy,
-      intimacyHiddenHint: dayLogCopy.intimacyHiddenHint,
-      intimacyVisibleHint: dayLogCopy.intimacyVisibleHint,
       cervicalMucus: dayLogCopy.cervicalMucus,
       cervicalMucusExplainer: dayLogCopy.cervicalMucusExplainer,
       bbt: dayLogCopy.bbt,

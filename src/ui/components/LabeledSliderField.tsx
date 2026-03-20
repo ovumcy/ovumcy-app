@@ -15,6 +15,7 @@ type LabeledSliderFieldProps = {
   testID: string;
   valueSuffix?: string;
   showRange?: boolean;
+  compact?: boolean;
 };
 
 export function LabeledSliderField({
@@ -27,6 +28,7 @@ export function LabeledSliderField({
   testID,
   valueSuffix = "",
   showRange = false,
+  compact = false,
 }: LabeledSliderFieldProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -34,8 +36,10 @@ export function LabeledSliderField({
   return (
     <View style={styles.group}>
       <View style={styles.row}>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.inlineValue}>
+        <Text style={[styles.label, compact ? styles.labelCompact : null]}>
+          {label}
+        </Text>
+        <Text style={[styles.inlineValue, compact ? styles.inlineValueCompact : null]}>
           {value}
           {valueSuffix}
         </Text>
@@ -48,24 +52,24 @@ export function LabeledSliderField({
         minimumValue={minimumValue}
         onValueChange={onValueChange}
         step={1}
-        style={styles.slider}
+        style={[styles.slider, compact ? styles.sliderCompact : null]}
         testID={testID}
         thumbTintColor={colors.accentStrong}
         value={value}
       />
       {showRange ? (
         <View style={styles.rangeRow}>
-          <Text style={styles.rangeLabel}>
+          <Text style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}>
             {minimumValue}
             {valueSuffix}
           </Text>
-          <Text style={styles.rangeLabel}>
+          <Text style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}>
             {maximumValue}
             {valueSuffix}
           </Text>
         </View>
       ) : null}
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {hint ? <Text style={[styles.hint, compact ? styles.hintCompact : null]}>{hint}</Text> : null}
     </View>
   );
 }
@@ -85,14 +89,23 @@ const createStyles = (colors: AppThemeColors) =>
     fontSize: 14,
     fontWeight: "700",
   },
+  labelCompact: {
+    fontSize: 13,
+  },
   inlineValue: {
     color: colors.textMuted,
     fontSize: 13,
     fontWeight: "600",
   },
+  inlineValueCompact: {
+    fontSize: 12,
+  },
   slider: {
     height: 36,
     width: "100%",
+  },
+  sliderCompact: {
+    height: 28,
   },
   rangeRow: {
     flexDirection: "row",
@@ -103,9 +116,16 @@ const createStyles = (colors: AppThemeColors) =>
     fontSize: 12,
     fontWeight: "600",
   },
+  rangeLabelCompact: {
+    fontSize: 11,
+  },
   hint: {
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 19,
+  },
+  hintCompact: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   });

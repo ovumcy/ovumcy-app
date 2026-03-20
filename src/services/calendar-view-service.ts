@@ -82,6 +82,7 @@ export type CalendarViewData = {
   nextMonthValue: string;
   usageGoal: ProfileRecord["usageGoal"];
   isPredictionDisabled: boolean;
+  predictionNotice: string | null;
   days: CalendarDayCellViewData[];
   actions: {
     prevLabel: string;
@@ -235,6 +236,11 @@ export function buildCalendarViewData(
     nextMonthValue: formatMonthValue(addMonth(monthStart, 1)),
     usageGoal: profile.usageGoal,
     isPredictionDisabled: profile.unpredictableCycle,
+    predictionNotice: profile.unpredictableCycle
+      ? calendarCopy.predictionModeUnpredictable
+      : profile.irregularCycle
+        ? calendarCopy.predictionModeIrregular
+        : null,
     days,
     actions: {
       prevLabel: calendarCopy.prev,

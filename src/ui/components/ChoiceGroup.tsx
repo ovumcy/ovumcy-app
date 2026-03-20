@@ -58,6 +58,7 @@ export function ChoiceGroup<T extends string | number>({
     <View
       style={[
         styles.group,
+        compact ? styles.groupCompact : null,
         resolvedColumnCount === 5 ? styles.groupFive : null,
         resolvedColumnCount > 1 ? styles.groupWrapped : null,
       ]}
@@ -115,6 +116,9 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
   group: {
     gap: spacing.sm,
+  },
+  groupCompact: {
+    gap: spacing.xs,
   },
   groupFive: {
     columnGap: 0,

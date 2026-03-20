@@ -161,9 +161,15 @@ function buildStatusItems(
 
   if (profile.irregularCycle && summary.nextPeriodDate) {
     items.push(
-      `${dashboardCopy.nextPeriod}: around ${formatDisplayDate(summary.nextPeriodDate, locale)}`,
+      `${dashboardCopy.nextPeriod}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(summary.nextPeriodDate, locale)}`,
     );
-    items.push(dashboardCopy.nextPeriodNeedsCycles);
+    if (summary.ovulationDate) {
+      items.push(
+        `${dashboardCopy.ovulation}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(summary.ovulationDate, locale)}`,
+      );
+    } else {
+      items.push(`${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`);
+    }
     return items;
   }
 

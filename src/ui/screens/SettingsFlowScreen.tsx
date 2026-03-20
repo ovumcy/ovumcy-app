@@ -234,6 +234,23 @@ export function SettingsFlowScreen({
   const exportPickerMinimumDate = parseLocalDate(state.exportState.bounds.minDate ?? "");
   const exportPickerMaximumDate = parseLocalDate(state.exportState.bounds.maxDate ?? "");
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
+  const irregularCycleDescription = state.cycleValues.unpredictableCycle
+    ? viewData.cycle.irregularCycleIgnoredHint
+    : viewData.cycle.irregularCycleHint;
+  const irregularCycleStateText = state.cycleValues.unpredictableCycle
+    ? viewData.cycle.irregularCycleIgnoredState
+    : state.cycleValues.irregularCycle
+      ? viewData.cycle.irregularCycleApproximateState
+      : undefined;
+  const unpredictableCycleStateText = state.cycleValues.unpredictableCycle
+    ? viewData.cycle.unpredictableCycleFactsOnlyState
+    : undefined;
+  const irregularCycleStateProps = irregularCycleStateText
+    ? { stateText: irregularCycleStateText }
+    : {};
+  const unpredictableCycleStateProps = unpredictableCycleStateText
+    ? { stateText: unpredictableCycleStateText }
+    : {};
 
   return (
     <AppScreenSurface>
@@ -382,13 +399,14 @@ export function SettingsFlowScreen({
         />
 
         <BinaryToggleCard
-          description={viewData.cycle.irregularCycleHint}
+          description={irregularCycleDescription}
           descriptionPosition="below"
           icon="〰️"
           label={viewData.cycle.irregularCycleLabel}
           onValueChange={onIrregularCycleChange}
           testID="settings-toggle-irregular-cycle"
           value={state.cycleValues.irregularCycle}
+          {...irregularCycleStateProps}
         />
 
         <BinaryToggleCard
@@ -399,6 +417,7 @@ export function SettingsFlowScreen({
           onValueChange={onUnpredictableCycleChange}
           testID="settings-toggle-unpredictable-cycle"
           value={state.cycleValues.unpredictableCycle}
+          {...unpredictableCycleStateProps}
         />
 
         <View style={styles.formGroup}>

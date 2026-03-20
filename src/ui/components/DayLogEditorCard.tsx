@@ -190,25 +190,18 @@ export function DayLogEditorCard({
         />
       </View>
 
-      <View onLayout={handleSectionLayout("intimacy")} style={styles.section}>
-        <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
-        {viewData.visibility.showSexActivity ? (
-          <>
-            <Text style={styles.sectionHint}>
-              {viewData.labels.intimacyVisibleHint}
-            </Text>
-            <ChoiceGroup
-              compact
-              onSelect={(value) => onPatch({ sexActivity: value })}
-              options={viewData.options.sexActivity}
-              selectedValue={record.sexActivity}
-              testIDPrefix="day-log-sex"
-            />
-          </>
-        ) : (
-          <Text style={styles.sectionHint}>{viewData.labels.intimacyHiddenHint}</Text>
-        )}
-      </View>
+      {viewData.visibility.showSexActivity ? (
+        <View onLayout={handleSectionLayout("intimacy")} style={styles.section}>
+          <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
+          <ChoiceGroup
+            compact
+            onSelect={(value) => onPatch({ sexActivity: value })}
+            options={viewData.options.sexActivity}
+            selectedValue={record.sexActivity}
+            testIDPrefix="day-log-sex"
+          />
+        </View>
+      ) : null}
 
       {showsCalendarOrder ? (
         <>

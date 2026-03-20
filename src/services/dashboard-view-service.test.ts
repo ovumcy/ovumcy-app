@@ -107,7 +107,7 @@ describe("dashboard-view-service", () => {
     });
   });
 
-  it("does not duplicate irregular-cycle reliability hints", () => {
+  it("shows approximate guidance when irregular cycle mode is enabled", () => {
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-03-10",
       cycleLength: 29,
@@ -149,7 +149,13 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.statusItems).toContain("3 cycles are needed for a reliable range");
-    expect(viewData.predictionExplanation).toBe("");
+    expect(viewData.statusItems).toEqual([
+      "Cycle day 8",
+      "Next period: around Apr 8",
+      "Ovulation: around Mar 25",
+    ]);
+    expect(viewData.predictionExplanation).toBe(
+      "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
+    );
   });
 });

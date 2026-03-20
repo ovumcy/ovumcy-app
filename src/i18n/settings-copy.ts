@@ -35,15 +35,20 @@ const settingsCopyEn = {
       "When enabled, marking the first day auto-fills the next days based on your period length.",
     irregularCycle: "I have an irregular cycle",
     irregularCycleHint:
-      "Turn this on if your cycles vary by more than 7 days. Ranges will be used for next period and ovulation instead of a single date.",
+      "Turn this on if your cycles vary by more than 7 days. Ovumcy still shows predictions, but they should be read as approximate guidance.",
+    irregularCycleIgnoredHint:
+      "Predictions are already in facts-only mode because unpredictable cycle is enabled below.",
+    irregularCycleApproximateState: "Approximate",
+    irregularCycleIgnoredState: "Ignored",
     unpredictableCycle: "My cycle is unpredictable (PCOS, perimenopause, etc.)",
     unpredictableCycleHint:
-      "Turns date prediction off completely and keeps the dashboard focused on recorded facts only.",
+      "Turns date predictions off completely. Dashboard and calendar show recorded facts and saved markers only.",
+    unpredictableCycleFactsOnlyState: "Facts only",
     save: "Save Changes",
   },
   ageGroup: {
     title: "Age group",
-    hint: "Optional. If you are 35+, Ovumcy widens the prediction range by one extra day.",
+    hint: "Optional. Right now this adds age-related context in Insights only. It does not change cycle calculations.",
     under20: "Under 20",
     age20to35: "20-35",
     age35plus: "35+",
@@ -340,15 +345,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Когда опция включена, отметка первого дня автоматически заполнит следующие дни по длительности менструации.",
       irregularCycle: "У меня нерегулярный цикл",
       irregularCycleHint:
-        "Включите, если ваши циклы отличаются больше чем на 7 дней. Для следующей менструации и овуляции будут использоваться диапазоны вместо одной даты.",
+        "Включите, если ваши циклы отличаются больше чем на 7 дней. Ovumcy всё ещё показывает предсказания, но их нужно читать как приблизительный ориентир.",
+      irregularCycleIgnoredHint:
+        "Ниже уже включён режим только фактов, поэтому этот переключатель сейчас не влияет на предсказания.",
+      irregularCycleApproximateState: "Приблизительно",
+      irregularCycleIgnoredState: "Игнорируется",
       unpredictableCycle: "Мой цикл непредсказуем (СПКЯ, перименопауза и т. д.)",
       unpredictableCycleHint:
-        "Полностью отключает предсказания дат и оставляет dashboard сфокусированным только на записанных фактах.",
+        "Полностью отключает предсказания дат. Dashboard и календарь показывают только записанные факты и сохранённые отметки.",
+      unpredictableCycleFactsOnlyState: "Только факты",
       save: "Сохранить изменения",
     },
     ageGroup: {
       title: "Возрастная группа",
-      hint: "Необязательно. Если вам 35+, Ovumcy расширяет диапазон предсказания ещё на один день.",
+      hint: "Необязательно. Сейчас это добавляет только возрастной контекст в Insights и не меняет расчёт цикла.",
       under20: "Младше 20",
       age20to35: "20-35",
       age35plus: "35+",
@@ -647,15 +657,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Cuando está activado, marcar el primer día completa automáticamente los siguientes días según la duración del período.",
       irregularCycle: "Tengo un ciclo irregular",
       irregularCycleHint:
-        "Actívalo si tus ciclos varían más de 7 días. Se usarán rangos para el próximo período y la ovulación.",
+        "Actívalo si tus ciclos varían más de 7 días. Ovumcy seguirá mostrando predicciones, pero deben leerse como una guía aproximada.",
+      irregularCycleIgnoredHint:
+        "Las predicciones ya están en modo solo hechos porque el ciclo impredecible está activado abajo.",
+      irregularCycleApproximateState: "Aproximado",
+      irregularCycleIgnoredState: "Ignorado",
       unpredictableCycle: "Mi ciclo es impredecible (SOP, perimenopausia, etc.)",
       unpredictableCycleHint:
-        "Desactiva por completo las predicciones de fechas y mantiene el dashboard centrado en los hechos registrados.",
+        "Desactiva por completo las predicciones de fechas. Dashboard y calendario muestran solo hechos registrados y marcadores guardados.",
+      unpredictableCycleFactsOnlyState: "Solo hechos",
       save: "Guardar cambios",
     },
     ageGroup: {
       title: "Grupo de edad",
-      hint: "Opcional. Si tienes 35+, Ovumcy amplía el rango de predicción un día más.",
+      hint: "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Insights. No cambia los cálculos del ciclo.",
       under20: "Menos de 20",
       age20to35: "20-35",
       age35plus: "35+",

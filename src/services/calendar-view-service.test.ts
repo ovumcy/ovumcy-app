@@ -149,6 +149,66 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("adds an approximate prediction notice when irregular cycle mode is enabled", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-14",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: true,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+      },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+
+    expect(viewData.isPredictionDisabled).toBe(false);
+    expect(viewData.predictionNotice).toBe(
+      "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
+    );
+  });
+
+  it("shows a facts-only notice when unpredictable cycle mode disables calendar predictions", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-14",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: true,
+        unpredictableCycle: true,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+      },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+
+    expect(viewData.isPredictionDisabled).toBe(true);
+    expect(viewData.predictionNotice).toBe(
+      "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+    );
+  });
+
   it("explains saved markers separately from the selected day meaning", async () => {
     const storage = createVolatileWebAppStorage();
     await storage.writeProfileRecord({

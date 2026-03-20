@@ -13,6 +13,7 @@ type BinaryToggleCardProps = {
   stateText?: string;
   testID?: string;
   descriptionPosition?: "inside" | "below";
+  compact?: boolean;
 };
 
 export function BinaryToggleCard({
@@ -24,6 +25,7 @@ export function BinaryToggleCard({
   stateText,
   testID,
   descriptionPosition = "inside",
+  compact = false,
 }: BinaryToggleCardProps) {
   const styles = useThemedStyles(createStyles);
   const descriptionText = description?.trim() ?? "";
@@ -38,6 +40,7 @@ export function BinaryToggleCard({
         onPress={() => onValueChange(!value)}
         style={({ pressed }) => [
           styles.shell,
+          compact ? styles.shellCompact : null,
           value ? styles.shellActive : null,
           pressed ? styles.shellPressed : null,
         ]}
@@ -45,14 +48,16 @@ export function BinaryToggleCard({
       >
         <View style={styles.copy}>
           <View style={styles.labelRow}>
-            <Text style={styles.label}>
+            <Text style={[styles.label, compact ? styles.labelCompact : null]}>
               {icon ? `${icon} ` : ""}
               {label}
             </Text>
             {stateText ? <Text style={styles.stateBadge}>{stateText}</Text> : null}
           </View>
           {showDescriptionInside && showDescription ? (
-            <Text style={styles.description}>{descriptionText}</Text>
+            <Text style={[styles.description, compact ? styles.descriptionCompact : null]}>
+              {descriptionText}
+            </Text>
           ) : null}
         </View>
         <View style={styles.controlColumn}>
@@ -66,7 +71,9 @@ export function BinaryToggleCard({
         </View>
       </Pressable>
       {!showDescriptionInside && showDescription ? (
-        <Text style={styles.description}>{descriptionText}</Text>
+        <Text style={[styles.description, compact ? styles.descriptionCompact : null]}>
+          {descriptionText}
+        </Text>
       ) : null}
     </View>
   );
@@ -88,6 +95,11 @@ const createStyles = (colors: AppThemeColors) =>
     minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 6,
+  },
+  shellCompact: {
+    minHeight: 40,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   shellActive: {
     backgroundColor: colors.toggleCardActiveBg,
@@ -112,10 +124,17 @@ const createStyles = (colors: AppThemeColors) =>
     fontSize: 14,
     fontWeight: "600",
   },
+  labelCompact: {
+    fontSize: 13,
+  },
   description: {
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 17,
+  },
+  descriptionCompact: {
+    fontSize: 11,
+    lineHeight: 15,
   },
   stateBadge: {
     alignSelf: "flex-start",

@@ -509,6 +509,23 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("shows the effective cycle mode and honest age-group contract", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    expect(screen.getByText(/Insights/i)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("settings-toggle-irregular-cycle"));
+    expect(screen.getByText(/Approximate|Приблизительно|Aproximado/)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("settings-toggle-unpredictable-cycle"));
+    expect(screen.getByText(/Ignored|Игнорируется|Ignorado/)).toBeTruthy();
+    expect(screen.getByText(/Facts only|Только факты|Solo hechos/)).toBeTruthy();
+  });
+
   it("saves cycle changes before leaving settings when the general guard accepts saving", async () => {
     const storage = createStorageMock();
     mockOpenConfirmation.mockResolvedValue(true);

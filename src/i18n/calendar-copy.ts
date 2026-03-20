@@ -13,6 +13,10 @@ const calendarCopyEn = {
   addEntry: "Add entry",
   editEntry: "Edit entry",
   cancelEdit: "Cancel",
+  predictionModeIrregular:
+    "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
+  predictionModeUnpredictable:
+    "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
   calendarMeaning: "Calendar meaning",
   calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
@@ -66,6 +70,10 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Добавить запись",
     editEntry: "Изменить запись",
     cancelEdit: "Отмена",
+    predictionModeIrregular:
+      "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
+    predictionModeUnpredictable:
+      "Включён непредсказуемый режим цикла. Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
     calendarMeaning: "Что означает день",
     calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
@@ -114,6 +122,10 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Añadir registro",
     editEntry: "Editar registro",
     cancelEdit: "Cancelar",
+    predictionModeIrregular:
+      "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",
+    predictionModeUnpredictable:
+      "El modo de ciclo impredecible está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
     calendarMeaning: "Qué significa este día",
     calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",

@@ -24,12 +24,11 @@ const appCopyEn = {
       day1Tip: "Day 1 is the first day of full flow, not spotting.",
       privacy:
         "All your data stays on this device unless you choose sync later. Core tracking does not require an account.",
-      today: "Today",
-      yesterday: "Yesterday",
-      twoDaysAgo: "2 days ago",
-      changeDate: "Open calendar",
-      datePlaceholder: "dd.mm.yyyy",
-      selectedDate: "Selected date",
+        today: "Today",
+        yesterday: "Yesterday",
+        twoDaysAgo: "2 days ago",
+        datePlaceholder: "dd.mm.yyyy",
+        selectedDate: "Selected date",
     },
     step2: {
       title: "Set up cycle parameters",
@@ -55,10 +54,10 @@ const appCopyEn = {
         "When enabled, marking the first day auto-fills the next days based on your period length.",
       irregularCycle: "My cycle is usually irregular",
       irregularCycleHint:
-        "Turn this on if your cycles vary by more than 7 days. Ranges will be used for next period and ovulation instead of a single date.",
+        "Turn this on if your cycles vary by more than 7 days. Ovumcy still shows predictions, but they should be read as approximate guidance.",
       ageGroup: "Your age",
       ageGroupHint:
-        "Optional. This helps widen the prediction range when cycle variability is naturally higher.",
+        "Optional. Right now this adds age-related context in Insights only. It does not change cycle calculations.",
       usageGoal: "Why are you using Ovumcy?",
       usageGoalHint:
         "Optional. This changes UI emphasis only, not the prediction algorithm.",
@@ -112,7 +111,6 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         today: "Сегодня",
         yesterday: "Вчера",
         twoDaysAgo: "2 дня назад",
-        changeDate: "Открыть календарь",
         datePlaceholder: "дд.мм.гггг",
         selectedDate: "Выбранная дата",
       },
@@ -140,10 +138,10 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Когда опция включена, отметка первого дня автоматически заполнит следующие дни на основе длительности менструации.",
         irregularCycle: "Мой цикл обычно нерегулярный",
         irregularCycleHint:
-          "Включите, если ваши циклы отличаются более чем на 7 дней. Для следующей менструации и овуляции будут использоваться диапазоны вместо одной даты.",
+          "Включите, если ваши циклы отличаются более чем на 7 дней. Ovumcy всё ещё показывает предсказания, но их нужно читать как приблизительный ориентир.",
         ageGroup: "Ваш возраст",
         ageGroupHint:
-          "Необязательно. Это помогает расширить диапазон предсказания, когда вариативность цикла естественно выше.",
+          "Необязательно. Сейчас это добавляет только возрастной контекст в Insights и не меняет расчёт цикла.",
         usageGoal: "Зачем вы используете Ovumcy?",
         usageGoalHint:
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм предсказания.",
@@ -193,7 +191,6 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         today: "Hoy",
         yesterday: "Ayer",
         twoDaysAgo: "Hace 2 días",
-        changeDate: "Abrir calendario",
         datePlaceholder: "dd.mm.aaaa",
         selectedDate: "Fecha seleccionada",
       },
@@ -221,10 +218,10 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Cuando está activado, marcar el primer día completa automáticamente los días siguientes según la duración del período.",
         irregularCycle: "Mi ciclo suele ser irregular",
         irregularCycleHint:
-          "Actívalo si tus ciclos varían más de 7 días. Se usarán rangos para el próximo período y la ovulación en lugar de una sola fecha.",
+          "Actívalo si tus ciclos varían más de 7 días. Ovumcy seguirá mostrando predicciones, pero deben leerse como una guía aproximada.",
         ageGroup: "Tu edad",
         ageGroupHint:
-          "Opcional. Esto ayuda a ampliar el rango de predicción cuando la variabilidad del ciclo es naturalmente mayor.",
+          "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Insights. No cambia los cálculos del ciclo.",
         usageGoal: "¿Por qué usas Ovumcy?",
         usageGoalHint:
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",

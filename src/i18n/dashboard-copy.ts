@@ -6,13 +6,13 @@ const dashboardCopyEn = {
   cycleDay: "Cycle day",
   nextPeriod: "Next period",
   nextPeriodUnknown: "unknown",
-  nextPeriodNeedsCycles: "3 cycles are needed for a reliable range",
   nextPeriodPrompt: "Enter the start date of your last cycle",
+  approximateDatePrefix: "around",
   ovulation: "Ovulation",
-  ovulationNeedsCycles:
-    "3 completed cycles are needed before Ovumcy shows an ovulation range",
   ovulationUnavailable: "Cannot be calculated",
   predictionsOff: "Predictions off",
+  predictionsApproximateHint:
+    "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
   factsOnlyHint:
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
   todayEditor: "Today journal",
@@ -29,8 +29,6 @@ const dashboardCopyEn = {
   cycleFactorsHint:
     "Optional context tags for things that may affect cycle timing.",
   intimacy: "Intimacy",
-  intimacyHiddenHint: "This section is hidden in settings.",
-  sexSettingsHint: "You can hide this section in settings.",
   cervicalMucus: "Cervical mucus",
   cervicalMucusExplainer:
     "Cervical mucus means vaginal discharge. Egg-white mucus usually appears near peak fertility.",
@@ -67,13 +65,13 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleDay: "День цикла",
     nextPeriod: "Следующая менструация",
     nextPeriodUnknown: "неизвестно",
-    nextPeriodNeedsCycles: "Для надёжного диапазона нужно 3 цикла",
     nextPeriodPrompt: "Введите дату начала последнего цикла",
+    approximateDatePrefix: "примерно",
     ovulation: "Овуляция",
-    ovulationNeedsCycles:
-      "Нужно 3 завершённых цикла, прежде чем Ovumcy покажет диапазон овуляции",
     ovulationUnavailable: "Не вычисляется",
     predictionsOff: "Предсказания выключены",
+    predictionsApproximateHint:
+      "В режиме нерегулярного цикла предсказания остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
     factsOnlyHint:
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
     todayEditor: "Сегодняшний журнал",
@@ -90,8 +88,6 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleFactorsHint:
       "Необязательные теги-контекст, которые могут влиять на тайминг цикла.",
     intimacy: "Близость",
-    intimacyHiddenHint: "Этот раздел скрыт в настройках.",
-    sexSettingsHint: "Этот раздел можно скрыть в настройках.",
     cervicalMucus: "Цервикальная слизь",
     cervicalMucusExplainer:
       "Цервикальная слизь означает вагинальные выделения. Выделения как яичный белок обычно появляются ближе к пику фертильности.",
@@ -125,13 +121,13 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleDay: "Día del ciclo",
     nextPeriod: "Próximo período",
     nextPeriodUnknown: "desconocido",
-    nextPeriodNeedsCycles: "Se necesitan 3 ciclos para un rango fiable",
     nextPeriodPrompt: "Introduce la fecha de inicio de tu último ciclo",
+    approximateDatePrefix: "aproximadamente",
     ovulation: "Ovulación",
-    ovulationNeedsCycles:
-      "Se necesitan 3 ciclos completos antes de que Ovumcy muestre un rango de ovulación",
     ovulationUnavailable: "No se puede calcular",
     predictionsOff: "Predicciones desactivadas",
+    predictionsApproximateHint:
+      "El modo de ciclo irregular mantiene visibles las predicciones, pero deben leerse como una guía aproximada y no como fechas exactas.",
     factsOnlyHint:
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
     todayEditor: "Registro de hoy",
@@ -148,8 +144,6 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleFactorsHint:
       "Etiquetas opcionales para cosas que pueden afectar el momento del ciclo.",
     intimacy: "Intimidad",
-    intimacyHiddenHint: "Esta sección está oculta en ajustes.",
-    sexSettingsHint: "Puedes ocultar esta sección en ajustes.",
     cervicalMucus: "Moco cervical",
     cervicalMucusExplainer:
       "Moco cervical significa flujo vaginal. El moco tipo clara de huevo suele aparecer cerca del pico fértil.",

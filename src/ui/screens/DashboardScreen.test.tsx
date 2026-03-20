@@ -58,6 +58,7 @@ describe("DashboardScreen", () => {
     await screen.findByTestId("day-log-save-button");
 
     expect(screen.queryByTestId("day-log-sex-none")).toBeNull();
+    expect(screen.queryByText("Intimacy")).toBeNull();
     expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
     expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
   });

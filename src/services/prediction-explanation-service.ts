@@ -18,7 +18,7 @@ export function buildPredictionExplanation(
   }
 
   if (profile.irregularCycle) {
-    return "";
+    return dashboardCopy.predictionsApproximateHint;
   }
 
   if (!projection.ovulationDate) {

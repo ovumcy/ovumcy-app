@@ -53,7 +53,6 @@ function renderFlow(state: LoadedOnboardingState) {
       )}
       isSaving={false}
       locale="en"
-      now={now}
       onAutoPeriodFillChange={jest.fn()}
       onAgeGroupSelect={jest.fn()}
       onBack={jest.fn()}
@@ -83,6 +82,42 @@ describe("OnboardingFlowScreen", () => {
     ).toBeTruthy();
     expect(screen.getByTestId("onboarding-day-option-2026-03-17")).toBeTruthy();
     expect(screen.getByTestId("onboarding-day-option-2026-03-16")).toBeTruthy();
+    expect(screen.queryByTestId("onboarding-date-field-button")).toBeNull();
+  });
+
+  it("uses quick day options as the only step 1 date selection path", () => {
+    const onDateSelected = jest.fn();
+    const state = createState();
+    const now = new Date(2026, 2, 17);
+
+    render(
+      <OnboardingFlowScreen
+        guidance={buildCycleGuidanceState(
+          state.stepTwoValues.cycleLength,
+          state.stepTwoValues.periodLength,
+        )}
+        isSaving={false}
+        locale="en"
+        onAutoPeriodFillChange={jest.fn()}
+        onAgeGroupSelect={jest.fn()}
+        onBack={jest.fn()}
+        onCycleLengthChange={jest.fn()}
+        onDateSelected={onDateSelected}
+        onFinish={jest.fn()}
+        onIrregularCycleChange={jest.fn()}
+        onNext={jest.fn()}
+        onPeriodLengthChange={jest.fn()}
+        onUsageGoalSelect={jest.fn()}
+        state={state}
+        stepOneError=""
+        stepTwoError=""
+        viewData={buildOnboardingViewData(state.record, now, "en")}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-16"));
+
+    expect(onDateSelected).toHaveBeenCalledWith("2026-03-16");
   });
 
   it("surfaces step 2 controls and forwards primary callbacks", () => {
@@ -105,7 +140,6 @@ describe("OnboardingFlowScreen", () => {
         )}
         isSaving={false}
         locale="en"
-        now={now}
         onAutoPeriodFillChange={jest.fn()}
         onAgeGroupSelect={jest.fn()}
         onBack={jest.fn()}

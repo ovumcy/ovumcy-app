@@ -14,8 +14,6 @@ const dayLogCopyEn = {
     "Optional context tags for things that may affect timing this cycle.",
   flow: "Flow",
   intimacy: "Intimacy",
-  intimacyHiddenHint: "This section is hidden in settings.",
-  intimacyVisibleHint: "This section follows your current settings.",
   cervicalMucus: "Cervical mucus",
   cervicalMucusExplainer:
     "Cervical mucus means vaginal discharge. Egg-white mucus often appears near peak fertility.",
@@ -91,8 +89,6 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       "Необязательные теги-контекст для того, что могло повлиять на тайминг этого цикла.",
     flow: "Интенсивность",
     intimacy: "Близость",
-    intimacyHiddenHint: "Этот раздел скрыт в настройках.",
-    intimacyVisibleHint: "Этот раздел следует текущим настройкам.",
     cervicalMucus: "Цервикальная слизь",
     cervicalMucusExplainer:
       "Цервикальная слизь означает вагинальные выделения. Выделения как яичный белок часто появляются ближе к пику фертильности.",
@@ -158,8 +154,6 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       "Etiquetas opcionales para cosas que pueden afectar el momento de este ciclo.",
     flow: "Flujo",
     intimacy: "Intimidad",
-    intimacyHiddenHint: "Esta sección está oculta en ajustes.",
-    intimacyVisibleHint: "Esta sección sigue tus ajustes actuales.",
     cervicalMucus: "Moco cervical",
     cervicalMucusExplainer:
       "El moco cervical es el flujo vaginal. El moco tipo clara de huevo suele aparecer cerca del pico fértil.",

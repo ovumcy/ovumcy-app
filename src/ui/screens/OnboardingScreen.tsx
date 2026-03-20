@@ -126,7 +126,6 @@ export function OnboardingScreen({
       guidance={readyGuidance}
       isSaving={isSaving}
       locale={locale}
-      now={now}
       onAutoPeriodFillChange={(value) => {
         setState((current) =>
           current

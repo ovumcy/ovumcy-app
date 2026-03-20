@@ -20,6 +20,7 @@ import { AppButton } from "../components/AppButton";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
+import { StatusBanner } from "../components/StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
@@ -125,6 +126,13 @@ export function CalendarOverviewScreen({
         <View style={[styles.mainGrid, isWide ? styles.mainGridWide : null]}>
           <View style={styles.monthColumn}>
             <View style={styles.monthCard}>
+              {viewData.predictionNotice ? (
+                <StatusBanner
+                  message={viewData.predictionNotice}
+                  testID="calendar-prediction-mode-banner"
+                  tone="info"
+                />
+              ) : null}
               <CalendarMonthGrid
                 days={viewData.days}
                 onSelectDay={(day) => {

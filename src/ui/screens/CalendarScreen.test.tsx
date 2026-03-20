@@ -156,4 +156,32 @@ describe("CalendarScreen", () => {
     expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy();
     expect(screen.queryByTestId("day-log-save-button")).toBeNull();
   });
+
+  it("shows an approximate prediction notice when irregular cycle mode is enabled", async () => {
+    const storage = createStorageMock();
+    storage.readProfileRecord = jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+    });
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("calendar-prev-button");
+    expect(screen.getByTestId("calendar-prediction-mode-banner")).toBeTruthy();
+    expect(
+      screen.getByText(/approximate guidance|приблизительный ориентир|guía aproximada/i),
+    ).toBeTruthy();
+  });
 });

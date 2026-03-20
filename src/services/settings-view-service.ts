@@ -39,8 +39,12 @@ export type SettingsViewData = {
     autoPeriodFillHint: string;
     irregularCycleLabel: string;
     irregularCycleHint: string;
+    irregularCycleIgnoredHint: string;
+    irregularCycleApproximateState: string;
+    irregularCycleIgnoredState: string;
     unpredictableCycleLabel: string;
     unpredictableCycleHint: string;
+    unpredictableCycleFactsOnlyState: string;
     saveLabel: string;
     messages: {
       errorIncompatible: string;
@@ -299,8 +303,14 @@ export function buildSettingsViewData(
       autoPeriodFillHint: settingsCopy.cycle.autoPeriodFillHint,
       irregularCycleLabel: settingsCopy.cycle.irregularCycle,
       irregularCycleHint: settingsCopy.cycle.irregularCycleHint,
+      irregularCycleIgnoredHint: settingsCopy.cycle.irregularCycleIgnoredHint,
+      irregularCycleApproximateState:
+        settingsCopy.cycle.irregularCycleApproximateState,
+      irregularCycleIgnoredState: settingsCopy.cycle.irregularCycleIgnoredState,
       unpredictableCycleLabel: settingsCopy.cycle.unpredictableCycle,
       unpredictableCycleHint: settingsCopy.cycle.unpredictableCycleHint,
+      unpredictableCycleFactsOnlyState:
+        settingsCopy.cycle.unpredictableCycleFactsOnlyState,
       saveLabel: settingsCopy.cycle.save,
       messages: {
         errorIncompatible: settingsCopy.cycle.errorIncompatible,
