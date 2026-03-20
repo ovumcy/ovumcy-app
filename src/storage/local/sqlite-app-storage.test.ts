@@ -61,6 +61,17 @@ type FakeDatabaseState = {
     age_group: string;
     usage_goal: string;
   } | null;
+  syncPreferencesColumns: string[];
+  syncPreferencesRow: {
+    mode: string;
+    endpoint_input: string;
+    normalized_endpoint: string;
+    device_label: string;
+    setup_status: string;
+    prepared_at: string | null;
+    last_remote_generation?: number | null;
+    last_synced_at?: string | null;
+  } | null;
   userVersion: number;
 };
 
@@ -71,6 +82,18 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     dayLogRows: [],
     symptomRows: [],
     onboardingRow: null,
+    syncPreferencesColumns: [
+      "id",
+      "mode",
+      "endpoint_input",
+      "normalized_endpoint",
+      "device_label",
+      "setup_status",
+      "prepared_at",
+      "last_remote_generation",
+      "last_synced_at",
+    ],
+    syncPreferencesRow: null,
     userVersion: 0,
     ...state,
   };
@@ -116,6 +139,28 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       if (source.includes("DROP TABLE IF EXISTS onboarding_profile")) {
         databaseState.onboardingRow = null;
       }
+
+      if (
+        source.includes(
+          "ALTER TABLE sync_preferences ADD COLUMN last_remote_generation",
+        ) &&
+        !databaseState.syncPreferencesColumns.includes("last_remote_generation")
+      ) {
+        databaseState.syncPreferencesColumns.push("last_remote_generation");
+        if (databaseState.syncPreferencesRow) {
+          databaseState.syncPreferencesRow.last_remote_generation ??= null;
+        }
+      }
+
+      if (
+        source.includes("ALTER TABLE sync_preferences ADD COLUMN last_synced_at") &&
+        !databaseState.syncPreferencesColumns.includes("last_synced_at")
+      ) {
+        databaseState.syncPreferencesColumns.push("last_synced_at");
+        if (databaseState.syncPreferencesRow) {
+          databaseState.syncPreferencesRow.last_synced_at ??= null;
+        }
+      }
     },
 
     async getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null> {
@@ -133,6 +178,9 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
 
       if (source.includes("COUNT(*) AS count FROM day_logs")) {
         return { count: databaseState.dayLogRows.length } as T;
+      }
+      if (source.includes("COUNT(*) AS count FROM sync_preferences")) {
+        return { count: databaseState.syncPreferencesRow ? 1 : 0 } as T;
       }
       if (source.includes("COUNT(*) AS count FROM symptoms")) {
         return { count: databaseState.symptomRows.length } as T;
@@ -215,10 +263,20 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         return (databaseState.onboardingRow as T) ?? null;
       }
 
+      if (source.includes("FROM sync_preferences")) {
+        return (databaseState.syncPreferencesRow as T) ?? null;
+      }
+
       return null;
     },
 
     async getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]> {
+      if (source === "PRAGMA table_info(sync_preferences);") {
+        return databaseState.syncPreferencesColumns.map((name, index) => ({
+          cid: index,
+          name,
+        })) as T[];
+      }
       if (source.includes("FROM day_logs")) {
         const from = String(params[0]);
         const to = String(params[1]);
@@ -307,8 +365,23 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       if (source.includes("DELETE FROM profile_settings")) {
         databaseState.profileRow = null;
       }
+      if (source.includes("DELETE FROM sync_preferences")) {
+        databaseState.syncPreferencesRow = null;
+      }
       if (source.includes("DELETE FROM symptoms")) {
         databaseState.symptomRows = [];
+      }
+      if (source.includes("INSERT INTO sync_preferences")) {
+        databaseState.syncPreferencesRow = {
+          mode: String(params[0]),
+          endpoint_input: String(params[1]),
+          normalized_endpoint: String(params[2]),
+          device_label: String(params[3]),
+          setup_status: String(params[4]),
+          prepared_at: (params[5] as string | null) ?? null,
+          last_remote_generation: (params[6] as number | null) ?? null,
+          last_synced_at: (params[7] as string | null) ?? null,
+        };
       }
       if (source.includes("INSERT INTO symptoms")) {
         const nextRow = {
@@ -742,6 +815,52 @@ describe("sqlite-app-storage", () => {
           isDefault: false,
         }),
       ]),
+    );
+  });
+
+  it("reconciles sync preference columns even when user_version claims the schema is current", async () => {
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 8,
+      syncPreferencesColumns: [
+        "id",
+        "mode",
+        "endpoint_input",
+        "normalized_endpoint",
+        "device_label",
+        "setup_status",
+        "prepared_at",
+      ],
+      syncPreferencesRow: {
+        mode: "self_hosted",
+        endpoint_input: "192.168.1.20:8080",
+        normalized_endpoint: "http://192.168.1.20:8080",
+        device_label: "Pixel 7",
+        setup_status: "local_ready",
+        prepared_at: "2026-03-20T08:00:00.000Z",
+      },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readSyncPreferencesRecord()).resolves.toEqual({
+      mode: "self_hosted",
+      endpointInput: "192.168.1.20:8080",
+      normalizedEndpoint: "http://192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "local_ready",
+      preparedAt: "2026-03-20T08:00:00.000Z",
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+    });
+    expect(inspected.state.syncPreferencesColumns).toEqual(
+      expect.arrayContaining(["last_remote_generation", "last_synced_at"]),
     );
   });
 

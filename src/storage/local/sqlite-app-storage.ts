@@ -200,6 +200,10 @@ type SyncPreferencesRow = {
   last_synced_at: string | null;
 };
 
+type TableInfoRow = {
+  name: string;
+};
+
 type DayLogSummaryRow = {
   total_entries: number;
   date_from: string | null;
@@ -566,6 +570,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
   const currentVersion = versionRow?.user_version ?? 0;
 
   if (currentVersion >= DATABASE_VERSION) {
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -577,6 +582,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(CREATE_SYMPTOMS_TABLE);
     await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
     await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -600,6 +606,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -614,6 +621,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -627,6 +635,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -638,6 +647,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -648,6 +658,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -656,12 +667,14 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 7;`);
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
   if (currentVersion === 7) {
     await migrateV8SyncMetadata(database);
     await database.execAsync(`PRAGMA user_version = 8;`);
+    await reconcileSyncPreferencesSchema(database);
     return;
   }
 
@@ -672,6 +685,7 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
   await database.execAsync(CREATE_SYMPTOMS_TABLE);
   await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
   await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
+  await reconcileSyncPreferencesSchema(database);
 }
 
 async function migrateV1OnboardingProfile(
@@ -747,6 +761,34 @@ async function migrateV8SyncMetadata(
 		database,
 		ADD_SYNC_LAST_SYNCED_AT_COLUMN,
 	);
+}
+
+async function reconcileSyncPreferencesSchema(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
+  const tableInfoRows = await database.getAllAsync<TableInfoRow>(
+    "PRAGMA table_info(sync_preferences);",
+  );
+  const existingColumns = new Set(
+    tableInfoRows
+      .map((row) => row.name)
+      .filter((name): name is string => typeof name === "string"),
+  );
+
+  if (!existingColumns.has("last_remote_generation")) {
+    await execIgnoringDuplicateColumn(
+      database,
+      ADD_SYNC_LAST_REMOTE_GENERATION_COLUMN,
+    );
+  }
+
+  if (!existingColumns.has("last_synced_at")) {
+    await execIgnoringDuplicateColumn(
+      database,
+      ADD_SYNC_LAST_SYNCED_AT_COLUMN,
+    );
+  }
 }
 
 async function execIgnoringDuplicateColumn(
