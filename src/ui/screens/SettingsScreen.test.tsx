@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
+import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { SettingsScreen } from "./SettingsScreen";
 
@@ -46,7 +47,16 @@ jest.mock("../confirm/open-confirmation", () => {
   };
 });
 
+jest.mock("../../security/sensitive-action-auth", () => {
+  return {
+    requestSensitiveActionChallenge: jest.fn(),
+  };
+});
+
 const mockOpenConfirmation = jest.mocked(openConfirmation);
+const mockRequestSensitiveActionChallenge = jest.mocked(
+  requestSensitiveActionChallenge,
+);
 
 function createStorageMock(overrides = {}) {
   return createLocalAppStorageMock({
@@ -113,6 +123,8 @@ describe("SettingsScreen", () => {
     preventRemoveCallback = null;
     mockDispatch.mockReset();
     mockOpenConfirmation.mockReset();
+    mockRequestSensitiveActionChallenge.mockReset();
+    mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
     mockReplace.mockReset();
   });
 
@@ -299,6 +311,61 @@ describe("SettingsScreen", () => {
     fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("blocks sync key recreation when device security challenge is unavailable", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.com",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+    });
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockRequestSensitiveActionChallenge.mockResolvedValue({
+      ok: false,
+      reason: "unavailable",
+    });
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
+    );
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
@@ -561,5 +628,29 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
     await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+
+  it("requires device security before clearing all local data", async () => {
+    const storage = createStorageMock();
+    mockRequestSensitiveActionChallenge.mockResolvedValue({
+      ok: false,
+      reason: "unavailable",
+    });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-clear-data-confirmation-input"),
+      "CLEAR",
+    );
+    fireEvent.press(screen.getByTestId("settings-clear-data-button"));
+
+    await waitFor(() =>
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
+    );
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

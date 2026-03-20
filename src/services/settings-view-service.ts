@@ -137,6 +137,7 @@ export type SettingsViewData = {
     regenerateLabel: string;
     regeneratePrompt: string;
     regenerateAccept: string;
+    regenerateDeviceAuthPrompt: string;
     status: {
       prepared: string;
       regenerated: string;
@@ -147,6 +148,8 @@ export type SettingsViewData = {
       invalidEndpoint: string;
       unsupportedScheme: string;
       insecurePublicHttp: string;
+      deviceAuthUnavailable: string;
+      deviceAuthFailed: string;
       saveFailed: string;
     };
   };
@@ -214,10 +217,13 @@ export type SettingsViewData = {
     confirmationLabel: string;
     confirmationPlaceholder: string;
     confirmationHint: string;
+    deviceAuthPrompt: string;
     action: string;
     status: {
       success: string;
       invalidConfirmation: string;
+      deviceAuthUnavailable: string;
+      deviceAuthFailed: string;
       failed: string;
     };
   };
@@ -376,6 +382,7 @@ export function buildSettingsViewData(
       regenerateLabel: settingsCopy.account.regenerateLabel,
       regeneratePrompt: settingsCopy.account.regeneratePrompt,
       regenerateAccept: settingsCopy.account.regenerateAccept,
+      regenerateDeviceAuthPrompt: settingsCopy.account.regenerateDeviceAuthPrompt,
       status: {
         prepared: settingsCopy.account.prepared,
         regenerated: settingsCopy.account.regenerated,
@@ -386,6 +393,8 @@ export function buildSettingsViewData(
         invalidEndpoint: settingsCopy.account.errors.invalidEndpoint,
         unsupportedScheme: settingsCopy.account.errors.unsupportedScheme,
         insecurePublicHttp: settingsCopy.account.errors.insecurePublicHttp,
+        deviceAuthUnavailable: settingsCopy.account.errors.deviceAuthUnavailable,
+        deviceAuthFailed: settingsCopy.account.errors.deviceAuthFailed,
         saveFailed: settingsCopy.account.errors.saveFailed,
       },
     },
@@ -458,10 +467,13 @@ export function buildSettingsViewData(
       confirmationLabel: settingsCopy.danger.confirmationLabel,
       confirmationPlaceholder: settingsCopy.danger.confirmationPlaceholder,
       confirmationHint: settingsCopy.danger.confirmationHint,
+      deviceAuthPrompt: settingsCopy.danger.deviceAuthPrompt,
       action: settingsCopy.danger.action,
       status: {
         success: settingsCopy.danger.success,
         invalidConfirmation: settingsCopy.danger.invalidConfirmation,
+        deviceAuthUnavailable: settingsCopy.danger.deviceAuthUnavailable,
+        deviceAuthFailed: settingsCopy.danger.deviceAuthFailed,
         failed: settingsCopy.danger.failed,
       },
     },

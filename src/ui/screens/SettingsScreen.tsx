@@ -42,6 +42,7 @@ import {
 } from "../../services/symptom-policy";
 import type { SymptomID } from "../../models/symptom";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
+import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { ScreenScaffold } from "../components/ScreenScaffold";
@@ -472,6 +473,18 @@ export function SettingsScreen({
       if (!confirmed) {
         return;
       }
+
+      const challengeResult = await requestSensitiveActionChallenge(
+        viewData.account.regenerateDeviceAuthPrompt,
+      );
+      if (!challengeResult.ok) {
+        if (challengeResult.reason === "unavailable") {
+          setAccountErrorMessage(viewData.account.errors.deviceAuthUnavailable);
+        } else if (challengeResult.reason === "failed") {
+          setAccountErrorMessage(viewData.account.errors.deviceAuthFailed);
+        }
+        return;
+      }
     }
 
     setIsPreparingSync(true);
@@ -636,6 +649,18 @@ export function SettingsScreen({
 
     if (!isClearLocalDataConfirmationValid(clearDataConfirmationValue)) {
       setClearDataErrorMessage(viewData.danger.status.invalidConfirmation);
+      return;
+    }
+
+    const challengeResult = await requestSensitiveActionChallenge(
+      viewData.danger.deviceAuthPrompt,
+    );
+    if (!challengeResult.ok) {
+      if (challengeResult.reason === "unavailable") {
+        setClearDataErrorMessage(viewData.danger.status.deviceAuthUnavailable);
+      } else if (challengeResult.reason === "failed") {
+        setClearDataErrorMessage(viewData.danger.status.deviceAuthFailed);
+      }
       return;
     }
 

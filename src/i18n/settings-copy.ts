@@ -140,6 +140,8 @@ const settingsCopyEn = {
     regeneratePrompt:
       "Recreating local sync keys invalidates older encrypted sync backups until you use the new recovery phrase. Continue?",
     regenerateAccept: "Recreate keys",
+    regenerateDeviceAuthPrompt:
+      "Confirm with device security to recreate local sync keys.",
     prepared: "Encrypted sync prepared on this device.",
     regenerated: "Local sync keys recreated for this device.",
     errors: {
@@ -148,6 +150,10 @@ const settingsCopyEn = {
       invalidEndpoint: "Enter a valid host, IP address, or full URL.",
       unsupportedScheme: "Only https and approved local-network http endpoints are supported.",
       insecurePublicHttp: "Public sync endpoints must use https.",
+      deviceAuthUnavailable:
+        "Set up a device passcode or biometrics before recreating local sync keys.",
+      deviceAuthFailed:
+        "Unable to confirm device security right now. Please try again.",
       saveFailed: "Unable to prepare encrypted sync right now. Please try again.",
     },
   },
@@ -238,9 +244,14 @@ const settingsCopyEn = {
     confirmationPlaceholder: "CLEAR",
     confirmationHint:
       "This action cannot be undone from the app. Export a backup first if you want to keep your records.",
+    deviceAuthPrompt:
+      "Confirm with device security to erase local data from this device.",
     action: "Clear local data",
     success: "Local data cleared. Returning to onboarding.",
     invalidConfirmation: "Type CLEAR exactly to confirm local data removal.",
+    deviceAuthUnavailable:
+      "Set up a device passcode or biometrics before clearing local data.",
+    deviceAuthFailed: "Unable to confirm device security right now. Please try again.",
     failed:
       "Unable to clear local data right now. Please try again.",
   },
@@ -396,6 +407,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regeneratePrompt:
         "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую recovery phrase. Продолжить?",
       regenerateAccept: "Пересоздать keys",
+      regenerateDeviceAuthPrompt:
+        "Подтвердите защитой устройства пересоздание локальных sync keys.",
       prepared: "Зашифрованный sync подготовлен на этом устройстве.",
       regenerated: "Локальные sync keys пересозданы для этого устройства.",
       errors: {
@@ -405,6 +418,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         unsupportedScheme:
           "Поддерживаются только https и разрешённые local-network http endpoint.",
         insecurePublicHttp: "Публичные sync endpoint должны использовать https.",
+        deviceAuthUnavailable:
+          "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
+        deviceAuthFailed:
+          "Сейчас не удалось подтвердить защиту устройства. Попробуйте ещё раз.",
         saveFailed:
           "Сейчас не удалось подготовить зашифрованный sync. Попробуйте ещё раз.",
       },
@@ -496,9 +513,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       confirmationPlaceholder: "CLEAR",
       confirmationHint:
         "Это действие нельзя отменить из приложения. Сначала экспортируйте бэкап, если хотите сохранить записи.",
+      deviceAuthPrompt:
+        "Подтвердите защитой устройства удаление локальных данных с этого устройства.",
       action: "Очистить локальные данные",
       success: "Локальные данные очищены. Возвращаемся в onboarding.",
       invalidConfirmation: "Введите CLEAR точно, чтобы подтвердить удаление локальных данных.",
+      deviceAuthUnavailable:
+        "Перед очисткой локальных данных настройте код-пароль или биометрию на устройстве.",
+      deviceAuthFailed:
+        "Сейчас не удалось подтвердить защиту устройства. Попробуйте ещё раз.",
       failed:
         "Сейчас не удалось очистить локальные данные. Попробуйте ещё раз.",
     },
@@ -649,6 +672,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regeneratePrompt:
         "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva recovery phrase. ¿Continuar?",
       regenerateAccept: "Recrear claves",
+      regenerateDeviceAuthPrompt:
+        "Confirma con la seguridad del dispositivo para recrear las claves locales de sync.",
       prepared: "El sync cifrado quedó preparado en este dispositivo.",
       regenerated: "Las claves locales de sync se recrearon para este dispositivo.",
       errors: {
@@ -658,6 +683,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         unsupportedScheme:
           "Solo se admiten https y endpoints http aprobados para red local.",
         insecurePublicHttp: "Los endpoints públicos de sync deben usar https.",
+        deviceAuthUnavailable:
+          "Configura un código o biometría en este dispositivo antes de recrear las claves locales de sync.",
+        deviceAuthFailed:
+          "No se pudo confirmar la seguridad del dispositivo ahora mismo. Inténtalo de nuevo.",
         saveFailed:
           "No se pudo preparar el sync cifrado ahora. Inténtalo de nuevo.",
       },
@@ -749,10 +778,16 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       confirmationPlaceholder: "CLEAR",
       confirmationHint:
         "Esta acción no se puede deshacer desde la app. Exporta una copia antes si quieres conservar los registros.",
+      deviceAuthPrompt:
+        "Confirma con la seguridad del dispositivo para borrar los datos locales de este dispositivo.",
       action: "Borrar datos locales",
       success: "Datos locales borrados. Volviendo al onboarding.",
       invalidConfirmation:
         "Escribe CLEAR exactamente para confirmar la eliminación de datos locales.",
+      deviceAuthUnavailable:
+        "Configura un código o biometría en este dispositivo antes de borrar los datos locales.",
+      deviceAuthFailed:
+        "No se pudo confirmar la seguridad del dispositivo ahora mismo. Inténtalo de nuevo.",
       failed:
         "No se pudieron borrar los datos locales ahora. Inténtalo de nuevo.",
     },
