@@ -11,13 +11,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { InterfaceLanguage, ThemePreference } from "../../models/profile";
+import type {
+  InterfaceLanguage,
+  PredictionMode,
+  ThemePreference,
+} from "../../models/profile";
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
 import { parseLocalDate } from "../../services/profile-settings-policy";
 import {
   buildSettingsSymptomsState,
   type LoadedSettingsState,
+  resolveSettingsPredictionMode,
   type SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "../components/AppButton";
@@ -102,7 +107,7 @@ type SettingsFlowScreenProps = {
   onSyncPasswordValueChange: (value: string) => void;
   onSyncNow: () => void | Promise<void>;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
-  onIrregularCycleChange: (value: boolean) => void;
+  onPredictionModeSelect: (value: PredictionMode) => void;
   onPeriodLengthChange: (value: number) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onSaveCycleSettings: () => void | Promise<void>;
@@ -121,7 +126,6 @@ type SettingsFlowScreenProps = {
   onTrackBBTChange: (value: boolean) => void;
   onTrackCervicalMucusChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
-  onUnpredictableCycleChange: (value: boolean) => void;
   onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
@@ -196,7 +200,7 @@ export function SettingsFlowScreen({
   onSyncNow,
   onInterfaceThemeSelect,
   onHideSexChipChange,
-  onIrregularCycleChange,
+  onPredictionModeSelect,
   onPeriodLengthChange,
   onRestoreSymptom,
   onSaveCycleSettings,
@@ -209,7 +213,6 @@ export function SettingsFlowScreen({
   onTemperatureUnitSelect,
   onTrackBBTChange,
   onTrackCervicalMucusChange,
-  onUnpredictableCycleChange,
   onUpdateSymptom,
   onUsageGoalSelect,
   rowSymptomDrafts,
@@ -234,23 +237,7 @@ export function SettingsFlowScreen({
   const exportPickerMinimumDate = parseLocalDate(state.exportState.bounds.minDate ?? "");
   const exportPickerMaximumDate = parseLocalDate(state.exportState.bounds.maxDate ?? "");
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
-  const irregularCycleDescription = state.cycleValues.unpredictableCycle
-    ? viewData.cycle.irregularCycleIgnoredHint
-    : viewData.cycle.irregularCycleHint;
-  const irregularCycleStateText = state.cycleValues.unpredictableCycle
-    ? viewData.cycle.irregularCycleIgnoredState
-    : state.cycleValues.irregularCycle
-      ? viewData.cycle.irregularCycleApproximateState
-      : undefined;
-  const unpredictableCycleStateText = state.cycleValues.unpredictableCycle
-    ? viewData.cycle.unpredictableCycleFactsOnlyState
-    : undefined;
-  const irregularCycleStateProps = irregularCycleStateText
-    ? { stateText: irregularCycleStateText }
-    : {};
-  const unpredictableCycleStateProps = unpredictableCycleStateText
-    ? { stateText: unpredictableCycleStateText }
-    : {};
+  const predictionMode = resolveSettingsPredictionMode(state.cycleValues);
 
   return (
     <AppScreenSurface>
@@ -398,27 +385,16 @@ export function SettingsFlowScreen({
           value={state.cycleValues.autoPeriodFill}
         />
 
-        <BinaryToggleCard
-          description={irregularCycleDescription}
-          descriptionPosition="below"
-          icon="〰️"
-          label={viewData.cycle.irregularCycleLabel}
-          onValueChange={onIrregularCycleChange}
-          testID="settings-toggle-irregular-cycle"
-          value={state.cycleValues.irregularCycle}
-          {...irregularCycleStateProps}
-        />
-
-        <BinaryToggleCard
-          description={viewData.cycle.unpredictableCycleHint}
-          descriptionPosition="below"
-          icon="∞"
-          label={viewData.cycle.unpredictableCycleLabel}
-          onValueChange={onUnpredictableCycleChange}
-          testID="settings-toggle-unpredictable-cycle"
-          value={state.cycleValues.unpredictableCycle}
-          {...unpredictableCycleStateProps}
-        />
+        <View style={styles.formGroup}>
+          <Text style={styles.fieldLabel}>{viewData.cycle.predictionModeLabel}</Text>
+          <Text style={styles.helperText}>{viewData.cycle.predictionModeHint}</Text>
+          <ChoiceGroup
+            onSelect={onPredictionModeSelect}
+            options={viewData.cycle.predictionModeOptions}
+            selectedValue={predictionMode}
+            testIDPrefix="settings-prediction-mode"
+          />
+        </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>

@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { createDefaultProfileRecord } from "../../models/profile";
 import { createAsyncStorageAppStorage } from "./async-storage-app-storage";
 
 describe("async-storage-app-storage", () => {
@@ -14,22 +15,9 @@ describe("async-storage-app-storage", () => {
       hasCompletedOnboarding: false,
       profileVersion: 2,
     });
-    await expect(storage.readProfileRecord()).resolves.toEqual({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
-    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
     await expect(storage.readOnboardingRecord()).resolves.toEqual({
       lastPeriodStart: null,
       cycleLength: 28,
@@ -85,20 +73,13 @@ describe("async-storage-app-storage", () => {
       profileVersion: 2,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
+      ...createDefaultProfileRecord(),
       lastPeriodStart: "2026-03-14",
       cycleLength: 30,
       periodLength: 6,
-      autoPeriodFill: true,
       irregularCycle: true,
-      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
     });
     await expect(storage.readOnboardingRecord()).resolves.toEqual({
       lastPeriodStart: "2026-03-14",
@@ -225,22 +206,9 @@ describe("async-storage-app-storage", () => {
       hasCompletedOnboarding: false,
       profileVersion: 2,
     });
-    await expect(storage.readProfileRecord()).resolves.toEqual({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
-    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
     await expect(storage.readDayLogSummary()).resolves.toEqual({
       totalEntries: 0,
       hasData: false,

@@ -11,6 +11,7 @@ import {
 } from "../../models/symptom";
 import {
   createDefaultProfileRecord,
+  normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
   normalizeThemePreference,
   type ProfileRecord,
@@ -307,6 +308,9 @@ function mergeProfileRecord(
     temperatureUnit: parsed?.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
     languageOverride: normalizeInterfaceLanguage(parsed?.languageOverride),
     themeOverride: normalizeThemePreference(parsed?.themeOverride),
+    dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
+      parsed?.dismissedCalendarPredictionNoticeKey,
+    ) ?? null,
   };
 }
 

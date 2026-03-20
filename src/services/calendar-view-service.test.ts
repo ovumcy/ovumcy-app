@@ -23,6 +23,7 @@ describe("calendar-view-service", () => {
         hideSexChip: false,
         languageOverride: null,
         themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
       },
       [
         {
@@ -78,6 +79,7 @@ describe("calendar-view-service", () => {
       hideSexChip: false,
       languageOverride: null,
       themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
     } as const;
     const createPeriodRecord = (date: string) => ({
       ...createEmptyDayLogRecord(date),
@@ -166,6 +168,7 @@ describe("calendar-view-service", () => {
         hideSexChip: false,
         languageOverride: null,
         themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
       },
       [],
       new Date(2026, 2, 17),
@@ -174,9 +177,12 @@ describe("calendar-view-service", () => {
     );
 
     expect(viewData.isPredictionDisabled).toBe(false);
-    expect(viewData.predictionNotice).toBe(
-      "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
-    );
+    expect(viewData.predictionNotice).toEqual({
+      dismissLabel: "Dismiss notice",
+      key: "calendar_irregular_prediction_notice_v1",
+      message:
+        "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
+    });
   });
 
   it("shows a facts-only notice when unpredictable cycle mode disables calendar predictions", () => {
@@ -196,6 +202,7 @@ describe("calendar-view-service", () => {
         hideSexChip: false,
         languageOverride: null,
         themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
       },
       [],
       new Date(2026, 2, 17),
@@ -204,9 +211,41 @@ describe("calendar-view-service", () => {
     );
 
     expect(viewData.isPredictionDisabled).toBe(true);
-    expect(viewData.predictionNotice).toBe(
-      "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+    expect(viewData.predictionNotice).toEqual({
+      dismissLabel: "Dismiss notice",
+      key: "calendar_unpredictable_prediction_notice_v1",
+      message:
+        "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+    });
+  });
+
+  it("hides a prediction notice after the matching mode notice was dismissed", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-14",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: true,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey:
+          "calendar_unpredictable_prediction_notice_v1",
+      },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
     );
+
+    expect(viewData.predictionNotice).toBeNull();
   });
 
   it("explains saved markers separately from the selected day meaning", async () => {
@@ -226,6 +265,7 @@ describe("calendar-view-service", () => {
       hideSexChip: false,
       languageOverride: null,
       themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-20",

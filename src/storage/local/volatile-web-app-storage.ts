@@ -5,6 +5,7 @@ import {
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
   createDefaultProfileRecord,
+  normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
   normalizeThemePreference,
   type ProfileRecord,
@@ -220,6 +221,9 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     temperatureUnit: record.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
+    dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
+      record.dismissedCalendarPredictionNoticeKey,
+    ) ?? null,
   };
 }
 

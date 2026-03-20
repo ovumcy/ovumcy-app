@@ -509,7 +509,7 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("shows the effective cycle mode and honest age-group contract", async () => {
+  it("uses one prediction-mode selector and keeps age-group copy honest", async () => {
     const storage = createStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -517,13 +517,39 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-cycle-section");
 
     expect(screen.getByText(/Insights/i)).toBeTruthy();
+    expect(screen.queryByTestId("settings-toggle-irregular-cycle")).toBeNull();
+    expect(screen.queryByTestId("settings-toggle-unpredictable-cycle")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("settings-toggle-irregular-cycle"));
-    expect(screen.getByText(/Approximate|Приблизительно|Aproximado/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId("settings-prediction-mode-irregular"));
+    expect(
+      screen.getByTestId("settings-prediction-mode-irregular").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
 
-    fireEvent.press(screen.getByTestId("settings-toggle-unpredictable-cycle"));
-    expect(screen.getByText(/Ignored|Игнорируется|Ignorado/)).toBeTruthy();
-    expect(screen.getByText(/Facts only|Только факты|Solo hechos/)).toBeTruthy();
+    fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
+    expect(
+      screen.getByTestId("settings-prediction-mode-facts_only").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+    expect(screen.queryByText(/Ignored|Игнорируется|Ignorado/)).toBeNull();
+  });
+
+  it("maps the prediction-mode selector to the persisted cycle flags", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
+    fireEvent.press(screen.getByTestId("settings-save-cycle-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          irregularCycle: false,
+          unpredictableCycle: true,
+        }),
+      ),
+    );
   });
 
   it("saves cycle changes before leaving settings when the general guard accepts saving", async () => {

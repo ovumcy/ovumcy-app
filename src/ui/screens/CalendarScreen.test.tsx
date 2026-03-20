@@ -33,6 +33,7 @@ function createStorageMock() {
       hideSexChip: false,
       languageOverride: "en",
       themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",
@@ -174,6 +175,7 @@ describe("CalendarScreen", () => {
       hideSexChip: false,
       languageOverride: "en",
       themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
     });
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -183,5 +185,43 @@ describe("CalendarScreen", () => {
     expect(
       screen.getByText(/approximate guidance|приблизительный ориентир|guía aproximada/i),
     ).toBeTruthy();
+  });
+
+  it("dismisses the prediction notice and persists that preference", async () => {
+    const storage = createStorageMock();
+    storage.readProfileRecord = jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: true,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("calendar-prediction-mode-banner");
+    fireEvent.press(screen.getByTestId("calendar-prediction-mode-banner-dismiss"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dismissedCalendarPredictionNoticeKey:
+            "calendar_unpredictable_prediction_notice_v1",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("calendar-prediction-mode-banner")).toBeNull(),
+    );
   });
 });

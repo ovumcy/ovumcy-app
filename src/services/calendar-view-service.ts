@@ -20,6 +20,10 @@ import {
   parseLocalDate,
 } from "./profile-settings-policy";
 import { filterKnownSymptomIDs } from "./symptom-policy";
+import {
+  buildCalendarPredictionNotice,
+  type CalendarPredictionNoticeViewData,
+} from "./calendar-notice-service";
 
 export type CalendarDayStateKey =
   | "neutral"
@@ -82,7 +86,7 @@ export type CalendarViewData = {
   nextMonthValue: string;
   usageGoal: ProfileRecord["usageGoal"];
   isPredictionDisabled: boolean;
-  predictionNotice: string | null;
+  predictionNotice: CalendarPredictionNoticeViewData | null;
   days: CalendarDayCellViewData[];
   actions: {
     prevLabel: string;
@@ -198,6 +202,7 @@ export function buildCalendarViewData(
   const gridStart = startOfWeek(startOfMonth(monthStart));
   const gridEnd = endOfWeek(endOfMonth(monthStart));
   const todayValue = formatLocalDate(today);
+  const predictionNotice = buildCalendarPredictionNotice(profile, locale);
   const days: CalendarDayCellViewData[] = [];
 
   for (let cursor = gridStart; cursor <= gridEnd; cursor = addCalendarDays(cursor, 1)) {
@@ -236,11 +241,7 @@ export function buildCalendarViewData(
     nextMonthValue: formatMonthValue(addMonth(monthStart, 1)),
     usageGoal: profile.usageGoal,
     isPredictionDisabled: profile.unpredictableCycle,
-    predictionNotice: profile.unpredictableCycle
-      ? calendarCopy.predictionModeUnpredictable
-      : profile.irregularCycle
-        ? calendarCopy.predictionModeIrregular
-        : null,
+    predictionNotice,
     days,
     actions: {
       prevLabel: calendarCopy.prev,

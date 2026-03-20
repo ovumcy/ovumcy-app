@@ -10,6 +10,7 @@ import {
   loadCalendarScreenState,
   type LoadedCalendarState,
 } from "../../services/calendar-view-service";
+import { dismissCalendarPredictionNotice } from "../../services/calendar-notice-service";
 import {
   buildManualCycleStartViewData,
   applyManualCycleStart,
@@ -226,6 +227,19 @@ export function CalendarScreen({
     setIsSaving(false);
   }
 
+  async function handleDismissPredictionNotice() {
+    if (!state?.viewData.predictionNotice) {
+      return;
+    }
+
+    await dismissCalendarPredictionNotice(
+      storage,
+      state.profile,
+      state.viewData.predictionNotice.key,
+    );
+    await refreshForActiveSelection();
+  }
+
   return (
     <CalendarOverviewScreen
       entryExists={hasDayLogData(state.selectedRecord)}
@@ -242,6 +256,7 @@ export function CalendarScreen({
         setEditorMode("view");
       }}
       onDelete={handleDelete}
+      onDismissPredictionNotice={handleDismissPredictionNotice}
       onManualCycleStart={handleManualCycleStart}
       onNextMonth={() => {
         setStatus(null);

@@ -3,6 +3,7 @@ import {
   type LocalAppDatabase,
 } from "./sqlite-app-storage";
 import type { LocalDataKeyStore } from "../../security/local-data-key-store";
+import { createDefaultProfileRecord } from "../../models/profile";
 
 type FakeDatabaseState = {
   bootstrapRow: {
@@ -524,10 +525,10 @@ describe("sqlite-app-storage", () => {
       profileVersion: 3,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
+      ...createDefaultProfileRecord(),
       lastPeriodStart: "2026-03-14",
       cycleLength: 31,
       periodLength: 6,
-      autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: true,
       ageGroup: "age_35_plus",
@@ -536,8 +537,6 @@ describe("sqlite-app-storage", () => {
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
-      languageOverride: null,
-      themeOverride: null,
     });
     expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
   });
@@ -570,20 +569,13 @@ describe("sqlite-app-storage", () => {
     });
 
     await expect(storage.readProfileRecord()).resolves.toEqual({
+      ...createDefaultProfileRecord(),
       lastPeriodStart: "2026-03-09",
       cycleLength: 29,
       periodLength: 5,
-      autoPeriodFill: true,
       irregularCycle: true,
-      unpredictableCycle: false,
       ageGroup: "age_20_35",
       usageGoal: "avoid_pregnancy",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
     });
   });
 
@@ -602,22 +594,9 @@ describe("sqlite-app-storage", () => {
       hasCompletedOnboarding: false,
       profileVersion: 2,
     });
-    await expect(storage.readProfileRecord()).resolves.toEqual({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
-    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
     await expect(storage.listSymptomRecords()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -666,20 +645,16 @@ describe("sqlite-app-storage", () => {
       profileVersion: 2,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
+      ...createDefaultProfileRecord(),
       lastPeriodStart: "2026-03-15",
       cycleLength: 30,
       periodLength: 6,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
       ageGroup: "age_20_35",
       usageGoal: "avoid_pregnancy",
       trackBBT: true,
       temperatureUnit: "f",
       trackCervicalMucus: true,
       hideSexChip: true,
-      languageOverride: null,
-      themeOverride: null,
     });
   });
 
@@ -1036,22 +1011,9 @@ describe("sqlite-app-storage", () => {
       hasCompletedOnboarding: false,
       profileVersion: 2,
     });
-    await expect(storage.readProfileRecord()).resolves.toEqual({
-      lastPeriodStart: null,
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
-    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
     await expect(storage.readDayLogSummary()).resolves.toEqual({
       totalEntries: 0,
       hasData: false,
@@ -1122,6 +1084,50 @@ describe("sqlite-app-storage", () => {
 
     expect(closeAsync).toHaveBeenCalledTimes(1);
     expect(deleteDatabase).toHaveBeenCalledTimes(1);
+    expect(openDatabaseCallCount).toBe(2);
+  });
+
+  it("waits for local-data reset to finish before reopening sqlite", async () => {
+    let releaseDeleteDatabase!: () => void;
+    const deleteDatabase = jest.fn().mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseDeleteDatabase = resolve;
+        }),
+    );
+    let openDatabaseCallCount = 0;
+    const storage = createSQLiteAppStorage({
+      deleteDatabase,
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => {
+        openDatabaseCallCount += 1;
+        return createFakeDatabase();
+      },
+    });
+
+    await storage.readBootstrapState();
+    expect(openDatabaseCallCount).toBe(1);
+
+    const clearPromise = storage.clearAllLocalData();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(deleteDatabase).toHaveBeenCalledTimes(1);
+
+    const readProfilePromise = storage.readProfileRecord();
+
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(openDatabaseCallCount).toBe(1);
+
+    releaseDeleteDatabase();
+
+    await clearPromise;
+    await expect(readProfilePromise).resolves.toEqual(createDefaultProfileRecord());
     expect(openDatabaseCallCount).toBe(2);
   });
 

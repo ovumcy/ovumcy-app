@@ -6,12 +6,14 @@ import type {
   CycleSettingsValues,
   InterfaceLanguage,
   InterfaceSettingsValues,
+  PredictionMode,
   ProfileRecord,
   TemperatureUnit,
   ThemePreference,
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
+import { resolvePredictionMode } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
 import type { SyncMode, SyncPreferencesRecord } from "../sync/sync-contract";
@@ -37,14 +39,13 @@ export type SettingsViewData = {
     lastPeriodStartHint: string;
     autoPeriodFillLabel: string;
     autoPeriodFillHint: string;
-    irregularCycleLabel: string;
-    irregularCycleHint: string;
-    irregularCycleIgnoredHint: string;
-    irregularCycleApproximateState: string;
-    irregularCycleIgnoredState: string;
-    unpredictableCycleLabel: string;
-    unpredictableCycleHint: string;
-    unpredictableCycleFactsOnlyState: string;
+    predictionModeLabel: string;
+    predictionModeHint: string;
+    predictionModeOptions: {
+      value: PredictionMode;
+      label: string;
+      secondaryLabel: string;
+    }[];
     saveLabel: string;
     messages: {
       errorIncompatible: string;
@@ -301,16 +302,25 @@ export function buildSettingsViewData(
       lastPeriodStartHint: settingsCopy.cycle.lastPeriodStartHint,
       autoPeriodFillLabel: settingsCopy.cycle.autoPeriodFill,
       autoPeriodFillHint: settingsCopy.cycle.autoPeriodFillHint,
-      irregularCycleLabel: settingsCopy.cycle.irregularCycle,
-      irregularCycleHint: settingsCopy.cycle.irregularCycleHint,
-      irregularCycleIgnoredHint: settingsCopy.cycle.irregularCycleIgnoredHint,
-      irregularCycleApproximateState:
-        settingsCopy.cycle.irregularCycleApproximateState,
-      irregularCycleIgnoredState: settingsCopy.cycle.irregularCycleIgnoredState,
-      unpredictableCycleLabel: settingsCopy.cycle.unpredictableCycle,
-      unpredictableCycleHint: settingsCopy.cycle.unpredictableCycleHint,
-      unpredictableCycleFactsOnlyState:
-        settingsCopy.cycle.unpredictableCycleFactsOnlyState,
+      predictionModeLabel: settingsCopy.cycle.predictionModeLabel,
+      predictionModeHint: settingsCopy.cycle.predictionModeHint,
+      predictionModeOptions: [
+        {
+          value: "regular",
+          label: settingsCopy.cycle.predictionModeRegular,
+          secondaryLabel: settingsCopy.cycle.predictionModeRegularHint,
+        },
+        {
+          value: "irregular",
+          label: settingsCopy.cycle.predictionModeIrregular,
+          secondaryLabel: settingsCopy.cycle.predictionModeIrregularHint,
+        },
+        {
+          value: "facts_only",
+          label: settingsCopy.cycle.predictionModeFactsOnly,
+          secondaryLabel: settingsCopy.cycle.predictionModeFactsOnlyHint,
+        },
+      ],
       saveLabel: settingsCopy.cycle.save,
       messages: {
         errorIncompatible: settingsCopy.cycle.errorIncompatible,
@@ -611,6 +621,12 @@ export function resolveSettingsAgeGroupSelection(
   cycleValues: CycleSettingsValues,
 ): AgeGroupOption {
   return resolveDisplayedAgeGroup(cycleValues.ageGroup);
+}
+
+export function resolveSettingsPredictionMode(
+  cycleValues: Pick<CycleSettingsValues, "irregularCycle" | "unpredictableCycle">,
+): PredictionMode {
+  return resolvePredictionMode(cycleValues);
 }
 
 export function buildSettingsCycleGuidance(cycleValues: CycleSettingsValues) {

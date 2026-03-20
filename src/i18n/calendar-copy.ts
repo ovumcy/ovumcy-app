@@ -13,17 +13,18 @@ const calendarCopyEn = {
   addEntry: "Add entry",
   editEntry: "Edit entry",
   cancelEdit: "Cancel",
+  dismissNotice: "Dismiss notice",
   predictionModeIrregular:
     "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
   predictionModeUnpredictable:
     "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
-  calendarMeaning: "Calendar meaning",
+  calendarMeaning: "What the color shows",
   calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
   periodDayNo: "No",
   noData: "-",
   legendGuide:
-    "Cell color shows the cycle meaning. Dots, dashes, and the heart add saved markers on top of that meaning.",
+    "Color shows the day type. Dots, dashes, and the heart show your saved markers.",
   stateHints: {
     neutral: "No recorded or predicted event is attached to this day yet.",
     recordedPeriod:
@@ -40,8 +41,8 @@ const calendarCopyEn = {
     loggedEntry: "You already saved a local entry for this day.",
   },
   legend: {
-    meaningTitle: "Day meaning",
-    markersTitle: "Saved markers",
+    meaningTitle: "By color",
+    markersTitle: "Your markers",
     recordedPeriod: "Recorded period",
     predictedPeriod: "Predicted period",
     lowProbability: "Low probability",
@@ -70,17 +71,18 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Добавить запись",
     editEntry: "Изменить запись",
     cancelEdit: "Отмена",
+    dismissNotice: "Скрыть уведомление",
     predictionModeIrregular:
       "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
     predictionModeUnpredictable:
       "Включён непредсказуемый режим цикла. Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
-    calendarMeaning: "Что означает день",
+    calendarMeaning: "Что показывает цвет",
     calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
     periodDayNo: "Нет",
     noData: "-",
     legendGuide:
-      "Цвет ячейки показывает смысл дня. Точки, штрих и сердечко добавляют поверх него сохранённые отметки.",
+      "Цвет показывает тип дня. Точка, штрих и сердечко — ваши сохранённые отметки.",
     stateHints: {
       neutral: "Для этого дня пока нет ни записи, ни предсказанного события.",
       recordedPeriod:
@@ -97,8 +99,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       loggedEntry: "Для этого дня уже сохранена локальная запись.",
     },
     legend: {
-      meaningTitle: "Смысл дня",
-      markersTitle: "Сохранённые отметки",
+      meaningTitle: "По цвету",
+      markersTitle: "Ваши отметки",
       recordedPeriod: "Отмеченная менструация",
       predictedPeriod: "Предсказанная менструация",
       lowProbability: "Низкая вероятность",
@@ -122,17 +124,18 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Añadir registro",
     editEntry: "Editar registro",
     cancelEdit: "Cancelar",
+    dismissNotice: "Cerrar aviso",
     predictionModeIrregular:
       "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",
     predictionModeUnpredictable:
       "El modo de ciclo impredecible está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
-    calendarMeaning: "Qué significa este día",
+    calendarMeaning: "Qué muestra el color",
     calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",
     periodDayNo: "No",
     noData: "-",
     legendGuide:
-      "El color de la celda muestra el significado del día. Los puntos, la raya y el corazón añaden marcadores guardados sobre ese significado.",
+      "El color muestra el tipo de día. Los puntos, la raya y el corazón muestran tus marcadores guardados.",
     stateHints: {
       neutral: "Todavía no hay un evento registrado ni previsto para este día.",
       recordedPeriod:
@@ -150,8 +153,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       loggedEntry: "Ya guardaste un registro local para este día.",
     },
     legend: {
-      meaningTitle: "Significado del día",
-      markersTitle: "Marcadores guardados",
+      meaningTitle: "Por color",
+      markersTitle: "Tus marcadores",
       recordedPeriod: "Período registrado",
       predictedPeriod: "Período previsto",
       lowProbability: "Probabilidad baja",

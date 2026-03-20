@@ -48,6 +48,7 @@ import {
   type SymptomDraftValues,
   type SymptomValidationErrorCode,
 } from "./symptom-policy";
+import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
 
 type SaveSettingsErrorCode = "invalid_last_period_start" | "generic";
 type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
@@ -115,10 +116,10 @@ export async function saveCycleSettings(
     };
   }
 
-  const nextProfile: ProfileRecord = {
+  const nextProfile = resetDismissedCalendarPredictionNotice(currentState.profile, {
     ...currentState.profile,
     ...sanitizeCycleSettingsValues(cycleValues),
-  };
+  });
 
   try {
     await storage.writeProfileRecord(nextProfile);

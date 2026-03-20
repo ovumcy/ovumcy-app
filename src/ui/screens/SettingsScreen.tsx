@@ -40,6 +40,7 @@ import {
 } from "../../services/settings-view-service";
 import { sanitizeExportDateInput } from "../../services/export-policy";
 import { formatLocalDate } from "../../services/profile-settings-policy";
+import { resolvePredictionModeFlags } from "../../models/profile";
 import {
   createDefaultSymptomDraft,
   type SymptomDraftValues,
@@ -1185,16 +1186,17 @@ export function SettingsScreen({
             : current,
         );
       }}
-      onIrregularCycleChange={(value) => {
+      onPredictionModeSelect={(value) => {
         setCycleStatusMessage("");
         resetExportMessages();
+        const nextFlags = resolvePredictionModeFlags(value);
         setState((current) =>
           current
             ? {
                 ...current,
                 cycleValues: {
                   ...current.cycleValues,
-                  irregularCycle: value,
+                  ...nextFlags,
                 },
               }
             : current,
@@ -1338,21 +1340,6 @@ export function SettingsScreen({
                 trackingValues: {
                   ...current.trackingValues,
                   trackCervicalMucus: value,
-                },
-              }
-            : current,
-        );
-      }}
-      onUnpredictableCycleChange={(value) => {
-        setCycleStatusMessage("");
-        resetExportMessages();
-        setState((current) =>
-          current
-            ? {
-                ...current,
-                cycleValues: {
-                  ...current.cycleValues,
-                  unpredictableCycle: value,
                 },
               }
             : current,

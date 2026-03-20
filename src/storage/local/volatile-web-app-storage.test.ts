@@ -1,3 +1,4 @@
+import { createDefaultProfileRecord } from "../../models/profile";
 import { createVolatileWebAppStorage } from "./volatile-web-app-storage";
 
 describe("volatile-web-app-storage", () => {
@@ -37,20 +38,13 @@ describe("volatile-web-app-storage", () => {
       profileVersion: 2,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
+      ...createDefaultProfileRecord(),
       lastPeriodStart: "2026-03-14",
       cycleLength: 30,
       periodLength: 6,
-      autoPeriodFill: true,
       irregularCycle: true,
-      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: null,
-      themeOverride: null,
     });
     await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual({
       date: "2026-03-18",

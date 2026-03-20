@@ -103,6 +103,56 @@ describe("settings-screen-service", () => {
         periodLength: 11,
         irregularCycle: true,
         unpredictableCycle: true,
+        dismissedCalendarPredictionNoticeKey: null,
+      }),
+    );
+  });
+
+  it("resets a dismissed calendar notice when the prediction mode changes", async () => {
+    const storage = createStorageMock();
+
+    const result = await saveCycleSettings(
+      storage,
+      createLoadedSettingsState(
+        {
+          ...(await storage.readProfileRecord()),
+          irregularCycle: true,
+          unpredictableCycle: false,
+          dismissedCalendarPredictionNoticeKey:
+            "calendar_irregular_prediction_notice_v1",
+        },
+        createDefaultSyncPreferencesRecord(),
+        false,
+        false,
+        createDefaultSymptomRecords(),
+        createExportState(),
+      ),
+      {
+        lastPeriodStart: "2026-03-16",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: true,
+        ageGroup: "age_20_35",
+        usageGoal: "health",
+      },
+      new Date(2026, 2, 17),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        profile: expect.objectContaining({
+          dismissedCalendarPredictionNoticeKey: null,
+          unpredictableCycle: true,
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dismissedCalendarPredictionNoticeKey: null,
+        unpredictableCycle: true,
       }),
     );
   });
@@ -490,6 +540,7 @@ function createStorageMock(overrides = {}) {
       hideSexChip: false,
       languageOverride: "en",
       themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",

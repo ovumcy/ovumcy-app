@@ -33,17 +33,17 @@ const settingsCopyEn = {
     autoPeriodFill: "Auto-fill period days",
     autoPeriodFillHint:
       "When enabled, marking the first day auto-fills the next days based on your period length.",
-    irregularCycle: "I have an irregular cycle",
-    irregularCycleHint:
-      "Turn this on if your cycles vary by more than 7 days. Ovumcy still shows predictions, but they should be read as approximate guidance.",
-    irregularCycleIgnoredHint:
-      "Predictions are already in facts-only mode because unpredictable cycle is enabled below.",
-    irregularCycleApproximateState: "Approximate",
-    irregularCycleIgnoredState: "Ignored",
-    unpredictableCycle: "My cycle is unpredictable (PCOS, perimenopause, etc.)",
-    unpredictableCycleHint:
-      "Turns date predictions off completely. Dashboard and calendar show recorded facts and saved markers only.",
-    unpredictableCycleFactsOnlyState: "Facts only",
+    predictionModeLabel: "Prediction mode",
+    predictionModeHint: "Choose how Ovumcy should show date predictions.",
+    predictionModeRegular: "Regular",
+    predictionModeRegularHint:
+      "Show the standard prediction view from your cycle settings and recorded history.",
+    predictionModeIrregular: "Irregular",
+    predictionModeIrregularHint:
+      "Keep predictions visible, but read them as approximate guidance.",
+    predictionModeFactsOnly: "Facts only",
+    predictionModeFactsOnlyHint:
+      "Turn date predictions off and show only recorded facts and saved markers.",
     save: "Save Changes",
   },
   ageGroup: {
@@ -343,17 +343,17 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       autoPeriodFill: "Автозаполнение дней менструации",
       autoPeriodFillHint:
         "Когда опция включена, отметка первого дня автоматически заполнит следующие дни по длительности менструации.",
-      irregularCycle: "У меня нерегулярный цикл",
-      irregularCycleHint:
-        "Включите, если ваши циклы отличаются больше чем на 7 дней. Ovumcy всё ещё показывает предсказания, но их нужно читать как приблизительный ориентир.",
-      irregularCycleIgnoredHint:
-        "Ниже уже включён режим только фактов, поэтому этот переключатель сейчас не влияет на предсказания.",
-      irregularCycleApproximateState: "Приблизительно",
-      irregularCycleIgnoredState: "Игнорируется",
-      unpredictableCycle: "Мой цикл непредсказуем (СПКЯ, перименопауза и т. д.)",
-      unpredictableCycleHint:
-        "Полностью отключает предсказания дат. Dashboard и календарь показывают только записанные факты и сохранённые отметки.",
-      unpredictableCycleFactsOnlyState: "Только факты",
+      predictionModeLabel: "Режим предсказаний",
+      predictionModeHint: "Выберите, как Ovumcy должен показывать предсказания дат.",
+      predictionModeRegular: "Обычный",
+      predictionModeRegularHint:
+        "Показывать стандартные предсказания по настройкам цикла и записанной истории.",
+      predictionModeIrregular: "Нерегулярный",
+      predictionModeIrregularHint:
+        "Оставить предсказания видимыми, но читать их как приблизительный ориентир.",
+      predictionModeFactsOnly: "Только факты",
+      predictionModeFactsOnlyHint:
+        "Отключить предсказания дат и показывать только записанные факты и сохранённые отметки.",
       save: "Сохранить изменения",
     },
     ageGroup: {
@@ -655,17 +655,17 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       autoPeriodFill: "Autocompletar días de período",
       autoPeriodFillHint:
         "Cuando está activado, marcar el primer día completa automáticamente los siguientes días según la duración del período.",
-      irregularCycle: "Tengo un ciclo irregular",
-      irregularCycleHint:
-        "Actívalo si tus ciclos varían más de 7 días. Ovumcy seguirá mostrando predicciones, pero deben leerse como una guía aproximada.",
-      irregularCycleIgnoredHint:
-        "Las predicciones ya están en modo solo hechos porque el ciclo impredecible está activado abajo.",
-      irregularCycleApproximateState: "Aproximado",
-      irregularCycleIgnoredState: "Ignorado",
-      unpredictableCycle: "Mi ciclo es impredecible (SOP, perimenopausia, etc.)",
-      unpredictableCycleHint:
-        "Desactiva por completo las predicciones de fechas. Dashboard y calendario muestran solo hechos registrados y marcadores guardados.",
-      unpredictableCycleFactsOnlyState: "Solo hechos",
+      predictionModeLabel: "Modo de predicción",
+      predictionModeHint: "Elige cómo debe mostrar Ovumcy las predicciones de fechas.",
+      predictionModeRegular: "Normal",
+      predictionModeRegularHint:
+        "Muestra la vista estándar de predicción según tus ajustes del ciclo y tu historial.",
+      predictionModeIrregular: "Irregular",
+      predictionModeIrregularHint:
+        "Mantén visibles las predicciones, pero léelas como una guía aproximada.",
+      predictionModeFactsOnly: "Solo hechos",
+      predictionModeFactsOnlyHint:
+        "Desactiva las predicciones de fechas y muestra solo hechos registrados y marcadores guardados.",
       save: "Guardar cambios",
     },
     ageGroup: {

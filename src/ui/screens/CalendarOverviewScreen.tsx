@@ -34,6 +34,7 @@ type CalendarOverviewScreenProps = {
   onAddEntry: () => void;
   onCancelEdit: () => void;
   onDelete: () => void | Promise<void>;
+  onDismissPredictionNotice?: (() => void | Promise<void>) | undefined;
   onManualCycleStart?: (() => void | Promise<void>) | undefined;
   onNextMonth: () => void;
   onPatch: (updates: Partial<DayLogRecord>) => void;
@@ -58,6 +59,7 @@ export function CalendarOverviewScreen({
   onAddEntry,
   onCancelEdit,
   onDelete,
+  onDismissPredictionNotice,
   onManualCycleStart,
   onNextMonth,
   onPatch,
@@ -128,7 +130,9 @@ export function CalendarOverviewScreen({
             <View style={styles.monthCard}>
               {viewData.predictionNotice ? (
                 <StatusBanner
-                  message={viewData.predictionNotice}
+                  dismissLabel={viewData.predictionNotice.dismissLabel}
+                  message={viewData.predictionNotice.message}
+                  onDismiss={onDismissPredictionNotice}
                   testID="calendar-prediction-mode-banner"
                   tone="info"
                 />

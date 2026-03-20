@@ -16,6 +16,7 @@ import {
 } from "../../security/local-data-key-store";
 import {
   createDefaultProfileRecord,
+  normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
   normalizeThemePreference,
   type ProfileRecord,
@@ -286,17 +287,50 @@ export function createSQLiteAppStorage(
     options.legacyStorageSource ?? defaultLegacyStorageSource;
   let hydratedDatabasePromise: Promise<LocalAppDatabase> | null = null;
   let localDataKeyPromise: Promise<string> | null = null;
+  let resetBarrierPromise: Promise<void> | null = null;
 
-  async function getHydratedDatabase() {
+  function beginResetBarrier() {
+    let releaseBarrier!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      releaseBarrier = resolve;
+    });
+    const trackedBarrier = barrier.finally(() => {
+      if (resetBarrierPromise === trackedBarrier) {
+        resetBarrierPromise = null;
+      }
+    });
+    resetBarrierPromise = trackedBarrier;
+
+    return releaseBarrier;
+  }
+
+  async function waitForResetBarrier() {
+    if (resetBarrierPromise) {
+      await resetBarrierPromise;
+    }
+  }
+
+  async function getOrCreateHydratedDatabase() {
     if (!hydratedDatabasePromise) {
-      hydratedDatabasePromise = hydrateLocalAppDatabase(
+      const nextPromise = hydrateLocalAppDatabase(
         openDatabase,
         legacyStorageSource,
         localDataKeyStore,
-      );
+      ).catch((error) => {
+        if (hydratedDatabasePromise === nextPromise) {
+          hydratedDatabasePromise = null;
+        }
+        throw error;
+      });
+      hydratedDatabasePromise = nextPromise;
     }
 
     return hydratedDatabasePromise;
+  }
+
+  async function getHydratedDatabase() {
+    await waitForResetBarrier();
+    return getOrCreateHydratedDatabase();
   }
 
   async function getLocalDataKey(database: LocalAppDatabase) {
@@ -323,11 +357,12 @@ export function createSQLiteAppStorage(
     },
 
     async clearAllLocalData(): Promise<void> {
-      const database = await getHydratedDatabase();
-      hydratedDatabasePromise = null;
-      localDataKeyPromise = null;
-
+      await waitForResetBarrier();
+      const releaseBarrier = beginResetBarrier();
       try {
+        const database = await getOrCreateHydratedDatabase();
+        hydratedDatabasePromise = null;
+        localDataKeyPromise = null;
         if (typeof database.closeAsync === "function") {
           await database.closeAsync();
         }
@@ -335,10 +370,10 @@ export function createSQLiteAppStorage(
         await deleteDatabase();
         await legacyStorageSource.clear();
         await localDataKeyStore.clearLocalDataKey();
-      } catch (error) {
+      } finally {
         hydratedDatabasePromise = null;
         localDataKeyPromise = null;
-        throw error;
+        releaseBarrier();
       }
     },
 
@@ -1336,6 +1371,9 @@ function mapProfileSettingsRow(
       temperatureUnit: normalizeTemperatureUnit(record.temperatureUnit),
       languageOverride: normalizeInterfaceLanguage(record.languageOverride),
       themeOverride: normalizeThemePreference(record.themeOverride),
+      dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
+        record.dismissedCalendarPredictionNoticeKey,
+      ) ?? null,
       ageGroup: record.ageGroup ?? "",
       usageGoal: record.usageGoal ?? "health",
     };
@@ -1363,6 +1401,8 @@ function mapLegacyProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     hideSexChip: row.hide_sex_chip === 1,
     languageOverride: normalizeInterfaceLanguage(row.language_override),
     themeOverride: normalizeThemePreference(row.theme_override),
+    dismissedCalendarPredictionNoticeKey:
+      defaults.dismissedCalendarPredictionNoticeKey ?? null,
   };
 }
 

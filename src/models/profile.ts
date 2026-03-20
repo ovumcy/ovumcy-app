@@ -19,9 +19,17 @@ export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 export type TemperatureUnit = "c" | "f";
 export type InterfaceLanguage = "en" | "ru" | "es";
 export type ThemePreference = "light" | "dark";
+export type PredictionMode = "regular" | "irregular" | "facts_only";
+export type CalendarPredictionNoticeKey =
+  | "calendar_irregular_prediction_notice_v1"
+  | "calendar_unpredictable_prediction_notice_v1";
 
 export const SUPPORTED_INTERFACE_LANGUAGES = ["en", "ru", "es"] as const;
 export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
+export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
+  "calendar_irregular_prediction_notice_v1",
+  "calendar_unpredictable_prediction_notice_v1",
+] as const;
 
 export type ProfileRecord = {
   lastPeriodStart: LocalDateISO | null;
@@ -38,6 +46,7 @@ export type ProfileRecord = {
   hideSexChip: boolean;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
+  dismissedCalendarPredictionNoticeKey?: CalendarPredictionNoticeKey | null;
 };
 
 export type CycleSettingsValues = Pick<
@@ -86,6 +95,56 @@ export function normalizeThemePreference(
     : null;
 }
 
+export function normalizeCalendarPredictionNoticeKey(
+  value: string | null | undefined,
+): CalendarPredictionNoticeKey | null {
+  if (!value) {
+    return null;
+  }
+
+  return SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS.includes(
+    value as CalendarPredictionNoticeKey,
+  )
+    ? (value as CalendarPredictionNoticeKey)
+    : null;
+}
+
+export function resolvePredictionMode(
+  value: Pick<ProfileRecord, "irregularCycle" | "unpredictableCycle">,
+): PredictionMode {
+  if (value.unpredictableCycle) {
+    return "facts_only";
+  }
+
+  if (value.irregularCycle) {
+    return "irregular";
+  }
+
+  return "regular";
+}
+
+export function resolvePredictionModeFlags(
+  mode: PredictionMode,
+): Pick<ProfileRecord, "irregularCycle" | "unpredictableCycle"> {
+  switch (mode) {
+    case "irregular":
+      return {
+        irregularCycle: true,
+        unpredictableCycle: false,
+      };
+    case "facts_only":
+      return {
+        irregularCycle: false,
+        unpredictableCycle: true,
+      };
+    default:
+      return {
+        irregularCycle: false,
+        unpredictableCycle: false,
+      };
+  }
+}
+
 export function createDefaultProfileRecord(): ProfileRecord {
   return {
     lastPeriodStart: null,
@@ -102,5 +161,6 @@ export function createDefaultProfileRecord(): ProfileRecord {
     hideSexChip: false,
     languageOverride: null,
     themeOverride: null,
+    dismissedCalendarPredictionNoticeKey: null,
   };
 }
