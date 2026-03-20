@@ -49,6 +49,10 @@ export type CalendarDayCellViewData = {
 export type CalendarDaySummaryViewData = {
   dateLabel: string;
   subtitle: string;
+  markerSummary: {
+    label: string;
+    value: string;
+  } | null;
   stateSummary: {
     hint: string;
     label: string;
@@ -89,6 +93,9 @@ export type CalendarViewData = {
     description: string;
   };
   legend: {
+    guide: string;
+    meaningTitle: string;
+    markersTitle: string;
     recordedPeriod: string;
     predictedPeriod: string;
     lowProbability: string;
@@ -239,6 +246,9 @@ export function buildCalendarViewData(
       description: calendarCopy.dayEditorSubtitle,
     },
     legend: {
+      guide: calendarCopy.legendGuide,
+      meaningTitle: calendarCopy.legend.meaningTitle,
+      markersTitle: calendarCopy.legend.markersTitle,
       recordedPeriod: calendarCopy.legend.recordedPeriod,
       predictedPeriod: calendarCopy.legend.predictedPeriod,
       lowProbability: calendarCopy.legend.lowProbability,
@@ -273,6 +283,7 @@ function buildCalendarDaySummaryViewData(
   return {
     dateLabel: formatCalendarSummaryDate(record.date, locale),
     subtitle: calendarCopy.dayEditorSubtitle,
+    markerSummary: buildCalendarMarkerSummary(selectedDay, calendarCopy),
     stateSummary: buildCalendarStateSummary(selectedDay, calendarCopy),
     noEntryLabel: calendarCopy.noEntry,
     symptomsLabel: editorViewData.labels.symptoms,
@@ -302,6 +313,38 @@ function buildCalendarDaySummaryViewData(
       editEntryLabel: calendarCopy.editEntry,
       cancelLabel: calendarCopy.cancelEdit,
     },
+  };
+}
+
+function buildCalendarMarkerSummary(
+  day: CalendarDayCellViewData | null,
+  calendarCopy: ReturnType<typeof getCalendarCopy>,
+): {
+  label: string;
+  value: string;
+} | null {
+  if (!day) {
+    return null;
+  }
+
+  const markers: string[] = [];
+  if (day.hasData) {
+    markers.push(calendarCopy.legend.loggedEntry);
+  }
+  if (day.hasSex) {
+    markers.push(calendarCopy.legend.sexLogged);
+  }
+  if (day.isToday) {
+    markers.push(calendarCopy.legend.today);
+  }
+
+  if (markers.length === 0) {
+    return null;
+  }
+
+  return {
+    label: calendarCopy.calendarMarkers,
+    value: markers.join(" · "),
   };
 }
 

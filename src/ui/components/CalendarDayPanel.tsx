@@ -106,6 +106,16 @@ export function CalendarDayPanel({
         <Text style={styles.summaryLabel}>{summaryViewData.stateSummary.label}</Text>
         <Text style={styles.summaryValue}>{summaryViewData.stateSummary.value}</Text>
         <Text style={styles.summaryHint}>{summaryViewData.stateSummary.hint}</Text>
+        {summaryViewData.markerSummary ? (
+          <View style={styles.markerSummary}>
+            <Text style={styles.summaryLabel}>
+              {summaryViewData.markerSummary.label}
+            </Text>
+            <Text style={styles.summaryValue}>
+              {summaryViewData.markerSummary.value}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {entryExists ? (
@@ -191,6 +201,12 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 13,
       lineHeight: 19,
+    },
+    markerSummary: {
+      borderTopColor: colors.lineSoft,
+      borderTopWidth: 1,
+      gap: 4,
+      paddingTop: spacing.sm,
     },
     summarySection: {
       gap: 4,

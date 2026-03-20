@@ -419,6 +419,55 @@ function createFakeDatabase(state?: Partial<FakeDatabaseState>): LocalAppDatabas
   return createInspectableFakeDatabase(state).database;
 }
 
+function createConcurrentProbeDatabase(
+  state?: Partial<FakeDatabaseState>,
+): {
+  database: LocalAppDatabase;
+  getMaxConcurrentOperations(): number;
+} {
+  const inspected = createInspectableFakeDatabase(state);
+  let inFlightOperations = 0;
+  let maxConcurrentOperations = 0;
+
+  async function track<T>(operation: () => Promise<T>): Promise<T> {
+    inFlightOperations += 1;
+    maxConcurrentOperations = Math.max(
+      maxConcurrentOperations,
+      inFlightOperations,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    try {
+      return await operation();
+    } finally {
+      inFlightOperations -= 1;
+    }
+  }
+
+  return {
+    database: {
+      execAsync(source) {
+        return track(() => inspected.database.execAsync(source));
+      },
+      getFirstAsync<T>(source: string, ...params: unknown[]) {
+        return track(() => inspected.database.getFirstAsync<T>(source, ...params));
+      },
+      getAllAsync<T>(source: string, ...params: unknown[]) {
+        return track(() => inspected.database.getAllAsync<T>(source, ...params));
+      },
+      runAsync(source, ...params) {
+        return track(() => inspected.database.runAsync(source, ...params));
+      },
+      async closeAsync() {
+        await track(() => inspected.database.closeAsync?.() ?? Promise.resolve());
+      },
+    },
+    getMaxConcurrentOperations() {
+      return maxConcurrentOperations;
+    },
+  };
+}
+
 function createFakeLocalDataKeyStore(
   initialKey: string | null = null,
 ): LocalDataKeyStore & {
@@ -862,6 +911,64 @@ describe("sqlite-app-storage", () => {
     expect(inspected.state.syncPreferencesColumns).toEqual(
       expect.arrayContaining(["last_remote_generation", "last_synced_at"]),
     );
+  });
+
+  it("serializes overlapping sqlite reads on a single connection", async () => {
+    const probe = createConcurrentProbeDatabase({
+      userVersion: 8,
+      bootstrapRow: {
+        has_completed_onboarding: 1,
+        profile_version: 2,
+      },
+      profileRow: {
+        last_period_start: null,
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: null,
+      },
+      syncPreferencesRow: {
+        mode: "managed",
+        endpoint_input: "",
+        normalized_endpoint: "https://sync.ovumcy.com",
+        device_label: "",
+        setup_status: "not_configured",
+        prepared_at: null,
+        last_remote_generation: null,
+        last_synced_at: null,
+      },
+      dayLogRows: [],
+      symptomRows: [],
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore(),
+      openDatabase: async () => probe.database,
+    });
+
+    await Promise.all([
+      storage.readProfileRecord(),
+      storage.readSyncPreferencesRecord(),
+      storage.listSymptomRecords(),
+      storage.readDayLogSummary(),
+    ]);
+
+    expect(probe.getMaxConcurrentOperations()).toBe(1);
   });
 
   it("clears local data and reseeds canonical defaults", async () => {

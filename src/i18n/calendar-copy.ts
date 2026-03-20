@@ -14,9 +14,12 @@ const calendarCopyEn = {
   editEntry: "Edit entry",
   cancelEdit: "Cancel",
   calendarMeaning: "Calendar meaning",
+  calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
   periodDayNo: "No",
   noData: "-",
+  legendGuide:
+    "Cell color shows the cycle meaning. Dots, dashes, and the heart add saved markers on top of that meaning.",
   stateHints: {
     neutral: "No recorded or predicted event is attached to this day yet.",
     recordedPeriod:
@@ -33,6 +36,8 @@ const calendarCopyEn = {
     loggedEntry: "You already saved a local entry for this day.",
   },
   legend: {
+    meaningTitle: "Day meaning",
+    markersTitle: "Saved markers",
     recordedPeriod: "Recorded period",
     predictedPeriod: "Predicted period",
     lowProbability: "Low probability",
@@ -62,9 +67,12 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     editEntry: "Изменить запись",
     cancelEdit: "Отмена",
     calendarMeaning: "Что означает день",
+    calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
     periodDayNo: "Нет",
     noData: "-",
+    legendGuide:
+      "Цвет ячейки показывает смысл дня. Точки, штрих и сердечко добавляют поверх него сохранённые отметки.",
     stateHints: {
       neutral: "Для этого дня пока нет ни записи, ни предсказанного события.",
       recordedPeriod:
@@ -81,6 +89,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       loggedEntry: "Для этого дня уже сохранена локальная запись.",
     },
     legend: {
+      meaningTitle: "Смысл дня",
+      markersTitle: "Сохранённые отметки",
       recordedPeriod: "Отмеченная менструация",
       predictedPeriod: "Предсказанная менструация",
       lowProbability: "Низкая вероятность",
@@ -105,9 +115,12 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     editEntry: "Editar registro",
     cancelEdit: "Cancelar",
     calendarMeaning: "Qué significa este día",
+    calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",
     periodDayNo: "No",
     noData: "-",
+    legendGuide:
+      "El color de la celda muestra el significado del día. Los puntos, la raya y el corazón añaden marcadores guardados sobre ese significado.",
     stateHints: {
       neutral: "Todavía no hay un evento registrado ni previsto para este día.",
       recordedPeriod:
@@ -125,6 +138,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       loggedEntry: "Ya guardaste un registro local para este día.",
     },
     legend: {
+      meaningTitle: "Significado del día",
+      markersTitle: "Marcadores guardados",
       recordedPeriod: "Período registrado",
       predictedPeriod: "Período previsto",
       lowProbability: "Probabilidad baja",

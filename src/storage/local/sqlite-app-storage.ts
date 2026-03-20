@@ -552,7 +552,7 @@ async function hydrateLocalAppDatabase(
   legacyStorageSource: LegacyLocalAppStorageSource,
   localDataKeyStore: LocalDataKeyStore,
 ): Promise<LocalAppDatabase> {
-  const database = await openDatabase();
+  const database = createSerializedLocalAppDatabase(await openDatabase());
 
   await ensureLocalAppSchema(database);
   const localDataKey = await resolveLocalDataKey(database, localDataKeyStore);
@@ -561,6 +561,42 @@ async function hydrateLocalAppDatabase(
   await ensureSeedRows(database, localDataKey);
 
   return database;
+}
+
+function createSerializedLocalAppDatabase(
+  database: LocalAppDatabase,
+): LocalAppDatabase {
+  let queue = Promise.resolve();
+
+  function enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = queue.then(task, task);
+    queue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  const serializedDatabase: LocalAppDatabase = {
+    execAsync(source) {
+      return enqueue(() => database.execAsync(source));
+    },
+    getFirstAsync<T>(source: string, ...params: unknown[]) {
+      return enqueue(() => database.getFirstAsync<T>(source, ...params));
+    },
+    getAllAsync<T>(source: string, ...params: unknown[]) {
+      return enqueue(() => database.getAllAsync<T>(source, ...params));
+    },
+    runAsync(source, ...params) {
+      return enqueue(() => database.runAsync(source, ...params));
+    },
+  };
+
+  if (typeof database.closeAsync === "function") {
+    serializedDatabase.closeAsync = () => enqueue(() => database.closeAsync!());
+  }
+
+  return serializedDatabase;
 }
 
 async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {

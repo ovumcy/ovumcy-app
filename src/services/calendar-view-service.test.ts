@@ -1,5 +1,9 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
-import { buildCalendarViewData } from "./calendar-view-service";
+import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
+import {
+  buildCalendarViewData,
+  loadCalendarScreenState,
+} from "./calendar-view-service";
 
 describe("calendar-view-service", () => {
   it("builds month cells with recorded period and sex markers", () => {
@@ -136,5 +140,59 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
+    expect(aprilViewData.legend).toEqual(
+      expect.objectContaining({
+        guide: expect.any(String),
+        meaningTitle: expect.any(String),
+        markersTitle: expect.any(String),
+      }),
+    );
+  });
+
+  it("explains saved markers separately from the selected day meaning", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-14",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-20",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 4,
+      sexActivity: "protected",
+      bbt: 0,
+      cervicalMucus: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    });
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 2, 17),
+      "2026-03",
+      "2026-03-20",
+    );
+
+    expect(state.selectedDaySummary.stateSummary.value).toBe("Low probability");
+    expect(state.selectedDaySummary.markerSummary).toEqual({
+      label: "Extra markers",
+      value: "Logged entry · Intimacy logged",
+    });
   });
 });

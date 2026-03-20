@@ -22,7 +22,7 @@ import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
-import { useThemedStyles } from "../theme/useThemedStyles";
+import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarOverviewScreenProps = {
   entryExists: boolean;
@@ -72,6 +72,7 @@ export function CalendarOverviewScreen({
   viewData,
 }: CalendarOverviewScreenProps) {
   const styles = useThemedStyles(createStyles);
+  const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWide = width >= 960;
@@ -140,38 +141,91 @@ export function CalendarOverviewScreen({
                 todayLabel={viewData.legend.today}
               />
 
-              <View style={styles.legend}>
-                <LegendItem label={viewData.legend.recordedPeriod} styles={styles}>
-                  <View style={[styles.legendDot, styles.legendDotPeriod]} />
-                </LegendItem>
-                {!viewData.isPredictionDisabled ? (
-                  <>
-                    <LegendItem label={viewData.legend.predictedPeriod} styles={styles}>
-                      <View style={[styles.legendDot, styles.legendDotPredicted]} />
+              <View style={styles.legendBlock}>
+                <Text style={styles.legendGuide}>{viewData.legend.guide}</Text>
+
+                <View style={styles.legendSection}>
+                  <Text style={styles.legendSectionTitle}>
+                    {viewData.legend.meaningTitle}
+                  </Text>
+                  <View style={styles.legend}>
+                    <LegendItem label={viewData.legend.recordedPeriod} styles={styles}>
+                      <LegendCellSwatch
+                        borderColor={colors.calendarPeriodBorder}
+                        backgroundColor={colors.calendarPeriodBg}
+                        styles={styles}
+                      />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.lowProbability} styles={styles}>
-                      <View style={styles.legendOutline} />
+                    {!viewData.isPredictionDisabled ? (
+                      <>
+                        <LegendItem label={viewData.legend.predictedPeriod} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarPredictedBg}
+                            borderColor={colors.calendarPredictedBorder}
+                            borderStyle="dashed"
+                            styles={styles}
+                          />
+                        </LegendItem>
+                        <LegendItem label={viewData.legend.lowProbability} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarPreFertileBg}
+                            borderColor={colors.calendarPreFertileBorder}
+                            borderStyle="dashed"
+                            styles={styles}
+                          />
+                        </LegendItem>
+                        <LegendItem label={viewData.legend.fertilityEdge} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarFertilityEdgeBg}
+                            borderColor={colors.calendarFertilityEdgeBorder}
+                            styles={styles}
+                          />
+                        </LegendItem>
+                        <LegendItem label={viewData.legend.fertilityPeak} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarFertilityPeakBg}
+                            borderColor={colors.calendarFertilityPeakBorder}
+                            styles={styles}
+                          />
+                        </LegendItem>
+                        <LegendItem label={viewData.legend.ovulation} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarFertilityPeakBg}
+                            borderColor={colors.calendarFertilityPeakBorder}
+                            marker="ovulation"
+                            styles={styles}
+                          />
+                        </LegendItem>
+                        <LegendItem label={viewData.legend.ovulationTentative} styles={styles}>
+                          <LegendCellSwatch
+                            backgroundColor={colors.calendarTentativeBg}
+                            borderColor={colors.calendarTentativeBorder}
+                            borderStyle="dashed"
+                            marker="tentative"
+                            styles={styles}
+                          />
+                        </LegendItem>
+                      </>
+                    ) : null}
+                  </View>
+                </View>
+
+                <View style={styles.legendSection}>
+                  <Text style={styles.legendSectionTitle}>
+                    {viewData.legend.markersTitle}
+                  </Text>
+                  <View style={styles.legend}>
+                    <LegendItem label={viewData.legend.loggedEntry} styles={styles}>
+                      <LegendCellSwatch marker="entry" styles={styles} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.fertilityEdge} styles={styles}>
-                      <View style={[styles.legendDot, styles.legendDotFertilityEdge]} />
+                    <LegendItem label={viewData.legend.sexLogged} styles={styles}>
+                      <LegendCellSwatch marker="heart" styles={styles} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.fertilityPeak} styles={styles}>
-                      <View style={[styles.legendDot, styles.legendDotFertilityPeak]} />
+                    <LegendItem label={viewData.legend.today} styles={styles}>
+                      <LegendCellSwatch marker="today" styles={styles} />
                     </LegendItem>
-                    <LegendItem label={viewData.legend.ovulation} styles={styles}>
-                      <View style={styles.legendOvulationDot} />
-                    </LegendItem>
-                    <LegendItem label={viewData.legend.ovulationTentative} styles={styles}>
-                      <View style={styles.legendOvulationDash} />
-                    </LegendItem>
-                  </>
-                ) : null}
-                <LegendItem label={viewData.legend.loggedEntry} styles={styles}>
-                  <View style={styles.legendDataMarker} />
-                </LegendItem>
-                <LegendItem label={viewData.legend.sexLogged} styles={styles}>
-                  <Text style={styles.legendHeart}>♥</Text>
-                </LegendItem>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -221,6 +275,45 @@ function LegendItem({
     <View style={styles.legendItem}>
       {children}
       <Text style={styles.legendLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function LegendCellSwatch({
+  backgroundColor,
+  borderColor,
+  borderStyle = "solid",
+  marker,
+  styles,
+}: {
+  backgroundColor?: string;
+  borderColor?: string;
+  borderStyle?: "solid" | "dashed";
+  marker?: "entry" | "heart" | "ovulation" | "tentative" | "today";
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <View
+      style={[
+        styles.legendCellSwatch,
+        backgroundColor ? { backgroundColor } : null,
+        borderColor
+          ? {
+              borderColor,
+              borderStyle,
+            }
+          : null,
+      ]}
+    >
+      {marker === "entry" ? <View style={styles.legendEntryMarker} /> : null}
+      {marker === "ovulation" ? <View style={styles.legendOvulationMarker} /> : null}
+      {marker === "tentative" ? <View style={styles.legendOvulationDash} /> : null}
+      {marker === "heart" ? <Text style={styles.legendHeart}>♥</Text> : null}
+      {marker === "today" ? (
+        <View style={styles.legendTodayPill}>
+          <View style={styles.legendTodayPillCore} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -298,6 +391,23 @@ const createStyles = (colors: AppThemeColors) =>
       flex: 1,
       minWidth: 0,
     },
+    legendBlock: {
+      gap: spacing.sm,
+    },
+    legendSection: {
+      gap: spacing.xs,
+    },
+    legendSectionTitle: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: "700",
+      textTransform: "uppercase",
+    },
+    legendGuide: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+    },
     legend: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -313,51 +423,49 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 12,
       fontWeight: "600",
     },
-    legendDot: {
+    legendCellSwatch: {
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      height: 18,
+      justifyContent: "center",
+      width: 22,
+    },
+    legendEntryMarker: {
+      backgroundColor: colors.calendarDataMarkerBg,
+      borderRadius: 999,
+      height: 7,
+      width: 7,
+    },
+    legendOvulationMarker: {
+      backgroundColor: colors.calendarOvulationMarkerBg,
       borderRadius: 999,
       height: 8,
       width: 8,
     },
-    legendDotPeriod: {
-      backgroundColor: "#c7756d",
-    },
-    legendDotPredicted: {
-      backgroundColor: colors.accentSecondary,
-    },
-    legendDotFertilityEdge: {
-      backgroundColor: "#e7b88f",
-    },
-    legendDotFertilityPeak: {
-      backgroundColor: "#dd9b81",
-    },
-    legendOutline: {
-      borderColor: colors.accentSecondary,
-      borderRadius: 999,
-      borderWidth: 1,
-      height: 10,
-      width: 10,
-    },
-    legendOvulationDot: {
-      backgroundColor: "#f0906f",
-      borderRadius: 999,
-      height: 10,
-      width: 10,
-    },
     legendOvulationDash: {
-      backgroundColor: "#e0a37d",
+      backgroundColor: colors.calendarOvulationDashBg,
       borderRadius: 999,
       height: 3,
       width: 12,
-    },
-    legendDataMarker: {
-      backgroundColor: colors.accentStrong,
-      borderRadius: 999,
-      height: 8,
-      width: 8,
     },
     legendHeart: {
       color: colors.accentStrong,
       fontSize: 12,
       fontWeight: "700",
+    },
+    legendTodayPill: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    legendTodayPillCore: {
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 8,
+      width: 14,
     },
   });
