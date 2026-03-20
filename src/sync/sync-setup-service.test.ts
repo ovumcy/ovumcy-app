@@ -35,6 +35,17 @@ describe("sync-setup-service", () => {
 
     expect(result.preferences.setupStatus).toBe("not_configured");
     expect(result.hasStoredSecrets).toBe(true);
+    expect(result.hasAuthSession).toBe(false);
+  });
+
+  it("does not report an auth session when no sync secrets exist yet", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await loadSyncSetupState(storage, secretStore);
+
+    expect(result.hasStoredSecrets).toBe(false);
+    expect(result.hasAuthSession).toBe(false);
   });
 
   it("prepares encrypted sync secrets and persists normalized preferences", async () => {

@@ -266,6 +266,56 @@ describe("SettingsScreen", () => {
     await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
   });
 
+  it("shows connected sync actions when the device already has an auth session", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: 123,
+        lastSyncedAt: "2026-03-20T08:10:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: "session-1",
+    });
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-restore-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-disconnect-button")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-login-button")).toBeNull();
+    expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
+  });
+
   it("requires confirmation before recreating local sync keys", async () => {
     const storage = createStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

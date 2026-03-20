@@ -26,6 +26,14 @@ import {
   type SaveSyncPreferencesDraftErrorCode,
 } from "../sync/sync-setup-service";
 import {
+  connectSyncAccount,
+  disconnectSyncAccount,
+  runSyncRestore,
+  runSyncUpload,
+  type SyncConnectErrorCode,
+  type SyncRunErrorCode,
+} from "../sync/sync-client-service";
+import {
   getSettingsCycleStartDateBounds,
   parseLocalDate,
   sanitizeCycleSettingsValues,
@@ -48,6 +56,8 @@ type ExportSettingsErrorCode =
   | "invalid_to_date"
   | "invalid_range"
   | "generic";
+type SyncConnectSettingsErrorCode = SyncConnectErrorCode;
+type SyncRunSettingsErrorCode = SyncRunErrorCode;
 
 type SaveStateResult<ErrorCode extends string> =
   | {
@@ -86,6 +96,7 @@ export async function loadSettingsScreenState(
     profile,
     syncState.preferences,
     syncState.hasStoredSecrets,
+    syncState.hasAuthSession,
     symptomRecords,
     exportResult.state,
   );
@@ -124,6 +135,7 @@ export async function saveCycleSettings(
       nextProfile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
@@ -156,6 +168,7 @@ export async function saveTrackingSettings(
       nextProfile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
@@ -188,6 +201,7 @@ export async function saveInterfaceSettings(
       nextProfile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
@@ -220,6 +234,7 @@ export async function createSettingsSymptom(
       currentState.profile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       [...currentState.symptomRecords, result.record],
       currentState.exportState,
       currentState.syncPreferences,
@@ -257,6 +272,7 @@ export async function updateSettingsSymptom(
       currentState.profile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -291,6 +307,7 @@ export async function archiveSettingsSymptom(
       currentState.profile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -325,6 +342,7 @@ export async function restoreSettingsSymptom(
       currentState.profile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
@@ -345,6 +363,7 @@ export async function refreshSettingsExportState(
     currentState.profile,
     currentState.savedSyncPreferences,
     currentState.hasStoredSyncSecrets,
+    currentState.hasSyncSession,
     currentState.symptomRecords,
     result.state,
     currentState.syncPreferences,
@@ -392,6 +411,7 @@ export async function prepareSettingsExportArtifact(
     currentState.profile,
     currentState.savedSyncPreferences,
     currentState.hasStoredSyncSecrets,
+    currentState.hasSyncSession,
     currentState.symptomRecords,
     result.state,
     currentState.syncPreferences,
@@ -446,6 +466,7 @@ export async function prepareSettingsSyncSetup(
       currentState.profile,
       result.preferences,
       true,
+      currentState.hasSyncSession,
       currentState.symptomRecords,
       currentState.exportState,
     ),
@@ -485,6 +506,156 @@ export async function saveSettingsSyncDraft(
       currentState.profile,
       result.preferences,
       result.hasStoredSecrets,
+      currentState.hasSyncSession && result.hasStoredSecrets,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
+  };
+}
+
+export async function connectSettingsSyncAccount(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  credentials: { login: string; password: string },
+  mode: "register" | "login",
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      connected: boolean;
+    }
+  | {
+      ok: false;
+      errorCode: SyncConnectSettingsErrorCode;
+    }
+> {
+  const result = await connectSyncAccount(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    credentials,
+    mode,
+    now,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    connected: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      currentState.hasStoredSyncSecrets,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
+  };
+}
+
+export async function uploadSettingsSyncSnapshot(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: SyncRunSettingsErrorCode;
+    }
+> {
+  const result = await runSyncUpload(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    now,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      currentState.hasStoredSyncSecrets,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
+  };
+}
+
+export async function restoreSettingsSyncSnapshot(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: SyncRunSettingsErrorCode;
+    }
+> {
+  const result = await runSyncRestore(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  const profile = await storage.readProfileRecord();
+  const symptomRecords = await storage.listSymptomRecords();
+  const exportResult = await loadLocalExportState(storage, new Date());
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      profile,
+      result.preferences,
+      currentState.hasStoredSyncSecrets,
+      true,
+      symptomRecords,
+      exportResult.state,
+    ),
+  };
+}
+
+export async function disconnectSettingsSyncAccount(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+): Promise<{
+  ok: true;
+  state: LoadedSettingsState;
+}> {
+  const result = await disconnectSyncAccount(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+  );
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      currentState.hasStoredSyncSecrets,
+      false,
       currentState.symptomRecords,
       currentState.exportState,
     ),

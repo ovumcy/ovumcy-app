@@ -13,6 +13,7 @@ import {
 } from "./sync-endpoint-policy";
 
 export type LoadSyncSetupStateResult = {
+  hasAuthSession: boolean;
   hasStoredSecrets: boolean;
   preferences: SyncPreferencesRecord;
 };
@@ -39,6 +40,7 @@ export async function loadSyncSetupState(
   ]);
 
   return {
+    hasAuthSession: typeof secrets?.authSessionToken === "string",
     preferences,
     hasStoredSecrets: secrets !== null,
   };
@@ -88,6 +90,8 @@ export async function prepareSyncSetup(
     normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
     preparedAt: now.toISOString(),
     setupStatus: "local_ready",
+    lastRemoteGeneration: null,
+    lastSyncedAt: null,
   };
 
   try {
@@ -160,6 +164,10 @@ export async function saveSyncPreferencesDraft(
       ? "not_configured"
       : savedPreferences.setupStatus,
     preparedAt: shouldResetPreparedState ? null : savedPreferences.preparedAt,
+    lastRemoteGeneration: shouldResetPreparedState
+      ? null
+      : savedPreferences.lastRemoteGeneration,
+    lastSyncedAt: shouldResetPreparedState ? null : savedPreferences.lastSyncedAt,
   };
 
   try {

@@ -37,6 +37,8 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsFlowScreenProps = {
+  accountLoginValue: string;
+  accountPasswordValue: string;
   createSymptomDraft: SymptomDraftValues;
   createSymptomErrorMessage: string;
   createSymptomStatusMessage: string;
@@ -57,11 +59,14 @@ type SettingsFlowScreenProps = {
   generatedRecoveryPhrase: string;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
+  isAuthenticatingSync: boolean;
   isExporting: boolean;
   isPreparingSync: boolean;
+  isRestoringSync: boolean;
   isSavingCycle: boolean;
   isSavingInterface: boolean;
   isSavingTracking: boolean;
+  isSyncingNow: boolean;
   locale: string;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
@@ -87,8 +92,15 @@ type SettingsFlowScreenProps = {
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDatePress: () => void;
   onExportToDateChange: (value: string) => void;
+  onConnectSyncLogin: () => void | Promise<void>;
+  onConnectSyncRegister: () => void | Promise<void>;
+  onDisconnectSync: () => void | Promise<void>;
   onPrepareSyncSetup: () => void | Promise<void>;
+  onRestoreSync: () => void | Promise<void>;
+  onSyncLoginValueChange: (value: string) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
+  onSyncPasswordValueChange: (value: string) => void;
+  onSyncNow: () => void | Promise<void>;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onIrregularCycleChange: (value: boolean) => void;
   onPeriodLengthChange: (value: number) => void;
@@ -124,6 +136,8 @@ type SettingsFlowScreenProps = {
 };
 
 export function SettingsFlowScreen({
+  accountLoginValue,
+  accountPasswordValue,
   accountErrorMessage,
   accountStatusMessage,
   createSymptomDraft,
@@ -140,12 +154,15 @@ export function SettingsFlowScreen({
   generatedRecoveryPhrase,
   interfaceErrorMessage,
   interfaceStatusMessage,
+  isAuthenticatingSync,
   isExporting,
   isPreparingSync,
+  isRestoringSync,
   isSavingCycle,
   isSavingInterface,
   isSavingTracking,
   isClearingData,
+  isSyncingNow,
   locale,
   now,
   onAgeGroupSelect,
@@ -168,8 +185,15 @@ export function SettingsFlowScreen({
   onExportPresetSelect,
   onExportToDatePress,
   onExportToDateChange,
+  onConnectSyncLogin,
+  onConnectSyncRegister,
+  onDisconnectSync,
   onPrepareSyncSetup,
+  onRestoreSync,
+  onSyncLoginValueChange,
   onInterfaceLanguageSelect,
+  onSyncPasswordValueChange,
+  onSyncNow,
   onInterfaceThemeSelect,
   onHideSexChipChange,
   onIrregularCycleChange,
@@ -501,15 +525,28 @@ export function SettingsFlowScreen({
       />
 
       <SettingsSyncSetupSection
+        authLoginValue={accountLoginValue}
+        authPasswordValue={accountPasswordValue}
         errorMessage={accountErrorMessage}
         generatedRecoveryPhrase={generatedRecoveryPhrase}
+        hasSyncSession={state.hasSyncSession}
         hasStoredSyncSecrets={state.hasStoredSyncSecrets}
+        isAuthenticating={isAuthenticatingSync}
         isPreparing={isPreparingSync}
+        isRestoring={isRestoringSync}
+        isSyncing={isSyncingNow}
         notSetLabel={viewData.common.notSet}
+        onAuthLoginChange={onSyncLoginValueChange}
+        onAuthPasswordChange={onSyncPasswordValueChange}
+        onDisconnect={onDisconnectSync}
         onDeviceLabelChange={onSyncDeviceLabelChange}
         onEndpointChange={onSyncEndpointChange}
+        onLogin={onConnectSyncLogin}
         onModeSelect={onSyncModeSelect}
         onPrepare={onPrepareSyncSetup}
+        onRegister={onConnectSyncRegister}
+        onRestore={onRestoreSync}
+        onSyncNow={onSyncNow}
         preferences={state.syncPreferences}
         statusMessage={accountStatusMessage}
         viewData={viewData.account}

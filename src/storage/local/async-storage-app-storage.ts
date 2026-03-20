@@ -335,6 +335,13 @@ function mergeSyncPreferencesRecord(
     setupStatus: normalizeSyncSetupStatus(parsed?.setupStatus),
     preparedAt:
       typeof parsed?.preparedAt === "string" ? parsed.preparedAt : null,
+    lastRemoteGeneration:
+      typeof parsed?.lastRemoteGeneration === "number" &&
+      Number.isFinite(parsed.lastRemoteGeneration)
+        ? parsed.lastRemoteGeneration
+        : null,
+    lastSyncedAt:
+      typeof parsed?.lastSyncedAt === "string" ? parsed.lastSyncedAt : null,
   };
 }
 

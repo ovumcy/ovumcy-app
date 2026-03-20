@@ -4,6 +4,7 @@ export const SUPPORTED_SYNC_MODES = ["managed", "self_hosted"] as const;
 export const SUPPORTED_SYNC_SETUP_STATUSES = [
   "not_configured",
   "local_ready",
+  "connected",
 ] as const;
 
 export type SyncMode = (typeof SUPPORTED_SYNC_MODES)[number];
@@ -24,6 +25,42 @@ export type SyncPreferencesRecord = {
   deviceLabel: string;
   setupStatus: SyncSetupStatus;
   preparedAt: string | null;
+  lastRemoteGeneration: number | null;
+  lastSyncedAt: string | null;
+};
+
+export type SyncAuthResult = {
+  accountID: string;
+  sessionToken: string;
+  sessionExpiresAt: string;
+};
+
+export type SyncCapabilityDocument = {
+  mode: SyncMode;
+  syncEnabled: boolean;
+  premiumActive: boolean;
+  recoverySupported: boolean;
+  pushSupported: boolean;
+  portalSupported: boolean;
+  advancedCloudInsights: boolean;
+  maxDevices: number;
+  maxBlobBytes: number;
+};
+
+export type SyncDeviceRecord = {
+  deviceID: string;
+  deviceLabel: string;
+  createdAt: string;
+  lastSeenAt: string;
+};
+
+export type SyncBlobRecord = {
+  schemaVersion: number;
+  generation: number;
+  checksumSHA256: string;
+  ciphertextBase64: string;
+  ciphertextSize: number;
+  updatedAt: string;
 };
 
 export type SyncDeviceIdentity = {
@@ -79,5 +116,7 @@ export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {
     deviceLabel: "",
     setupStatus: "not_configured",
     preparedAt: null,
+    lastRemoteGeneration: null,
+    lastSyncedAt: null,
   };
 }

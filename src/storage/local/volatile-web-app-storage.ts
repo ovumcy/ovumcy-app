@@ -247,6 +247,13 @@ function mergeSyncPreferencesRecord(
         : defaults.deviceLabel,
     setupStatus: normalizeSyncSetupStatus(record.setupStatus),
     preparedAt: typeof record.preparedAt === "string" ? record.preparedAt : null,
+    lastRemoteGeneration:
+      typeof record.lastRemoteGeneration === "number" &&
+      Number.isFinite(record.lastRemoteGeneration)
+        ? record.lastRemoteGeneration
+        : null,
+    lastSyncedAt:
+      typeof record.lastSyncedAt === "string" ? record.lastSyncedAt : null,
   };
 }
 

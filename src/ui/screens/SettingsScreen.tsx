@@ -12,16 +12,20 @@ import {
 import type { ExportServiceDependencies } from "../../services/export-service";
 import {
   archiveSettingsSymptom,
+  connectSettingsSyncAccount,
+  disconnectSettingsSyncAccount,
   createSettingsSymptom,
   loadSettingsScreenState,
   prepareSettingsExportArtifact,
   prepareSettingsSyncSetup,
   refreshSettingsExportState,
+  restoreSettingsSyncSnapshot,
   restoreSettingsSymptom,
   saveCycleSettings,
   saveInterfaceSettings,
   saveSettingsSyncDraft,
   saveTrackingSettings,
+  uploadSettingsSyncSnapshot,
   updateSettingsSymptom,
 } from "../../services/settings-screen-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
@@ -93,13 +97,18 @@ export function SettingsScreen({
   const [clearDataStatusMessage, setClearDataStatusMessage] = useState("");
   const [accountErrorMessage, setAccountErrorMessage] = useState("");
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
+  const [accountLoginValue, setAccountLoginValue] = useState("");
+  const [accountPasswordValue, setAccountPasswordValue] = useState("");
   const [exportErrorMessage, setExportErrorMessage] = useState("");
   const [exportStatusMessage, setExportStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
   const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
   const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
+  const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
   const [isPreparingSync, setIsPreparingSync] = useState(false);
+  const [isRestoringSync, setIsRestoringSync] = useState(false);
   const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -292,6 +301,10 @@ export function SettingsScreen({
 
   function syncErrorLabel(errorCode: string) {
     switch (errorCode) {
+      case "login_required":
+        return viewData.account.errors.loginRequired;
+      case "password_required":
+        return viewData.account.errors.passwordRequired;
       case "device_label_required":
         return viewData.account.errors.deviceLabelRequired;
       case "endpoint_required":
@@ -302,6 +315,27 @@ export function SettingsScreen({
         return viewData.account.errors.unsupportedScheme;
       case "insecure_public_http":
         return viewData.account.errors.insecurePublicHttp;
+      case "invalid_registration_input":
+        return viewData.account.errors.invalidRegistrationInput;
+      case "registration_failed":
+        return viewData.account.errors.registrationFailed;
+      case "invalid_credentials":
+        return viewData.account.errors.invalidCredentials;
+      case "too_many_devices":
+        return viewData.account.errors.tooManyDevices;
+      case "sync_not_prepared":
+        return viewData.account.errors.syncNotPrepared;
+      case "not_connected":
+      case "unauthorized":
+        return viewData.account.errors.notConnected;
+      case "blob_not_found":
+        return viewData.account.errors.blobNotFound;
+      case "invalid_payload":
+        return viewData.account.errors.invalidPayload;
+      case "network_failed":
+        return viewData.account.errors.networkFailed;
+      case "stale_generation":
+        return viewData.account.errors.syncFailed;
       default:
         return viewData.account.errors.saveFailed;
     }
@@ -509,6 +543,173 @@ export function SettingsScreen({
         : viewData.account.status.prepared,
     );
     setIsPreparingSync(false);
+  }
+
+  async function saveSyncDraftIfNeeded(current: LoadedSettingsState) {
+    if (areSyncPreferencesEqual(current.syncPreferences, current.savedSyncPreferences)) {
+      return current;
+    }
+
+    setIsSavingSyncDraft(true);
+    const syncResult = await saveSettingsSyncDraft(storage, syncSecretStore, current);
+    setIsSavingSyncDraft(false);
+    if (!syncResult.ok) {
+      setAccountErrorMessage(syncErrorLabel(syncResult.errorCode));
+      return null;
+    }
+
+    setState(syncResult.state);
+    return syncResult.state;
+  }
+
+  async function handleConnectSync(mode: "register" | "login") {
+    resetAccountMessages();
+    setIsAuthenticatingSync(true);
+
+    const syncReadyState = await saveSyncDraftIfNeeded(readyState);
+    if (!syncReadyState) {
+      setIsAuthenticatingSync(false);
+      return;
+    }
+
+    const result = await connectSettingsSyncAccount(
+      storage,
+      syncSecretStore,
+      syncReadyState,
+      {
+        login: accountLoginValue,
+        password: accountPasswordValue,
+      },
+      mode,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setIsAuthenticatingSync(false);
+      return;
+    }
+
+    setState(result.state);
+    setAccountPasswordValue("");
+    setAccountStatusMessage(viewData.account.status.connected);
+    setIsAuthenticatingSync(false);
+  }
+
+  async function handleSyncNow() {
+    resetAccountMessages();
+    setIsSyncingNow(true);
+
+    const syncReadyState = await saveSyncDraftIfNeeded(readyState);
+    if (!syncReadyState) {
+      setIsSyncingNow(false);
+      return;
+    }
+
+    const result = await uploadSettingsSyncSnapshot(
+      storage,
+      syncSecretStore,
+      syncReadyState,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setIsSyncingNow(false);
+      return;
+    }
+
+    setState(result.state);
+    setAccountStatusMessage(viewData.account.status.uploaded);
+    setIsSyncingNow(false);
+  }
+
+  async function handleRestoreSync() {
+    resetAccountMessages();
+
+    const confirmed = await openConfirmation(
+      viewData.account.restorePrompt,
+      viewData.account.restoreAccept,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const challengeResult = await requestSensitiveActionChallenge(
+      viewData.account.restoreDeviceAuthPrompt,
+    );
+    if (!challengeResult.ok) {
+      if (challengeResult.reason === "unavailable") {
+        setAccountErrorMessage(viewData.account.errors.deviceAuthUnavailable);
+      } else if (challengeResult.reason === "failed") {
+        setAccountErrorMessage(viewData.account.errors.deviceAuthFailed);
+      }
+      return;
+    }
+
+    setIsRestoringSync(true);
+    const syncReadyState = await saveSyncDraftIfNeeded(readyState);
+    if (!syncReadyState) {
+      setIsRestoringSync(false);
+      return;
+    }
+
+    const result = await restoreSettingsSyncSnapshot(
+      storage,
+      syncSecretStore,
+      syncReadyState,
+    );
+    if (!result.ok) {
+      setAccountErrorMessage(
+        result.errorCode === "sync_not_prepared"
+          ? viewData.account.errors.syncNotPrepared
+          : result.errorCode === "unauthorized"
+            ? viewData.account.errors.notConnected
+            : result.errorCode === "blob_not_found"
+              ? viewData.account.errors.blobNotFound
+              : result.errorCode === "invalid_payload"
+                ? viewData.account.errors.invalidPayload
+                : result.errorCode === "network_failed"
+                  ? viewData.account.errors.networkFailed
+                  : viewData.account.errors.restoreFailed,
+      );
+      setIsRestoringSync(false);
+      return;
+    }
+
+    setState(result.state);
+    setAccountStatusMessage(viewData.account.status.restored);
+    await refreshPreferences();
+    setIsRestoringSync(false);
+  }
+
+  async function handleDisconnectSync() {
+    resetAccountMessages();
+
+    const confirmed = await openConfirmation(
+      viewData.account.disconnectPrompt,
+      viewData.account.disconnectLabel,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const syncReadyState = await saveSyncDraftIfNeeded(readyState);
+    if (!syncReadyState) {
+      return;
+    }
+    if (!syncReadyState.hasSyncSession) {
+      setAccountPasswordValue("");
+      setAccountStatusMessage(viewData.account.status.disconnected);
+      return;
+    }
+
+    const result = await disconnectSettingsSyncAccount(
+      storage,
+      syncSecretStore,
+      syncReadyState,
+    );
+    setState(result.state);
+    setAccountPasswordValue("");
+    setAccountStatusMessage(viewData.account.status.disconnected);
   }
 
   async function handleCreateSymptom() {
@@ -720,6 +921,8 @@ export function SettingsScreen({
 
   return (
       <SettingsFlowScreen
+      accountLoginValue={accountLoginValue}
+      accountPasswordValue={accountPasswordValue}
       createSymptomDraft={createSymptomDraft}
       createSymptomErrorMessage={createSymptomErrorMessage}
       createSymptomStatusMessage={createSymptomStatusMessage}
@@ -736,12 +939,15 @@ export function SettingsScreen({
       generatedRecoveryPhrase={generatedRecoveryPhrase}
       interfaceErrorMessage={interfaceErrorMessage}
       interfaceStatusMessage={interfaceStatusMessage}
+      isAuthenticatingSync={isAuthenticatingSync}
       isClearingData={isClearingData}
       isExporting={isExporting}
       isPreparingSync={isPreparingSync}
+      isRestoringSync={isRestoringSync}
       isSavingCycle={isSavingCycle}
       isSavingInterface={isSavingInterface}
       isSavingTracking={isSavingTracking}
+      isSyncingNow={isSyncingNow}
       locale={language}
       now={effectiveNow}
       onAgeGroupSelect={(value) => {
@@ -913,7 +1119,23 @@ export function SettingsScreen({
           void handleExportRangeChange(nextValues);
         }
       }}
+      onConnectSyncLogin={() => {
+        void handleConnectSync("login");
+      }}
+      onConnectSyncRegister={() => {
+        void handleConnectSync("register");
+      }}
+      onDisconnectSync={() => {
+        void handleDisconnectSync();
+      }}
       onPrepareSyncSetup={handlePrepareSyncSetup}
+      onRestoreSync={() => {
+        void handleRestoreSync();
+      }}
+      onSyncLoginValueChange={(value) => {
+        resetAccountMessages();
+        setAccountLoginValue(value);
+      }}
       onInterfaceLanguageSelect={(value) => {
         setInterfaceErrorMessage("");
         setInterfaceStatusMessage("");
@@ -999,6 +1221,13 @@ export function SettingsScreen({
         void handleSaveInterfaceSettings();
       }}
       onSaveTrackingSettings={handleSaveTrackingSettings}
+      onSyncNow={() => {
+        void handleSyncNow();
+      }}
+      onSyncPasswordValueChange={(value) => {
+        resetAccountMessages();
+        setAccountPasswordValue(value);
+      }}
       onSyncDeviceLabelChange={(value) => {
         resetAccountMessages();
         setState((current) =>
@@ -1239,6 +1468,8 @@ function areSyncPreferencesEqual(
     left.normalizedEndpoint === right.normalizedEndpoint &&
     left.deviceLabel === right.deviceLabel &&
     left.setupStatus === right.setupStatus &&
-    left.preparedAt === right.preparedAt
+    left.preparedAt === right.preparedAt &&
+    left.lastRemoteGeneration === right.lastRemoteGeneration &&
+    left.lastSyncedAt === right.lastSyncedAt
   );
 }

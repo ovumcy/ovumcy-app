@@ -11,30 +11,56 @@ import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
 
 type SettingsSyncSetupSectionProps = {
+  authLoginValue: string;
+  authPasswordValue: string;
   errorMessage: string;
   generatedRecoveryPhrase: string;
+  hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
+  isAuthenticating: boolean;
   isPreparing: boolean;
+  isRestoring: boolean;
+  isSyncing: boolean;
   notSetLabel: string;
+  onAuthLoginChange: (value: string) => void;
+  onAuthPasswordChange: (value: string) => void;
+  onDisconnect: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
   onEndpointChange: (value: string) => void;
+  onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPrepare: () => void | Promise<void>;
+  onRegister: () => void | Promise<void>;
+  onRestore: () => void | Promise<void>;
+  onSyncNow: () => void | Promise<void>;
   preferences: SyncPreferencesRecord;
   statusMessage: string;
   viewData: SettingsViewData["account"];
 };
 
 export function SettingsSyncSetupSection({
+  authLoginValue,
+  authPasswordValue,
   errorMessage,
   generatedRecoveryPhrase,
+  hasSyncSession,
   hasStoredSyncSecrets,
+  isAuthenticating,
   isPreparing,
+  isRestoring,
+  isSyncing,
   notSetLabel,
+  onAuthLoginChange,
+  onAuthPasswordChange,
+  onDisconnect,
   onDeviceLabelChange,
   onEndpointChange,
+  onLogin,
   onModeSelect,
   onPrepare,
+  onRegister,
+  onRestore,
+  onSyncNow,
   preferences,
   statusMessage,
   viewData,
@@ -113,6 +139,14 @@ export function SettingsSyncSetupSection({
             </Text>
           </View>
           <View style={styles.statusCard}>
+            <Text style={styles.statusLabel}>{viewData.connectionLabel}</Text>
+            <Text style={styles.statusValue}>
+              {hasSyncSession
+                ? viewData.connectionReady
+                : viewData.connectionMissing}
+            </Text>
+          </View>
+          <View style={styles.statusCard}>
             <Text style={styles.statusLabel}>{viewData.modeRowLabel}</Text>
             <Text style={styles.statusValue}>{selectedModeLabel}</Text>
           </View>
@@ -126,6 +160,14 @@ export function SettingsSyncSetupSection({
               {hasStoredSyncSecrets
                 ? viewData.encryptionReady
                 : viewData.encryptionMissing}
+            </Text>
+          </View>
+          <View style={styles.statusCard}>
+            <Text style={styles.statusLabel}>{viewData.lastSyncLabel}</Text>
+            <Text style={styles.statusValue}>
+              {preferences.lastSyncedAt
+                ? formatLastSync(preferences.lastSyncedAt)
+                : viewData.lastSyncNever}
             </Text>
           </View>
         </View>
@@ -171,9 +213,94 @@ export function SettingsSyncSetupSection({
           testID="settings-sync-prepare-button"
           variant="secondary"
         />
+
+        {hasStoredSyncSecrets ? (
+          <View style={styles.formGroup}>
+            <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={onAuthLoginChange}
+              placeholder={viewData.loginPlaceholder}
+              style={styles.input}
+              testID="settings-sync-login-input"
+              value={authLoginValue}
+            />
+          </View>
+        ) : null}
+
+        {hasStoredSyncSecrets ? (
+          <View style={styles.formGroup}>
+            <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={onAuthPasswordChange}
+              placeholder={viewData.passwordPlaceholder}
+              secureTextEntry
+              style={styles.input}
+              testID="settings-sync-password-input"
+              value={authPasswordValue}
+            />
+          </View>
+        ) : null}
+
+        {hasStoredSyncSecrets && !hasSyncSession ? (
+          <View style={styles.actionsStack}>
+            <AppButton
+              disabled={isAuthenticating}
+              label={viewData.registerLabel}
+              onPress={onRegister}
+              testID="settings-sync-register-button"
+              variant="secondary"
+            />
+            <AppButton
+              disabled={isAuthenticating}
+              label={viewData.loginActionLabel}
+              onPress={onLogin}
+              testID="settings-sync-login-button"
+            />
+          </View>
+        ) : null}
+
+        {hasStoredSyncSecrets && hasSyncSession ? (
+          <View style={styles.actionsStack}>
+            <AppButton
+              disabled={isSyncing}
+              label={viewData.syncNowLabel}
+              onPress={onSyncNow}
+              testID="settings-sync-upload-button"
+            />
+            <AppButton
+              disabled={isRestoring}
+              label={viewData.restoreLabel}
+              onPress={onRestore}
+              testID="settings-sync-restore-button"
+              variant="secondary"
+            />
+            <AppButton
+              label={viewData.disconnectLabel}
+              onPress={onDisconnect}
+              testID="settings-sync-disconnect-button"
+              variant="secondary"
+            />
+          </View>
+        ) : null}
       </View>
     </FeatureCard>
   );
+}
+
+function formatLastSync(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
 }
 
 const createStyles = (colors: AppThemeColors) =>
@@ -258,5 +385,8 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 13,
       lineHeight: 18,
+    },
+    actionsStack: {
+      gap: spacing.sm,
     },
   });

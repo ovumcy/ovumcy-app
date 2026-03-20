@@ -124,11 +124,29 @@ export type SettingsViewData = {
     stateLabel: string;
     stateReady: string;
     stateMissing: string;
+    connectionLabel: string;
+    connectionReady: string;
+    connectionMissing: string;
+    lastSyncLabel: string;
+    lastSyncNever: string;
     modeRowLabel: string;
     endpointRowLabel: string;
     encryptionRowLabel: string;
     encryptionReady: string;
     encryptionMissing: string;
+    loginLabel: string;
+    loginPlaceholder: string;
+    passwordLabel: string;
+    passwordPlaceholder: string;
+    registerLabel: string;
+    loginActionLabel: string;
+    syncNowLabel: string;
+    restoreLabel: string;
+    disconnectLabel: string;
+    restorePrompt: string;
+    restoreAccept: string;
+    restoreDeviceAuthPrompt: string;
+    disconnectPrompt: string;
     recoveryTitle: string;
     recoveryHint: string;
     recoveryNotice: string;
@@ -141,16 +159,33 @@ export type SettingsViewData = {
     status: {
       prepared: string;
       regenerated: string;
+      connected: string;
+      uploaded: string;
+      restored: string;
+      disconnected: string;
     };
     errors: {
+      loginRequired: string;
+      passwordRequired: string;
       deviceLabelRequired: string;
       endpointRequired: string;
       invalidEndpoint: string;
       unsupportedScheme: string;
       insecurePublicHttp: string;
+      invalidRegistrationInput: string;
+      registrationFailed: string;
+      invalidCredentials: string;
+      tooManyDevices: string;
+      syncNotPrepared: string;
+      notConnected: string;
+      blobNotFound: string;
+      invalidPayload: string;
+      networkFailed: string;
       deviceAuthUnavailable: string;
       deviceAuthFailed: string;
       saveFailed: string;
+      syncFailed: string;
+      restoreFailed: string;
     };
   };
   symptoms: {
@@ -234,6 +269,7 @@ export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
+  hasSyncSession: boolean;
   savedSyncPreferences: SyncPreferencesRecord;
   syncPreferences: SyncPreferencesRecord;
   hasStoredSyncSecrets: boolean;
@@ -369,11 +405,29 @@ export function buildSettingsViewData(
       stateLabel: settingsCopy.account.stateLabel,
       stateReady: settingsCopy.account.stateReady,
       stateMissing: settingsCopy.account.stateMissing,
+      connectionLabel: settingsCopy.account.connectionLabel,
+      connectionReady: settingsCopy.account.connectionReady,
+      connectionMissing: settingsCopy.account.connectionMissing,
+      lastSyncLabel: settingsCopy.account.lastSyncLabel,
+      lastSyncNever: settingsCopy.account.lastSyncNever,
       modeRowLabel: settingsCopy.account.modeRowLabel,
       endpointRowLabel: settingsCopy.account.endpointRowLabel,
       encryptionRowLabel: settingsCopy.account.encryptionRowLabel,
       encryptionReady: settingsCopy.account.encryptionReady,
       encryptionMissing: settingsCopy.account.encryptionMissing,
+      loginLabel: settingsCopy.account.loginLabel,
+      loginPlaceholder: settingsCopy.account.loginPlaceholder,
+      passwordLabel: settingsCopy.account.passwordLabel,
+      passwordPlaceholder: settingsCopy.account.passwordPlaceholder,
+      registerLabel: settingsCopy.account.registerLabel,
+      loginActionLabel: settingsCopy.account.loginActionLabel,
+      syncNowLabel: settingsCopy.account.syncNowLabel,
+      restoreLabel: settingsCopy.account.restoreLabel,
+      disconnectLabel: settingsCopy.account.disconnectLabel,
+      restorePrompt: settingsCopy.account.restorePrompt,
+      restoreAccept: settingsCopy.account.restoreAccept,
+      restoreDeviceAuthPrompt: settingsCopy.account.restoreDeviceAuthPrompt,
+      disconnectPrompt: settingsCopy.account.disconnectPrompt,
       recoveryTitle: settingsCopy.account.recoveryTitle,
       recoveryHint: settingsCopy.account.recoveryHint,
       recoveryNotice: settingsCopy.account.recoveryNotice,
@@ -386,16 +440,34 @@ export function buildSettingsViewData(
       status: {
         prepared: settingsCopy.account.prepared,
         regenerated: settingsCopy.account.regenerated,
+        connected: settingsCopy.account.connected,
+        uploaded: settingsCopy.account.uploaded,
+        restored: settingsCopy.account.restored,
+        disconnected: settingsCopy.account.disconnected,
       },
       errors: {
+        loginRequired: settingsCopy.account.errors.loginRequired,
+        passwordRequired: settingsCopy.account.errors.passwordRequired,
         deviceLabelRequired: settingsCopy.account.errors.deviceLabelRequired,
         endpointRequired: settingsCopy.account.errors.endpointRequired,
         invalidEndpoint: settingsCopy.account.errors.invalidEndpoint,
         unsupportedScheme: settingsCopy.account.errors.unsupportedScheme,
         insecurePublicHttp: settingsCopy.account.errors.insecurePublicHttp,
+        invalidRegistrationInput:
+          settingsCopy.account.errors.invalidRegistrationInput,
+        registrationFailed: settingsCopy.account.errors.registrationFailed,
+        invalidCredentials: settingsCopy.account.errors.invalidCredentials,
+        tooManyDevices: settingsCopy.account.errors.tooManyDevices,
+        syncNotPrepared: settingsCopy.account.errors.syncNotPrepared,
+        notConnected: settingsCopy.account.errors.notConnected,
+        blobNotFound: settingsCopy.account.errors.blobNotFound,
+        invalidPayload: settingsCopy.account.errors.invalidPayload,
+        networkFailed: settingsCopy.account.errors.networkFailed,
         deviceAuthUnavailable: settingsCopy.account.errors.deviceAuthUnavailable,
         deviceAuthFailed: settingsCopy.account.errors.deviceAuthFailed,
         saveFailed: settingsCopy.account.errors.saveFailed,
+        syncFailed: settingsCopy.account.errors.syncFailed,
+        restoreFailed: settingsCopy.account.errors.restoreFailed,
       },
     },
     symptoms: {
@@ -485,6 +557,7 @@ export function createLoadedSettingsState(
   profile: ProfileRecord,
   savedSyncPreferences: SyncPreferencesRecord,
   hasStoredSyncSecrets: boolean,
+  hasSyncSession: boolean,
   symptomRecords: SymptomRecord[],
   exportState: LoadedExportState,
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
@@ -505,6 +578,7 @@ export function createLoadedSettingsState(
       languageOverride: profile.languageOverride,
       themeOverride: profile.themeOverride,
     },
+    hasSyncSession,
     savedSyncPreferences,
     syncPreferences,
     hasStoredSyncSecrets,

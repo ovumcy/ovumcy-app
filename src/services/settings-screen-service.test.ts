@@ -67,6 +67,7 @@ describe("settings-screen-service", () => {
         await storage.readProfileRecord(),
         createDefaultSyncPreferencesRecord(),
         false,
+        false,
         createDefaultSymptomRecords(),
         createExportState(),
       ),
@@ -116,6 +117,7 @@ describe("settings-screen-service", () => {
           await storage.readProfileRecord(),
           createDefaultSyncPreferencesRecord(),
           false,
+          false,
           createDefaultSymptomRecords(),
           createExportState(),
         ),
@@ -145,6 +147,7 @@ describe("settings-screen-service", () => {
       createLoadedSettingsState(
         await storage.readProfileRecord(),
         createDefaultSyncPreferencesRecord(),
+        false,
         false,
         createDefaultSymptomRecords(),
         createExportState(),
@@ -180,6 +183,7 @@ describe("settings-screen-service", () => {
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
       createDefaultSyncPreferencesRecord(),
+      false,
       false,
       createDefaultSymptomRecords(),
       createExportState(),
@@ -310,6 +314,7 @@ describe("settings-screen-service", () => {
       await storage.readProfileRecord(),
       createDefaultSyncPreferencesRecord(),
       false,
+      false,
       createDefaultSymptomRecords(),
       createExportState(),
     );
@@ -365,6 +370,7 @@ describe("settings-screen-service", () => {
         endpointInput: "192.168.1.20:8080",
         deviceLabel: "Pixel 7",
       },
+      false,
       false,
       createDefaultSymptomRecords(),
       createExportState(),
@@ -429,6 +435,7 @@ describe("settings-screen-service", () => {
         preparedAt: "2026-03-19T08:15:00.000Z",
       },
       true,
+      false,
       createDefaultSymptomRecords(),
       createExportState(),
       {

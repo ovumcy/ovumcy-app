@@ -50,7 +50,7 @@ import type {
 import { createDefaultBootstrapState } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -107,7 +107,9 @@ const CREATE_SYNC_PREFERENCES_TABLE = `
     normalized_endpoint TEXT NOT NULL DEFAULT 'https://sync.ovumcy.com',
     device_label TEXT NOT NULL DEFAULT '',
     setup_status TEXT NOT NULL DEFAULT 'not_configured',
-    prepared_at TEXT
+    prepared_at TEXT,
+    last_remote_generation INTEGER,
+    last_synced_at TEXT
   );
 `;
 
@@ -140,6 +142,14 @@ const ADD_DAY_LOG_ENCRYPTED_PAYLOAD_COLUMN = `
 
 const ADD_SYMPTOM_ENCRYPTED_PAYLOAD_COLUMN = `
   ALTER TABLE symptoms ADD COLUMN encrypted_payload TEXT;
+`;
+
+const ADD_SYNC_LAST_REMOTE_GENERATION_COLUMN = `
+  ALTER TABLE sync_preferences ADD COLUMN last_remote_generation INTEGER;
+`;
+
+const ADD_SYNC_LAST_SYNCED_AT_COLUMN = `
+  ALTER TABLE sync_preferences ADD COLUMN last_synced_at TEXT;
 `;
 
 type BootstrapStateRow = {
@@ -186,6 +196,8 @@ type SyncPreferencesRow = {
   device_label: string;
   setup_status: string;
   prepared_at: string | null;
+  last_remote_generation: number | null;
+  last_synced_at: string | null;
 };
 
 type DayLogSummaryRow = {
@@ -369,7 +381,9 @@ export function createSQLiteAppStorage(
           normalized_endpoint,
           device_label,
           setup_status,
-          prepared_at
+          prepared_at,
+          last_remote_generation,
+          last_synced_at
          FROM sync_preferences
          WHERE id = 1;`,
       );
@@ -584,6 +598,8 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 6;`);
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
@@ -596,6 +612,8 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 6;`);
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
@@ -607,6 +625,8 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 6;`);
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
@@ -616,6 +636,8 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 6;`);
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
@@ -624,12 +646,22 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
     await database.execAsync(`PRAGMA user_version = 6;`);
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
   if (currentVersion === 6) {
     await migrateV7EncryptedLocalData(database);
     await database.execAsync(`PRAGMA user_version = 7;`);
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
+    return;
+  }
+
+  if (currentVersion === 7) {
+    await migrateV8SyncMetadata(database);
+    await database.execAsync(`PRAGMA user_version = 8;`);
     return;
   }
 
@@ -688,7 +720,7 @@ async function migrateV4InterfacePreferences(
 }
 
 async function migrateV7EncryptedLocalData(
-  database: LocalAppDatabase,
+	database: LocalAppDatabase,
 ): Promise<void> {
   await execIgnoringDuplicateColumn(
     database,
@@ -701,7 +733,20 @@ async function migrateV7EncryptedLocalData(
   await execIgnoringDuplicateColumn(
     database,
     ADD_SYMPTOM_ENCRYPTED_PAYLOAD_COLUMN,
-  );
+	);
+}
+
+async function migrateV8SyncMetadata(
+	database: LocalAppDatabase,
+): Promise<void> {
+	await execIgnoringDuplicateColumn(
+		database,
+		ADD_SYNC_LAST_REMOTE_GENERATION_COLUMN,
+	);
+	await execIgnoringDuplicateColumn(
+		database,
+		ADD_SYNC_LAST_SYNCED_AT_COLUMN,
+	);
 }
 
 async function execIgnoringDuplicateColumn(
@@ -1069,22 +1114,28 @@ async function upsertSyncPreferencesRecord(
        normalized_endpoint,
        device_label,
        setup_status,
-       prepared_at
+       prepared_at,
+       last_remote_generation,
+       last_synced_at
      )
-     VALUES (1, ?, ?, ?, ?, ?, ?)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        mode = excluded.mode,
        endpoint_input = excluded.endpoint_input,
        normalized_endpoint = excluded.normalized_endpoint,
        device_label = excluded.device_label,
        setup_status = excluded.setup_status,
-       prepared_at = excluded.prepared_at;`,
+       prepared_at = excluded.prepared_at,
+       last_remote_generation = excluded.last_remote_generation,
+       last_synced_at = excluded.last_synced_at;`,
     normalizeSyncMode(record.mode),
     record.endpointInput,
     record.normalizedEndpoint,
     record.deviceLabel,
     normalizeSyncSetupStatus(record.setupStatus),
     record.preparedAt,
+    record.lastRemoteGeneration,
+    record.lastSyncedAt,
   );
 }
 
@@ -1252,6 +1303,12 @@ function mapSyncPreferencesRow(row: SyncPreferencesRow): SyncPreferencesRecord {
     deviceLabel: row.device_label,
     setupStatus: normalizeSyncSetupStatus(row.setup_status),
     preparedAt: row.prepared_at,
+    lastRemoteGeneration:
+      typeof row.last_remote_generation === "number" &&
+      Number.isFinite(row.last_remote_generation)
+        ? row.last_remote_generation
+        : null,
+    lastSyncedAt: row.last_synced_at,
   };
 }
 

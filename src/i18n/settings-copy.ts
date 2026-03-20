@@ -124,11 +124,32 @@ const settingsCopyEn = {
     stateLabel: "Sync setup state",
     stateReady: "Encrypted sync is prepared on this device.",
     stateMissing: "Encrypted sync has not been prepared on this device yet.",
+    connectionLabel: "Server session",
+    connectionReady: "Connected to a sync server on this device.",
+    connectionMissing: "No sync server session on this device yet.",
+    lastSyncLabel: "Last sync",
+    lastSyncNever: "Not synced yet.",
     modeRowLabel: "Mode",
     endpointRowLabel: "Endpoint",
     encryptionRowLabel: "Encryption",
     encryptionReady: "Recovery materials are stored locally on this device.",
     encryptionMissing: "No local sync key is prepared yet.",
+    loginLabel: "Login",
+    loginPlaceholder: "owner@example.com",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Enter password",
+    registerLabel: "Create account",
+    loginActionLabel: "Sign in",
+    syncNowLabel: "Sync now",
+    restoreLabel: "Restore from server",
+    disconnectLabel: "Disconnect",
+    restorePrompt:
+      "Restore the encrypted snapshot from the server and replace the current local data on this device?",
+    restoreAccept: "Restore snapshot",
+    restoreDeviceAuthPrompt:
+      "Confirm with device security to restore encrypted data from the sync server.",
+    disconnectPrompt:
+      "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
     recoveryTitle: "Recovery phrase",
     recoveryHint:
       "Write down the 12 words exactly and keep them offline. If you lose every device and this phrase, synced data cannot be recovered.",
@@ -144,17 +165,35 @@ const settingsCopyEn = {
       "Confirm with device security to recreate local sync keys.",
     prepared: "Encrypted sync prepared on this device.",
     regenerated: "Local sync keys recreated for this device.",
+    connected: "Connected to the sync server on this device.",
+    uploaded: "Encrypted snapshot uploaded to the sync server.",
+    restored: "Encrypted snapshot restored from the sync server.",
+    disconnected: "Sync server session removed from this device.",
     errors: {
+      loginRequired: "Login is required.",
+      passwordRequired: "Password is required.",
       deviceLabelRequired: "Device label is required.",
       endpointRequired: "Enter a sync server endpoint.",
       invalidEndpoint: "Enter a valid host, IP address, or full URL.",
       unsupportedScheme: "Only https and approved local-network http endpoints are supported.",
       insecurePublicHttp: "Public sync endpoints must use https.",
+      invalidRegistrationInput: "Use a valid login and a stronger password.",
+      registrationFailed: "Unable to create a sync account with these details.",
+      invalidCredentials: "Invalid login or password.",
+      tooManyDevices: "This account has reached the current device limit.",
+      syncNotPrepared: "Prepare encrypted sync on this device first.",
+      notConnected: "Connect this device to a sync server first.",
+      blobNotFound: "No encrypted snapshot exists on this server yet.",
+      invalidPayload: "The encrypted snapshot from the server could not be read.",
+      networkFailed: "Unable to reach the sync server right now.",
       deviceAuthUnavailable:
         "Set up a device passcode or biometrics before recreating local sync keys.",
       deviceAuthFailed:
         "Unable to confirm device security right now. Please try again.",
       saveFailed: "Unable to prepare encrypted sync right now. Please try again.",
+      syncFailed: "Unable to upload the encrypted snapshot right now. Please try again.",
+      restoreFailed:
+        "Unable to restore the encrypted snapshot right now. Please try again.",
     },
   },
   symptoms: {
@@ -391,11 +430,32 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       stateLabel: "Состояние sync setup",
       stateReady: "Зашифрованный sync подготовлен на этом устройстве.",
       stateMissing: "Зашифрованный sync на этом устройстве ещё не подготовлен.",
+      connectionLabel: "Серверная сессия",
+      connectionReady: "Это устройство подключено к sync-серверу.",
+      connectionMissing: "На этом устройстве ещё нет сессии sync-сервера.",
+      lastSyncLabel: "Последний sync",
+      lastSyncNever: "Синхронизации ещё не было.",
       modeRowLabel: "Режим",
       endpointRowLabel: "Endpoint",
       encryptionRowLabel: "Шифрование",
       encryptionReady: "Recovery-материалы локально сохранены на этом устройстве.",
       encryptionMissing: "Локальный sync key ещё не подготовлен.",
+      loginLabel: "Логин",
+      loginPlaceholder: "owner@example.com",
+      passwordLabel: "Пароль",
+      passwordPlaceholder: "Введите пароль",
+      registerLabel: "Создать аккаунт",
+      loginActionLabel: "Войти",
+      syncNowLabel: "Синхронизировать сейчас",
+      restoreLabel: "Восстановить с сервера",
+      disconnectLabel: "Отключить",
+      restorePrompt:
+        "Восстановить зашифрованный слепок с сервера и заменить текущие локальные данные на этом устройстве?",
+      restoreAccept: "Восстановить слепок",
+      restoreDeviceAuthPrompt:
+        "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
+      disconnectPrompt:
+        "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
       recoveryTitle: "Recovery phrase",
       recoveryHint:
         "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
@@ -411,19 +471,40 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Подтвердите защитой устройства пересоздание локальных sync keys.",
       prepared: "Зашифрованный sync подготовлен на этом устройстве.",
       regenerated: "Локальные sync keys пересозданы для этого устройства.",
+      connected: "Это устройство подключено к sync-серверу.",
+      uploaded: "Зашифрованный слепок отправлен на sync-сервер.",
+      restored: "Зашифрованный слепок восстановлен с sync-сервера.",
+      disconnected: "Сессия sync-сервера удалена с этого устройства.",
       errors: {
+        loginRequired: "Логин обязателен.",
+        passwordRequired: "Пароль обязателен.",
         deviceLabelRequired: "Название устройства обязательно.",
         endpointRequired: "Введите endpoint sync-сервера.",
         invalidEndpoint: "Введите корректный host, IP-адрес или полный URL.",
         unsupportedScheme:
           "Поддерживаются только https и разрешённые local-network http endpoint.",
         insecurePublicHttp: "Публичные sync endpoint должны использовать https.",
+        invalidRegistrationInput:
+          "Используйте корректный логин и более надёжный пароль.",
+        registrationFailed: "Не удалось создать sync-аккаунт с этими данными.",
+        invalidCredentials: "Неверный логин или пароль.",
+        tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
+        syncNotPrepared: "Сначала подготовьте зашифрованный sync на этом устройстве.",
+        notConnected: "Сначала подключите это устройство к sync-серверу.",
+        blobNotFound: "На этом сервере ещё нет зашифрованного слепка.",
+        invalidPayload:
+          "Не удалось прочитать зашифрованный слепок, полученный с сервера.",
+        networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
         deviceAuthUnavailable:
           "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
         deviceAuthFailed:
           "Сейчас не удалось подтвердить защиту устройства. Попробуйте ещё раз.",
         saveFailed:
           "Сейчас не удалось подготовить зашифрованный sync. Попробуйте ещё раз.",
+        syncFailed:
+          "Сейчас не удалось отправить зашифрованный слепок. Попробуйте ещё раз.",
+        restoreFailed:
+          "Сейчас не удалось восстановить зашифрованный слепок. Попробуйте ещё раз.",
       },
     },
     symptoms: {
@@ -656,11 +737,32 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       stateLabel: "Estado del sync",
       stateReady: "El sync cifrado está preparado en este dispositivo.",
       stateMissing: "El sync cifrado todavía no está preparado en este dispositivo.",
+      connectionLabel: "Sesión del servidor",
+      connectionReady: "Este dispositivo está conectado a un servidor de sync.",
+      connectionMissing: "Todavía no hay sesión de servidor de sync en este dispositivo.",
+      lastSyncLabel: "Último sync",
+      lastSyncNever: "Todavía no se ha sincronizado.",
       modeRowLabel: "Modo",
       endpointRowLabel: "Endpoint",
       encryptionRowLabel: "Cifrado",
       encryptionReady: "Los materiales de recuperación se guardan localmente en este dispositivo.",
       encryptionMissing: "Todavía no se ha preparado una clave local de sync.",
+      loginLabel: "Login",
+      loginPlaceholder: "owner@example.com",
+      passwordLabel: "Contraseña",
+      passwordPlaceholder: "Introduce la contraseña",
+      registerLabel: "Crear cuenta",
+      loginActionLabel: "Iniciar sesión",
+      syncNowLabel: "Sincronizar ahora",
+      restoreLabel: "Restaurar desde el servidor",
+      disconnectLabel: "Desconectar",
+      restorePrompt:
+        "¿Restaurar la instantánea cifrada desde el servidor y sustituir los datos locales actuales de este dispositivo?",
+      restoreAccept: "Restaurar instantánea",
+      restoreDeviceAuthPrompt:
+        "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
+      disconnectPrompt:
+        "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
       recoveryTitle: "Frase de recuperación",
       recoveryHint:
         "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
@@ -676,19 +778,45 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Confirma con la seguridad del dispositivo para recrear las claves locales de sync.",
       prepared: "El sync cifrado quedó preparado en este dispositivo.",
       regenerated: "Las claves locales de sync se recrearon para este dispositivo.",
+      connected: "Este dispositivo quedó conectado al servidor de sync.",
+      uploaded: "La instantánea cifrada se subió al servidor de sync.",
+      restored: "La instantánea cifrada se restauró desde el servidor de sync.",
+      disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
       errors: {
+        loginRequired: "El login es obligatorio.",
+        passwordRequired: "La contraseña es obligatoria.",
         deviceLabelRequired: "La etiqueta del dispositivo es obligatoria.",
         endpointRequired: "Introduce un endpoint del servidor de sync.",
         invalidEndpoint: "Introduce un host, una IP o una URL completa válidos.",
         unsupportedScheme:
           "Solo se admiten https y endpoints http aprobados para red local.",
         insecurePublicHttp: "Los endpoints públicos de sync deben usar https.",
+        invalidRegistrationInput:
+          "Usa un login válido y una contraseña más fuerte.",
+        registrationFailed:
+          "No se pudo crear una cuenta de sync con estos datos.",
+        invalidCredentials: "Login o contraseña no válidos.",
+        tooManyDevices: "Esta cuenta ya alcanzó el límite actual de dispositivos.",
+        syncNotPrepared:
+          "Primero prepara el sync cifrado en este dispositivo.",
+        notConnected:
+          "Primero conecta este dispositivo a un servidor de sync.",
+        blobNotFound:
+          "Todavía no existe una instantánea cifrada en este servidor.",
+        invalidPayload:
+          "No se pudo leer la instantánea cifrada recibida del servidor.",
+        networkFailed:
+          "No se puede alcanzar el servidor de sync ahora mismo.",
         deviceAuthUnavailable:
           "Configura un código o biometría en este dispositivo antes de recrear las claves locales de sync.",
         deviceAuthFailed:
           "No se pudo confirmar la seguridad del dispositivo ahora mismo. Inténtalo de nuevo.",
         saveFailed:
           "No se pudo preparar el sync cifrado ahora. Inténtalo de nuevo.",
+        syncFailed:
+          "No se pudo subir la instantánea cifrada ahora. Inténtalo de nuevo.",
+        restoreFailed:
+          "No se pudo restaurar la instantánea cifrada ahora. Inténtalo de nuevo.",
       },
     },
     symptoms: {
