@@ -3,6 +3,7 @@ import {
   createDefaultExportRangeValues,
   resolveExportBounds,
   resolveExportPresetSelection,
+  sanitizeExportDateInput,
   validateExportRangeValues,
 } from "./export-policy";
 
@@ -116,5 +117,11 @@ describe("export-policy", () => {
       ok: false,
       errorCode: "invalid_from_date",
     });
+  });
+
+  it("sanitizes free-text export dates into the canonical YYYY-MM-DD form", () => {
+    expect(sanitizeExportDateInput("2026abc0310xyz")).toBe("2026-03-10");
+    expect(sanitizeExportDateInput("2026-03-10oops")).toBe("2026-03-10");
+    expect(sanitizeExportDateInput("202603")).toBe("2026-03");
   });
 });

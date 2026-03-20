@@ -1,12 +1,17 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
+import { openConfirmation } from "../confirm/open-confirmation";
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
 const mockReplace = jest.fn();
+const mockDispatch = jest.fn();
+let preventRemoveCallback:
+  | ((options: { data: { action: { type: string } } }) => void)
+  | null = null;
 
 jest.setTimeout(15000);
 
@@ -20,6 +25,28 @@ jest.mock("expo-router", () => {
     }),
   };
 });
+
+jest.mock("@react-navigation/native", () => {
+  return {
+    useNavigation: () => ({
+      dispatch: mockDispatch,
+    }),
+    usePreventRemove: (
+      preventRemove: boolean,
+      callback: (options: { data: { action: { type: string } } }) => void,
+    ) => {
+      preventRemoveCallback = preventRemove ? callback : null;
+    },
+  };
+});
+
+jest.mock("../confirm/open-confirmation", () => {
+  return {
+    openConfirmation: jest.fn(),
+  };
+});
+
+const mockOpenConfirmation = jest.mocked(openConfirmation);
 
 function createStorageMock(overrides = {}) {
   return createLocalAppStorageMock({
@@ -76,6 +103,16 @@ function createStorageMock(overrides = {}) {
 
 describe("SettingsScreen", () => {
   beforeEach(() => {
+    if (!global.requestAnimationFrame) {
+      global.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      }) as typeof requestAnimationFrame;
+    }
+
+    preventRemoveCallback = null;
+    mockDispatch.mockReset();
+    mockOpenConfirmation.mockReset();
     mockReplace.mockReset();
   });
 
@@ -276,6 +313,130 @@ describe("SettingsScreen", () => {
       ),
     );
     expect(buildPDFContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates the native export range through the date picker instead of free-text input", async () => {
+    const storage = createStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("settings-export-from-button"));
+    });
+
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("settings-export-date-picker"),
+        "onChange",
+        { type: "set" },
+        new Date(2026, 2, 12),
+      );
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("settings-export-from-value").props.children).toBe(
+      "2026-03-12",
+    );
+    expect(screen.getByTestId("settings-export-to-value").props.children).toBe(
+      "2026-03-17",
+    );
+  });
+
+  it("saves cycle changes before leaving settings when the general guard accepts saving", async () => {
+    const storage = createStorageMock();
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "NAVIGATE" } } });
+    });
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cycleLength: 35,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "NAVIGATE" }),
+      ),
+    );
+  });
+
+  it("saves interface changes before leaving settings when the guard accepts saving", async () => {
+    const storage = createStorageMock();
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "NAVIGATE" } } });
+    });
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          themeOverride: "dark",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "NAVIGATE" }),
+      ),
+    );
+  });
+
+  it("discards interface preview changes when leaving settings without saving", async () => {
+    const storage = createStorageMock();
+    mockOpenConfirmation.mockResolvedValue(false);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "NAVIGATE" } } });
+    });
+
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "NAVIGATE" }),
+      ),
+    );
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        themeOverride: "dark",
+      }),
+    );
+    expect(
+      screen.getByTestId("settings-interface-theme-light").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
   });
 
   it("renders the app-equivalent interface, sync, export, and danger sections", async () => {

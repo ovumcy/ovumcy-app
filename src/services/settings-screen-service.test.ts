@@ -13,6 +13,7 @@ import {
   restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
+  saveSettingsSyncDraft,
   updateSettingsSymptom,
 } from "./settings-screen-service";
 import { createLoadedSettingsState } from "./settings-view-service";
@@ -394,6 +395,74 @@ describe("settings-screen-service", () => {
         normalizedEndpoint: "http://192.168.1.20:8080",
       }),
     );
+  });
+
+  it("saves sync preference drafts and resets prepared state when the endpoint changes", async () => {
+    const storage = createStorageMock();
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+    });
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+      },
+      true,
+      createDefaultSymptomRecords(),
+      createExportState(),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.21:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+      },
+    );
+
+    const result = await saveSettingsSyncDraft(storage, secretStore, initialState);
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        savedSyncPreferences: expect.objectContaining({
+          endpointInput: "192.168.1.21:8080",
+          normalizedEndpoint: "http://192.168.1.21:8080",
+          setupStatus: "not_configured",
+          preparedAt: null,
+        }),
+        syncPreferences: expect.objectContaining({
+          endpointInput: "192.168.1.21:8080",
+          normalizedEndpoint: "http://192.168.1.21:8080",
+          setupStatus: "not_configured",
+          preparedAt: null,
+        }),
+        hasStoredSyncSecrets: false,
+      }),
+    });
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
   });
 });
 

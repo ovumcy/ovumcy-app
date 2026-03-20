@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { LoadedExportState } from "../../models/export";
+import { formatLocalDate, parseLocalDate } from "../../services/profile-settings-policy";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { ChoiceGroup } from "./ChoiceGroup";
@@ -15,10 +16,12 @@ type SettingsExportSectionProps = {
   exportState: LoadedExportState;
   isExporting: boolean;
   onCSVExport: () => void | Promise<void>;
+  onFromDatePress: () => void;
   onFromDateChange: (value: string) => void;
   onJSONExport: () => void | Promise<void>;
   onPDFExport: () => void | Promise<void>;
   onPresetSelect: (value: "all" | "30" | "90" | "365") => void;
+  onToDatePress: () => void;
   onToDateChange: (value: string) => void;
   statusMessage: string;
   viewData: SettingsViewData["export"];
@@ -29,16 +32,19 @@ export function SettingsExportSection({
   exportState,
   isExporting,
   onCSVExport,
+  onFromDatePress,
   onFromDateChange,
   onJSONExport,
   onPDFExport,
   onPresetSelect,
+  onToDatePress,
   onToDateChange,
   statusMessage,
   viewData,
 }: SettingsExportSectionProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
+  const supportsNativeDatePicker = Platform.OS !== "web";
   const hasAnyData = exportState.availableSummary.hasData;
   const summaryRange = buildSummaryRangeLabel(
     viewData.summaryRangeTemplate,
@@ -78,32 +84,74 @@ export function SettingsExportSection({
           <View style={styles.rangeRow}>
             <View style={[styles.formGroup, styles.rangeColumn]}>
               <Text style={styles.fieldLabel}>{viewData.fromLabel}</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-            keyboardType="numbers-and-punctuation"
-            onChangeText={onFromDateChange}
-            placeholder={viewData.datePlaceholder}
-            placeholderTextColor={colors.textMuted}
-                style={styles.dateInput}
-                testID="settings-export-from-input"
-                value={exportState.values.fromDate}
-              />
+              {supportsNativeDatePicker ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onFromDatePress}
+                  style={styles.dateFieldButton}
+                  testID="settings-export-from-button"
+                >
+                  <Text
+                    style={[
+                      styles.dateFieldValue,
+                      !exportState.values.fromDate ? styles.dateFieldValueMuted : null,
+                    ]}
+                    testID="settings-export-from-value"
+                  >
+                    {exportState.values.fromDate || viewData.datePlaceholder}
+                  </Text>
+                </Pressable>
+              ) : (
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  onChangeText={onFromDateChange}
+                  placeholder={viewData.datePlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.dateInput}
+                  testID="settings-export-from-input"
+                  value={exportState.values.fromDate}
+                />
+              )}
             </View>
 
             <View style={[styles.formGroup, styles.rangeColumn]}>
               <Text style={styles.fieldLabel}>{viewData.toLabel}</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="numbers-and-punctuation"
-                onChangeText={onToDateChange}
-                placeholder={viewData.datePlaceholder}
-                placeholderTextColor={colors.textMuted}
-                style={styles.dateInput}
-                testID="settings-export-to-input"
-                value={exportState.values.toDate}
-              />
+              {supportsNativeDatePicker ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onToDatePress}
+                  style={styles.dateFieldButton}
+                  testID="settings-export-to-button"
+                >
+                  <Text
+                    style={[
+                      styles.dateFieldValue,
+                      !exportState.values.toDate ? styles.dateFieldValueMuted : null,
+                    ]}
+                    testID="settings-export-to-value"
+                  >
+                    {exportState.values.toDate || viewData.datePlaceholder}
+                  </Text>
+                </Pressable>
+              ) : (
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  onChangeText={onToDateChange}
+                  placeholder={viewData.datePlaceholder}
+                  placeholderTextColor={colors.textMuted}
+                  style={styles.dateInput}
+                  testID="settings-export-to-input"
+                  value={exportState.values.toDate}
+                />
+              )}
             </View>
           </View>
 
@@ -162,13 +210,39 @@ function buildSummaryRangeLabel(
   emptyTemplate: string,
   exportState: LoadedExportState,
 ): string {
-  const fromValue = exportState.values.fromDate || exportState.summary.dateFrom;
-  const toValue = exportState.values.toDate || exportState.summary.dateTo;
+  const fromValue = resolveSummaryDateValue(
+    exportState.values.fromDate,
+    exportState.summary.dateFrom,
+  );
+  const toValue = resolveSummaryDateValue(
+    exportState.values.toDate,
+    exportState.summary.dateTo,
+  );
   if (!fromValue || !toValue) {
     return emptyTemplate;
   }
 
   return formatTemplate(template, [fromValue, toValue]);
+}
+
+function resolveSummaryDateValue(
+  draftValue: string,
+  fallbackValue: string | null,
+): string | null {
+  const normalizedDraftValue = String(draftValue ?? "").trim();
+  if (normalizedDraftValue.length === 0) {
+    return fallbackValue;
+  }
+
+  const parsedDraftValue = parseLocalDate(normalizedDraftValue);
+  if (
+    !parsedDraftValue ||
+    formatLocalDate(parsedDraftValue) !== normalizedDraftValue
+  ) {
+    return null;
+  }
+
+  return normalizedDraftValue;
 }
 
 function formatTemplate(template: string, values: string[]): string {
@@ -214,6 +288,24 @@ const createStyles = (colors: AppThemeColors) =>
       fontWeight: "600",
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
+    },
+    dateFieldButton: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      justifyContent: "center",
+      minHeight: 52,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    dateFieldValue: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+    },
+    dateFieldValueMuted: {
+      color: colors.textMuted,
     },
     summaryCard: {
       backgroundColor: colors.surfaceMuted,

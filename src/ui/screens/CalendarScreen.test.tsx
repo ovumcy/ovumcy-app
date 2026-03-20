@@ -1,9 +1,20 @@
+import * as React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { CalendarScreen } from "./CalendarScreen";
+
+const mockUseEffect = React.useEffect;
+
+jest.mock("expo-router", () => {
+  return {
+    useFocusEffect: (effect: () => void | (() => void)) => {
+      mockUseEffect(effect, [effect]);
+    },
+  };
+});
 
 function createStorageMock() {
   return createLocalAppStorageMock({
@@ -114,6 +125,7 @@ describe("CalendarScreen", () => {
 
     await screen.findByTestId("day-log-save-button");
     expect(screen.getByText("Old symptom")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
     expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 

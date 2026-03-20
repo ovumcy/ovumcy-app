@@ -42,7 +42,7 @@ export function LabeledSliderField({
       </View>
       <Slider
         accessibilityLabel={label}
-        maximumTrackTintColor={colors.border}
+        maximumTrackTintColor={colors.accentSecondary}
         maximumValue={maximumValue}
         minimumTrackTintColor={colors.accent}
         minimumValue={minimumValue}
@@ -91,7 +91,7 @@ const createStyles = (colors: AppThemeColors) =>
     fontWeight: "600",
   },
   slider: {
-    height: 32,
+    height: 36,
     width: "100%",
   },
   rangeRow: {

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { createEmptyDayLogRecord, hasDayLogData } from "../../models/day-log";
@@ -55,28 +56,42 @@ export function CalendarScreen({
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    void loadCalendarScreenState(
+  const refreshForActiveSelection = useCallback(async () => {
+    const loadedState = await loadCalendarScreenState(
       storage,
       effectiveNow,
       monthValue,
       selectedDate,
       language,
-    ).then((loadedState) => {
-      if (!isMounted) {
-        return;
-      }
-
-      setState(loadedState);
-      setIsLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
+    );
+    setState(loadedState);
+    setIsLoading(false);
   }, [effectiveNow, language, monthValue, selectedDate, storage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      void loadCalendarScreenState(
+        storage,
+        effectiveNow,
+        monthValue,
+        selectedDate,
+        language,
+      ).then((loadedState) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setState(loadedState);
+        setIsLoading(false);
+      });
+
+      return () => {
+        isMounted = false;
+      };
+    }, [effectiveNow, language, monthValue, selectedDate, storage]),
+  );
 
   if (isLoading || !state) {
     return (
@@ -98,17 +113,6 @@ export function CalendarScreen({
     state.selectedRecord,
     effectiveNow,
   );
-
-  async function refreshForActiveSelection() {
-    const loadedState = await loadCalendarScreenState(
-      storage,
-      effectiveNow,
-      monthValue,
-      selectedDate,
-      language,
-    );
-    setState(loadedState);
-  }
 
   async function handleSave() {
     if (!state) {

@@ -45,6 +45,8 @@ export type DayLogEditorViewData = {
     addNote: string;
     editNote: string;
     hideNote: string;
+    showMoreSymptoms: string;
+    showFewerSymptoms: string;
     notesPlaceholder: string;
     periodOffHint: string;
     deleteHint: string;
@@ -59,7 +61,7 @@ export type DayLogEditorViewData = {
     deleteFailedLabel: string;
   };
   options: {
-    mood: readonly { value: number; label: string }[];
+    mood: readonly { value: number; label: string; secondaryLabel?: string }[];
     flow: readonly { value: DayFlow; label: string }[];
     sexActivity: readonly { value: DaySexActivity; label: string }[];
     cervicalMucus: readonly { value: DayCervicalMucus; label: string }[];
@@ -179,6 +181,8 @@ export function buildDayLogEditorViewData(
       addNote: dayLogCopy.addNote,
       editNote: dayLogCopy.editNote,
       hideNote: dayLogCopy.hideNote,
+      showMoreSymptoms: dayLogCopy.showMoreSymptoms,
+      showFewerSymptoms: dayLogCopy.showFewerSymptoms,
       notesPlaceholder: dayLogCopy.notesPlaceholder,
       periodOffHint: dayLogCopy.periodOffHint,
       deleteHint: dayLogCopy.deleteHint,

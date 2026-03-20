@@ -21,7 +21,9 @@ import {
 import {
   loadSyncSetupState,
   prepareSyncSetup,
+  saveSyncPreferencesDraft,
   type PrepareSyncSetupErrorCode,
+  type SaveSyncPreferencesDraftErrorCode,
 } from "../sync/sync-setup-service";
 import {
   getSettingsCycleStartDateBounds,
@@ -120,10 +122,11 @@ export async function saveCycleSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -151,10 +154,11 @@ export async function saveTrackingSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -182,10 +186,11 @@ export async function saveInterfaceSettings(
     ok: true,
     state: createLoadedSettingsState(
       nextProfile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords,
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -213,10 +218,11 @@ export async function createSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       [...currentState.symptomRecords, result.record],
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -249,12 +255,13 @@ export async function updateSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -282,12 +289,13 @@ export async function archiveSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -315,12 +323,13 @@ export async function restoreSettingsSymptom(
     ok: true,
     state: createLoadedSettingsState(
       currentState.profile,
-      currentState.syncPreferences,
+      currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.symptomRecords.map((record) =>
         record.id === symptomID ? result.record : record,
       ),
       currentState.exportState,
+      currentState.syncPreferences,
     ),
   };
 }
@@ -334,10 +343,11 @@ export async function refreshSettingsExportState(
   const result = await loadLocalExportState(storage, now, exportValues);
   const nextState = createLoadedSettingsState(
     currentState.profile,
-    currentState.syncPreferences,
+    currentState.savedSyncPreferences,
     currentState.hasStoredSyncSecrets,
     currentState.symptomRecords,
     result.state,
+    currentState.syncPreferences,
   );
   if (result.errorCode) {
     return {
@@ -380,10 +390,11 @@ export async function prepareSettingsExportArtifact(
   );
   const nextState = createLoadedSettingsState(
     currentState.profile,
-    currentState.syncPreferences,
+    currentState.savedSyncPreferences,
     currentState.hasStoredSyncSecrets,
     currentState.symptomRecords,
     result.state,
+    currentState.syncPreferences,
   );
 
   if (!result.ok) {
@@ -440,6 +451,43 @@ export async function prepareSettingsSyncSetup(
     ),
     recoveryPhrase: result.recoveryPhrase,
     regenerated,
+  };
+}
+
+export async function saveSettingsSyncDraft(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: SaveSyncPreferencesDraftErrorCode;
+    }
+> {
+  const result = await saveSyncPreferencesDraft(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    currentState.syncPreferences,
+    currentState.hasStoredSyncSecrets,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      result.hasStoredSecrets,
+      currentState.symptomRecords,
+      currentState.exportState,
+    ),
   };
 }
 

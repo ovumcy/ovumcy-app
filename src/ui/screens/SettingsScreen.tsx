@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useNavigation, usePreventRemove } from "@react-navigation/native";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
@@ -19,6 +20,7 @@ import {
   restoreSettingsSymptom,
   saveCycleSettings,
   saveInterfaceSettings,
+  saveSettingsSyncDraft,
   saveTrackingSettings,
   updateSettingsSymptom,
 } from "../../services/settings-screen-service";
@@ -32,6 +34,7 @@ import {
   buildSettingsViewData,
   type LoadedSettingsState,
 } from "../../services/settings-view-service";
+import { sanitizeExportDateInput } from "../../services/export-policy";
 import { formatLocalDate } from "../../services/profile-settings-policy";
 import {
   createDefaultSymptomDraft,
@@ -40,6 +43,7 @@ import {
 import type { SymptomID } from "../../models/symptom";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { openConfirmation } from "../confirm/open-confirmation";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsFlowScreen } from "./SettingsFlowScreen";
@@ -60,11 +64,14 @@ export function SettingsScreen({
   now,
 }: SettingsScreenProps) {
   const {
+    clearPreferencePreview,
     colors,
     language,
+    previewProfilePreferences,
     refreshPreferences,
     syncProfilePreferences,
   } = useAppPreferences();
+  const navigation = useNavigation();
   const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +81,9 @@ export function SettingsScreen({
   const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showExportDatePicker, setShowExportDatePicker] = useState<"from" | "to" | null>(
+    null,
+  );
   const [state, setState] = useState<LoadedSettingsState | null>(null);
   const [cycleErrorMessage, setCycleErrorMessage] = useState("");
   const [cycleStatusMessage, setCycleStatusMessage] = useState("");
@@ -88,6 +98,7 @@ export function SettingsScreen({
   const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
   const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
   const [isPreparingSync, setIsPreparingSync] = useState(false);
+  const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -104,6 +115,28 @@ export function SettingsScreen({
     Record<string, string>
   >({});
   const shellCopy = getShellCopy(language);
+  const viewData = buildSettingsViewData(effectiveNow, language);
+
+  const isCycleDirty = state
+    ? !areCycleSettingsEqual(state.cycleValues, extractPersistedCycleValues(state.profile))
+    : false;
+  const isTrackingDirty = state
+    ? !areTrackingSettingsEqual(
+        state.trackingValues,
+        extractPersistedTrackingValues(state.profile),
+      )
+    : false;
+  const isInterfaceDirty = state
+    ? !areInterfaceSettingsEqual(
+        state.interfaceValues,
+        extractPersistedInterfaceValues(state.profile),
+      )
+    : false;
+  const isSyncDirty = state
+    ? !areSyncPreferencesEqual(state.syncPreferences, state.savedSyncPreferences)
+    : false;
+  const hasUnsavedSettingsChanges =
+    isCycleDirty || isTrackingDirty || isInterfaceDirty || isSyncDirty;
 
   useFocusEffect(
     useCallback(() => {
@@ -125,6 +158,63 @@ export function SettingsScreen({
     }, [effectiveNow, storage, syncSecretStore]),
   );
 
+  const revertUnsavedSettings = useCallback(() => {
+    clearPreferencePreview();
+    setInterfaceErrorMessage("");
+    setInterfaceStatusMessage("");
+    setCycleErrorMessage("");
+    setCycleStatusMessage("");
+    setTrackingStatusMessage("");
+    resetAccountMessages();
+    setShowDatePicker(false);
+    setShowExportDatePicker(null);
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            cycleValues: extractPersistedCycleValues(current.profile),
+            trackingValues: extractPersistedTrackingValues(current.profile),
+            interfaceValues: extractPersistedInterfaceValues(current.profile),
+            syncPreferences: current.savedSyncPreferences,
+          }
+        : current,
+    );
+  }, [clearPreferencePreview]);
+
+  usePreventRemove(
+    hasUnsavedSettingsChanges &&
+      !isSavingCycle &&
+      !isSavingTracking &&
+      !isSavingInterface &&
+      !isSavingSyncDraft &&
+      !isPreparingSync &&
+      !isClearingData,
+    ({ data }) => {
+      void (async () => {
+        const shouldSave = await openConfirmation(
+          viewData.interface.unsavedPrompt,
+          viewData.interface.saveBeforeLeaveLabel,
+          viewData.interface.discardChangesLabel,
+        );
+
+        if (!shouldSave) {
+          revertUnsavedSettings();
+          requestAnimationFrame(() => {
+            navigation.dispatch(data.action);
+          });
+          return;
+        }
+
+        const didSave = await handleSavePendingSettings();
+        if (didSave) {
+          requestAnimationFrame(() => {
+            navigation.dispatch(data.action);
+          });
+        }
+      })();
+    },
+  );
+
   if (isLoading || !state) {
     return (
       <ScreenScaffold
@@ -139,7 +229,6 @@ export function SettingsScreen({
   }
 
   const readyState = state;
-  const viewData = buildSettingsViewData(effectiveNow, language);
   const cycleGuidance = buildSettingsCycleGuidance(readyState.cycleValues);
 
   function resetSymptomMessages() {
@@ -276,13 +365,100 @@ export function SettingsScreen({
     if (!result.ok) {
       setInterfaceErrorMessage(viewData.status.saveFailed);
       setIsSavingInterface(false);
-      return;
+      return false;
     }
 
     setState(result.state);
     syncProfilePreferences(result.state.profile);
     setInterfaceStatusMessage(viewData.interface.status.saved);
     setIsSavingInterface(false);
+    return true;
+  }
+
+  async function handleSavePendingSettings() {
+    let nextState = readyState;
+
+    if (isCycleDirty) {
+      setIsSavingCycle(true);
+      setCycleErrorMessage("");
+      setCycleStatusMessage("");
+      const cycleResult = await saveCycleSettings(
+        storage,
+        nextState,
+        nextState.cycleValues,
+        effectiveNow,
+      );
+      setIsSavingCycle(false);
+      if (!cycleResult.ok) {
+        setCycleErrorMessage(
+          cycleResult.errorCode === "invalid_last_period_start"
+            ? viewData.status.invalidLastPeriodStart
+            : viewData.status.saveFailed,
+        );
+        setState(nextState);
+        return false;
+      }
+      nextState = cycleResult.state;
+      setCycleStatusMessage(viewData.status.cycleSaved);
+    }
+
+    if (isTrackingDirty) {
+      setIsSavingTracking(true);
+      setTrackingStatusMessage("");
+      const trackingResult = await saveTrackingSettings(
+        storage,
+        nextState,
+        nextState.trackingValues,
+      );
+      setIsSavingTracking(false);
+      if (!trackingResult.ok) {
+        setTrackingStatusMessage(viewData.status.saveFailed);
+        setState(nextState);
+        return false;
+      }
+      nextState = trackingResult.state;
+      setTrackingStatusMessage(viewData.status.trackingSaved);
+    }
+
+    if (isInterfaceDirty) {
+      setIsSavingInterface(true);
+      setInterfaceErrorMessage("");
+      setInterfaceStatusMessage("");
+      const interfaceResult = await saveInterfaceSettings(
+        storage,
+        nextState,
+        nextState.interfaceValues,
+      );
+      setIsSavingInterface(false);
+      if (!interfaceResult.ok) {
+        setInterfaceErrorMessage(viewData.status.saveFailed);
+        setState(nextState);
+        return false;
+      }
+      nextState = interfaceResult.state;
+      syncProfilePreferences(interfaceResult.state.profile);
+      setInterfaceStatusMessage(viewData.interface.status.saved);
+    }
+
+    if (isSyncDirty) {
+      setIsSavingSyncDraft(true);
+      resetAccountMessages();
+      const syncResult = await saveSettingsSyncDraft(
+        storage,
+        syncSecretStore,
+        nextState,
+      );
+      setIsSavingSyncDraft(false);
+      if (!syncResult.ok) {
+        setAccountErrorMessage(syncErrorLabel(syncResult.errorCode));
+        setState(nextState);
+        return false;
+      }
+      nextState = syncResult.state;
+    }
+
+    setState(nextState);
+    return true;
   }
 
   async function handlePrepareSyncSetup() {
@@ -477,10 +653,11 @@ export function SettingsScreen({
     setTrackingStatusMessage("");
     resetExportMessages();
     setShowDatePicker(false);
+    setShowExportDatePicker(null);
     setClearDataConfirmationValue("");
     await refreshPreferences();
-    setIsClearingData(false);
     router.replace("/onboarding");
+    setIsClearingData(false);
   }
 
   function setExportDraftValues(
@@ -506,7 +683,7 @@ export function SettingsScreen({
   }
 
   return (
-    <SettingsFlowScreen
+      <SettingsFlowScreen
       createSymptomDraft={createSymptomDraft}
       createSymptomErrorMessage={createSymptomErrorMessage}
       createSymptomStatusMessage={createSymptomStatusMessage}
@@ -630,11 +807,43 @@ export function SettingsScreen({
       }}
       onDatePickerToggle={() => setShowDatePicker((current) => !current)}
       onExportCSV={() => handleExport("csv")}
-      onExportFromDateChange={(value) => {
+      onExportDatePickerChange={(event, value) => {
+        if (event.type === "dismissed") {
+          setShowExportDatePicker(null);
+          return;
+        }
+
+        if (!value || !showExportDatePicker) {
+          setShowExportDatePicker(null);
+          return;
+        }
+
+        const nextDate = formatLocalDate(value);
         const nextValues: LoadedSettingsState["exportState"]["values"] = {
           ...readyState.exportState.values,
           preset: "custom",
-          fromDate: value,
+          fromDate:
+            showExportDatePicker === "from"
+              ? nextDate
+              : readyState.exportState.values.fromDate,
+          toDate:
+            showExportDatePicker === "to"
+              ? nextDate
+              : readyState.exportState.values.toDate,
+        };
+        setShowExportDatePicker(null);
+        void handleExportRangeChange(nextValues);
+      }}
+      onExportFromDatePress={() => {
+        resetExportMessages();
+        setShowExportDatePicker("from");
+      }}
+      onExportFromDateChange={(value) => {
+        const sanitizedValue = sanitizeExportDateInput(value);
+        const nextValues: LoadedSettingsState["exportState"]["values"] = {
+          ...readyState.exportState.values,
+          preset: "custom",
+          fromDate: sanitizedValue,
         };
         resetExportMessages();
         setExportDraftValues(nextValues);
@@ -645,16 +854,22 @@ export function SettingsScreen({
       onExportJSON={() => handleExport("json")}
       onExportPDF={() => handleExport("pdf")}
       onExportPresetSelect={(value) => {
+        setShowExportDatePicker(null);
         void handleExportRangeChange({
           ...readyState.exportState.values,
           preset: value,
         });
       }}
+      onExportToDatePress={() => {
+        resetExportMessages();
+        setShowExportDatePicker("to");
+      }}
       onExportToDateChange={(value) => {
+        const sanitizedValue = sanitizeExportDateInput(value);
         const nextValues: LoadedSettingsState["exportState"]["values"] = {
           ...readyState.exportState.values,
           preset: "custom",
-          toDate: value,
+          toDate: sanitizedValue,
         };
         resetExportMessages();
         setExportDraftValues(nextValues);
@@ -666,14 +881,16 @@ export function SettingsScreen({
       onInterfaceLanguageSelect={(value) => {
         setInterfaceErrorMessage("");
         setInterfaceStatusMessage("");
+        const nextValues: LoadedSettingsState["interfaceValues"] = {
+          ...readyState.interfaceValues,
+          languageOverride: value,
+        };
+        previewProfilePreferences(nextValues);
         setState((current) =>
           current
             ? {
                 ...current,
-                interfaceValues: {
-                  ...current.interfaceValues,
-                  languageOverride: value,
-                },
+                interfaceValues: nextValues,
               }
             : current,
         );
@@ -681,14 +898,16 @@ export function SettingsScreen({
       onInterfaceThemeSelect={(value) => {
         setInterfaceErrorMessage("");
         setInterfaceStatusMessage("");
+        const nextValues: LoadedSettingsState["interfaceValues"] = {
+          ...readyState.interfaceValues,
+          themeOverride: value,
+        };
+        previewProfilePreferences(nextValues);
         setState((current) =>
           current
             ? {
                 ...current,
-                interfaceValues: {
-                  ...current.interfaceValues,
-                  themeOverride: value,
-                },
+                interfaceValues: nextValues,
               }
             : current,
         );
@@ -740,7 +959,9 @@ export function SettingsScreen({
       }}
       onRestoreSymptom={handleRestoreSymptom}
       onSaveCycleSettings={handleSaveCycleSettings}
-      onSaveInterfaceSettings={handleSaveInterfaceSettings}
+      onSaveInterfaceSettings={() => {
+        void handleSaveInterfaceSettings();
+      }}
       onSaveTrackingSettings={handleSaveTrackingSettings}
       onSyncDeviceLabelChange={(value) => {
         resetAccountMessages();
@@ -890,10 +1111,98 @@ export function SettingsScreen({
       rowSymptomDrafts={rowSymptomDrafts}
       rowSymptomErrorMessages={rowSymptomErrorMessages}
       rowSymptomStatusMessages={rowSymptomStatusMessages}
+      showExportDatePicker={showExportDatePicker}
       showDatePicker={showDatePicker}
       state={readyState}
       trackingStatusMessage={trackingStatusMessage}
       viewData={viewData}
     />
+  );
+}
+
+function extractPersistedCycleValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["cycleValues"] {
+  return {
+    lastPeriodStart: profile.lastPeriodStart,
+    cycleLength: profile.cycleLength,
+    periodLength: profile.periodLength,
+    autoPeriodFill: profile.autoPeriodFill,
+    irregularCycle: profile.irregularCycle,
+    unpredictableCycle: profile.unpredictableCycle,
+    ageGroup: profile.ageGroup || "age_20_35",
+    usageGoal: profile.usageGoal,
+  };
+}
+
+function extractPersistedTrackingValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["trackingValues"] {
+  return {
+    trackBBT: profile.trackBBT,
+    temperatureUnit: profile.temperatureUnit,
+    trackCervicalMucus: profile.trackCervicalMucus,
+    hideSexChip: profile.hideSexChip,
+  };
+}
+
+function extractPersistedInterfaceValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["interfaceValues"] {
+  return {
+    languageOverride: profile.languageOverride,
+    themeOverride: profile.themeOverride,
+  };
+}
+
+function areCycleSettingsEqual(
+  left: LoadedSettingsState["cycleValues"],
+  right: LoadedSettingsState["cycleValues"],
+): boolean {
+  return (
+    left.lastPeriodStart === right.lastPeriodStart &&
+    left.cycleLength === right.cycleLength &&
+    left.periodLength === right.periodLength &&
+    left.autoPeriodFill === right.autoPeriodFill &&
+    left.irregularCycle === right.irregularCycle &&
+    left.unpredictableCycle === right.unpredictableCycle &&
+    left.ageGroup === right.ageGroup &&
+    left.usageGoal === right.usageGoal
+  );
+}
+
+function areTrackingSettingsEqual(
+  left: LoadedSettingsState["trackingValues"],
+  right: LoadedSettingsState["trackingValues"],
+): boolean {
+  return (
+    left.trackBBT === right.trackBBT &&
+    left.temperatureUnit === right.temperatureUnit &&
+    left.trackCervicalMucus === right.trackCervicalMucus &&
+    left.hideSexChip === right.hideSexChip
+  );
+}
+
+function areInterfaceSettingsEqual(
+  left: LoadedSettingsState["interfaceValues"],
+  right: LoadedSettingsState["interfaceValues"],
+): boolean {
+  return (
+    left.languageOverride === right.languageOverride &&
+    left.themeOverride === right.themeOverride
+  );
+}
+
+function areSyncPreferencesEqual(
+  left: LoadedSettingsState["syncPreferences"],
+  right: LoadedSettingsState["syncPreferences"],
+): boolean {
+  return (
+    left.mode === right.mode &&
+    left.endpointInput === right.endpointInput &&
+    left.normalizedEndpoint === right.normalizedEndpoint &&
+    left.deviceLabel === right.deviceLabel &&
+    left.setupStatus === right.setupStatus &&
+    left.preparedAt === right.preparedAt
   );
 }

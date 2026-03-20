@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
@@ -5,18 +6,40 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type StatusBannerProps = {
+  autoDismissAfterMs?: number;
   message: string;
   tone?: "success" | "error" | "info";
   testID?: string;
 };
 
 export function StatusBanner({
+  autoDismissAfterMs,
   message,
   tone = "info",
   testID,
 }: StatusBannerProps) {
   const styles = useThemedStyles(createStyles);
-  if (!message) {
+  const [isVisible, setIsVisible] = useState(Boolean(message));
+  const dismissAfterMs =
+    autoDismissAfterMs ?? (tone === "success" ? 2800 : undefined);
+
+  useEffect(() => {
+    setIsVisible(Boolean(message));
+  }, [message]);
+
+  useEffect(() => {
+    if (!message || !dismissAfterMs || dismissAfterMs <= 0) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setIsVisible(false);
+    }, dismissAfterMs);
+
+    return () => clearTimeout(timeout);
+  }, [dismissAfterMs, message]);
+
+  if (!message || !isVisible) {
     return null;
   }
 
@@ -44,7 +67,18 @@ export function StatusBanner({
       >
         {tone === "success" ? "Done" : tone === "error" ? "Error" : "Info"}
       </Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text
+        style={[
+          styles.message,
+          tone === "success"
+            ? styles.messageSuccess
+            : tone === "error"
+              ? styles.messageError
+              : null,
+        ]}
+      >
+        {message}
+      </Text>
     </View>
   );
 }
@@ -59,16 +93,16 @@ const createStyles = (colors: AppThemeColors) =>
     paddingVertical: 10,
   },
   bannerSuccess: {
-    backgroundColor: "rgba(244, 225, 205, 0.72)",
-    borderColor: "rgba(186, 131, 80, 0.28)",
+    backgroundColor: colors.statusSuccessBg,
+    borderColor: colors.statusSuccessBorder,
   },
   bannerError: {
-    backgroundColor: "rgba(255, 244, 244, 0.96)",
-    borderColor: "rgba(220, 38, 38, 0.22)",
+    backgroundColor: colors.statusErrorBg,
+    borderColor: colors.statusErrorBorder,
   },
   bannerInfo: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
+    backgroundColor: colors.statusInfoBg,
+    borderColor: colors.statusInfoBorder,
   },
   badge: {
     alignSelf: "flex-start",
@@ -82,23 +116,29 @@ const createStyles = (colors: AppThemeColors) =>
     textTransform: "uppercase",
   },
   badgeSuccess: {
-    backgroundColor: "rgba(255,255,255,0.68)",
-    borderColor: "rgba(186, 131, 80, 0.24)",
-    color: colors.accentStrong,
+    backgroundColor: colors.statusSuccessBadgeBg,
+    borderColor: colors.statusSuccessBorder,
+    color: colors.statusSuccessText,
   },
   badgeError: {
-    backgroundColor: "rgba(255,255,255,0.82)",
-    borderColor: "rgba(185, 28, 28, 0.18)",
-    color: "#b42318",
+    backgroundColor: colors.statusErrorBadgeBg,
+    borderColor: colors.statusErrorBorder,
+    color: colors.statusErrorText,
   },
   badgeInfo: {
-    backgroundColor: "rgba(255,255,255,0.78)",
-    borderColor: "rgba(188, 165, 138, 0.24)",
+    backgroundColor: colors.statusInfoBadgeBg,
+    borderColor: colors.statusInfoBorder,
     color: colors.textMuted,
   },
   message: {
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  messageSuccess: {
+    color: colors.statusSuccessText,
+  },
+  messageError: {
+    color: colors.statusErrorText,
   },
   });

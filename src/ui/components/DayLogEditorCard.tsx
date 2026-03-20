@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -68,15 +68,33 @@ export function DayLogEditorCard({
   const styles = useThemedStyles(createStyles);
   const showsCalendarOrder = variant === "calendar";
   const [isNotesOpen, setIsNotesOpen] = useState(record.notes.trim().length > 0);
+  const [showsAllSymptoms, setShowsAllSymptoms] = useState(false);
   const headerDescription = [viewData.subtitle, viewData.dateLabel]
     .filter((value) => value.trim().length > 0)
     .join(" ");
+  const collapsedSymptomsState = useMemo(
+    () =>
+      buildCollapsedSymptomOptions(
+        viewData.options.symptoms,
+        record.symptomIDs,
+      ),
+    [record.symptomIDs, viewData.options.symptoms],
+  );
+  const symptomOptions = showsAllSymptoms
+    ? viewData.options.symptoms
+    : collapsedSymptomsState.options;
 
   useEffect(() => {
     if (record.notes.trim().length > 0) {
       setIsNotesOpen(true);
     }
   }, [record.notes]);
+
+  useEffect(() => {
+    if (collapsedSymptomsState.hiddenCount === 0 && showsAllSymptoms) {
+      setShowsAllSymptoms(false);
+    }
+  }, [collapsedSymptomsState.hiddenCount, showsAllSymptoms]);
 
   function handleSectionLayout(key: DayLogEditorSectionKey) {
     return (event: LayoutChangeEvent) => {
@@ -99,6 +117,19 @@ export function DayLogEditorCard({
         />
       </View>
 
+      {record.isPeriod ? (
+        <View onLayout={handleSectionLayout("flow")} style={styles.section}>
+          <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
+          <ChoiceGroup
+            compact
+            onSelect={(value) => onPatch({ flow: value })}
+            options={viewData.options.flow}
+            selectedValue={record.flow}
+            testIDPrefix="day-log-flow"
+          />
+        </View>
+      ) : null}
+
       <View onLayout={handleSectionLayout("symptoms")} style={styles.section}>
         <Text style={styles.sectionLabel}>{viewData.labels.symptoms}</Text>
         <MultiSelectChipGroup
@@ -109,16 +140,32 @@ export function DayLogEditorCard({
               : [...record.symptomIDs, value];
             onPatch({ symptomIDs: next });
           }}
-          options={viewData.options.symptoms}
+          options={symptomOptions}
           selectedValues={record.symptomIDs}
           testIDPrefix="day-log-symptom"
         />
+        {collapsedSymptomsState.hiddenCount > 0 ? (
+          <Pressable
+            onPress={() => setShowsAllSymptoms((current) => !current)}
+            style={styles.moreSymptomsButton}
+            testID="day-log-more-symptoms-button"
+          >
+            <Text style={styles.moreSymptomsText}>
+              {showsAllSymptoms
+                ? viewData.labels.showFewerSymptoms
+                : `${viewData.labels.showMoreSymptoms} (${collapsedSymptomsState.hiddenCount})`}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View onLayout={handleSectionLayout("mood")} style={styles.section}>
         <Text style={styles.sectionLabel}>{viewData.labels.mood}</Text>
         <ChoiceGroup
           compact
+          contentAlign="center"
+          layout="grid5"
+          onClearSelection={() => onPatch({ mood: 0 })}
           onSelect={(value) => onPatch({ mood: value })}
           options={viewData.options.mood}
           selectedValue={record.mood}
@@ -142,19 +189,6 @@ export function DayLogEditorCard({
           testIDPrefix="day-log-factor"
         />
       </View>
-
-      {record.isPeriod ? (
-        <View onLayout={handleSectionLayout("flow")} style={styles.section}>
-          <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
-          <ChoiceGroup
-            compact
-            onSelect={(value) => onPatch({ flow: value })}
-            options={viewData.options.flow}
-            selectedValue={record.flow}
-            testIDPrefix="day-log-flow"
-          />
-        </View>
-      ) : null}
 
       <View onLayout={handleSectionLayout("intimacy")} style={styles.section}>
         <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
@@ -362,6 +396,14 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 13,
       fontWeight: "700",
     },
+    moreSymptomsButton: {
+      alignSelf: "flex-start",
+    },
+    moreSymptomsText: {
+      color: colors.accentStrong,
+      fontSize: 13,
+      fontWeight: "700",
+    },
     notesSection: {
       gap: spacing.sm,
     },
@@ -377,3 +419,26 @@ const createStyles = (colors: AppThemeColors) =>
       paddingTop: spacing.sm,
     },
   });
+
+function buildCollapsedSymptomOptions(
+  options: DayLogEditorViewData["options"]["symptoms"],
+  selectedIDs: DayLogRecord["symptomIDs"],
+) {
+  const MAX_VISIBLE_SYMPTOMS = 6;
+  const selected = new Set(selectedIDs);
+  const collapsed = options.slice(0, MAX_VISIBLE_SYMPTOMS);
+  const remaining: DayLogEditorViewData["options"]["symptoms"][number][] = [];
+  const visibleValues = new Set(collapsed.map((option) => option.value));
+
+  for (const option of options.slice(MAX_VISIBLE_SYMPTOMS)) {
+    if (selected.has(option.value) && !visibleValues.has(option.value)) {
+      remaining.push(option);
+      visibleValues.add(option.value);
+    }
+  }
+
+  return {
+    hiddenCount: Math.max(options.length - visibleValues.size, 0),
+    options: [...collapsed, ...remaining],
+  };
+}

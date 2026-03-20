@@ -71,6 +71,11 @@ export function CalendarMonthGrid({
               day.stateKey === "period" ? styles.cellPeriod : null,
               day.stateKey === "predicted" ? styles.cellPredicted : null,
               day.stateKey === "pre_fertile" ? styles.cellPreFertile : null,
+              day.stateKey === "fertility_edge" ||
+              day.stateKey === "fertility_peak" ||
+              day.stateKey === "ovulation"
+                ? styles.cellFertile
+                : null,
               day.stateKey === "fertility_edge" ? styles.cellFertilityEdge : null,
               day.stateKey === "fertility_peak" ? styles.cellFertilityPeak : null,
               day.stateKey === "ovulation" ? styles.cellOvulation : null,
@@ -168,38 +173,41 @@ const createStyles = (colors: AppThemeColors) =>
       opacity: 0.48,
     },
     cellPeriod: {
-      backgroundColor: colors.accentSoft,
+      backgroundColor: colors.calendarPeriodBg,
+      borderColor: colors.calendarPeriodBorder,
     },
     cellPredicted: {
-      backgroundColor: colors.surfaceStrong,
+      backgroundColor: colors.calendarPredictedBg,
+      borderColor: colors.calendarPredictedBorder,
+      borderStyle: "dashed",
     },
     cellPreFertile: {
-      borderColor: colors.accentSecondary,
+      backgroundColor: colors.calendarPreFertileBg,
+      borderColor: colors.calendarPreFertileBorder,
+      borderStyle: "dashed",
+    },
+    cellFertile: {
+      backgroundColor: colors.calendarFertileBg,
+      borderColor: colors.calendarFertileBorder,
     },
     cellFertilityEdge: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#fff1e4" : "rgba(95, 71, 51, 0.78)",
-      borderColor: colors.accentSecondary,
+      backgroundColor: colors.calendarFertilityEdgeBg,
+      borderColor: colors.calendarFertilityEdgeBorder,
     },
     cellFertilityPeak: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#ffe7dd" : "rgba(108, 62, 54, 0.82)",
-      borderColor:
-        colors.background === "#fff9f0" ? "#dd9b81" : colors.accentStrong,
+      backgroundColor: colors.calendarFertilityPeakBg,
+      borderColor: colors.calendarFertilityPeakBorder,
     },
     cellOvulation: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#fff3ea" : "rgba(83, 58, 44, 0.82)",
-      borderColor: colors.accentStrong,
+      borderColor: colors.calendarFertilityPeakBorder,
     },
     cellOvulationTentative: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#fff8f2" : "rgba(56, 43, 32, 0.82)",
-      borderColor: colors.accentSecondary,
+      backgroundColor: colors.calendarTentativeBg,
+      borderColor: colors.calendarTentativeBorder,
       borderStyle: "dashed",
     },
     cellSelected: {
-      borderColor: colors.accentStrong,
+      borderColor: colors.calendarSelectedBorder,
       borderWidth: 2,
     },
     cellHeader: {
@@ -217,7 +225,7 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
     },
     dayLabelSelected: {
-      color: colors.accentStrong,
+      color: colors.calendarSelectedBorder,
     },
     todayPill: {
       backgroundColor: colors.surfaceMuted,
@@ -239,21 +247,19 @@ const createStyles = (colors: AppThemeColors) =>
       marginTop: "auto",
     },
     dataMarker: {
-      backgroundColor: colors.accentStrong,
+      backgroundColor: colors.calendarDataMarkerBg,
       borderRadius: 999,
       height: 7,
       width: 7,
     },
     ovulationMarker: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#f0906f" : colors.accentStrong,
+      backgroundColor: colors.calendarOvulationMarkerBg,
       borderRadius: 999,
       height: 9,
       width: 9,
     },
     ovulationDash: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#e0a37d" : colors.accentSecondary,
+      backgroundColor: colors.calendarOvulationDashBg,
       borderRadius: 999,
       height: 3,
       width: 12,

@@ -102,6 +102,12 @@ export function CalendarDayPanel({
         />
       ) : null}
 
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryLabel}>{summaryViewData.stateSummary.label}</Text>
+        <Text style={styles.summaryValue}>{summaryViewData.stateSummary.value}</Text>
+        <Text style={styles.summaryHint}>{summaryViewData.stateSummary.hint}</Text>
+      </View>
+
       {entryExists ? (
         <>
           <View style={styles.summaryCard}>
@@ -180,6 +186,11 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.text,
       fontSize: 15,
       fontWeight: "700",
+    },
+    summaryHint: {
+      color: colors.textMuted,
+      fontSize: 13,
+      lineHeight: 19,
     },
     summarySection: {
       gap: 4,

@@ -63,6 +63,7 @@ export type OnboardingFlowScreenProps = {
 export function OnboardingLoadingScreen() {
   const styles = useThemedStyles(createStyles);
   const { colors, language } = useAppPreferences();
+  const { height } = useWindowDimensions();
   const onboardingCopy = getOnboardingCopy(language);
   const appInfo = getAppInfo(language);
 
@@ -70,6 +71,7 @@ export function OnboardingLoadingScreen() {
     <OnboardingShell
       progressLabel={appInfo.name}
       progressPercent={0}
+      screenHeight={height}
       styles={styles}
       subtitle={appInfo.tagline}
       title={onboardingCopy.loading}
@@ -103,7 +105,7 @@ export function OnboardingFlowScreen({
 }: OnboardingFlowScreenProps) {
   const styles = useThemedStyles(createStyles);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const onboardingCopy = getOnboardingCopy(locale);
   const selectedDate = parseLocalDate(state.selectedDate);
   const dayOptionColumns = width >= 1180 ? 6 : width >= 820 ? 4 : 3;
@@ -135,6 +137,7 @@ export function OnboardingFlowScreen({
     <OnboardingShell
       progressLabel={state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2}
       progressPercent={state.step === 1 ? 50 : 100}
+      screenHeight={height}
       styles={styles}
       title={state.step === 1 ? viewData.stepOne.title : viewData.stepTwo.title}
       {...(state.step === 1 ? { subtitle: viewData.stepOne.subtitle } : {})}
@@ -185,6 +188,7 @@ export function OnboardingFlowScreen({
 function OnboardingShell({
   progressLabel,
   progressPercent,
+  screenHeight,
   title,
   subtitle,
   children,
@@ -192,12 +196,18 @@ function OnboardingShell({
 }: {
   progressLabel: string;
   progressPercent: number;
+  screenHeight: number;
   title: string;
   subtitle?: string;
   children: ReactNode;
   styles: ReturnType<typeof createStyles>;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const minCardHeight =
+    width < 760
+      ? Math.max(screenHeight - insets.top - insets.bottom - 42, 0)
+      : 0;
 
   return (
     <AppScreenSurface>
@@ -213,7 +223,12 @@ function OnboardingShell({
           showsVerticalScrollIndicator={false}
           style={styles.screen}
         >
-          <View style={styles.heroCard}>
+          <View
+            style={[
+              styles.heroCard,
+              minCardHeight > 0 ? { minHeight: minCardHeight } : null,
+            ]}
+          >
             <View style={styles.progressBlock}>
               <Text style={styles.kicker}>{progressLabel}</Text>
               <View style={styles.progressPanel}>
@@ -274,6 +289,36 @@ function StepOnePanel({
   supportsNativeDatePicker: boolean;
   viewData: OnboardingViewData;
 }) {
+  const { height: windowHeight } = useWindowDimensions();
+  const [dayOptionGridWidth, setDayOptionGridWidth] = useState(0);
+  const dayOptionWidth = useMemo(() => {
+    if (dayOptionGridWidth <= 0) {
+      return null;
+    }
+
+    const gap = 6;
+    return Math.floor(
+      (dayOptionGridWidth - gap * (dayOptionColumns - 1)) / dayOptionColumns,
+    );
+  }, [dayOptionColumns, dayOptionGridWidth]);
+  const dateFieldContent = (
+    <>
+      {selectedDateValue ? (
+        <Text style={styles.selectedDateLabel}>
+          {viewData.stepOne.selectedDateLabel}
+        </Text>
+      ) : null}
+      <Text
+        style={[
+          styles.dateFieldValue,
+          !selectedDateValue ? styles.dateFieldValueMuted : null,
+        ]}
+      >
+        {displayedDate}
+      </Text>
+    </>
+  );
+
   return (
     <>
       <Text style={styles.helperText}>{viewData.stepOne.day1Tip}</Text>
@@ -281,28 +326,18 @@ function StepOnePanel({
 
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{viewData.stepOne.fieldLabel}</Text>
-        <View style={styles.dateFieldShell}>
-          {selectedDateValue ? (
-            <Text style={styles.selectedDateLabel}>
-              {viewData.stepOne.selectedDateLabel}
-            </Text>
-          ) : null}
-          <Text
-            style={[
-              styles.dateFieldValue,
-              !selectedDateValue ? styles.dateFieldValueMuted : null,
-            ]}
+        {supportsNativeDatePicker ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onDatePickerToggle}
+            style={styles.dateFieldShell}
+            testID="onboarding-date-field-button"
           >
-            {displayedDate}
-          </Text>
-          {supportsNativeDatePicker ? (
-            <Pressable onPress={onDatePickerToggle} style={styles.secondaryLinkButton}>
-              <Text style={styles.secondaryLinkButtonText}>
-                {viewData.stepOne.changeDateLabel}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+            {dateFieldContent}
+          </Pressable>
+        ) : (
+          <View style={styles.dateFieldShell}>{dateFieldContent}</View>
+        )}
         {supportsNativeDatePicker && showDatePicker ? (
           <DateTimePicker
             display="default"
@@ -317,8 +352,15 @@ function StepOnePanel({
       <ScrollView
         contentContainerStyle={styles.dayOptionGrid}
         nestedScrollEnabled
-        showsVerticalScrollIndicator={false}
-        style={styles.dayOptionScroll}
+        onLayout={(event) => setDayOptionGridWidth(event.nativeEvent.layout.width)}
+        persistentScrollbar
+        showsVerticalScrollIndicator
+        style={[
+          styles.dayOptionScroll,
+          {
+            maxHeight: Math.max(272, Math.min(388, Math.round(windowHeight * 0.4))),
+          },
+        ]}
       >
         {viewData.stepOne.dayOptions.map((option) => (
           <DayOptionButton
@@ -327,6 +369,7 @@ function StepOnePanel({
             isSelected={selectedDateValue === option.value}
             onPress={() => onDayOptionPress(option.value)}
             option={option}
+            width={dayOptionWidth}
             styles={styles}
           />
         ))}
@@ -385,7 +428,6 @@ function StepTwoPanel({
         maximumValue={90}
         minimumValue={15}
         onValueChange={onCycleLengthChange}
-        showRange
         testID="onboarding-cycle-length-slider"
         value={stepTwoValues.cycleLength}
         valueSuffix={` ${viewData.stepTwo.daysShort}`}
@@ -396,7 +438,6 @@ function StepTwoPanel({
         maximumValue={14}
         minimumValue={1}
         onValueChange={onPeriodLengthChange}
-        showRange
         testID="onboarding-period-length-slider"
         value={stepTwoValues.periodLength}
         valueSuffix={` ${viewData.stepTwo.daysShort}`}
@@ -483,20 +524,24 @@ function DayOptionButton({
   option,
   isSelected,
   onPress,
+  width,
   styles,
 }: {
   columns: number;
   option: DayOption;
   isSelected: boolean;
   onPress: () => void;
+  width: number | null;
   styles: ReturnType<typeof createStyles>;
 }) {
   const widthStyle =
-    columns >= 6
-      ? styles.dayOptionButtonSixColumns
-      : columns === 4
-        ? styles.dayOptionButtonFourColumns
-        : styles.dayOptionButtonThreeColumns;
+    width !== null
+      ? { width }
+      : columns >= 6
+        ? styles.dayOptionButtonSixColumns
+        : columns === 4
+          ? styles.dayOptionButtonFourColumns
+          : styles.dayOptionButtonThreeColumns;
 
   return (
     <Pressable
@@ -605,8 +650,10 @@ const createStyles = (colors: AppThemeColors) =>
     },
     screenContent: {
       alignItems: "center",
+      flexGrow: 1,
       paddingHorizontal: 16,
       paddingVertical: 18,
+      width: "100%",
     },
     heroCard: {
       backgroundColor: colors.surfaceElevated,
@@ -628,6 +675,7 @@ const createStyles = (colors: AppThemeColors) =>
       paddingVertical: spacing.xl,
     },
     panel: {
+      flex: 1,
       gap: 8,
     },
     progressBlock: {
@@ -681,6 +729,8 @@ const createStyles = (colors: AppThemeColors) =>
       borderRadius: 12,
       borderWidth: 1,
       gap: 4,
+      justifyContent: "center",
+      minHeight: 72,
       paddingHorizontal: 12,
       paddingVertical: 9,
     },
@@ -699,23 +749,14 @@ const createStyles = (colors: AppThemeColors) =>
     dateFieldValueMuted: {
       color: colors.textMuted,
     },
-    secondaryLinkButton: {
-      alignSelf: "flex-start",
-      paddingTop: 4,
-    },
-    secondaryLinkButtonText: {
-      color: colors.accent,
-      fontSize: 13,
-      fontWeight: "700",
-    },
     dayOptionGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 6,
-      paddingRight: 4,
     },
     dayOptionScroll: {
-      maxHeight: 232,
+      flexGrow: 1,
+      minHeight: 272,
     },
     dayOptionButton: {
       backgroundColor: colors.surfaceTint,

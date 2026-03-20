@@ -94,15 +94,19 @@ export type SettingsViewData = {
     languageLabel: string;
     languageHint: string;
     languageOptions: { value: InterfaceLanguage; label: string }[];
+    previewHint: string;
     themeLabel: string;
     themeHint: string;
     themeOptions: { value: ThemePreference; label: string }[];
+    discardChangesLabel: string;
     saveLabel: string;
+    saveBeforeLeaveLabel: string;
     status: {
       saved: string;
       languageSaved: string;
       themeSaved: string;
     };
+    unsavedPrompt: string;
   };
   account: {
     title: string;
@@ -222,6 +226,7 @@ export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
+  savedSyncPreferences: SyncPreferencesRecord;
   syncPreferences: SyncPreferencesRecord;
   hasStoredSyncSecrets: boolean;
   trackingValues: TrackingSettingsValues;
@@ -320,18 +325,22 @@ export function buildSettingsViewData(
         { value: "ru", label: APP_LANGUAGE_LABELS.ru },
         { value: "es", label: APP_LANGUAGE_LABELS.es },
       ],
+      previewHint: settingsCopy.interface.previewHint,
       themeLabel: settingsCopy.interface.themeLabel,
       themeHint: settingsCopy.interface.themeHint,
       themeOptions: [
         { value: "light", label: settingsCopy.interface.themeLight },
         { value: "dark", label: settingsCopy.interface.themeDark },
       ],
+      discardChangesLabel: settingsCopy.interface.discardChanges,
       saveLabel: settingsCopy.interface.save,
+      saveBeforeLeaveLabel: settingsCopy.interface.saveBeforeLeave,
       status: {
         saved: settingsCopy.interface.saved,
         languageSaved: settingsCopy.interface.languageSaved,
         themeSaved: settingsCopy.interface.themeSaved,
       },
+      unsavedPrompt: settingsCopy.interface.unsavedPrompt,
     },
     account: {
       title: settingsCopy.account.title,
@@ -458,10 +467,11 @@ export function buildSettingsViewData(
 
 export function createLoadedSettingsState(
   profile: ProfileRecord,
-  syncPreferences: SyncPreferencesRecord,
+  savedSyncPreferences: SyncPreferencesRecord,
   hasStoredSyncSecrets: boolean,
   symptomRecords: SymptomRecord[],
   exportState: LoadedExportState,
+  syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
 ): LoadedSettingsState {
   return {
     profile,
@@ -479,6 +489,7 @@ export function createLoadedSettingsState(
       languageOverride: profile.languageOverride,
       themeOverride: profile.themeOverride,
     },
+    savedSyncPreferences,
     syncPreferences,
     hasStoredSyncSecrets,
     trackingValues: {

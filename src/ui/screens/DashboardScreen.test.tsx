@@ -115,6 +115,10 @@ describe("DashboardScreen", () => {
     );
 
     await screen.findByTestId("day-log-save-button");
+    expect(screen.getByTestId("day-log-more-symptoms-button")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
+
     expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 

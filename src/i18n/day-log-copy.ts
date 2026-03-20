@@ -25,6 +25,8 @@ const dayLogCopyEn = {
   addNote: "Add note",
   editNote: "Edit note",
   hideNote: "Hide note",
+  showMoreSymptoms: "More symptoms",
+  showFewerSymptoms: "Fewer symptoms",
   notesPlaceholder: "Anything you want to remember about today.",
   saveToday: "Save today",
   updateEntry: "Update entry",
@@ -36,13 +38,13 @@ const dayLogCopyEn = {
   deleteFailed: "Unable to clear this entry. Please try again.",
   deleteHint: "This removes the local record for this day.",
   periodOffHint: "Flow is available when this day is marked as a period day.",
-  options: {
-    mood: [
-      { value: 1, label: "😞" },
-      { value: 2, label: "🙂" },
-      { value: 3, label: "😌" },
-      { value: 4, label: "😊" },
-      { value: 5, label: "🤩" },
+    options: {
+      mood: [
+      { value: 1, label: "😞", secondaryLabel: "1/5" },
+      { value: 2, label: "🙂", secondaryLabel: "2/5" },
+      { value: 3, label: "😌", secondaryLabel: "3/5" },
+      { value: 4, label: "😊", secondaryLabel: "4/5" },
+      { value: 5, label: "🤩", secondaryLabel: "5/5" },
     ],
     flow: [
       { value: "none", label: "None" },
@@ -100,6 +102,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     addNote: "Добавить заметку",
     editNote: "Изменить заметку",
     hideNote: "Скрыть заметку",
+    showMoreSymptoms: "Ещё симптомы",
+    showFewerSymptoms: "Свернуть симптомы",
     notesPlaceholder: "Всё, что вы хотите запомнить о сегодняшнем дне.",
     saveToday: "Сохранить сегодня",
     updateEntry: "Обновить запись",
@@ -165,6 +169,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     addNote: "Añadir nota",
     editNote: "Editar nota",
     hideNote: "Ocultar nota",
+    showMoreSymptoms: "Más síntomas",
+    showFewerSymptoms: "Menos síntomas",
     notesPlaceholder: "Cualquier cosa que quieras recordar sobre hoy.",
     saveToday: "Guardar hoy",
     updateEntry: "Actualizar registro",

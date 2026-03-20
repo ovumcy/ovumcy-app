@@ -8,7 +8,7 @@ const settingsCopyEn = {
     "Manage cycle parameters, tracking fields, export actions, and local profile behavior.",
   common: {
     daysShort: "d",
-    changeDate: "Open calendar",
+    changeDate: "Choose date",
     clearDate: "Clear date",
     notSet: "Not set",
     saving: "Saving...",
@@ -19,7 +19,7 @@ const settingsCopyEn = {
     periodLength: "Period duration",
     lastPeriodStart: "Last period start date",
     lastPeriodStartHint:
-      "Optional. Used as a fallback cycle anchor when your journal does not yet have a marked cycle start.",
+      "Optional fallback if your journal does not have a marked cycle start yet.",
     errorIncompatible:
       "Period duration is incompatible with cycle length. Menstruation cannot take up almost the whole cycle.",
     warningApproximate:
@@ -58,22 +58,22 @@ const settingsCopyEn = {
   tracking: {
     title: "Additional tracking",
     subtitle:
-      "Turn on the owner-only fields you want in daily logging. Existing values stay in your private history.",
+      "Choose extra fields for daily logging. Saved values stay in your private history.",
     trackBBT: "Show BBT field",
     trackBBTHint:
-      "Adds a basal body temperature field to dashboard and calendar day editing. Saved values still appear in owner history and exports later.",
+      "Shows a basal body temperature field in dashboard and calendar entries.",
     trackBBTStateOn: "Currently visible in dashboard and calendar day editor.",
     trackBBTStateOff: "Currently hidden from new dashboard and calendar entries.",
     trackCervicalMucus: "Show cervical mucus field",
     trackCervicalMucusHint:
-      "Adds cervical mucus choices to dashboard and calendar day editing. Saved values still appear in owner history.",
+      "Shows cervical mucus choices in dashboard and calendar entries.",
     trackCervicalMucusStateOn:
       "Currently visible in dashboard and calendar day editor.",
     trackCervicalMucusStateOff:
       "Currently hidden from new dashboard and calendar entries.",
     hideSexChip: "Hide intimacy section",
     hideSexChipHint:
-      "Removes the intimacy section from new dashboard and calendar entries. Saved activity still appears in your private history.",
+      "Hides intimacy in new dashboard and calendar entries.",
     hideSexChipStateOn:
       "Currently hidden in dashboard and calendar day editor.",
     hideSexChipStateOff:
@@ -89,14 +89,19 @@ const settingsCopyEn = {
     subtitle: "Control app language and appearance on this device.",
     languageLabel: "Language",
     languageHint: "Saved only on this device.",
+    previewHint: "Language and theme preview immediately. Save to keep them on this device.",
     themeLabel: "Theme",
     themeHint: "Saved only on this device.",
+    discardChanges: "Discard changes",
     save: "Save interface",
+    saveBeforeLeave: "Save and leave",
     themeLight: "Light",
     themeDark: "Dark",
     saved: "Interface settings updated for this device.",
     languageSaved: "Language updated for this device.",
     themeSaved: "Theme updated for this device.",
+    unsavedPrompt:
+      "You have unsaved settings changes. Save them before leaving settings?",
   },
   account: {
     title: "Account & sync",
@@ -147,7 +152,7 @@ const settingsCopyEn = {
     title: "Custom symptoms",
     subtitle: "Create short private labels for patterns you want to log.",
     name: "Symptom name",
-    namePlaceholder: "Joint stiffness",
+    namePlaceholder: "Enter symptom name",
     nameHint: "Use 40 characters or fewer. For longer details, use notes.",
     icon: "Icon",
     add: "Add symptom",
@@ -237,8 +242,8 @@ const settingsCopyEn = {
       "Unable to clear local data right now. Please try again.",
   },
   status: {
-    cycleSaved: "Cycle settings updated successfully.",
-    trackingSaved: "Tracking settings updated.",
+    cycleSaved: "Cycle settings saved. Predictions were refreshed.",
+    trackingSaved: "Tracking fields updated for dashboard and calendar.",
     invalidLastPeriodStart:
       "Please enter a valid last period start date that is not in the future.",
     saveFailed: "Unable to save your settings. Please try again.",
@@ -255,7 +260,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       "Управляйте параметрами цикла, полями трекинга, экспортом и локальным поведением профиля.",
     common: {
       daysShort: "д",
-      changeDate: "Открыть календарь",
+      changeDate: "Выбрать дату",
       clearDate: "Очистить дату",
       notSet: "Не задано",
       saving: "Сохранение...",
@@ -266,7 +271,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       periodLength: "Длительность менструации",
       lastPeriodStart: "Дата начала последней менструации",
       lastPeriodStartHint:
-        "Необязательно. Используется как запасная точка отсчёта, если в журнале ещё нет отмеченного начала цикла.",
+        "Необязательная запасная дата, если в журнале ещё нет отмеченного начала цикла.",
       errorIncompatible:
         "Длительность менструации несовместима с длиной цикла. Менструация не может занимать почти весь цикл.",
       warningApproximate:
@@ -305,22 +310,22 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     tracking: {
       title: "Дополнительный трекинг",
       subtitle:
-        "Включите owner-only поля, которые хотите видеть в дневных записях. Существующие значения останутся в приватной истории.",
+        "Выберите дополнительные поля для дневных записей. Сохранённые значения останутся в приватной истории.",
       trackBBT: "Показывать поле БТТ",
       trackBBTHint:
-        "Добавляет поле базальной температуры в dashboard и редактирование дня в календаре. Сохранённые значения останутся в истории и экспорте.",
+        "Показывает поле базальной температуры в dashboard и записях календаря.",
       trackBBTStateOn: "Сейчас видно в dashboard и редакторе дня календаря.",
       trackBBTStateOff: "Сейчас скрыто из новых записей dashboard и календаря.",
       trackCervicalMucus: "Показывать поле цервикальной слизи",
       trackCervicalMucusHint:
-        "Добавляет варианты цервикальной слизи в dashboard и редактирование дня. Сохранённые значения остаются в приватной истории.",
+        "Показывает варианты цервикальной слизи в dashboard и записях календаря.",
       trackCervicalMucusStateOn:
         "Сейчас видно в dashboard и редакторе дня календаря.",
       trackCervicalMucusStateOff:
         "Сейчас скрыто из новых записей dashboard и календаря.",
       hideSexChip: "Скрыть раздел близости",
       hideSexChipHint:
-        "Убирает раздел близости из новых записей dashboard и календаря. Сохранённая активность остаётся в приватной истории.",
+        "Скрывает раздел близости в новых записях dashboard и календаря.",
       hideSexChipStateOn:
         "Сейчас скрыто в dashboard и редакторе дня календаря.",
       hideSexChipStateOff:
@@ -336,14 +341,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle: "Управляйте языком приложения и темой на этом устройстве.",
       languageLabel: "Язык",
       languageHint: "Сохраняется только на этом устройстве.",
+      previewHint:
+        "Язык и тема меняются сразу в предпросмотре. Сохраните, чтобы оставить их на этом устройстве.",
       themeLabel: "Тема",
       themeHint: "Сохраняется только на этом устройстве.",
+      discardChanges: "Не сохранять",
       save: "Сохранить интерфейс",
+      saveBeforeLeave: "Сохранить и выйти",
       themeLight: "Светлая",
       themeDark: "Тёмная",
       saved: "Настройки интерфейса обновлены для этого устройства.",
       languageSaved: "Язык обновлён для этого устройства.",
       themeSaved: "Тема обновлена для этого устройства.",
+      unsavedPrompt:
+        "Есть несохранённые изменения в настройках. Сохранить их перед выходом из настроек?",
     },
     account: {
       title: "Аккаунт и sync",
@@ -396,7 +407,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       title: "Пользовательские симптомы",
       subtitle: "Создавайте короткие приватные названия для паттернов, которые хотите отмечать.",
       name: "Название симптома",
-      namePlaceholder: "Скованность в суставах",
+      namePlaceholder: "Введите название симптома",
       nameHint: "Используйте не более 40 символов. Для длинных деталей используйте заметки.",
       icon: "Иконка",
       add: "Добавить симптом",
@@ -486,8 +497,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Сейчас не удалось очистить локальные данные. Попробуйте ещё раз.",
     },
     status: {
-      cycleSaved: "Настройки цикла успешно обновлены.",
-      trackingSaved: "Настройки трекинга обновлены.",
+      cycleSaved: "Настройки цикла сохранены. Предсказания обновлены.",
+      trackingSaved: "Поля трекинга обновлены для dashboard и календаря.",
       invalidLastPeriodStart:
         "Введите корректную дату начала последней менструации, не в будущем.",
       saveFailed: "Не удалось сохранить настройки. Попробуйте ещё раз.",
@@ -499,7 +510,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       "Gestiona parámetros del ciclo, campos de seguimiento, acciones de exportación y el comportamiento local del perfil.",
     common: {
       daysShort: "d",
-      changeDate: "Abrir calendario",
+      changeDate: "Elegir fecha",
       clearDate: "Borrar fecha",
       notSet: "Sin definir",
       saving: "Guardando...",
@@ -510,7 +521,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       periodLength: "Duración del período",
       lastPeriodStart: "Fecha de inicio del último período",
       lastPeriodStartHint:
-        "Opcional. Se usa como referencia si tu diario todavía no tiene un inicio de ciclo marcado.",
+        "Referencia opcional si tu diario todavía no tiene un inicio de ciclo marcado.",
       errorIncompatible:
         "La duración del período es incompatible con la duración del ciclo. La menstruación no puede ocupar casi todo el ciclo.",
       warningApproximate:
@@ -549,22 +560,22 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     tracking: {
       title: "Seguimiento adicional",
       subtitle:
-        "Activa los campos owner-only que quieras en el registro diario. Los valores existentes siguen en tu historial privado.",
+        "Elige campos extra para el registro diario. Los valores guardados siguen en tu historial privado.",
       trackBBT: "Mostrar campo de TCB",
       trackBBTHint:
-        "Añade un campo de temperatura basal al dashboard y a la edición diaria del calendario. Los valores guardados siguen apareciendo en el historial y en las exportaciones.",
+        "Muestra un campo de temperatura basal en dashboard y calendario.",
       trackBBTStateOn: "Actualmente visible en el dashboard y en el editor diario del calendario.",
       trackBBTStateOff: "Actualmente oculto de las nuevas entradas del dashboard y del calendario.",
       trackCervicalMucus: "Mostrar campo de moco cervical",
       trackCervicalMucusHint:
-        "Añade opciones de moco cervical al dashboard y a la edición diaria del calendario. Los valores guardados permanecen en tu historial privado.",
+        "Muestra opciones de moco cervical en dashboard y calendario.",
       trackCervicalMucusStateOn:
         "Actualmente visible en el dashboard y en el editor diario del calendario.",
       trackCervicalMucusStateOff:
         "Actualmente oculto de las nuevas entradas del dashboard y del calendario.",
       hideSexChip: "Ocultar sección de intimidad",
       hideSexChipHint:
-        "Elimina la sección de intimidad de nuevas entradas del dashboard y del calendario. La actividad guardada sigue apareciendo en tu historial privado.",
+        "Oculta la sección de intimidad en nuevas entradas del dashboard y del calendario.",
       hideSexChipStateOn:
         "Actualmente oculta en el dashboard y en el editor diario del calendario.",
       hideSexChipStateOff:
@@ -580,14 +591,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle: "Controla el idioma y la apariencia de la app en este dispositivo.",
       languageLabel: "Idioma",
       languageHint: "Se guarda solo en este dispositivo.",
+      previewHint:
+        "Idioma y tema se previsualizan al instante. Guarda para conservarlos en este dispositivo.",
       themeLabel: "Tema",
       themeHint: "Se guarda solo en este dispositivo.",
+      discardChanges: "Descartar cambios",
       save: "Guardar interfaz",
+      saveBeforeLeave: "Guardar y salir",
       themeLight: "Claro",
       themeDark: "Oscuro",
       saved: "La interfaz se actualizó para este dispositivo.",
       languageSaved: "Idioma actualizado para este dispositivo.",
       themeSaved: "Tema actualizado para este dispositivo.",
+      unsavedPrompt:
+        "Hay cambios de ajustes sin guardar. ¿Quieres guardarlos antes de salir de ajustes?",
     },
     account: {
       title: "Cuenta y sync",
@@ -640,7 +657,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       title: "Síntomas personalizados",
       subtitle: "Crea etiquetas privadas y cortas para patrones que quieras registrar.",
       name: "Nombre del síntoma",
-      namePlaceholder: "Rigidez articular",
+      namePlaceholder: "Escribe el nombre del síntoma",
       nameHint: "Usa 40 caracteres o menos. Para detalles largos, usa notas.",
       icon: "Icono",
       add: "Añadir síntoma",
@@ -731,8 +748,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "No se pudieron borrar los datos locales ahora. Inténtalo de nuevo.",
     },
     status: {
-      cycleSaved: "Ajustes del ciclo actualizados correctamente.",
-      trackingSaved: "Ajustes de seguimiento actualizados.",
+      cycleSaved: "Ajustes del ciclo guardados. Las predicciones se actualizaron.",
+      trackingSaved: "Los campos de seguimiento se actualizaron para dashboard y calendario.",
       invalidLastPeriodStart:
         "Introduce una fecha válida del último período que no esté en el futuro.",
       saveFailed: "No se pudieron guardar los ajustes. Inténtalo de nuevo.",

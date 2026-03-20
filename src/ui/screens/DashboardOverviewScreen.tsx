@@ -71,6 +71,11 @@ export function DashboardOverviewScreen({
     switch (action) {
       case "period":
         onPatch({ isPeriod: !record.isPeriod });
+        if (!record.isPeriod) {
+          requestAnimationFrame(() => {
+            scrollToSection("flow");
+          });
+        }
         break;
       case "mood":
         scrollToSection("mood");
@@ -93,17 +98,18 @@ export function DashboardOverviewScreen({
         style={styles.screen}
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.statusLine}>
-            <View style={styles.statusItemRow}>
-              <Text style={styles.statusIcon}>{viewData.phaseStatus.icon}</Text>
-              <Text style={styles.statusText}>{viewData.phaseStatus.label}</Text>
+          <View style={styles.statusStack}>
+            <View style={styles.phasePill}>
+              <Text style={styles.phasePillIcon}>{viewData.phaseStatus.icon}</Text>
+              <Text style={styles.phasePillText}>{viewData.phaseStatus.label}</Text>
             </View>
-            {viewData.statusItems.map((item) => (
-              <View key={item} style={styles.statusItemRow}>
-                <Text style={styles.statusSeparator}>·</Text>
-                <Text style={styles.statusText}>{item}</Text>
-              </View>
-            ))}
+            <View style={styles.statusBadges}>
+              {viewData.statusItems.map((item) => (
+                <View key={item} style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeText}>{item}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {viewData.predictionExplanation ? (
@@ -195,6 +201,7 @@ function QuickActionButton({
       testID={testID}
     >
       <Text style={styles.quickActionIcon}>{icon}</Text>
+      <Text style={styles.quickActionLabel}>{label}</Text>
     </Pressable>
   );
 }
@@ -216,26 +223,44 @@ const createStyles = (colors: AppThemeColors) =>
       paddingTop: 16,
       width: "100%",
     },
-    statusLine: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 6,
+    statusStack: {
+      gap: spacing.sm,
     },
-    statusItemRow: {
+    phasePill: {
       alignItems: "center",
+      alignSelf: "flex-start",
+      backgroundColor: colors.surfaceElevated,
+      borderColor: colors.lineSoft,
+      borderRadius: 999,
+      borderWidth: 1,
       flexDirection: "row",
-      gap: 6,
+      gap: spacing.xs,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
     },
-    statusSeparator: {
-      color: colors.textMuted,
+    phasePillIcon: {
+      color: colors.accentStrong,
+      fontSize: 14,
+    },
+    phasePillText: {
+      color: colors.text,
       fontSize: 14,
       fontWeight: "700",
     },
-    statusIcon: {
-      color: colors.textMuted,
-      fontSize: 14,
+    statusBadges: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
     },
-    statusText: {
+    statusBadge: {
+      backgroundColor: colors.surfaceTint,
+      borderColor: colors.lineSoft,
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    statusBadgeText: {
       color: colors.textMuted,
       fontSize: 14,
       fontWeight: "600",
@@ -256,8 +281,8 @@ const createStyles = (colors: AppThemeColors) =>
       borderRadius: 999,
       borderWidth: 1,
       overflow: "hidden",
-      paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       shadowColor: colors.shadowSoft,
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: 0.72,
@@ -265,7 +290,13 @@ const createStyles = (colors: AppThemeColors) =>
     },
     quickActionIcon: {
       color: colors.text,
-      fontSize: 20,
-      lineHeight: 20,
+      fontSize: 18,
+      lineHeight: 18,
+    },
+    quickActionLabel: {
+      color: colors.textMuted,
+      fontSize: 11,
+      fontWeight: "700",
+      marginTop: 4,
     },
   });

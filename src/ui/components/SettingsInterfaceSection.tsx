@@ -41,7 +41,7 @@ export function SettingsInterfaceSection({
     <FeatureCard
       description={viewData.subtitle}
       testID="settings-interface-section"
-      title={`🎛️ ${viewData.title}`}
+      title={viewData.title}
     >
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{viewData.languageLabel}</Text>
@@ -66,6 +66,8 @@ export function SettingsInterfaceSection({
           testIDPrefix="settings-interface-theme"
         />
       </View>
+
+      <Text style={styles.helperText}>{viewData.previewHint}</Text>
 
       {errorMessage ? (
         <StatusBanner

@@ -69,8 +69,9 @@ export function SettingsSymptomsSection({
           onAction={onCreate}
           onDraftChange={onCreateDraftChange}
           statusMessage={createStatusMessage}
+          subtitle={viewData.activeItem}
           testIDPrefix="settings-symptom-create"
-          title={viewData.activeItem}
+          title={viewData.addLabel}
         />
 
         {visibleState.active.length > 0 ? (
@@ -84,18 +85,19 @@ export function SettingsSymptomsSection({
                 key={record.id}
                 actionLabel={viewData.saveLabel}
                 draft={rowDrafts[record.id] ?? { label: record.label, icon: record.icon }}
+                displayLabel={`${record.icon} ${record.label}`}
                 errorMessage={rowErrorMessages[record.id] ?? ""}
                 hint={viewData.nameHint}
                 iconLabel={viewData.iconLabel}
                 iconOptions={viewData.iconOptions}
-                label={record.label}
                 nameLabel={viewData.nameLabel}
                 namePlaceholder={viewData.namePlaceholder}
                 onAction={() => onUpdate(record.id)}
                 onDraftChange={(updates) => onRowDraftChange(record.id, updates)}
                 statusMessage={rowStatusMessages[record.id] ?? ""}
+                subtitle={viewData.activeItem}
                 testIDPrefix={`settings-symptom-${record.id}`}
-                title={viewData.activeItem}
+                title={viewData.saveLabel}
               >
                 <AppButton
                   label={viewData.hideLabel}
@@ -129,19 +131,20 @@ export function SettingsSymptomsSection({
                 actionLabel={viewData.saveLabel}
                 archivedBadge={viewData.archivedBadge}
                 draft={rowDrafts[record.id] ?? { label: record.label, icon: record.icon }}
+                displayLabel={`${record.icon} ${record.label}`}
                 errorMessage={rowErrorMessages[record.id] ?? ""}
                 hint={viewData.nameHint}
                 iconLabel={viewData.iconLabel}
                 iconOptions={viewData.iconOptions}
                 isArchived
-                label={record.label}
                 nameLabel={viewData.nameLabel}
                 namePlaceholder={viewData.namePlaceholder}
                 onAction={() => onUpdate(record.id)}
                 onDraftChange={(updates) => onRowDraftChange(record.id, updates)}
                 statusMessage={rowStatusMessages[record.id] ?? ""}
+                subtitle={viewData.archivedItem}
                 testIDPrefix={`settings-symptom-${record.id}`}
-                title={viewData.archivedItem}
+                title={viewData.saveLabel}
               >
                 <AppButton
                   label={viewData.restoreLabel}
@@ -162,18 +165,19 @@ type SymptomEditorCardProps = {
   actionLabel: string;
   archivedBadge?: string;
   children?: ReactNode;
+  displayLabel?: string;
   draft: SymptomDraftValues;
   errorMessage: string;
   hint: string;
   iconLabel: string;
   iconOptions: { value: string; label: string }[];
   isArchived?: boolean;
-  label?: string;
   nameLabel: string;
   namePlaceholder: string;
   onAction: () => void | Promise<void>;
   onDraftChange: (updates: Partial<SymptomDraftValues>) => void;
   statusMessage: string;
+  subtitle?: string;
   testIDPrefix: string;
   title: string;
 };
@@ -182,18 +186,19 @@ function SymptomEditorCard({
   actionLabel,
   archivedBadge,
   children,
+  displayLabel,
   draft,
   errorMessage,
   hint,
   iconLabel,
   iconOptions,
   isArchived = false,
-  label = "",
   nameLabel,
   namePlaceholder,
   onAction,
   onDraftChange,
   statusMessage,
+  subtitle,
   testIDPrefix,
   title,
 }: SymptomEditorCardProps) {
@@ -203,10 +208,8 @@ function SymptomEditorCard({
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleBlock}>
-          <Text style={styles.cardTitle}>
-            {draft.icon} {label || draft.label || namePlaceholder}
-          </Text>
-          <Text style={styles.cardSubtitle}>{title}</Text>
+          <Text style={styles.cardTitle}>{displayLabel || title}</Text>
+          {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
         </View>
         {isArchived && archivedBadge ? (
           <Text style={styles.archivedBadge}>{archivedBadge}</Text>

@@ -76,10 +76,16 @@ type SettingsFlowScreenProps = {
   onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
   onDatePickerToggle: () => void;
   onExportCSV: () => void | Promise<void>;
+  onExportDatePickerChange: (
+    event: DateTimePickerEvent,
+    value: Date | undefined,
+  ) => void;
+  onExportFromDatePress: () => void;
   onExportFromDateChange: (value: string) => void;
   onExportJSON: () => void | Promise<void>;
   onExportPDF: () => void | Promise<void>;
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
+  onExportToDatePress: () => void;
   onExportToDateChange: (value: string) => void;
   onPrepareSyncSetup: () => void | Promise<void>;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
@@ -109,6 +115,7 @@ type SettingsFlowScreenProps = {
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
   rowSymptomErrorMessages: Record<string, string>;
   rowSymptomStatusMessages: Record<string, string>;
+  showExportDatePicker: "from" | "to" | null;
   showDatePicker: boolean;
   state: LoadedSettingsState;
   trackingStatusMessage: string;
@@ -153,10 +160,13 @@ export function SettingsFlowScreen({
   onDatePickerChange,
   onDatePickerToggle,
   onExportCSV,
+  onExportDatePickerChange,
+  onExportFromDatePress,
   onExportFromDateChange,
   onExportJSON,
   onExportPDF,
   onExportPresetSelect,
+  onExportToDatePress,
   onExportToDateChange,
   onPrepareSyncSetup,
   onInterfaceLanguageSelect,
@@ -181,6 +191,7 @@ export function SettingsFlowScreen({
   rowSymptomDrafts,
   rowSymptomErrorMessages,
   rowSymptomStatusMessages,
+  showExportDatePicker,
   showDatePicker,
   state,
   trackingStatusMessage,
@@ -195,6 +206,9 @@ export function SettingsFlowScreen({
   const displayedDate = selectedDate
     ? formatLongDate(selectedDate, locale)
     : viewData.common.notSet;
+  const exportPickerValue = resolveExportDatePickerValue(state, showExportDatePicker, now);
+  const exportPickerMinimumDate = parseLocalDate(state.exportState.bounds.minDate ?? "");
+  const exportPickerMaximumDate = parseLocalDate(state.exportState.bounds.maxDate ?? "");
   const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
 
   return (
@@ -214,7 +228,7 @@ export function SettingsFlowScreen({
       </View>
 
       <FeatureCard
-        title={`🗓️ ${viewData.cycle.title}`}
+        title={viewData.cycle.title}
         testID="settings-cycle-section"
       >
         <LabeledSliderField
@@ -222,7 +236,6 @@ export function SettingsFlowScreen({
           maximumValue={90}
           minimumValue={15}
           onValueChange={(value) => onCycleLengthChange(Math.round(value))}
-          showRange
           testID="settings-cycle-length-slider"
           value={state.cycleValues.cycleLength}
           valueSuffix={` ${viewData.common.daysShort}`}
@@ -233,7 +246,6 @@ export function SettingsFlowScreen({
           maximumValue={14}
           minimumValue={1}
           onValueChange={(value) => onPeriodLengthChange(Math.round(value))}
-          showRange
           testID="settings-period-length-slider"
           value={state.cycleValues.periodLength}
           valueSuffix={` ${viewData.common.daysShort}`}
@@ -241,32 +253,57 @@ export function SettingsFlowScreen({
 
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.cycle.lastPeriodStartLabel}</Text>
-          <View style={styles.dateFieldShell}>
-            <Text
-              style={[
-                styles.dateFieldValue,
-                !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
-              ]}
+          {supportsNativeDatePicker ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onDatePickerToggle}
+              style={styles.dateFieldShell}
+              testID="settings-cycle-date-field-button"
             >
-              {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
-            </Text>
-            <View style={styles.dateActionRow}>
-              {supportsNativeDatePicker ? (
+              <Text
+                style={[
+                  styles.dateFieldValue,
+                  !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
+                ]}
+              >
+                {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
+              </Text>
+              {state.cycleValues.lastPeriodStart ? (
+                <View style={styles.dateActionRow}>
+                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
+                    <Text style={styles.inlineActionText}>
+                      {viewData.common.clearDate}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </Pressable>
+          ) : (
+            <View style={styles.dateFieldShell}>
+              <Text
+                style={[
+                  styles.dateFieldValue,
+                  !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
+                ]}
+              >
+                {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
+              </Text>
+              <View style={styles.dateActionRow}>
                 <Pressable onPress={onDatePickerToggle} style={styles.inlineAction}>
                   <Text style={styles.inlineActionText}>
                     {viewData.common.changeDate}
                   </Text>
                 </Pressable>
-              ) : null}
-              {state.cycleValues.lastPeriodStart ? (
-                <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
-                  <Text style={styles.inlineActionText}>
-                    {viewData.common.clearDate}
-                  </Text>
-                </Pressable>
-              ) : null}
+                {state.cycleValues.lastPeriodStart ? (
+                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
+                    <Text style={styles.inlineActionText}>
+                      {viewData.common.clearDate}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
-          </View>
+          )}
           {supportsNativeDatePicker && showDatePicker ? (
             <DateTimePicker
               display="default"
@@ -389,48 +426,36 @@ export function SettingsFlowScreen({
       />
 
       <FeatureCard
-        title={`🧪 ${viewData.tracking.title}`}
+        title={viewData.tracking.title}
         description={viewData.tracking.subtitle}
         testID="settings-tracking-section"
       >
         <BinaryToggleCard
           description={viewData.tracking.trackBBT.hint}
+          descriptionPosition="below"
           icon="🌡️"
           label={viewData.tracking.trackBBT.label}
           onValueChange={onTrackBBTChange}
-          stateText={
-            state.trackingValues.trackBBT
-              ? viewData.tracking.trackBBT.stateOn
-              : viewData.tracking.trackBBT.stateOff
-          }
           testID="settings-toggle-track-bbt"
           value={state.trackingValues.trackBBT}
         />
 
         <BinaryToggleCard
           description={viewData.tracking.trackCervicalMucus.hint}
+          descriptionPosition="below"
           icon="💧"
           label={viewData.tracking.trackCervicalMucus.label}
           onValueChange={onTrackCervicalMucusChange}
-          stateText={
-            state.trackingValues.trackCervicalMucus
-              ? viewData.tracking.trackCervicalMucus.stateOn
-              : viewData.tracking.trackCervicalMucus.stateOff
-          }
           testID="settings-toggle-track-cervical-mucus"
           value={state.trackingValues.trackCervicalMucus}
         />
 
         <BinaryToggleCard
           description={viewData.tracking.hideSexChip.hint}
+          descriptionPosition="below"
           icon="◦"
           label={viewData.tracking.hideSexChip.label}
           onValueChange={onHideSexChipChange}
-          stateText={
-            state.trackingValues.hideSexChip
-              ? viewData.tracking.hideSexChip.stateOn
-              : viewData.tracking.hideSexChip.stateOff
-          }
           testID="settings-toggle-hide-sex-chip"
           value={state.trackingValues.hideSexChip}
         />
@@ -495,14 +520,27 @@ export function SettingsFlowScreen({
         exportState={state.exportState}
         isExporting={isExporting}
         onCSVExport={onExportCSV}
+        onFromDatePress={onExportFromDatePress}
         onFromDateChange={onExportFromDateChange}
         onJSONExport={onExportJSON}
         onPDFExport={onExportPDF}
         onPresetSelect={onExportPresetSelect}
+        onToDatePress={onExportToDatePress}
         onToDateChange={onExportToDateChange}
         statusMessage={exportStatusMessage}
         viewData={viewData.export}
       />
+      {supportsNativeDatePicker && showExportDatePicker ? (
+        <DateTimePicker
+          display="default"
+          maximumDate={exportPickerMaximumDate ?? now}
+          mode="date"
+          onChange={onExportDatePickerChange}
+          {...(exportPickerMinimumDate ? { minimumDate: exportPickerMinimumDate } : {})}
+          testID="settings-export-date-picker"
+          value={exportPickerValue}
+        />
+      ) : null}
 
       <SettingsDangerZoneSection
         confirmationValue={clearDataConfirmationValue}
@@ -525,6 +563,29 @@ function formatLongDate(value: Date, locale: string): string {
     month: "long",
     year: "numeric",
   }).format(value);
+}
+
+function resolveExportDatePickerValue(
+  state: LoadedSettingsState,
+  target: "from" | "to" | null,
+  fallback: Date,
+): Date {
+  if (target === "from") {
+    return (
+      parseLocalDate(state.exportState.values.fromDate) ??
+      parseLocalDate(state.exportState.bounds.minDate ?? "") ??
+      fallback
+    );
+  }
+  if (target === "to") {
+    return (
+      parseLocalDate(state.exportState.values.toDate) ??
+      parseLocalDate(state.exportState.bounds.maxDate ?? "") ??
+      fallback
+    );
+  }
+
+  return fallback;
 }
 
 const createStyles = (colors: AppThemeColors) =>

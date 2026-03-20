@@ -49,6 +49,11 @@ export type CalendarDayCellViewData = {
 export type CalendarDaySummaryViewData = {
   dateLabel: string;
   subtitle: string;
+  stateSummary: {
+    hint: string;
+    label: string;
+    value: string;
+  };
   noEntryLabel: string;
   symptomsLabel: string;
   symptomsValue: string;
@@ -138,6 +143,16 @@ export async function loadCalendarScreenState(
     filteredSelectedRecord.symptomIDs,
     locale,
   );
+  const viewData = buildCalendarViewData(
+    profile,
+    logs,
+    today,
+    monthStart,
+    activeDate,
+    locale,
+  );
+  const selectedDay =
+    viewData.days.find((day) => day.date === activeDate) ?? null;
 
   return {
     records: logs,
@@ -146,17 +161,11 @@ export async function loadCalendarScreenState(
     selectedDaySummary: buildCalendarDaySummaryViewData(
       filteredSelectedRecord,
       editorViewData,
+      selectedDay,
       locale,
     ),
     editorViewData,
-    viewData: buildCalendarViewData(
-      profile,
-      logs,
-      today,
-      monthStart,
-      activeDate,
-      locale,
-    ),
+    viewData,
   };
 }
 
@@ -247,6 +256,7 @@ export function buildCalendarViewData(
 function buildCalendarDaySummaryViewData(
   record: DayLogRecord,
   editorViewData: DayLogEditorViewData,
+  selectedDay: CalendarDayCellViewData | null,
   locale: string,
 ): CalendarDaySummaryViewData {
   const calendarCopy = getCalendarCopy(locale);
@@ -263,6 +273,7 @@ function buildCalendarDaySummaryViewData(
   return {
     dateLabel: formatCalendarSummaryDate(record.date, locale),
     subtitle: calendarCopy.dayEditorSubtitle,
+    stateSummary: buildCalendarStateSummary(selectedDay, calendarCopy),
     noEntryLabel: calendarCopy.noEntry,
     symptomsLabel: editorViewData.labels.symptoms,
     symptomsValue:
@@ -291,6 +302,89 @@ function buildCalendarDaySummaryViewData(
       editEntryLabel: calendarCopy.editEntry,
       cancelLabel: calendarCopy.cancelEdit,
     },
+  };
+}
+
+function buildCalendarStateSummary(
+  day: CalendarDayCellViewData | null,
+  calendarCopy: ReturnType<typeof getCalendarCopy>,
+) {
+  if (!day) {
+    return {
+      hint: calendarCopy.stateHints.neutral,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.noData,
+    };
+  }
+
+  if (day.isPeriod) {
+    return {
+      hint: calendarCopy.stateHints.recordedPeriod,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.recordedPeriod,
+    };
+  }
+
+  if (day.stateKey === "predicted") {
+    return {
+      hint: calendarCopy.stateHints.predictedPeriod,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.predictedPeriod,
+    };
+  }
+
+  if (day.stateKey === "pre_fertile") {
+    return {
+      hint: calendarCopy.stateHints.lowProbability,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.lowProbability,
+    };
+  }
+
+  if (day.stateKey === "fertility_edge") {
+    return {
+      hint: calendarCopy.stateHints.fertilityEdge,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.fertilityEdge,
+    };
+  }
+
+  if (day.stateKey === "fertility_peak") {
+    return {
+      hint: calendarCopy.stateHints.fertilityPeak,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.fertilityPeak,
+    };
+  }
+
+  if (day.stateKey === "ovulation") {
+    return {
+      hint: calendarCopy.stateHints.ovulation,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.ovulation,
+    };
+  }
+
+  if (day.stateKey === "ovulation_tentative") {
+    return {
+      hint: calendarCopy.stateHints.ovulationTentative,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.ovulationTentative,
+    };
+  }
+
+  if (day.hasData) {
+    return {
+      hint: calendarCopy.stateHints.loggedEntry,
+      label: calendarCopy.calendarMeaning,
+      value: calendarCopy.legend.loggedEntry,
+    };
+  }
+
+  return {
+    hint: calendarCopy.stateHints.neutral,
+    label: calendarCopy.calendarMeaning,
+    value: calendarCopy.noData,
   };
 }
 

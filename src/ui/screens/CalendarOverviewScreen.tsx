@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -75,6 +75,8 @@ export function CalendarOverviewScreen({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWide = width >= 960;
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const editorColumnOffsetRef = useRef(0);
   const manualCycleStartProps =
     manualCycleStart !== undefined ? { manualCycleStart } : {};
   const manualCycleStartHandlerProps = onManualCycleStart
@@ -88,6 +90,7 @@ export function CalendarOverviewScreen({
           styles.screenContent,
           { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
         ]}
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         style={styles.screen}
       >
@@ -123,7 +126,17 @@ export function CalendarOverviewScreen({
             <View style={styles.monthCard}>
               <CalendarMonthGrid
                 days={viewData.days}
-                onSelectDay={onSelectDay}
+                onSelectDay={(day) => {
+                  onSelectDay(day);
+                  if (!isWide) {
+                    requestAnimationFrame(() => {
+                      scrollViewRef.current?.scrollTo({
+                        animated: true,
+                        y: Math.max(editorColumnOffsetRef.current - 20, 0),
+                      });
+                    });
+                  }
+                }}
                 todayLabel={viewData.legend.today}
               />
 
@@ -163,7 +176,12 @@ export function CalendarOverviewScreen({
             </View>
           </View>
 
-          <View style={styles.editorColumn}>
+          <View
+            onLayout={(event) => {
+              editorColumnOffsetRef.current = event.nativeEvent.layout.y;
+            }}
+            style={styles.editorColumn}
+          >
             <CalendarDayPanel
               editorViewData={editorViewData}
               entryExists={entryExists}

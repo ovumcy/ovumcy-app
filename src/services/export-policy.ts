@@ -13,6 +13,18 @@ export type ExportValidationErrorCode =
 
 const PRESET_WINDOW_VALUES: readonly ExportPreset[] = ["all", "30", "90", "365"];
 
+export function sanitizeExportDateInput(raw: string): string {
+  const digits = String(raw).replace(/\D+/g, "").slice(0, 8);
+  if (digits.length <= 4) {
+    return digits;
+  }
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
 export function createEmptyExportSummary(): ExportDataSummary {
   return {
     totalEntries: 0,

@@ -1,3 +1,4 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
 import { buildCalendarViewData } from "./calendar-view-service";
 
 describe("calendar-view-service", () => {
@@ -54,6 +55,86 @@ describe("calendar-view-service", () => {
           openEditDirectly: false,
         }),
       ]),
+    );
+  });
+
+  it("builds multi-cycle fertility and prediction states from shared history", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-14",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    } as const;
+    const createPeriodRecord = (date: string) => ({
+      ...createEmptyDayLogRecord(date),
+      isPeriod: true,
+      flow: "medium" as const,
+    });
+    const records = [
+      createPeriodRecord("2026-01-17"),
+      createPeriodRecord("2026-02-14"),
+      createPeriodRecord("2026-03-14"),
+    ];
+
+    const viewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+    const aprilViewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 17),
+      new Date(2026, 3, 1),
+      "2026-04-11",
+    );
+
+    const byDate = new Map(viewData.days.map((day) => [day.date, day]));
+    const aprilByDate = new Map(aprilViewData.days.map((day) => [day.date, day]));
+
+    expect(byDate.get("2026-03-14")).toEqual(
+      expect.objectContaining({
+        stateKey: "period",
+        isPeriod: true,
+      }),
+    );
+    expect(byDate.get("2026-03-20")).toEqual(
+      expect.objectContaining({
+        stateKey: "pre_fertile",
+      }),
+    );
+    expect(byDate.get("2026-03-24")).toEqual(
+      expect.objectContaining({
+        stateKey: "fertility_edge",
+      }),
+    );
+    expect(byDate.get("2026-03-27")).toEqual(
+      expect.objectContaining({
+        stateKey: "fertility_peak",
+      }),
+    );
+    expect(byDate.get("2026-03-28")).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+        hasOvulationMarker: true,
+      }),
+    );
+    expect(aprilByDate.get("2026-04-11")).toEqual(
+      expect.objectContaining({
+        stateKey: "predicted",
+      }),
     );
   });
 });

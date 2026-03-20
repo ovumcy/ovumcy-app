@@ -28,10 +28,12 @@ type PreferenceOverrides = Pick<
 >;
 
 type AppPreferencesContextValue = {
+  clearPreferencePreview: () => void;
   colors: AppThemeColors;
   isReady: boolean;
   language: InterfaceLanguage;
   languageOverride: InterfaceLanguage | null;
+  previewProfilePreferences: (profile: PreferenceOverrides) => void;
   refreshPreferences: () => Promise<void>;
   syncProfilePreferences: (profile: PreferenceOverrides) => void;
   theme: ThemePreference;
@@ -39,10 +41,12 @@ type AppPreferencesContextValue = {
 };
 
 const defaultPreferencesContext: AppPreferencesContextValue = {
+  clearPreferencePreview: () => {},
   colors: lightColors,
   isReady: false,
   language: resolveDeviceLanguage(),
   languageOverride: null,
+  previewProfilePreferences: () => {},
   refreshPreferences: async () => {},
   syncProfilePreferences: () => {},
   theme: "light",
@@ -62,24 +66,29 @@ export function AppPreferencesProvider({
   storage = appStorage,
 }: AppPreferencesProviderProps) {
   const systemScheme = useColorScheme();
-  const [overrides, setOverrides] = useState<PreferenceOverrides>({
+  const [persistedOverrides, setPersistedOverrides] = useState<PreferenceOverrides>({
     languageOverride: null,
     themeOverride: null,
   });
+  const [previewOverrides, setPreviewOverrides] = useState<PreferenceOverrides | null>(
+    null,
+  );
   const [isReady, setIsReady] = useState(false);
 
   const refreshPreferences = useCallback(async () => {
     try {
       const profile = await storage.readProfileRecord();
-      setOverrides({
+      setPersistedOverrides({
         languageOverride: profile.languageOverride,
         themeOverride: profile.themeOverride,
       });
+      setPreviewOverrides(null);
     } catch {
-      setOverrides({
+      setPersistedOverrides({
         languageOverride: null,
         themeOverride: null,
       });
+      setPreviewOverrides(null);
     } finally {
       setIsReady(true);
     }
@@ -90,31 +99,42 @@ export function AppPreferencesProvider({
   }, [refreshPreferences]);
 
   const value = useMemo<AppPreferencesContextValue>(() => {
+    const effectiveOverrides = previewOverrides ?? persistedOverrides;
     const language =
-      resolveCopyLanguage(overrides.languageOverride) ?? resolveDeviceLanguage();
+      resolveCopyLanguage(effectiveOverrides.languageOverride) ?? resolveDeviceLanguage();
     const theme: ThemePreference =
-      overrides.themeOverride ??
+      effectiveOverrides.themeOverride ??
       (systemScheme === "dark" ? "dark" : "light");
 
     return {
+      clearPreferencePreview: () => {
+        setPreviewOverrides(null);
+      },
       colors: theme === "dark" ? darkColors : lightColors,
       isReady,
       language,
-      languageOverride: overrides.languageOverride,
-      refreshPreferences,
-      syncProfilePreferences: (profile) => {
-        setOverrides({
+      languageOverride: effectiveOverrides.languageOverride,
+      previewProfilePreferences: (profile) => {
+        setPreviewOverrides({
           languageOverride: profile.languageOverride,
           themeOverride: profile.themeOverride,
         });
       },
+      refreshPreferences,
+      syncProfilePreferences: (profile) => {
+        setPersistedOverrides({
+          languageOverride: profile.languageOverride,
+          themeOverride: profile.themeOverride,
+        });
+        setPreviewOverrides(null);
+      },
       theme,
-      themeOverride: overrides.themeOverride,
+      themeOverride: effectiveOverrides.themeOverride,
     };
   }, [
+    persistedOverrides,
     isReady,
-    overrides.languageOverride,
-    overrides.themeOverride,
+    previewOverrides,
     refreshPreferences,
     systemScheme,
   ]);

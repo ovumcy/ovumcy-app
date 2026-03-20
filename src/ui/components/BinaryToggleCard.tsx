@@ -90,8 +90,8 @@ const createStyles = (colors: AppThemeColors) =>
     paddingVertical: 6,
   },
   shellActive: {
-    backgroundColor: "rgba(255, 240, 236, 0.96)",
-    borderColor: "rgba(199,117,109,0.52)",
+    backgroundColor: colors.toggleCardActiveBg,
+    borderColor: colors.toggleCardActiveBorder,
   },
   shellPressed: {
     opacity: 0.92,
@@ -119,11 +119,11 @@ const createStyles = (colors: AppThemeColors) =>
   },
   stateBadge: {
     alignSelf: "flex-start",
-    backgroundColor: colors.surfaceElevated,
-    borderColor: "rgba(188,165,138,0.32)",
+    backgroundColor: colors.toggleCardBadgeBg,
+    borderColor: colors.toggleCardBadgeBorder,
     borderRadius: 999,
     borderWidth: 1,
-    color: colors.textMuted,
+    color: colors.toggleCardBadgeText,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.4,
@@ -135,8 +135,8 @@ const createStyles = (colors: AppThemeColors) =>
     alignItems: "center",
   },
   toggleTrack: {
-    backgroundColor: "rgba(218,205,189,0.36)",
-    borderColor: "rgba(188,165,138,0.48)",
+    backgroundColor: colors.toggleTrackIdleBg,
+    borderColor: colors.toggleTrackIdleBorder,
     borderRadius: 999,
     borderWidth: 1,
     height: 20,
