@@ -9,9 +9,7 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: false,
   workers: 1,
-  reporter: process.env.CI
-    ? [["github"], ["html", { open: "never" }]]
-    : [["list"], ["html", { open: "never" }]],
+  reporter: process.env.CI ? [["github"]] : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     screenshot: retainDebugArtifacts ? "only-on-failure" : "off",
