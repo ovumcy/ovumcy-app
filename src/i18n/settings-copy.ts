@@ -137,6 +137,9 @@ const settingsCopyEn = {
     recoveryShownOnce: "Shown only once after generation.",
     prepareLabel: "Prepare encrypted sync",
     regenerateLabel: "Recreate local sync keys",
+    regeneratePrompt:
+      "Recreating local sync keys invalidates older encrypted sync backups until you use the new recovery phrase. Continue?",
+    regenerateAccept: "Recreate keys",
     prepared: "Encrypted sync prepared on this device.",
     regenerated: "Local sync keys recreated for this device.",
     errors: {
@@ -390,6 +393,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryShownOnce: "Показывается только один раз после генерации.",
       prepareLabel: "Подготовить зашифрованный sync",
       regenerateLabel: "Пересоздать локальные sync keys",
+      regeneratePrompt:
+        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую recovery phrase. Продолжить?",
+      regenerateAccept: "Пересоздать keys",
       prepared: "Зашифрованный sync подготовлен на этом устройстве.",
       regenerated: "Локальные sync keys пересозданы для этого устройства.",
       errors: {
@@ -640,6 +646,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryShownOnce: "Se muestra solo una vez después de generarse.",
       prepareLabel: "Preparar sync cifrado",
       regenerateLabel: "Recrear claves locales de sync",
+      regeneratePrompt:
+        "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva recovery phrase. ¿Continuar?",
+      regenerateAccept: "Recrear claves",
       prepared: "El sync cifrado quedó preparado en este dispositivo.",
       regenerated: "Las claves locales de sync se recrearon para este dispositivo.",
       errors: {

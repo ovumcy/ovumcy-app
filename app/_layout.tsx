@@ -1,6 +1,7 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useAppScreenProtection } from "../src/security/app-screen-protection";
 import {
   AppPreferencesProvider,
   useAppPreferences,
@@ -16,6 +17,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { colors } = useAppPreferences();
+  useAppScreenProtection();
 
   return (
     <GestureHandlerRootView

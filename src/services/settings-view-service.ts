@@ -135,6 +135,8 @@ export type SettingsViewData = {
     recoveryShownOnce: string;
     prepareLabel: string;
     regenerateLabel: string;
+    regeneratePrompt: string;
+    regenerateAccept: string;
     status: {
       prepared: string;
       regenerated: string;
@@ -372,6 +374,8 @@ export function buildSettingsViewData(
       recoveryShownOnce: settingsCopy.account.recoveryShownOnce,
       prepareLabel: settingsCopy.account.prepareLabel,
       regenerateLabel: settingsCopy.account.regenerateLabel,
+      regeneratePrompt: settingsCopy.account.regeneratePrompt,
+      regenerateAccept: settingsCopy.account.regenerateAccept,
       status: {
         prepared: settingsCopy.account.prepared,
         regenerated: settingsCopy.account.regenerated,

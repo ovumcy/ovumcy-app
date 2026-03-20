@@ -254,6 +254,54 @@ describe("SettingsScreen", () => {
     await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
   });
 
+  it("requires confirmation before recreating local sync keys", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.com",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+    });
+    mockOpenConfirmation.mockResolvedValue(false);
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
     const storage = createStorageMock();
     const exportDeliveryClient = {

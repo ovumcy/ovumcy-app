@@ -463,6 +463,17 @@ export function SettingsScreen({
 
   async function handlePrepareSyncSetup() {
     resetAccountMessages();
+
+    if (readyState.hasStoredSyncSecrets) {
+      const confirmed = await openConfirmation(
+        viewData.account.regeneratePrompt,
+        viewData.account.regenerateAccept,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsPreparingSync(true);
 
     const result = await prepareSettingsSyncSetup(
