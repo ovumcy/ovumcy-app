@@ -5,7 +5,13 @@ import { createSyncSecretsRecord, decryptSyncPayload, encryptSyncPayload } from 
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { createDefaultSyncPreferencesRecord, type EncryptedSyncEnvelope } from "./sync-contract";
-import { connectSyncAccount, disconnectSyncAccount, runSyncRestore, runSyncUpload } from "./sync-client-service";
+import {
+  connectSyncAccount,
+  disconnectSyncAccount,
+  loadManagedSyncCapabilities,
+  runSyncRestore,
+  runSyncUpload,
+} from "./sync-client-service";
 import { decodeSyncSnapshot, encodeSyncSnapshot, SYNC_SNAPSHOT_SCHEMA_VERSION } from "./sync-snapshot-service";
 
 describe("sync-client-service", () => {
@@ -179,6 +185,61 @@ describe("sync-client-service", () => {
         lastSyncedAt: "2026-03-20T08:10:00.000Z",
       }),
     );
+  });
+
+  it("loads managed cloud capabilities for an already connected session", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      normalizedEndpoint: "https://sync.ovumcy.com",
+      setupStatus: "connected" as const,
+      preparedAt: "2026-03-20T08:00:00.000Z",
+      deviceLabel: "Pixel 7",
+    };
+    const apiClientFactory = jest.fn().mockReturnValue({
+      register: jest.fn(),
+      login: jest.fn(),
+      logout: jest.fn(),
+      getCapabilities: jest.fn().mockResolvedValue({
+        ok: true,
+        capabilities: {
+          mode: "managed",
+          syncEnabled: true,
+          premiumActive: false,
+          recoverySupported: true,
+          pushSupported: false,
+          portalSupported: false,
+          advancedCloudInsights: false,
+          maxDevices: 5,
+          maxBlobBytes: 1024,
+        },
+      }),
+      attachDevice: jest.fn(),
+      putBlob: jest.fn(),
+      getBlob: jest.fn(),
+    });
+
+    const result = await loadManagedSyncCapabilities(
+      secretStore,
+      preferences,
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        premiumActive: false,
+      }),
+    });
   });
 
   it("restores a remote encrypted blob back into canonical local storage", async () => {

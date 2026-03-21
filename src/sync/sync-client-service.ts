@@ -144,6 +144,62 @@ export async function connectSyncAccount(
   };
 }
 
+export async function loadManagedSyncCapabilities(
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+): Promise<
+  | {
+      ok: true;
+      capabilities: SyncCapabilityDocument;
+    }
+  | {
+      ok: false;
+      errorCode: SyncConnectErrorCode;
+    }
+> {
+  if (preferences.mode !== "managed") {
+    return { ok: false, errorCode: "generic" };
+  }
+
+  const prepared = await readPreparedSyncContext(secretStore, preferences);
+  if (!prepared.ok) {
+    return {
+      ok: false,
+      errorCode: mapPreparedContextToConnectError(prepared.errorCode),
+    };
+  }
+
+  const client = apiClientFactory(prepared.baseURL);
+  const capabilitiesResult = await client.getCapabilities(prepared.secrets.authSessionToken);
+  if (!capabilitiesResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapConnectAPIError(capabilitiesResult.errorCode),
+    };
+  }
+
+  return {
+    ok: true,
+    capabilities: capabilitiesResult.capabilities,
+  };
+}
+
+function mapPreparedContextToConnectError(
+  errorCode: SyncRunErrorCode,
+): SyncConnectErrorCode {
+  switch (errorCode) {
+    case "sync_not_prepared":
+      return "sync_not_prepared";
+    case "unauthorized":
+      return "unauthorized";
+    case "network_failed":
+      return "network_failed";
+    default:
+      return "generic";
+  }
+}
+
 export async function runSyncUpload(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,

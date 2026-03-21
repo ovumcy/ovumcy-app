@@ -111,12 +111,42 @@ const settingsCopyEn = {
   account: {
     title: "Account & sync",
     subtitle:
-      "Prepare encrypted sync on this device first. Account connection arrives after a sync server is configured.",
+      "Protect this device first, then connect either Ovumcy Cloud or your own sync server.",
+    localStepTitle: "1. Protect this device",
+    localStepHint:
+      "Create a recovery phrase on this device. Keep it offline in case you ever need to restore your data.",
+    preparingTitle: "Preparing your protected backup...",
+    preparingHint:
+      "Ovumcy is generating a recovery phrase on this device right now.",
+    accountStepTitle: "2. Connect an account",
+    accountStepHintManaged:
+      "Create or sign in to your Ovumcy Cloud account. This account is separate from the recovery phrase on this device.",
+    accountStepHintSelfHosted:
+      "Create or sign in to the account on your own sync server.",
+    planStepTitle: "3. Cloud plan",
+    planStepHint:
+      "Ovumcy Cloud is the paid hosted service. Sync and cloud-only features turn on only when this account has an active cloud plan.",
+    planUnknown:
+      "Sign in first so Ovumcy can check whether this account already has an active cloud plan.",
+    planInactive:
+      "This account does not have an active Ovumcy Cloud plan yet.",
+    planCheckFailed:
+      "Ovumcy could not confirm this cloud plan right now. Try again later.",
+    planUnavailable:
+      "Cloud purchase and subscription management are not available on this screen yet.",
+    planActive: "Ovumcy Cloud is active for this account.",
+    syncStepTitle: "4. Sync this backup",
+    syncStepHintManaged:
+      "Once your cloud plan is active, you can upload or restore the protected backup here.",
+    syncStepHintSelfHosted:
+      "After you sign in to your own server, you can upload or restore the protected backup here.",
+    syncBlockedNoPlan:
+      "Cloud sync stays locked until this account has an active Ovumcy Cloud plan.",
     modeLabel: "Sync mode",
     modeManaged: "Ovumcy Cloud",
     modeSelfHosted: "Self-hosted",
     managedHint:
-      "Uses the official Ovumcy Cloud endpoint when managed sync becomes available on this device.",
+      "Ovumcy Cloud is the paid hosted sync service. Self-hosted keeps sync on your own server.",
     selfHostedHint:
       "Use a host, IP:port, or full URL. Public http is rejected; localhost and private-network http are allowed.",
     endpointLabel: "Server endpoint",
@@ -126,20 +156,20 @@ const settingsCopyEn = {
     deviceHint:
       "Shown later in connected device lists and encrypted recovery flows.",
     devicePlaceholder: "Pixel 7",
-    stateLabel: "Sync setup state",
-    stateReady: "Encrypted sync is prepared on this device.",
-    stateMissing: "Encrypted sync has not been prepared on this device yet.",
-    connectionLabel: "Server session",
-    connectionReady: "Connected to a sync server on this device.",
-    connectionMissing: "No sync server session on this device yet.",
+    stateLabel: "Recovery phrase",
+    stateReady: "This device already has a recovery phrase.",
+    stateMissing: "This device does not have a recovery phrase yet.",
+    connectionLabel: "Account session",
+    connectionReady: "This device is signed in to a sync account.",
+    connectionMissing: "This device is not signed in to a sync account yet.",
     lastSyncLabel: "Last sync",
     lastSyncNever: "Not synced yet.",
-    modeRowLabel: "Mode",
-    endpointRowLabel: "Endpoint",
-    encryptionRowLabel: "Encryption",
-    encryptionReady: "Recovery materials are stored locally on this device.",
-    encryptionMissing: "No local sync key is prepared yet.",
-    loginLabel: "Login",
+    modeRowLabel: "Destination",
+    endpointRowLabel: "Server",
+    encryptionRowLabel: "Recovery phrase",
+    encryptionReady: "Recovery materials are stored only on this device.",
+    encryptionMissing: "No recovery phrase has been created on this device yet.",
+    loginLabel: "Account login",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter password",
@@ -155,22 +185,24 @@ const settingsCopyEn = {
       "Confirm with device security to restore encrypted data from the sync server.",
     disconnectPrompt:
       "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
-    recoveryTitle: "Recovery phrase",
+    recoveryTitle: "Recovery phrase for this device",
     recoveryHint:
       "Write down the 12 words exactly and keep them offline. If you lose every device and this phrase, synced data cannot be recovered.",
     recoveryNotice:
       "This screen shows the recovery phrase only when you prepare or recreate local sync keys.",
     recoveryShownOnce: "Shown only once after generation.",
-    prepareLabel: "Prepare encrypted sync",
-    regenerateLabel: "Recreate local sync keys",
+    prepareLabel: "Create recovery phrase",
+    regenerateLabel: "Create a new recovery phrase",
     regeneratePrompt:
       "Recreating local sync keys invalidates older encrypted sync backups until you use the new recovery phrase. Continue?",
-    regenerateAccept: "Recreate keys",
+    regenerateAccept: "Create new phrase",
     regenerateDeviceAuthPrompt:
-      "Confirm with device security to recreate local sync keys.",
-    prepared: "Encrypted sync prepared on this device.",
-    regenerated: "Local sync keys recreated for this device.",
+      "Confirm with device security to create a new recovery phrase for this device.",
+    prepared: "Recovery phrase created for this device.",
+    regenerated: "A new recovery phrase was created for this device.",
     connected: "Connected to the sync server on this device.",
+    connectedNoPlan:
+      "Cloud account connected. Sync will turn on when this account has an active cloud plan.",
     uploaded: "Encrypted snapshot uploaded to the sync server.",
     restored: "Encrypted snapshot restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
@@ -422,12 +454,42 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     account: {
       title: "Аккаунт и sync",
       subtitle:
-        "Сначала подготовьте зашифрованный sync на этом устройстве. Подключение аккаунта появится после настройки sync-сервера.",
+        "Сначала защитите данные на этом устройстве, затем подключите Ovumcy Cloud или свой sync-сервер.",
+      localStepTitle: "1. Защитить это устройство",
+      localStepHint:
+        "Создайте recovery phrase на этом устройстве. Храните её офлайн на случай восстановления данных.",
+      preparingTitle: "Подготавливаем защищённую копию...",
+      preparingHint:
+        "Ovumcy сейчас создаёт recovery phrase на этом устройстве.",
+      accountStepTitle: "2. Подключить аккаунт",
+      accountStepHintManaged:
+        "Создайте аккаунт Ovumcy Cloud или войдите в него. Этот аккаунт не совпадает с recovery phrase на устройстве.",
+      accountStepHintSelfHosted:
+        "Создайте аккаунт на своём sync-сервере или войдите в уже существующий.",
+      planStepTitle: "3. План Ovumcy Cloud",
+      planStepHint:
+        "Ovumcy Cloud — это платный hosted-сервис. Sync и cloud-функции включаются только при активном cloud-плане.",
+      planUnknown:
+        "Сначала войдите, чтобы Ovumcy смог проверить, есть ли у этого аккаунта активный cloud-план.",
+      planInactive:
+        "У этого аккаунта пока нет активного плана Ovumcy Cloud.",
+      planCheckFailed:
+        "Сейчас Ovumcy не смог подтвердить статус cloud-плана. Попробуйте позже.",
+      planUnavailable:
+        "Покупка и управление подпиской Ovumcy Cloud пока недоступны на этом экране.",
+      planActive: "Для этого аккаунта Ovumcy Cloud уже активен.",
+      syncStepTitle: "4. Синхронизировать копию",
+      syncStepHintManaged:
+        "Когда cloud-план активен, здесь можно отправить или восстановить защищённую копию.",
+      syncStepHintSelfHosted:
+        "После входа на свой сервер здесь можно отправить или восстановить защищённую копию.",
+      syncBlockedNoPlan:
+        "Cloud sync остаётся заблокированным, пока у аккаунта нет активного плана Ovumcy Cloud.",
       modeLabel: "Режим sync",
       modeManaged: "Ovumcy Cloud",
       modeSelfHosted: "Self-hosted",
       managedHint:
-        "Использует официальный endpoint Ovumcy Cloud, когда managed sync станет доступен на этом устройстве.",
+        "Ovumcy Cloud — это платный hosted sync. Self-hosted оставляет sync на вашем сервере.",
       selfHostedHint:
         "Используйте host, IP:port или полный URL. Публичный http отклоняется; localhost и private-network http разрешены.",
       endpointLabel: "Endpoint сервера",
@@ -437,20 +499,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
       devicePlaceholder: "Pixel 7",
-      stateLabel: "Состояние sync setup",
-      stateReady: "Зашифрованный sync подготовлен на этом устройстве.",
-      stateMissing: "Зашифрованный sync на этом устройстве ещё не подготовлен.",
-      connectionLabel: "Серверная сессия",
-      connectionReady: "Это устройство подключено к sync-серверу.",
-      connectionMissing: "На этом устройстве ещё нет сессии sync-сервера.",
+      stateLabel: "Recovery phrase",
+      stateReady: "На этом устройстве уже есть recovery phrase.",
+      stateMissing: "На этом устройстве ещё нет recovery phrase.",
+      connectionLabel: "Сессия аккаунта",
+      connectionReady: "Это устройство уже вошло в sync-аккаунт.",
+      connectionMissing: "Это устройство ещё не вошло в sync-аккаунт.",
       lastSyncLabel: "Последний sync",
       lastSyncNever: "Синхронизации ещё не было.",
-      modeRowLabel: "Режим",
-      endpointRowLabel: "Endpoint",
-      encryptionRowLabel: "Шифрование",
-      encryptionReady: "Recovery-материалы локально сохранены на этом устройстве.",
-      encryptionMissing: "Локальный sync key ещё не подготовлен.",
-      loginLabel: "Логин",
+      modeRowLabel: "Назначение",
+      endpointRowLabel: "Сервер",
+      encryptionRowLabel: "Recovery phrase",
+      encryptionReady: "Recovery-материалы хранятся только на этом устройстве.",
+      encryptionMissing: "Recovery phrase на этом устройстве ещё не создана.",
+      loginLabel: "Логин аккаунта",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
@@ -466,22 +528,24 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
       disconnectPrompt:
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
-      recoveryTitle: "Recovery phrase",
+      recoveryTitle: "Recovery phrase для этого устройства",
       recoveryHint:
         "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
       recoveryNotice:
         "Этот экран показывает recovery phrase только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
-      prepareLabel: "Подготовить зашифрованный sync",
-      regenerateLabel: "Пересоздать локальные sync keys",
+      prepareLabel: "Создать recovery phrase",
+      regenerateLabel: "Создать новую recovery phrase",
       regeneratePrompt:
         "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую recovery phrase. Продолжить?",
-      regenerateAccept: "Пересоздать keys",
+      regenerateAccept: "Создать новую phrase",
       regenerateDeviceAuthPrompt:
-        "Подтвердите защитой устройства пересоздание локальных sync keys.",
-      prepared: "Зашифрованный sync подготовлен на этом устройстве.",
-      regenerated: "Локальные sync keys пересозданы для этого устройства.",
+        "Подтвердите защитой устройства создание новой recovery phrase для этого устройства.",
+      prepared: "Recovery phrase создана для этого устройства.",
+      regenerated: "Для этого устройства создана новая recovery phrase.",
       connected: "Это устройство подключено к sync-серверу.",
+      connectedNoPlan:
+        "Cloud-аккаунт подключён. Sync включится, когда у аккаунта появится активный cloud-план.",
       uploaded: "Зашифрованный слепок отправлен на sync-сервер.",
       restored: "Зашифрованный слепок восстановлен с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
@@ -734,12 +798,42 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     account: {
       title: "Cuenta y sync",
       subtitle:
-        "Primero prepara el sync cifrado en este dispositivo. La conexión de cuenta llegará después de configurar un servidor de sync.",
+        "Primero protege este dispositivo y luego conecta Ovumcy Cloud o tu propio servidor de sync.",
+      localStepTitle: "1. Proteger este dispositivo",
+      localStepHint:
+        "Crea una recovery phrase en este dispositivo. Guárdala fuera de línea por si alguna vez necesitas restaurar tus datos.",
+      preparingTitle: "Preparando tu copia protegida...",
+      preparingHint:
+        "Ovumcy está creando una recovery phrase en este dispositivo.",
+      accountStepTitle: "2. Conectar una cuenta",
+      accountStepHintManaged:
+        "Crea o inicia sesión en tu cuenta de Ovumcy Cloud. Esta cuenta es independiente de la recovery phrase del dispositivo.",
+      accountStepHintSelfHosted:
+        "Crea o inicia sesión en la cuenta de tu propio servidor de sync.",
+      planStepTitle: "3. Plan de Ovumcy Cloud",
+      planStepHint:
+        "Ovumcy Cloud es el servicio hospedado de pago. El sync y las funciones cloud solo se activan cuando esta cuenta tiene un plan cloud activo.",
+      planUnknown:
+        "Primero inicia sesión para que Ovumcy pueda comprobar si esta cuenta ya tiene un plan cloud activo.",
+      planInactive:
+        "Esta cuenta todavía no tiene un plan activo de Ovumcy Cloud.",
+      planCheckFailed:
+        "Ovumcy no pudo confirmar el estado del plan cloud en este momento. Inténtalo más tarde.",
+      planUnavailable:
+        "La compra y la gestión de la suscripción cloud todavía no están disponibles en esta pantalla.",
+      planActive: "Ovumcy Cloud está activo para esta cuenta.",
+      syncStepTitle: "4. Sincronizar esta copia",
+      syncStepHintManaged:
+        "Cuando el plan cloud esté activo, aquí podrás subir o restaurar la copia protegida.",
+      syncStepHintSelfHosted:
+        "Después de iniciar sesión en tu propio servidor, aquí podrás subir o restaurar la copia protegida.",
+      syncBlockedNoPlan:
+        "El sync cloud sigue bloqueado hasta que esta cuenta tenga un plan activo de Ovumcy Cloud.",
       modeLabel: "Modo de sync",
       modeManaged: "Ovumcy Cloud",
       modeSelfHosted: "Self-hosted",
       managedHint:
-        "Usa el endpoint oficial de Ovumcy Cloud cuando el sync gestionado esté disponible en este dispositivo.",
+        "Ovumcy Cloud es el servicio de sync hospedado de pago. Self-hosted mantiene el sync en tu propio servidor.",
       selfHostedHint:
         "Usa un host, IP:puerto o URL completa. El http público se rechaza; localhost y redes privadas sí se permiten.",
       endpointLabel: "Endpoint del servidor",
@@ -749,20 +843,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Más tarde aparecerá en las listas de dispositivos conectados y en los flujos de recuperación cifrada.",
       devicePlaceholder: "Pixel 7",
-      stateLabel: "Estado del sync",
-      stateReady: "El sync cifrado está preparado en este dispositivo.",
-      stateMissing: "El sync cifrado todavía no está preparado en este dispositivo.",
-      connectionLabel: "Sesión del servidor",
-      connectionReady: "Este dispositivo está conectado a un servidor de sync.",
-      connectionMissing: "Todavía no hay sesión de servidor de sync en este dispositivo.",
+      stateLabel: "Recovery phrase",
+      stateReady: "Este dispositivo ya tiene una recovery phrase.",
+      stateMissing: "Este dispositivo todavía no tiene una recovery phrase.",
+      connectionLabel: "Sesión de la cuenta",
+      connectionReady: "Este dispositivo ya inició sesión en una cuenta de sync.",
+      connectionMissing: "Este dispositivo todavía no ha iniciado sesión en una cuenta de sync.",
       lastSyncLabel: "Último sync",
       lastSyncNever: "Todavía no se ha sincronizado.",
-      modeRowLabel: "Modo",
-      endpointRowLabel: "Endpoint",
-      encryptionRowLabel: "Cifrado",
-      encryptionReady: "Los materiales de recuperación se guardan localmente en este dispositivo.",
-      encryptionMissing: "Todavía no se ha preparado una clave local de sync.",
-      loginLabel: "Login",
+      modeRowLabel: "Destino",
+      endpointRowLabel: "Servidor",
+      encryptionRowLabel: "Recovery phrase",
+      encryptionReady: "Los materiales de recuperación se guardan solo en este dispositivo.",
+      encryptionMissing: "Todavía no se ha creado una recovery phrase en este dispositivo.",
+      loginLabel: "Login de la cuenta",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Contraseña",
       passwordPlaceholder: "Introduce la contraseña",
@@ -778,22 +872,24 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
       disconnectPrompt:
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
-      recoveryTitle: "Frase de recuperación",
+      recoveryTitle: "Recovery phrase de este dispositivo",
       recoveryHint:
         "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
       recoveryNotice:
         "Esta pantalla muestra la frase de recuperación solo cuando preparas o recreas las claves locales de sync.",
       recoveryShownOnce: "Se muestra solo una vez después de generarse.",
-      prepareLabel: "Preparar sync cifrado",
-      regenerateLabel: "Recrear claves locales de sync",
+      prepareLabel: "Crear recovery phrase",
+      regenerateLabel: "Crear una nueva recovery phrase",
       regeneratePrompt:
         "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva recovery phrase. ¿Continuar?",
-      regenerateAccept: "Recrear claves",
+      regenerateAccept: "Crear nueva phrase",
       regenerateDeviceAuthPrompt:
-        "Confirma con la seguridad del dispositivo para recrear las claves locales de sync.",
-      prepared: "El sync cifrado quedó preparado en este dispositivo.",
-      regenerated: "Las claves locales de sync se recrearon para este dispositivo.",
+        "Confirma con la seguridad del dispositivo para crear una nueva recovery phrase para este dispositivo.",
+      prepared: "La recovery phrase quedó creada para este dispositivo.",
+      regenerated: "Se creó una nueva recovery phrase para este dispositivo.",
       connected: "Este dispositivo quedó conectado al servidor de sync.",
+      connectedNoPlan:
+        "La cuenta cloud quedó conectada. El sync se activará cuando esta cuenta tenga un plan cloud activo.",
       uploaded: "La instantánea cifrada se subió al servidor de sync.",
       restored: "La instantánea cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",

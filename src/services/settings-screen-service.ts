@@ -28,6 +28,7 @@ import {
 import {
   connectSyncAccount,
   disconnectSyncAccount,
+  loadManagedSyncCapabilities,
   runSyncRestore,
   runSyncUpload,
   type SyncConnectErrorCode,
@@ -93,6 +94,21 @@ export async function loadSettingsScreenState(
     loadLocalExportState(storage, now),
   ]);
 
+  let syncCapabilities = null;
+  if (
+    syncState.hasAuthSession &&
+    syncState.preferences.mode === "managed" &&
+    syncState.preferences.setupStatus === "connected"
+  ) {
+    const capabilitiesResult = await loadManagedSyncCapabilities(
+      secretStore,
+      syncState.preferences,
+    );
+    if (capabilitiesResult.ok) {
+      syncCapabilities = capabilitiesResult.capabilities;
+    }
+  }
+
   return createLoadedSettingsState(
     profile,
     syncState.preferences,
@@ -100,6 +116,8 @@ export async function loadSettingsScreenState(
     syncState.hasAuthSession,
     symptomRecords,
     exportResult.state,
+    syncState.preferences,
+    syncCapabilities,
   );
 }
 
@@ -140,6 +158,7 @@ export async function saveCycleSettings(
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -173,6 +192,7 @@ export async function saveTrackingSettings(
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -206,6 +226,7 @@ export async function saveInterfaceSettings(
       currentState.symptomRecords,
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -239,6 +260,7 @@ export async function createSettingsSymptom(
       [...currentState.symptomRecords, result.record],
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -279,6 +301,7 @@ export async function updateSettingsSymptom(
       ),
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -314,6 +337,7 @@ export async function archiveSettingsSymptom(
       ),
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -349,6 +373,7 @@ export async function restoreSettingsSymptom(
       ),
       currentState.exportState,
       currentState.syncPreferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -368,6 +393,7 @@ export async function refreshSettingsExportState(
     currentState.symptomRecords,
     result.state,
     currentState.syncPreferences,
+    currentState.syncCapabilities,
   );
   if (result.errorCode) {
     return {
@@ -416,6 +442,7 @@ export async function prepareSettingsExportArtifact(
     currentState.symptomRecords,
     result.state,
     currentState.syncPreferences,
+    currentState.syncCapabilities,
   );
 
   if (!result.ok) {
@@ -470,6 +497,8 @@ export async function prepareSettingsSyncSetup(
       currentState.hasSyncSession,
       currentState.symptomRecords,
       currentState.exportState,
+      result.preferences,
+      null,
     ),
     recoveryPhrase: result.recoveryPhrase,
     regenerated,
@@ -510,6 +539,8 @@ export async function saveSettingsSyncDraft(
       currentState.hasSyncSession && result.hasStoredSecrets,
       currentState.symptomRecords,
       currentState.exportState,
+      result.preferences,
+      null,
     ),
   };
 }
@@ -554,6 +585,8 @@ export async function connectSettingsSyncAccount(
       true,
       currentState.symptomRecords,
       currentState.exportState,
+      result.preferences,
+      result.preferences.mode === "managed" ? result.capabilities : null,
     ),
   };
 }
@@ -592,6 +625,8 @@ export async function uploadSettingsSyncSnapshot(
       true,
       currentState.symptomRecords,
       currentState.exportState,
+      result.preferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -632,6 +667,8 @@ export async function restoreSettingsSyncSnapshot(
       true,
       symptomRecords,
       exportResult.state,
+      result.preferences,
+      currentState.syncCapabilities,
     ),
   };
 }
@@ -659,6 +696,8 @@ export async function disconnectSettingsSyncAccount(
       false,
       currentState.symptomRecords,
       currentState.exportState,
+      result.preferences,
+      null,
     ),
   };
 }

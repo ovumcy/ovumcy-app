@@ -16,7 +16,11 @@ import type {
 import { resolvePredictionMode } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
-import type { SyncMode, SyncPreferencesRecord } from "../sync/sync-contract";
+import type {
+  SyncCapabilityDocument,
+  SyncMode,
+  SyncPreferencesRecord,
+} from "../sync/sync-contract";
 import {
   buildCycleGuidanceState,
   getSettingsCycleStartDateBounds,
@@ -116,6 +120,24 @@ export type SettingsViewData = {
   account: {
     title: string;
     subtitle: string;
+    localStepTitle: string;
+    localStepHint: string;
+    preparingTitle: string;
+    preparingHint: string;
+    accountStepTitle: string;
+    accountStepHintManaged: string;
+    accountStepHintSelfHosted: string;
+    planStepTitle: string;
+    planStepHint: string;
+    planUnknown: string;
+    planInactive: string;
+    planCheckFailed: string;
+    planUnavailable: string;
+    planActive: string;
+    syncStepTitle: string;
+    syncStepHintManaged: string;
+    syncStepHintSelfHosted: string;
+    syncBlockedNoPlan: string;
     modeLabel: string;
     modeOptions: { value: SyncMode; label: string }[];
     managedHint: string;
@@ -165,6 +187,7 @@ export type SettingsViewData = {
       prepared: string;
       regenerated: string;
       connected: string;
+      connectedNoPlan: string;
       uploaded: string;
       restored: string;
       disconnected: string;
@@ -275,6 +298,7 @@ export type LoadedSettingsState = {
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
   hasSyncSession: boolean;
+  syncCapabilities: SyncCapabilityDocument | null;
   savedSyncPreferences: SyncPreferencesRecord;
   syncPreferences: SyncPreferencesRecord;
   hasStoredSyncSecrets: boolean;
@@ -409,6 +433,24 @@ export function buildSettingsViewData(
     account: {
       title: settingsCopy.account.title,
       subtitle: settingsCopy.account.subtitle,
+      localStepTitle: settingsCopy.account.localStepTitle,
+      localStepHint: settingsCopy.account.localStepHint,
+      preparingTitle: settingsCopy.account.preparingTitle,
+      preparingHint: settingsCopy.account.preparingHint,
+      accountStepTitle: settingsCopy.account.accountStepTitle,
+      accountStepHintManaged: settingsCopy.account.accountStepHintManaged,
+      accountStepHintSelfHosted: settingsCopy.account.accountStepHintSelfHosted,
+      planStepTitle: settingsCopy.account.planStepTitle,
+      planStepHint: settingsCopy.account.planStepHint,
+      planUnknown: settingsCopy.account.planUnknown,
+      planInactive: settingsCopy.account.planInactive,
+      planCheckFailed: settingsCopy.account.planCheckFailed,
+      planUnavailable: settingsCopy.account.planUnavailable,
+      planActive: settingsCopy.account.planActive,
+      syncStepTitle: settingsCopy.account.syncStepTitle,
+      syncStepHintManaged: settingsCopy.account.syncStepHintManaged,
+      syncStepHintSelfHosted: settingsCopy.account.syncStepHintSelfHosted,
+      syncBlockedNoPlan: settingsCopy.account.syncBlockedNoPlan,
       modeLabel: settingsCopy.account.modeLabel,
       modeOptions: [
         { value: "managed", label: settingsCopy.account.modeManaged },
@@ -461,6 +503,7 @@ export function buildSettingsViewData(
         prepared: settingsCopy.account.prepared,
         regenerated: settingsCopy.account.regenerated,
         connected: settingsCopy.account.connected,
+        connectedNoPlan: settingsCopy.account.connectedNoPlan,
         uploaded: settingsCopy.account.uploaded,
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
@@ -581,6 +624,7 @@ export function createLoadedSettingsState(
   symptomRecords: SymptomRecord[],
   exportState: LoadedExportState,
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
+  syncCapabilities: SyncCapabilityDocument | null = null,
 ): LoadedSettingsState {
   return {
     profile,
@@ -599,6 +643,7 @@ export function createLoadedSettingsState(
       themeOverride: profile.themeOverride,
     },
     hasSyncSession,
+    syncCapabilities,
     savedSyncPreferences,
     syncPreferences,
     hasStoredSyncSecrets,

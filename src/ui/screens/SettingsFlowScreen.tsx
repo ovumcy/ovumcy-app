@@ -541,11 +541,12 @@ export function SettingsFlowScreen({
         onPrepare={onPrepareSyncSetup}
         onRegister={onConnectSyncRegister}
         onRestore={onRestoreSync}
-        onSyncNow={onSyncNow}
-        preferences={state.syncPreferences}
-        statusMessage={accountStatusMessage}
-        viewData={viewData.account}
-      />
+      onSyncNow={onSyncNow}
+      preferences={state.syncPreferences}
+      statusMessage={accountStatusMessage}
+      syncCapabilities={state.syncCapabilities}
+      viewData={viewData.account}
+    />
 
       <SettingsExportSection
         errorMessage={exportErrorMessage}

@@ -592,7 +592,13 @@ export function SettingsScreen({
 
     setState(result.state);
     setAccountPasswordValue("");
-    setAccountStatusMessage(viewData.account.status.connected);
+    setAccountStatusMessage(
+      result.state.syncPreferences.mode === "managed" &&
+        result.state.syncCapabilities &&
+        !result.state.syncCapabilities.premiumActive
+        ? viewData.account.status.connectedNoPlan
+        : viewData.account.status.connected,
+    );
     setIsAuthenticatingSync(false);
   }
 

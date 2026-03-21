@@ -18,7 +18,13 @@ import {
 } from "./settings-screen-service";
 import { createLoadedSettingsState } from "./settings-view-service";
 
+const originalFetch = global.fetch;
+
 describe("settings-screen-service", () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
   it("loads canonical profile state and resolves the default age-group selection like the web app", async () => {
     const storage = createStorageMock();
     const secretStore = createSyncSecretStoreMock();
@@ -54,6 +60,70 @@ describe("settings-screen-service", () => {
             isDefault: true,
           }),
         ]),
+      }),
+    );
+  });
+
+  it("loads managed cloud capabilities for a connected managed session", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.com",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: "session-1",
+    });
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          mode: "managed",
+          sync_enabled: true,
+          premium_active: false,
+          recovery_supported: true,
+          push_supported: false,
+          portal_supported: false,
+          advanced_cloud_insights: false,
+          max_devices: 5,
+          max_blob_bytes: 1024,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    ) as typeof fetch;
+
+    await expect(
+      loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        hasSyncSession: true,
+        syncCapabilities: expect.objectContaining({
+          mode: "managed",
+          premiumActive: false,
+        }),
       }),
     );
   });
