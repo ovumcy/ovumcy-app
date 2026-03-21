@@ -3,13 +3,13 @@ import type {
   OnboardingStep,
   OnboardingStepTwoValues,
 } from "../models/onboarding";
+import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import { resolvePredictionModeFlags } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { buildInitialBootstrapState } from "./app-bootstrap-service";
 import {
   applyOnboardingRecordToProfile,
   createStepTwoDefaults,
-  profileToOnboardingRecord,
-  resolveOnboardingStep,
   sanitizeStepTwoValues,
   validateStepOneStartDate,
 } from "./onboarding-policy";
@@ -27,8 +27,43 @@ export type LoadOnboardingScreenResult =
     }
   | {
       kind: "ready";
+      profile: ProfileRecord;
       state: LoadedOnboardingState;
     };
+
+function buildLoadedOnboardingState(
+  record: OnboardingRecord,
+  step: OnboardingStep,
+): LoadedOnboardingState {
+
+  return {
+    record,
+    step,
+    selectedDate: record.lastPeriodStart ?? "",
+    stepTwoValues: createStepTwoDefaults(record),
+  };
+}
+
+export function createFreshOnboardingScreenState(): {
+  profile: ProfileRecord;
+  state: LoadedOnboardingState;
+} {
+  const profile = createDefaultProfileRecord();
+
+  return {
+    profile,
+    state: buildLoadedOnboardingState({
+      lastPeriodStart: profile.lastPeriodStart,
+      cycleLength: profile.cycleLength,
+      periodLength: profile.periodLength,
+      autoPeriodFill: profile.autoPeriodFill,
+      irregularCycle: profile.irregularCycle,
+      unpredictableCycle: profile.unpredictableCycle,
+      ageGroup: profile.ageGroup,
+      usageGoal: profile.usageGoal,
+    }, buildInitialBootstrapState().incompleteOnboardingStep ?? 1),
+  };
+}
 
 type SaveStepOneErrorCode =
   | "date_required"
@@ -41,11 +76,11 @@ type FinishOnboardingErrorCode = "date_required" | "generic";
 export async function loadOnboardingScreenState(
   storage: LocalAppStorage,
 ): Promise<LoadOnboardingScreenResult> {
-  const [bootstrapState, profile] = await Promise.all([
+  const [bootstrapState, onboardingRecord, profile] = await Promise.all([
     storage.readBootstrapState(),
+    storage.readOnboardingRecord(),
     storage.readProfileRecord(),
   ]);
-  const record = profileToOnboardingRecord(profile);
 
   if (bootstrapState.hasCompletedOnboarding) {
     return { kind: "completed" };
@@ -53,12 +88,11 @@ export async function loadOnboardingScreenState(
 
   return {
     kind: "ready",
-    state: {
-      record,
-      step: resolveOnboardingStep(record, false),
-      selectedDate: record.lastPeriodStart ?? "",
-      stepTwoValues: createStepTwoDefaults(record),
-    },
+    profile,
+    state: buildLoadedOnboardingState(
+      onboardingRecord,
+      bootstrapState.incompleteOnboardingStep ?? 1,
+    ),
   };
 }
 
@@ -90,11 +124,19 @@ export async function saveOnboardingStepOne(
   };
 
   try {
-    const profile = await storage.readProfileRecord();
-    await storage.writeProfileRecord(
-      applyOnboardingRecordToProfile(profile, nextRecord),
-    );
-  } catch {
+    const bootstrapState = await storage.readBootstrapState();
+    await Promise.all([
+      storage.writeOnboardingRecord(nextRecord),
+      storage.writeBootstrapState({
+        ...bootstrapState,
+        hasCompletedOnboarding: false,
+        incompleteOnboardingStep: 2,
+      }),
+    ]);
+  } catch (error) {
+    if (__DEV__) {
+      console.error("onboarding/saveOnboardingStepOne", error);
+    }
     return {
       ok: false,
       errorCode: "generic",
@@ -124,7 +166,12 @@ export async function finishOnboarding(
       errorCode: FinishOnboardingErrorCode;
     }
 > {
-  if (!state.record.lastPeriodStart) {
+  const completedLastPeriodStart =
+    state.selectedDate.trim().length > 0
+      ? state.selectedDate.trim()
+      : state.record.lastPeriodStart;
+
+  if (!completedLastPeriodStart) {
     return {
       ok: false,
       errorCode: "date_required",
@@ -132,12 +179,16 @@ export async function finishOnboarding(
   }
 
   const sanitizedValues = sanitizeStepTwoValues(state.stepTwoValues);
+  const predictionModeFlags = resolvePredictionModeFlags(
+    sanitizedValues.predictionMode,
+  );
   const completedRecord: OnboardingRecord = {
     ...state.record,
+    lastPeriodStart: completedLastPeriodStart,
     cycleLength: sanitizedValues.cycleLength,
     periodLength: sanitizedValues.periodLength,
     autoPeriodFill: sanitizedValues.autoPeriodFill,
-    irregularCycle: sanitizedValues.irregularCycle,
+    ...predictionModeFlags,
     ageGroup: sanitizedValues.ageGroup,
     usageGoal: sanitizedValues.usageGoal,
   };
@@ -151,9 +202,13 @@ export async function finishOnboarding(
       storage.writeBootstrapState({
         ...buildInitialBootstrapState(),
         hasCompletedOnboarding: true,
+        incompleteOnboardingStep: null,
       }),
     ]);
-  } catch {
+  } catch (error) {
+    if (__DEV__) {
+      console.error("onboarding/finishOnboarding", error);
+    }
     return {
       ok: false,
       errorCode: "generic",
@@ -165,9 +220,34 @@ export async function finishOnboarding(
     state: {
       ...state,
       record: completedRecord,
+      selectedDate: completedLastPeriodStart,
       stepTwoValues: sanitizedValues,
     },
   };
+}
+
+export async function persistIncompleteOnboardingStep(
+  storage: LocalAppStorage,
+  step: OnboardingStep,
+): Promise<
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+    }
+> {
+  try {
+    const bootstrapState = await storage.readBootstrapState();
+    await storage.writeBootstrapState({
+      ...bootstrapState,
+      hasCompletedOnboarding: false,
+      incompleteOnboardingStep: step,
+    });
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
 }
 
 export function patchOnboardingStepTwoValues(

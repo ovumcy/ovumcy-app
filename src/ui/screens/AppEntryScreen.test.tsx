@@ -16,6 +16,7 @@ function createStorageMock(hasCompletedOnboarding: boolean) {
     readBootstrapState: jest.fn().mockResolvedValue({
       hasCompletedOnboarding,
       profileVersion: 2,
+      incompleteOnboardingStep: hasCompletedOnboarding ? null : 1,
     }),
   });
 }

@@ -22,6 +22,7 @@ import type {
   OnboardingStepTwoValues,
   UsageGoal,
 } from "../../models/onboarding";
+import type { PredictionMode } from "../../models/profile";
 import { getAppInfo, getOnboardingCopy } from "../../i18n/app-copy";
 import { BinaryToggleCard } from "../components/BinaryToggleCard";
 import { ChoiceGroup } from "../components/ChoiceGroup";
@@ -42,12 +43,19 @@ export type OnboardingFlowScreenProps = {
   onBack: () => void;
   onCycleLengthChange: (value: number) => void;
   onDateSelected: (value: string) => void;
+  onDismissStepOneError?: () => void | Promise<void>;
+  onDismissStepOneNotice?: () => void | Promise<void>;
+  onDismissStepTwoError?: () => void | Promise<void>;
   onFinish: () => void | Promise<void>;
-  onIrregularCycleChange: (value: boolean) => void;
+  onPredictionModeSelect: (value: PredictionMode) => void;
   onNext: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
   onUsageGoalSelect: (value: UsageGoal) => void;
   state: LoadedOnboardingState;
+  stepOneNotice: {
+    dismissLabel: string;
+    message: string;
+  } | null;
   stepOneError: string;
   stepTwoError: string;
   viewData: OnboardingViewData;
@@ -65,6 +73,7 @@ export function OnboardingLoadingScreen() {
       compact={width < 430}
       progressLabel={appInfo.name}
       progressPercent={0}
+      scrollEnabled
       screenHeight={height}
       styles={styles}
       subtitle={appInfo.tagline}
@@ -86,12 +95,16 @@ export function OnboardingFlowScreen({
   onBack,
   onCycleLengthChange,
   onDateSelected,
+  onDismissStepOneError,
+  onDismissStepOneNotice,
+  onDismissStepTwoError,
   onFinish,
-  onIrregularCycleChange,
+  onPredictionModeSelect,
   onNext,
   onPeriodLengthChange,
   onUsageGoalSelect,
   state,
+  stepOneNotice,
   stepOneError,
   stepTwoError,
   viewData,
@@ -112,8 +125,13 @@ export function OnboardingFlowScreen({
   return (
     <OnboardingShell
       compact={compactLayout}
-      progressLabel={state.step === 1 ? viewData.progressLabel : onboardingCopy.progress.step2}
+      progressLabel={
+        state.step === 1
+          ? onboardingCopy.progress.step1
+          : onboardingCopy.progress.step2
+      }
       progressPercent={state.step === 1 ? 50 : 100}
+      scrollEnabled={state.step !== 1}
       screenHeight={height}
       styles={styles}
       title={state.step === 1 ? viewData.stepOne.title : viewData.stepTwo.title}
@@ -125,9 +143,12 @@ export function OnboardingFlowScreen({
           displayedDate={displayedDate}
           isSaving={isSaving}
           onDayOptionPress={onDateSelected}
+          onDismissStepOneNotice={onDismissStepOneNotice}
           onNext={onNext}
           dayOptionColumns={dayOptionColumns}
+          onDismissStepOneError={onDismissStepOneError}
           selectedDateValue={state.selectedDate}
+          stepOneNotice={stepOneNotice}
           stepOneError={stepOneError}
           styles={styles}
           viewData={viewData}
@@ -141,8 +162,9 @@ export function OnboardingFlowScreen({
           onAgeGroupSelect={onAgeGroupSelect}
           onBack={onBack}
           onCycleLengthChange={onCycleLengthChange}
+          onDismissStepTwoError={onDismissStepTwoError}
           onFinish={onFinish}
-          onIrregularCycleChange={onIrregularCycleChange}
+          onPredictionModeSelect={onPredictionModeSelect}
           onPeriodLengthChange={onPeriodLengthChange}
           onUsageGoalSelect={onUsageGoalSelect}
           stepTwoError={stepTwoError}
@@ -159,6 +181,7 @@ function OnboardingShell({
   compact,
   progressLabel,
   progressPercent,
+  scrollEnabled,
   screenHeight,
   title,
   subtitle,
@@ -168,6 +191,7 @@ function OnboardingShell({
   compact: boolean;
   progressLabel: string;
   progressPercent: number;
+  scrollEnabled: boolean;
   screenHeight: number;
   title: string;
   subtitle?: string;
@@ -184,49 +208,95 @@ function OnboardingShell({
   return (
     <AppScreenSurface>
       <View style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.screenContent,
-            compact ? styles.screenContentCompact : null,
-            {
-              paddingTop: insets.top + (compact ? 10 : 12),
-              paddingBottom: Math.max(insets.bottom + (compact ? 14 : 18), compact ? 18 : 24),
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          style={styles.screen}
-        >
-          <View
-            style={[
-              styles.heroCard,
-              compact ? styles.heroCardCompact : null,
-              minCardHeight > 0 ? { minHeight: minCardHeight } : null,
+        {scrollEnabled ? (
+          <ScrollView
+            contentContainerStyle={[
+              styles.screenContent,
+              compact ? styles.screenContentCompact : null,
+              {
+                paddingTop: insets.top + (compact ? 10 : 12),
+                paddingBottom: Math.max(insets.bottom + (compact ? 14 : 18), compact ? 18 : 24),
+              },
             ]}
+            showsVerticalScrollIndicator={false}
+            style={styles.screen}
           >
-            <View style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}>
-              <Text style={[styles.kicker, compact ? styles.kickerCompact : null]}>{progressLabel}</Text>
-              <View style={[styles.progressPanel, compact ? styles.progressPanelCompact : null]}>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${progressPercent}%` },
-                    ]}
-                  />
+            <View
+              style={[
+                styles.heroCard,
+                compact ? styles.heroCardCompact : null,
+                minCardHeight > 0 ? { minHeight: minCardHeight } : null,
+              ]}
+            >
+              <View style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}>
+                <Text style={[styles.kicker, compact ? styles.kickerCompact : null]}>{progressLabel}</Text>
+                <View style={[styles.progressPanel, compact ? styles.progressPanelCompact : null]}>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${progressPercent}%` },
+                      ]}
+                    />
+                  </View>
                 </View>
               </View>
+              <View style={[styles.panel, compact ? styles.panelCompact : null]}>
+                <Text style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}>{title}</Text>
+                {subtitle ? (
+                  <Text style={[styles.heroMuted, compact ? styles.heroMutedCompact : null]}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+                {children}
+              </View>
             </View>
-            <View style={[styles.panel, compact ? styles.panelCompact : null]}>
-              <Text style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}>{title}</Text>
-              {subtitle ? (
-                <Text style={[styles.heroMuted, compact ? styles.heroMutedCompact : null]}>
-                  {subtitle}
-                </Text>
-              ) : null}
-              {children}
+          </ScrollView>
+        ) : (
+          <View
+            style={[
+              styles.screenContent,
+              styles.screenContentPinned,
+              compact ? styles.screenContentCompact : null,
+              {
+                paddingTop: insets.top + (compact ? 10 : 12),
+                paddingBottom: Math.max(insets.bottom + (compact ? 14 : 18), compact ? 18 : 24),
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.heroCard,
+                styles.heroCardPinned,
+                compact ? styles.heroCardCompact : null,
+                minCardHeight > 0 ? { height: minCardHeight } : null,
+              ]}
+            >
+              <View style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}>
+                <Text style={[styles.kicker, compact ? styles.kickerCompact : null]}>{progressLabel}</Text>
+                <View style={[styles.progressPanel, compact ? styles.progressPanelCompact : null]}>
+                  <View style={styles.progressTrack}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${progressPercent}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+              </View>
+              <View style={[styles.panel, styles.panelPinned, compact ? styles.panelCompact : null]}>
+                <Text style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}>{title}</Text>
+                {subtitle ? (
+                  <Text style={[styles.heroMuted, compact ? styles.heroMutedCompact : null]}>
+                    {subtitle}
+                  </Text>
+                ) : null}
+                {children}
+              </View>
             </View>
           </View>
-        </ScrollView>
+        )}
       </View>
     </AppScreenSurface>
   );
@@ -237,9 +307,12 @@ function StepOnePanel({
   displayedDate,
   isSaving,
   onDayOptionPress,
+  onDismissStepOneError,
+  onDismissStepOneNotice,
   onNext,
   dayOptionColumns,
   selectedDateValue,
+  stepOneNotice,
   stepOneError,
   styles,
   viewData,
@@ -248,14 +321,19 @@ function StepOnePanel({
   displayedDate: string;
   isSaving: boolean;
   onDayOptionPress: (value: string) => void;
+  onDismissStepOneError: (() => void | Promise<void>) | undefined;
+  onDismissStepOneNotice: (() => void | Promise<void>) | undefined;
   onNext: () => void | Promise<void>;
   dayOptionColumns: number;
   selectedDateValue: string;
+  stepOneNotice: {
+    dismissLabel: string;
+    message: string;
+  } | null;
   stepOneError: string;
   styles: ReturnType<typeof createStyles>;
   viewData: OnboardingViewData;
 }) {
-  const { height: windowHeight } = useWindowDimensions();
   const [dayOptionGridWidth, setDayOptionGridWidth] = useState(0);
   const dayOptionWidth = useMemo(() => {
     if (dayOptionGridWidth <= 0) {
@@ -286,23 +364,26 @@ function StepOnePanel({
   );
 
   return (
-    <>
-      <Text style={[styles.helperText, compact ? styles.helperTextCompact : null]}>
-        {viewData.stepOne.day1Tip}
-      </Text>
-      <Text style={[styles.helperText, compact ? styles.helperTextCompact : null]}>
-        {viewData.stepOne.privacy}
-      </Text>
+    <View style={styles.stepOneLayout}>
+      <View style={styles.stepOneHeaderStack}>
+      {stepOneNotice ? (
+        <StatusBanner
+          dismissLabel={stepOneNotice.dismissLabel}
+          message={stepOneNotice.message}
+          onDismiss={onDismissStepOneNotice}
+          testID="onboarding-step-one-note"
+          tone="info"
+        />
+      ) : null}
 
       <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
-        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
-          {viewData.stepOne.fieldLabel}
-        </Text>
         <View style={[styles.dateFieldShell, compact ? styles.dateFieldShellCompact : null]}>
           {dateFieldContent}
         </View>
       </View>
+      </View>
 
+      <View style={styles.stepOneScrollRegion}>
       <ScrollView
         contentContainerStyle={[styles.dayOptionGrid, compact ? styles.dayOptionGridCompact : null]}
         nestedScrollEnabled
@@ -312,11 +393,6 @@ function StepOnePanel({
         style={[
           styles.dayOptionScroll,
           compact ? styles.dayOptionScrollCompact : null,
-          {
-            maxHeight: compact
-              ? Math.max(232, Math.min(320, Math.round(windowHeight * 0.34)))
-              : Math.max(272, Math.min(388, Math.round(windowHeight * 0.4))),
-          },
         ]}
       >
         {viewData.stepOne.dayOptions.map((option) => (
@@ -332,20 +408,29 @@ function StepOnePanel({
           />
         ))}
       </ScrollView>
+      </View>
 
-      {stepOneError ? (
-        <StatusBanner message={stepOneError} tone="error" testID="onboarding-step-one-error" />
-      ) : null}
+      <View style={styles.stepOneFooter}>
+        {stepOneError ? (
+          <StatusBanner
+            dismissLabel={viewData.errors.dismissError}
+            message={stepOneError}
+            onDismiss={onDismissStepOneError}
+            tone="error"
+            testID="onboarding-step-one-error"
+          />
+        ) : null}
 
-      <PrimaryButton
-        disabled={isSaving}
-        label={viewData.stepOne.nextLabel}
-        onPress={onNext}
-        styles={styles}
-        testID="onboarding-next-button"
-        compact={compact}
-      />
-    </>
+        <PrimaryButton
+          disabled={isSaving}
+          label={viewData.stepOne.nextLabel}
+          onPress={onNext}
+          styles={styles}
+          testID="onboarding-next-button"
+          compact={compact}
+        />
+      </View>
+    </View>
   );
 }
 
@@ -357,8 +442,9 @@ function StepTwoPanel({
   onAgeGroupSelect,
   onBack,
   onCycleLengthChange,
+  onDismissStepTwoError,
   onFinish,
-  onIrregularCycleChange,
+  onPredictionModeSelect,
   onPeriodLengthChange,
   onUsageGoalSelect,
   stepTwoError,
@@ -373,8 +459,9 @@ function StepTwoPanel({
   onAgeGroupSelect: (value: AgeGroupOption) => void;
   onBack: () => void;
   onCycleLengthChange: (value: number) => void;
+  onDismissStepTwoError: (() => void | Promise<void>) | undefined;
   onFinish: () => void | Promise<void>;
-  onIrregularCycleChange: (value: boolean) => void;
+  onPredictionModeSelect: (value: PredictionMode) => void;
   onPeriodLengthChange: (value: number) => void;
   onUsageGoalSelect: (value: UsageGoal) => void;
   stepTwoError: string;
@@ -424,7 +511,13 @@ function StepTwoPanel({
         ) : null}
       </View>
       {stepTwoError ? (
-        <StatusBanner message={stepTwoError} tone="error" testID="onboarding-step-two-error" />
+        <StatusBanner
+          dismissLabel={viewData.errors.dismissError}
+          message={stepTwoError}
+          onDismiss={onDismissStepTwoError}
+          tone="error"
+          testID="onboarding-step-two-error"
+        />
       ) : null}
 
       <BinaryToggleCard
@@ -438,16 +531,22 @@ function StepTwoPanel({
         value={stepTwoValues.autoPeriodFill}
       />
 
-      <BinaryToggleCard
-        compact={compact}
-        description={viewData.stepTwo.irregularCycleHint}
-        descriptionPosition="below"
-        icon="〰️"
-        label={viewData.stepTwo.irregularCycleLabel}
-        onValueChange={onIrregularCycleChange}
-        testID="onboarding-toggle-irregular-cycle"
-        value={stepTwoValues.irregularCycle}
-      />
+      <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
+        <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
+          {viewData.stepTwo.predictionModeLabel}
+        </Text>
+        <ChoiceGroup
+          contentAlign={compact ? "leading" : "center"}
+          layout={compact ? "stack" : "grid3"}
+          onSelect={(value) => onPredictionModeSelect(value as PredictionMode)}
+          options={viewData.stepTwo.predictionModeOptions}
+          selectedValue={stepTwoValues.predictionMode}
+          testIDPrefix="onboarding-prediction-mode"
+        />
+        <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+          {viewData.stepTwo.predictionModeHint}
+        </Text>
+      </View>
 
       <View style={[styles.formGroup, compact ? styles.formGroupCompact : null]}>
         <Text style={[styles.fieldLabel, compact ? styles.fieldLabelCompact : null]}>
@@ -482,6 +581,7 @@ function StepTwoPanel({
       <View style={[styles.buttonRow, compact ? styles.buttonRowCompact : null]}>
         <SecondaryButton
           compact={compact}
+          grow
           label={viewData.stepTwo.backLabel}
           onPress={onBack}
           styles={styles}
@@ -490,6 +590,7 @@ function StepTwoPanel({
         <PrimaryButton
           compact={compact}
           disabled={isSaving}
+          grow
           label={viewData.stepTwo.finishLabel}
           onPress={onFinish}
           styles={styles}
@@ -560,6 +661,7 @@ function DayOptionButton({
 
 function PrimaryButton({
   compact = false,
+  grow = false,
   label,
   onPress,
   disabled,
@@ -567,6 +669,7 @@ function PrimaryButton({
   testID,
 }: {
   compact?: boolean;
+  grow?: boolean;
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -579,6 +682,7 @@ function PrimaryButton({
       onPress={onPress}
       style={[
         styles.primaryButton,
+        grow ? styles.buttonGrow : null,
         compact ? styles.primaryButtonCompact : null,
         disabled ? styles.buttonDisabled : null,
       ]}
@@ -591,12 +695,14 @@ function PrimaryButton({
 
 function SecondaryButton({
   compact = false,
+  grow = false,
   label,
   onPress,
   styles,
   testID,
 }: {
   compact?: boolean;
+  grow?: boolean;
   label: string;
   onPress: () => void;
   styles: ReturnType<typeof createStyles>;
@@ -605,7 +711,11 @@ function SecondaryButton({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.secondaryButton, compact ? styles.secondaryButtonCompact : null]}
+      style={[
+        styles.secondaryButton,
+        grow ? styles.buttonGrow : null,
+        compact ? styles.secondaryButtonCompact : null,
+      ]}
       testID={testID}
     >
       <Text style={styles.secondaryButtonText}>{label}</Text>
@@ -638,6 +748,9 @@ const createStyles = (colors: AppThemeColors) =>
       paddingHorizontal: 14,
       paddingVertical: 14,
     },
+    screenContentPinned: {
+      flex: 1,
+    },
     heroCard: {
       backgroundColor: colors.surfaceElevated,
       borderColor: colors.lineSoft,
@@ -653,6 +766,9 @@ const createStyles = (colors: AppThemeColors) =>
       shadowRadius: 26,
       width: "100%",
     },
+    heroCardPinned: {
+      flex: 1,
+    },
     heroCardCompact: {
       borderRadius: 18,
       gap: 6,
@@ -665,6 +781,9 @@ const createStyles = (colors: AppThemeColors) =>
     panel: {
       flex: 1,
       gap: 8,
+    },
+    panelPinned: {
+      minHeight: 0,
     },
     panelCompact: {
       gap: 6,
@@ -712,7 +831,8 @@ const createStyles = (colors: AppThemeColors) =>
     },
     heroTitleCompact: {
       fontSize: 23,
-      lineHeight: 28,
+      lineHeight: 31,
+      paddingTop: 2,
     },
     heroMuted: {
       color: colors.textMuted,
@@ -722,15 +842,6 @@ const createStyles = (colors: AppThemeColors) =>
     heroMutedCompact: {
       fontSize: 12,
       lineHeight: 18,
-    },
-    helperText: {
-      color: colors.textMuted,
-      fontSize: 13,
-      lineHeight: 19,
-    },
-    helperTextCompact: {
-      fontSize: 12,
-      lineHeight: 17,
     },
     formGroup: {
       gap: spacing.sm,
@@ -778,11 +889,12 @@ const createStyles = (colors: AppThemeColors) =>
       gap: 4,
     },
     dayOptionScroll: {
-      flexGrow: 1,
-      minHeight: 272,
+      flex: 1,
+      minHeight: 0,
+      width: "100%",
     },
     dayOptionScrollCompact: {
-      minHeight: 232,
+      minHeight: 0,
     },
     dayOptionButton: {
       backgroundColor: colors.surfaceTint,
@@ -856,6 +968,22 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 12,
       lineHeight: 17,
     },
+    stepOneLayout: {
+      flex: 1,
+      gap: spacing.sm,
+      minHeight: 0,
+    },
+    stepOneHeaderStack: {
+      gap: spacing.sm,
+    },
+    stepOneScrollRegion: {
+      flex: 1,
+      minHeight: 0,
+    },
+    stepOneFooter: {
+      gap: spacing.sm,
+      paddingTop: spacing.xs,
+    },
     buttonRow: {
       flexDirection: "row",
       gap: 10,
@@ -863,13 +991,15 @@ const createStyles = (colors: AppThemeColors) =>
     buttonRowCompact: {
       gap: 8,
     },
+    buttonGrow: {
+      flex: 1,
+    },
     primaryButton: {
       alignItems: "center",
       backgroundColor: colors.accent,
       borderColor: colors.accentStrong,
       borderRadius: 999,
       borderWidth: 1,
-      flex: 1,
       justifyContent: "center",
       minHeight: 42,
       paddingHorizontal: 18,
@@ -896,7 +1026,6 @@ const createStyles = (colors: AppThemeColors) =>
       borderColor: colors.border,
       borderRadius: 999,
       borderWidth: 1,
-      flex: 1,
       justifyContent: "center",
       minHeight: 42,
       paddingHorizontal: 18,

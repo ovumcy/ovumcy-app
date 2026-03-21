@@ -8,6 +8,7 @@ describe("volatile-web-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeOnboardingRecord({
       lastPeriodStart: "2026-03-14",
@@ -15,6 +16,7 @@ describe("volatile-web-app-storage", () => {
       periodLength: 6,
       autoPeriodFill: true,
       irregularCycle: true,
+      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
     });
@@ -36,6 +38,7 @@ describe("volatile-web-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
@@ -84,6 +87,7 @@ describe("volatile-web-app-storage", () => {
     await firstSession.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await firstSession.writeDayLogRecord({
       date: "2026-03-18",
@@ -105,6 +109,7 @@ describe("volatile-web-app-storage", () => {
     await expect(nextSession.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(nextSession.readDayLogRecord("2026-03-18")).resolves.toEqual({
       date: "2026-03-18",
@@ -162,6 +167,7 @@ describe("volatile-web-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-18",
@@ -183,6 +189,7 @@ describe("volatile-web-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readDayLogSummary()).resolves.toEqual({
       totalEntries: 0,

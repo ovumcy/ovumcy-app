@@ -19,6 +19,7 @@ export function createLocalAppStorageMock(
       ...createDefaultBootstrapState(),
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     }),
     writeBootstrapState: jest.fn().mockResolvedValue(undefined),
     clearAllLocalData: jest.fn().mockResolvedValue(undefined),

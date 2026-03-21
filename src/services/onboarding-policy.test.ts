@@ -1,11 +1,13 @@
 import {
   buildCycleGuidanceState,
   buildDayOptions,
+  createStepTwoDefaults,
   getOnboardingDateBounds,
   normalizeAgeGroup,
   normalizeUsageGoal,
   resolveOnboardingStep,
   sanitizeOnboardingCycleAndPeriod,
+  sanitizeStepTwoValues,
   validateStepOneStartDate,
 } from "./onboarding-policy";
 
@@ -83,6 +85,7 @@ describe("onboarding-policy", () => {
           periodLength: 5,
           autoPeriodFill: true,
           irregularCycle: false,
+          unpredictableCycle: false,
           ageGroup: "",
           usageGoal: "health",
         },
@@ -98,11 +101,46 @@ describe("onboarding-policy", () => {
           periodLength: 5,
           autoPeriodFill: true,
           irregularCycle: false,
+          unpredictableCycle: false,
           ageGroup: "",
           usageGoal: "health",
         },
         false,
       ),
     ).toBe(2);
+  });
+
+  it("maps onboarding prediction mode cleanly to and from profile flags", () => {
+    expect(
+      createStepTwoDefaults({
+        lastPeriodStart: "2026-03-14",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: true,
+        ageGroup: "",
+        usageGoal: "health",
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        predictionMode: "facts_only",
+      }),
+    );
+
+    expect(
+      sanitizeStepTwoValues({
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        predictionMode: "irregular",
+        ageGroup: "age_20_35",
+        usageGoal: "health",
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        predictionMode: "irregular",
+      }),
+    );
   });
 });

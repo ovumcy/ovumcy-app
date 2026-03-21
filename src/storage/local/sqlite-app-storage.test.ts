@@ -9,6 +9,7 @@ type FakeDatabaseState = {
   bootstrapRow: {
     has_completed_onboarding: number;
     profile_version: number;
+    incomplete_onboarding_step?: number | null;
   } | null;
   profileRow: {
     last_period_start: string | null;
@@ -99,69 +100,107 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     ...state,
   };
 
+  function applySchemaStatement(source: string) {
+    if (source.startsWith("PRAGMA user_version =")) {
+      databaseState.userVersion = Number(source.replace(/\D/g, ""));
+    }
+
+    if (source.includes("ALTER TABLE profile_settings ADD COLUMN language_override")) {
+      if (databaseState.profileRow) {
+        databaseState.profileRow.language_override ??= null;
+      }
+    }
+
+    if (source.includes("ALTER TABLE profile_settings ADD COLUMN theme_override")) {
+      if (databaseState.profileRow) {
+        databaseState.profileRow.theme_override ??= null;
+      }
+    }
+
+    if (source.includes("ALTER TABLE profile_settings ADD COLUMN encrypted_payload")) {
+      if (databaseState.profileRow) {
+        databaseState.profileRow.encrypted_payload ??= null;
+      }
+    }
+
+    if (source.includes("ALTER TABLE day_logs ADD COLUMN encrypted_payload")) {
+      databaseState.dayLogRows = databaseState.dayLogRows.map((row) => ({
+        ...row,
+        encrypted_payload: row.encrypted_payload ?? null,
+      }));
+    }
+
+    if (source.includes("ALTER TABLE symptoms ADD COLUMN encrypted_payload")) {
+      databaseState.symptomRows = databaseState.symptomRows.map((row) => ({
+        ...row,
+        encrypted_payload: row.encrypted_payload ?? null,
+      }));
+    }
+
+    if (source.includes("DROP TABLE IF EXISTS onboarding_profile")) {
+      databaseState.onboardingRow = null;
+    }
+
+    if (
+      source.includes("INSERT OR IGNORE INTO profile_settings") &&
+      source.includes("FROM onboarding_profile") &&
+      databaseState.onboardingRow &&
+      !databaseState.profileRow
+    ) {
+      databaseState.profileRow = {
+        last_period_start: databaseState.onboardingRow.last_period_start,
+        cycle_length: databaseState.onboardingRow.cycle_length,
+        period_length: databaseState.onboardingRow.period_length,
+        auto_period_fill: databaseState.onboardingRow.auto_period_fill,
+        irregular_cycle: databaseState.onboardingRow.irregular_cycle,
+        unpredictable_cycle: 0,
+        age_group: databaseState.onboardingRow.age_group,
+        usage_goal: databaseState.onboardingRow.usage_goal,
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: null,
+      };
+    }
+
+    if (
+      source.includes(
+        "ALTER TABLE bootstrap_state ADD COLUMN incomplete_onboarding_step",
+      ) &&
+      databaseState.bootstrapRow
+    ) {
+      databaseState.bootstrapRow.incomplete_onboarding_step ??= 1;
+    }
+
+    if (
+      source.includes(
+        "ALTER TABLE sync_preferences ADD COLUMN last_remote_generation",
+      ) &&
+      !databaseState.syncPreferencesColumns.includes("last_remote_generation")
+    ) {
+      databaseState.syncPreferencesColumns.push("last_remote_generation");
+      if (databaseState.syncPreferencesRow) {
+        databaseState.syncPreferencesRow.last_remote_generation ??= null;
+      }
+    }
+
+    if (
+      source.includes("ALTER TABLE sync_preferences ADD COLUMN last_synced_at") &&
+      !databaseState.syncPreferencesColumns.includes("last_synced_at")
+    ) {
+      databaseState.syncPreferencesColumns.push("last_synced_at");
+      if (databaseState.syncPreferencesRow) {
+        databaseState.syncPreferencesRow.last_synced_at ??= null;
+      }
+    }
+  }
+
   const database: LocalAppDatabase = {
     async execAsync(source: string) {
-      if (source.startsWith("PRAGMA user_version =")) {
-        databaseState.userVersion = Number(source.replace(/\D/g, ""));
-      }
-
-      if (source.includes("ALTER TABLE profile_settings ADD COLUMN language_override")) {
-        if (databaseState.profileRow) {
-          databaseState.profileRow.language_override ??= null;
-        }
-      }
-
-      if (source.includes("ALTER TABLE profile_settings ADD COLUMN theme_override")) {
-        if (databaseState.profileRow) {
-          databaseState.profileRow.theme_override ??= null;
-        }
-      }
-
-      if (source.includes("ALTER TABLE profile_settings ADD COLUMN encrypted_payload")) {
-        if (databaseState.profileRow) {
-          databaseState.profileRow.encrypted_payload ??= null;
-        }
-      }
-
-      if (source.includes("ALTER TABLE day_logs ADD COLUMN encrypted_payload")) {
-        databaseState.dayLogRows = databaseState.dayLogRows.map((row) => ({
-          ...row,
-          encrypted_payload: row.encrypted_payload ?? null,
-        }));
-      }
-
-      if (source.includes("ALTER TABLE symptoms ADD COLUMN encrypted_payload")) {
-        databaseState.symptomRows = databaseState.symptomRows.map((row) => ({
-          ...row,
-          encrypted_payload: row.encrypted_payload ?? null,
-        }));
-      }
-
-      if (source.includes("DROP TABLE IF EXISTS onboarding_profile")) {
-        databaseState.onboardingRow = null;
-      }
-
-      if (
-        source.includes(
-          "ALTER TABLE sync_preferences ADD COLUMN last_remote_generation",
-        ) &&
-        !databaseState.syncPreferencesColumns.includes("last_remote_generation")
-      ) {
-        databaseState.syncPreferencesColumns.push("last_remote_generation");
-        if (databaseState.syncPreferencesRow) {
-          databaseState.syncPreferencesRow.last_remote_generation ??= null;
-        }
-      }
-
-      if (
-        source.includes("ALTER TABLE sync_preferences ADD COLUMN last_synced_at") &&
-        !databaseState.syncPreferencesColumns.includes("last_synced_at")
-      ) {
-        databaseState.syncPreferencesColumns.push("last_synced_at");
-        if (databaseState.syncPreferencesRow) {
-          databaseState.syncPreferencesRow.last_synced_at ??= null;
-        }
-      }
+      applySchemaStatement(source);
     },
 
     async getFirstAsync<T>(source: string, ...params: unknown[]): Promise<T | null> {
@@ -246,7 +285,7 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           : null;
       }
 
-      if (source.includes("FROM bootstrap_state WHERE id = 1")) {
+      if (source.includes("FROM bootstrap_state")) {
         return (databaseState.bootstrapRow as T) ?? null;
       }
 
@@ -272,6 +311,16 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     },
 
     async getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]> {
+      if (source === "PRAGMA table_info(bootstrap_state);") {
+        return [
+          { cid: 0, name: "id" },
+          { cid: 1, name: "has_completed_onboarding" },
+          { cid: 2, name: "profile_version" },
+          ...(databaseState.bootstrapRow?.incomplete_onboarding_step !== undefined
+            ? [{ cid: 3, name: "incomplete_onboarding_step" }]
+            : []),
+        ] as T[];
+      }
       if (source === "PRAGMA table_info(sync_preferences);") {
         return databaseState.syncPreferencesColumns.map((name, index) => ({
           cid: index,
@@ -297,10 +346,16 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     },
 
     async runAsync(source: string, ...params: unknown[]) {
+      if (params.length === 0) {
+        applySchemaStatement(source);
+      }
+
       if (source.includes("INSERT INTO bootstrap_state")) {
         databaseState.bootstrapRow = {
           has_completed_onboarding: Number(params[0]),
           profile_version: Number(params[1]),
+          incomplete_onboarding_step:
+            typeof params[2] === "number" ? Number(params[2]) : null,
         };
       }
 
@@ -497,6 +552,7 @@ describe("sqlite-app-storage", () => {
       readBootstrapState: jest.fn().mockResolvedValue({
         hasCompletedOnboarding: true,
         profileVersion: 3,
+        incompleteOnboardingStep: null,
       }),
       readProfileRecord: jest.fn().mockResolvedValue({
         lastPeriodStart: "2026-03-14",
@@ -523,6 +579,7 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: true,
       profileVersion: 3,
+      incompleteOnboardingStep: null,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
@@ -593,6 +650,7 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual(
       createDefaultProfileRecord(),
@@ -622,6 +680,7 @@ describe("sqlite-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeProfileRecord({
       lastPeriodStart: "2026-03-15",
@@ -643,6 +702,7 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
@@ -946,8 +1006,251 @@ describe("sqlite-app-storage", () => {
     expect(probe.getMaxConcurrentOperations()).toBe(1);
   });
 
+  it("labels read-profile sqlite failures with a safe operation id", async () => {
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 8,
+    });
+    const originalGetFirstAsync = inspected.database.getFirstAsync.bind(
+      inspected.database,
+    );
+    let profileSelectCount = 0;
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore(),
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        runAsync: inspected.database.runAsync,
+        async getFirstAsync<T>(
+          source: string,
+          ...params: unknown[]
+        ): Promise<T | null> {
+          if (
+            source.includes("FROM profile_settings") &&
+            source.includes("WHERE id = 1;") &&
+            ++profileSelectCount === 2
+          ) {
+            throw new Error("boom");
+          }
+
+          return originalGetFirstAsync<T>(source, ...params);
+        },
+      }),
+    });
+
+    await expect(storage.readProfileRecord()).rejects.toThrow(
+      "sqlite/readProfileRecord/select: boom",
+    );
+  });
+
+  it("normalizes string bootstrap row values returned by sqlite", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () =>
+        createFakeDatabase({
+          userVersion: 9,
+          bootstrapRow: {
+            has_completed_onboarding: "1" as unknown as number,
+            profile_version: "2" as unknown as number,
+            incomplete_onboarding_step: "2" as unknown as number,
+          },
+          profileRow: {
+            last_period_start: null,
+            cycle_length: 28,
+            period_length: 5,
+            auto_period_fill: 1,
+            irregular_cycle: 0,
+            unpredictable_cycle: 0,
+            age_group: "",
+            usage_goal: "health",
+            track_bbt: 0,
+            temperature_unit: "c",
+            track_cervical_mucus: 0,
+            hide_sex_chip: 0,
+            language_override: null,
+            theme_override: null,
+            encrypted_payload: null,
+          },
+          syncPreferencesRow: {
+            mode: "managed",
+            endpoint_input: "",
+            normalized_endpoint: "https://sync.ovumcy.com",
+            device_label: "",
+            setup_status: "not_configured",
+            prepared_at: null,
+            last_remote_generation: null,
+            last_synced_at: null,
+          },
+        }),
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+  });
+
+  it("hydrates sqlite without depending on PRAGMA user_version reads", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const originalGetFirstAsync = inspected.database.getFirstAsync.bind(
+      inspected.database,
+    );
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        runAsync: inspected.database.runAsync,
+        async getFirstAsync<T>(
+          source: string,
+          ...params: unknown[]
+        ): Promise<T | null> {
+          if (source === "PRAGMA user_version;") {
+            throw new Error("boom");
+          }
+
+          return originalGetFirstAsync<T>(source, ...params);
+        },
+      }),
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 1,
+    });
+  });
+
+  it("labels the failing schema substep during sqlite hydrate", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const originalRunAsync = inspected.database.runAsync.bind(inspected.database);
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        getFirstAsync: inspected.database.getFirstAsync,
+        runAsync(source: string, ...params: unknown[]) {
+          if (
+            source.includes(
+              "ALTER TABLE sync_preferences ADD COLUMN last_remote_generation",
+            )
+          ) {
+            throw new Error("boom");
+          }
+
+          return originalRunAsync(source, ...params);
+        },
+      }),
+    });
+
+    await expect(storage.readBootstrapState()).rejects.toThrow(
+      "sqlite/hydrate/schema: sqlite/schema/reconcileSync: boom",
+    );
+  });
+
+  it("labels profile-write sqlite failures with a safe operation id", async () => {
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 9,
+      bootstrapRow: {
+        has_completed_onboarding: 0,
+        profile_version: 2,
+        incomplete_onboarding_step: 1,
+      },
+      profileRow: {
+        last_period_start: null,
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: "ciphertext",
+      },
+      syncPreferencesRow: {
+        mode: "managed",
+        endpoint_input: "",
+        normalized_endpoint: "https://sync.ovumcy.com",
+        device_label: "",
+        setup_status: "not_configured",
+        prepared_at: null,
+        last_remote_generation: null,
+        last_synced_at: null,
+      },
+      symptomRows: [
+        {
+          id: "cramps",
+          slug: "cramps",
+          label: "Cramps",
+          icon: "bolt",
+          color: "#f28f72",
+          is_default: 1,
+          is_archived: 0,
+          sort_order: 10,
+          encrypted_payload: "ciphertext",
+        },
+      ],
+    });
+    const originalRunAsync = inspected.database.runAsync.bind(inspected.database);
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getFirstAsync: inspected.database.getFirstAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        async runAsync(source: string, ...params: unknown[]) {
+          if (source.includes("INSERT INTO profile_settings")) {
+            throw new Error("boom");
+          }
+
+          return originalRunAsync(source, ...params);
+        },
+      }),
+    });
+
+    await expect(
+      storage.writeProfileRecord({
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: "2026-03-17",
+      }),
+    ).rejects.toThrow("sqlite/writeProfileRecord/upsert: boom");
+  });
+
   it("clears local data and reseeds canonical defaults", async () => {
-    const deleteDatabase = jest.fn().mockResolvedValue(undefined);
     const legacyStorageSource = {
       clear: jest.fn().mockResolvedValue(undefined),
       hasData: jest.fn().mockResolvedValue(false),
@@ -955,7 +1258,6 @@ describe("sqlite-app-storage", () => {
       readProfileRecord: jest.fn(),
     };
     const storage = createSQLiteAppStorage({
-      deleteDatabase,
       legacyStorageSource,
       openDatabase: async () => createFakeDatabase(),
     });
@@ -963,6 +1265,7 @@ describe("sqlite-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeProfileRecord({
       lastPeriodStart: "2026-03-15",
@@ -1010,6 +1313,7 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual(
       createDefaultProfileRecord(),
@@ -1036,11 +1340,9 @@ describe("sqlite-app-storage", () => {
       ]),
     );
     expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
-    expect(deleteDatabase).toHaveBeenCalledTimes(1);
   });
 
-  it("reopens the native sqlite database after clearing local data", async () => {
-    const deleteDatabase = jest.fn().mockResolvedValue(undefined);
+  it("reseeds the native sqlite database without reopening it after clearing local data", async () => {
     let openDatabaseCallCount = 0;
     const closeAsync = jest.fn().mockResolvedValue(undefined);
     const legacyStorageSource = {
@@ -1050,7 +1352,6 @@ describe("sqlite-app-storage", () => {
       readProfileRecord: jest.fn(),
     };
     const storage = createSQLiteAppStorage({
-      deleteDatabase,
       legacyStorageSource,
       openDatabase: async () => {
         openDatabaseCallCount += 1;
@@ -1082,41 +1383,54 @@ describe("sqlite-app-storage", () => {
     await storage.clearAllLocalData();
     await storage.readBootstrapState();
 
-    expect(closeAsync).toHaveBeenCalledTimes(1);
-    expect(deleteDatabase).toHaveBeenCalledTimes(1);
-    expect(openDatabaseCallCount).toBe(2);
+    expect(closeAsync).not.toHaveBeenCalled();
+    expect(openDatabaseCallCount).toBe(1);
   });
 
-  it("waits for local-data reset to finish before reopening sqlite", async () => {
-    let releaseDeleteDatabase!: () => void;
-    const deleteDatabase = jest.fn().mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          releaseDeleteDatabase = resolve;
-        }),
-    );
+  it("waits for local-data reset to finish before new reads observe the reseeded sqlite state", async () => {
+    let releaseLegacyClear!: () => void;
+    const legacyStorageSource = {
+      clear: jest.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            releaseLegacyClear = resolve;
+          }),
+      ),
+      hasData: jest.fn().mockResolvedValue(false),
+      readBootstrapState: jest.fn(),
+      readProfileRecord: jest.fn(),
+    };
     let openDatabaseCallCount = 0;
     const storage = createSQLiteAppStorage({
-      deleteDatabase,
-      legacyStorageSource: {
-        clear: jest.fn().mockResolvedValue(undefined),
-        hasData: jest.fn().mockResolvedValue(false),
-        readBootstrapState: jest.fn(),
-        readProfileRecord: jest.fn(),
-      },
+      legacyStorageSource,
       openDatabase: async () => {
         openDatabaseCallCount += 1;
         return createFakeDatabase();
       },
     });
 
-    await storage.readBootstrapState();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-15",
+      cycleLength: 31,
+      periodLength: 6,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: true,
+      ageGroup: "age_35_plus",
+      usageGoal: "trying_to_conceive",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
+    });
     expect(openDatabaseCallCount).toBe(1);
 
     const clearPromise = storage.clearAllLocalData();
     await Promise.resolve();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(deleteDatabase).toHaveBeenCalledTimes(1);
+    expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
 
     const readProfilePromise = storage.readProfileRecord();
 
@@ -1124,11 +1438,102 @@ describe("sqlite-app-storage", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(openDatabaseCallCount).toBe(1);
 
-    releaseDeleteDatabase();
+    releaseLegacyClear();
 
     await clearPromise;
     await expect(readProfilePromise).resolves.toEqual(createDefaultProfileRecord());
-    expect(openDatabaseCallCount).toBe(2);
+    expect(openDatabaseCallCount).toBe(1);
+  });
+
+  it("waits for in-flight sqlite reads before wiping local data during reset", async () => {
+    const legacyStorageSource = {
+      clear: jest.fn().mockResolvedValue(undefined),
+      hasData: jest.fn().mockResolvedValue(false),
+      readBootstrapState: jest.fn(),
+      readProfileRecord: jest.fn(),
+    };
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 8,
+      bootstrapRow: {
+        has_completed_onboarding: 1,
+        profile_version: 2,
+      },
+      profileRow: {
+        last_period_start: "2026-03-01",
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "age_20_35",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: null,
+      },
+    });
+    const originalGetFirstAsync = inspected.database.getFirstAsync.bind(
+      inspected.database,
+    );
+    let didBlockProfileRead = false;
+    let releaseProfileRead!: () => void;
+    let resolveProfileReadStarted!: () => void;
+    const profileReadStarted = new Promise<void>((resolve) => {
+      resolveProfileReadStarted = resolve;
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource,
+      localDataKeyStore: createFakeLocalDataKeyStore(),
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        runAsync: inspected.database.runAsync,
+        async getFirstAsync<T>(
+          source: string,
+          ...params: unknown[]
+        ): Promise<T | null> {
+          if (
+            !didBlockProfileRead &&
+            source.includes("FROM profile_settings") &&
+            source.includes("WHERE id = 1;")
+          ) {
+            didBlockProfileRead = true;
+            resolveProfileReadStarted();
+            await new Promise<void>((resolve) => {
+              releaseProfileRead = resolve;
+            });
+          }
+
+          return originalGetFirstAsync<T>(source, ...params);
+        },
+      }),
+    });
+
+    const readProfilePromise = storage.readProfileRecord();
+    await profileReadStarted;
+
+    const clearPromise = storage.clearAllLocalData();
+    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(legacyStorageSource.clear).not.toHaveBeenCalled();
+
+    releaseProfileRead();
+
+    await expect(readProfilePromise).resolves.toEqual(
+      expect.objectContaining({
+        lastPeriodStart: "2026-03-01",
+        cycleLength: 28,
+        periodLength: 5,
+      }),
+    );
+    await clearPromise;
+
+    expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
   });
 
   it("creates and clears the local encrypted-at-rest key through the storage lifecycle", async () => {
@@ -1213,6 +1618,7 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual(
       expect.objectContaining({
@@ -1222,5 +1628,84 @@ describe("sqlite-app-storage", () => {
       }),
     );
     expect(localDataKeyStore.writeLocalDataKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists completed onboarding without writing a null bootstrap step", async () => {
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 9,
+      bootstrapRow: {
+        has_completed_onboarding: 0,
+        profile_version: 2,
+        incomplete_onboarding_step: 2,
+      },
+      profileRow: {
+        last_period_start: null,
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: "ciphertext",
+      },
+      syncPreferencesRow: {
+        mode: "managed",
+        endpoint_input: "",
+        normalized_endpoint: "https://sync.ovumcy.com",
+        device_label: "",
+        setup_status: "not_configured",
+        prepared_at: null,
+        last_remote_generation: null,
+        last_synced_at: null,
+      },
+    });
+    const originalRunAsync = inspected.database.runAsync.bind(inspected.database);
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => ({
+        execAsync: inspected.database.execAsync,
+        getFirstAsync: inspected.database.getFirstAsync,
+        getAllAsync: inspected.database.getAllAsync,
+        async runAsync(source: string, ...params: unknown[]) {
+          if (
+            source.includes("INSERT INTO bootstrap_state") &&
+            params[2] === null
+          ) {
+            throw new Error(
+              "NOT NULL constraint failed: bootstrap_state.incomplete_onboarding_step",
+            );
+          }
+
+          return originalRunAsync(source, ...params);
+        },
+      }),
+    });
+
+    await expect(
+      storage.writeBootstrapState({
+        hasCompletedOnboarding: true,
+        profileVersion: 2,
+        incompleteOnboardingStep: null,
+      }),
+    ).resolves.toBeUndefined();
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
   });
 });

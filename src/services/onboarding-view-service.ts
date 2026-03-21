@@ -5,6 +5,7 @@ import type {
   OnboardingStepTwoValues,
   UsageGoal,
 } from "../models/onboarding";
+import type { PredictionMode } from "../models/profile";
 import {
   buildCycleGuidanceState,
   buildDayOptions,
@@ -17,9 +18,8 @@ export type OnboardingViewData = {
   stepOne: {
     title: string;
     subtitle: string;
-    fieldLabel: string;
     day1Tip: string;
-    privacy: string;
+    dismissTip: string;
     datePlaceholder: string;
     selectedDateLabel: string;
     nextLabel: string;
@@ -36,8 +36,8 @@ export type OnboardingViewData = {
     periodLengthHint: string;
     autoPeriodFillLabel: string;
     autoPeriodFillHint: string;
-    irregularCycleLabel: string;
-    irregularCycleHint: string;
+    predictionModeLabel: string;
+    predictionModeHint: string;
     ageGroupLabel: string;
     ageGroupHint: string;
     usageGoalLabel: string;
@@ -55,6 +55,11 @@ export type OnboardingViewData = {
       value: AgeGroupOption;
       label: string;
     }[];
+    predictionModeOptions: {
+      value: PredictionMode;
+      label: string;
+      secondaryLabel: string;
+    }[];
     usageGoalOptions: {
       value: UsageGoal;
       label: string;
@@ -64,6 +69,7 @@ export type OnboardingViewData = {
   };
   errors: {
     dateRequired: string;
+    dismissError: string;
     invalidLastPeriodStart: string;
     lastPeriodRange: string;
     generic: string;
@@ -91,9 +97,8 @@ export function buildOnboardingViewData(
     stepOne: {
       title: onboardingCopy.step1.title,
       subtitle: onboardingCopy.step1.subtitle,
-      fieldLabel: onboardingCopy.step1.field,
       day1Tip: onboardingCopy.step1.day1Tip,
-      privacy: onboardingCopy.step1.privacy,
+      dismissTip: onboardingCopy.step1.dismissTip,
       datePlaceholder: onboardingCopy.step1.datePlaceholder,
       selectedDateLabel: onboardingCopy.step1.selectedDate,
       nextLabel: onboardingCopy.buttons.next,
@@ -114,8 +119,8 @@ export function buildOnboardingViewData(
       periodLengthHint: onboardingCopy.step2.periodLengthHint,
       autoPeriodFillLabel: onboardingCopy.step2.autoPeriodFill,
       autoPeriodFillHint: onboardingCopy.step2.autoPeriodFillHint,
-      irregularCycleLabel: onboardingCopy.step2.irregularCycle,
-      irregularCycleHint: onboardingCopy.step2.irregularCycleHint,
+      predictionModeLabel: onboardingCopy.step2.predictionMode,
+      predictionModeHint: onboardingCopy.step2.predictionModeHint,
       ageGroupLabel: onboardingCopy.step2.ageGroup,
       ageGroupHint: onboardingCopy.step2.ageGroupHint,
       usageGoalLabel: onboardingCopy.step2.usageGoal,
@@ -133,6 +138,23 @@ export function buildOnboardingViewData(
         { value: "under_20", label: onboardingCopy.ageGroup.under20 },
         { value: "age_20_35", label: onboardingCopy.ageGroup.age20to35 },
         { value: "age_35_plus", label: onboardingCopy.ageGroup.age35plus },
+      ],
+      predictionModeOptions: [
+        {
+          value: "regular",
+          label: onboardingCopy.step2.predictionModeRegular,
+          secondaryLabel: onboardingCopy.step2.predictionModeRegularHint,
+        },
+        {
+          value: "irregular",
+          label: onboardingCopy.step2.predictionModeIrregular,
+          secondaryLabel: onboardingCopy.step2.predictionModeIrregularHint,
+        },
+        {
+          value: "facts_only",
+          label: onboardingCopy.step2.predictionModeFactsOnly,
+          secondaryLabel: onboardingCopy.step2.predictionModeFactsOnlyHint,
+        },
       ],
       usageGoalOptions: [
         {
@@ -153,6 +175,7 @@ export function buildOnboardingViewData(
     },
     errors: {
       dateRequired: onboardingCopy.errors.dateRequired,
+      dismissError: onboardingCopy.errors.dismissError,
       invalidLastPeriodStart: onboardingCopy.errors.invalidLastPeriodStart,
       lastPeriodRange: onboardingCopy.errors.lastPeriodRange,
       generic: onboardingCopy.errors.generic,

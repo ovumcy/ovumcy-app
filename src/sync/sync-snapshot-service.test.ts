@@ -24,6 +24,7 @@ describe("sync-snapshot-service", () => {
         ...createDefaultBootstrapState(),
         hasCompletedOnboarding: true,
         profileVersion: 2,
+        incompleteOnboardingStep: null,
       }),
       readDayLogSummary: jest.fn().mockResolvedValue({
         totalEntries: 1,
@@ -44,6 +45,7 @@ describe("sync-snapshot-service", () => {
       bootstrapState: expect.objectContaining({
         hasCompletedOnboarding: true,
         profileVersion: 2,
+        incompleteOnboardingStep: null,
       }),
       profile: expect.objectContaining({
         cycleLength: 28,
@@ -64,6 +66,7 @@ describe("sync-snapshot-service", () => {
       ...createDefaultBootstrapState(),
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     };
     const storage = createLocalAppStorageMock();
     const syncPreferences = {

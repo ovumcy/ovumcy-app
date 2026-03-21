@@ -5,6 +5,7 @@ import {
   finishOnboarding,
   loadOnboardingScreenState,
   patchOnboardingStepTwoValues,
+  persistIncompleteOnboardingStep,
   saveOnboardingStepOne,
   type LoadedOnboardingState,
 } from "./onboarding-screen-service";
@@ -18,6 +19,7 @@ function createLoadedState(
     periodLength: 5,
     autoPeriodFill: true,
     irregularCycle: false,
+    unpredictableCycle: false,
     ageGroup: "",
     usageGoal: "health",
   };
@@ -30,7 +32,7 @@ function createLoadedState(
       cycleLength: record.cycleLength,
       periodLength: record.periodLength,
       autoPeriodFill: record.autoPeriodFill,
-      irregularCycle: record.irregularCycle,
+      predictionMode: "regular",
       ageGroup: "age_20_35",
       usageGoal: record.usageGoal,
     },
@@ -44,6 +46,7 @@ describe("onboarding-screen-service", () => {
       readBootstrapState: jest.fn().mockResolvedValue({
         hasCompletedOnboarding: true,
         profileVersion: 2,
+        incompleteOnboardingStep: null,
       }),
     });
 
@@ -52,8 +55,23 @@ describe("onboarding-screen-service", () => {
     });
   });
 
-  it("loads onboarding state with the next unresolved step", async () => {
+  it("loads onboarding state from the persisted incomplete step", async () => {
     const storage = createStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: 2,
+      }),
+      readOnboardingRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-03-17",
+        cycleLength: 30,
+        periodLength: 4,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+      }),
       readProfileRecord: jest.fn().mockResolvedValue({
         lastPeriodStart: "2026-03-17",
         cycleLength: 30,
@@ -72,6 +90,9 @@ describe("onboarding-screen-service", () => {
 
     await expect(loadOnboardingScreenState(storage)).resolves.toEqual({
       kind: "ready",
+      profile: expect.objectContaining({
+        lastPeriodStart: "2026-03-17",
+      }),
       state: expect.objectContaining({
         selectedDate: "2026-03-17",
         step: 2,
@@ -79,6 +100,7 @@ describe("onboarding-screen-service", () => {
           autoPeriodFill: true,
           cycleLength: 30,
           periodLength: 4,
+          predictionMode: "regular",
         }),
       }),
     });
@@ -93,6 +115,7 @@ describe("onboarding-screen-service", () => {
         periodLength: 5,
         autoPeriodFill: true,
         irregularCycle: false,
+        unpredictableCycle: false,
         ageGroup: "",
         usageGoal: "health",
       },
@@ -112,11 +135,49 @@ describe("onboarding-screen-service", () => {
         step: 2,
       }),
     });
-    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+    expect(storage.writeOnboardingRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         lastPeriodStart: "2026-03-16",
       }),
     );
+    expect(storage.writeBootstrapState).toHaveBeenCalledWith({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 2,
+    });
+  });
+
+  it("logs the labeled save-step-one error in development when step 1 persistence fails", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const writeError = new Error(
+      "sqlite/writeOnboardingRecord/profile: sqlite/writeProfileRecord/upsert: boom",
+    );
+    const storage = createStorageMock({
+      writeOnboardingRecord: jest.fn().mockRejectedValue(writeError),
+    });
+    const state = createLoadedState({
+      step: 1,
+      selectedDate: "2026-03-16",
+    });
+
+    const result = await saveOnboardingStepOne(
+      storage,
+      state,
+      new Date(2026, 2, 17),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "generic",
+    });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "onboarding/saveOnboardingStepOne",
+      writeError,
+    );
+
+    consoleErrorSpy.mockRestore();
   });
 
   it("sanitizes step 2 values before persisting onboarding completion", async () => {
@@ -140,6 +201,7 @@ describe("onboarding-screen-service", () => {
     expect(storage.writeBootstrapState).toHaveBeenCalledWith({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -148,6 +210,137 @@ describe("onboarding-screen-service", () => {
       }),
     );
   });
+
+  it("persists facts-only onboarding mode as an unpredictable cycle", async () => {
+    const storage = createStorageMock();
+    const state = patchOnboardingStepTwoValues(createLoadedState(), {
+      predictionMode: "facts_only",
+    });
+
+    const result = await finishOnboarding(storage, state);
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        stepTwoValues: expect.objectContaining({
+          predictionMode: "facts_only",
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        irregularCycle: false,
+        unpredictableCycle: true,
+      }),
+    );
+  });
+
+  it("finishes resumed step 2 onboarding from the selected date even if the record is stale", async () => {
+    const storage = createStorageMock();
+    const state = createLoadedState({
+      record: {
+        lastPeriodStart: null,
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+      },
+      selectedDate: "2026-03-17",
+      step: 2,
+    });
+
+    const result = await finishOnboarding(storage, state);
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        selectedDate: "2026-03-17",
+        record: expect.objectContaining({
+          lastPeriodStart: "2026-03-17",
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastPeriodStart: "2026-03-17",
+      }),
+    );
+  });
+
+  it("logs the labeled finish error in development when onboarding completion fails", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const writeError = new Error("sqlite/writeProfileRecord/upsert: boom");
+    const storage = createStorageMock({
+      writeProfileRecord: jest.fn().mockRejectedValue(writeError),
+    });
+
+    const result = await finishOnboarding(storage, createLoadedState());
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "generic",
+    });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      "onboarding/finishOnboarding",
+      writeError,
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("defaults incomplete relaunches to step 1 when legacy bootstrap state has no persisted step", async () => {
+    const storage = createStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: null,
+      }),
+      readOnboardingRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-03-17",
+        cycleLength: 30,
+        periodLength: 4,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+      }),
+    });
+
+    await expect(loadOnboardingScreenState(storage)).resolves.toEqual(
+      expect.objectContaining({
+        kind: "ready",
+        state: expect.objectContaining({
+          selectedDate: "2026-03-17",
+          step: 1,
+        }),
+      }),
+    );
+  });
+
+  it("persists a return to step 1 after backing out of step 2", async () => {
+    const storage = createStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: 2,
+      }),
+    });
+
+    await expect(persistIncompleteOnboardingStep(storage, 1)).resolves.toEqual({
+      ok: true,
+    });
+    expect(storage.writeBootstrapState).toHaveBeenCalledWith({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 1,
+    });
+  });
 });
 
 function createStorageMock(overrides = {}) {
@@ -155,6 +348,7 @@ function createStorageMock(overrides = {}) {
     readBootstrapState: jest.fn().mockResolvedValue({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     }),
     readProfileRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: null,
@@ -176,6 +370,7 @@ function createStorageMock(overrides = {}) {
       periodLength: 5,
       autoPeriodFill: true,
       irregularCycle: false,
+      unpredictableCycle: false,
       ageGroup: "",
       usageGoal: "health",
     }),

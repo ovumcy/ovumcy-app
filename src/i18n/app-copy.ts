@@ -20,10 +20,8 @@ const appCopyEn = {
     step1: {
       title: "When did your last period start?",
       subtitle: "Choose a date from the last 60 days.",
-      field: "Last period start date",
       day1Tip: "Day 1 is the first day of full flow, not spotting.",
-      privacy:
-        "All your data stays on this device unless you choose sync later. Core tracking does not require an account.",
+      dismissTip: "Dismiss note",
         today: "Today",
         yesterday: "Yesterday",
         twoDaysAgo: "2 days ago",
@@ -52,9 +50,14 @@ const appCopyEn = {
       autoPeriodFill: "Auto-mark period days",
       autoPeriodFillHint:
         "When enabled, marking the first day auto-fills the next days based on your period length.",
-      irregularCycle: "My cycle is usually irregular",
-      irregularCycleHint:
-        "Turn this on if your cycles vary by more than 7 days. Ovumcy still shows predictions, but they should be read as approximate guidance.",
+      predictionMode: "How predictable is your cycle?",
+      predictionModeHint: "Choose the option that sounds most like you.",
+      predictionModeRegular: "Usually regular",
+      predictionModeRegularHint: "Show usual predictions.",
+      predictionModeIrregular: "Usually irregular",
+      predictionModeIrregularHint: "Show approximate dates.",
+      predictionModeFactsOnly: "No predictions",
+      predictionModeFactsOnlyHint: "Show your records only.",
       ageGroup: "Your age",
       ageGroupHint:
         "Optional. Right now this adds age-related context in Insights only. It does not change cycle calculations.",
@@ -74,6 +77,7 @@ const appCopyEn = {
     },
     errors: {
       dateRequired: "Please select a date.",
+      dismissError: "Dismiss error",
       invalidLastPeriodStart: "Please select a valid last period start date.",
       lastPeriodRange: "Choose a date within the last 60 days.",
       generic: "Failed to save onboarding data. Please try again.",
@@ -104,10 +108,8 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       step1: {
         title: "Когда началась последняя менструация?",
         subtitle: "Выберите дату за последние 60 дней.",
-        field: "Дата начала последней менструации",
         day1Tip: "День 1 — это первый день полноценного кровотечения, а не мажущих выделений.",
-        privacy:
-          "Все данные остаются на этом устройстве, если позже вы не включите sync. Базовое ведение цикла не требует аккаунта.",
+        dismissTip: "Скрыть подсказку",
         today: "Сегодня",
         yesterday: "Вчера",
         twoDaysAgo: "2 дня назад",
@@ -136,9 +138,14 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         autoPeriodFill: "Автоматически отмечать дни менструации",
         autoPeriodFillHint:
           "Когда опция включена, отметка первого дня автоматически заполнит следующие дни на основе длительности менструации.",
-        irregularCycle: "Мой цикл обычно нерегулярный",
-        irregularCycleHint:
-          "Включите, если ваши циклы отличаются более чем на 7 дней. Ovumcy всё ещё показывает предсказания, но их нужно читать как приблизительный ориентир.",
+        predictionMode: "Насколько предсказуем ваш цикл?",
+        predictionModeHint: "Выберите вариант, который вам ближе.",
+        predictionModeRegular: "Обычно регулярный",
+        predictionModeRegularHint: "Показывать обычные предсказания.",
+        predictionModeIrregular: "Обычно нерегулярный",
+        predictionModeIrregularHint: "Показывать примерные даты.",
+        predictionModeFactsOnly: "Без предсказаний",
+        predictionModeFactsOnlyHint: "Показывать только ваши записи.",
         ageGroup: "Ваш возраст",
         ageGroupHint:
           "Необязательно. Сейчас это добавляет только возрастной контекст в Insights и не меняет расчёт цикла.",
@@ -158,6 +165,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       },
       errors: {
         dateRequired: "Пожалуйста, выберите дату.",
+        dismissError: "Скрыть ошибку",
         invalidLastPeriodStart:
           "Пожалуйста, выберите корректную дату начала последней менструации.",
         lastPeriodRange: "Выберите дату в пределах последних 60 дней.",
@@ -184,10 +192,8 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       step1: {
         title: "¿Cuándo empezó tu último período?",
         subtitle: "Elige una fecha de los últimos 60 días.",
-        field: "Fecha de inicio del último período",
         day1Tip: "El día 1 es el primer día de flujo completo, no de manchado.",
-        privacy:
-          "Todos tus datos permanecen en este dispositivo salvo que elijas sync más adelante. El seguimiento básico no requiere cuenta.",
+        dismissTip: "Cerrar nota",
         today: "Hoy",
         yesterday: "Ayer",
         twoDaysAgo: "Hace 2 días",
@@ -216,9 +222,14 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         autoPeriodFill: "Marcar automáticamente los días del período",
         autoPeriodFillHint:
           "Cuando está activado, marcar el primer día completa automáticamente los días siguientes según la duración del período.",
-        irregularCycle: "Mi ciclo suele ser irregular",
-        irregularCycleHint:
-          "Actívalo si tus ciclos varían más de 7 días. Ovumcy seguirá mostrando predicciones, pero deben leerse como una guía aproximada.",
+        predictionMode: "¿Qué tan predecible es tu ciclo?",
+        predictionModeHint: "Elige la opción que más se parece a ti.",
+        predictionModeRegular: "Suele ser regular",
+        predictionModeRegularHint: "Mostrar predicciones normales.",
+        predictionModeIrregular: "Suele ser irregular",
+        predictionModeIrregularHint: "Mostrar fechas aproximadas.",
+        predictionModeFactsOnly: "Sin predicciones",
+        predictionModeFactsOnlyHint: "Mostrar solo tus registros.",
         ageGroup: "Tu edad",
         ageGroupHint:
           "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Insights. No cambia los cálculos del ciclo.",
@@ -238,6 +249,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       },
       errors: {
         dateRequired: "Selecciona una fecha.",
+        dismissError: "Cerrar error",
         invalidLastPeriodStart:
           "Selecciona una fecha válida de inicio del último período.",
         lastPeriodRange: "Elige una fecha dentro de los últimos 60 días.",

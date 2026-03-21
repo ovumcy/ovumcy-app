@@ -26,6 +26,7 @@ describeIfLive("sync-client-service live transport", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeProfileRecord({
       lastPeriodStart: "2026-03-14",

@@ -10,9 +10,18 @@ import {
 const APP_SCREEN_PROTECTION_KEY = "ovumcy.app-screen-protection";
 const IOS_APP_SWITCHER_BLUR_INTENSITY = 0.7;
 
-export function useAppScreenProtection(enabled = true) {
+type AppScreenProtectionOptions = {
+  isDevelopment?: boolean;
+};
+
+export function useAppScreenProtection(
+  enabled = true,
+  options: AppScreenProtectionOptions = {},
+) {
+  const isDevelopment = options.isDevelopment ?? __DEV__;
+
   useEffect(() => {
-    if (!enabled || Platform.OS === "web") {
+    if (!enabled || Platform.OS === "web" || isDevelopment) {
       return;
     }
 
@@ -39,5 +48,5 @@ export function useAppScreenProtection(enabled = true) {
         });
       }
     };
-  }, [enabled]);
+  }, [enabled, isDevelopment]);
 }

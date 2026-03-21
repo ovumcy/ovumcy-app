@@ -1,4 +1,4 @@
-import { deleteDatabaseAsync, openDatabaseAsync } from "expo-sqlite";
+import { openDatabaseSync } from "expo-sqlite";
 
 import {
   createEmptyDayLogRecord,
@@ -18,6 +18,7 @@ import {
   createDefaultProfileRecord,
   normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
+  normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
@@ -48,16 +49,21 @@ import type {
   LocalBootstrapState,
   LocalDayLogSummary,
 } from "./storage-contract";
-import { createDefaultBootstrapState } from "./storage-contract";
+import {
+  createDefaultBootstrapState,
+  persistBootstrapIncompleteOnboardingStep,
+  resolveBootstrapIncompleteOnboardingStep,
+} from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 8;
+const DATABASE_VERSION = 9;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     has_completed_onboarding INTEGER NOT NULL DEFAULT 0,
-    profile_version INTEGER NOT NULL DEFAULT 2
+    profile_version INTEGER NOT NULL DEFAULT 2,
+    incomplete_onboarding_step INTEGER DEFAULT 1
   );
 `;
 
@@ -153,9 +159,14 @@ const ADD_SYNC_LAST_SYNCED_AT_COLUMN = `
   ALTER TABLE sync_preferences ADD COLUMN last_synced_at TEXT;
 `;
 
+const ADD_BOOTSTRAP_INCOMPLETE_STEP_COLUMN = `
+  ALTER TABLE bootstrap_state ADD COLUMN incomplete_onboarding_step INTEGER DEFAULT 1;
+`;
+
 type BootstrapStateRow = {
   has_completed_onboarding: number;
   profile_version: number;
+  incomplete_onboarding_step: number | null;
 };
 
 type ProfileSettingsRow = {
@@ -176,16 +187,6 @@ type ProfileSettingsRow = {
   encrypted_payload: string | null;
 };
 
-type LegacyOnboardingProfileRow = {
-  last_period_start: string | null;
-  cycle_length: number;
-  period_length: number;
-  auto_period_fill: number;
-  irregular_cycle: number;
-  age_group: string;
-  usage_goal: string;
-};
-
 type CountRow = {
   count: number;
 };
@@ -199,10 +200,6 @@ type SyncPreferencesRow = {
   prepared_at: string | null;
   last_remote_generation: number | null;
   last_synced_at: string | null;
-};
-
-type TableInfoRow = {
-  name: string;
 };
 
 type DayLogSummaryRow = {
@@ -247,6 +244,56 @@ export interface LocalAppDatabase {
   closeAsync?(): Promise<void>;
 }
 
+function createStorageOperationError(
+  operation: string,
+  error: unknown,
+): Error {
+  if (error instanceof Error) {
+    return new Error(`${operation}: ${error.message}`, {
+      cause: error,
+    });
+  }
+
+  return new Error(`${operation}: unknown sqlite error`);
+}
+
+function collectErrorMessages(error: unknown): string[] {
+  if (!(error instanceof Error)) {
+    return [];
+  }
+
+  const messages = [error.message];
+
+  if (error.cause instanceof Error) {
+    messages.push(...collectErrorMessages(error.cause));
+  }
+
+  return messages;
+}
+
+function isRetryableNativeSQLiteOpenError(error: unknown): boolean {
+  const message = collectErrorMessages(error).join(" | ").toLowerCase();
+  const touchesNativeDatabase =
+    message.includes("nativedatabase.execasync") ||
+    message.includes("nativedatabase.prepareasync");
+  const indicatesInvalidHandle =
+    message.includes("nullpointerexception") ||
+    message.includes("has been rejected");
+
+  return touchesNativeDatabase && indicatesInvalidHandle;
+}
+
+async function withStorageOperationLabel<T>(
+  operation: string,
+  task: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await task();
+  } catch (error) {
+    throw createStorageOperationError(operation, error);
+  }
+}
+
 type LegacyLocalAppStorageSource = {
   clear(): Promise<void>;
   hasData(): Promise<boolean>;
@@ -255,7 +302,6 @@ type LegacyLocalAppStorageSource = {
 };
 
 type CreateSQLiteAppStorageOptions = {
-  deleteDatabase?: () => Promise<void>;
   legacyStorageSource?: LegacyLocalAppStorageSource;
   localDataKeyStore?: LocalDataKeyStore;
   openDatabase?: () => Promise<LocalAppDatabase>;
@@ -279,7 +325,6 @@ const defaultLegacyStorageSource: LegacyLocalAppStorageSource = {
 export function createSQLiteAppStorage(
   options: CreateSQLiteAppStorageOptions = {},
 ): LocalAppStorage {
-  const deleteDatabase = options.deleteDatabase ?? deleteLocalAppDatabase;
   const openDatabase = options.openDatabase ?? openLocalAppDatabase;
   const localDataKeyStore =
     options.localDataKeyStore ?? createInMemoryLocalDataKeyStore();
@@ -288,6 +333,16 @@ export function createSQLiteAppStorage(
   let hydratedDatabasePromise: Promise<LocalAppDatabase> | null = null;
   let localDataKeyPromise: Promise<string> | null = null;
   let resetBarrierPromise: Promise<void> | null = null;
+  let storageOperationQueue = Promise.resolve();
+
+  function enqueueStorageOperation<T>(task: () => Promise<T>): Promise<T> {
+    const result = storageOperationQueue.then(task, task);
+    storageOperationQueue = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
 
   function beginResetBarrier() {
     let releaseBarrier!: () => void;
@@ -312,7 +367,7 @@ export function createSQLiteAppStorage(
 
   async function getOrCreateHydratedDatabase() {
     if (!hydratedDatabasePromise) {
-      const nextPromise = hydrateLocalAppDatabase(
+      const nextPromise = hydrateLocalAppDatabaseWithRetry(
         openDatabase,
         legacyStorageSource,
         localDataKeyStore,
@@ -341,245 +396,342 @@ export function createSQLiteAppStorage(
     return localDataKeyPromise;
   }
 
+  async function readBootstrapStateInternal(): Promise<LocalBootstrapState> {
+    const database = await getHydratedDatabase();
+    const row = await withStorageOperationLabel(
+      "sqlite/readBootstrapState/select",
+      () =>
+        database.getFirstAsync<BootstrapStateRow>(
+          `SELECT
+            has_completed_onboarding,
+            profile_version,
+            incomplete_onboarding_step
+           FROM bootstrap_state
+           WHERE id = 1;`,
+        ),
+    );
+
+    return row ? mapBootstrapStateRow(row) : createDefaultBootstrapState();
+  }
+
+  async function writeBootstrapStateInternal(
+    state: LocalBootstrapState,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    await withStorageOperationLabel("sqlite/writeBootstrapState/upsert", () =>
+      upsertBootstrapState(database, state),
+    );
+  }
+
+  async function clearAllLocalDataInternal(): Promise<void> {
+    await waitForResetBarrier();
+    const releaseBarrier = beginResetBarrier();
+    try {
+      const database = await getOrCreateHydratedDatabase();
+      localDataKeyPromise = null;
+      await wipeLocalAppTables(database);
+      await legacyStorageSource.clear();
+      await localDataKeyStore.clearLocalDataKey();
+      await ensureSeedRows(database, await getLocalDataKey(database));
+    } catch (error) {
+      hydratedDatabasePromise = null;
+      localDataKeyPromise = null;
+      throw error;
+    } finally {
+      releaseBarrier();
+    }
+  }
+
+  async function readProfileRecordInternal(): Promise<ProfileRecord> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const row = await withStorageOperationLabel(
+      "sqlite/readProfileRecord/select",
+      () =>
+        database.getFirstAsync<ProfileSettingsRow>(
+          `SELECT
+            last_period_start,
+            cycle_length,
+            period_length,
+            auto_period_fill,
+            irregular_cycle,
+            unpredictable_cycle,
+            age_group,
+            usage_goal,
+            track_bbt,
+            temperature_unit,
+            track_cervical_mucus,
+            hide_sex_chip,
+            language_override,
+            theme_override,
+            encrypted_payload
+           FROM profile_settings
+           WHERE id = 1;`,
+        ),
+    );
+
+    return row
+      ? mapProfileSettingsRow(row, localDataKey)
+      : createDefaultProfileRecord();
+  }
+
+  async function writeProfileRecordInternal(record: ProfileRecord): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writeProfileRecord/upsert", () =>
+      upsertProfileRecord(database, record, localDataKey),
+    );
+  }
+
+  async function readSyncPreferencesRecordInternal(): Promise<SyncPreferencesRecord> {
+    const database = await getHydratedDatabase();
+    const row = await database.getFirstAsync<SyncPreferencesRow>(
+      `SELECT
+        mode,
+        endpoint_input,
+        normalized_endpoint,
+        device_label,
+        setup_status,
+        prepared_at,
+        last_remote_generation,
+        last_synced_at
+       FROM sync_preferences
+       WHERE id = 1;`,
+    );
+
+    return row ? mapSyncPreferencesRow(row) : createDefaultSyncPreferencesRecord();
+  }
+
+  async function writeSyncPreferencesRecordInternal(
+    record: SyncPreferencesRecord,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    await upsertSyncPreferencesRecord(database, record);
+  }
+
+  async function readOnboardingRecordInternal(): Promise<OnboardingRecord> {
+    const profile = await readProfileRecordInternal();
+    return profileToOnboardingRecord(profile);
+  }
+
+  async function writeOnboardingRecordInternal(
+    record: OnboardingRecord,
+  ): Promise<void> {
+    const currentProfile = await withStorageOperationLabel(
+      "sqlite/writeOnboardingRecord/profile",
+      () => readProfileRecordInternal(),
+    );
+    const nextProfile = applyOnboardingRecordToProfile(currentProfile, record);
+    await writeProfileRecordInternal(nextProfile);
+  }
+
+  async function readDayLogRecordInternal(
+    date: DayLogRecord["date"],
+  ): Promise<DayLogRecord> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const row = await database.getFirstAsync<DayLogRow>(
+      `SELECT
+        day,
+        is_period,
+        cycle_start,
+        is_uncertain,
+        flow,
+        mood,
+        sex_activity,
+        bbt,
+        cervical_mucus,
+        cycle_factor_keys,
+        symptom_ids,
+        notes,
+        encrypted_payload
+       FROM day_logs
+       WHERE day = ?;`,
+      date,
+    );
+
+    return row ? mapDayLogRow(row, localDataKey) : createEmptyDayLogRecord(date);
+  }
+
+  async function writeDayLogRecordInternal(record: DayLogRecord): Promise<void> {
+    const database = await getHydratedDatabase();
+    await upsertDayLogRecord(database, record, await getLocalDataKey(database));
+  }
+
+  async function deleteDayLogRecordInternal(
+    date: DayLogRecord["date"],
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    await database.runAsync("DELETE FROM day_logs WHERE day = ?;", date);
+  }
+
+  async function listDayLogRecordsInRangeInternal(
+    from: DayLogRecord["date"],
+    to: DayLogRecord["date"],
+  ): Promise<DayLogRecord[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await database.getAllAsync<DayLogRow>(
+      `SELECT
+        day,
+        is_period,
+        cycle_start,
+        is_uncertain,
+        flow,
+        mood,
+        sex_activity,
+        bbt,
+        cervical_mucus,
+        cycle_factor_keys,
+        symptom_ids,
+        notes,
+        encrypted_payload
+       FROM day_logs
+       WHERE day >= ? AND day <= ?
+       ORDER BY day ASC;`,
+      from,
+      to,
+    );
+
+    return rows.map((row) => mapDayLogRow(row, localDataKey));
+  }
+
+  async function readDayLogSummaryInternal(
+    from?: DayLogRecord["date"],
+    to?: DayLogRecord["date"],
+  ): Promise<LocalDayLogSummary> {
+    const database = await getHydratedDatabase();
+    const row = from || to
+      ? await database.getFirstAsync<DayLogSummaryRow>(
+          `SELECT
+            COUNT(*) AS total_entries,
+            MIN(day) AS date_from,
+            MAX(day) AS date_to
+           FROM day_logs
+           WHERE (? IS NULL OR day >= ?)
+             AND (? IS NULL OR day <= ?);`,
+          from ?? null,
+          from ?? null,
+          to ?? null,
+          to ?? null,
+        )
+      : await database.getFirstAsync<DayLogSummaryRow>(
+          `SELECT
+            COUNT(*) AS total_entries,
+            MIN(day) AS date_from,
+            MAX(day) AS date_to
+           FROM day_logs;`,
+        );
+
+    return mapDayLogSummaryRow(row);
+  }
+
+  async function listSymptomRecordsInternal(): Promise<SymptomRecord[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await database.getAllAsync<SymptomRow>(
+      `SELECT
+        id,
+        slug,
+        label,
+        icon,
+        color,
+        is_default,
+        is_archived,
+        sort_order,
+        encrypted_payload
+       FROM symptoms
+       ORDER BY sort_order ASC, id ASC;`,
+    );
+
+    return rows.length > 0
+      ? rows.map((row) => mapSymptomRow(row, localDataKey))
+      : createDefaultSymptomRecords();
+  }
+
+  async function writeSymptomRecordInternal(record: SymptomRecord): Promise<void> {
+    const database = await getHydratedDatabase();
+    await upsertSymptomRecord(database, record, await getLocalDataKey(database));
+  }
+
   return {
-    async readBootstrapState(): Promise<LocalBootstrapState> {
-      const database = await getHydratedDatabase();
-      const row = await database.getFirstAsync<BootstrapStateRow>(
-        "SELECT has_completed_onboarding, profile_version FROM bootstrap_state WHERE id = 1;",
-      );
-
-      return row ? mapBootstrapStateRow(row) : createDefaultBootstrapState();
+    readBootstrapState() {
+      return enqueueStorageOperation(() => readBootstrapStateInternal());
     },
-
-    async writeBootstrapState(state: LocalBootstrapState): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertBootstrapState(database, state);
+    writeBootstrapState(state) {
+      return enqueueStorageOperation(() => writeBootstrapStateInternal(state));
     },
-
-    async clearAllLocalData(): Promise<void> {
-      await waitForResetBarrier();
-      const releaseBarrier = beginResetBarrier();
-      try {
-        const database = await getOrCreateHydratedDatabase();
-        hydratedDatabasePromise = null;
-        localDataKeyPromise = null;
-        if (typeof database.closeAsync === "function") {
-          await database.closeAsync();
-        }
-
-        await deleteDatabase();
-        await legacyStorageSource.clear();
-        await localDataKeyStore.clearLocalDataKey();
-      } finally {
-        hydratedDatabasePromise = null;
-        localDataKeyPromise = null;
-        releaseBarrier();
-      }
+    clearAllLocalData() {
+      return enqueueStorageOperation(() => clearAllLocalDataInternal());
     },
-
-    async readProfileRecord(): Promise<ProfileRecord> {
-      const database = await getHydratedDatabase();
-      const localDataKey = await getLocalDataKey(database);
-      const row = await database.getFirstAsync<ProfileSettingsRow>(
-        `SELECT
-          last_period_start,
-          cycle_length,
-          period_length,
-          auto_period_fill,
-          irregular_cycle,
-          unpredictable_cycle,
-          age_group,
-          usage_goal,
-          track_bbt,
-          temperature_unit,
-          track_cervical_mucus,
-          hide_sex_chip,
-          language_override,
-          theme_override,
-          encrypted_payload
-         FROM profile_settings
-         WHERE id = 1;`,
-      );
-
-      return row
-        ? mapProfileSettingsRow(row, localDataKey)
-        : createDefaultProfileRecord();
+    readProfileRecord() {
+      return enqueueStorageOperation(() => readProfileRecordInternal());
     },
-
-    async writeProfileRecord(record: ProfileRecord): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertProfileRecord(database, record, await getLocalDataKey(database));
+    writeProfileRecord(record) {
+      return enqueueStorageOperation(() => writeProfileRecordInternal(record));
     },
-
-    async readSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
-      const database = await getHydratedDatabase();
-      const row = await database.getFirstAsync<SyncPreferencesRow>(
-        `SELECT
-          mode,
-          endpoint_input,
-          normalized_endpoint,
-          device_label,
-          setup_status,
-          prepared_at,
-          last_remote_generation,
-          last_synced_at
-         FROM sync_preferences
-         WHERE id = 1;`,
-      );
-
-      return row ? mapSyncPreferencesRow(row) : createDefaultSyncPreferencesRecord();
+    readSyncPreferencesRecord() {
+      return enqueueStorageOperation(() => readSyncPreferencesRecordInternal());
     },
-
-    async writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertSyncPreferencesRecord(database, record);
+    writeSyncPreferencesRecord(record) {
+      return enqueueStorageOperation(() => writeSyncPreferencesRecordInternal(record));
     },
-
-    async readOnboardingRecord(): Promise<OnboardingRecord> {
-      const profile = await this.readProfileRecord();
-      return profileToOnboardingRecord(profile);
+    readOnboardingRecord() {
+      return enqueueStorageOperation(() => readOnboardingRecordInternal());
     },
-
-    async writeOnboardingRecord(record: OnboardingRecord): Promise<void> {
-      const currentProfile = await this.readProfileRecord();
-      const nextProfile = applyOnboardingRecordToProfile(currentProfile, record);
-
-      await this.writeProfileRecord(nextProfile);
+    writeOnboardingRecord(record) {
+      return enqueueStorageOperation(() => writeOnboardingRecordInternal(record));
     },
-
-    async readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord> {
-      const database = await getHydratedDatabase();
-      const localDataKey = await getLocalDataKey(database);
-      const row = await database.getFirstAsync<DayLogRow>(
-        `SELECT
-          day,
-          is_period,
-          cycle_start,
-          is_uncertain,
-          flow,
-          mood,
-          sex_activity,
-          bbt,
-          cervical_mucus,
-          cycle_factor_keys,
-          symptom_ids,
-          notes,
-          encrypted_payload
-         FROM day_logs
-         WHERE day = ?;`,
-        date,
-      );
-
-      return row ? mapDayLogRow(row, localDataKey) : createEmptyDayLogRecord(date);
+    readDayLogRecord(date) {
+      return enqueueStorageOperation(() => readDayLogRecordInternal(date));
     },
-
-    async writeDayLogRecord(record: DayLogRecord): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertDayLogRecord(database, record, await getLocalDataKey(database));
+    writeDayLogRecord(record) {
+      return enqueueStorageOperation(() => writeDayLogRecordInternal(record));
     },
-
-    async deleteDayLogRecord(date: DayLogRecord["date"]): Promise<void> {
-      const database = await getHydratedDatabase();
-      await database.runAsync("DELETE FROM day_logs WHERE day = ?;", date);
+    deleteDayLogRecord(date) {
+      return enqueueStorageOperation(() => deleteDayLogRecordInternal(date));
     },
-
-    async listDayLogRecordsInRange(
-      from: DayLogRecord["date"],
-      to: DayLogRecord["date"],
-    ): Promise<DayLogRecord[]> {
-      const database = await getHydratedDatabase();
-      const localDataKey = await getLocalDataKey(database);
-      const rows = await database.getAllAsync<DayLogRow>(
-        `SELECT
-          day,
-          is_period,
-          cycle_start,
-          is_uncertain,
-          flow,
-          mood,
-          sex_activity,
-          bbt,
-          cervical_mucus,
-          cycle_factor_keys,
-          symptom_ids,
-          notes,
-          encrypted_payload
-         FROM day_logs
-         WHERE day >= ? AND day <= ?
-         ORDER BY day ASC;`,
-        from,
-        to,
-      );
-
-      return rows.map((row) => mapDayLogRow(row, localDataKey));
+    listDayLogRecordsInRange(from, to) {
+      return enqueueStorageOperation(() => listDayLogRecordsInRangeInternal(from, to));
     },
-
-    async readDayLogSummary(
-      from?: DayLogRecord["date"],
-      to?: DayLogRecord["date"],
-    ): Promise<LocalDayLogSummary> {
-      const database = await getHydratedDatabase();
-      const row = from || to
-        ? await database.getFirstAsync<DayLogSummaryRow>(
-            `SELECT
-              COUNT(*) AS total_entries,
-              MIN(day) AS date_from,
-              MAX(day) AS date_to
-             FROM day_logs
-             WHERE (? IS NULL OR day >= ?)
-               AND (? IS NULL OR day <= ?);`,
-            from ?? null,
-            from ?? null,
-            to ?? null,
-            to ?? null,
-          )
-        : await database.getFirstAsync<DayLogSummaryRow>(
-            `SELECT
-              COUNT(*) AS total_entries,
-              MIN(day) AS date_from,
-              MAX(day) AS date_to
-             FROM day_logs;`,
-          );
-
-      return mapDayLogSummaryRow(row);
+    readDayLogSummary(from, to) {
+      return enqueueStorageOperation(() => readDayLogSummaryInternal(from, to));
     },
-
-    async listSymptomRecords(): Promise<SymptomRecord[]> {
-      const database = await getHydratedDatabase();
-      const localDataKey = await getLocalDataKey(database);
-      const rows = await database.getAllAsync<SymptomRow>(
-        `SELECT
-          id,
-          slug,
-          label,
-          icon,
-          color,
-          is_default,
-          is_archived,
-          sort_order,
-          encrypted_payload
-         FROM symptoms
-         ORDER BY sort_order ASC, id ASC;`,
-      );
-
-      return rows.length > 0
-        ? rows.map((row) => mapSymptomRow(row, localDataKey))
-        : createDefaultSymptomRecords();
+    listSymptomRecords() {
+      return enqueueStorageOperation(() => listSymptomRecordsInternal());
     },
-
-    async writeSymptomRecord(record: SymptomRecord): Promise<void> {
-      const database = await getHydratedDatabase();
-      await upsertSymptomRecord(database, record, await getLocalDataKey(database));
+    writeSymptomRecord(record) {
+      return enqueueStorageOperation(() => writeSymptomRecordInternal(record));
     },
   };
 }
 
 async function openLocalAppDatabase(): Promise<LocalAppDatabase> {
-  return openDatabaseAsync(DATABASE_NAME);
+  return openDatabaseSync(DATABASE_NAME);
 }
 
-async function deleteLocalAppDatabase(): Promise<void> {
-  await deleteDatabaseAsync(DATABASE_NAME);
+async function hydrateLocalAppDatabaseWithRetry(
+  openDatabase: () => Promise<LocalAppDatabase>,
+  legacyStorageSource: LegacyLocalAppStorageSource,
+  localDataKeyStore: LocalDataKeyStore,
+): Promise<LocalAppDatabase> {
+  try {
+    return await hydrateLocalAppDatabase(
+      openDatabase,
+      legacyStorageSource,
+      localDataKeyStore,
+    );
+  } catch (error) {
+    if (!isRetryableNativeSQLiteOpenError(error)) {
+      throw error;
+    }
+
+    return hydrateLocalAppDatabase(
+      openDatabase,
+      legacyStorageSource,
+      localDataKeyStore,
+    );
+  }
 }
 
 async function hydrateLocalAppDatabase(
@@ -589,11 +741,22 @@ async function hydrateLocalAppDatabase(
 ): Promise<LocalAppDatabase> {
   const database = createSerializedLocalAppDatabase(await openDatabase());
 
-  await ensureLocalAppSchema(database);
-  const localDataKey = await resolveLocalDataKey(database, localDataKeyStore);
-  await maybeMigrateLegacyLocalAppData(database, legacyStorageSource, localDataKey);
-  await migratePlaintextLocalDataRows(database, localDataKey);
-  await ensureSeedRows(database, localDataKey);
+  await withStorageOperationLabel("sqlite/hydrate/schema", () =>
+    ensureLocalAppSchema(database),
+  );
+  const localDataKey = await withStorageOperationLabel(
+    "sqlite/hydrate/localDataKey",
+    () => resolveLocalDataKey(database, localDataKeyStore),
+  );
+  await withStorageOperationLabel("sqlite/hydrate/legacyMigration", () =>
+    maybeMigrateLegacyLocalAppData(database, legacyStorageSource, localDataKey),
+  );
+  await withStorageOperationLabel("sqlite/hydrate/plaintextMigration", () =>
+    migratePlaintextLocalDataRows(database, localDataKey),
+  );
+  await withStorageOperationLabel("sqlite/hydrate/seedRows", () =>
+    ensureSeedRows(database, localDataKey),
+  );
 
   return database;
 }
@@ -635,171 +798,111 @@ function createSerializedLocalAppDatabase(
 }
 
 async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
-  const versionRow = await database.getFirstAsync<{ user_version: number }>(
-    "PRAGMA user_version;",
+  await withStorageOperationLabel("sqlite/schema/createTables", async () => {
+    await runSchemaStatement(database, CREATE_BOOTSTRAP_STATE_TABLE);
+    await runSchemaStatement(database, CREATE_PROFILE_SETTINGS_TABLE);
+    await runSchemaStatement(database, CREATE_DAY_LOGS_TABLE);
+    await runSchemaStatement(database, CREATE_SYNC_PREFERENCES_TABLE);
+    await runSchemaStatement(database, CREATE_SYMPTOMS_TABLE);
+    await runSchemaStatement(database, CREATE_SYMPTOMS_SLUG_INDEX);
+  });
+  await withStorageOperationLabel("sqlite/schema/migrateV1Profile", () =>
+    migrateV1OnboardingProfile(database),
   );
-  const currentVersion = versionRow?.user_version ?? 0;
+  await withStorageOperationLabel("sqlite/schema/reconcileBootstrap", () =>
+    reconcileBootstrapStateSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileProfile", () =>
+    reconcileProfileSettingsSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileDayLogs", () =>
+    reconcileDayLogsSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileSync", () =>
+    reconcileSyncPreferencesSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileSymptoms", () =>
+    reconcileSymptomsSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/setUserVersion", () =>
+    runSchemaStatement(database, `PRAGMA user_version = ${DATABASE_VERSION};`),
+  );
+}
 
-  if (currentVersion >= DATABASE_VERSION) {
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 0) {
-    await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
-    await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
-    await database.execAsync(CREATE_DAY_LOGS_TABLE);
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 1) {
-    await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
-    await migrateV1OnboardingProfile(database);
-    await database.execAsync("DROP TABLE IF EXISTS onboarding_profile;");
-    await database.runAsync(
-      `UPDATE bootstrap_state
-       SET profile_version = ?
-       WHERE id = 1 AND profile_version < ?;`,
-      2,
-      2,
-    );
-    await database.execAsync(CREATE_DAY_LOGS_TABLE);
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 6;`);
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 2) {
-    await migrateV4InterfacePreferences(database);
-    await database.execAsync(CREATE_DAY_LOGS_TABLE);
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 6;`);
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 3) {
-    await migrateV4InterfacePreferences(database);
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_TABLE);
-    await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-    await database.execAsync(`PRAGMA user_version = 6;`);
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 4) {
-    await migrateV4InterfacePreferences(database);
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(`PRAGMA user_version = 6;`);
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 5) {
-    await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-    await database.execAsync(`PRAGMA user_version = 6;`);
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 6) {
-    await migrateV7EncryptedLocalData(database);
-    await database.execAsync(`PRAGMA user_version = 7;`);
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  if (currentVersion === 7) {
-    await migrateV8SyncMetadata(database);
-    await database.execAsync(`PRAGMA user_version = 8;`);
-    await reconcileSyncPreferencesSchema(database);
-    return;
-  }
-
-  await database.execAsync(CREATE_BOOTSTRAP_STATE_TABLE);
-  await database.execAsync(CREATE_PROFILE_SETTINGS_TABLE);
-  await database.execAsync(CREATE_DAY_LOGS_TABLE);
-  await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-  await database.execAsync(CREATE_SYMPTOMS_TABLE);
-  await database.execAsync(CREATE_SYMPTOMS_SLUG_INDEX);
-  await database.execAsync(`PRAGMA user_version = ${DATABASE_VERSION};`);
-  await reconcileSyncPreferencesSchema(database);
+async function runSchemaStatement(
+  database: LocalAppDatabase,
+  source: string,
+): Promise<void> {
+  await database.runAsync(source);
 }
 
 async function migrateV1OnboardingProfile(
   database: LocalAppDatabase,
 ): Promise<void> {
-  const legacyRow = await database.getFirstAsync<LegacyOnboardingProfileRow>(
-    `SELECT
-      last_period_start,
-      cycle_length,
-      period_length,
-      auto_period_fill,
-      irregular_cycle,
-      age_group,
-      usage_goal
-     FROM onboarding_profile
-     WHERE id = 1;`,
-  );
+  try {
+    await runSchemaStatement(
+      database,
+      `INSERT OR IGNORE INTO profile_settings (
+         id,
+         last_period_start,
+         cycle_length,
+         period_length,
+         auto_period_fill,
+         irregular_cycle,
+         unpredictable_cycle,
+         age_group,
+         usage_goal,
+         track_bbt,
+         temperature_unit,
+         track_cervical_mucus,
+         hide_sex_chip,
+         language_override,
+         theme_override,
+         encrypted_payload
+       )
+       SELECT
+         1,
+         last_period_start,
+         cycle_length,
+         period_length,
+         auto_period_fill,
+         irregular_cycle,
+         0,
+         age_group,
+         usage_goal,
+         0,
+         'c',
+         0,
+         0,
+         NULL,
+         NULL,
+         NULL
+       FROM onboarding_profile
+       WHERE id = 1;`,
+    );
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.toLowerCase().includes("no such table")
+    ) {
+      return;
+    }
 
-  if (!legacyRow) {
-    return;
+    throw error;
   }
 
-  await upsertLegacyProfileRecord(
-    database,
-    applyOnboardingRecordToProfile(createDefaultProfileRecord(), {
-      lastPeriodStart: legacyRow.last_period_start,
-      cycleLength: legacyRow.cycle_length,
-      periodLength: legacyRow.period_length,
-      autoPeriodFill: legacyRow.auto_period_fill === 1,
-      irregularCycle: legacyRow.irregular_cycle === 1,
-      ageGroup: legacyRow.age_group as OnboardingRecord["ageGroup"],
-      usageGoal: legacyRow.usage_goal as OnboardingRecord["usageGoal"],
-    }),
-  );
+  await runSchemaStatement(database, "DROP TABLE IF EXISTS onboarding_profile;");
 }
 
 async function migrateV4InterfacePreferences(
   database: LocalAppDatabase,
 ): Promise<void> {
-  await database.execAsync(
+  await execIgnoringDuplicateColumn(
+    database,
     "ALTER TABLE profile_settings ADD COLUMN language_override TEXT;",
   );
-  await database.execAsync(
+  await execIgnoringDuplicateColumn(
+    database,
     "ALTER TABLE profile_settings ADD COLUMN theme_override TEXT;",
   );
 }
@@ -834,32 +937,51 @@ async function migrateV8SyncMetadata(
 	);
 }
 
+async function reconcileBootstrapStateSchema(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_BOOTSTRAP_STATE_TABLE);
+  await execIgnoringDuplicateColumn(
+    database,
+    ADD_BOOTSTRAP_INCOMPLETE_STEP_COLUMN,
+  );
+  await database.runAsync(
+    `UPDATE bootstrap_state
+     SET profile_version = ?
+     WHERE id = 1 AND profile_version < ?;`,
+    createDefaultBootstrapState().profileVersion,
+    createDefaultBootstrapState().profileVersion,
+  );
+}
+
+async function reconcileProfileSettingsSchema(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_PROFILE_SETTINGS_TABLE);
+  await migrateV4InterfacePreferences(database);
+  await migrateV7EncryptedLocalData(database);
+}
+
+async function reconcileDayLogsSchema(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_DAY_LOGS_TABLE);
+  await migrateV7EncryptedLocalData(database);
+}
+
 async function reconcileSyncPreferencesSchema(
   database: LocalAppDatabase,
 ): Promise<void> {
-  await database.execAsync(CREATE_SYNC_PREFERENCES_TABLE);
-  const tableInfoRows = await database.getAllAsync<TableInfoRow>(
-    "PRAGMA table_info(sync_preferences);",
-  );
-  const existingColumns = new Set(
-    tableInfoRows
-      .map((row) => row.name)
-      .filter((name): name is string => typeof name === "string"),
-  );
+  await runSchemaStatement(database, CREATE_SYNC_PREFERENCES_TABLE);
+  await migrateV8SyncMetadata(database);
+}
 
-  if (!existingColumns.has("last_remote_generation")) {
-    await execIgnoringDuplicateColumn(
-      database,
-      ADD_SYNC_LAST_REMOTE_GENERATION_COLUMN,
-    );
-  }
-
-  if (!existingColumns.has("last_synced_at")) {
-    await execIgnoringDuplicateColumn(
-      database,
-      ADD_SYNC_LAST_SYNCED_AT_COLUMN,
-    );
-  }
+async function reconcileSymptomsSchema(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_SYMPTOMS_TABLE);
+  await runSchemaStatement(database, CREATE_SYMPTOMS_SLUG_INDEX);
+  await migrateV7EncryptedLocalData(database);
 }
 
 async function execIgnoringDuplicateColumn(
@@ -867,7 +989,7 @@ async function execIgnoringDuplicateColumn(
   source: string,
 ): Promise<void> {
   try {
-    await database.execAsync(source);
+    await runSchemaStatement(database, source);
   } catch (error) {
     if (
       error instanceof Error &&
@@ -889,8 +1011,12 @@ async function resolveLocalDataKey(
     return existingKey;
   }
 
-  if (await hasEncryptedLocalData(database)) {
-    await resetEncryptedLocalData(database);
+  if (
+    await withStorageOperationLabel("sqlite/localDataKey/hasEncryptedData", () =>
+      hasEncryptedLocalData(database),
+    )
+  ) {
+    await wipeLocalAppTables(database);
   }
 
   const keyHex = createLocalDataKeyHex();
@@ -918,7 +1044,7 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
   );
 }
 
-async function resetEncryptedLocalData(database: LocalAppDatabase): Promise<void> {
+async function wipeLocalAppTables(database: LocalAppDatabase): Promise<void> {
   await database.runAsync("DELETE FROM day_logs;");
   await database.runAsync("DELETE FROM symptoms;");
   await database.runAsync("DELETE FROM profile_settings;");
@@ -955,25 +1081,29 @@ async function migratePlaintextLocalDataRows(
   database: LocalAppDatabase,
   localDataKey: string,
 ): Promise<void> {
-  const profileRow = await database.getFirstAsync<ProfileSettingsRow>(
-    `SELECT
-      last_period_start,
-      cycle_length,
-      period_length,
-      auto_period_fill,
-      irregular_cycle,
-      unpredictable_cycle,
-      age_group,
-      usage_goal,
-      track_bbt,
-      temperature_unit,
-      track_cervical_mucus,
-      hide_sex_chip,
-      language_override,
-      theme_override,
-      encrypted_payload
-     FROM profile_settings
-     WHERE id = 1;`,
+  const profileRow = await withStorageOperationLabel(
+    "sqlite/plaintextMigration/profile/select",
+    () =>
+      database.getFirstAsync<ProfileSettingsRow>(
+        `SELECT
+          last_period_start,
+          cycle_length,
+          period_length,
+          auto_period_fill,
+          irregular_cycle,
+          unpredictable_cycle,
+          age_group,
+          usage_goal,
+          track_bbt,
+          temperature_unit,
+          track_cervical_mucus,
+          hide_sex_chip,
+          language_override,
+          theme_override,
+          encrypted_payload
+         FROM profile_settings
+         WHERE id = 1;`,
+      ),
   );
 
   if (profileRow && !profileRow.encrypted_payload) {
@@ -984,23 +1114,27 @@ async function migratePlaintextLocalDataRows(
     );
   }
 
-  const dayLogRows = await database.getAllAsync<DayLogRow>(
-    `SELECT
-      day,
-      is_period,
-      cycle_start,
-      is_uncertain,
-      flow,
-      mood,
-      sex_activity,
-      bbt,
-      cervical_mucus,
-      cycle_factor_keys,
-      symptom_ids,
-      notes,
-      encrypted_payload
-     FROM day_logs
-     ORDER BY day ASC;`,
+  const dayLogRows = await withStorageOperationLabel(
+    "sqlite/plaintextMigration/dayLogs/select",
+    () =>
+      database.getAllAsync<DayLogRow>(
+        `SELECT
+          day,
+          is_period,
+          cycle_start,
+          is_uncertain,
+          flow,
+          mood,
+          sex_activity,
+          bbt,
+          cervical_mucus,
+          cycle_factor_keys,
+          symptom_ids,
+          notes,
+          encrypted_payload
+         FROM day_logs
+         ORDER BY day ASC;`,
+      ),
   );
 
   for (const row of dayLogRows) {
@@ -1011,19 +1145,23 @@ async function migratePlaintextLocalDataRows(
     await upsertDayLogRecord(database, mapLegacyDayLogRow(row), localDataKey);
   }
 
-  const symptomRows = await database.getAllAsync<SymptomRow>(
-    `SELECT
-      id,
-      slug,
-      label,
-      icon,
-      color,
-      is_default,
-      is_archived,
-      sort_order,
-      encrypted_payload
-     FROM symptoms
-     ORDER BY sort_order ASC, id ASC;`,
+  const symptomRows = await withStorageOperationLabel(
+    "sqlite/plaintextMigration/symptoms/select",
+    () =>
+      database.getAllAsync<SymptomRow>(
+        `SELECT
+          id,
+          slug,
+          label,
+          icon,
+          color,
+          is_default,
+          is_archived,
+          sort_order,
+          encrypted_payload
+         FROM symptoms
+         ORDER BY sort_order ASC, id ASC;`,
+      ),
   );
 
   for (const row of symptomRows) {
@@ -1085,14 +1223,26 @@ async function upsertBootstrapState(
   database: LocalAppDatabase,
   state: LocalBootstrapState,
 ): Promise<void> {
+  const hasCompletedOnboarding = state.hasCompletedOnboarding === true;
+
   await database.runAsync(
-    `INSERT INTO bootstrap_state (id, has_completed_onboarding, profile_version)
-     VALUES (1, ?, ?)
+    `INSERT INTO bootstrap_state (
+       id,
+       has_completed_onboarding,
+       profile_version,
+       incomplete_onboarding_step
+     )
+     VALUES (1, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        has_completed_onboarding = excluded.has_completed_onboarding,
-       profile_version = excluded.profile_version;`,
-    state.hasCompletedOnboarding ? 1 : 0,
+       profile_version = excluded.profile_version,
+       incomplete_onboarding_step = excluded.incomplete_onboarding_step;`,
+    hasCompletedOnboarding ? 1 : 0,
     state.profileVersion,
+    persistBootstrapIncompleteOnboardingStep(
+      state.incompleteOnboardingStep,
+      hasCompletedOnboarding,
+    ),
   );
 }
 
@@ -1154,64 +1304,6 @@ async function upsertProfileRecord(
     normalizeInterfaceLanguage(defaults.languageOverride),
     normalizeThemePreference(defaults.themeOverride),
     encryptLocalDataRecord(localDataKey, record),
-  );
-}
-
-async function upsertLegacyProfileRecord(
-  database: LocalAppDatabase,
-  record: ProfileRecord,
-): Promise<void> {
-  await database.runAsync(
-    `INSERT INTO profile_settings (
-       id,
-       last_period_start,
-       cycle_length,
-       period_length,
-       auto_period_fill,
-       irregular_cycle,
-       unpredictable_cycle,
-       age_group,
-       usage_goal,
-       track_bbt,
-       temperature_unit,
-       track_cervical_mucus,
-       hide_sex_chip,
-       language_override,
-       theme_override,
-       encrypted_payload
-     )
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       last_period_start = excluded.last_period_start,
-       cycle_length = excluded.cycle_length,
-       period_length = excluded.period_length,
-       auto_period_fill = excluded.auto_period_fill,
-       irregular_cycle = excluded.irregular_cycle,
-       unpredictable_cycle = excluded.unpredictable_cycle,
-       age_group = excluded.age_group,
-       usage_goal = excluded.usage_goal,
-       track_bbt = excluded.track_bbt,
-       temperature_unit = excluded.temperature_unit,
-       track_cervical_mucus = excluded.track_cervical_mucus,
-       hide_sex_chip = excluded.hide_sex_chip,
-       language_override = excluded.language_override,
-       theme_override = excluded.theme_override,
-       encrypted_payload = excluded.encrypted_payload;`,
-    record.lastPeriodStart,
-    record.cycleLength,
-    record.periodLength,
-    record.autoPeriodFill ? 1 : 0,
-    record.irregularCycle ? 1 : 0,
-    record.unpredictableCycle ? 1 : 0,
-    record.ageGroup,
-    record.usageGoal,
-    record.trackBBT ? 1 : 0,
-    normalizeTemperatureUnit(record.temperatureUnit),
-    record.trackCervicalMucus ? 1 : 0,
-    record.hideSexChip ? 1 : 0,
-    normalizeInterfaceLanguage(record.languageOverride),
-    normalizeThemePreference(record.themeOverride),
-    null,
   );
 }
 
@@ -1346,12 +1438,26 @@ async function upsertSymptomRecord(
 }
 
 function mapBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
+  const normalizedHasCompleted = Number(row.has_completed_onboarding);
+  const normalizedProfileVersion = Number(row.profile_version);
+  const normalizedIncompleteStep =
+    row.incomplete_onboarding_step === null
+      ? null
+      : Number(row.incomplete_onboarding_step);
+  const hasCompletedOnboarding = normalizedHasCompleted === 1;
+
   return {
-    hasCompletedOnboarding: row.has_completed_onboarding === 1,
+    hasCompletedOnboarding,
     profileVersion:
-      Number.isFinite(row.profile_version) && row.profile_version > 0
-        ? row.profile_version
+      Number.isFinite(normalizedProfileVersion) && normalizedProfileVersion > 0
+        ? normalizedProfileVersion
         : createDefaultBootstrapState().profileVersion,
+    incompleteOnboardingStep: resolveBootstrapIncompleteOnboardingStep(
+      Number.isFinite(normalizedIncompleteStep)
+        ? normalizedIncompleteStep
+        : null,
+      hasCompletedOnboarding,
+    ),
   };
 }
 
@@ -1370,13 +1476,16 @@ function mapProfileSettingsRow(
       ...record,
       temperatureUnit: normalizeTemperatureUnit(record.temperatureUnit),
       languageOverride: normalizeInterfaceLanguage(record.languageOverride),
-      themeOverride: normalizeThemePreference(record.themeOverride),
-      dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
-        record.dismissedCalendarPredictionNoticeKey,
-      ) ?? null,
-      ageGroup: record.ageGroup ?? "",
-      usageGoal: record.usageGoal ?? "health",
-    };
+        themeOverride: normalizeThemePreference(record.themeOverride),
+        dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
+          record.dismissedCalendarPredictionNoticeKey,
+        ) ?? null,
+        dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
+          record.dismissedOnboardingHelperNoticeKey,
+        ) ?? null,
+        ageGroup: record.ageGroup ?? "",
+        usageGoal: record.usageGoal ?? "health",
+      };
   }
 
   return mapLegacyProfileSettingsRow(row);
@@ -1403,6 +1512,8 @@ function mapLegacyProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     themeOverride: normalizeThemePreference(row.theme_override),
     dismissedCalendarPredictionNoticeKey:
       defaults.dismissedCalendarPredictionNoticeKey ?? null,
+    dismissedOnboardingHelperNoticeKey:
+      defaults.dismissedOnboardingHelperNoticeKey ?? null,
   };
 }
 

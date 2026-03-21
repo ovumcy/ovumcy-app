@@ -719,7 +719,16 @@ describe("SettingsScreen", () => {
     fireEvent.press(screen.getByTestId("settings-clear-data-button"));
 
     await waitFor(() => expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/onboarding"));
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pathname: "/onboarding",
+          params: expect.objectContaining({
+            reset: expect.any(String),
+          }),
+        }),
+      ),
+    );
     await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();
   });
 

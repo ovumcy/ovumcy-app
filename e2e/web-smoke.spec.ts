@@ -151,12 +151,12 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("settings-clear-data-confirmation-input").fill("CLEAR");
   await page.getByTestId("settings-clear-data-button").click();
 
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(/\/onboarding(?:\?reset=\d+)?$/);
   await expect(page.getByText("When did your last period start?")).toBeVisible();
 
   await page.reload();
 
-  await expect(page).toHaveURL(/\/onboarding$/);
+  await expect(page).toHaveURL(/\/onboarding(?:\?reset=\d+)?$/);
   await expect(page.getByText("When did your last period start?")).toBeVisible();
 });
 

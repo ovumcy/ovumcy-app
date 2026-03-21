@@ -2,6 +2,7 @@ import type {
   AgeGroup,
   AgeGroupOption,
   LocalDateISO,
+  PredictionMode,
   ProfileRecord,
   UsageGoal,
 } from "./profile";
@@ -29,6 +30,7 @@ export type OnboardingRecord = Pick<
   | "periodLength"
   | "autoPeriodFill"
   | "irregularCycle"
+  | "unpredictableCycle"
   | "ageGroup"
   | "usageGoal"
 >;
@@ -37,7 +39,7 @@ export type OnboardingStepTwoValues = {
   cycleLength: number;
   periodLength: number;
   autoPeriodFill: boolean;
-  irregularCycle: boolean;
+  predictionMode: PredictionMode;
   ageGroup: AgeGroupOption;
   usageGoal: UsageGoal;
 };

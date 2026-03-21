@@ -875,27 +875,16 @@ export function SettingsScreen({
       return;
     }
 
-    setClearDataStatusMessage(viewData.danger.status.success);
-    setState(null);
-    setCreateSymptomDraft(createDefaultSymptomDraft());
-    setCreateSymptomErrorMessage("");
-    setCreateSymptomStatusMessage("");
-    setRowSymptomDrafts({});
-    setRowSymptomErrorMessages({});
-    setRowSymptomStatusMessages({});
-    setCycleErrorMessage("");
-    setCycleStatusMessage("");
-    resetAccountMessages();
-    setInterfaceErrorMessage("");
-    setInterfaceStatusMessage("");
-    setTrackingStatusMessage("");
-    resetExportMessages();
-    setShowDatePicker(false);
-    setShowExportDatePicker(null);
-    setClearDataConfirmationValue("");
-    await refreshPreferences();
-    router.replace("/onboarding");
-    setIsClearingData(false);
+    syncProfilePreferences({
+      languageOverride: null,
+      themeOverride: null,
+    });
+    router.replace({
+      pathname: "/onboarding",
+      params: {
+        reset: Date.now().toString(),
+      },
+    });
   }
 
   function setExportDraftValues(

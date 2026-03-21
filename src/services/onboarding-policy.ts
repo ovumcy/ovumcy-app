@@ -6,7 +6,12 @@ import {
   type OnboardingStep,
   type OnboardingStepTwoValues,
 } from "../models/onboarding";
-import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import {
+  createDefaultProfileRecord,
+  resolvePredictionMode,
+  resolvePredictionModeFlags,
+  type ProfileRecord,
+} from "../models/profile";
 import {
   addDays,
   buildCycleGuidanceState as buildSharedCycleGuidanceState,
@@ -84,12 +89,13 @@ export function buildCycleGuidanceState(
 export function sanitizeStepTwoValues(
   values: OnboardingStepTwoValues,
 ): OnboardingStepTwoValues {
+  const predictionModeFlags = resolvePredictionModeFlags(values.predictionMode);
   const sanitizedCycle = sanitizeCycleSettingsValues({
     ...createDefaultProfileRecord(),
     cycleLength: values.cycleLength,
     periodLength: values.periodLength,
     autoPeriodFill: values.autoPeriodFill,
-    irregularCycle: values.irregularCycle,
+    ...predictionModeFlags,
     ageGroup: values.ageGroup,
     usageGoal: values.usageGoal,
   });
@@ -98,7 +104,7 @@ export function sanitizeStepTwoValues(
     cycleLength: sanitizedCycle.cycleLength,
     periodLength: sanitizedCycle.periodLength,
     autoPeriodFill: sanitizedCycle.autoPeriodFill,
-    irregularCycle: sanitizedCycle.irregularCycle,
+    predictionMode: resolvePredictionMode(sanitizedCycle),
     ageGroup: resolveDisplayedAgeGroup(sanitizedCycle.ageGroup),
     usageGoal: sanitizedCycle.usageGoal,
   };
@@ -118,7 +124,7 @@ export function createStepTwoDefaults(record: OnboardingRecord): OnboardingStepT
     cycleLength: defaults.cycleLength,
     periodLength: defaults.periodLength,
     autoPeriodFill: record.autoPeriodFill,
-    irregularCycle: record.irregularCycle,
+    predictionMode: resolvePredictionMode(record),
     ageGroup: resolveDisplayedAgeGroup(record.ageGroup),
     usageGoal: normalizeUsageGoal(record.usageGoal),
   };
@@ -215,6 +221,7 @@ export function profileToOnboardingRecord(
     periodLength: profile.periodLength,
     autoPeriodFill: profile.autoPeriodFill,
     irregularCycle: profile.irregularCycle,
+    unpredictableCycle: profile.unpredictableCycle,
     ageGroup: profile.ageGroup,
     usageGoal: profile.usageGoal,
   };

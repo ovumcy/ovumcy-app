@@ -1,44 +1,63 @@
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import type { PredictionMode, ProfileRecord } from "../../models/profile";
+import {
+  buildOnboardingDayOneNotice,
+  dismissOnboardingDayOneNotice,
+} from "../../services/onboarding-notice-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { buildCycleGuidanceState } from "../../services/onboarding-policy";
 import {
+  createFreshOnboardingScreenState,
   finishOnboarding,
   loadOnboardingScreenState,
   patchOnboardingStepTwoValues,
+  persistIncompleteOnboardingStep,
   saveOnboardingStepOne,
   type LoadedOnboardingState,
 } from "../../services/onboarding-screen-service";
 import { buildOnboardingViewData } from "../../services/onboarding-view-service";
 import { appStorage } from "../../services/app-bootstrap-service";
-import {
-  OnboardingFlowScreen,
-  OnboardingLoadingScreen,
-} from "./OnboardingFlowScreen";
+import { OnboardingFlowScreen } from "./OnboardingFlowScreen";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 
 type OnboardingScreenProps = {
   storage?: LocalAppStorage;
   now?: Date;
   onFinished?: () => void;
+  reloadKey?: string | string[] | undefined;
 };
 
 export function OnboardingScreen({
   storage = appStorage,
   now = new Date(),
   onFinished,
+  reloadKey,
 }: OnboardingScreenProps) {
   const router = useRouter();
   const { language: locale } = useAppPreferences();
-  const [isLoading, setIsLoading] = useState(true);
+  const initialFreshStateRef = useRef(createFreshOnboardingScreenState());
   const [isSaving, setIsSaving] = useState(false);
-  const [state, setState] = useState<LoadedOnboardingState | null>(null);
+  const [state, setState] = useState<LoadedOnboardingState | null>(
+    initialFreshStateRef.current.state,
+  );
+  const [profile, setProfile] = useState<ProfileRecord | null>(
+    initialFreshStateRef.current.profile,
+  );
   const [stepOneError, setStepOneError] = useState("");
   const [stepTwoError, setStepTwoError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
+
+    setIsSaving(false);
+    setStepOneError("");
+    setStepTwoError("");
+
+    const freshState = createFreshOnboardingScreenState();
+    setState(freshState.state);
+    setProfile(freshState.profile);
 
     async function load() {
       const result = await loadOnboardingScreenState(storage);
@@ -53,7 +72,7 @@ export function OnboardingScreen({
       }
 
       setState(result.state);
-      setIsLoading(false);
+      setProfile(result.profile);
     }
 
     void load();
@@ -61,7 +80,7 @@ export function OnboardingScreen({
     return () => {
       isMounted = false;
     };
-  }, [onFinished, router, storage]);
+  }, [onFinished, reloadKey, router, storage]);
 
   const viewData = useMemo(() => {
     if (!state) {
@@ -82,8 +101,16 @@ export function OnboardingScreen({
     );
   }, [state]);
 
-  if (isLoading || !state || !viewData || !guidance) {
-    return <OnboardingLoadingScreen />;
+  const stepOneNotice = useMemo(() => {
+    if (!profile) {
+      return null;
+    }
+
+    return buildOnboardingDayOneNotice(profile, locale);
+  }, [locale, profile]);
+
+  if (!state || !profile || !viewData || !guidance) {
+    return null;
   }
 
   const readyState = state;
@@ -143,6 +170,11 @@ export function OnboardingScreen({
       onBack={() => {
         setStepTwoError("");
         setState((current) => (current ? { ...current, step: 1 } : current));
+        void persistIncompleteOnboardingStep(storage, 1).then((result) => {
+          if (!result.ok) {
+            setStepOneError(resolveStepOneError("generic", readyViewData));
+          }
+        });
       }}
       onCycleLengthChange={(value) => {
         setStepTwoError("");
@@ -166,10 +198,17 @@ export function OnboardingScreen({
         );
       }}
       onFinish={handleFinish}
-      onIrregularCycleChange={(value) => {
+      onDismissStepOneNotice={async () => {
+        const nextProfile = await dismissOnboardingDayOneNotice(storage, profile);
+        setProfile(nextProfile);
+      }}
+      onDismissStepOneError={() => {
+        setStepOneError("");
+      }}
+      onPredictionModeSelect={(value: PredictionMode) => {
         setState((current) =>
           current
-            ? patchOnboardingStepTwoValues(current, { irregularCycle: value })
+            ? patchOnboardingStepTwoValues(current, { predictionMode: value })
             : current,
         );
       }}
@@ -192,7 +231,11 @@ export function OnboardingScreen({
         );
       }}
       state={readyState}
+      stepOneNotice={stepOneNotice}
       stepOneError={stepOneError}
+      onDismissStepTwoError={() => {
+        setStepTwoError("");
+      }}
       stepTwoError={stepTwoError}
       viewData={readyViewData}
     />

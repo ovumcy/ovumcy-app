@@ -1,5 +1,5 @@
 import type { DayLogRecord } from "../../models/day-log";
-import type { OnboardingRecord } from "../../models/onboarding";
+import type { OnboardingRecord, OnboardingStep } from "../../models/onboarding";
 import type { ProfileRecord } from "../../models/profile";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { SymptomRecord } from "../../models/symptom";
@@ -7,13 +7,50 @@ import type { SymptomRecord } from "../../models/symptom";
 export type LocalBootstrapState = {
   hasCompletedOnboarding: boolean;
   profileVersion: number;
+  incompleteOnboardingStep: OnboardingStep | null;
 };
 
 export function createDefaultBootstrapState(): LocalBootstrapState {
   return {
     hasCompletedOnboarding: false,
     profileVersion: 2,
+    incompleteOnboardingStep: 1,
   };
+}
+
+export function normalizeIncompleteOnboardingStep(
+  value: unknown,
+): OnboardingStep | null {
+  return value === 1 || value === 2 ? value : null;
+}
+
+export function resolveBootstrapIncompleteOnboardingStep(
+  value: unknown,
+  hasCompletedOnboarding: boolean,
+): OnboardingStep | null {
+  if (hasCompletedOnboarding) {
+    return null;
+  }
+
+  const normalized = normalizeIncompleteOnboardingStep(value);
+  if (normalized !== null) {
+    return normalized;
+  }
+
+  return createDefaultBootstrapState().incompleteOnboardingStep;
+}
+
+export function persistBootstrapIncompleteOnboardingStep(
+  value: unknown,
+  hasCompletedOnboarding: boolean,
+): OnboardingStep {
+  const defaultStep = createDefaultBootstrapState().incompleteOnboardingStep ?? 1;
+
+  if (hasCompletedOnboarding) {
+    return defaultStep;
+  }
+
+  return resolveBootstrapIncompleteOnboardingStep(value, false) ?? defaultStep;
 }
 
 export type LocalDayLogSummary = {

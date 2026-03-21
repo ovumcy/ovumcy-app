@@ -13,6 +13,7 @@ import {
   createDefaultProfileRecord,
   normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
+  normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
@@ -33,7 +34,11 @@ import type {
   LocalBootstrapState,
   LocalDayLogSummary,
 } from "./storage-contract";
-import { createDefaultBootstrapState } from "./storage-contract";
+import {
+  createDefaultBootstrapState,
+  persistBootstrapIncompleteOnboardingStep,
+  resolveBootstrapIncompleteOnboardingStep,
+} from "./storage-contract";
 
 export const BOOTSTRAP_STATE_KEY = "ovumcy/bootstrap-state";
 export const PROFILE_RECORD_KEY = "ovumcy/profile-record";
@@ -49,11 +54,16 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
     },
 
     async writeBootstrapState(state: LocalBootstrapState): Promise<void> {
+      const hasCompletedOnboarding = state.hasCompletedOnboarding === true;
       await AsyncStorage.setItem(
         BOOTSTRAP_STATE_KEY,
         JSON.stringify({
-          hasCompletedOnboarding: state.hasCompletedOnboarding,
+          hasCompletedOnboarding,
           profileVersion: state.profileVersion,
+          incompleteOnboardingStep: persistBootstrapIncompleteOnboardingStep(
+            state.incompleteOnboardingStep,
+            hasCompletedOnboarding,
+          ),
         }),
       );
     },
@@ -177,12 +187,19 @@ export async function readAsyncStorageBootstrapState(): Promise<LocalBootstrapSt
   }
 
   const parsed = safeParse<Partial<LocalBootstrapState>>(rawValue);
+  const hasCompletedOnboarding = parsed?.hasCompletedOnboarding === true;
+  const defaults = createDefaultBootstrapState();
+
   return {
-    hasCompletedOnboarding: parsed?.hasCompletedOnboarding === true,
+    hasCompletedOnboarding,
     profileVersion:
       typeof parsed?.profileVersion === "number" && Number.isFinite(parsed.profileVersion)
         ? parsed.profileVersion
-        : 2,
+        : defaults.profileVersion,
+    incompleteOnboardingStep: resolveBootstrapIncompleteOnboardingStep(
+      parsed?.incompleteOnboardingStep,
+      hasCompletedOnboarding,
+    ),
   };
 }
 
@@ -310,6 +327,9 @@ function mergeProfileRecord(
     themeOverride: normalizeThemePreference(parsed?.themeOverride),
     dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
       parsed?.dismissedCalendarPredictionNoticeKey,
+    ) ?? null,
+    dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
+      parsed?.dismissedOnboardingHelperNoticeKey,
     ) ?? null,
   };
 }

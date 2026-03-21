@@ -7,6 +7,7 @@ import {
   createDefaultProfileRecord,
   normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
+  normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   type ProfileRecord,
 } from "../../models/profile";
@@ -30,7 +31,11 @@ import type {
   LocalBootstrapState,
   LocalDayLogSummary,
 } from "./storage-contract";
-import { createDefaultBootstrapState } from "./storage-contract";
+import {
+  createDefaultBootstrapState,
+  persistBootstrapIncompleteOnboardingStep,
+  resolveBootstrapIncompleteOnboardingStep,
+} from "./storage-contract";
 
 type VolatileWebStorageState = {
   bootstrapState: LocalBootstrapState;
@@ -51,15 +56,23 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
     },
 
     async writeBootstrapState(nextState: LocalBootstrapState): Promise<void> {
+      const hasCompletedOnboarding = nextState.hasCompletedOnboarding === true;
       state = {
         ...state,
         bootstrapState: {
-          hasCompletedOnboarding: nextState.hasCompletedOnboarding === true,
+          hasCompletedOnboarding,
           profileVersion:
             Number.isFinite(nextState.profileVersion) &&
             nextState.profileVersion > 0
               ? nextState.profileVersion
               : state.bootstrapState.profileVersion,
+          incompleteOnboardingStep: resolveBootstrapIncompleteOnboardingStep(
+            persistBootstrapIncompleteOnboardingStep(
+              nextState.incompleteOnboardingStep,
+              hasCompletedOnboarding,
+            ),
+            hasCompletedOnboarding,
+          ),
         },
       };
     },
@@ -223,6 +236,9 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     themeOverride: normalizeThemePreference(record.themeOverride),
     dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
       record.dismissedCalendarPredictionNoticeKey,
+    ) ?? null,
+    dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
+      record.dismissedOnboardingHelperNoticeKey,
     ) ?? null,
   };
 }

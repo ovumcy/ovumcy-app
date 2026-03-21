@@ -14,6 +14,7 @@ describe("async-storage-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual(
       createDefaultProfileRecord(),
@@ -24,6 +25,7 @@ describe("async-storage-app-storage", () => {
       periodLength: 5,
       autoPeriodFill: true,
       irregularCycle: false,
+      unpredictableCycle: false,
       ageGroup: "",
       usageGoal: "health",
     });
@@ -57,6 +59,7 @@ describe("async-storage-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeOnboardingRecord({
       lastPeriodStart: "2026-03-14",
@@ -64,6 +67,7 @@ describe("async-storage-app-storage", () => {
       periodLength: 6,
       autoPeriodFill: true,
       irregularCycle: true,
+      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
     });
@@ -71,6 +75,7 @@ describe("async-storage-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual({
       ...createDefaultProfileRecord(),
@@ -87,6 +92,7 @@ describe("async-storage-app-storage", () => {
       periodLength: 6,
       autoPeriodFill: true,
       irregularCycle: true,
+      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
     });
@@ -175,6 +181,7 @@ describe("async-storage-app-storage", () => {
     await storage.writeBootstrapState({
       hasCompletedOnboarding: true,
       profileVersion: 2,
+      incompleteOnboardingStep: null,
     });
     await storage.writeOnboardingRecord({
       lastPeriodStart: "2026-03-14",
@@ -182,6 +189,7 @@ describe("async-storage-app-storage", () => {
       periodLength: 6,
       autoPeriodFill: true,
       irregularCycle: true,
+      unpredictableCycle: false,
       ageGroup: "age_35_plus",
       usageGoal: "trying_to_conceive",
     });
@@ -205,6 +213,7 @@ describe("async-storage-app-storage", () => {
     await expect(storage.readBootstrapState()).resolves.toEqual({
       hasCompletedOnboarding: false,
       profileVersion: 2,
+      incompleteOnboardingStep: 1,
     });
     await expect(storage.readProfileRecord()).resolves.toEqual(
       createDefaultProfileRecord(),

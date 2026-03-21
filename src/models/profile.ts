@@ -23,12 +23,16 @@ export type PredictionMode = "regular" | "irregular" | "facts_only";
 export type CalendarPredictionNoticeKey =
   | "calendar_irregular_prediction_notice_v1"
   | "calendar_unpredictable_prediction_notice_v1";
+export type OnboardingHelperNoticeKey = "onboarding_day1_tip_notice_v1";
 
 export const SUPPORTED_INTERFACE_LANGUAGES = ["en", "ru", "es"] as const;
 export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",
   "calendar_unpredictable_prediction_notice_v1",
+] as const;
+export const SUPPORTED_ONBOARDING_HELPER_NOTICE_KEYS = [
+  "onboarding_day1_tip_notice_v1",
 ] as const;
 
 export type ProfileRecord = {
@@ -47,6 +51,7 @@ export type ProfileRecord = {
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
   dismissedCalendarPredictionNoticeKey?: CalendarPredictionNoticeKey | null;
+  dismissedOnboardingHelperNoticeKey?: OnboardingHelperNoticeKey | null;
 };
 
 export type CycleSettingsValues = Pick<
@@ -109,6 +114,20 @@ export function normalizeCalendarPredictionNoticeKey(
     : null;
 }
 
+export function normalizeOnboardingHelperNoticeKey(
+  value: string | null | undefined,
+): OnboardingHelperNoticeKey | null {
+  if (!value) {
+    return null;
+  }
+
+  return SUPPORTED_ONBOARDING_HELPER_NOTICE_KEYS.includes(
+    value as OnboardingHelperNoticeKey,
+  )
+    ? (value as OnboardingHelperNoticeKey)
+    : null;
+}
+
 export function resolvePredictionMode(
   value: Pick<ProfileRecord, "irregularCycle" | "unpredictableCycle">,
 ): PredictionMode {
@@ -162,5 +181,6 @@ export function createDefaultProfileRecord(): ProfileRecord {
     languageOverride: null,
     themeOverride: null,
     dismissedCalendarPredictionNoticeKey: null,
+    dismissedOnboardingHelperNoticeKey: null,
   };
 }
