@@ -20,6 +20,8 @@ const shellCopyEn = {
     statsDescription: "Preparing your local history summary.",
     settingsTitle: "Loading settings",
     settingsDescription: "Preparing your local cycle settings.",
+    backupSyncTitle: "Loading backup & sync",
+    backupSyncDescription: "Preparing your protected backup controls.",
   },
 } as const;
 
@@ -45,6 +47,8 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
       statsDescription: "Подготавливаем сводку по локальной истории.",
       settingsTitle: "Загружаем настройки",
       settingsDescription: "Подготавливаем локальные настройки цикла.",
+      backupSyncTitle: "Загружаем резервную копию и sync",
+      backupSyncDescription: "Подготавливаем экран защищённой копии и sync.",
     },
   },
   es: {
@@ -65,6 +69,8 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
       statsDescription: "Preparando el resumen de tu historial local.",
       settingsTitle: "Cargando ajustes",
       settingsDescription: "Preparando tus ajustes locales del ciclo.",
+      backupSyncTitle: "Cargando copia y sync",
+      backupSyncDescription: "Preparando los controles de tu copia protegida.",
     },
   },
 };

@@ -120,6 +120,8 @@ export type SettingsViewData = {
   account: {
     title: string;
     subtitle: string;
+    hubSubtitle: string;
+    openHubLabel: string;
     localStepTitle: string;
     localStepHint: string;
     preparingTitle: string;
@@ -183,6 +185,9 @@ export type SettingsViewData = {
     regeneratePrompt: string;
     regenerateAccept: string;
     regenerateDeviceAuthPrompt: string;
+    discardChangesLabel: string;
+    saveBeforeLeaveLabel: string;
+    unsavedPrompt: string;
     status: {
       prepared: string;
       regenerated: string;
@@ -305,6 +310,18 @@ export type LoadedSettingsState = {
   trackingValues: TrackingSettingsValues;
   symptomRecords: SymptomRecord[];
   exportState: LoadedExportState;
+};
+
+export type SettingsSyncSummaryViewData = {
+  title: string;
+  description: string;
+  destinationLabel: string;
+  destinationValue: string;
+  lastSyncLabel: string;
+  lastSyncValue: string;
+  actionLabel: string;
+  statusMessage: string;
+  statusTone: "success" | "info";
 };
 
 export function buildSettingsViewData(
@@ -433,6 +450,8 @@ export function buildSettingsViewData(
     account: {
       title: settingsCopy.account.title,
       subtitle: settingsCopy.account.subtitle,
+      hubSubtitle: settingsCopy.account.hubSubtitle,
+      openHubLabel: settingsCopy.account.openHubLabel,
       localStepTitle: settingsCopy.account.localStepTitle,
       localStepHint: settingsCopy.account.localStepHint,
       preparingTitle: settingsCopy.account.preparingTitle,
@@ -499,6 +518,9 @@ export function buildSettingsViewData(
       regeneratePrompt: settingsCopy.account.regeneratePrompt,
       regenerateAccept: settingsCopy.account.regenerateAccept,
       regenerateDeviceAuthPrompt: settingsCopy.account.regenerateDeviceAuthPrompt,
+      discardChangesLabel: settingsCopy.account.discardChangesLabel,
+      saveBeforeLeaveLabel: settingsCopy.account.saveBeforeLeaveLabel,
+      unsavedPrompt: settingsCopy.account.unsavedPrompt,
       status: {
         prepared: settingsCopy.account.prepared,
         regenerated: settingsCopy.account.regenerated,
@@ -662,6 +684,60 @@ export function buildSettingsSymptomsState(symptomRecords: readonly SymptomRecor
   return splitCustomSymptoms(symptomRecords);
 }
 
+export function buildSettingsSyncSummary(
+  state: Pick<
+    LoadedSettingsState,
+    "hasStoredSyncSecrets" | "hasSyncSession" | "syncCapabilities" | "syncPreferences"
+  >,
+  viewData: SettingsViewData["account"],
+  notSetLabel: string,
+  locale?: string,
+): SettingsSyncSummaryViewData {
+  const isManaged = state.syncPreferences.mode === "managed";
+  const destinationValue = isManaged
+    ? viewData.modeOptions.find((option) => option.value === "managed")?.label ??
+      "managed"
+    : state.syncPreferences.endpointInput.trim() || notSetLabel;
+  const lastSyncValue = state.syncPreferences.lastSyncedAt
+    ? formatSettingsLastSync(state.syncPreferences.lastSyncedAt, locale)
+    : viewData.lastSyncNever;
+
+  let statusMessage = viewData.stateMissing;
+  let statusTone: SettingsSyncSummaryViewData["statusTone"] = "info";
+
+  if (state.hasStoredSyncSecrets) {
+    statusMessage = viewData.connectionMissing;
+
+    if (state.hasSyncSession) {
+      if (isManaged) {
+        if (!state.syncCapabilities) {
+          statusMessage = viewData.planCheckFailed;
+        } else if (state.syncCapabilities.premiumActive) {
+          statusMessage = viewData.planActive;
+          statusTone = "success";
+        } else {
+          statusMessage = viewData.planInactive;
+        }
+      } else {
+        statusMessage = viewData.status.connected;
+        statusTone = "success";
+      }
+    }
+  }
+
+  return {
+    title: viewData.title,
+    description: viewData.hubSubtitle,
+    destinationLabel: viewData.modeRowLabel,
+    destinationValue,
+    lastSyncLabel: viewData.lastSyncLabel,
+    lastSyncValue,
+    actionLabel: viewData.openHubLabel,
+    statusMessage,
+    statusTone,
+  };
+}
+
 export function resolveSettingsAgeGroupSelection(
   cycleValues: CycleSettingsValues,
 ): AgeGroupOption {
@@ -676,4 +752,16 @@ export function resolveSettingsPredictionMode(
 
 export function buildSettingsCycleGuidance(cycleValues: CycleSettingsValues) {
   return buildCycleGuidanceState(cycleValues.cycleLength, cycleValues.periodLength);
+}
+
+export function formatSettingsLastSync(value: string, locale?: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
 }

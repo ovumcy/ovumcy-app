@@ -1,13 +1,20 @@
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 
-import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
-import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
+import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
+import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
+const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockDispatch = jest.fn();
 let preventRemoveCallback:
@@ -22,6 +29,7 @@ jest.mock("expo-router", () => {
       mockUseEffect(effect, [effect]);
     },
     useRouter: () => ({
+      push: mockPush,
       replace: mockReplace,
     }),
   };
@@ -59,59 +67,6 @@ const mockRequestSensitiveActionChallenge = jest.mocked(
 );
 const originalFetch = global.fetch;
 
-function createStorageMock(overrides = {}) {
-  return createLocalAppStorageMock({
-    readProfileRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      unpredictableCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-      trackBBT: false,
-      temperatureUnit: "c",
-      trackCervicalMucus: false,
-      hideSexChip: false,
-      languageOverride: "en",
-      themeOverride: "light",
-    }),
-    readOnboardingRecord: jest.fn().mockResolvedValue({
-      lastPeriodStart: "2026-03-10",
-      cycleLength: 28,
-      periodLength: 5,
-      autoPeriodFill: true,
-      irregularCycle: false,
-      ageGroup: "",
-      usageGoal: "health",
-    }),
-    readDayLogSummary: jest.fn().mockResolvedValue({
-      totalEntries: 1,
-      hasData: true,
-      dateFrom: "2026-03-10",
-      dateTo: "2026-03-10",
-    }),
-    listDayLogRecordsInRange: jest.fn().mockResolvedValue([
-      {
-        date: "2026-03-10",
-        isPeriod: true,
-        cycleStart: true,
-        isUncertain: false,
-        flow: "medium",
-        mood: 0,
-        sexActivity: "none",
-        bbt: 0,
-        cervicalMucus: "none",
-        cycleFactorKeys: [],
-        symptomIDs: [],
-        notes: "Cycle start",
-      },
-    ]),
-    ...overrides,
-  });
-}
-
 describe("SettingsScreen", () => {
   beforeEach(() => {
     if (!global.requestAnimationFrame) {
@@ -124,9 +79,10 @@ describe("SettingsScreen", () => {
     preventRemoveCallback = null;
     mockDispatch.mockReset();
     mockOpenConfirmation.mockReset();
+    mockPush.mockReset();
+    mockReplace.mockReset();
     mockRequestSensitiveActionChallenge.mockReset();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
-    mockReplace.mockReset();
     global.fetch = originalFetch;
   });
 
@@ -135,7 +91,7 @@ describe("SettingsScreen", () => {
   });
 
   it("saves cycle settings through the canonical profile repository", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -157,8 +113,28 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("maps the prediction-mode selector to the persisted cycle flags", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
+    fireEvent.press(screen.getByTestId("settings-save-cycle-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          irregularCycle: false,
+          unpredictableCycle: true,
+        }),
+      ),
+    );
+  });
+
   it("saves tracking settings with the chosen temperature unit", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -177,7 +153,7 @@ describe("SettingsScreen", () => {
   });
 
   it("toggles tracking cards through the shared binary toggle control", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -196,7 +172,7 @@ describe("SettingsScreen", () => {
   });
 
   it("creates and archives a custom symptom through the settings flow", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -235,282 +211,38 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("prepares local encrypted sync and reveals the recovery phrase once", async () => {
-    const storage = createStorageMock();
-    const syncSecretStore = createSyncSecretStoreMock();
+  it("opens the dedicated backup and sync screen from the summary card", async () => {
+    const storage = createSettingsStorageMock();
 
-    render(
-      <SettingsScreen
-        now={new Date(2026, 2, 17)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-sync-summary-card");
 
-    fireEvent.changeText(
-      screen.getByTestId("settings-sync-device-label-input"),
-      "Pixel 7",
-    );
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
 
-    await waitFor(() =>
-      expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          mode: "managed",
-          normalizedEndpoint: "https://sync.ovumcy.com",
-          deviceLabel: "Pixel 7",
-          setupStatus: "local_ready",
-        }),
-      ),
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("settings-sync-recovery-phrase").props.children)
-        .toEqual(expect.any(String)),
-    );
-    await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
+    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
   });
 
-  it("shows connected sync actions when the device already has an auth session", async () => {
-    const storage = createStorageMock({
-      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
-        mode: "self_hosted",
-        endpointInput: "192.168.1.20:8080",
-        normalizedEndpoint: "http://192.168.1.20:8080",
-        deviceLabel: "Pixel 7",
-        setupStatus: "connected",
-        preparedAt: "2026-03-19T08:15:00.000Z",
-        lastRemoteGeneration: 123,
-        lastSyncedAt: "2026-03-20T08:10:00.000Z",
-      }),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    await syncSecretStore.writeSyncSecrets({
-      device: {
-        deviceID: "device-1",
-        deviceLabel: "Pixel 7",
-        createdAt: "2026-03-19T08:15:00.000Z",
-      },
-      masterKeyHex: "aa",
-      deviceSecretHex: "bb",
-      wrappedKey: {
-        algorithm: "xchacha20poly1305",
-        kdf: "bip39_seed_hkdf_sha256",
-        mnemonicWordCount: 12,
-        wrapNonceHex: "cc",
-        wrappedMasterKeyHex: "dd",
-        phraseFingerprintHex: "ee",
-      },
-      authSessionToken: "session-1",
-    });
+  it("renders the app-equivalent interface, backup summary, export, and danger sections", async () => {
+    const storage = createSettingsStorageMock();
 
-    render(
-      <SettingsScreen
-        now={new Date(2026, 2, 20)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
-    expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-restore-button")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-disconnect-button")).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-login-button")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
-  });
-
-  it("explains managed cloud access before sign-in and keeps sync actions hidden", async () => {
-    const storage = createStorageMock();
-
-    render(<SettingsScreen now={new Date(2026, 2, 20)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    expect(screen.getByTestId("settings-sync-local-step")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-account-step")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-plan-step")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-actions-step")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-plan-banner")).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-upload-button")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-restore-button")).toBeNull();
-  });
-
-  it("keeps managed sync locked when the signed-in cloud account has no active plan", async () => {
-    const storage = createStorageMock({
-      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
-        mode: "managed",
-        endpointInput: "",
-        normalizedEndpoint: "https://sync.ovumcy.com",
-        deviceLabel: "Pixel 7",
-        setupStatus: "connected",
-        preparedAt: "2026-03-19T08:15:00.000Z",
-        lastRemoteGeneration: null,
-        lastSyncedAt: null,
-      }),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    await syncSecretStore.writeSyncSecrets({
-      device: {
-        deviceID: "device-1",
-        deviceLabel: "Pixel 7",
-        createdAt: "2026-03-19T08:15:00.000Z",
-      },
-      masterKeyHex: "aa",
-      deviceSecretHex: "bb",
-      wrappedKey: {
-        algorithm: "xchacha20poly1305",
-        kdf: "bip39_seed_hkdf_sha256",
-        mnemonicWordCount: 12,
-        wrapNonceHex: "cc",
-        wrappedMasterKeyHex: "dd",
-        phraseFingerprintHex: "ee",
-      },
-      authSessionToken: "session-1",
-    });
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          mode: "managed",
-          sync_enabled: true,
-          premium_active: false,
-          recovery_supported: true,
-          push_supported: false,
-          portal_supported: false,
-          advanced_cloud_insights: false,
-          max_devices: 5,
-          max_blob_bytes: 1024,
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    ) as typeof fetch;
-
-    render(
-      <SettingsScreen
-        now={new Date(2026, 2, 20)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
-
-    await screen.findByTestId("settings-cycle-section");
-
-    expect(screen.queryByTestId("settings-sync-upload-button")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-restore-button")).toBeNull();
-    expect(screen.getByTestId("settings-sync-disconnect-button")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-plan-blocked-banner")).toBeTruthy();
-  });
-
-  it("requires confirmation before recreating local sync keys", async () => {
-    const storage = createStorageMock({
-      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
-        mode: "managed",
-        endpointInput: "",
-        normalizedEndpoint: "https://sync.ovumcy.com",
-        deviceLabel: "Pixel 7",
-        setupStatus: "local_ready",
-        preparedAt: "2026-03-19T08:15:00.000Z",
-      }),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    await syncSecretStore.writeSyncSecrets({
-      device: {
-        deviceID: "device-1",
-        deviceLabel: "Pixel 7",
-        createdAt: "2026-03-19T08:15:00.000Z",
-      },
-      masterKeyHex: "aa",
-      deviceSecretHex: "bb",
-      wrappedKey: {
-        algorithm: "xchacha20poly1305",
-        kdf: "bip39_seed_hkdf_sha256",
-        mnemonicWordCount: 12,
-        wrapNonceHex: "cc",
-        wrappedMasterKeyHex: "dd",
-        phraseFingerprintHex: "ee",
-      },
-      authSessionToken: null,
-    });
-    mockOpenConfirmation.mockResolvedValue(false);
-
-    render(
-      <SettingsScreen
-        now={new Date(2026, 2, 17)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
-
-    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
-    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
-  });
-
-  it("blocks sync key recreation when device security challenge is unavailable", async () => {
-    const storage = createStorageMock({
-      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
-        mode: "managed",
-        endpointInput: "",
-        normalizedEndpoint: "https://sync.ovumcy.com",
-        deviceLabel: "Pixel 7",
-        setupStatus: "local_ready",
-        preparedAt: "2026-03-19T08:15:00.000Z",
-      }),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    await syncSecretStore.writeSyncSecrets({
-      device: {
-        deviceID: "device-1",
-        deviceLabel: "Pixel 7",
-        createdAt: "2026-03-19T08:15:00.000Z",
-      },
-      masterKeyHex: "aa",
-      deviceSecretHex: "bb",
-      wrappedKey: {
-        algorithm: "xchacha20poly1305",
-        kdf: "bip39_seed_hkdf_sha256",
-        mnemonicWordCount: 12,
-        wrapNonceHex: "cc",
-        wrappedMasterKeyHex: "dd",
-        phraseFingerprintHex: "ee",
-      },
-      authSessionToken: null,
-    });
-    mockOpenConfirmation.mockResolvedValue(true);
-    mockRequestSensitiveActionChallenge.mockResolvedValue({
-      ok: false,
-      reason: "unavailable",
-    });
-
-    render(
-      <SettingsScreen
-        now={new Date(2026, 2, 17)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
-
-    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
-    );
-    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-section")).toBeNull();
+    expect(screen.getByTestId("settings-export-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
   });
 
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     const exportDeliveryClient = {
       deliver: jest.fn().mockResolvedValue({ ok: true }),
     };
@@ -538,7 +270,7 @@ describe("SettingsScreen", () => {
   });
 
   it("prepares a PDF export through the settings flow and hands it to the delivery client", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     const buildPDFContent = jest
       .fn()
       .mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
@@ -571,7 +303,7 @@ describe("SettingsScreen", () => {
   });
 
   it("updates the native export range through the date picker instead of free-text input", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -599,51 +331,8 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("uses one prediction-mode selector and keeps age-group copy honest", async () => {
-    const storage = createStorageMock();
-
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    expect(screen.getByText(/Insights/i)).toBeTruthy();
-    expect(screen.queryByTestId("settings-toggle-irregular-cycle")).toBeNull();
-    expect(screen.queryByTestId("settings-toggle-unpredictable-cycle")).toBeNull();
-
-    fireEvent.press(screen.getByTestId("settings-prediction-mode-irregular"));
-    expect(
-      screen.getByTestId("settings-prediction-mode-irregular").props.accessibilityState,
-    ).toEqual(expect.objectContaining({ checked: true }));
-
-    fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
-    expect(
-      screen.getByTestId("settings-prediction-mode-facts_only").props.accessibilityState,
-    ).toEqual(expect.objectContaining({ checked: true }));
-    expect(screen.queryByText(/Ignored|Игнорируется|Ignorado/)).toBeNull();
-  });
-
-  it("maps the prediction-mode selector to the persisted cycle flags", async () => {
-    const storage = createStorageMock();
-
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
-    fireEvent.press(screen.getByTestId("settings-save-cycle-button"));
-
-    await waitFor(() =>
-      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          irregularCycle: false,
-          unpredictableCycle: true,
-        }),
-      ),
-    );
-  });
-
   it("saves cycle changes before leaving settings when the general guard accepts saving", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     mockOpenConfirmation.mockResolvedValue(true);
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -677,7 +366,7 @@ describe("SettingsScreen", () => {
   });
 
   it("saves interface changes before leaving settings when the guard accepts saving", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     mockOpenConfirmation.mockResolvedValue(true);
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -707,7 +396,7 @@ describe("SettingsScreen", () => {
   });
 
   it("discards interface preview changes when leaving settings without saving", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     mockOpenConfirmation.mockResolvedValue(false);
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -737,25 +426,8 @@ describe("SettingsScreen", () => {
     ).toEqual(expect.objectContaining({ checked: true }));
   });
 
-  it("renders the app-equivalent interface, sync, export, and danger sections", async () => {
-    const storage = createStorageMock();
-
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-export-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
-  });
-
   it("requires typed confirmation before clearing all local data", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -770,7 +442,7 @@ describe("SettingsScreen", () => {
   });
 
   it("clears local data, wipes sync secrets, and returns to onboarding after confirmation", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
 
     await syncSecretStore.writeSyncSecrets({
@@ -823,7 +495,7 @@ describe("SettingsScreen", () => {
   });
 
   it("requires device security before clearing all local data", async () => {
-    const storage = createStorageMock();
+    const storage = createSettingsStorageMock();
     mockRequestSensitiveActionChallenge.mockResolvedValue({
       ok: false,
       reason: "unavailable",

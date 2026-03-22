@@ -109,9 +109,12 @@ const settingsCopyEn = {
       "You have unsaved settings changes. Save them before leaving settings?",
   },
   account: {
-    title: "Account & sync",
+    title: "Backup & sync",
     subtitle:
       "Protect this device first, then connect either Ovumcy Cloud or your own sync server.",
+    hubSubtitle:
+      "Open recovery phrase, account connection, cloud plan, and sync actions on a separate screen.",
+    openHubLabel: "Open backup & sync",
     localStepTitle: "1. Protect this device",
     localStepHint:
       "Create a recovery phrase on this device. Keep it offline in case you ever need to restore your data.",
@@ -198,6 +201,10 @@ const settingsCopyEn = {
     regenerateAccept: "Create new phrase",
     regenerateDeviceAuthPrompt:
       "Confirm with device security to create a new recovery phrase for this device.",
+    discardChangesLabel: "Discard changes",
+    saveBeforeLeaveLabel: "Save and leave",
+    unsavedPrompt:
+      "You have unsaved backup and sync changes. Save them before leaving this screen?",
     prepared: "Recovery phrase created for this device.",
     regenerated: "A new recovery phrase was created for this device.",
     connected: "Connected to the sync server on this device.",
@@ -452,9 +459,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Есть несохранённые изменения в настройках. Сохранить их перед выходом из настроек?",
     },
     account: {
-      title: "Аккаунт и sync",
+      title: "Резервная копия и sync",
       subtitle:
         "Сначала защитите данные на этом устройстве, затем подключите Ovumcy Cloud или свой sync-сервер.",
+      hubSubtitle:
+        "Откройте отдельный экран, чтобы увидеть recovery phrase, подключение аккаунта, cloud-план и действия sync.",
+      openHubLabel: "Открыть резервную копию и sync",
       localStepTitle: "1. Защитить это устройство",
       localStepHint:
         "Создайте recovery phrase на этом устройстве. Храните её офлайн на случай восстановления данных.",
@@ -541,6 +551,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regenerateAccept: "Создать новую phrase",
       regenerateDeviceAuthPrompt:
         "Подтвердите защитой устройства создание новой recovery phrase для этого устройства.",
+      discardChangesLabel: "Не сохранять",
+      saveBeforeLeaveLabel: "Сохранить и выйти",
+      unsavedPrompt:
+        "Есть несохранённые изменения в резервной копии и sync. Сохранить их перед выходом с экрана?",
       prepared: "Recovery phrase создана для этого устройства.",
       regenerated: "Для этого устройства создана новая recovery phrase.",
       connected: "Это устройство подключено к sync-серверу.",
@@ -796,9 +810,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Hay cambios de ajustes sin guardar. ¿Quieres guardarlos antes de salir de ajustes?",
     },
     account: {
-      title: "Cuenta y sync",
+      title: "Copia y sync",
       subtitle:
         "Primero protege este dispositivo y luego conecta Ovumcy Cloud o tu propio servidor de sync.",
+      hubSubtitle:
+        "Abre una pantalla separada para ver la recovery phrase, la conexión de la cuenta, el plan cloud y las acciones de sync.",
+      openHubLabel: "Abrir copia y sync",
       localStepTitle: "1. Proteger este dispositivo",
       localStepHint:
         "Crea una recovery phrase en este dispositivo. Guárdala fuera de línea por si alguna vez necesitas restaurar tus datos.",
@@ -885,6 +902,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regenerateAccept: "Crear nueva phrase",
       regenerateDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para crear una nueva recovery phrase para este dispositivo.",
+      discardChangesLabel: "Descartar cambios",
+      saveBeforeLeaveLabel: "Guardar y salir",
+      unsavedPrompt:
+        "Hay cambios de copia y sync sin guardar. ¿Quieres guardarlos antes de salir de esta pantalla?",
       prepared: "La recovery phrase quedó creada para este dispositivo.",
       regenerated: "Se creó una nueva recovery phrase para este dispositivo.",
       connected: "Este dispositivo quedó conectado al servidor de sync.",

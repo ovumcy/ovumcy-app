@@ -23,6 +23,7 @@ import {
   buildSettingsSymptomsState,
   type LoadedSettingsState,
   resolveSettingsPredictionMode,
+  type SettingsSyncSummaryViewData,
   type SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "../components/AppButton";
@@ -34,7 +35,7 @@ import { LabeledSliderField } from "../components/LabeledSliderField";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
-import { SettingsSyncSetupSection } from "../components/SettingsSyncSetupSection";
+import { SettingsSyncSummaryCard } from "../components/SettingsSyncSummaryCard";
 import { StatusBanner } from "../components/StatusBanner";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import type { AppThemeColors } from "../theme/tokens";
@@ -42,16 +43,12 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsFlowScreenProps = {
-  accountLoginValue: string;
-  accountPasswordValue: string;
   createSymptomDraft: SymptomDraftValues;
   createSymptomErrorMessage: string;
   createSymptomStatusMessage: string;
   clearDataConfirmationValue: string;
   clearDataErrorMessage: string;
   clearDataStatusMessage: string;
-  accountErrorMessage: string;
-  accountStatusMessage: string;
   cycleGuidance: {
     adjusted: boolean;
     periodLong: boolean;
@@ -61,17 +58,12 @@ type SettingsFlowScreenProps = {
   cycleErrorMessage: string;
   exportErrorMessage: string;
   exportStatusMessage: string;
-  generatedRecoveryPhrase: string;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
-  isAuthenticatingSync: boolean;
   isExporting: boolean;
-  isPreparingSync: boolean;
-  isRestoringSync: boolean;
   isSavingCycle: boolean;
   isSavingInterface: boolean;
   isSavingTracking: boolean;
-  isSyncingNow: boolean;
   locale: string;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
@@ -97,15 +89,7 @@ type SettingsFlowScreenProps = {
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDatePress: () => void;
   onExportToDateChange: (value: string) => void;
-  onConnectSyncLogin: () => void | Promise<void>;
-  onConnectSyncRegister: () => void | Promise<void>;
-  onDisconnectSync: () => void | Promise<void>;
-  onPrepareSyncSetup: () => void | Promise<void>;
-  onRestoreSync: () => void | Promise<void>;
-  onSyncLoginValueChange: (value: string) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
-  onSyncPasswordValueChange: (value: string) => void;
-  onSyncNow: () => void | Promise<void>;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onPeriodLengthChange: (value: number) => void;
@@ -113,9 +97,7 @@ type SettingsFlowScreenProps = {
   onSaveCycleSettings: () => void | Promise<void>;
   onSaveInterfaceSettings: () => void | Promise<void>;
   onSaveTrackingSettings: () => void | Promise<void>;
-  onSyncDeviceLabelChange: (value: string) => void;
-  onSyncEndpointChange: (value: string) => void;
-  onSyncModeSelect: (value: LoadedSettingsState["syncPreferences"]["mode"]) => void;
+  onOpenBackupSync: () => void | Promise<void>;
   onSymptomDraftChange: (
     symptomID: SymptomID,
     updates: Partial<SymptomDraftValues>,
@@ -134,16 +116,13 @@ type SettingsFlowScreenProps = {
   showExportDatePicker: "from" | "to" | null;
   showDatePicker: boolean;
   state: LoadedSettingsState;
+  syncSummary: SettingsSyncSummaryViewData;
   trackingStatusMessage: string;
   viewData: SettingsViewData;
   isClearingData: boolean;
 };
 
 export function SettingsFlowScreen({
-  accountLoginValue,
-  accountPasswordValue,
-  accountErrorMessage,
-  accountStatusMessage,
   createSymptomDraft,
   createSymptomErrorMessage,
   createSymptomStatusMessage,
@@ -155,18 +134,13 @@ export function SettingsFlowScreen({
   cycleErrorMessage,
   exportErrorMessage,
   exportStatusMessage,
-  generatedRecoveryPhrase,
   interfaceErrorMessage,
   interfaceStatusMessage,
-  isAuthenticatingSync,
   isExporting,
-  isPreparingSync,
-  isRestoringSync,
   isSavingCycle,
   isSavingInterface,
   isSavingTracking,
   isClearingData,
-  isSyncingNow,
   locale,
   now,
   onAgeGroupSelect,
@@ -189,26 +163,16 @@ export function SettingsFlowScreen({
   onExportPresetSelect,
   onExportToDatePress,
   onExportToDateChange,
-  onConnectSyncLogin,
-  onConnectSyncRegister,
-  onDisconnectSync,
-  onPrepareSyncSetup,
-  onRestoreSync,
-  onSyncLoginValueChange,
   onInterfaceLanguageSelect,
-  onSyncPasswordValueChange,
-  onSyncNow,
   onInterfaceThemeSelect,
   onHideSexChipChange,
+  onOpenBackupSync,
   onPredictionModeSelect,
   onPeriodLengthChange,
   onRestoreSymptom,
   onSaveCycleSettings,
   onSaveInterfaceSettings,
   onSaveTrackingSettings,
-  onSyncDeviceLabelChange,
-  onSyncEndpointChange,
-  onSyncModeSelect,
   onSymptomDraftChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
@@ -221,6 +185,7 @@ export function SettingsFlowScreen({
   showExportDatePicker,
   showDatePicker,
   state,
+  syncSummary,
   trackingStatusMessage,
   viewData,
 }: SettingsFlowScreenProps) {
@@ -519,34 +484,10 @@ export function SettingsFlowScreen({
         viewData={viewData.interface}
       />
 
-      <SettingsSyncSetupSection
-        authLoginValue={accountLoginValue}
-        authPasswordValue={accountPasswordValue}
-        errorMessage={accountErrorMessage}
-        generatedRecoveryPhrase={generatedRecoveryPhrase}
-        hasSyncSession={state.hasSyncSession}
-        hasStoredSyncSecrets={state.hasStoredSyncSecrets}
-        isAuthenticating={isAuthenticatingSync}
-        isPreparing={isPreparingSync}
-        isRestoring={isRestoringSync}
-        isSyncing={isSyncingNow}
-        notSetLabel={viewData.common.notSet}
-        onAuthLoginChange={onSyncLoginValueChange}
-        onAuthPasswordChange={onSyncPasswordValueChange}
-        onDisconnect={onDisconnectSync}
-        onDeviceLabelChange={onSyncDeviceLabelChange}
-        onEndpointChange={onSyncEndpointChange}
-        onLogin={onConnectSyncLogin}
-        onModeSelect={onSyncModeSelect}
-        onPrepare={onPrepareSyncSetup}
-        onRegister={onConnectSyncRegister}
-        onRestore={onRestoreSync}
-      onSyncNow={onSyncNow}
-      preferences={state.syncPreferences}
-      statusMessage={accountStatusMessage}
-      syncCapabilities={state.syncCapabilities}
-      viewData={viewData.account}
-    />
+      <SettingsSyncSummaryCard
+        onOpen={onOpenBackupSync}
+        summary={syncSummary}
+      />
 
       <SettingsExportSection
         errorMessage={exportErrorMessage}

@@ -6,21 +6,20 @@ import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock
 import {
   archiveSettingsSymptom,
   createSettingsSymptom,
-  loadSettingsScreenState,
   prepareSettingsExportArtifact,
-  prepareSettingsSyncSetup,
   refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
   saveTrackingSettings,
-  saveSettingsSyncDraft,
   updateSettingsSymptom,
 } from "./settings-screen-service";
+import { prepareBackupSyncSetup, saveBackupSyncDraft } from "./backup-sync-screen-service";
+import { loadSettingsScreenState } from "./settings-state-service";
 import { createLoadedSettingsState } from "./settings-view-service";
 
 const originalFetch = global.fetch;
 
-describe("settings-screen-service", () => {
+describe("settings services", () => {
   afterEach(() => {
     global.fetch = originalFetch;
   });
@@ -496,7 +495,7 @@ describe("settings-screen-service", () => {
       createExportState(),
     );
 
-    const result = await prepareSettingsSyncSetup(
+    const result = await prepareBackupSyncSetup(
       storage,
       secretStore,
       initialState,
@@ -569,7 +568,7 @@ describe("settings-screen-service", () => {
       },
     );
 
-    const result = await saveSettingsSyncDraft(storage, secretStore, initialState);
+    const result = await saveBackupSyncDraft(storage, secretStore, initialState);
 
     expect(result).toEqual({
       ok: true,
