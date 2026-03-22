@@ -147,10 +147,7 @@ describe("onboarding-screen-service", () => {
     });
   });
 
-  it("logs the labeled save-step-one error in development when step 1 persistence fails", async () => {
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+  it("returns a generic save-step-one error when step 1 persistence fails", async () => {
     const writeError = new Error(
       "sqlite/writeOnboardingRecord/profile: sqlite/writeProfileRecord/upsert: boom",
     );
@@ -172,12 +169,6 @@ describe("onboarding-screen-service", () => {
       ok: false,
       errorCode: "generic",
     });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "onboarding/saveOnboardingStepOne",
-      writeError,
-    );
-
-    consoleErrorSpy.mockRestore();
   });
 
   it("sanitizes step 2 values before persisting onboarding completion", async () => {
@@ -270,10 +261,7 @@ describe("onboarding-screen-service", () => {
     );
   });
 
-  it("logs the labeled finish error in development when onboarding completion fails", async () => {
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+  it("returns a generic finish error when onboarding completion fails", async () => {
     const writeError = new Error("sqlite/writeProfileRecord/upsert: boom");
     const storage = createStorageMock({
       writeProfileRecord: jest.fn().mockRejectedValue(writeError),
@@ -285,12 +273,6 @@ describe("onboarding-screen-service", () => {
       ok: false,
       errorCode: "generic",
     });
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      "onboarding/finishOnboarding",
-      writeError,
-    );
-
-    consoleErrorSpy.mockRestore();
   });
 
   it("defaults incomplete relaunches to step 1 when legacy bootstrap state has no persisted step", async () => {

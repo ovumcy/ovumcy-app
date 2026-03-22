@@ -84,7 +84,7 @@ What is already true on `main`:
 
 - core local use does not require an account, sync, or managed hosting;
 - the main owner flows already exist as working local-first slices instead of shells;
-- CI, browser smoke, and private-repo security automation baselines are in place;
+- CI, browser smoke, and security automation baselines aligned with the current GitHub hosting mode are in place;
 - web preview is available for fast review, but it is not the durable storage path for sensitive health data.
 
 What this repository still does **not** claim yet:
@@ -105,6 +105,7 @@ What this repository still does **not** claim yet:
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
+- CodeQL analysis is enabled while the repository remains public on GitHub.
 - Dependabot monitors app dependencies and GitHub Actions updates.
 
 ## Architecture

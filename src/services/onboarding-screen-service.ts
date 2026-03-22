@@ -133,10 +133,7 @@ export async function saveOnboardingStepOne(
         incompleteOnboardingStep: 2,
       }),
     ]);
-  } catch (error) {
-    if (__DEV__) {
-      console.error("onboarding/saveOnboardingStepOne", error);
-    }
+  } catch {
     return {
       ok: false,
       errorCode: "generic",
@@ -205,10 +202,7 @@ export async function finishOnboarding(
         incompleteOnboardingStep: null,
       }),
     ]);
-  } catch (error) {
-    if (__DEV__) {
-      console.error("onboarding/finishOnboarding", error);
-    }
+  } catch {
     return {
       ok: false,
       errorCode: "generic",
