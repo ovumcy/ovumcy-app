@@ -23,7 +23,9 @@ import type {
 } from "../sync/sync-contract";
 import {
   buildCycleGuidanceState,
+  formatLocalDate,
   getSettingsCycleStartDateBounds,
+  parseLocalDate,
   resolveDisplayedAgeGroup,
 } from "./profile-settings-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
@@ -322,6 +324,38 @@ export type SettingsSyncSummaryViewData = {
   actionLabel: string;
   statusMessage: string;
   statusTone: "success" | "info";
+};
+
+export type SettingsSymptomsState = {
+  active: SymptomRecord[];
+  archived: SymptomRecord[];
+};
+
+export type SettingsDirtyState = {
+  isCycleDirty: boolean;
+  isTrackingDirty: boolean;
+  isInterfaceDirty: boolean;
+  hasUnsavedSettingsChanges: boolean;
+};
+
+export type SettingsExportSectionPresentationState = {
+  hasAnyData: boolean;
+  summaryRangeLabel: string;
+  summaryTotalLabel: string;
+  supportsNativeDatePicker: boolean;
+};
+
+export type SettingsFlowPresentationState = {
+  cyclePickerMaximumDate: Date | undefined;
+  cyclePickerMinimumDate: Date | undefined;
+  cyclePickerValue: Date;
+  displayedCycleStartDate: string;
+  exportPickerMaximumDate: Date | undefined;
+  exportPickerMinimumDate: Date | undefined;
+  exportPickerValue: Date;
+  exportSection: SettingsExportSectionPresentationState;
+  predictionMode: PredictionMode;
+  symptomsState: SettingsSymptomsState;
 };
 
 export function buildSettingsViewData(
@@ -682,8 +716,128 @@ export function createLoadedSettingsState(
   };
 }
 
-export function buildSettingsSymptomsState(symptomRecords: readonly SymptomRecord[]) {
+export function buildSettingsSymptomsState(
+  symptomRecords: readonly SymptomRecord[],
+): SettingsSymptomsState {
   return splitCustomSymptoms(symptomRecords);
+}
+
+export function extractPersistedCycleValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["cycleValues"] {
+  return {
+    lastPeriodStart: profile.lastPeriodStart,
+    cycleLength: profile.cycleLength,
+    periodLength: profile.periodLength,
+    autoPeriodFill: profile.autoPeriodFill,
+    irregularCycle: profile.irregularCycle,
+    unpredictableCycle: profile.unpredictableCycle,
+    ageGroup: resolveDisplayedAgeGroup(profile.ageGroup),
+    usageGoal: profile.usageGoal,
+  };
+}
+
+export function extractPersistedTrackingValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["trackingValues"] {
+  return {
+    trackBBT: profile.trackBBT,
+    temperatureUnit: profile.temperatureUnit,
+    trackCervicalMucus: profile.trackCervicalMucus,
+    hideSexChip: profile.hideSexChip,
+  };
+}
+
+export function extractPersistedInterfaceValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["interfaceValues"] {
+  return {
+    languageOverride: profile.languageOverride,
+    themeOverride: profile.themeOverride,
+  };
+}
+
+export function areCycleSettingsEqual(
+  left: LoadedSettingsState["cycleValues"],
+  right: LoadedSettingsState["cycleValues"],
+): boolean {
+  return (
+    left.lastPeriodStart === right.lastPeriodStart &&
+    left.cycleLength === right.cycleLength &&
+    left.periodLength === right.periodLength &&
+    left.autoPeriodFill === right.autoPeriodFill &&
+    left.irregularCycle === right.irregularCycle &&
+    left.unpredictableCycle === right.unpredictableCycle &&
+    left.ageGroup === right.ageGroup &&
+    left.usageGoal === right.usageGoal
+  );
+}
+
+export function areTrackingSettingsEqual(
+  left: LoadedSettingsState["trackingValues"],
+  right: LoadedSettingsState["trackingValues"],
+): boolean {
+  return (
+    left.trackBBT === right.trackBBT &&
+    left.temperatureUnit === right.temperatureUnit &&
+    left.trackCervicalMucus === right.trackCervicalMucus &&
+    left.hideSexChip === right.hideSexChip
+  );
+}
+
+export function areInterfaceSettingsEqual(
+  left: LoadedSettingsState["interfaceValues"],
+  right: LoadedSettingsState["interfaceValues"],
+): boolean {
+  return (
+    left.languageOverride === right.languageOverride &&
+    left.themeOverride === right.themeOverride
+  );
+}
+
+export function buildSettingsDirtyState(
+  state: LoadedSettingsState | null,
+): SettingsDirtyState {
+  if (!state) {
+    return {
+      isCycleDirty: false,
+      isTrackingDirty: false,
+      isInterfaceDirty: false,
+      hasUnsavedSettingsChanges: false,
+    };
+  }
+
+  const isCycleDirty = !areCycleSettingsEqual(
+    state.cycleValues,
+    extractPersistedCycleValues(state.profile),
+  );
+  const isTrackingDirty = !areTrackingSettingsEqual(
+    state.trackingValues,
+    extractPersistedTrackingValues(state.profile),
+  );
+  const isInterfaceDirty = !areInterfaceSettingsEqual(
+    state.interfaceValues,
+    extractPersistedInterfaceValues(state.profile),
+  );
+
+  return {
+    isCycleDirty,
+    isTrackingDirty,
+    isInterfaceDirty,
+    hasUnsavedSettingsChanges:
+      isCycleDirty || isTrackingDirty || isInterfaceDirty,
+  };
+}
+
+export function revertLoadedSettingsDraftValues(
+  state: LoadedSettingsState,
+): LoadedSettingsState {
+  return {
+    ...state,
+    cycleValues: extractPersistedCycleValues(state.profile),
+    trackingValues: extractPersistedTrackingValues(state.profile),
+    interfaceValues: extractPersistedInterfaceValues(state.profile),
+  };
 }
 
 export function buildSettingsSyncSummary(
@@ -756,6 +910,68 @@ export function buildSettingsCycleGuidance(cycleValues: CycleSettingsValues) {
   return buildCycleGuidanceState(cycleValues.cycleLength, cycleValues.periodLength);
 }
 
+export function buildSettingsExportSectionPresentationState(
+  exportState: LoadedExportState,
+  viewData: SettingsViewData["export"],
+  platformOS: string,
+): SettingsExportSectionPresentationState {
+  return {
+    hasAnyData: exportState.availableSummary.hasData,
+    summaryRangeLabel: buildSummaryRangeLabel(
+      viewData.summaryRangeTemplate,
+      viewData.summaryRangeEmpty,
+      exportState,
+    ),
+    summaryTotalLabel: formatTemplate(viewData.summaryTotalTemplate, [
+      String(exportState.summary.totalEntries),
+    ]),
+    supportsNativeDatePicker: platformOS !== "web",
+  };
+}
+
+export function buildSettingsFlowPresentationState(
+  state: LoadedSettingsState,
+  viewData: SettingsViewData,
+  locale: string,
+  now: Date,
+  platformOS: string,
+  exportDatePickerTarget: "from" | "to" | null,
+): SettingsFlowPresentationState {
+  const selectedDate = state.cycleValues.lastPeriodStart
+    ? parseLocalDate(state.cycleValues.lastPeriodStart)
+    : null;
+
+  return {
+    cyclePickerMaximumDate:
+      parseLocalDate(viewData.cycle.dateBounds.maxDate) ?? undefined,
+    cyclePickerMinimumDate:
+      parseLocalDate(viewData.cycle.dateBounds.minDate) ?? undefined,
+    cyclePickerValue:
+      selectedDate ??
+      parseLocalDate(viewData.cycle.dateBounds.maxDate) ??
+      now,
+    displayedCycleStartDate: selectedDate
+      ? formatLongDate(selectedDate, locale)
+      : viewData.common.notSet,
+    exportPickerMaximumDate:
+      parseLocalDate(state.exportState.bounds.maxDate ?? "") ?? undefined,
+    exportPickerMinimumDate:
+      parseLocalDate(state.exportState.bounds.minDate ?? "") ?? undefined,
+    exportPickerValue: resolveExportDatePickerValue(
+      state,
+      exportDatePickerTarget,
+      now,
+    ),
+    exportSection: buildSettingsExportSectionPresentationState(
+      state.exportState,
+      viewData.export,
+      platformOS,
+    ),
+    predictionMode: resolveSettingsPredictionMode(state.cycleValues),
+    symptomsState: buildSettingsSymptomsState(state.symptomRecords),
+  };
+}
+
 export function formatSettingsLastSync(value: string, locale?: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
@@ -766,4 +982,88 @@ export function formatSettingsLastSync(value: string, locale?: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed);
+}
+
+function buildSummaryRangeLabel(
+  template: string,
+  emptyTemplate: string,
+  exportState: LoadedExportState,
+): string {
+  const fromValue = resolveSummaryDateValue(
+    exportState.values.fromDate,
+    exportState.summary.dateFrom,
+  );
+  const toValue = resolveSummaryDateValue(
+    exportState.values.toDate,
+    exportState.summary.dateTo,
+  );
+  if (!fromValue || !toValue) {
+    return emptyTemplate;
+  }
+
+  return formatTemplate(template, [fromValue, toValue]);
+}
+
+function resolveSummaryDateValue(
+  draftValue: string,
+  fallbackValue: string | null,
+): string | null {
+  const normalizedDraftValue = String(draftValue ?? "").trim();
+  if (normalizedDraftValue.length === 0) {
+    return fallbackValue;
+  }
+
+  const parsedDraftValue = parseLocalDate(normalizedDraftValue);
+  if (
+    !parsedDraftValue ||
+    formatLocalDate(parsedDraftValue) !== normalizedDraftValue
+  ) {
+    return null;
+  }
+
+  return normalizedDraftValue;
+}
+
+function formatTemplate(template: string, values: string[]): string {
+  let index = 0;
+  return String(template).replace(/%[sd]/g, () => {
+    const value = index < values.length ? values[index] ?? "" : "";
+    index += 1;
+    return value;
+  });
+}
+
+function formatLongDate(value: Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(value);
+}
+
+function resolveExportDatePickerValue(
+  state: LoadedSettingsState,
+  target: "from" | "to" | null,
+  fallback: Date,
+): Date {
+  if (target === "from") {
+    return (
+      parseLocalDate(state.exportState.values.fromDate) ??
+      parseLocalDate(state.exportState.bounds.minDate ?? "") ??
+      fallback
+    );
+  }
+  if (target === "to") {
+    return (
+      parseLocalDate(state.exportState.values.toDate) ??
+      parseLocalDate(state.exportState.bounds.maxDate ?? "") ??
+      fallback
+    );
+  }
+
+  return (
+    parseLocalDate(state.exportState.bounds.maxDate ?? "") ??
+    parseLocalDate(state.exportState.bounds.minDate ?? "") ??
+    fallback
+  );
 }

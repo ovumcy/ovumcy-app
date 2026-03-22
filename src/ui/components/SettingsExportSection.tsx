@@ -1,8 +1,10 @@
-import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { LoadedExportState } from "../../models/export";
-import { formatLocalDate, parseLocalDate } from "../../services/profile-settings-policy";
-import type { SettingsViewData } from "../../services/settings-view-service";
+import type {
+  SettingsExportSectionPresentationState,
+  SettingsViewData,
+} from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
@@ -23,6 +25,7 @@ type SettingsExportSectionProps = {
   onPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onToDatePress: () => void;
   onToDateChange: (value: string) => void;
+  presentationState: SettingsExportSectionPresentationState;
   statusMessage: string;
   viewData: SettingsViewData["export"];
 };
@@ -39,21 +42,12 @@ export function SettingsExportSection({
   onPresetSelect,
   onToDatePress,
   onToDateChange,
+  presentationState,
   statusMessage,
   viewData,
 }: SettingsExportSectionProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const supportsNativeDatePicker = Platform.OS !== "web";
-  const hasAnyData = exportState.availableSummary.hasData;
-  const summaryRange = buildSummaryRangeLabel(
-    viewData.summaryRangeTemplate,
-    viewData.summaryRangeEmpty,
-    exportState,
-  );
-  const summaryTotal = formatTemplate(viewData.summaryTotalTemplate, [
-    String(exportState.summary.totalEntries),
-  ]);
 
   return (
     <FeatureCard
@@ -64,7 +58,7 @@ export function SettingsExportSection({
       <Text style={styles.helperText}>{viewData.storageHint}</Text>
       <Text style={styles.helperText}>{viewData.sensitiveHint}</Text>
 
-      {hasAnyData ? (
+      {presentationState.hasAnyData ? (
         <>
           <View style={styles.formGroup}>
             <Text style={styles.fieldLabel}>{viewData.presetLabel}</Text>
@@ -84,7 +78,7 @@ export function SettingsExportSection({
           <View style={styles.rangeRow}>
             <View style={[styles.formGroup, styles.rangeColumn]}>
               <Text style={styles.fieldLabel}>{viewData.fromLabel}</Text>
-              {supportsNativeDatePicker ? (
+              {presentationState.supportsNativeDatePicker ? (
                 <Pressable
                   accessibilityRole="button"
                   onPress={onFromDatePress}
@@ -120,7 +114,7 @@ export function SettingsExportSection({
 
             <View style={[styles.formGroup, styles.rangeColumn]}>
               <Text style={styles.fieldLabel}>{viewData.toLabel}</Text>
-              {supportsNativeDatePicker ? (
+              {presentationState.supportsNativeDatePicker ? (
                 <Pressable
                   accessibilityRole="button"
                   onPress={onToDatePress}
@@ -156,8 +150,8 @@ export function SettingsExportSection({
           </View>
 
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryText}>{summaryTotal}</Text>
-            <Text style={styles.summaryText}>{summaryRange}</Text>
+            <Text style={styles.summaryText}>{presentationState.summaryTotalLabel}</Text>
+            <Text style={styles.summaryText}>{presentationState.summaryRangeLabel}</Text>
           </View>
 
           {errorMessage ? (
@@ -203,55 +197,6 @@ export function SettingsExportSection({
       )}
     </FeatureCard>
   );
-}
-
-function buildSummaryRangeLabel(
-  template: string,
-  emptyTemplate: string,
-  exportState: LoadedExportState,
-): string {
-  const fromValue = resolveSummaryDateValue(
-    exportState.values.fromDate,
-    exportState.summary.dateFrom,
-  );
-  const toValue = resolveSummaryDateValue(
-    exportState.values.toDate,
-    exportState.summary.dateTo,
-  );
-  if (!fromValue || !toValue) {
-    return emptyTemplate;
-  }
-
-  return formatTemplate(template, [fromValue, toValue]);
-}
-
-function resolveSummaryDateValue(
-  draftValue: string,
-  fallbackValue: string | null,
-): string | null {
-  const normalizedDraftValue = String(draftValue ?? "").trim();
-  if (normalizedDraftValue.length === 0) {
-    return fallbackValue;
-  }
-
-  const parsedDraftValue = parseLocalDate(normalizedDraftValue);
-  if (
-    !parsedDraftValue ||
-    formatLocalDate(parsedDraftValue) !== normalizedDraftValue
-  ) {
-    return null;
-  }
-
-  return normalizedDraftValue;
-}
-
-function formatTemplate(template: string, values: string[]): string {
-  let index = 0;
-  return String(template).replace(/%[sd]/g, () => {
-    const value = index < values.length ? values[index] ?? "" : "";
-    index += 1;
-    return value;
-  });
 }
 
 const createStyles = (colors: AppThemeColors) =>

@@ -6,6 +6,12 @@ import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage, readHasCompletedOnboarding } from "../../services/app-bootstrap-service";
 import {
+  buildBackupSyncDirtyState,
+  resolveBackupSyncConnectedStatusMessage,
+  resolveBackupSyncErrorMessage,
+  revertBackupSyncDraftState,
+} from "../../services/backup-sync-view-service";
+import {
   connectBackupSyncAccount,
   disconnectBackupSyncAccount,
   prepareBackupSyncSetup,
@@ -53,9 +59,7 @@ export function BackupSyncScreen({
   const [isSyncingNow, setIsSyncingNow] = useState(false);
   const shellCopy = getShellCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
-  const isSyncDirty = state
-    ? !areSyncPreferencesEqual(state.syncPreferences, state.savedSyncPreferences)
-    : false;
+  const isSyncDirty = buildBackupSyncDirtyState(state);
 
   useFocusEffect(
     useCallback(() => {
@@ -104,12 +108,7 @@ export function BackupSyncScreen({
   const revertUnsavedSync = useCallback(() => {
     resetAccountMessages();
     setState((current) =>
-      current
-        ? {
-            ...current,
-            syncPreferences: current.savedSyncPreferences,
-          }
-        : current,
+      current ? revertBackupSyncDraftState(current) : current,
     );
   }, [resetAccountMessages]);
 
@@ -146,53 +145,11 @@ export function BackupSyncScreen({
     },
   );
 
-  function syncErrorLabel(errorCode: string) {
-    switch (errorCode) {
-      case "login_required":
-        return viewData.account.errors.loginRequired;
-      case "password_required":
-        return viewData.account.errors.passwordRequired;
-      case "device_label_required":
-        return viewData.account.errors.deviceLabelRequired;
-      case "endpoint_required":
-        return viewData.account.errors.endpointRequired;
-      case "invalid_endpoint":
-        return viewData.account.errors.invalidEndpoint;
-      case "unsupported_scheme":
-        return viewData.account.errors.unsupportedScheme;
-      case "insecure_public_http":
-        return viewData.account.errors.insecurePublicHttp;
-      case "invalid_registration_input":
-        return viewData.account.errors.invalidRegistrationInput;
-      case "registration_failed":
-        return viewData.account.errors.registrationFailed;
-      case "invalid_credentials":
-        return viewData.account.errors.invalidCredentials;
-      case "too_many_devices":
-        return viewData.account.errors.tooManyDevices;
-      case "sync_not_prepared":
-        return viewData.account.errors.syncNotPrepared;
-      case "not_connected":
-      case "unauthorized":
-        return viewData.account.errors.notConnected;
-      case "blob_not_found":
-        return viewData.account.errors.blobNotFound;
-      case "invalid_payload":
-        return viewData.account.errors.invalidPayload;
-      case "network_failed":
-        return viewData.account.errors.networkFailed;
-      case "stale_generation":
-        return viewData.account.errors.syncFailed;
-      default:
-        return viewData.account.errors.saveFailed;
-    }
-  }
-
   async function saveSyncDraftIfNeeded() {
     if (!state) {
       return null;
     }
-    if (areSyncPreferencesEqual(state.syncPreferences, state.savedSyncPreferences)) {
+    if (!buildBackupSyncDirtyState(state)) {
       return state;
     }
 
@@ -200,7 +157,9 @@ export function BackupSyncScreen({
     const syncResult = await saveBackupSyncDraft(storage, syncSecretStore, state);
     setIsSavingSyncDraft(false);
     if (!syncResult.ok) {
-      setAccountErrorMessage(syncErrorLabel(syncResult.errorCode));
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(syncResult.errorCode, viewData.account),
+      );
       return null;
     }
 
@@ -246,7 +205,9 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
+      );
       setIsPreparingSync(false);
       return;
     }
@@ -287,7 +248,9 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
+      );
       setIsAuthenticatingSync(false);
       return;
     }
@@ -295,11 +258,7 @@ export function BackupSyncScreen({
     setState(result.state);
     setAccountPasswordValue("");
     setAccountStatusMessage(
-      result.state.syncPreferences.mode === "managed" &&
-        result.state.syncCapabilities &&
-        !result.state.syncCapabilities.premiumActive
-        ? viewData.account.status.connectedNoPlan
-        : viewData.account.status.connected,
+      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
     );
     setIsAuthenticatingSync(false);
   }
@@ -325,7 +284,9 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
+      );
       setIsSyncingNow(false);
       return;
     }
@@ -370,7 +331,9 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(syncErrorLabel(result.errorCode));
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
+      );
       setIsRestoringSync(false);
       return;
     }
@@ -504,21 +467,5 @@ export function BackupSyncScreen({
       syncCapabilities={state.syncCapabilities}
       viewData={viewData.account}
     />
-  );
-}
-
-function areSyncPreferencesEqual(
-  left: LoadedSettingsState["syncPreferences"],
-  right: LoadedSettingsState["syncPreferences"],
-): boolean {
-  return (
-    left.mode === right.mode &&
-    left.endpointInput === right.endpointInput &&
-    left.normalizedEndpoint === right.normalizedEndpoint &&
-    left.deviceLabel === right.deviceLabel &&
-    left.setupStatus === right.setupStatus &&
-    left.preparedAt === right.preparedAt &&
-    left.lastRemoteGeneration === right.lastRemoteGeneration &&
-    left.lastSyncedAt === right.lastSyncedAt
   );
 }

@@ -1,14 +1,7 @@
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
-import {
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type {
@@ -18,31 +11,25 @@ import type {
 } from "../../models/profile";
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
-import { parseLocalDate } from "../../services/profile-settings-policy";
 import {
-  buildSettingsSymptomsState,
+  buildSettingsFlowPresentationState,
   type LoadedSettingsState,
-  resolveSettingsPredictionMode,
   type SettingsSyncSummaryViewData,
   type SettingsViewData,
 } from "../../services/settings-view-service";
-import { AppButton } from "../components/AppButton";
 import { AppScreenSurface } from "../components/AppScreenSurface";
-import { BinaryToggleCard } from "../components/BinaryToggleCard";
-import { ChoiceGroup } from "../components/ChoiceGroup";
-import { FeatureCard } from "../components/FeatureCard";
-import { LabeledSliderField } from "../components/LabeledSliderField";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
 import { SettingsSyncSummaryCard } from "../components/SettingsSyncSummaryCard";
-import { StatusBanner } from "../components/StatusBanner";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
-import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
+import { SettingsCycleSection } from "./settings/SettingsCycleSection";
+import { createSettingsFlowStyles } from "./settings/settings-flow-styles";
+import { SettingsTrackingSection } from "./settings/SettingsTrackingSection";
 
-type SettingsFlowScreenProps = {
+export type SettingsFlowScreenProps = {
   createSymptomDraft: SymptomDraftValues;
   createSymptomErrorMessage: string;
   createSymptomStatusMessage: string;
@@ -51,15 +38,16 @@ type SettingsFlowScreenProps = {
   clearDataStatusMessage: string;
   cycleGuidance: {
     adjusted: boolean;
-    periodLong: boolean;
     cycleShort: boolean;
+    periodLong: boolean;
   };
-  cycleStatusMessage: string;
   cycleErrorMessage: string;
+  cycleStatusMessage: string;
   exportErrorMessage: string;
   exportStatusMessage: string;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
+  isClearingData: boolean;
   isExporting: boolean;
   isSavingCycle: boolean;
   isSavingInterface: boolean;
@@ -69,8 +57,8 @@ type SettingsFlowScreenProps = {
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
   onArchiveSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onAutoPeriodFillChange: (value: boolean) => void;
-  onClearDataConfirmationChange: (value: string) => void;
   onClearAllData: () => void | Promise<void>;
+  onClearDataConfirmationChange: (value: string) => void;
   onClearLastPeriodStart: () => void;
   onCreateSymptom: () => void | Promise<void>;
   onCreateSymptomDraftChange: (updates: Partial<SymptomDraftValues>) => void;
@@ -82,22 +70,23 @@ type SettingsFlowScreenProps = {
     event: DateTimePickerEvent,
     value: Date | undefined,
   ) => void;
-  onExportFromDatePress: () => void;
   onExportFromDateChange: (value: string) => void;
+  onExportFromDatePress: () => void;
   onExportJSON: () => void | Promise<void>;
   onExportPDF: () => void | Promise<void>;
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
-  onExportToDatePress: () => void;
   onExportToDateChange: (value: string) => void;
+  onExportToDatePress: () => void;
+  onHideSexChipChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
-  onPredictionModeSelect: (value: PredictionMode) => void;
+  onOpenBackupSync: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
+  onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onSaveCycleSettings: () => void | Promise<void>;
   onSaveInterfaceSettings: () => void | Promise<void>;
   onSaveTrackingSettings: () => void | Promise<void>;
-  onOpenBackupSync: () => void | Promise<void>;
   onSymptomDraftChange: (
     symptomID: SymptomID,
     updates: Partial<SymptomDraftValues>,
@@ -107,19 +96,17 @@ type SettingsFlowScreenProps = {
   ) => void;
   onTrackBBTChange: (value: boolean) => void;
   onTrackCervicalMucusChange: (value: boolean) => void;
-  onHideSexChipChange: (value: boolean) => void;
   onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
   rowSymptomErrorMessages: Record<string, string>;
   rowSymptomStatusMessages: Record<string, string>;
-  showExportDatePicker: "from" | "to" | null;
   showDatePicker: boolean;
+  showExportDatePicker: "from" | "to" | null;
   state: LoadedSettingsState;
   syncSummary: SettingsSyncSummaryViewData;
   trackingStatusMessage: string;
   viewData: SettingsViewData;
-  isClearingData: boolean;
 };
 
 export function SettingsFlowScreen({
@@ -130,24 +117,24 @@ export function SettingsFlowScreen({
   clearDataErrorMessage,
   clearDataStatusMessage,
   cycleGuidance,
-  cycleStatusMessage,
   cycleErrorMessage,
+  cycleStatusMessage,
   exportErrorMessage,
   exportStatusMessage,
   interfaceErrorMessage,
   interfaceStatusMessage,
+  isClearingData,
   isExporting,
   isSavingCycle,
   isSavingInterface,
   isSavingTracking,
-  isClearingData,
   locale,
   now,
   onAgeGroupSelect,
   onArchiveSymptom,
   onAutoPeriodFillChange,
-  onClearDataConfirmationChange,
   onClearAllData,
+  onClearDataConfirmationChange,
   onClearLastPeriodStart,
   onCreateSymptom,
   onCreateSymptomDraftChange,
@@ -156,19 +143,19 @@ export function SettingsFlowScreen({
   onDatePickerToggle,
   onExportCSV,
   onExportDatePickerChange,
-  onExportFromDatePress,
   onExportFromDateChange,
+  onExportFromDatePress,
   onExportJSON,
   onExportPDF,
   onExportPresetSelect,
-  onExportToDatePress,
   onExportToDateChange,
+  onExportToDatePress,
+  onHideSexChipChange,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
-  onHideSexChipChange,
   onOpenBackupSync,
-  onPredictionModeSelect,
   onPeriodLengthChange,
+  onPredictionModeSelect,
   onRestoreSymptom,
   onSaveCycleSettings,
   onSaveInterfaceSettings,
@@ -182,27 +169,23 @@ export function SettingsFlowScreen({
   rowSymptomDrafts,
   rowSymptomErrorMessages,
   rowSymptomStatusMessages,
-  showExportDatePicker,
   showDatePicker,
+  showExportDatePicker,
   state,
   syncSummary,
   trackingStatusMessage,
   viewData,
 }: SettingsFlowScreenProps) {
-  const styles = useThemedStyles(createStyles);
-  const selectedDate = state.cycleValues.lastPeriodStart
-    ? parseLocalDate(state.cycleValues.lastPeriodStart)
-    : null;
-  const supportsNativeDatePicker = Platform.OS !== "web";
+  const styles = useThemedStyles(createSettingsFlowStyles);
   const insets = useSafeAreaInsets();
-  const displayedDate = selectedDate
-    ? formatLongDate(selectedDate, locale)
-    : viewData.common.notSet;
-  const exportPickerValue = resolveExportDatePickerValue(state, showExportDatePicker, now);
-  const exportPickerMinimumDate = parseLocalDate(state.exportState.bounds.minDate ?? "");
-  const exportPickerMaximumDate = parseLocalDate(state.exportState.bounds.maxDate ?? "");
-  const symptomsState = buildSettingsSymptomsState(state.symptomRecords);
-  const predictionMode = resolveSettingsPredictionMode(state.cycleValues);
+  const flowState = buildSettingsFlowPresentationState(
+    state,
+    viewData,
+    locale,
+    now,
+    Platform.OS,
+    showExportDatePicker,
+  );
 
   return (
     <AppScreenSurface>
@@ -215,434 +198,124 @@ export function SettingsFlowScreen({
         style={styles.screen}
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{viewData.title}</Text>
-        <Text style={styles.headerDescription}>{viewData.description}</Text>
-      </View>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{viewData.title}</Text>
+            <Text style={styles.headerDescription}>{viewData.description}</Text>
+          </View>
 
-      <FeatureCard
-        title={viewData.cycle.title}
-        testID="settings-cycle-section"
-      >
-        <LabeledSliderField
-          label={viewData.cycle.cycleLengthLabel}
-          maximumValue={90}
-          minimumValue={15}
-          onValueChange={(value) => onCycleLengthChange(Math.round(value))}
-          testID="settings-cycle-length-slider"
-          value={state.cycleValues.cycleLength}
-          valueSuffix={` ${viewData.common.daysShort}`}
-        />
+          <SettingsCycleSection
+            cycleErrorMessage={cycleErrorMessage}
+            cycleGuidance={cycleGuidance}
+            cyclePickerMaximumDate={flowState.cyclePickerMaximumDate}
+            cyclePickerMinimumDate={flowState.cyclePickerMinimumDate}
+            cyclePickerValue={flowState.cyclePickerValue}
+            cycleStatusMessage={cycleStatusMessage}
+            displayedCycleStartDate={flowState.displayedCycleStartDate}
+            isSavingCycle={isSavingCycle}
+            now={now}
+            onAgeGroupSelect={onAgeGroupSelect}
+            onAutoPeriodFillChange={onAutoPeriodFillChange}
+            onClearLastPeriodStart={onClearLastPeriodStart}
+            onCycleLengthChange={onCycleLengthChange}
+            onDatePickerChange={onDatePickerChange}
+            onDatePickerToggle={onDatePickerToggle}
+            onPeriodLengthChange={onPeriodLengthChange}
+            onPredictionModeSelect={onPredictionModeSelect}
+            onSaveCycleSettings={onSaveCycleSettings}
+            onUsageGoalSelect={onUsageGoalSelect}
+            predictionMode={flowState.predictionMode}
+            showDatePicker={showDatePicker}
+            state={state}
+            styles={styles}
+            supportsNativeDatePicker={flowState.exportSection.supportsNativeDatePicker}
+            viewData={viewData}
+          />
 
-        <LabeledSliderField
-          label={viewData.cycle.periodLengthLabel}
-          maximumValue={14}
-          minimumValue={1}
-          onValueChange={(value) => onPeriodLengthChange(Math.round(value))}
-          testID="settings-period-length-slider"
-          value={state.cycleValues.periodLength}
-          valueSuffix={` ${viewData.common.daysShort}`}
-        />
+          <SettingsSymptomsSection
+            createDraft={createSymptomDraft}
+            createErrorMessage={createSymptomErrorMessage}
+            createStatusMessage={createSymptomStatusMessage}
+            onArchive={onArchiveSymptom}
+            onCreate={onCreateSymptom}
+            onCreateDraftChange={onCreateSymptomDraftChange}
+            onRestore={onRestoreSymptom}
+            onRowDraftChange={onSymptomDraftChange}
+            onUpdate={onUpdateSymptom}
+            rowDrafts={rowSymptomDrafts}
+            rowErrorMessages={rowSymptomErrorMessages}
+            rowStatusMessages={rowSymptomStatusMessages}
+            viewData={viewData.symptoms}
+            visibleState={flowState.symptomsState}
+          />
 
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{viewData.cycle.lastPeriodStartLabel}</Text>
-          {supportsNativeDatePicker ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={onDatePickerToggle}
-              style={styles.dateFieldShell}
-              testID="settings-cycle-date-field-button"
-            >
-              <Text
-                style={[
-                  styles.dateFieldValue,
-                  !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
-                ]}
-              >
-                {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
-              </Text>
-              {state.cycleValues.lastPeriodStart ? (
-                <View style={styles.dateActionRow}>
-                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
-                    <Text style={styles.inlineActionText}>
-                      {viewData.common.clearDate}
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
-            </Pressable>
-          ) : (
-            <View style={styles.dateFieldShell}>
-              <Text
-                style={[
-                  styles.dateFieldValue,
-                  !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
-                ]}
-              >
-                {state.cycleValues.lastPeriodStart ? displayedDate : viewData.common.notSet}
-              </Text>
-              <View style={styles.dateActionRow}>
-                <Pressable onPress={onDatePickerToggle} style={styles.inlineAction}>
-                  <Text style={styles.inlineActionText}>
-                    {viewData.common.changeDate}
-                  </Text>
-                </Pressable>
-                {state.cycleValues.lastPeriodStart ? (
-                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
-                    <Text style={styles.inlineActionText}>
-                      {viewData.common.clearDate}
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
-          )}
-          {supportsNativeDatePicker && showDatePicker ? (
+          <SettingsTrackingSection
+            isSavingTracking={isSavingTracking}
+            onHideSexChipChange={onHideSexChipChange}
+            onSaveTrackingSettings={onSaveTrackingSettings}
+            onTemperatureUnitSelect={onTemperatureUnitSelect}
+            onTrackBBTChange={onTrackBBTChange}
+            onTrackCervicalMucusChange={onTrackCervicalMucusChange}
+            state={state}
+            styles={styles}
+            trackingStatusMessage={trackingStatusMessage}
+            viewData={viewData}
+          />
+
+          <SettingsInterfaceSection
+            errorMessage={interfaceErrorMessage}
+            isSaving={isSavingInterface}
+            onLanguageSelect={onInterfaceLanguageSelect}
+            onSave={onSaveInterfaceSettings}
+            onThemeSelect={onInterfaceThemeSelect}
+            statusMessage={interfaceStatusMessage}
+            value={state.interfaceValues}
+            viewData={viewData.interface}
+          />
+
+          <SettingsSyncSummaryCard onOpen={onOpenBackupSync} summary={syncSummary} />
+
+          <SettingsExportSection
+            errorMessage={exportErrorMessage}
+            exportState={state.exportState}
+            isExporting={isExporting}
+            onCSVExport={onExportCSV}
+            onFromDateChange={onExportFromDateChange}
+            onFromDatePress={onExportFromDatePress}
+            onJSONExport={onExportJSON}
+            onPDFExport={onExportPDF}
+            onPresetSelect={onExportPresetSelect}
+            onToDateChange={onExportToDateChange}
+            onToDatePress={onExportToDatePress}
+            presentationState={flowState.exportSection}
+            statusMessage={exportStatusMessage}
+            viewData={viewData.export}
+          />
+
+          {flowState.exportSection.supportsNativeDatePicker && showExportDatePicker ? (
             <DateTimePicker
               display="default"
+              maximumDate={flowState.exportPickerMaximumDate ?? now}
               mode="date"
-              maximumDate={parseLocalDate(viewData.cycle.dateBounds.maxDate) ?? now}
-              minimumDate={parseLocalDate(viewData.cycle.dateBounds.minDate) ?? now}
-              onChange={onDatePickerChange}
-              value={
-                selectedDate ??
-                parseLocalDate(viewData.cycle.dateBounds.maxDate) ??
-                now
-              }
+              onChange={onExportDatePickerChange}
+              {...(flowState.exportPickerMinimumDate
+                ? { minimumDate: flowState.exportPickerMinimumDate }
+                : {})}
+              testID="settings-export-date-picker"
+              value={flowState.exportPickerValue}
             />
           ) : null}
-          <Text style={styles.helperText}>{viewData.cycle.lastPeriodStartHint}</Text>
-        </View>
 
-        <View style={styles.messageStack}>
-          {cycleGuidance.adjusted ? (
-            <Text style={styles.infoText}>{viewData.cycle.messages.infoAdjusted}</Text>
-          ) : null}
-          {cycleGuidance.periodLong ? (
-            <Text style={styles.infoText}>{viewData.cycle.messages.infoPeriodLong}</Text>
-          ) : null}
-          {cycleGuidance.cycleShort ? (
-            <Text style={styles.infoText}>{viewData.cycle.messages.infoCycleShort}</Text>
-          ) : null}
-        </View>
-        {cycleErrorMessage ? (
-          <StatusBanner
-            message={cycleErrorMessage}
-            tone="error"
-            testID="settings-cycle-error-banner"
+          <SettingsDangerZoneSection
+            confirmationValue={clearDataConfirmationValue}
+            errorMessage={clearDataErrorMessage}
+            isClearingData={isClearingData}
+            onChangeConfirmationValue={onClearDataConfirmationChange}
+            onSubmit={onClearAllData}
+            statusMessage={clearDataStatusMessage}
+            viewData={viewData.danger}
           />
-        ) : null}
-        {cycleStatusMessage ? (
-          <StatusBanner
-            message={cycleStatusMessage}
-            tone="success"
-            testID="settings-cycle-status-banner"
-          />
-        ) : null}
-
-        <BinaryToggleCard
-          description={viewData.cycle.autoPeriodFillHint}
-          descriptionPosition="below"
-          icon="🩸"
-          label={viewData.cycle.autoPeriodFillLabel}
-          onValueChange={onAutoPeriodFillChange}
-          testID="settings-toggle-auto-period-fill"
-          value={state.cycleValues.autoPeriodFill}
-        />
-
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{viewData.cycle.predictionModeLabel}</Text>
-          <Text style={styles.helperText}>{viewData.cycle.predictionModeHint}</Text>
-          <ChoiceGroup
-            onSelect={onPredictionModeSelect}
-            options={viewData.cycle.predictionModeOptions}
-            selectedValue={predictionMode}
-            testIDPrefix="settings-prediction-mode"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>
-          <Text style={styles.helperText}>{viewData.ageGroup.hint}</Text>
-          <ChoiceGroup
-            layout="grid3"
-            onSelect={onAgeGroupSelect}
-            options={viewData.ageGroup.options}
-            selectedValue={state.cycleValues.ageGroup}
-            testIDPrefix="settings-age-group"
-          />
-        </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{viewData.usageGoal.label}</Text>
-          <Text style={styles.helperText}>{viewData.usageGoal.hint}</Text>
-          <ChoiceGroup
-            onSelect={onUsageGoalSelect}
-            options={viewData.usageGoal.options}
-            selectedValue={state.cycleValues.usageGoal}
-            testIDPrefix="settings-usage-goal"
-          />
-        </View>
-
-        <AppButton
-          disabled={isSavingCycle}
-          label={viewData.cycle.saveLabel}
-          onPress={onSaveCycleSettings}
-          testID="settings-save-cycle-button"
-        />
-      </FeatureCard>
-
-      <SettingsSymptomsSection
-        createDraft={createSymptomDraft}
-        createErrorMessage={createSymptomErrorMessage}
-        createStatusMessage={createSymptomStatusMessage}
-        onArchive={onArchiveSymptom}
-        onCreate={onCreateSymptom}
-        onCreateDraftChange={onCreateSymptomDraftChange}
-        onRestore={onRestoreSymptom}
-        onRowDraftChange={onSymptomDraftChange}
-        onUpdate={onUpdateSymptom}
-        rowDrafts={rowSymptomDrafts}
-        rowErrorMessages={rowSymptomErrorMessages}
-        rowStatusMessages={rowSymptomStatusMessages}
-        viewData={viewData.symptoms}
-        visibleState={symptomsState}
-      />
-
-      <FeatureCard
-        title={viewData.tracking.title}
-        description={viewData.tracking.subtitle}
-        testID="settings-tracking-section"
-      >
-        <BinaryToggleCard
-          description={viewData.tracking.trackBBT.hint}
-          descriptionPosition="below"
-          icon="🌡️"
-          label={viewData.tracking.trackBBT.label}
-          onValueChange={onTrackBBTChange}
-          testID="settings-toggle-track-bbt"
-          value={state.trackingValues.trackBBT}
-        />
-
-        <BinaryToggleCard
-          description={viewData.tracking.trackCervicalMucus.hint}
-          descriptionPosition="below"
-          icon="💧"
-          label={viewData.tracking.trackCervicalMucus.label}
-          onValueChange={onTrackCervicalMucusChange}
-          testID="settings-toggle-track-cervical-mucus"
-          value={state.trackingValues.trackCervicalMucus}
-        />
-
-        <BinaryToggleCard
-          description={viewData.tracking.hideSexChip.hint}
-          descriptionPosition="below"
-          icon="◦"
-          label={viewData.tracking.hideSexChip.label}
-          onValueChange={onHideSexChipChange}
-          testID="settings-toggle-hide-sex-chip"
-          value={state.trackingValues.hideSexChip}
-        />
-
-        <View style={styles.formGroup}>
-          <Text style={styles.fieldLabel}>{viewData.tracking.temperatureUnit.label}</Text>
-          <Text style={styles.helperText}>{viewData.tracking.temperatureUnit.hint}</Text>
-          <ChoiceGroup
-            layout="grid2"
-            onSelect={onTemperatureUnitSelect}
-            options={viewData.tracking.temperatureUnit.options}
-            selectedValue={state.trackingValues.temperatureUnit}
-            testIDPrefix="settings-temperature-unit"
-          />
-        </View>
-
-        {trackingStatusMessage ? (
-          <StatusBanner
-            message={trackingStatusMessage}
-            tone="success"
-            testID="settings-tracking-status-banner"
-          />
-        ) : null}
-
-        <AppButton
-          disabled={isSavingTracking}
-          label={viewData.tracking.saveLabel}
-          onPress={onSaveTrackingSettings}
-          testID="settings-save-tracking-button"
-          variant="secondary"
-        />
-      </FeatureCard>
-
-      <SettingsInterfaceSection
-        errorMessage={interfaceErrorMessage}
-        isSaving={isSavingInterface}
-        onLanguageSelect={onInterfaceLanguageSelect}
-        onSave={onSaveInterfaceSettings}
-        onThemeSelect={onInterfaceThemeSelect}
-        statusMessage={interfaceStatusMessage}
-        value={state.interfaceValues}
-        viewData={viewData.interface}
-      />
-
-      <SettingsSyncSummaryCard
-        onOpen={onOpenBackupSync}
-        summary={syncSummary}
-      />
-
-      <SettingsExportSection
-        errorMessage={exportErrorMessage}
-        exportState={state.exportState}
-        isExporting={isExporting}
-        onCSVExport={onExportCSV}
-        onFromDatePress={onExportFromDatePress}
-        onFromDateChange={onExportFromDateChange}
-        onJSONExport={onExportJSON}
-        onPDFExport={onExportPDF}
-        onPresetSelect={onExportPresetSelect}
-        onToDatePress={onExportToDatePress}
-        onToDateChange={onExportToDateChange}
-        statusMessage={exportStatusMessage}
-        viewData={viewData.export}
-      />
-      {supportsNativeDatePicker && showExportDatePicker ? (
-        <DateTimePicker
-          display="default"
-          maximumDate={exportPickerMaximumDate ?? now}
-          mode="date"
-          onChange={onExportDatePickerChange}
-          {...(exportPickerMinimumDate ? { minimumDate: exportPickerMinimumDate } : {})}
-          testID="settings-export-date-picker"
-          value={exportPickerValue}
-        />
-      ) : null}
-
-      <SettingsDangerZoneSection
-        confirmationValue={clearDataConfirmationValue}
-        errorMessage={clearDataErrorMessage}
-        isClearingData={isClearingData}
-        onChangeConfirmationValue={onClearDataConfirmationChange}
-        onSubmit={onClearAllData}
-        statusMessage={clearDataStatusMessage}
-        viewData={viewData.danger}
-      />
         </View>
       </ScrollView>
     </AppScreenSurface>
   );
 }
-
-function formatLongDate(value: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(value);
-}
-
-function resolveExportDatePickerValue(
-  state: LoadedSettingsState,
-  target: "from" | "to" | null,
-  fallback: Date,
-): Date {
-  if (target === "from") {
-    return (
-      parseLocalDate(state.exportState.values.fromDate) ??
-      parseLocalDate(state.exportState.bounds.minDate ?? "") ??
-      fallback
-    );
-  }
-  if (target === "to") {
-    return (
-      parseLocalDate(state.exportState.values.toDate) ??
-      parseLocalDate(state.exportState.bounds.maxDate ?? "") ??
-      fallback
-    );
-  }
-
-  return fallback;
-}
-
-const createStyles = (colors: AppThemeColors) =>
-  StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: "transparent",
-    },
-    screenContent: {
-      paddingBottom: spacing.xl,
-    },
-    container: {
-      alignSelf: "center",
-      gap: spacing.md,
-      maxWidth: 1080,
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      width: "100%",
-    },
-    header: {
-      gap: 6,
-    },
-    headerTitle: {
-      color: colors.text,
-      fontSize: 29,
-      fontWeight: "800",
-      lineHeight: 34,
-    },
-    headerDescription: {
-      color: colors.textMuted,
-      fontSize: 14,
-      lineHeight: 21,
-    },
-    formGroup: {
-      gap: spacing.sm,
-    },
-    fieldLabel: {
-      color: colors.text,
-      fontSize: 15,
-      fontWeight: "700",
-    },
-    helperText: {
-      color: colors.textMuted,
-      fontSize: 14,
-      lineHeight: 21,
-    },
-    dateFieldShell: {
-      backgroundColor: colors.surfaceTint,
-      borderColor: colors.lineSoft,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-    },
-    dateFieldValue: {
-      color: colors.text,
-      fontSize: 16,
-      fontWeight: "600",
-    },
-    dateFieldValueMuted: {
-      color: colors.textMuted,
-    },
-    dateActionRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: spacing.md,
-    },
-    inlineAction: {
-      alignSelf: "flex-start",
-      paddingTop: spacing.xs,
-    },
-    inlineActionText: {
-      color: colors.accent,
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    messageStack: {
-      gap: spacing.xs,
-    },
-    infoText: {
-      color: colors.textMuted,
-      fontSize: 14,
-      lineHeight: 21,
-    },
-  });

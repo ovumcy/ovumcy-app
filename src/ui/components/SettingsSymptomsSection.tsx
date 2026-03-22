@@ -3,8 +3,10 @@ import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
-import type { SettingsViewData } from "../../services/settings-view-service";
-import { buildSettingsSymptomsState } from "../../services/settings-view-service";
+import type {
+  SettingsSymptomsState,
+  SettingsViewData,
+} from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
@@ -29,7 +31,7 @@ type SettingsSymptomsSectionProps = {
   rowErrorMessages: Record<string, string>;
   rowStatusMessages: Record<string, string>;
   viewData: SettingsViewData["symptoms"];
-  visibleState: ReturnType<typeof buildSettingsSymptomsState>;
+  visibleState: SettingsSymptomsState;
 };
 
 export function SettingsSymptomsSection({
