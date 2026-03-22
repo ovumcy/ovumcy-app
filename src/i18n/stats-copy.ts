@@ -110,6 +110,232 @@ const statsCopyEn = {
 
 type StatsCopy = WidenLiteral<typeof statsCopyEn>;
 
+const statsCopyDe: StatsCopy = {
+  title: "Insights",
+  subtitle:
+    "Sieh, wie sich Zykluslänge, Phasen und erfasste Faktoren im Laufe der Zeit verändern.",
+  noData: "-",
+  dataNotice:
+    "Es gibt noch wenige Daten. Das Bild wird klarer, je mehr Zyklen du erfasst.",
+  emptyTitle: "Erfasse weiter, um Insights freizuschalten",
+  emptyBodyZero:
+    "Schließe 2 Zyklen ab, um Insights freizuschalten. Beginne damit, den ersten Tag deiner nächsten Periode einzugeben.",
+  emptyBodyOne:
+    "Du hast 1 abgeschlossenen Zyklus. Schließe noch einen ab, um Insights freizuschalten.",
+  emptyProgressHint:
+    "Vorhersagen werden nach mindestens 2 abgeschlossenen Zyklen klarer.",
+  completedCyclesProgress: (count: number) => `Abgeschlossene Zyklen: ${count} / 2`,
+  irregularNotice: (minDays: number, maxDays: number) =>
+    `Deine Zyklen schwanken zwischen ${minDays} und ${maxDays} Tagen. Das ist ein unregelmäßiger Rhythmus. Vorhersagen sind nur ungefähr.`,
+  irregularRecommendation:
+    "Erwäge, den Modus für unregelmäßige Zyklen in den Einstellungen zu aktivieren.",
+  ageVariabilityHint:
+    "Nach 35 nimmt die Zyklusvariabilität auf natürliche Weise zu.",
+  lastCycleLength: "Länge des letzten Zyklus",
+  lastPeriodLength: "Periodendauer",
+  currentPhase: "Aktuelle Phase",
+  predictionReliability: "Zuverlässigkeit der Vorhersage",
+  factsOnlyTitle: "Nur Fakten",
+  factsOnlyValue: "Vorhersagen aus",
+  factsOnlyHint:
+    "In diesem Modus konzentriert sich die Seite auf deinen erfassten Verlauf statt auf Schätzungen.",
+  cycleLengthCard: "Zykluslänge",
+  cycleRange: "Bereich",
+  averageLabel: "Durchschnitt",
+  medianLabel: "Median",
+  cycleRangeSummary: (minDays: number, maxDays: number) =>
+    `Deine Zyklen: ${minDays} bis ${maxDays} Tage`,
+  factorContextTitle: "Jüngste Zyklusfaktoren",
+  factorContextWindow: (days: number) =>
+    `In den letzten ${days} Tagen erfasst.`,
+  factorContextHint:
+    "Diese Tags können Kontext geben, wenn sich der Zyklus weniger konstant anfühlt, beweisen aber keine medizinische Ursache.",
+  factorPatternLabels: {
+    longer: "Faktoren, die häufiger in längeren Zyklen vorkommen",
+    shorter: "Faktoren, die häufiger in kürzeren Zyklen vorkommen",
+    variable: "Faktoren, die in variablen Zyklen vorkommen",
+  },
+  factorRecentCyclesTitle: "Kontext der letzten Zyklen",
+  factorCycleLength: (days: number) => `${days}-Tage-Zyklus`,
+  factorCycleDates: (start: string, end: string) => `${start} bis ${end}`,
+  factorCycleKinds: {
+    longer: "Länger als dein üblicher Median",
+    shorter: "Kürzer als dein üblicher Median",
+    variable: "Innerhalb eines variablen Musters",
+  },
+  cycleTrend: "Zyklustrend",
+  recentCycles: "Letzte Zyklen",
+  noCycleData: "Es gibt noch keinen abgeschlossenen Zyklusverlauf.",
+  chartActualLabel: "Tatsächlich",
+  chartAverageLabel: "Durchschnitt",
+  symptomFrequency: "Symptomhäufigkeit",
+  noSymptomData: "Es gibt noch keinen erfassten Symptomverlauf.",
+  lastCycleSymptomsTitle: "Symptome im letzten Zyklus",
+  lastCycleSymptomsSubtitle:
+    "Was in deinem letzten abgeschlossenen Zyklus am häufigsten aufgetreten ist.",
+  noCycleSymptomData:
+    "Im letzten abgeschlossenen Zyklus gibt es noch keine Symptomdaten.",
+  symptomPatternsTitle: "Symptommuster",
+  symptomPatternsSubtitle:
+    "Muster aus wiederkehrendem Symptom-Timing über abgeschlossene Zyklen hinweg.",
+  symptomPatternDay: (day: number) => `Meist um den ${day}. Zyklustag`,
+  symptomPatternDays: (start: number, end: number) =>
+    `Meist um die Zyklustage ${start} bis ${end}`,
+  phaseMoodTitle: "Stimmung nach Phase",
+  phaseMoodSubtitle:
+    "Durchschnittlich erfasste Stimmung über deine Zyklusphasen hinweg.",
+  phaseMoodEmpty: "Für diese Phase gibt es noch keine Stimmungseinträge.",
+  phaseMoodCount: (count: number) => `${count} erfasste Tage`,
+  phaseSymptomsTitle: "Symptome nach Phase",
+  phaseSymptomsSubtitle:
+    "Die Symptome, die du in jeder Phase am häufigsten erfasst hast.",
+  phaseSymptomsEmpty:
+    "Für diese Phase gibt es noch kein wiederkehrendes Symptommuster.",
+  phaseSymptomsDays: (count: number) => `${count} erfasste Tage in dieser Phase`,
+  bbtTitle: "BBT-Trend",
+  bbtUnitCelsius: "°C",
+  bbtUnitFahrenheit: "°F",
+  bbtCaption:
+    "BBT erscheint nur, wenn du sie erfasst. Die Werte bleiben lokal und werden nur für den aktuellen Zyklus angezeigt.",
+  reliabilityLabels: {
+    early: "Frühe Schätzung",
+    building: "Muster entsteht",
+    stable: "Stabileres Muster",
+    variable: "Variables Muster",
+  },
+  reliabilitySample: (count: number) =>
+    `Basierend auf ${count} abgeschlossenen Zyklen.`,
+  reliabilitySampleRecent: (count: number) =>
+    `Basierend auf den letzten ${count} abgeschlossenen Zyklen.`,
+  reliabilityHint:
+    "Mehr abgeschlossene Zyklen machen den vorhergesagten Bereich stabiler.",
+  reliabilityHintVariable:
+    "Vorhersagen können stärker schwanken, wenn sich die Zykluslänge von Zyklus zu Zyklus verändert.",
+  phaseLabels: {
+    unknown: "Unbekannt",
+    menstrual: "Menstruell",
+    follicular: "Follikulär",
+    fertile: "Fruchtbar",
+    ovulation: "Eisprung",
+    luteal: "Luteal",
+  },
+  phaseIcons: statsCopyEn.phaseIcons,
+};
+
+const statsCopyFr: StatsCopy = {
+  title: "Insights",
+  subtitle:
+    "Observe comment la durée du cycle, les phases et les facteurs enregistrés évoluent au fil du temps.",
+  noData: "-",
+  dataNotice:
+    "Les données sont encore limitées. La vue d'ensemble sera plus nette à mesure que tu enregistres plus de cycles.",
+  emptyTitle: "Continue à enregistrer pour débloquer les insights",
+  emptyBodyZero:
+    "Complète 2 cycles pour débloquer les insights. Commence par saisir le premier jour de tes prochaines règles.",
+  emptyBodyOne:
+    "Tu as 1 cycle terminé. Termine-en un autre pour débloquer les insights.",
+  emptyProgressHint:
+    "Les prédictions deviennent plus claires après au moins 2 cycles terminés.",
+  completedCyclesProgress: (count: number) => `Cycles terminés : ${count} / 2`,
+  irregularNotice: (minDays: number, maxDays: number) =>
+    `Tes cycles varient entre ${minDays} et ${maxDays} jours. C'est un rythme irrégulier. Les prédictions restent approximatives.`,
+  irregularRecommendation:
+    "Pense à activer le mode cycle irrégulier dans les réglages.",
+  ageVariabilityHint:
+    "Après 35 ans, la variabilité du cycle augmente naturellement.",
+  lastCycleLength: "Durée du dernier cycle",
+  lastPeriodLength: "Durée des règles",
+  currentPhase: "Phase actuelle",
+  predictionReliability: "Fiabilité de la prédiction",
+  factsOnlyTitle: "Seulement les faits",
+  factsOnlyValue: "Prédictions désactivées",
+  factsOnlyHint:
+    "Ce mode garde la page centrée sur l'historique enregistré plutôt que sur des estimations.",
+  cycleLengthCard: "Durée du cycle",
+  cycleRange: "Plage",
+  averageLabel: "Moyenne",
+  medianLabel: "Médiane",
+  cycleRangeSummary: (minDays: number, maxDays: number) =>
+    `Tes cycles : de ${minDays} à ${maxDays} jours`,
+  factorContextTitle: "Facteurs récents du cycle",
+  factorContextWindow: (days: number) =>
+    `Enregistrés au cours des ${days} derniers jours.`,
+  factorContextHint:
+    "Ces étiquettes peuvent apporter du contexte quand le rythme semble moins régulier, mais elles ne prouvent pas une cause médicale.",
+  factorPatternLabels: {
+    longer: "Facteurs vus plus souvent dans les cycles plus longs",
+    shorter: "Facteurs vus plus souvent dans les cycles plus courts",
+    variable: "Facteurs vus dans des cycles variables",
+  },
+  factorRecentCyclesTitle: "Contexte des cycles récents",
+  factorCycleLength: (days: number) => `Cycle de ${days} jours`,
+  factorCycleDates: (start: string, end: string) => `${start} à ${end}`,
+  factorCycleKinds: {
+    longer: "Plus long que ta médiane habituelle",
+    shorter: "Plus court que ta médiane habituelle",
+    variable: "Dans un schéma variable",
+  },
+  cycleTrend: "Tendance du cycle",
+  recentCycles: "Cycles récents",
+  noCycleData: "Pas encore d'historique de cycles terminés.",
+  chartActualLabel: "Réel",
+  chartAverageLabel: "Moyenne",
+  symptomFrequency: "Fréquence des symptômes",
+  noSymptomData: "Pas encore d'historique de symptômes enregistrés.",
+  lastCycleSymptomsTitle: "Symptômes du dernier cycle",
+  lastCycleSymptomsSubtitle:
+    "Ce qui est apparu le plus souvent dans ton dernier cycle terminé.",
+  noCycleSymptomData:
+    "Pas encore de données de symptômes dans le dernier cycle terminé.",
+  symptomPatternsTitle: "Schémas des symptômes",
+  symptomPatternsSubtitle:
+    "Schémas issus du moment récurrent des symptômes à travers les cycles terminés.",
+  symptomPatternDay: (day: number) =>
+    `Habituellement autour du jour ${day} du cycle`,
+  symptomPatternDays: (start: number, end: number) =>
+    `Habituellement autour des jours ${start} à ${end} du cycle`,
+  phaseMoodTitle: "Humeur selon la phase",
+  phaseMoodSubtitle:
+    "Humeur moyenne enregistrée selon les phases de ton cycle.",
+  phaseMoodEmpty: "Aucune entrée d'humeur pour cette phase pour le moment.",
+  phaseMoodCount: (count: number) => `${count} jours enregistrés`,
+  phaseSymptomsTitle: "Symptômes selon la phase",
+  phaseSymptomsSubtitle:
+    "Les symptômes que tu as le plus souvent enregistrés dans chaque phase.",
+  phaseSymptomsEmpty:
+    "Pas encore de schéma répété de symptômes dans cette phase.",
+  phaseSymptomsDays: (count: number) =>
+    `${count} jours enregistrés dans cette phase`,
+  bbtTitle: "Tendance TBC",
+  bbtUnitCelsius: "°C",
+  bbtUnitFahrenheit: "°F",
+  bbtCaption:
+    "La TBC apparaît seulement quand tu la suis. Les mesures restent locales et ne sont affichées que pour le cycle en cours.",
+  reliabilityLabels: {
+    early: "Estimation précoce",
+    building: "Schéma en cours",
+    stable: "Schéma plus stable",
+    variable: "Schéma variable",
+  },
+  reliabilitySample: (count: number) =>
+    `Basé sur ${count} cycles terminés.`,
+  reliabilitySampleRecent: (count: number) =>
+    `Basé sur les ${count} derniers cycles terminés.`,
+  reliabilityHint:
+    "Plus il y a de cycles terminés, plus la plage prédite devient stable.",
+  reliabilityHintVariable:
+    "Les prédictions peuvent varier davantage quand la durée du cycle change d'un cycle à l'autre.",
+  phaseLabels: {
+    unknown: "Inconnue",
+    menstrual: "Menstruelle",
+    follicular: "Folliculaire",
+    fertile: "Fertile",
+    ovulation: "Ovulation",
+    luteal: "Lutéale",
+  },
+  phaseIcons: statsCopyEn.phaseIcons,
+};
+
 const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
   en: statsCopyEn,
   ru: {
@@ -308,6 +534,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     },
     phaseIcons: statsCopyEn.phaseIcons,
   },
+  de: statsCopyDe,
+  fr: statsCopyFr,
 };
 
 export function getStatsCopy(language: string | null | undefined) {

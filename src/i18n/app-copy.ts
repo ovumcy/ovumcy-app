@@ -88,6 +88,178 @@ const appCopyEn = {
 
 type AppCopy = WidenLiteral<typeof appCopyEn>;
 
+const appCopyDe: AppCopy = {
+  appInfo: {
+    name: "Ovumcy",
+    tagline: "Lokales Zyklus-Tracking für iOS und Android.",
+  },
+  onboarding: {
+    progress: {
+      step1: "Schritt 1 von 2",
+      step2: "Schritt 2 von 2",
+    },
+    buttons: {
+      back: "Zurück",
+      next: "Weiter",
+      finish: "Fertig",
+    },
+    step1: {
+      title: "Wann hat deine letzte Periode begonnen?",
+      subtitle: "Wähle ein Datum aus den letzten 60 Tagen.",
+      day1Tip: "Tag 1 ist der erste Tag mit voller Blutung, nicht Schmierblutung.",
+      dismissTip: "Hinweis schließen",
+      today: "Heute",
+      yesterday: "Gestern",
+      twoDaysAgo: "Vor 2 Tagen",
+      datePlaceholder: "tt.mm.jjjj",
+      selectedDate: "Ausgewähltes Datum",
+    },
+    step2: {
+      title: "Zyklusparameter einrichten",
+      cycleLength: "Übliche Zykluslänge",
+      daysShort: "T",
+      cycleLengthHint:
+        "Stelle den Regler auf die Zykluslänge ein, die du normalerweise vom Beginn einer Periode bis zum Beginn der nächsten siehst. Ein häufiger Ausgangswert liegt bei etwa 21 bis 35 Tagen.",
+      periodLength: "Periodendauer",
+      periodLengthHint:
+        "Das ist die Anzahl der Tage mit echter Blutung, nicht mit Schmierblutung davor.",
+      errorIncompatible:
+        "Die Periodendauer passt nicht zur Zykluslänge. Die Menstruation kann nicht fast den ganzen Zyklus einnehmen.",
+      warningApproximate:
+        "Mit diesen Werten lässt sich der Eisprung nicht zuverlässig berechnen. Die Vorhersage wird nur ungefähr sein.",
+      infoAdjusted:
+        "Die Periodendauer wurde automatisch angepasst, damit mindestens 10 Tage bis zum nächsten Zyklus bleiben.",
+      infoPeriodLong:
+        "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprich darüber mit einer Ärztin oder einem Arzt.",
+      infoCycleShort:
+        "Ein Zyklus unter 24 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
+      autoPeriodFill: "Periodentage automatisch markieren",
+      autoPeriodFillHint:
+        "Wenn diese Option aktiviert ist, füllt das Markieren des ersten Tages die folgenden Tage automatisch auf Basis deiner Periodendauer aus.",
+      predictionMode: "Wie vorhersagbar ist dein Zyklus?",
+      predictionModeHint: "Wähle die Option, die am ehesten zu dir passt.",
+      predictionModeRegular: "Meist regelmäßig",
+      predictionModeRegularHint: "Normale Vorhersagen anzeigen.",
+      predictionModeIrregular: "Meist unregelmäßig",
+      predictionModeIrregularHint: "Ungefähre Daten anzeigen.",
+      predictionModeFactsOnly: "Keine Vorhersagen",
+      predictionModeFactsOnlyHint: "Nur deine Einträge anzeigen.",
+      ageGroup: "Dein Alter",
+      ageGroupHint:
+        "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Insights. Die Zyklusberechnung ändert sich dadurch nicht.",
+      usageGoal: "Wofür nutzt du Ovumcy?",
+      usageGoalHint:
+        "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
+    },
+    ageGroup: {
+      under20: "Unter 20",
+      age20to35: "20-35",
+      age35plus: "35+",
+    },
+    usageGoal: {
+      avoidPregnancy: "Schwangerschaft vermeiden",
+      tryingToConceive: "Schwanger werden",
+      health: "Allgemeines Zyklus-Tracking",
+    },
+    errors: {
+      dateRequired: "Bitte wähle ein Datum aus.",
+      dismissError: "Fehler schließen",
+      invalidLastPeriodStart:
+        "Bitte wähle ein gültiges Startdatum für deine letzte Periode aus.",
+      lastPeriodRange: "Wähle ein Datum innerhalb der letzten 60 Tage aus.",
+      generic:
+        "Die Onboarding-Daten konnten nicht gespeichert werden. Bitte versuche es erneut.",
+    },
+    loading: "Deine lokale Einrichtung wird geladen…",
+  },
+};
+
+const appCopyFr: AppCopy = {
+  appInfo: {
+    name: "Ovumcy",
+    tagline: "Suivi du cycle en local pour iOS et Android.",
+  },
+  onboarding: {
+    progress: {
+      step1: "Étape 1 sur 2",
+      step2: "Étape 2 sur 2",
+    },
+    buttons: {
+      back: "Retour",
+      next: "Suivant",
+      finish: "Terminer",
+    },
+    step1: {
+      title: "Quand tes dernières règles ont-elles commencé ?",
+      subtitle: "Choisis une date dans les 60 derniers jours.",
+      day1Tip: "Le jour 1 est le premier jour de flux abondant, pas de spotting.",
+      dismissTip: "Fermer la note",
+      today: "Aujourd'hui",
+      yesterday: "Hier",
+      twoDaysAgo: "Il y a 2 jours",
+      datePlaceholder: "jj.mm.aaaa",
+      selectedDate: "Date sélectionnée",
+    },
+    step2: {
+      title: "Configurer les paramètres du cycle",
+      cycleLength: "Durée habituelle du cycle",
+      daysShort: "j",
+      cycleLengthHint:
+        "Déplace le curseur vers la durée du cycle que tu observes habituellement entre le début d'une période et le début de la suivante. Une base fréquente se situe autour de 21 à 35 jours.",
+      periodLength: "Durée des règles",
+      periodLengthHint:
+        "Il s'agit du nombre de jours avec un vrai flux, pas des légers saignements avant.",
+      errorIncompatible:
+        "La durée des règles n'est pas compatible avec la durée du cycle. Les règles ne peuvent pas occuper presque tout le cycle.",
+      warningApproximate:
+        "Avec ces valeurs, l'ovulation ne peut pas être calculée de façon fiable. La prédiction sera approximative.",
+      infoAdjusted:
+        "La durée des règles a été ajustée automatiquement pour qu'il reste au moins 10 jours avant le cycle suivant.",
+      infoPeriodLong:
+        "Une durée supérieure à 8 jours peut indiquer des irrégularités du cycle. Parles-en avec un médecin.",
+      infoCycleShort:
+        "Un cycle inférieur à 24 jours est moins courant. Parles-en avec un médecin.",
+      autoPeriodFill: "Marquer automatiquement les jours de règles",
+      autoPeriodFillHint:
+        "Quand cette option est activée, marquer le premier jour remplit automatiquement les jours suivants selon la durée de tes règles.",
+      predictionMode: "À quel point ton cycle est-il prévisible ?",
+      predictionModeHint: "Choisis l'option qui te correspond le mieux.",
+      predictionModeRegular: "Plutôt régulier",
+      predictionModeRegularHint: "Afficher les prédictions habituelles.",
+      predictionModeIrregular: "Plutôt irrégulier",
+      predictionModeIrregularHint: "Afficher des dates approximatives.",
+      predictionModeFactsOnly: "Pas de prédictions",
+      predictionModeFactsOnlyHint: "Afficher seulement tes enregistrements.",
+      ageGroup: "Ton âge",
+      ageGroupHint:
+        "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les Insights. Cela ne change pas les calculs du cycle.",
+      usageGoal: "Pourquoi utilises-tu Ovumcy ?",
+      usageGoalHint:
+        "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
+    },
+    ageGroup: {
+      under20: "Moins de 20 ans",
+      age20to35: "20-35",
+      age35plus: "35+",
+    },
+    usageGoal: {
+      avoidPregnancy: "Éviter une grossesse",
+      tryingToConceive: "Essayer de concevoir",
+      health: "Suivi général du cycle",
+    },
+    errors: {
+      dateRequired: "Veuillez sélectionner une date.",
+      dismissError: "Fermer l'erreur",
+      invalidLastPeriodStart:
+        "Veuillez sélectionner une date valide de début des dernières règles.",
+      lastPeriodRange: "Choisissez une date dans les 60 derniers jours.",
+      generic:
+        "Impossible d'enregistrer les données d'onboarding. Réessaie.",
+    },
+    loading: "Chargement de ta configuration locale…",
+  },
+};
+
 const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
   en: appCopyEn,
   ru: {
@@ -258,6 +430,8 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       loading: "Cargando tu configuración local…",
     },
   },
+  de: appCopyDe,
+  fr: appCopyFr,
 };
 
 export function getAppInfo(language: string | null | undefined) {

@@ -429,6 +429,8 @@ export function buildSettingsViewData(
         { value: "en", label: APP_LANGUAGE_LABELS.en },
         { value: "ru", label: APP_LANGUAGE_LABELS.ru },
         { value: "es", label: APP_LANGUAGE_LABELS.es },
+        { value: "de", label: APP_LANGUAGE_LABELS.de },
+        { value: "fr", label: APP_LANGUAGE_LABELS.fr },
       ],
       previewHint: settingsCopy.interface.previewHint,
       themeLabel: settingsCopy.interface.themeLabel,

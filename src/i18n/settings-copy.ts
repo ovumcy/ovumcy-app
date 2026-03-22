@@ -349,6 +349,779 @@ const settingsCopyEn = {
 
 type SettingsCopy = WidenLiteral<typeof settingsCopyEn>;
 
+const settingsCopyDe: SettingsCopy = {
+  ...settingsCopyEn,
+  title: "Einstellungen",
+  subtitle:
+    "Verwalte Zyklusparameter, Tracking-Felder, Exportaktionen und das lokale Profilverhalten.",
+  common: {
+    ...settingsCopyEn.common,
+    changeDate: "Datum wählen",
+    clearDate: "Datum löschen",
+    notSet: "Nicht festgelegt",
+    saving: "Wird gespeichert...",
+  },
+  cycle: {
+    ...settingsCopyEn.cycle,
+    title: "Zyklusparameter",
+    cycleLength: "Übliche Zykluslänge",
+    periodLength: "Periodendauer",
+    lastPeriodStart: "Startdatum der letzten Periode",
+    lastPeriodStartHint:
+      "Optionaler Fallback, wenn in deinem Journal noch kein Zyklusbeginn markiert ist.",
+    warningApproximate:
+      "Mit diesen Werten lässt sich der Eisprung nicht zuverlässig berechnen. Die Vorhersage wird nur ungefähr sein.",
+    infoAdjusted:
+      "Die Periodendauer wurde automatisch angepasst, damit mindestens 10 Tage bis zum nächsten Zyklus bleiben.",
+    infoPeriodLong:
+      "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprich darüber mit einer Ärztin oder einem Arzt.",
+    infoCycleShort:
+      "Ein Zyklus unter 24 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
+    autoPeriodFill: "Periodentage automatisch ausfüllen",
+    autoPeriodFillHint:
+      "Wenn diese Option aktiviert ist, füllt das Markieren des ersten Tages die folgenden Tage automatisch auf Basis deiner Periodendauer aus.",
+    predictionModeLabel: "Vorhersagemodus",
+    predictionModeHint: "Wähle, wie Ovumcy Datumsvorhersagen anzeigen soll.",
+    predictionModeRegular: "Regelmäßig",
+    predictionModeRegularHint:
+      "Zeigt die Standardvorhersage auf Basis deiner Zykluseinstellungen und deines Verlaufs.",
+    predictionModeIrregular: "Unregelmäßig",
+    predictionModeIrregularHint:
+      "Lässt Vorhersagen sichtbar, aber nur als ungefähre Orientierung.",
+    predictionModeFactsOnly: "Nur Fakten",
+    predictionModeFactsOnlyHint:
+      "Schaltet Datumsvorhersagen aus und zeigt nur erfasste Fakten und gespeicherte Marker.",
+    save: "Änderungen speichern",
+  },
+  ageGroup: {
+    ...settingsCopyEn.ageGroup,
+    title: "Altersgruppe",
+    hint: "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Insights. Die Zyklusberechnung ändert sich dadurch nicht.",
+    under20: "Unter 20",
+  },
+  goal: {
+    ...settingsCopyEn.goal,
+    title: "Nutzungsziel",
+    hint: "Optional. Das verändert nur, wie fruchtbare Tage in der Oberfläche eingeordnet werden. Es ändert nicht den Algorithmus.",
+    avoid: "Schwangerschaft vermeiden",
+    trying: "Schwanger werden",
+    health: "Meine Gesundheit verfolgen",
+  },
+  tracking: {
+    ...settingsCopyEn.tracking,
+    title: "Zusätzliches Tracking",
+    subtitle:
+      "Wähle zusätzliche Felder für tägliche Einträge. Gespeicherte Werte bleiben in deinem privaten Verlauf.",
+    trackBBT: "BBT-Feld anzeigen",
+    trackBBTHint:
+      "Zeigt ein Feld für Basaltemperatur in Dashboard- und Kalendereinträgen.",
+    trackBBTStateOn:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    trackBBTStateOff:
+      "Derzeit in neuen Dashboard- und Kalendereinträgen verborgen.",
+    trackCervicalMucus: "Zervixschleim-Feld anzeigen",
+    trackCervicalMucusHint:
+      "Zeigt Auswahlmöglichkeiten für Zervixschleim in Dashboard- und Kalendereinträgen.",
+    trackCervicalMucusStateOn:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    trackCervicalMucusStateOff:
+      "Derzeit in neuen Dashboard- und Kalendereinträgen verborgen.",
+    hideSexChip: "Intimitätsbereich ausblenden",
+    hideSexChipHint:
+      "Blendet Intimität in neuen Dashboard- und Kalendereinträgen aus.",
+    hideSexChipStateOn:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
+    hideSexChipStateOff:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    temperatureUnit: "BBT-Einheit",
+    temperatureUnitHint: "Wird verwendet, wenn das BBT-Feld sichtbar ist.",
+    temperatureUnitCelsius: "Celsius",
+    temperatureUnitFahrenheit: "Fahrenheit",
+    save: "Tracking speichern",
+  },
+  interface: {
+    ...settingsCopyEn.interface,
+    title: "Oberfläche",
+    subtitle: "Steuere Sprache und Erscheinungsbild der App auf diesem Gerät.",
+    languageLabel: "Sprache",
+    languageHint: "Wird nur auf diesem Gerät gespeichert.",
+    previewHint:
+      "Sprache und Design werden sofort als Vorschau angezeigt. Speichere, um sie auf diesem Gerät zu behalten.",
+    themeLabel: "Design",
+    themeHint: "Wird nur auf diesem Gerät gespeichert.",
+    discardChanges: "Änderungen verwerfen",
+    save: "Oberfläche speichern",
+    saveBeforeLeave: "Speichern und verlassen",
+    themeLight: "Hell",
+    themeDark: "Dunkel",
+    saved: "Oberflächeneinstellungen für dieses Gerät aktualisiert.",
+    languageSaved: "Sprache für dieses Gerät aktualisiert.",
+    themeSaved: "Design für dieses Gerät aktualisiert.",
+    unsavedPrompt:
+      "Du hast ungespeicherte Einstellungsänderungen. Vor dem Verlassen speichern?",
+  },
+  account: {
+    ...settingsCopyEn.account,
+    title: "Backup & Sync",
+    subtitle:
+      "Schütze zuerst dieses Gerät und verbinde dann entweder Ovumcy Cloud oder deinen eigenen Sync-Server.",
+    hubSubtitle:
+      "Öffne Recovery Phrase, Kontoverbindung, Cloud-Tarif und Sync-Aktionen auf einem separaten Bildschirm.",
+    openHubLabel: "Backup & Sync öffnen",
+    localStepTitle: "1. Dieses Gerät schützen",
+    localStepHint:
+      "Erstelle auf diesem Gerät eine Recovery Phrase. Bewahre sie offline auf, falls du deine Daten jemals wiederherstellen musst.",
+    preparingTitle: "Dein geschütztes Backup wird vorbereitet...",
+    preparingHint:
+      "Ovumcy erzeugt gerade auf diesem Gerät eine Recovery Phrase.",
+    accountStepTitle: "2. Konto verbinden",
+    accountStepHintManaged:
+      "Erstelle oder nutze dein Ovumcy Cloud-Konto. Dieses Konto ist getrennt von der Recovery Phrase auf diesem Gerät.",
+    accountStepHintSelfHosted:
+      "Erstelle ein Konto auf deinem eigenen Sync-Server oder melde dich dort an.",
+    planStepTitle: "3. Cloud-Tarif",
+    planStepHint:
+      "Ovumcy Cloud ist der kostenpflichtige gehostete Dienst. Sync und Cloud-Funktionen werden erst aktiv, wenn dieses Konto einen aktiven Cloud-Tarif hat.",
+    planUnknown:
+      "Melde dich zuerst an, damit Ovumcy prüfen kann, ob dieses Konto bereits einen aktiven Cloud-Tarif hat.",
+    planInactive:
+      "Für dieses Konto ist noch kein aktiver Ovumcy Cloud-Tarif vorhanden.",
+    planCheckFailed:
+      "Ovumcy konnte diesen Cloud-Tarif gerade nicht bestätigen. Versuche es später erneut.",
+    planUnavailable:
+      "Kauf und Verwaltung des Cloud-Abos sind auf diesem Bildschirm noch nicht verfügbar.",
+    planActive: "Ovumcy Cloud ist für dieses Konto aktiv.",
+    syncStepTitle: "4. Dieses Backup synchronisieren",
+    syncStepHintManaged:
+      "Sobald dein Cloud-Tarif aktiv ist, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
+    syncStepHintSelfHosted:
+      "Sobald du an deinem eigenen Server angemeldet bist, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
+    syncBlockedNoPlan:
+      "Cloud-Sync bleibt gesperrt, bis dieses Konto einen aktiven Ovumcy Cloud-Tarif hat.",
+    modeLabel: "Sync-Modus",
+    modeManaged: "Ovumcy Cloud",
+    modeSelfHosted: "Self-hosted",
+    managedHint:
+      "Ovumcy Cloud ist der kostenpflichtige gehostete Sync-Dienst. Self-hosted behält Sync auf deinem eigenen Server.",
+    selfHostedHint:
+      "Nutze einen Host, IP:Port oder eine vollständige URL. Öffentliches http wird abgelehnt; localhost und privates Netzwerk-http sind erlaubt.",
+    endpointLabel: "Server-Endpunkt",
+    endpointHint: "Nur für self-hosted Sync erforderlich.",
+    endpointPlaceholder: "sync.example.com oder 192.168.1.20:8080",
+    deviceLabel: "Gerätebezeichnung",
+    deviceHint:
+      "Wird später in verbundenen Gerätelisten und in verschlüsselten Wiederherstellungsabläufen angezeigt.",
+    devicePlaceholder: "Pixel 7",
+    stateLabel: "Recovery Phrase",
+    stateReady: "Dieses Gerät hat bereits eine Recovery Phrase.",
+    stateMissing: "Dieses Gerät hat noch keine Recovery Phrase.",
+    connectionLabel: "Kontositzung",
+    connectionReady: "Dieses Gerät ist bei einem Sync-Konto angemeldet.",
+    connectionMissing:
+      "Dieses Gerät ist noch bei keinem Sync-Konto angemeldet.",
+    lastSyncLabel: "Letzte Synchronisierung",
+    lastSyncNever: "Noch nicht synchronisiert.",
+    modeRowLabel: "Ziel",
+    endpointRowLabel: "Server",
+    encryptionRowLabel: "Recovery Phrase",
+    encryptionReady:
+      "Die Wiederherstellungsdaten werden nur auf diesem Gerät gespeichert.",
+    encryptionMissing:
+      "Auf diesem Gerät wurde noch keine Recovery Phrase erstellt.",
+    loginLabel: "Konto-Login",
+    loginPlaceholder: "owner@example.com",
+    passwordLabel: "Passwort",
+    passwordPlaceholder: "Passwort eingeben",
+    registerLabel: "Konto erstellen",
+    loginActionLabel: "Anmelden",
+    syncNowLabel: "Jetzt synchronisieren",
+    restoreLabel: "Vom Server wiederherstellen",
+    disconnectLabel: "Trennen",
+    restorePrompt:
+      "Den verschlüsselten Snapshot vom Server wiederherstellen und die aktuellen lokalen Daten auf diesem Gerät ersetzen?",
+    restoreAccept: "Snapshot wiederherstellen",
+    restoreDeviceAuthPrompt:
+      "Bestätige mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
+    disconnectPrompt:
+      "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
+    recoveryTitle: "Recovery Phrase für dieses Gerät",
+    recoveryHint:
+      "Schreibe die 12 Wörter exakt auf und bewahre sie offline auf. Wenn du alle Geräte und diese Phrase verlierst, können synchronisierte Daten nicht wiederhergestellt werden.",
+    recoveryNotice:
+      "Dieser Bildschirm zeigt die Recovery Phrase nur, wenn du lokale Sync-Schlüssel vorbereitest oder neu erstellst.",
+    recoveryShownOnce: "Wird nach der Erstellung nur einmal angezeigt.",
+    prepareLabel: "Recovery Phrase erstellen",
+    regenerateLabel: "Neue Recovery Phrase erstellen",
+    regeneratePrompt:
+      "Das Neuerstellen lokaler Sync-Schlüssel macht ältere verschlüsselte Sync-Backups ungültig, bis du die neue Recovery Phrase verwendest. Fortfahren?",
+    regenerateAccept: "Neue Phrase erstellen",
+    regenerateDeviceAuthPrompt:
+      "Bestätige mit Geräteschutz, um eine neue Recovery Phrase für dieses Gerät zu erstellen.",
+    discardChangesLabel: "Änderungen verwerfen",
+    saveBeforeLeaveLabel: "Speichern und verlassen",
+    unsavedPrompt:
+      "Du hast ungespeicherte Änderungen für Backup und Sync. Vor dem Verlassen speichern?",
+    prepared: "Die Recovery Phrase wurde für dieses Gerät erstellt.",
+    regenerated: "Für dieses Gerät wurde eine neue Recovery Phrase erstellt.",
+    connected: "Dieses Gerät ist mit dem Sync-Server verbunden.",
+    connectedNoPlan:
+      "Cloud-Konto verbunden. Sync wird aktiviert, wenn dieses Konto einen aktiven Cloud-Tarif hat.",
+    uploaded: "Verschlüsselter Snapshot auf den Sync-Server hochgeladen.",
+    restored: "Verschlüsselter Snapshot vom Sync-Server wiederhergestellt.",
+    disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
+    errors: {
+      ...settingsCopyEn.account.errors,
+      loginRequired: "Login ist erforderlich.",
+      passwordRequired: "Passwort ist erforderlich.",
+      deviceLabelRequired: "Die Gerätebezeichnung ist erforderlich.",
+      endpointRequired: "Gib einen Sync-Server-Endpunkt ein.",
+      invalidEndpoint: "Gib einen gültigen Host, eine IP-Adresse oder eine vollständige URL ein.",
+      unsupportedScheme:
+        "Nur https und zugelassene lokale http-Endpunkte werden unterstützt.",
+      insecurePublicHttp:
+        "Öffentliche Sync-Endpunkte müssen https verwenden.",
+      invalidRegistrationInput:
+        "Nutze einen gültigen Login und ein stärkeres Passwort.",
+      registrationFailed:
+        "Mit diesen Angaben konnte kein Sync-Konto erstellt werden.",
+      invalidCredentials: "Ungültiger Login oder ungültiges Passwort.",
+      tooManyDevices:
+        "Dieses Konto hat das aktuelle Geräte-Limit erreicht.",
+      syncNotPrepared:
+        "Bereite zuerst den verschlüsselten Sync auf diesem Gerät vor.",
+      notConnected:
+        "Verbinde dieses Gerät zuerst mit einem Sync-Server.",
+      blobNotFound:
+        "Auf diesem Server gibt es noch keinen verschlüsselten Snapshot.",
+      invalidPayload:
+        "Der verschlüsselte Snapshot vom Server konnte nicht gelesen werden.",
+      networkFailed:
+        "Der Sync-Server ist gerade nicht erreichbar.",
+      deviceAuthUnavailable:
+        "Richte auf diesem Gerät zuerst einen Code oder Biometrie ein, bevor du lokale Sync-Schlüssel neu erstellst.",
+      deviceAuthFailed:
+        "Der Geräteschutz konnte gerade nicht bestätigt werden. Bitte versuche es erneut.",
+      saveFailed:
+        "Der verschlüsselte Sync konnte gerade nicht vorbereitet werden. Bitte versuche es erneut.",
+      syncFailed:
+        "Der verschlüsselte Snapshot konnte gerade nicht hochgeladen werden. Bitte versuche es erneut.",
+      restoreFailed:
+        "Der verschlüsselte Snapshot konnte gerade nicht wiederhergestellt werden. Bitte versuche es erneut.",
+    },
+  },
+  symptoms: {
+    ...settingsCopyEn.symptoms,
+    title: "Eigene Symptome",
+    subtitle:
+      "Erstelle kurze private Bezeichnungen für Muster, die du protokollieren möchtest.",
+    name: "Symptomname",
+    namePlaceholder: "Symptomname eingeben",
+    nameHint:
+      "Verwende höchstens 40 Zeichen. Für längere Details nutze Notizen.",
+    icon: "Symbol",
+    add: "Symptom hinzufügen",
+    save: "Symptom speichern",
+    hide: "Ausblenden",
+    restore: "Wiederherstellen",
+    activeHeading: "In neuen Einträgen sichtbar",
+    activeHint:
+      "Aktive eigene Symptome erscheinen im Dashboard und in Tagesauswahlen des Kalenders.",
+    activeItem: "In neuen Einträgen sichtbar",
+    archivedHeading: "Für neue Einträge archiviert",
+    archivedHint:
+      "Vergangene Einträge behalten sie. Stelle eines wieder her, wenn es wieder im Auswahlfeld erscheinen soll.",
+    archivedItem: "In neuen Einträgen verborgen",
+    archivedBadge: "Verborgen",
+    empty:
+      "Es gibt noch keine eigenen Symptome. Füge oben eines hinzu, damit es in neuen Einträgen verfügbar ist.",
+    emptyActive:
+      "Zurzeit sind keine sichtbaren eigenen Symptome vorhanden. Stelle unten eines wieder her oder füge oben ein neues hinzu.",
+    created: "Eigenes Symptom hinzugefügt.",
+    updated: "Eigenes Symptom aktualisiert.",
+    archived: "Eigenes Symptom verborgen.",
+    restored: "Eigenes Symptom wiederhergestellt.",
+    confirmHide:
+      "Dieses eigene Symptom in neuen Einträgen ausblenden? Vergangene Einträge behalten es.",
+    errors: {
+      ...settingsCopyEn.symptoms.errors,
+      labelRequired: "Ein Name ist erforderlich.",
+      labelTooLong:
+        "Verwende höchstens 40 Zeichen. Für längere Details nutze Notizen.",
+      labelInvalidCharacters:
+        "Verwende nur Klartext. Spitzklammern und Steuerzeichen sind nicht erlaubt.",
+      duplicateLabel: "Dieser Symptomname existiert bereits in deiner Liste.",
+      saveFailed:
+        "Dieses Symptom konnte gerade nicht gespeichert werden. Bitte versuche es erneut.",
+      notFound:
+        "Dieses Symptom konnte nicht mehr gefunden werden. Lade die Einstellungen neu und versuche es erneut.",
+    },
+  },
+  export: {
+    ...settingsCopyEn.export,
+    title: "Daten exportieren",
+    subtitle:
+      "Erstelle ein lokales Backup oder eine ärztetaugliche Tabelle aus deinen erfassten Einträgen.",
+    storageHint:
+      "Exporte enthalten nur manuell erfasste Einträge. Vorhersagen sind nicht enthalten.",
+    sensitiveHint:
+      "Exportierte Dateien sind sensibel. Speichere und teile sie nur an Orten, denen du vertraust.",
+    noData:
+      "Es gibt noch keine erfassten Einträge. Sobald du Tage im Dashboard oder Kalender protokollierst, wird der Export hier verfügbar.",
+    presetLabel: "Voreinstellungen",
+    presetAll: "Gesamte Zeit",
+    preset30: "30 Tage",
+    preset90: "90 Tage",
+    preset365: "365 Tage",
+    fromLabel: "Von",
+    toLabel: "Bis",
+    summaryTotalTemplate: "Gesamteinträge: %d",
+    summaryRangeTemplate: "Datumsbereich: %s bis %s",
+    summaryRangeEmpty: "Datumsbereich: -",
+    csvAction: "Als CSV exportieren",
+    jsonAction: "Als JSON exportieren",
+    pdfAction: "Als PDF exportieren",
+    csvStatus: "CSV-Export ist bereit.",
+    jsonStatus: "JSON-Backup ist bereit.",
+    pdfStatus: "PDF-Bericht ist bereit.",
+    errors: {
+      ...settingsCopyEn.export.errors,
+      invalidFromDate: "Verwende ein gültiges Startdatum.",
+      invalidToDate: "Verwende ein gültiges Enddatum.",
+      invalidRange:
+        "Das Enddatum muss am oder nach dem Startdatum liegen.",
+      exportFailed:
+        "Der Export konnte gerade nicht vorbereitet werden. Bitte versuche es erneut.",
+      deliveryUnavailable:
+        "Dieses Gerät kann das Exportziel gerade nicht öffnen. Versuche es über einen unterstützten Browser oder ein Gerät mit Teilen/Speichern-Funktion.",
+      deliveryFailed:
+        "Die Exportdatei wurde vorbereitet, aber das Teilen oder Herunterladen ist fehlgeschlagen. Bitte versuche es erneut.",
+    },
+  },
+  danger: {
+    ...settingsCopyEn.danger,
+    title: "Gefahrenbereich",
+    subtitle:
+      "Das Schließen der App löscht keine lokalen Daten. Nutze dies nur, wenn du Gesundheitsdaten von diesem Gerät entfernen möchtest.",
+    clearTitle: "Alle lokalen Daten löschen",
+    clearSubtitle:
+      "Entfernt Onboarding, Profileinstellungen, tägliche Einträge, eigene Symptome und den lokalen Exportstatus und bringt die App anschließend zurück ins Onboarding.",
+    confirmationLabel: "Zum Bestätigen CLEAR eingeben",
+    confirmationHint:
+      "Diese Aktion kann in der App nicht rückgängig gemacht werden. Exportiere zuerst ein Backup, wenn du deine Einträge behalten möchtest.",
+    deviceAuthPrompt:
+      "Bestätige mit Geräteschutz, um lokale Daten von diesem Gerät zu löschen.",
+    action: "Lokale Daten löschen",
+    success: "Lokale Daten gelöscht. Zurück zum Onboarding.",
+    invalidConfirmation:
+      "Gib zum Bestätigen exakt CLEAR ein.",
+    deviceAuthUnavailable:
+      "Richte auf diesem Gerät zuerst einen Code oder Biometrie ein, bevor du lokale Daten löschst.",
+    deviceAuthFailed:
+      "Der Geräteschutz konnte gerade nicht bestätigt werden. Bitte versuche es erneut.",
+    failed:
+      "Lokale Daten konnten gerade nicht gelöscht werden. Bitte versuche es erneut.",
+  },
+  status: {
+    ...settingsCopyEn.status,
+    cycleSaved:
+      "Zykluseinstellungen gespeichert. Vorhersagen wurden aktualisiert.",
+    trackingSaved:
+      "Tracking-Felder für Dashboard und Kalender aktualisiert.",
+    invalidLastPeriodStart:
+      "Bitte gib ein gültiges Startdatum der letzten Periode ein, das nicht in der Zukunft liegt.",
+    saveFailed:
+      "Deine Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+  },
+};
+
+const settingsCopyFr: SettingsCopy = {
+  ...settingsCopyEn,
+  title: "Réglages",
+  subtitle:
+    "Gère les paramètres du cycle, les champs de suivi, les actions d'export et le comportement local du profil.",
+  common: {
+    ...settingsCopyEn.common,
+    changeDate: "Choisir une date",
+    clearDate: "Effacer la date",
+    notSet: "Non défini",
+    saving: "Enregistrement...",
+  },
+  cycle: {
+    ...settingsCopyEn.cycle,
+    title: "Paramètres du cycle",
+    cycleLength: "Durée habituelle du cycle",
+    periodLength: "Durée des règles",
+    lastPeriodStart: "Date de début des dernières règles",
+    lastPeriodStartHint:
+      "Valeur de secours facultative si ton journal n'a pas encore de début de cycle marqué.",
+    warningApproximate:
+      "Avec ces valeurs, l'ovulation ne peut pas être calculée de façon fiable. La prédiction sera approximative.",
+    infoAdjusted:
+      "La durée des règles a été ajustée automatiquement pour qu'il reste au moins 10 jours avant le cycle suivant.",
+    infoPeriodLong:
+      "Une durée supérieure à 8 jours peut indiquer des irrégularités. Parles-en avec un médecin.",
+    infoCycleShort:
+      "Un cycle inférieur à 24 jours est moins courant. Parles-en avec un médecin.",
+    autoPeriodFill: "Remplir automatiquement les jours de règles",
+    autoPeriodFillHint:
+      "Quand cette option est activée, marquer le premier jour remplit automatiquement les jours suivants selon la durée de tes règles.",
+    predictionModeLabel: "Mode de prédiction",
+    predictionModeHint: "Choisis comment Ovumcy doit afficher les prévisions de dates.",
+    predictionModeRegular: "Régulier",
+    predictionModeRegularHint:
+      "Affiche la vue standard des prévisions à partir de tes réglages de cycle et de ton historique.",
+    predictionModeIrregular: "Irrégulier",
+    predictionModeIrregularHint:
+      "Laisse les prévisions visibles, mais lis-les comme une indication approximative.",
+    predictionModeFactsOnly: "Seulement les faits",
+    predictionModeFactsOnlyHint:
+      "Désactive les prévisions de dates et affiche seulement les faits enregistrés et les marqueurs sauvegardés.",
+    save: "Enregistrer les modifications",
+  },
+  ageGroup: {
+    ...settingsCopyEn.ageGroup,
+    title: "Tranche d'âge",
+    hint: "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les Insights. Cela ne change pas les calculs du cycle.",
+    under20: "Moins de 20 ans",
+  },
+  goal: {
+    ...settingsCopyEn.goal,
+    title: "Objectif d'usage",
+    hint: "Optionnel. Cela change seulement la façon dont les jours fertiles sont présentés dans l'interface. L'algorithme ne change pas.",
+    avoid: "Éviter une grossesse",
+    trying: "Essayer de concevoir",
+    health: "Suivre ma santé",
+  },
+  tracking: {
+    ...settingsCopyEn.tracking,
+    title: "Suivi supplémentaire",
+    subtitle:
+      "Choisis des champs supplémentaires pour les entrées quotidiennes. Les valeurs enregistrées restent dans ton historique privé.",
+    trackBBT: "Afficher le champ TBC",
+    trackBBTHint:
+      "Affiche un champ de température basale dans le dashboard et les entrées du calendrier.",
+    trackBBTStateOn:
+      "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
+    trackBBTStateOff:
+      "Actuellement masqué dans les nouvelles entrées du dashboard et du calendrier.",
+    trackCervicalMucus: "Afficher le champ de glaire cervicale",
+    trackCervicalMucusHint:
+      "Affiche des choix de glaire cervicale dans le dashboard et les entrées du calendrier.",
+    trackCervicalMucusStateOn:
+      "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
+    trackCervicalMucusStateOff:
+      "Actuellement masqué dans les nouvelles entrées du dashboard et du calendrier.",
+    hideSexChip: "Masquer la section intimité",
+    hideSexChipHint:
+      "Masque l'intimité dans les nouvelles entrées du dashboard et du calendrier.",
+    hideSexChipStateOn:
+      "Actuellement masquée dans le dashboard et dans l'éditeur journalier du calendrier.",
+    hideSexChipStateOff:
+      "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
+    temperatureUnit: "Unité TBC",
+    temperatureUnitHint: "Utilisée quand le champ TBC est visible.",
+    temperatureUnitCelsius: "Celsius",
+    temperatureUnitFahrenheit: "Fahrenheit",
+    save: "Enregistrer le suivi",
+  },
+  interface: {
+    ...settingsCopyEn.interface,
+    title: "Interface",
+    subtitle:
+      "Contrôle la langue et l'apparence de l'app sur cet appareil.",
+    languageLabel: "Langue",
+    languageHint: "Enregistrée seulement sur cet appareil.",
+    previewHint:
+      "La langue et le thème se prévisualisent immédiatement. Enregistre pour les conserver sur cet appareil.",
+    themeLabel: "Thème",
+    themeHint: "Enregistré seulement sur cet appareil.",
+    discardChanges: "Annuler les modifications",
+    save: "Enregistrer l'interface",
+    saveBeforeLeave: "Enregistrer et quitter",
+    themeLight: "Clair",
+    themeDark: "Sombre",
+    saved: "Les réglages d'interface ont été mis à jour sur cet appareil.",
+    languageSaved: "Langue mise à jour sur cet appareil.",
+    themeSaved: "Thème mis à jour sur cet appareil.",
+    unsavedPrompt:
+      "Tu as des modifications de réglages non enregistrées. Les enregistrer avant de quitter ?",
+  },
+  account: {
+    ...settingsCopyEn.account,
+    title: "Sauvegarde et sync",
+    subtitle:
+      "Protège d'abord cet appareil, puis connecte Ovumcy Cloud ou ton propre serveur de sync.",
+    hubSubtitle:
+      "Ouvre un écran séparé pour la recovery phrase, la connexion du compte, le plan cloud et les actions de sync.",
+    openHubLabel: "Ouvrir sauvegarde et sync",
+    localStepTitle: "1. Protéger cet appareil",
+    localStepHint:
+      "Crée une recovery phrase sur cet appareil. Garde-la hors ligne au cas où tu aurais besoin de restaurer tes données.",
+    preparingTitle: "Préparation de ta sauvegarde protégée...",
+    preparingHint:
+      "Ovumcy génère une recovery phrase sur cet appareil en ce moment.",
+    accountStepTitle: "2. Connecter un compte",
+    accountStepHintManaged:
+      "Crée ou connecte-toi à ton compte Ovumcy Cloud. Ce compte est distinct de la recovery phrase de cet appareil.",
+    accountStepHintSelfHosted:
+      "Crée ou connecte-toi au compte de ton propre serveur de sync.",
+    planStepTitle: "3. Plan cloud",
+    planStepHint:
+      "Ovumcy Cloud est le service hébergé payant. Le sync et les fonctions cloud s'activent seulement quand ce compte a un plan cloud actif.",
+    planUnknown:
+      "Connecte-toi d'abord pour que Ovumcy puisse vérifier si ce compte a déjà un plan cloud actif.",
+    planInactive:
+      "Ce compte n'a pas encore de plan Ovumcy Cloud actif.",
+    planCheckFailed:
+      "Ovumcy n'a pas pu confirmer l'état du plan cloud pour le moment. Réessaie plus tard.",
+    planUnavailable:
+      "L'achat et la gestion de l'abonnement cloud ne sont pas encore disponibles sur cet écran.",
+    planActive: "Ovumcy Cloud est actif pour ce compte.",
+    syncStepTitle: "4. Synchroniser cette sauvegarde",
+    syncStepHintManaged:
+      "Une fois ton plan cloud actif, tu pourras téléverser ou restaurer la sauvegarde protégée ici.",
+    syncStepHintSelfHosted:
+      "Après connexion à ton propre serveur, tu pourras téléverser ou restaurer la sauvegarde protégée ici.",
+    syncBlockedNoPlan:
+      "Le sync cloud reste bloqué tant que ce compte n'a pas un plan Ovumcy Cloud actif.",
+    modeLabel: "Mode de sync",
+    modeManaged: "Ovumcy Cloud",
+    modeSelfHosted: "Self-hosted",
+    managedHint:
+      "Ovumcy Cloud est le service de sync hébergé payant. Self-hosted garde le sync sur ton propre serveur.",
+    selfHostedHint:
+      "Utilise un hôte, une IP:port ou une URL complète. Le http public est refusé ; http localhost et réseau privé sont autorisés.",
+    endpointLabel: "Point d'accès du serveur",
+    endpointHint: "Nécessaire seulement pour le sync self-hosted.",
+    endpointPlaceholder: "sync.example.com ou 192.168.1.20:8080",
+    deviceLabel: "Nom de l'appareil",
+    deviceHint:
+      "Sera affiché plus tard dans les listes d'appareils connectés et les flux de récupération chiffrée.",
+    devicePlaceholder: "Pixel 7",
+    stateLabel: "Recovery phrase",
+    stateReady: "Cet appareil a déjà une recovery phrase.",
+    stateMissing: "Cet appareil n'a pas encore de recovery phrase.",
+    connectionLabel: "Session du compte",
+    connectionReady: "Cet appareil est connecté à un compte de sync.",
+    connectionMissing:
+      "Cet appareil n'est pas encore connecté à un compte de sync.",
+    lastSyncLabel: "Dernier sync",
+    lastSyncNever: "Pas encore synchronisé.",
+    modeRowLabel: "Destination",
+    endpointRowLabel: "Serveur",
+    encryptionRowLabel: "Recovery phrase",
+    encryptionReady:
+      "Les éléments de récupération sont stockés uniquement sur cet appareil.",
+    encryptionMissing:
+      "Aucune recovery phrase n'a encore été créée sur cet appareil.",
+    loginLabel: "Identifiant du compte",
+    loginPlaceholder: "owner@example.com",
+    passwordLabel: "Mot de passe",
+    passwordPlaceholder: "Saisir le mot de passe",
+    registerLabel: "Créer un compte",
+    loginActionLabel: "Se connecter",
+    syncNowLabel: "Synchroniser maintenant",
+    restoreLabel: "Restaurer depuis le serveur",
+    disconnectLabel: "Déconnecter",
+    restorePrompt:
+      "Restaurer l'instantané chiffré depuis le serveur et remplacer les données locales actuelles de cet appareil ?",
+    restoreAccept: "Restaurer l'instantané",
+    restoreDeviceAuthPrompt:
+      "Confirme avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
+    disconnectPrompt:
+      "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
+    recoveryTitle: "Recovery phrase pour cet appareil",
+    recoveryHint:
+      "Note exactement les 12 mots et garde-les hors ligne. Si tu perds tous les appareils et cette phrase, les données synchronisées ne pourront pas être récupérées.",
+    recoveryNotice:
+      "Cet écran affiche la recovery phrase seulement quand tu prépares ou recrées les clés locales de sync.",
+    recoveryShownOnce: "Affichée une seule fois après la génération.",
+    prepareLabel: "Créer la recovery phrase",
+    regenerateLabel: "Créer une nouvelle recovery phrase",
+    regeneratePrompt:
+      "Recréer les clés locales de sync invalide les anciennes sauvegardes chiffrées tant que tu n'utilises pas la nouvelle recovery phrase. Continuer ?",
+    regenerateAccept: "Créer une nouvelle phrase",
+    regenerateDeviceAuthPrompt:
+      "Confirme avec la sécurité de l'appareil pour créer une nouvelle recovery phrase pour cet appareil.",
+    discardChangesLabel: "Annuler les modifications",
+    saveBeforeLeaveLabel: "Enregistrer et quitter",
+    unsavedPrompt:
+      "Tu as des modifications de sauvegarde et de sync non enregistrées. Les enregistrer avant de quitter cet écran ?",
+    prepared: "La recovery phrase a été créée pour cet appareil.",
+    regenerated:
+      "Une nouvelle recovery phrase a été créée pour cet appareil.",
+    connected: "Cet appareil est connecté au serveur de sync.",
+    connectedNoPlan:
+      "Compte cloud connecté. Le sync s'activera quand ce compte aura un plan cloud actif.",
+    uploaded: "Instantané chiffré téléversé vers le serveur de sync.",
+    restored: "Instantané chiffré restauré depuis le serveur de sync.",
+    disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
+    errors: {
+      ...settingsCopyEn.account.errors,
+      loginRequired: "L'identifiant est obligatoire.",
+      passwordRequired: "Le mot de passe est obligatoire.",
+      deviceLabelRequired: "Le nom de l'appareil est obligatoire.",
+      endpointRequired: "Saisis un point d'accès du serveur de sync.",
+      invalidEndpoint:
+        "Saisis un hôte, une adresse IP ou une URL complète valide.",
+      unsupportedScheme:
+        "Seuls https et les endpoints http approuvés pour le réseau local sont pris en charge.",
+      insecurePublicHttp:
+        "Les endpoints publics de sync doivent utiliser https.",
+      invalidRegistrationInput:
+        "Utilise un identifiant valide et un mot de passe plus robuste.",
+      registrationFailed:
+        "Impossible de créer un compte de sync avec ces informations.",
+      invalidCredentials: "Identifiant ou mot de passe invalide.",
+      tooManyDevices:
+        "Ce compte a atteint la limite actuelle d'appareils.",
+      syncNotPrepared:
+        "Prépare d'abord le sync chiffré sur cet appareil.",
+      notConnected:
+        "Connecte d'abord cet appareil à un serveur de sync.",
+      blobNotFound:
+        "Aucun instantané chiffré n'existe encore sur ce serveur.",
+      invalidPayload:
+        "L'instantané chiffré provenant du serveur n'a pas pu être lu.",
+      networkFailed:
+        "Impossible d'atteindre le serveur de sync pour le moment.",
+      deviceAuthUnavailable:
+        "Configure un code ou la biométrie sur cet appareil avant de recréer les clés locales de sync.",
+      deviceAuthFailed:
+        "Impossible de confirmer la sécurité de l'appareil pour le moment. Réessaie.",
+      saveFailed:
+        "Impossible de préparer le sync chiffré pour le moment. Réessaie.",
+      syncFailed:
+        "Impossible de téléverser l'instantané chiffré pour le moment. Réessaie.",
+      restoreFailed:
+        "Impossible de restaurer l'instantané chiffré pour le moment. Réessaie.",
+    },
+  },
+  symptoms: {
+    ...settingsCopyEn.symptoms,
+    title: "Symptômes personnalisés",
+    subtitle:
+      "Crée des libellés privés et courts pour les schémas que tu veux enregistrer.",
+    name: "Nom du symptôme",
+    namePlaceholder: "Saisir le nom du symptôme",
+    nameHint:
+      "Utilise 40 caractères ou moins. Pour plus de détails, utilise les notes.",
+    icon: "Icône",
+    add: "Ajouter un symptôme",
+    save: "Enregistrer le symptôme",
+    hide: "Masquer",
+    restore: "Restaurer",
+    activeHeading: "Visible dans les nouvelles entrées",
+    activeHint:
+      "Les symptômes personnalisés actifs apparaissent dans le dashboard et le calendrier.",
+    activeItem: "Visible dans les nouvelles entrées",
+    archivedHeading: "Archivé dans les nouvelles entrées",
+    archivedHint:
+      "Les anciens enregistrements le conservent. Restaure-en un quand tu veux le revoir dans le sélecteur.",
+    archivedItem: "Masqué dans les nouvelles entrées",
+    archivedBadge: "Masqué",
+    empty:
+      "Aucun symptôme personnalisé pour le moment. Ajoute-en un ci-dessus pour l'utiliser dans les nouvelles entrées.",
+    emptyActive:
+      "Aucun symptôme personnalisé visible pour le moment. Restaure-en un ci-dessous ou ajoute-en un nouveau ci-dessus.",
+    created: "Symptôme personnalisé ajouté.",
+    updated: "Symptôme personnalisé mis à jour.",
+    archived: "Symptôme personnalisé masqué.",
+    restored: "Symptôme personnalisé restauré.",
+    confirmHide:
+      "Masquer ce symptôme personnalisé dans les nouvelles entrées ? Les anciens enregistrements le conserveront.",
+    errors: {
+      ...settingsCopyEn.symptoms.errors,
+      labelRequired: "Le nom est obligatoire.",
+      labelTooLong:
+        "Utilise 40 caractères ou moins. Pour plus de détails, utilise les notes.",
+      labelInvalidCharacters:
+        "Utilise uniquement du texte simple. Les chevrons et caractères de contrôle ne sont pas autorisés.",
+      duplicateLabel: "Ce nom de symptôme existe déjà dans ta liste.",
+      saveFailed:
+        "Impossible d'enregistrer ce symptôme pour le moment. Réessaie.",
+      notFound:
+        "Impossible de retrouver ce symptôme. Recharge les réglages et réessaie.",
+    },
+  },
+  export: {
+    ...settingsCopyEn.export,
+    title: "Exporter les données",
+    subtitle:
+      "Crée une sauvegarde locale ou un tableau lisible pour un médecin à partir de tes entrées enregistrées.",
+    storageHint:
+      "Les exports incluent seulement les enregistrements saisis manuellement. Les prédictions ne sont pas incluses.",
+    sensitiveHint:
+      "Les fichiers exportés sont sensibles. Enregistre-les et partage-les seulement vers une destination de confiance.",
+    noData:
+      "Aucune entrée enregistrée pour le moment. Une fois des jours saisis dans le dashboard ou le calendrier, l'export apparaîtra ici.",
+    presetLabel: "Préréglages",
+    presetAll: "Toute la période",
+    preset30: "30 jours",
+    preset90: "90 jours",
+    preset365: "365 jours",
+    fromLabel: "Du",
+    toLabel: "Au",
+    summaryTotalTemplate: "Nombre total d'entrées : %d",
+    summaryRangeTemplate: "Plage de dates : %s à %s",
+    summaryRangeEmpty: "Plage de dates : -",
+    csvAction: "Exporter en CSV",
+    jsonAction: "Exporter en JSON",
+    pdfAction: "Exporter en PDF",
+    csvStatus: "L'export CSV est prêt.",
+    jsonStatus: "La sauvegarde JSON est prête.",
+    pdfStatus: "Le rapport PDF est prêt.",
+    errors: {
+      ...settingsCopyEn.export.errors,
+      invalidFromDate: "Utilise une date de début valide.",
+      invalidToDate: "Utilise une date de fin valide.",
+      invalidRange:
+        "La date de fin doit être postérieure ou égale à la date de début.",
+      exportFailed:
+        "Impossible de préparer ton export pour le moment. Réessaie.",
+      deliveryUnavailable:
+        "Cet appareil ne peut pas ouvrir la destination d'export pour le moment. Réessaie depuis un navigateur compatible ou un appareil pouvant partager/enregistrer.",
+      deliveryFailed:
+        "Le fichier a été préparé, mais le partage ou le téléchargement a échoué. Réessaie.",
+    },
+  },
+  danger: {
+    ...settingsCopyEn.danger,
+    title: "Zone de danger",
+    subtitle:
+      "Fermer l'app ne supprime pas les données locales. Utilise ceci seulement si tu veux effacer les données de santé de cet appareil.",
+    clearTitle: "Effacer toutes les données locales",
+    clearSubtitle:
+      "Supprime l'onboarding, les réglages du profil, les entrées quotidiennes, les symptômes personnalisés et l'état local d'export, puis renvoie l'app vers l'onboarding.",
+    confirmationLabel: "Tape CLEAR pour confirmer",
+    confirmationHint:
+      "Cette action ne peut pas être annulée depuis l'app. Exporte d'abord une sauvegarde si tu veux conserver tes données.",
+    deviceAuthPrompt:
+      "Confirme avec la sécurité de l'appareil pour effacer les données locales de cet appareil.",
+    action: "Effacer les données locales",
+    success: "Données locales effacées. Retour à l'onboarding.",
+    invalidConfirmation:
+      "Tape exactement CLEAR pour confirmer la suppression des données locales.",
+    deviceAuthUnavailable:
+      "Configure un code ou la biométrie sur cet appareil avant d'effacer les données locales.",
+    deviceAuthFailed:
+      "Impossible de confirmer la sécurité de l'appareil pour le moment. Réessaie.",
+    failed:
+      "Impossible d'effacer les données locales pour le moment. Réessaie.",
+  },
+  status: {
+    ...settingsCopyEn.status,
+    cycleSaved:
+      "Réglages du cycle enregistrés. Les prédictions ont été mises à jour.",
+    trackingSaved:
+      "Les champs de suivi ont été mis à jour pour le dashboard et le calendrier.",
+    invalidLastPeriodStart:
+      "Saisis une date valide de début des dernières règles qui ne soit pas dans le futur.",
+    saveFailed:
+      "Impossible d'enregistrer tes réglages. Réessaie.",
+  },
+};
+
 const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
   en: settingsCopyEn,
   ru: {
@@ -1059,6 +1832,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       saveFailed: "No se pudieron guardar los ajustes. Inténtalo de nuevo.",
     },
   },
+  de: settingsCopyDe,
+  fr: settingsCopyFr,
 };
 
 export function getSettingsCopy(language: string | null | undefined) {

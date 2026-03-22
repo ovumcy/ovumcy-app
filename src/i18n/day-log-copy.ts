@@ -75,6 +75,138 @@ const dayLogCopyEn = {
 
 type DayLogCopy = WidenLiteral<typeof dayLogCopyEn>;
 
+const dayLogCopyDe: DayLogCopy = {
+  title: "Heutiges Journal",
+  subtitle:
+    "Halte fest, was heute passiert ist, ohne deinen lokalen Zykluskontext zu verlassen.",
+  periodDay: "Periodentag",
+  symptoms: "Symptome",
+  mood: "Stimmung",
+  cycleFactors: "Zyklusfaktoren",
+  cycleFactorsHint:
+    "Optionale Kontext-Tags für Dinge, die den Rhythmus dieses Zyklus beeinflussen können.",
+  flow: "Stärke",
+  intimacy: "Intimität",
+  cervicalMucus: "Zervixschleim",
+  cervicalMucusExplainer:
+    "Zervixschleim bedeutet vaginalen Ausfluss. Eiweißartiger Schleim erscheint oft nahe dem Fruchtbarkeitshöhepunkt.",
+  bbt: "BBT",
+  bbtHint: "Trage für heute einen Basaltemperaturwert ein.",
+  notes: "Notizen",
+  addNote: "Notiz hinzufügen",
+  editNote: "Notiz bearbeiten",
+  hideNote: "Notiz ausblenden",
+  showMoreSymptoms: "Mehr Symptome",
+  showFewerSymptoms: "Weniger Symptome",
+  notesPlaceholder: "Alles, woran du dich heute erinnern möchtest.",
+  saveToday: "Heute speichern",
+  updateEntry: "Eintrag aktualisieren",
+  saveDay: "Tag speichern",
+  saved: "Eintrag lokal gespeichert.",
+  saveFailed: "Dieser Eintrag konnte nicht gespeichert werden. Bitte versuche es erneut.",
+  deleteEntry: "Eintrag löschen",
+  deleted: "Eintrag lokal entfernt.",
+  deleteFailed: "Dieser Eintrag konnte nicht gelöscht werden. Bitte versuche es erneut.",
+  deleteHint: "Dadurch wird der lokale Eintrag für diesen Tag entfernt.",
+  periodOffHint:
+    "Die Blutungsstärke ist verfügbar, wenn dieser Tag als Periodentag markiert ist.",
+  options: {
+    mood: dayLogCopyEn.options.mood,
+    flow: [
+      { value: "none", label: "Keine" },
+      { value: "spotting", label: "Schmierblutung" },
+      { value: "light", label: "Leicht" },
+      { value: "medium", label: "Mittel" },
+      { value: "heavy", label: "Stark" },
+    ],
+    sexActivity: [
+      { value: "none", label: "Keine" },
+      { value: "protected", label: "Geschützt" },
+      { value: "unprotected", label: "Ungeschützt" },
+    ],
+    cervicalMucus: [
+      { value: "none", label: "Keiner" },
+      { value: "dry", label: "Trocken" },
+      { value: "moist", label: "Feucht" },
+      { value: "creamy", label: "Cremig" },
+      { value: "eggwhite", label: "Eiweißartig" },
+    ],
+    cycleFactors: {
+      stress: { label: "Stress", icon: "⚡" },
+      illness: { label: "Krankheit", icon: "🤒" },
+      travel: { label: "Reise", icon: "✈️" },
+      sleep_disruption: { label: "Schlafstörung", icon: "🌙" },
+      medication_change: { label: "Medikamentenwechsel", icon: "💊" },
+    },
+  },
+};
+
+const dayLogCopyFr: DayLogCopy = {
+  title: "Journal du jour",
+  subtitle:
+    "Enregistre ce qui s'est passé aujourd'hui sans quitter ton contexte de cycle local.",
+  periodDay: "Jour de règles",
+  symptoms: "Symptômes",
+  mood: "Humeur",
+  cycleFactors: "Facteurs du cycle",
+  cycleFactorsHint:
+    "Étiquettes de contexte facultatives pour les éléments qui peuvent influencer le rythme de ce cycle.",
+  flow: "Flux",
+  intimacy: "Intimité",
+  cervicalMucus: "Glaire cervicale",
+  cervicalMucusExplainer:
+    "La glaire cervicale correspond aux pertes vaginales. Une glaire type blanc d'œuf apparaît souvent près du pic de fertilité.",
+  bbt: "TBC",
+  bbtHint: "Saisis une température basale pour aujourd'hui.",
+  notes: "Notes",
+  addNote: "Ajouter une note",
+  editNote: "Modifier la note",
+  hideNote: "Masquer la note",
+  showMoreSymptoms: "Plus de symptômes",
+  showFewerSymptoms: "Moins de symptômes",
+  notesPlaceholder: "Tout ce dont tu veux te souvenir aujourd'hui.",
+  saveToday: "Enregistrer aujourd'hui",
+  updateEntry: "Mettre à jour l'entrée",
+  saveDay: "Enregistrer la journée",
+  saved: "Entrée enregistrée localement.",
+  saveFailed: "Impossible d'enregistrer cette entrée. Réessaie.",
+  deleteEntry: "Effacer l'entrée",
+  deleted: "Entrée supprimée localement.",
+  deleteFailed: "Impossible d'effacer cette entrée. Réessaie.",
+  deleteHint: "Cela supprime l'enregistrement local pour cette journée.",
+  periodOffHint:
+    "Le flux est disponible quand cette journée est marquée comme jour de règles.",
+  options: {
+    mood: dayLogCopyEn.options.mood,
+    flow: [
+      { value: "none", label: "Aucun" },
+      { value: "spotting", label: "Spotting" },
+      { value: "light", label: "Léger" },
+      { value: "medium", label: "Moyen" },
+      { value: "heavy", label: "Abondant" },
+    ],
+    sexActivity: [
+      { value: "none", label: "Aucune" },
+      { value: "protected", label: "Protégé" },
+      { value: "unprotected", label: "Non protégé" },
+    ],
+    cervicalMucus: [
+      { value: "none", label: "Aucune" },
+      { value: "dry", label: "Sec" },
+      { value: "moist", label: "Humide" },
+      { value: "creamy", label: "Crémeux" },
+      { value: "eggwhite", label: "Blanc d'œuf" },
+    ],
+    cycleFactors: {
+      stress: { label: "Stress", icon: "⚡" },
+      illness: { label: "Maladie", icon: "🤒" },
+      travel: { label: "Voyage", icon: "✈️" },
+      sleep_disruption: { label: "Sommeil perturbé", icon: "🌙" },
+      medication_change: { label: "Changement de traitement", icon: "💊" },
+    },
+  },
+};
+
 const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
   en: dayLogCopyEn,
   ru: {
@@ -207,6 +339,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       },
     },
   },
+  de: dayLogCopyDe,
+  fr: dayLogCopyFr,
 };
 
 export function getDayLogCopy(language: string | null | undefined) {

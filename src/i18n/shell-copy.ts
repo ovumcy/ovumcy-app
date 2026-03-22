@@ -27,6 +27,52 @@ const shellCopyEn = {
 
 type ShellCopy = WidenLiteral<typeof shellCopyEn>;
 
+const shellCopyDe: ShellCopy = {
+  tabs: {
+    dashboard: "Heute",
+    calendar: "Kalender",
+    stats: "Insights",
+    settings: "Einstellungen",
+  },
+  loading: {
+    appShellTitle: "Deine lokale Einrichtung wird geladen…",
+    appShellDescription: "Die lokale App-Umgebung wird vorbereitet.",
+    dashboardTitle: "Dashboard wird geladen",
+    dashboardDescription: "Dein lokaler Zykluskontext wird vorbereitet.",
+    calendarTitle: "Kalender wird geladen",
+    calendarDescription: "Deine lokale Monatsansicht wird vorbereitet.",
+    statsTitle: "Insights werden geladen",
+    statsDescription: "Deine lokale Verlaufsübersicht wird vorbereitet.",
+    settingsTitle: "Einstellungen werden geladen",
+    settingsDescription: "Deine lokalen Zykluseinstellungen werden vorbereitet.",
+    backupSyncTitle: "Backup & Sync wird geladen",
+    backupSyncDescription: "Deine geschützten Backup-Steuerungen werden vorbereitet.",
+  },
+};
+
+const shellCopyFr: ShellCopy = {
+  tabs: {
+    dashboard: "Aujourd'hui",
+    calendar: "Calendrier",
+    stats: "Insights",
+    settings: "Réglages",
+  },
+  loading: {
+    appShellTitle: "Chargement de ta configuration locale…",
+    appShellDescription: "Préparation de l'environnement local de l'app.",
+    dashboardTitle: "Chargement du dashboard",
+    dashboardDescription: "Préparation de ton contexte local de cycle.",
+    calendarTitle: "Chargement du calendrier",
+    calendarDescription: "Préparation de ta vue mensuelle locale.",
+    statsTitle: "Chargement des insights",
+    statsDescription: "Préparation du résumé de ton historique local.",
+    settingsTitle: "Chargement des réglages",
+    settingsDescription: "Préparation de tes réglages locaux du cycle.",
+    backupSyncTitle: "Chargement de la sauvegarde et du sync",
+    backupSyncDescription: "Préparation des contrôles de sauvegarde protégée.",
+  },
+};
+
 const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
   en: shellCopyEn,
   ru: {
@@ -73,6 +119,8 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
       backupSyncDescription: "Preparando los controles de tu copia protegida.",
     },
   },
+  de: shellCopyDe,
+  fr: shellCopyFr,
 };
 
 export function getShellCopy(language: string | null | undefined) {

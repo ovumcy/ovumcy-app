@@ -17,7 +17,7 @@ export type AgeGroupOption = Exclude<AgeGroup, "">;
 export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 
 export type TemperatureUnit = "c" | "f";
-export type InterfaceLanguage = "en" | "ru" | "es";
+export type InterfaceLanguage = "en" | "ru" | "es" | "de" | "fr";
 export type ThemePreference = "light" | "dark";
 export type PredictionMode = "regular" | "irregular" | "facts_only";
 export type CalendarPredictionNoticeKey =
@@ -25,7 +25,13 @@ export type CalendarPredictionNoticeKey =
   | "calendar_unpredictable_prediction_notice_v1";
 export type OnboardingHelperNoticeKey = "onboarding_day1_tip_notice_v1";
 
-export const SUPPORTED_INTERFACE_LANGUAGES = ["en", "ru", "es"] as const;
+export const SUPPORTED_INTERFACE_LANGUAGES = [
+  "en",
+  "ru",
+  "es",
+  "de",
+  "fr",
+] as const;
 export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",

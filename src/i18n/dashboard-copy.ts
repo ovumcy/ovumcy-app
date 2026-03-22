@@ -59,6 +59,120 @@ const dashboardCopyEn = {
 
 type DashboardCopy = WidenLiteral<typeof dashboardCopyEn>;
 
+const dashboardCopyDe: DashboardCopy = {
+  cycleDay: "Zyklustag",
+  nextPeriod: "Nächste Periode",
+  nextPeriodUnknown: "unbekannt",
+  nextPeriodPrompt: "Gib das Startdatum deines letzten Zyklus ein",
+  approximateDatePrefix: "etwa",
+  ovulation: "Eisprung",
+  ovulationUnavailable: "Nicht berechenbar",
+  predictionsOff: "Vorhersagen aus",
+  predictionsApproximateHint:
+    "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
+  factsOnlyHint:
+    "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
+  todayEditor: "Heutiges Journal",
+  quickActionsTitle: "Schnellaktionen",
+  quickActions: {
+    mood: "Stimmung",
+    period: "Periode",
+    symptom: "Symptome",
+  },
+  periodDay: "Periodentag",
+  symptoms: "Symptome",
+  mood: "Stimmung",
+  cycleFactors: "Zyklusfaktoren",
+  cycleFactorsHint:
+    "Optionale Kontext-Tags für Dinge, die den Zykluszeitpunkt beeinflussen können.",
+  intimacy: "Intimität",
+  cervicalMucus: "Zervixschleim",
+  cervicalMucusExplainer:
+    "Zervixschleim bedeutet vaginalen Ausfluss. Eiweißartiger Schleim erscheint oft nahe dem Fruchtbarkeitshöhepunkt.",
+  bbt: "BBT",
+  notes: "Notizen",
+  manualCycleStart: "Neuen Zyklusbeginn markieren",
+  cancelAction: "Abbrechen",
+  manualCycleStartSaved: "Zyklusbeginn lokal aktualisiert.",
+  manualCycleStartFailed:
+    "Ein neuer Zyklusbeginn konnte nicht markiert werden. Bitte versuche es erneut.",
+  invalidCycleStartDate:
+    "Ein neuer Zyklusbeginn kann nur für vergangene Tage und höchstens 2 Tage im Voraus markiert werden.",
+  cycleStartSuggestion:
+    "Das könnte der erste Tag deiner Periode sein. Wenn ja, markiere ihn als neuen Zyklusbeginn.",
+  cycleStartReplaceMessage:
+    "Du hast bereits einen Zyklusbeginn am %s markiert. Durch %s ersetzen?",
+  cycleStartReplaceAccept: "Ersetzen",
+  cycleStartReplaceRequired:
+    "Bestätige das Ersetzen des bereits markierten Zyklusbeginns.",
+  cycleStartShortGapMessage:
+    "⚠️ Seit dem vorherigen Zyklus sind erst %s Tage vergangen. Das ist vielleicht kein neuer Zyklus. Vorheriges Datum: %s.",
+  cycleStartShortGapAccept: "Trotzdem markieren",
+  cycleStartConfirmationRequired:
+    "Bestätige das Markieren eines Zyklusbeginns mit kurzem Abstand.",
+  futureCycleStartNotice:
+    "Die Vorhersagen werden neu berechnet, wenn dieser Tag erreicht ist.",
+  implantationWarning:
+    "Das könnte eine Einnistungsblutung und kein neuer Zyklus sein. Wenn du schwanger werden möchtest, ziehe einen Test in Betracht.",
+};
+
+const dashboardCopyFr: DashboardCopy = {
+  cycleDay: "Jour du cycle",
+  nextPeriod: "Prochaines règles",
+  nextPeriodUnknown: "inconnu",
+  nextPeriodPrompt: "Saisis la date de début de ton dernier cycle",
+  approximateDatePrefix: "vers",
+  ovulation: "Ovulation",
+  ovulationUnavailable: "Impossible à calculer",
+  predictionsOff: "Prédictions désactivées",
+  predictionsApproximateHint:
+    "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
+  factsOnlyHint:
+    "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
+  todayEditor: "Journal d'aujourd'hui",
+  quickActionsTitle: "Actions rapides",
+  quickActions: {
+    mood: "Humeur",
+    period: "Règles",
+    symptom: "Symptômes",
+  },
+  periodDay: "Jour de règles",
+  symptoms: "Symptômes",
+  mood: "Humeur",
+  cycleFactors: "Facteurs du cycle",
+  cycleFactorsHint:
+    "Étiquettes de contexte facultatives pour les éléments qui peuvent influencer le rythme du cycle.",
+  intimacy: "Intimité",
+  cervicalMucus: "Glaire cervicale",
+  cervicalMucusExplainer:
+    "La glaire cervicale correspond aux pertes vaginales. Une glaire type blanc d'œuf apparaît souvent près du pic de fertilité.",
+  bbt: "TBC",
+  notes: "Notes",
+  manualCycleStart: "Marquer un nouveau début de cycle",
+  cancelAction: "Annuler",
+  manualCycleStartSaved: "Début du cycle mis à jour localement.",
+  manualCycleStartFailed:
+    "Impossible de marquer un nouveau début de cycle. Réessaie.",
+  invalidCycleStartDate:
+    "Un nouveau début de cycle peut être marqué uniquement pour des jours passés et au maximum 2 jours à l'avance.",
+  cycleStartSuggestion:
+    "Cela peut être le premier jour de tes règles. Si c'est le cas, marque-le comme nouveau début de cycle.",
+  cycleStartReplaceMessage:
+    "Tu as déjà marqué un début de cycle le %s. Le remplacer par %s ?",
+  cycleStartReplaceAccept: "Remplacer",
+  cycleStartReplaceRequired:
+    "Confirme le remplacement du début de cycle déjà marqué.",
+  cycleStartShortGapMessage:
+    "⚠️ Seulement %s jours se sont écoulés depuis le cycle précédent. Ce n'est peut-être pas un nouveau cycle. Date précédente : %s.",
+  cycleStartShortGapAccept: "Marquer quand même",
+  cycleStartConfirmationRequired:
+    "Confirme le marquage d'un début de cycle avec un intervalle court.",
+  futureCycleStartNotice:
+    "Les prédictions seront recalculées lorsque ce jour arrivera.",
+  implantationWarning:
+    "Cela peut être un saignement d'implantation et non un nouveau cycle. Si tu essaies de concevoir, pense à faire un test.",
+};
+
 const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
   en: dashboardCopyEn,
   ru: {
@@ -173,6 +287,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     implantationWarning:
       "Esto puede ser sangrado de implantación y no un nuevo ciclo. Si buscas embarazo, considera hacerte una prueba.",
   },
+  de: dashboardCopyDe,
+  fr: dashboardCopyFr,
 };
 
 export function getDashboardCopy(language: string | null | undefined) {
