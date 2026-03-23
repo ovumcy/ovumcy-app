@@ -16,9 +16,9 @@ Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
 It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
 
 This README describes the current `main` branch.
-The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and local encrypted sync setup already work on-device, while account-backed sync transport and multi-device restore are still evolving.
+The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and optional encrypted sync flows already work on-device. Self-hosted community sync and managed-cloud transport now exist as alpha integrations, while store-billing, broader mobile release discipline, and wider production hardening are still evolving.
 
-The self-hosted web and server product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web).
+The self-hosted web product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web). The self-hosted community sync backend for the app lives in [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community).
 
 ## Why Ovumcy App Exists
 
@@ -38,7 +38,7 @@ Ovumcy App is designed around three constraints:
 | Works without an account | :white_check_mark: | :white_check_mark: |
 | Local-first device storage | :white_check_mark: | :x: |
 | Local encrypted sync setup | :white_check_mark: | Not applicable |
-| Real self-hosted or managed sync transport | Planned | Server-side product |
+| Real self-hosted or managed sync transport | :white_check_mark: Alpha | Server-side product |
 | iOS and Android client | :white_check_mark: | Browser only |
 | Server required for core onboarding and tracking | :x: | :white_check_mark: |
 | Optional sync architecture | :white_check_mark: | Not applicable |
@@ -51,11 +51,15 @@ No. Core onboarding and future tracking flows are designed to work without an ac
 
 ### Where is the data stored?
 
-On the device by default. Native platforms use a local SQLite-backed repository for bootstrap, profile, and day-log state. Web preview uses a session-only in-memory adapter and should not be treated as durable secure storage for health data.
+On the device by default. Native platforms use a local SQLite-backed repository with encrypted-at-rest payloads for privacy-sensitive health records. Web preview uses a session-only in-memory adapter and should not be treated as durable secure storage for health data.
 
 ### Is sync required?
 
-No. Core tracking stays local-first. The app now includes local encrypted sync setup and recovery-phrase preparation, but account-backed sync transport is still an optional later capability.
+No. Core tracking stays local-first. Sync is optional. The app now supports self-hosted community sync and managed-cloud sync as alpha integrations, but core tracking does not depend on either.
+
+### Can the sync server read health data?
+
+The sync transport is designed so the server stores ciphertext, not readable health records. The server may still see account/session metadata, attached device metadata, blob-size metadata, and timestamps. See [docs/sync-trust-model.md](docs/sync-trust-model.md).
 
 ### Does Ovumcy App use telemetry or ad trackers?
 
@@ -90,9 +94,9 @@ What is already true on `main`:
 What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
-- connected account auth, real sync transport, or multi-device restore flows;
+- App Store or Google Play billing integration for managed cloud sync;
 - release-store readiness for broad end-user distribution;
-- a standalone community or managed sync server in this repository.
+- a standalone sync server in this repository.
 
 ## Privacy and Security
 
@@ -102,6 +106,8 @@ What this repository still does **not** claim yet:
 - Native bootstrap, profile, day-log, and symptom data now live behind a SQLite-backed repository boundary with encrypted-at-rest payloads and secure local key storage.
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
 - Local encrypted sync setup keeps non-secret preferences in canonical local storage and stores wrapped secrets only in secure storage.
+- Self-hosted and managed sync transports are designed so health payloads are encrypted before upload. Sync servers should store ciphertext, device metadata, and auth/session metadata, not decrypted health content.
+- Managed cloud auth and billing are a separate plane from sync transport. The sync endpoint should not become the place where email/password billing identity is handled.
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
@@ -132,6 +138,8 @@ Local Sync Setup -> Account/Auth Transport -> Self-hosted or managed sync servic
 - `src/storage/`: local repositories, persistence contracts, and migrations.
 - `src/ui/`: shared design tokens, components, and screen presentation.
 - `src/sync/`: optional sync contracts, endpoint policy, and setup orchestration.
+
+The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-trust-model.md).
 
 ## Tech Stack
 
@@ -210,11 +218,13 @@ Near-term work focuses on:
 - adding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
 - growing local data models beyond cycle baseline, day logs, and symptom catalog;
 - adding repeatable Android and iOS smoke discipline;
-- wiring the current encrypted sync foundation into a real self-hosted or managed sync server without making sync mandatory.
+- integrating managed cloud billing and entitlement sources without changing the zero-knowledge sync contract;
+- continuing self-hosted and managed sync hardening without making sync mandatory.
 
 ## Related Repositories
 
 - [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) — the self-hosted web and server product
+- [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) — the self-hosted encrypted sync backend for Ovumcy app
 
 ## License
 
