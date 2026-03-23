@@ -1,4 +1,6 @@
 import { openDatabaseSync } from "expo-sqlite";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
 
 import {
   createEmptyDayLogRecord,
@@ -56,14 +58,15 @@ import {
 } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 9;
+const DATABASE_VERSION = 10;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     has_completed_onboarding INTEGER NOT NULL DEFAULT 0,
     profile_version INTEGER NOT NULL DEFAULT 2,
-    incomplete_onboarding_step INTEGER DEFAULT 1
+    incomplete_onboarding_step INTEGER DEFAULT 1,
+    encrypted_payload TEXT
   );
 `;
 
@@ -111,12 +114,13 @@ const CREATE_SYNC_PREFERENCES_TABLE = `
     id INTEGER PRIMARY KEY CHECK (id = 1),
     mode TEXT NOT NULL DEFAULT 'managed',
     endpoint_input TEXT NOT NULL DEFAULT '',
-    normalized_endpoint TEXT NOT NULL DEFAULT 'https://sync.ovumcy.com',
+    normalized_endpoint TEXT NOT NULL DEFAULT 'https://sync.ovumcy.cloud',
     device_label TEXT NOT NULL DEFAULT '',
     setup_status TEXT NOT NULL DEFAULT 'not_configured',
     prepared_at TEXT,
     last_remote_generation INTEGER,
-    last_synced_at TEXT
+    last_synced_at TEXT,
+    encrypted_payload TEXT
   );
 `;
 
@@ -163,10 +167,19 @@ const ADD_BOOTSTRAP_INCOMPLETE_STEP_COLUMN = `
   ALTER TABLE bootstrap_state ADD COLUMN incomplete_onboarding_step INTEGER DEFAULT 1;
 `;
 
+const ADD_BOOTSTRAP_ENCRYPTED_PAYLOAD_COLUMN = `
+  ALTER TABLE bootstrap_state ADD COLUMN encrypted_payload TEXT;
+`;
+
+const ADD_SYNC_ENCRYPTED_PAYLOAD_COLUMN = `
+  ALTER TABLE sync_preferences ADD COLUMN encrypted_payload TEXT;
+`;
+
 type BootstrapStateRow = {
   has_completed_onboarding: number;
   profile_version: number;
   incomplete_onboarding_step: number | null;
+  encrypted_payload: string | null;
 };
 
 type ProfileSettingsRow = {
@@ -200,12 +213,7 @@ type SyncPreferencesRow = {
   prepared_at: string | null;
   last_remote_generation: number | null;
   last_synced_at: string | null;
-};
-
-type DayLogSummaryRow = {
-  total_entries: number;
-  date_from: string | null;
-  date_to: string | null;
+  encrypted_payload: string | null;
 };
 
 type DayLogRow = {
@@ -398,6 +406,7 @@ export function createSQLiteAppStorage(
 
   async function readBootstrapStateInternal(): Promise<LocalBootstrapState> {
     const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
     const row = await withStorageOperationLabel(
       "sqlite/readBootstrapState/select",
       () =>
@@ -405,21 +414,25 @@ export function createSQLiteAppStorage(
           `SELECT
             has_completed_onboarding,
             profile_version,
-            incomplete_onboarding_step
+            incomplete_onboarding_step,
+            encrypted_payload
            FROM bootstrap_state
            WHERE id = 1;`,
         ),
     );
 
-    return row ? mapBootstrapStateRow(row) : createDefaultBootstrapState();
+    return row
+      ? mapBootstrapStateRow(row, localDataKey)
+      : createDefaultBootstrapState();
   }
 
   async function writeBootstrapStateInternal(
     state: LocalBootstrapState,
   ): Promise<void> {
     const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
     await withStorageOperationLabel("sqlite/writeBootstrapState/upsert", () =>
-      upsertBootstrapState(database, state),
+      upsertBootstrapState(database, state, localDataKey),
     );
   }
 
@@ -485,6 +498,7 @@ export function createSQLiteAppStorage(
 
   async function readSyncPreferencesRecordInternal(): Promise<SyncPreferencesRecord> {
     const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
     const row = await database.getFirstAsync<SyncPreferencesRow>(
       `SELECT
         mode,
@@ -494,19 +508,23 @@ export function createSQLiteAppStorage(
         setup_status,
         prepared_at,
         last_remote_generation,
-        last_synced_at
+        last_synced_at,
+        encrypted_payload
        FROM sync_preferences
        WHERE id = 1;`,
     );
 
-    return row ? mapSyncPreferencesRow(row) : createDefaultSyncPreferencesRecord();
+    return row
+      ? mapSyncPreferencesRow(row, localDataKey)
+      : createDefaultSyncPreferencesRecord();
   }
 
   async function writeSyncPreferencesRecordInternal(
     record: SyncPreferencesRecord,
   ): Promise<void> {
     const database = await getHydratedDatabase();
-    await upsertSyncPreferencesRecord(database, record);
+    const localDataKey = await getLocalDataKey(database);
+    await upsertSyncPreferencesRecord(database, record, localDataKey);
   }
 
   async function readOnboardingRecordInternal(): Promise<OnboardingRecord> {
@@ -530,6 +548,7 @@ export function createSQLiteAppStorage(
   ): Promise<DayLogRecord> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
+    const lookupKey = buildOpaqueLookupKey(localDataKey, "day_log", date);
     const row = await database.getFirstAsync<DayLogRow>(
       `SELECT
         day,
@@ -547,7 +566,7 @@ export function createSQLiteAppStorage(
         encrypted_payload
        FROM day_logs
        WHERE day = ?;`,
-      date,
+      lookupKey,
     );
 
     return row ? mapDayLogRow(row, localDataKey) : createEmptyDayLogRecord(date);
@@ -562,7 +581,11 @@ export function createSQLiteAppStorage(
     date: DayLogRecord["date"],
   ): Promise<void> {
     const database = await getHydratedDatabase();
-    await database.runAsync("DELETE FROM day_logs WHERE day = ?;", date);
+    const localDataKey = await getLocalDataKey(database);
+    await database.runAsync(
+      "DELETE FROM day_logs WHERE day = ?;",
+      buildOpaqueLookupKey(localDataKey, "day_log", date),
+    );
   }
 
   async function listDayLogRecordsInRangeInternal(
@@ -586,14 +609,13 @@ export function createSQLiteAppStorage(
         symptom_ids,
         notes,
         encrypted_payload
-       FROM day_logs
-       WHERE day >= ? AND day <= ?
-       ORDER BY day ASC;`,
-      from,
-      to,
+       FROM day_logs;`,
     );
 
-    return rows.map((row) => mapDayLogRow(row, localDataKey));
+    return rows
+      .map((row) => mapDayLogRow(row, localDataKey))
+      .filter((record) => record.date >= from && record.date <= to)
+      .sort((left, right) => left.date.localeCompare(right.date));
   }
 
   async function readDayLogSummaryInternal(
@@ -601,35 +623,44 @@ export function createSQLiteAppStorage(
     to?: DayLogRecord["date"],
   ): Promise<LocalDayLogSummary> {
     const database = await getHydratedDatabase();
-    const row = from || to
-      ? await database.getFirstAsync<DayLogSummaryRow>(
-          `SELECT
-            COUNT(*) AS total_entries,
-            MIN(day) AS date_from,
-            MAX(day) AS date_to
-           FROM day_logs
-           WHERE (? IS NULL OR day >= ?)
-             AND (? IS NULL OR day <= ?);`,
-          from ?? null,
-          from ?? null,
-          to ?? null,
-          to ?? null,
-        )
-      : await database.getFirstAsync<DayLogSummaryRow>(
-          `SELECT
-            COUNT(*) AS total_entries,
-            MIN(day) AS date_from,
-            MAX(day) AS date_to
-           FROM day_logs;`,
-        );
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await database.getAllAsync<DayLogRow>(
+      `SELECT
+        day,
+        is_period,
+        cycle_start,
+        is_uncertain,
+        flow,
+        mood,
+        sex_activity,
+        bbt,
+        cervical_mucus,
+        cycle_factor_keys,
+        symptom_ids,
+        notes,
+        encrypted_payload
+       FROM day_logs;`,
+    );
 
-    return mapDayLogSummaryRow(row);
+    return mapDayLogSummaryRecords(
+      rows
+        .map((row) => mapDayLogRow(row, localDataKey))
+        .filter((record) => {
+          if (from && record.date < from) {
+            return false;
+          }
+          if (to && record.date > to) {
+            return false;
+          }
+          return true;
+        }),
+    );
   }
 
   async function listSymptomRecordsInternal(): Promise<SymptomRecord[]> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
-    const rows = await database.getAllAsync<SymptomRow>(
+  const rows = await database.getAllAsync<SymptomRow>(
       `SELECT
         id,
         slug,
@@ -641,11 +672,18 @@ export function createSQLiteAppStorage(
         sort_order,
         encrypted_payload
        FROM symptoms
-       ORDER BY sort_order ASC, id ASC;`,
+       ORDER BY id ASC;`,
     );
 
     return rows.length > 0
-      ? rows.map((row) => mapSymptomRow(row, localDataKey))
+      ? rows
+          .map((row) => mapSymptomRow(row, localDataKey))
+          .sort((left, right) => {
+            if (left.sortOrder !== right.sortOrder) {
+              return left.sortOrder - right.sortOrder;
+            }
+            return left.id.localeCompare(right.id, "en", { sensitivity: "base" });
+          })
       : createDefaultSymptomRecords();
   }
 
@@ -945,6 +983,10 @@ async function reconcileBootstrapStateSchema(
     database,
     ADD_BOOTSTRAP_INCOMPLETE_STEP_COLUMN,
   );
+  await execIgnoringDuplicateColumn(
+    database,
+    ADD_BOOTSTRAP_ENCRYPTED_PAYLOAD_COLUMN,
+  );
   await database.runAsync(
     `UPDATE bootstrap_state
      SET profile_version = ?
@@ -974,6 +1016,10 @@ async function reconcileSyncPreferencesSchema(
 ): Promise<void> {
   await runSchemaStatement(database, CREATE_SYNC_PREFERENCES_TABLE);
   await migrateV8SyncMetadata(database);
+  await execIgnoringDuplicateColumn(
+    database,
+    ADD_SYNC_ENCRYPTED_PAYLOAD_COLUMN,
+  );
 }
 
 async function reconcileSymptomsSchema(
@@ -1025,7 +1071,11 @@ async function resolveLocalDataKey(
 }
 
 async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolean> {
-  const [profileRow, dayLogRow, symptomRow] = await Promise.all([
+  const [bootstrapRow, profileRow, dayLogRow, syncPreferencesRow, symptomRow] =
+    await Promise.all([
+      database.getFirstAsync<{ encrypted_payload: string | null }>(
+        "SELECT encrypted_payload FROM bootstrap_state WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+      ),
     database.getFirstAsync<{ encrypted_payload: string | null }>(
       "SELECT encrypted_payload FROM profile_settings WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
     ),
@@ -1033,13 +1083,18 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
       "SELECT encrypted_payload FROM day_logs WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
     ),
     database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM sync_preferences WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
       "SELECT encrypted_payload FROM symptoms WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
     ),
   ]);
 
   return Boolean(
-    profileRow?.encrypted_payload ||
+    bootstrapRow?.encrypted_payload ||
+      profileRow?.encrypted_payload ||
       dayLogRow?.encrypted_payload ||
+      syncPreferencesRow?.encrypted_payload ||
       symptomRow?.encrypted_payload,
   );
 }
@@ -1072,7 +1127,7 @@ async function maybeMigrateLegacyLocalAppData(
     legacyStorageSource.readProfileRecord(),
   ]);
 
-  await upsertBootstrapState(database, bootstrapState);
+  await upsertBootstrapState(database, bootstrapState, localDataKey);
   await upsertProfileRecord(database, profileRecord, localDataKey);
   await legacyStorageSource.clear();
 }
@@ -1114,6 +1169,53 @@ async function migratePlaintextLocalDataRows(
     );
   }
 
+  const bootstrapRow = await withStorageOperationLabel(
+    "sqlite/plaintextMigration/bootstrap/select",
+    () =>
+      database.getFirstAsync<BootstrapStateRow>(
+        `SELECT
+          has_completed_onboarding,
+          profile_version,
+          incomplete_onboarding_step,
+          encrypted_payload
+         FROM bootstrap_state
+         WHERE id = 1;`,
+      ),
+  );
+
+  if (bootstrapRow) {
+    const bootstrapState = bootstrapRow.encrypted_payload
+      ? mapBootstrapStateRow(bootstrapRow, localDataKey)
+      : mapLegacyBootstrapStateRow(bootstrapRow);
+    await upsertBootstrapState(database, bootstrapState, localDataKey);
+  }
+
+  const syncPreferencesRow = await withStorageOperationLabel(
+    "sqlite/plaintextMigration/syncPreferences/select",
+    () =>
+      database.getFirstAsync<SyncPreferencesRow>(
+        `SELECT
+          mode,
+          endpoint_input,
+          normalized_endpoint,
+          device_label,
+          setup_status,
+          prepared_at,
+          last_remote_generation,
+          last_synced_at,
+          encrypted_payload
+         FROM sync_preferences
+         WHERE id = 1;`,
+      ),
+  );
+
+  if (syncPreferencesRow) {
+    const syncPreferences = syncPreferencesRow.encrypted_payload
+      ? mapSyncPreferencesRow(syncPreferencesRow, localDataKey)
+      : mapLegacySyncPreferencesRow(syncPreferencesRow);
+    await upsertSyncPreferencesRecord(database, syncPreferences, localDataKey);
+  }
+
   const dayLogRows = await withStorageOperationLabel(
     "sqlite/plaintextMigration/dayLogs/select",
     () =>
@@ -1138,11 +1240,18 @@ async function migratePlaintextLocalDataRows(
   );
 
   for (const row of dayLogRows) {
-    if (row.encrypted_payload) {
-      continue;
+    const record = row.encrypted_payload
+      ? mapDayLogRow(row, localDataKey)
+      : mapLegacyDayLogRow(row);
+    const nextLookupKey = buildOpaqueLookupKey(
+      localDataKey,
+      "day_log",
+      record.date,
+    );
+    await upsertDayLogRecord(database, record, localDataKey);
+    if (row.day !== nextLookupKey) {
+      await database.runAsync("DELETE FROM day_logs WHERE day = ?;", row.day);
     }
-
-    await upsertDayLogRecord(database, mapLegacyDayLogRow(row), localDataKey);
   }
 
   const symptomRows = await withStorageOperationLabel(
@@ -1165,11 +1274,18 @@ async function migratePlaintextLocalDataRows(
   );
 
   for (const row of symptomRows) {
-    if (row.encrypted_payload) {
-      continue;
+    const record = row.encrypted_payload
+      ? mapSymptomRow(row, localDataKey)
+      : mapLegacySymptomRow(row);
+    const nextLookupKey = buildOpaqueLookupKey(
+      localDataKey,
+      "symptom",
+      record.id,
+    );
+    await upsertSymptomRecord(database, record, localDataKey);
+    if (row.id !== nextLookupKey) {
+      await database.runAsync("DELETE FROM symptoms WHERE id = ?;", row.id);
     }
-
-    await upsertSymptomRecord(database, mapLegacySymptomRow(row), localDataKey);
   }
 }
 
@@ -1185,7 +1301,11 @@ async function ensureSeedRows(
   ]);
 
   if (bootstrapCount === 0) {
-    await upsertBootstrapState(database, createDefaultBootstrapState());
+    await upsertBootstrapState(
+      database,
+      createDefaultBootstrapState(),
+      localDataKey,
+    );
   }
 
   if (profileCount === 0) {
@@ -1193,7 +1313,11 @@ async function ensureSeedRows(
   }
 
   if (syncPreferencesCount === 0) {
-    await upsertSyncPreferencesRecord(database, createDefaultSyncPreferencesRecord());
+    await upsertSyncPreferencesRecord(
+      database,
+      createDefaultSyncPreferencesRecord(),
+      localDataKey,
+    );
   }
 
   if (symptomCount === 0) {
@@ -1222,27 +1346,31 @@ async function readRowCount(
 async function upsertBootstrapState(
   database: LocalAppDatabase,
   state: LocalBootstrapState,
+  localDataKey: string,
 ): Promise<void> {
-  const hasCompletedOnboarding = state.hasCompletedOnboarding === true;
+  const defaults = createDefaultBootstrapState();
 
   await database.runAsync(
     `INSERT INTO bootstrap_state (
        id,
        has_completed_onboarding,
        profile_version,
-       incomplete_onboarding_step
+       incomplete_onboarding_step,
+       encrypted_payload
      )
-     VALUES (1, ?, ?, ?)
+     VALUES (1, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        has_completed_onboarding = excluded.has_completed_onboarding,
        profile_version = excluded.profile_version,
-       incomplete_onboarding_step = excluded.incomplete_onboarding_step;`,
-    hasCompletedOnboarding ? 1 : 0,
-    state.profileVersion,
+       incomplete_onboarding_step = excluded.incomplete_onboarding_step,
+       encrypted_payload = excluded.encrypted_payload;`,
+    defaults.hasCompletedOnboarding ? 1 : 0,
+    defaults.profileVersion,
     persistBootstrapIncompleteOnboardingStep(
-      state.incompleteOnboardingStep,
-      hasCompletedOnboarding,
+      defaults.incompleteOnboardingStep,
+      defaults.hasCompletedOnboarding,
     ),
+    encryptLocalDataRecord(localDataKey, state),
   );
 }
 
@@ -1310,7 +1438,9 @@ async function upsertProfileRecord(
 async function upsertSyncPreferencesRecord(
   database: LocalAppDatabase,
   record: SyncPreferencesRecord,
+  localDataKey: string,
 ): Promise<void> {
+  const defaults = createDefaultSyncPreferencesRecord();
   await database.runAsync(
     `INSERT INTO sync_preferences (
        id,
@@ -1321,9 +1451,10 @@ async function upsertSyncPreferencesRecord(
        setup_status,
        prepared_at,
        last_remote_generation,
-       last_synced_at
+       last_synced_at,
+       encrypted_payload
      )
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        mode = excluded.mode,
        endpoint_input = excluded.endpoint_input,
@@ -1332,15 +1463,17 @@ async function upsertSyncPreferencesRecord(
        setup_status = excluded.setup_status,
        prepared_at = excluded.prepared_at,
        last_remote_generation = excluded.last_remote_generation,
-       last_synced_at = excluded.last_synced_at;`,
-    normalizeSyncMode(record.mode),
-    record.endpointInput,
-    record.normalizedEndpoint,
-    record.deviceLabel,
-    normalizeSyncSetupStatus(record.setupStatus),
-    record.preparedAt,
-    record.lastRemoteGeneration,
-    record.lastSyncedAt,
+       last_synced_at = excluded.last_synced_at,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalizeSyncMode(defaults.mode),
+    defaults.endpointInput,
+    defaults.normalizedEndpoint,
+    defaults.deviceLabel,
+    normalizeSyncSetupStatus(defaults.setupStatus),
+    defaults.preparedAt,
+    defaults.lastRemoteGeneration,
+    defaults.lastSyncedAt,
+    encryptLocalDataRecord(localDataKey, record),
   );
 }
 
@@ -1351,6 +1484,7 @@ async function upsertDayLogRecord(
 ): Promise<void> {
   const normalized = sanitizeDayLogRecord(record);
   const defaults = createEmptyDayLogRecord(normalized.date);
+  const lookupKey = buildOpaqueLookupKey(localDataKey, "day_log", normalized.date);
 
   await database.runAsync(
     `INSERT INTO day_logs (
@@ -1382,7 +1516,7 @@ async function upsertDayLogRecord(
        symptom_ids = excluded.symptom_ids,
        notes = excluded.notes,
        encrypted_payload = excluded.encrypted_payload;`,
-    normalized.date,
+    lookupKey,
     defaults.isPeriod ? 1 : 0,
     defaults.cycleStart ? 1 : 0,
     defaults.isUncertain ? 1 : 0,
@@ -1403,6 +1537,7 @@ async function upsertSymptomRecord(
   record: SymptomRecord,
   localDataKey: string,
 ): Promise<void> {
+  const lookupKey = buildOpaqueLookupKey(localDataKey, "symptom", record.id);
   await database.runAsync(
     `INSERT INTO symptoms (
        id,
@@ -1421,23 +1556,37 @@ async function upsertSymptomRecord(
        label = excluded.label,
        icon = excluded.icon,
        color = excluded.color,
-       is_default = excluded.is_default,
-       is_archived = excluded.is_archived,
-       sort_order = excluded.sort_order,
-       encrypted_payload = excluded.encrypted_payload;`,
-    record.id,
-    record.id,
+      is_default = excluded.is_default,
+      is_archived = excluded.is_archived,
+      sort_order = excluded.sort_order,
+      encrypted_payload = excluded.encrypted_payload;`,
+    lookupKey,
+    lookupKey,
     "",
     "",
     "#000000",
-    record.isDefault ? 1 : 0,
-    record.isArchived ? 1 : 0,
-    record.sortOrder,
+    0,
+    0,
+    0,
     encryptLocalDataRecord(localDataKey, record),
   );
 }
 
-function mapBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
+function mapBootstrapStateRow(
+  row: BootstrapStateRow,
+  localDataKey: string,
+): LocalBootstrapState {
+  if (row.encrypted_payload) {
+    return decryptLocalDataRecord<LocalBootstrapState>(
+      localDataKey,
+      row.encrypted_payload,
+    );
+  }
+
+  return mapLegacyBootstrapStateRow(row);
+}
+
+function mapLegacyBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
   const normalizedHasCompleted = Number(row.has_completed_onboarding);
   const normalizedProfileVersion = Number(row.profile_version);
   const normalizedIncompleteStep =
@@ -1517,10 +1666,28 @@ function mapLegacyProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
   };
 }
 
-function mapSyncPreferencesRow(row: SyncPreferencesRow): SyncPreferencesRecord {
+function mapSyncPreferencesRow(
+  row: SyncPreferencesRow,
+  localDataKey: string,
+): SyncPreferencesRecord {
+  if (row.encrypted_payload) {
+    return mapNormalizedSyncPreferencesRecord(
+      decryptLocalDataRecord<SyncPreferencesRecord>(
+        localDataKey,
+        row.encrypted_payload,
+      ),
+    );
+  }
+
+  return mapLegacySyncPreferencesRow(row);
+}
+
+function mapLegacySyncPreferencesRow(
+  row: SyncPreferencesRow,
+): SyncPreferencesRecord {
   const defaults = createDefaultSyncPreferencesRecord();
 
-  return {
+  return mapNormalizedSyncPreferencesRecord({
     ...defaults,
     mode: normalizeSyncMode(row.mode),
     endpointInput: row.endpoint_input,
@@ -1538,7 +1705,7 @@ function mapSyncPreferencesRow(row: SyncPreferencesRow): SyncPreferencesRecord {
         ? row.last_remote_generation
         : null,
     lastSyncedAt: row.last_synced_at,
-  };
+  });
 }
 
 function mapDayLogRow(row: DayLogRow, localDataKey: string): DayLogRecord {
@@ -1605,8 +1772,45 @@ function safeParseStringArray(raw: string): string[] {
   }
 }
 
-function mapDayLogSummaryRow(row: DayLogSummaryRow | null): LocalDayLogSummary {
-  if (!row || !Number.isFinite(row.total_entries) || row.total_entries <= 0) {
+function mapNormalizedSyncPreferencesRecord(
+  record: SyncPreferencesRecord,
+): SyncPreferencesRecord {
+  const defaults = createDefaultSyncPreferencesRecord();
+
+  return {
+    ...defaults,
+    ...record,
+    mode: normalizeSyncMode(record.mode),
+    normalizedEndpoint:
+      typeof record.normalizedEndpoint === "string" &&
+      record.normalizedEndpoint.trim().length > 0
+        ? record.normalizedEndpoint
+        : defaults.normalizedEndpoint,
+    setupStatus: normalizeSyncSetupStatus(record.setupStatus),
+    lastRemoteGeneration:
+      typeof record.lastRemoteGeneration === "number" &&
+      Number.isFinite(record.lastRemoteGeneration)
+        ? record.lastRemoteGeneration
+        : null,
+    lastSyncedAt: record.lastSyncedAt ?? null,
+    preparedAt: record.preparedAt ?? null,
+  };
+}
+
+function buildOpaqueLookupKey(
+  localDataKey: string,
+  namespace: "day_log" | "symptom",
+  rawValue: string,
+): string {
+  return bytesToHex(
+    sha256(utf8ToBytes(`${namespace}:${localDataKey}:${rawValue}`)),
+  );
+}
+
+function mapDayLogSummaryRecords(
+  records: readonly DayLogRecord[],
+): LocalDayLogSummary {
+  if (records.length === 0) {
     return {
       totalEntries: 0,
       hasData: false,
@@ -1615,10 +1819,14 @@ function mapDayLogSummaryRow(row: DayLogSummaryRow | null): LocalDayLogSummary {
     };
   }
 
+  const sortedRecords = [...records].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+
   return {
-    totalEntries: row.total_entries,
+    totalEntries: sortedRecords.length,
     hasData: true,
-    dateFrom: row.date_from,
-    dateTo: row.date_to,
+    dateFrom: sortedRecords[0]?.date ?? null,
+    dateTo: sortedRecords[sortedRecords.length - 1]?.date ?? null,
   };
 }

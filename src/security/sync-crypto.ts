@@ -61,6 +61,23 @@ export function createSyncSecretsRecord(
   };
 }
 
+export function createRecoveredSyncSecretsRecord(
+  recoveryPhrase: string,
+  wrappedKey: WrappedSyncKeyMetadata,
+  deviceLabel: string,
+  now: Date,
+): SyncSecretsRecord {
+  const masterKeyHex = unwrapMasterKeyWithRecoveryPhrase(recoveryPhrase, wrappedKey);
+
+  return {
+    device: createDeviceIdentity(deviceLabel, now),
+    masterKeyHex,
+    deviceSecretHex: bytesToHex(getRandomBytes(DEVICE_SECRET_BYTE_LENGTH)),
+    wrappedKey,
+    authSessionToken: null,
+  };
+}
+
 export function wrapMasterKeyWithRecoveryPhrase(
   recoveryPhrase: string,
   masterKeyHex: string,
@@ -92,6 +109,13 @@ export function unwrapMasterKeyWithRecoveryPhrase(
 ): string {
   const normalizedPhrase = normalizeRecoveryPhrase(recoveryPhrase);
   if (!isValidRecoveryPhrase(normalizedPhrase)) {
+    throw new Error("invalid_recovery_phrase");
+  }
+  validateWrappedSyncKeyMetadata(wrappedKey);
+  if (
+    buildRecoveryPhraseFingerprint(normalizedPhrase) !==
+    wrappedKey.phraseFingerprintHex
+  ) {
     throw new Error("invalid_recovery_phrase");
   }
 
@@ -146,6 +170,18 @@ function buildRecoveryPhraseFingerprint(recoveryPhrase: string): string {
       8,
     ),
   );
+}
+
+function validateWrappedSyncKeyMetadata(
+  wrappedKey: WrappedSyncKeyMetadata,
+): void {
+  if (
+    wrappedKey.algorithm !== "xchacha20poly1305" ||
+    wrappedKey.kdf !== "bip39_seed_hkdf_sha256" ||
+    wrappedKey.mnemonicWordCount !== 12
+  ) {
+    throw new Error("invalid_wrapped_key_metadata");
+  }
 }
 
 function normalizeRecoveryPhrase(value: string): string {

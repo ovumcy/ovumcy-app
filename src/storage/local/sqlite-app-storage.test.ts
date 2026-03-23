@@ -4,12 +4,14 @@ import {
 } from "./sqlite-app-storage";
 import type { LocalDataKeyStore } from "../../security/local-data-key-store";
 import { createDefaultProfileRecord } from "../../models/profile";
+import { encryptLocalDataRecord } from "../../security/local-data-crypto";
 
 type FakeDatabaseState = {
   bootstrapRow: {
     has_completed_onboarding: number;
     profile_version: number;
     incomplete_onboarding_step?: number | null;
+    encrypted_payload?: string | null;
   } | null;
   profileRow: {
     last_period_start: string | null;
@@ -73,6 +75,7 @@ type FakeDatabaseState = {
     prepared_at: string | null;
     last_remote_generation?: number | null;
     last_synced_at?: string | null;
+    encrypted_payload?: string | null;
   } | null;
   userVersion: number;
 };
@@ -94,6 +97,7 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       "prepared_at",
       "last_remote_generation",
       "last_synced_at",
+      "encrypted_payload",
     ],
     syncPreferencesRow: null,
     userVersion: 0,
@@ -176,6 +180,13 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     }
 
     if (
+      source.includes("ALTER TABLE bootstrap_state ADD COLUMN encrypted_payload") &&
+      databaseState.bootstrapRow
+    ) {
+      databaseState.bootstrapRow.encrypted_payload ??= null;
+    }
+
+    if (
       source.includes(
         "ALTER TABLE sync_preferences ADD COLUMN last_remote_generation",
       ) &&
@@ -194,6 +205,16 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       databaseState.syncPreferencesColumns.push("last_synced_at");
       if (databaseState.syncPreferencesRow) {
         databaseState.syncPreferencesRow.last_synced_at ??= null;
+      }
+    }
+
+    if (
+      source.includes("ALTER TABLE sync_preferences ADD COLUMN encrypted_payload") &&
+      !databaseState.syncPreferencesColumns.includes("encrypted_payload")
+    ) {
+      databaseState.syncPreferencesColumns.push("encrypted_payload");
+      if (databaseState.syncPreferencesRow) {
+        databaseState.syncPreferencesRow.encrypted_payload ??= null;
       }
     }
   }
@@ -250,6 +271,18 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       }
 
       if (
+        source.includes("SELECT encrypted_payload FROM bootstrap_state") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        if (databaseState.bootstrapRow?.encrypted_payload) {
+          return {
+            encrypted_payload: databaseState.bootstrapRow.encrypted_payload,
+          } as T;
+        }
+        return null;
+      }
+
+      if (
         source.includes("SELECT encrypted_payload FROM profile_settings") &&
         source.includes("encrypted_payload IS NOT NULL")
       ) {
@@ -271,6 +304,18 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         return row
           ? ({ encrypted_payload: row.encrypted_payload ?? null } as T)
           : null;
+      }
+
+      if (
+        source.includes("SELECT encrypted_payload FROM sync_preferences") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        if (databaseState.syncPreferencesRow?.encrypted_payload) {
+          return {
+            encrypted_payload: databaseState.syncPreferencesRow.encrypted_payload,
+          } as T;
+        }
+        return null;
       }
 
       if (
@@ -319,6 +364,7 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           ...(databaseState.bootstrapRow?.incomplete_onboarding_step !== undefined
             ? [{ cid: 3, name: "incomplete_onboarding_step" }]
             : []),
+          { cid: 4, name: "encrypted_payload" },
         ] as T[];
       }
       if (source === "PRAGMA table_info(sync_preferences);") {
@@ -328,17 +374,12 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         })) as T[];
       }
       if (source.includes("FROM day_logs")) {
-        const from = String(params[0]);
-        const to = String(params[1]);
-        return databaseState.dayLogRows.filter((row) => row.day >= from && row.day <= to) as T[];
+        return [...databaseState.dayLogRows] as T[];
       }
       if (source.includes("FROM symptoms")) {
         return [...databaseState.symptomRows]
           .sort((left, right) => {
-            if (left.sort_order !== right.sort_order) {
-              return left.sort_order - right.sort_order;
-            }
-            return left.label.localeCompare(right.label, "en", { sensitivity: "base" });
+            return left.id.localeCompare(right.id, "en", { sensitivity: "base" });
           }) as T[];
       }
 
@@ -356,6 +397,7 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           profile_version: Number(params[1]),
           incomplete_onboarding_step:
             typeof params[2] === "number" ? Number(params[2]) : null,
+          encrypted_payload: (params[3] as string | null) ?? null,
         };
       }
 
@@ -425,6 +467,13 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         databaseState.syncPreferencesRow = null;
       }
       if (source.includes("DELETE FROM symptoms")) {
+        if (source.includes("WHERE id =")) {
+          const id = String(params[0]);
+          databaseState.symptomRows = databaseState.symptomRows.filter(
+            (row) => row.id !== id,
+          );
+          return { changes: 1 };
+        }
         databaseState.symptomRows = [];
       }
       if (source.includes("INSERT INTO sync_preferences")) {
@@ -437,6 +486,7 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           prepared_at: (params[5] as string | null) ?? null,
           last_remote_generation: (params[6] as number | null) ?? null,
           last_synced_at: (params[7] as string | null) ?? null,
+          encrypted_payload: (params[8] as string | null) ?? null,
         };
       }
       if (source.includes("INSERT INTO symptoms")) {
@@ -821,6 +871,21 @@ describe("sqlite-app-storage", () => {
       languageOverride: "en",
       themeOverride: "dark",
     });
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+    await storage.writeSyncPreferencesRecord({
+      mode: "self_hosted",
+      endpointInput: "192.168.1.20:8080",
+      normalizedEndpoint: "http://192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected",
+      preparedAt: "2026-03-17T10:00:00.000Z",
+      lastRemoteGeneration: 123,
+      lastSyncedAt: "2026-03-17T10:05:00.000Z",
+    });
     await storage.writeDayLogRecord({
       date: "2026-03-17",
       isPeriod: true,
@@ -850,17 +915,52 @@ describe("sqlite-app-storage", () => {
     expect(inspected.state.profileRow?.encrypted_payload).not.toContain("2026-03-15");
     expect(inspected.state.profileRow?.last_period_start).toBeNull();
 
+    expect(inspected.state.bootstrapRow?.encrypted_payload).toEqual(expect.any(String));
+    expect(inspected.state.bootstrapRow?.has_completed_onboarding).toBe(0);
+    expect(inspected.state.bootstrapRow?.incomplete_onboarding_step).toBe(1);
+
+    expect(inspected.state.syncPreferencesRow?.encrypted_payload).toEqual(
+      expect.any(String),
+    );
+    expect(inspected.state.syncPreferencesRow?.endpoint_input).toBe("");
+    expect(inspected.state.syncPreferencesRow?.device_label).toBe("");
+    expect(inspected.state.syncPreferencesRow?.setup_status).toBe(
+      "not_configured",
+    );
+
     expect(inspected.state.dayLogRows[0]?.encrypted_payload).toEqual(expect.any(String));
     expect(inspected.state.dayLogRows[0]?.encrypted_payload).not.toContain("Reset me");
     expect(inspected.state.dayLogRows[0]?.notes).toBe("");
+    expect(inspected.state.dayLogRows[0]?.day).not.toBe("2026-03-17");
 
-    const customSymptomRow = inspected.state.symptomRows.find(
-      (row) => row.id === "custom_jaw_pain",
-    );
-    expect(customSymptomRow?.encrypted_payload).toEqual(expect.any(String));
-    expect(customSymptomRow?.encrypted_payload).not.toContain("Jaw pain");
-    expect(customSymptomRow?.label).toBe("");
-    expect(customSymptomRow?.slug).toBe("custom_jaw_pain");
+    expect(
+      inspected.state.symptomRows.every((row) => row.is_default === 0),
+    ).toBe(true);
+    expect(
+      inspected.state.symptomRows.every((row) => row.is_archived === 0),
+    ).toBe(true);
+    expect(
+      inspected.state.symptomRows.every((row) => row.sort_order === 0),
+    ).toBe(true);
+    expect(
+      inspected.state.symptomRows.some((row) => row.id === "custom_jaw_pain"),
+    ).toBe(false);
+    expect(
+      inspected.state.symptomRows.some((row) => row.slug === "jaw-pain"),
+    ).toBe(false);
+    expect(
+      inspected.state.symptomRows.every((row) => row.label === ""),
+    ).toBe(true);
+    expect(
+      inspected.state.symptomRows.every(
+        (row) => typeof row.encrypted_payload === "string",
+      ),
+    ).toBe(true);
+    expect(
+      inspected.state.symptomRows.every(
+        (row) => !row.encrypted_payload?.includes("Jaw pain"),
+      ),
+    ).toBe(true);
   });
 
   it("persists custom symptoms alongside the seeded built-in catalog", async () => {
@@ -970,12 +1070,15 @@ describe("sqlite-app-storage", () => {
         hide_sex_chip: 0,
         language_override: null,
         theme_override: null,
-        encrypted_payload: null,
+        encrypted_payload: encryptLocalDataRecord(
+          "a".repeat(64),
+          createDefaultProfileRecord(),
+        ),
       },
       syncPreferencesRow: {
         mode: "managed",
         endpoint_input: "",
-        normalized_endpoint: "https://sync.ovumcy.com",
+        normalized_endpoint: "https://sync.ovumcy.cloud",
         device_label: "",
         setup_status: "not_configured",
         prepared_at: null,
@@ -1084,7 +1187,7 @@ describe("sqlite-app-storage", () => {
           syncPreferencesRow: {
             mode: "managed",
             endpoint_input: "",
-            normalized_endpoint: "https://sync.ovumcy.com",
+            normalized_endpoint: "https://sync.ovumcy.cloud",
             device_label: "",
             setup_status: "not_configured",
             prepared_at: null,
@@ -1193,31 +1296,22 @@ describe("sqlite-app-storage", () => {
         hide_sex_chip: 0,
         language_override: null,
         theme_override: null,
-        encrypted_payload: "ciphertext",
+        encrypted_payload: encryptLocalDataRecord(
+          "a".repeat(64),
+          createDefaultProfileRecord(),
+        ),
       },
       syncPreferencesRow: {
         mode: "managed",
         endpoint_input: "",
-        normalized_endpoint: "https://sync.ovumcy.com",
+        normalized_endpoint: "https://sync.ovumcy.cloud",
         device_label: "",
         setup_status: "not_configured",
         prepared_at: null,
         last_remote_generation: null,
         last_synced_at: null,
       },
-      symptomRows: [
-        {
-          id: "cramps",
-          slug: "cramps",
-          label: "Cramps",
-          icon: "bolt",
-          color: "#f28f72",
-          is_default: 1,
-          is_archived: 0,
-          sort_order: 10,
-          encrypted_payload: "ciphertext",
-        },
-      ],
+      symptomRows: [],
     });
     const originalRunAsync = inspected.database.runAsync.bind(inspected.database);
     const storage = createSQLiteAppStorage({
@@ -1653,12 +1747,12 @@ describe("sqlite-app-storage", () => {
         hide_sex_chip: 0,
         language_override: null,
         theme_override: null,
-        encrypted_payload: "ciphertext",
+        encrypted_payload: null,
       },
       syncPreferencesRow: {
         mode: "managed",
         endpoint_input: "",
-        normalized_endpoint: "https://sync.ovumcy.com",
+        normalized_endpoint: "https://sync.ovumcy.cloud",
         device_label: "",
         setup_status: "not_configured",
         prepared_at: null,

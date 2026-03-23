@@ -60,8 +60,18 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.invalidRegistrationInput;
     case "registration_failed":
       return viewData.errors.registrationFailed;
+    case "managed_inline_auth_disabled":
+      return viewData.planUnavailable;
     case "invalid_credentials":
       return viewData.errors.invalidCredentials;
+    case "recovery_phrase_required":
+      return viewData.errors.recoveryPhraseRequired;
+    case "invalid_recovery_phrase":
+      return viewData.errors.invalidRecoveryPhrase;
+    case "recovery_not_available":
+      return viewData.errors.recoveryNotAvailable;
+    case "recovery_package_not_found":
+      return viewData.errors.recoveryPackageNotFound;
     case "too_many_devices":
       return viewData.errors.tooManyDevices;
     case "sync_not_prepared":

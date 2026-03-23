@@ -5,6 +5,7 @@ import type {
   SyncCapabilityDocument,
   SyncPreferencesRecord,
 } from "../../sync/sync-contract";
+import { supportsInlineSyncAccountAuth } from "../../sync/sync-contract";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
@@ -22,6 +23,7 @@ type SettingsSyncSetupSectionProps = {
   hasStoredSyncSecrets: boolean;
   isAuthenticating: boolean;
   isPreparing: boolean;
+  isRecovering: boolean;
   isRestoring: boolean;
   isSyncing: boolean;
   notSetLabel: string;
@@ -33,10 +35,13 @@ type SettingsSyncSetupSectionProps = {
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPrepare: () => void | Promise<void>;
+  onRecoverAccess: () => void | Promise<void>;
+  onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
   preferences: SyncPreferencesRecord;
+  recoveryPhraseValue: string;
   statusMessage: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
@@ -51,6 +56,7 @@ export function SettingsSyncSetupSection({
   hasStoredSyncSecrets,
   isAuthenticating,
   isPreparing,
+  isRecovering,
   isRestoring,
   isSyncing,
   notSetLabel,
@@ -62,21 +68,29 @@ export function SettingsSyncSetupSection({
   onLogin,
   onModeSelect,
   onPrepare,
+  onRecoverAccess,
+  onRecoveryPhraseChange,
   onRegister,
   onRestore,
   onSyncNow,
   preferences,
+  recoveryPhraseValue,
   statusMessage,
   syncCapabilities,
   viewData,
 }: SettingsSyncSetupSectionProps) {
   const styles = useThemedStyles(createStyles);
   const isManaged = preferences.mode === "managed";
+  const supportsInlineAccountAuth = supportsInlineSyncAccountAuth(preferences.mode);
   const hasManagedPlan = isManaged && syncCapabilities?.premiumActive === true;
+  const syncEnabled = syncCapabilities?.syncEnabled !== false;
   const accountActionsDisabled =
-    isPreparing || isAuthenticating || isRestoring || isSyncing;
+    isPreparing || isAuthenticating || isRecovering || isRestoring || isSyncing;
   const canShowSyncActions =
-    hasStoredSyncSecrets && hasSyncSession && (!isManaged || hasManagedPlan);
+    hasStoredSyncSecrets &&
+    hasSyncSession &&
+    syncEnabled &&
+    (!isManaged || hasManagedPlan);
   const selectedModeLabel =
     viewData.modeOptions.find((option) => option.value === preferences.mode)?.label ??
     preferences.mode;
@@ -251,7 +265,7 @@ export function SettingsSyncSetupSection({
           </View>
 
           <AppButton
-            disabled={isPreparing}
+            disabled={accountActionsDisabled}
             label={actionLabel}
             onPress={onPrepare}
             testID="settings-sync-prepare-button"
@@ -269,56 +283,98 @@ export function SettingsSyncSetupSection({
             </Text>
           </View>
 
-          {hasStoredSyncSecrets ? (
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!accountActionsDisabled}
-                onChangeText={onAuthLoginChange}
-                placeholder={viewData.loginPlaceholder}
-                style={styles.input}
-                testID="settings-sync-login-input"
-                value={authLoginValue}
-              />
-            </View>
-          ) : null}
+          {supportsInlineAccountAuth ? (
+            <>
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!accountActionsDisabled}
+                  onChangeText={onAuthLoginChange}
+                  placeholder={viewData.loginPlaceholder}
+                  style={styles.input}
+                  testID="settings-sync-login-input"
+                  value={authLoginValue}
+                />
+              </View>
 
-          {hasStoredSyncSecrets ? (
-            <View style={styles.formGroup}>
-              <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
-              <TextInput
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!accountActionsDisabled}
-                onChangeText={onAuthPasswordChange}
-                placeholder={viewData.passwordPlaceholder}
-                secureTextEntry
-                style={styles.input}
-                testID="settings-sync-password-input"
-                value={authPasswordValue}
-              />
-            </View>
-          ) : null}
+              <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!accountActionsDisabled}
+                  onChangeText={onAuthPasswordChange}
+                  placeholder={viewData.passwordPlaceholder}
+                  secureTextEntry
+                  style={styles.input}
+                  testID="settings-sync-password-input"
+                  value={authPasswordValue}
+                />
+              </View>
 
-          {hasStoredSyncSecrets && !hasSyncSession ? (
-            <View style={styles.actionsStack}>
-              <AppButton
-                disabled={isAuthenticating || isPreparing}
-                label={viewData.registerLabel}
-                onPress={onRegister}
-                testID="settings-sync-register-button"
-                variant="secondary"
-              />
-              <AppButton
-                disabled={isAuthenticating || isPreparing}
-                label={viewData.loginActionLabel}
-                onPress={onLogin}
-                testID="settings-sync-login-button"
-              />
-            </View>
-          ) : null}
+              {!hasStoredSyncSecrets ? (
+                <View
+                  style={styles.recoveryImportCard}
+                  testID="settings-sync-recovery-import-block"
+                >
+                  <Text style={styles.stepTitle}>{viewData.recoveryImportTitle}</Text>
+                  <Text style={styles.helperText}>{viewData.recoveryImportHint}</Text>
+                  <View style={styles.formGroup}>
+                    <Text style={styles.fieldLabel}>
+                      {viewData.recoveryPhraseInputLabel}
+                    </Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      editable={!accountActionsDisabled}
+                      multiline
+                      onChangeText={onRecoveryPhraseChange}
+                      placeholder={viewData.recoveryPhraseInputPlaceholder}
+                      style={[styles.input, styles.recoveryInput]}
+                      testID="settings-sync-recovery-input"
+                      value={recoveryPhraseValue}
+                    />
+                    <Text style={styles.helperText}>
+                      {viewData.recoveryPhraseInputHint}
+                    </Text>
+                  </View>
+                  <AppButton
+                    disabled={accountActionsDisabled}
+                    label={viewData.recoverAccessLabel}
+                    onPress={onRecoverAccess}
+                    testID="settings-sync-recover-button"
+                    variant="secondary"
+                  />
+                </View>
+              ) : null}
+
+              {hasStoredSyncSecrets && !hasSyncSession ? (
+                <View style={styles.actionsStack}>
+                  <AppButton
+                    disabled={accountActionsDisabled}
+                    label={viewData.registerLabel}
+                    onPress={onRegister}
+                    testID="settings-sync-register-button"
+                    variant="secondary"
+                  />
+                  <AppButton
+                    disabled={accountActionsDisabled}
+                    label={viewData.loginActionLabel}
+                    onPress={onLogin}
+                    testID="settings-sync-login-button"
+                  />
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <StatusBanner
+              message={viewData.planUnavailable}
+              testID="settings-sync-managed-account-banner"
+              tone="info"
+            />
+          )}
         </View>
 
         {isManaged ? (
@@ -356,19 +412,20 @@ export function SettingsSyncSetupSection({
           {canShowSyncActions ? (
             <View style={styles.actionsStack}>
               <AppButton
-                disabled={isSyncing}
+                disabled={accountActionsDisabled}
                 label={viewData.syncNowLabel}
                 onPress={onSyncNow}
                 testID="settings-sync-upload-button"
               />
               <AppButton
-                disabled={isRestoring}
+                disabled={accountActionsDisabled}
                 label={viewData.restoreLabel}
                 onPress={onRestore}
                 testID="settings-sync-restore-button"
                 variant="secondary"
               />
               <AppButton
+                disabled={accountActionsDisabled}
                 label={viewData.disconnectLabel}
                 onPress={onDisconnect}
                 testID="settings-sync-disconnect-button"
@@ -377,6 +434,7 @@ export function SettingsSyncSetupSection({
             </View>
           ) : hasStoredSyncSecrets && hasSyncSession ? (
             <AppButton
+              disabled={accountActionsDisabled}
               label={viewData.disconnectLabel}
               onPress={onDisconnect}
               testID="settings-sync-disconnect-button"
@@ -428,6 +486,10 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 15,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
+    },
+    recoveryInput: {
+      minHeight: 92,
+      textAlignVertical: "top",
     },
     summaryGrid: {
       gap: spacing.sm,
@@ -495,6 +557,9 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 18,
     },
     recoveryCard: {
+      gap: spacing.sm,
+    },
+    recoveryImportCard: {
       gap: spacing.sm,
     },
     recoveryTitle: {

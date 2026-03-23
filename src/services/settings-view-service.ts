@@ -169,6 +169,12 @@ export type SettingsViewData = {
     loginPlaceholder: string;
     passwordLabel: string;
     passwordPlaceholder: string;
+    recoveryImportTitle: string;
+    recoveryImportHint: string;
+    recoveryPhraseInputLabel: string;
+    recoveryPhraseInputPlaceholder: string;
+    recoveryPhraseInputHint: string;
+    recoverAccessLabel: string;
     registerLabel: string;
     loginActionLabel: string;
     syncNowLabel: string;
@@ -195,6 +201,7 @@ export type SettingsViewData = {
       regenerated: string;
       connected: string;
       connectedNoPlan: string;
+      recovered: string;
       uploaded: string;
       restored: string;
       disconnected: string;
@@ -210,6 +217,10 @@ export type SettingsViewData = {
       invalidRegistrationInput: string;
       registrationFailed: string;
       invalidCredentials: string;
+      recoveryPhraseRequired: string;
+      invalidRecoveryPhrase: string;
+      recoveryNotAvailable: string;
+      recoveryPackageNotFound: string;
       tooManyDevices: string;
       syncNotPrepared: string;
       notConnected: string;
@@ -536,6 +547,13 @@ export function buildSettingsViewData(
       loginPlaceholder: settingsCopy.account.loginPlaceholder,
       passwordLabel: settingsCopy.account.passwordLabel,
       passwordPlaceholder: settingsCopy.account.passwordPlaceholder,
+      recoveryImportTitle: settingsCopy.account.recoveryImportTitle,
+      recoveryImportHint: settingsCopy.account.recoveryImportHint,
+      recoveryPhraseInputLabel: settingsCopy.account.recoveryPhraseInputLabel,
+      recoveryPhraseInputPlaceholder:
+        settingsCopy.account.recoveryPhraseInputPlaceholder,
+      recoveryPhraseInputHint: settingsCopy.account.recoveryPhraseInputHint,
+      recoverAccessLabel: settingsCopy.account.recoverAccessLabel,
       registerLabel: settingsCopy.account.registerLabel,
       loginActionLabel: settingsCopy.account.loginActionLabel,
       syncNowLabel: settingsCopy.account.syncNowLabel,
@@ -562,6 +580,7 @@ export function buildSettingsViewData(
         regenerated: settingsCopy.account.regenerated,
         connected: settingsCopy.account.connected,
         connectedNoPlan: settingsCopy.account.connectedNoPlan,
+        recovered: settingsCopy.account.recovered,
         uploaded: settingsCopy.account.uploaded,
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
@@ -578,6 +597,14 @@ export function buildSettingsViewData(
           settingsCopy.account.errors.invalidRegistrationInput,
         registrationFailed: settingsCopy.account.errors.registrationFailed,
         invalidCredentials: settingsCopy.account.errors.invalidCredentials,
+        recoveryPhraseRequired:
+          settingsCopy.account.errors.recoveryPhraseRequired,
+        invalidRecoveryPhrase:
+          settingsCopy.account.errors.invalidRecoveryPhrase,
+        recoveryNotAvailable:
+          settingsCopy.account.errors.recoveryNotAvailable,
+        recoveryPackageNotFound:
+          settingsCopy.account.errors.recoveryPackageNotFound,
         tooManyDevices: settingsCopy.account.errors.tooManyDevices,
         syncNotPrepared: settingsCopy.account.errors.syncNotPrepared,
         notConnected: settingsCopy.account.errors.notConnected,

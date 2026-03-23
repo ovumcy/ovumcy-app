@@ -1,11 +1,14 @@
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
+  clearLocalSyncSession,
   connectSyncAccount,
   disconnectSyncAccount,
+  recoverSyncAccess,
   runSyncRestore,
   runSyncUpload,
   type SyncConnectErrorCode,
+  type SyncRecoverErrorCode,
   type SyncRunErrorCode,
 } from "../sync/sync-client-service";
 import {
@@ -21,6 +24,7 @@ import {
 } from "./settings-view-service";
 
 type SyncConnectScreenErrorCode = SyncConnectErrorCode;
+type SyncRecoverScreenErrorCode = SyncRecoverErrorCode;
 type SyncRunScreenErrorCode = SyncRunErrorCode;
 
 export async function prepareBackupSyncSetup(
@@ -149,7 +153,51 @@ export async function connectBackupSyncAccount(
       currentState.symptomRecords,
       currentState.exportState,
       result.preferences,
-      result.preferences.mode === "managed" ? result.capabilities : null,
+      result.capabilities,
+    ),
+  };
+}
+
+export async function recoverBackupSyncAccess(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  credentials: { login: string; password: string },
+  recoveryPhrase: string,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: SyncRecoverScreenErrorCode;
+    }
+> {
+  const result = await recoverSyncAccess(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    credentials,
+    recoveryPhrase,
+    now,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      result.preferences,
+      true,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+      result.preferences,
+      result.capabilities,
     ),
   };
 }
@@ -264,4 +312,27 @@ export async function disconnectBackupSyncAccount(
       null,
     ),
   };
+}
+
+export async function clearUnauthorizedBackupSyncSession(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+): Promise<LoadedSettingsState> {
+  const nextPreferences = await clearLocalSyncSession(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+  );
+
+  return createLoadedSettingsState(
+    currentState.profile,
+    nextPreferences,
+    currentState.hasStoredSyncSecrets,
+    false,
+    currentState.symptomRecords,
+    currentState.exportState,
+    nextPreferences,
+    null,
+  );
 }

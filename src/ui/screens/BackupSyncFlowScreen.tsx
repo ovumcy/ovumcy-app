@@ -15,6 +15,7 @@ type BackupSyncFlowScreenProps = {
   hasStoredSyncSecrets: boolean;
   isAuthenticating: boolean;
   isPreparing: boolean;
+  isRecovering: boolean;
   isRestoring: boolean;
   isSyncing: boolean;
   notSetLabel: string;
@@ -26,10 +27,13 @@ type BackupSyncFlowScreenProps = {
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPrepare: () => void | Promise<void>;
+  onRecoverAccess: () => void | Promise<void>;
+  onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
   preferences: SyncPreferencesRecord;
+  recoveryPhraseValue: string;
   statusMessage: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
@@ -44,6 +48,7 @@ export function BackupSyncFlowScreen({
   hasStoredSyncSecrets,
   isAuthenticating,
   isPreparing,
+  isRecovering,
   isRestoring,
   isSyncing,
   notSetLabel,
@@ -55,10 +60,13 @@ export function BackupSyncFlowScreen({
   onLogin,
   onModeSelect,
   onPrepare,
+  onRecoverAccess,
+  onRecoveryPhraseChange,
   onRegister,
   onRestore,
   onSyncNow,
   preferences,
+  recoveryPhraseValue,
   statusMessage,
   syncCapabilities,
   viewData,
@@ -77,6 +85,7 @@ export function BackupSyncFlowScreen({
         hasStoredSyncSecrets={hasStoredSyncSecrets}
         isAuthenticating={isAuthenticating}
         isPreparing={isPreparing}
+        isRecovering={isRecovering}
         isRestoring={isRestoring}
         isSyncing={isSyncing}
         notSetLabel={notSetLabel}
@@ -88,10 +97,13 @@ export function BackupSyncFlowScreen({
         onLogin={onLogin}
         onModeSelect={onModeSelect}
         onPrepare={onPrepare}
+        onRecoverAccess={onRecoverAccess}
+        onRecoveryPhraseChange={onRecoveryPhraseChange}
         onRegister={onRegister}
         onRestore={onRestore}
         onSyncNow={onSyncNow}
         preferences={preferences}
+        recoveryPhraseValue={recoveryPhraseValue}
         statusMessage={statusMessage}
         syncCapabilities={syncCapabilities}
         viewData={viewData}

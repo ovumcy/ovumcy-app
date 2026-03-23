@@ -32,9 +32,10 @@ Run on an Android emulator or physical device.
 15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 16. Settings export section shows the current entry summary, and `Export as CSV`, `Export as JSON`, and `Export as PDF` open a local share or save flow without leaking data into a URL.
 17. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
-18. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-19. Bottom tabs render and switch without broken icons or duplicate labels.
-20. No account, sync, or cloud requirement is shown for core local use.
+18. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
+19. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+20. Bottom tabs render and switch without broken icons or duplicate labels.
+21. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -60,9 +61,10 @@ Run on an iOS simulator or physical device.
 15. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 16. Settings export section shows the current entry summary, and `Export as CSV`, `Export as JSON`, and `Export as PDF` open a local share or save flow without leaking data into a URL.
 17. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
-18. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-19. Bottom tabs render and switch without broken icons or duplicate labels.
-20. No account, sync, or cloud requirement is shown for core local use.
+18. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
+19. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+20. Bottom tabs render and switch without broken icons or duplicate labels.
+21. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -77,7 +79,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
    - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
    - settings can create a custom symptom and that symptom appears in dashboard and calendar day editors for new entries
-   - settings shows explicit `Interface` controls plus a `Backup & sync` summary card, and the dedicated `Backup & sync` screen supports local encrypted sync preparation with a one-time recovery phrase
+   - settings shows explicit `Interface` controls plus a `Backup & sync` summary card, and the dedicated `Backup & sync` screen supports local encrypted sync preparation with a one-time recovery phrase while keeping `Managed` cloud auth separate from the sync endpoint
    - settings export summary reflects the current logged range, and CSV/JSON/PDF downloads succeed with local file downloads instead of opening sensitive data in the URL
    - danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the browser shell to onboarding
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage

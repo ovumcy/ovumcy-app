@@ -188,4 +188,94 @@ describe("sync-api-client", () => {
       errorCode: "network_failed",
     });
   });
+
+  it("maps recovery key transport payloads through the snake_case contract", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            algorithm: "xchacha20poly1305",
+            kdf: "bip39_seed_hkdf_sha256",
+            mnemonic_word_count: 12,
+            wrap_nonce_hex: "a".repeat(48),
+            wrapped_master_key_hex: "b".repeat(96),
+            phrase_fingerprint_hex: "c".repeat(16),
+            updated_at: "2026-03-21T10:00:00.000Z",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            algorithm: "xchacha20poly1305",
+            kdf: "bip39_seed_hkdf_sha256",
+            mnemonic_word_count: 12,
+            wrap_nonce_hex: "d".repeat(48),
+            wrapped_master_key_hex: "e".repeat(96),
+            phrase_fingerprint_hex: "f".repeat(16),
+            updated_at: "2026-03-21T10:05:00.000Z",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080", typedFetchMock);
+
+    await expect(client.getRecoveryKey("session-1")).resolves.toEqual({
+      ok: true,
+      recoveryKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "a".repeat(48),
+        wrappedMasterKeyHex: "b".repeat(96),
+        phraseFingerprintHex: "c".repeat(16),
+      },
+    });
+
+    await expect(
+      client.putRecoveryKey("session-1", {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "d".repeat(48),
+        wrappedMasterKeyHex: "e".repeat(96),
+        phraseFingerprintHex: "f".repeat(16),
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      recoveryKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "d".repeat(48),
+        wrappedMasterKeyHex: "e".repeat(96),
+        phraseFingerprintHex: "f".repeat(16),
+      },
+    });
+
+    expect(typedFetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://127.0.0.1:8080/sync/recovery-key",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(typedFetchMock.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonic_word_count: 12,
+        wrap_nonce_hex: "d".repeat(48),
+        wrapped_master_key_hex: "e".repeat(96),
+        phrase_fingerprint_hex: "f".repeat(16),
+      }),
+    );
+  });
 });

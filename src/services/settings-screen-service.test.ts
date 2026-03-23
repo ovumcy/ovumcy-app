@@ -68,7 +68,7 @@ describe("settings services", () => {
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
         mode: "managed",
         endpointInput: "",
-        normalizedEndpoint: "https://sync.ovumcy.com",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
         deviceLabel: "Pixel 7",
         setupStatus: "connected",
         preparedAt: "2026-03-19T08:15:00.000Z",
@@ -123,6 +123,62 @@ describe("settings services", () => {
           mode: "managed",
           premiumActive: false,
         }),
+      }),
+    );
+  });
+
+  it("clears a stale sync session when the server reports unauthorized", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: "expired-session",
+    });
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as typeof fetch;
+
+    await expect(
+      loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        hasSyncSession: false,
+        syncCapabilities: null,
+        syncPreferences: expect.objectContaining({
+          setupStatus: "local_ready",
+        }),
+      }),
+    );
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
       }),
     );
   });

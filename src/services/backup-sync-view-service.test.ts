@@ -23,6 +23,12 @@ describe("backup sync view service", () => {
       resolveBackupSyncErrorMessage("unauthorized", viewData.account),
     ).toBe(viewData.account.errors.notConnected);
     expect(
+      resolveBackupSyncErrorMessage("recovery_phrase_required", viewData.account),
+    ).toBe(viewData.account.errors.recoveryPhraseRequired);
+    expect(
+      resolveBackupSyncErrorMessage("recovery_package_not_found", viewData.account),
+    ).toBe(viewData.account.errors.recoveryPackageNotFound);
+    expect(
       resolveBackupSyncErrorMessage("unknown_code", viewData.account),
     ).toBe(viewData.account.errors.saveFailed);
   });

@@ -8,7 +8,7 @@ describe("sync-endpoint-policy", () => {
       ok: true,
       endpoint: expect.objectContaining({
         mode: "managed",
-        baseURL: "https://sync.ovumcy.com",
+        baseURL: "https://sync.ovumcy.cloud",
         isSecure: true,
       }),
     });

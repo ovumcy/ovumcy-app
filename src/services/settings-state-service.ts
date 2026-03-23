@@ -1,5 +1,8 @@
 import type { SyncSecretStore } from "../security/sync-secret-store";
-import { loadManagedSyncCapabilities } from "../sync/sync-client-service";
+import {
+  clearLocalSyncSession,
+  loadConnectedSyncCapabilities,
+} from "../sync/sync-client-service";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadLocalExportState } from "./export-service";
@@ -21,28 +24,36 @@ export async function loadSettingsScreenState(
   ]);
 
   let syncCapabilities = null;
+  let syncPreferences = syncState.preferences;
+  let hasSyncSession = syncState.hasAuthSession;
   if (
     syncState.hasAuthSession &&
-    syncState.preferences.mode === "managed" &&
     syncState.preferences.setupStatus === "connected"
   ) {
-    const capabilitiesResult = await loadManagedSyncCapabilities(
+    const capabilitiesResult = await loadConnectedSyncCapabilities(
       secretStore,
       syncState.preferences,
     );
     if (capabilitiesResult.ok) {
       syncCapabilities = capabilitiesResult.capabilities;
+    } else if (capabilitiesResult.errorCode === "unauthorized") {
+      syncPreferences = await clearLocalSyncSession(
+        storage,
+        secretStore,
+        syncState.preferences,
+      );
+      hasSyncSession = false;
     }
   }
 
   return createLoadedSettingsState(
     profile,
-    syncState.preferences,
+    syncPreferences,
     syncState.hasStoredSecrets,
-    syncState.hasAuthSession,
+    hasSyncSession,
     symptomRecords,
     exportResult.state,
-    syncState.preferences,
+    syncPreferences,
     syncCapabilities,
   );
 }

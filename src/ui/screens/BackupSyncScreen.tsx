@@ -12,9 +12,11 @@ import {
   revertBackupSyncDraftState,
 } from "../../services/backup-sync-view-service";
 import {
+  clearUnauthorizedBackupSyncSession,
   connectBackupSyncAccount,
   disconnectBackupSyncAccount,
   prepareBackupSyncSetup,
+  recoverBackupSyncAccess,
   restoreBackupSyncSnapshot,
   saveBackupSyncDraft,
   uploadBackupSyncSnapshot,
@@ -52,8 +54,10 @@ export function BackupSyncScreen({
   const [accountErrorMessage, setAccountErrorMessage] = useState("");
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
+  const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
   const [isPreparingSync, setIsPreparingSync] = useState(false);
+  const [isRecoveringSync, setIsRecoveringSync] = useState(false);
   const [isRestoringSync, setIsRestoringSync] = useState(false);
   const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
   const [isSyncingNow, setIsSyncingNow] = useState(false);
@@ -87,6 +91,7 @@ export function BackupSyncScreen({
 
         setState(loadedState);
         setGeneratedRecoveryPhrase("");
+        setRecoveryPhraseInputValue("");
         setIsLoading(false);
       }
 
@@ -117,6 +122,7 @@ export function BackupSyncScreen({
       !isSavingSyncDraft &&
       !isPreparingSync &&
       !isAuthenticatingSync &&
+      !isRecoveringSync &&
       !isRestoringSync &&
       !isSyncingNow,
     ({ data }) => {
@@ -284,6 +290,15 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
+      if (result.errorCode === "unauthorized") {
+        setState(
+          await clearUnauthorizedBackupSyncSession(
+            storage,
+            syncSecretStore,
+            syncReadyState,
+          ),
+        );
+      }
       setAccountErrorMessage(
         resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
       );
@@ -331,6 +346,15 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
+      if (result.errorCode === "unauthorized") {
+        setState(
+          await clearUnauthorizedBackupSyncSession(
+            storage,
+            syncSecretStore,
+            state,
+          ),
+        );
+      }
       setAccountErrorMessage(
         resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
       );
@@ -341,6 +365,46 @@ export function BackupSyncScreen({
     setState(result.state);
     setAccountStatusMessage(viewData.account.status.restored);
     setIsRestoringSync(false);
+  }
+
+  async function handleRecoverSync() {
+    if (!state) {
+      return;
+    }
+
+    resetAccountMessages();
+    setIsRecoveringSync(true);
+
+    const syncReadyState = await saveSyncDraftIfNeeded();
+    if (!syncReadyState) {
+      setIsRecoveringSync(false);
+      return;
+    }
+
+    const result = await recoverBackupSyncAccess(
+      storage,
+      syncSecretStore,
+      syncReadyState,
+      {
+        login: accountLoginValue,
+        password: accountPasswordValue,
+      },
+      recoveryPhraseInputValue,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setAccountErrorMessage(
+        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
+      );
+      setIsRecoveringSync(false);
+      return;
+    }
+
+    setState(result.state);
+    setAccountPasswordValue("");
+    setRecoveryPhraseInputValue("");
+    setAccountStatusMessage(viewData.account.status.recovered);
+    setIsRecoveringSync(false);
   }
 
   async function handleDisconnectSync() {
@@ -389,6 +453,7 @@ export function BackupSyncScreen({
       hasSyncSession={state.hasSyncSession}
       isAuthenticating={isAuthenticatingSync}
       isPreparing={isPreparingSync}
+      isRecovering={isRecoveringSync}
       isRestoring={isRestoringSync}
       isSyncing={isSyncingNow}
       notSetLabel={viewData.common.notSet}
@@ -453,6 +518,13 @@ export function BackupSyncScreen({
       onPrepare={() => {
         void handlePrepareSyncSetup();
       }}
+      onRecoverAccess={() => {
+        void handleRecoverSync();
+      }}
+      onRecoveryPhraseChange={(value) => {
+        resetAccountMessages();
+        setRecoveryPhraseInputValue(value);
+      }}
       onRegister={() => {
         void handleConnectSync("register");
       }}
@@ -463,6 +535,7 @@ export function BackupSyncScreen({
         void handleSyncNow();
       }}
       preferences={state.syncPreferences}
+      recoveryPhraseValue={recoveryPhraseInputValue}
       statusMessage={accountStatusMessage}
       syncCapabilities={state.syncCapabilities}
       viewData={viewData.account}

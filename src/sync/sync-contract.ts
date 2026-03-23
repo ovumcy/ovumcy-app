@@ -1,4 +1,4 @@
-export const MANAGED_SYNC_BASE_URL = "https://sync.ovumcy.com";
+export const MANAGED_SYNC_BASE_URL = "https://sync.ovumcy.cloud";
 
 export const SUPPORTED_SYNC_MODES = ["managed", "self_hosted"] as const;
 export const SUPPORTED_SYNC_SETUP_STATUSES = [
@@ -106,6 +106,10 @@ export function normalizeSyncSetupStatus(
   return SUPPORTED_SYNC_SETUP_STATUSES.includes(value as SyncSetupStatus)
     ? (value as SyncSetupStatus)
     : "not_configured";
+}
+
+export function supportsInlineSyncAccountAuth(mode: SyncMode): boolean {
+  return mode === "self_hosted";
 }
 
 export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {

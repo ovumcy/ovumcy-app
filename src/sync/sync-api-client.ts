@@ -3,6 +3,7 @@ import type {
   SyncBlobRecord,
   SyncCapabilityDocument,
   SyncDeviceRecord,
+  WrappedSyncKeyMetadata,
 } from "./sync-contract";
 
 export type SyncAPIErrorCode =
@@ -13,8 +14,10 @@ export type SyncAPIErrorCode =
   | "invalid_device"
   | "too_many_devices"
   | "invalid_blob"
+  | "invalid_recovery_package"
   | "stale_generation"
   | "blob_not_found"
+  | "recovery_package_not_found"
   | "origin_not_allowed"
   | "network_failed"
   | "invalid_response"
@@ -40,6 +43,12 @@ export type SyncAPIClient = {
     | { ok: true; capabilities: SyncCapabilityDocument }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  getRecoveryKey(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; recoveryKey: WrappedSyncKeyMetadata }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
   login(
     input: { login: string; password: string },
   ): Promise<
@@ -59,6 +68,13 @@ export type SyncAPIClient = {
     },
   ): Promise<
     | { ok: true; blob: SyncBlobRecord }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  putRecoveryKey(
+    sessionToken: string,
+    input: WrappedSyncKeyMetadata,
+  ): Promise<
+    | { ok: true; recoveryKey: WrappedSyncKeyMetadata }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
   register(
@@ -106,6 +122,16 @@ type RawSyncBlobRecord = {
   checksum_sha256: string;
   ciphertext_base64: string;
   ciphertext_size: number;
+  updated_at: string;
+};
+
+type RawRecoveryKeyPackage = {
+  algorithm: "xchacha20poly1305";
+  kdf: "bip39_seed_hkdf_sha256";
+  mnemonic_word_count: number;
+  wrap_nonce_hex: string;
+  wrapped_master_key_hex: string;
+  phrase_fingerprint_hex: string;
   updated_at: string;
 };
 
@@ -167,6 +193,50 @@ export function createSyncAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, device: mapSyncDeviceRecord(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async getRecoveryKey(sessionToken) {
+      return requestJSON<RawRecoveryKeyPackage>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/sync/recovery-key",
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawRecoveryKeyPackage,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? { ok: true, recoveryKey: mapRecoveryKeyPackage(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async putRecoveryKey(sessionToken, input) {
+      return requestJSON<RawRecoveryKeyPackage>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/sync/recovery-key",
+        {
+          method: "PUT",
+          sessionToken,
+          body: {
+            algorithm: input.algorithm,
+            kdf: input.kdf,
+            mnemonic_word_count: input.mnemonicWordCount,
+            wrap_nonce_hex: input.wrapNonceHex,
+            wrapped_master_key_hex: input.wrappedMasterKeyHex,
+            phrase_fingerprint_hex: input.phraseFingerprintHex,
+          },
+        },
+        isRawRecoveryKeyPackage,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? { ok: true, recoveryKey: mapRecoveryKeyPackage(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -351,8 +421,10 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "invalid_device":
       case "too_many_devices":
       case "invalid_blob":
+      case "invalid_recovery_package":
       case "stale_generation":
       case "blob_not_found":
+      case "recovery_package_not_found":
       case "origin_not_allowed":
         return payload.error;
       default:
@@ -413,6 +485,19 @@ function isRawSyncBlobRecord(value: unknown): value is RawSyncBlobRecord {
   );
 }
 
+function isRawRecoveryKeyPackage(value: unknown): value is RawRecoveryKeyPackage {
+  return (
+    isObject(value) &&
+    value.algorithm === "xchacha20poly1305" &&
+    value.kdf === "bip39_seed_hkdf_sha256" &&
+    value.mnemonic_word_count === 12 &&
+    typeof value.wrap_nonce_hex === "string" &&
+    typeof value.wrapped_master_key_hex === "string" &&
+    typeof value.phrase_fingerprint_hex === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
 function mapSyncAuthResult(raw: RawSyncAuthResult): SyncAuthResult {
   return {
     accountID: raw.account_id,
@@ -454,5 +539,18 @@ function mapSyncBlobRecord(raw: RawSyncBlobRecord): SyncBlobRecord {
     ciphertextBase64: raw.ciphertext_base64,
     ciphertextSize: raw.ciphertext_size,
     updatedAt: raw.updated_at,
+  };
+}
+
+function mapRecoveryKeyPackage(
+  raw: RawRecoveryKeyPackage,
+): WrappedSyncKeyMetadata {
+  return {
+    algorithm: raw.algorithm,
+    kdf: raw.kdf,
+    mnemonicWordCount: 12,
+    wrapNonceHex: raw.wrap_nonce_hex,
+    wrappedMasterKeyHex: raw.wrapped_master_key_hex,
+    phraseFingerprintHex: raw.phrase_fingerprint_hex,
   };
 }
