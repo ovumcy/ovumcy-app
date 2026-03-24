@@ -81,13 +81,13 @@ describe("day-log-editor-service", () => {
       }),
     });
 
-    const state = await loadDayLogEditorState(storage, "2026-03-17");
+    const state = await loadDayLogEditorState(storage, "2026-03-17", "ru");
 
     expect(state.viewData.options.symptoms).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ value: "custom_jaw_pain", label: "Jaw pain" }),
         expect.objectContaining({ value: "custom_old", label: "Old symptom" }),
-        expect.objectContaining({ value: "fatigue", label: "Fatigue" }),
+        expect.objectContaining({ value: "fatigue", label: "Усталость" }),
       ]),
     );
   });

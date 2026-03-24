@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import type { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 
@@ -72,6 +72,25 @@ type SettingsScreenControllerResult = {
   flowProps: SettingsFlowScreenProps | null;
   loadingDescription: string;
   loadingTitle: string;
+};
+
+type ParentTabNavigation = {
+  addListener: (
+    eventName: "tabPress",
+    callback: (event: { preventDefault: () => void; target?: string }) => void,
+  ) => () => void;
+  getState: () => {
+    index: number;
+    routes: {
+      key: string;
+      name: string;
+      params?: Record<string, unknown> | undefined;
+    }[];
+  };
+  navigate: (
+    name: string,
+    params?: Record<string, unknown> | undefined,
+  ) => void;
 };
 
 export function useSettingsScreenController({
@@ -227,21 +246,77 @@ export function useSettingsScreenController({
     );
   }
 
-  const saveActionContext = {
-    effectiveNow,
-    setCycleErrorMessage,
-    setCycleStatusMessage,
-    setInterfaceErrorMessage,
-    setInterfaceStatusMessage,
-    setIsSavingCycle,
-    setIsSavingInterface,
-    setIsSavingTracking,
-    setState: commitState,
-    setTrackingStatusMessage,
-    storage,
-    syncProfilePreferences,
-    viewData,
-  };
+  const saveActionContext = useMemo(
+    () => ({
+      effectiveNow,
+      setCycleErrorMessage,
+      setCycleStatusMessage,
+      setInterfaceErrorMessage,
+      setInterfaceStatusMessage,
+      setIsSavingCycle,
+      setIsSavingInterface,
+      setIsSavingTracking,
+      setState: commitState,
+      setTrackingStatusMessage,
+      storage,
+      syncProfilePreferences,
+      viewData,
+    }),
+    [effectiveNow, commitState, storage, syncProfilePreferences, viewData],
+  );
+
+  const confirmPendingSettingsThen = useCallback(
+    async (continueLeave: () => void) => {
+      const hasBlockingUnsavedChanges =
+        hasUnsavedSettingsChanges &&
+        !isSavingCycle &&
+        !isSavingTracking &&
+        !isSavingInterface &&
+        !isClearingData;
+
+      if (!hasBlockingUnsavedChanges || state === null) {
+        continueLeave();
+        return;
+      }
+
+      const shouldSave = await openConfirmation(
+        viewData.interface.unsavedPrompt,
+        viewData.interface.saveBeforeLeaveLabel,
+        viewData.interface.discardChangesLabel,
+      );
+
+      if (!shouldSave) {
+        revertUnsavedSettings();
+        requestAnimationFrame(continueLeave);
+        return;
+      }
+
+      const didSave = await runSavePendingSettingsAction(saveActionContext, state, {
+        isCycleDirty,
+        isInterfaceDirty,
+        isTrackingDirty,
+      });
+      if (didSave) {
+        requestAnimationFrame(continueLeave);
+      }
+    },
+    [
+      hasUnsavedSettingsChanges,
+      isClearingData,
+      isCycleDirty,
+      isInterfaceDirty,
+      isSavingCycle,
+      isSavingInterface,
+      isSavingTracking,
+      isTrackingDirty,
+      revertUnsavedSettings,
+      saveActionContext,
+      state,
+      viewData.interface.discardChangesLabel,
+      viewData.interface.saveBeforeLeaveLabel,
+      viewData.interface.unsavedPrompt,
+    ],
+  );
 
   usePreventRemove(
     hasUnsavedSettingsChanges &&
@@ -250,38 +325,33 @@ export function useSettingsScreenController({
       !isSavingInterface &&
       !isClearingData,
     ({ data }) => {
-      void (async () => {
-        if (state === null) {
-          return;
-        }
-
-        const shouldSave = await openConfirmation(
-          viewData.interface.unsavedPrompt,
-          viewData.interface.saveBeforeLeaveLabel,
-          viewData.interface.discardChangesLabel,
-        );
-
-        if (!shouldSave) {
-          revertUnsavedSettings();
-          requestAnimationFrame(() => {
-            navigation.dispatch(data.action);
-          });
-          return;
-        }
-
-        const didSave = await runSavePendingSettingsAction(saveActionContext, state, {
-          isCycleDirty,
-          isInterfaceDirty,
-          isTrackingDirty,
-        });
-        if (didSave) {
-          requestAnimationFrame(() => {
-            navigation.dispatch(data.action);
-          });
-        }
-      })();
+      void confirmPendingSettingsThen(() => {
+        navigation.dispatch(data.action);
+      });
     },
   );
+
+  useEffect(() => {
+    const parentNavigation = navigation.getParent() as ParentTabNavigation | undefined;
+    if (!parentNavigation) {
+      return;
+    }
+
+    return parentNavigation.addListener("tabPress", (event) => {
+      const parentState = parentNavigation.getState();
+      const currentRoute = parentState.routes[parentState.index];
+      const targetRoute = parentState.routes.find((route) => route.key === event.target);
+
+      if (!targetRoute || !currentRoute || targetRoute.key === currentRoute.key) {
+        return;
+      }
+
+      event.preventDefault();
+      void confirmPendingSettingsThen(() => {
+        parentNavigation.navigate(targetRoute.name, targetRoute.params);
+      });
+    });
+  }, [confirmPendingSettingsThen, navigation]);
 
   if (isLoading || state === null) {
     return {
@@ -509,7 +579,9 @@ export function useSettingsScreenController({
         });
       },
       onOpenBackupSync: () => {
-        void router.push("/backup-sync");
+        void confirmPendingSettingsThen(() => {
+          void router.push("/backup-sync");
+        });
       },
       onPeriodLengthChange: (value) => {
         applyCycleUpdates({ periodLength: value }, { resetExportMessages: true });

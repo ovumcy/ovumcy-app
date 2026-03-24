@@ -30,6 +30,7 @@ import {
   buildStatsTrendPoints,
 } from "./stats-insights-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { localizeSymptomRecords } from "./symptom-presentation-service";
 
 export type StatsTopCardViewData = {
   key: string;
@@ -222,6 +223,7 @@ export function buildStatsViewData(
 ): StatsViewData {
   const statsCopy = getStatsCopy(locale);
   const dayLogCopy = getDayLogCopy(locale);
+  const localizedSymptomRecords = localizeSymptomRecords(symptomRecords, locale);
   const history = buildCycleHistorySummary(profile, records, now);
 
   if (!history.hasInsights) {
@@ -250,18 +252,22 @@ export function buildStatsViewData(
   const reliability = buildStatsReliability(profile, history);
   const factorContext = buildStatsFactorContext(profile, history, records, now);
   const trendPoints = buildStatsTrendPoints(history, locale);
-  const symptomFrequency = buildStatsSymptomFrequency(records, symptomRecords);
+  const symptomFrequency = buildStatsSymptomFrequency(records, localizedSymptomRecords);
   const lastCycleSymptoms = buildLastCycleSymptomFrequency(
     history,
     records,
-    symptomRecords,
+    localizedSymptomRecords,
   );
-  const symptomPatterns = buildStatsSymptomPatterns(history, records, symptomRecords);
+  const symptomPatterns = buildStatsSymptomPatterns(
+    history,
+    records,
+    localizedSymptomRecords,
+  );
   const phaseMoodInsights = buildStatsPhaseMoodInsights(history, records);
   const phaseSymptomInsights = buildStatsPhaseSymptomInsights(
     history,
     records,
-    symptomRecords,
+    localizedSymptomRecords,
   );
   const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
 

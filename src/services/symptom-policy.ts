@@ -1,4 +1,5 @@
 import {
+  BUILTIN_ENTRY_PICKER_ORDER,
   BUILTIN_SYMPTOM_DEFINITIONS,
   createBuiltinSymptomRecords,
   DEFAULT_CUSTOM_SYMPTOM_COLOR,
@@ -8,6 +9,7 @@ import {
   type SymptomID,
   type SymptomRecord,
 } from "../models/symptom";
+import { isBuiltinSymptomReservedLabel } from "../i18n/symptom-copy";
 
 export type SymptomDraftValues = {
   label: string;
@@ -100,7 +102,12 @@ export function buildEntryPickerSymptoms(
   selectedIDs: readonly SymptomID[],
 ): SymptomRecord[] {
   const selected = new Set(selectedIDs);
-  const visible: SymptomRecord[] = [];
+  const builtinVisible: SymptomRecord[] = [];
+  const activeCustom: SymptomRecord[] = [];
+  const archivedCustom: SymptomRecord[] = [];
+  const builtinOrder = new Map(
+    BUILTIN_ENTRY_PICKER_ORDER.map((id, index) => [id, index]),
+  );
 
   for (const record of sortSymptomRecords(records)) {
     const isSelected = selected.has(record.id);
@@ -111,10 +118,26 @@ export function buildEntryPickerSymptoms(
       continue;
     }
 
-    visible.push(record);
+    if (record.isDefault) {
+      builtinVisible.push(record);
+      continue;
+    }
+
+    if (record.isArchived) {
+      archivedCustom.push(record);
+      continue;
+    }
+
+    activeCustom.push(record);
   }
 
-  return visible;
+  builtinVisible.sort(
+    (left, right) =>
+      (builtinOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (builtinOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+  );
+
+  return [...builtinVisible, ...activeCustom, ...archivedCustom];
 }
 
 export function normalizeDayLogSymptomIDs(values: readonly string[]): SymptomID[] {
@@ -385,6 +408,10 @@ function isSymptomLabelAvailable(
   excludeID?: SymptomID,
 ): boolean {
   const targetKey = normalizeSymptomLabelKey(label);
+
+  if (isBuiltinSymptomReservedLabel(label)) {
+    return false;
+  }
 
   for (const record of records) {
     if (excludeID && record.id === excludeID) {

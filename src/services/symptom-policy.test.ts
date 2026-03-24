@@ -23,6 +23,18 @@ describe("symptom-policy", () => {
     });
   });
 
+  it("rejects custom symptom labels that duplicate localized built-ins", () => {
+    const result = createCustomSymptomRecord(createDefaultSymptomRecords(), {
+      label: "Спазмы",
+      icon: "✨",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "duplicate_label",
+    });
+  });
+
   it("supports create, update, archive, and restore for custom symptoms", () => {
     const baseRecords = createDefaultSymptomRecords();
     const created = createCustomSymptomRecord(baseRecords, {
@@ -125,5 +137,18 @@ describe("symptom-policy", () => {
     );
     expect(pickerWithSelection.map((record) => record.id)).toContain("custom_old");
     expect(pickerWithSelection.map((record) => record.id)).toContain("fatigue");
+  });
+
+  it("uses a calmer built-in order in the entry picker before deferring archived items", () => {
+    const picker = buildEntryPickerSymptoms(createDefaultSymptomRecords(), []);
+
+    expect(picker.slice(0, 6).map((record) => record.id)).toEqual([
+      "cramps",
+      "headache",
+      "nausea",
+      "bloating",
+      "back_pain",
+      "swelling",
+    ]);
   });
 });

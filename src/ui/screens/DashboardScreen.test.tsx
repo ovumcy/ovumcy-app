@@ -127,6 +127,49 @@ describe("DashboardScreen", () => {
     expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 
+  it("shows localized builtin symptom labels in the daily log", async () => {
+    render(
+      <DashboardScreen
+        now={new Date(2026, 2, 17)}
+        storage={createStorageMock({
+          readProfileRecord: jest.fn().mockResolvedValue({
+            lastPeriodStart: "2026-03-10",
+            cycleLength: 28,
+            periodLength: 5,
+            autoPeriodFill: true,
+            irregularCycle: false,
+            unpredictableCycle: false,
+            ageGroup: "",
+            usageGoal: "health",
+            trackBBT: false,
+            temperatureUnit: "c",
+            trackCervicalMucus: false,
+            hideSexChip: false,
+            languageOverride: "ru",
+            themeOverride: "light",
+          }),
+          readDayLogRecord: jest.fn().mockResolvedValue({
+            date: "2026-03-17",
+            isPeriod: false,
+            cycleStart: false,
+            isUncertain: false,
+            flow: "none",
+            mood: 0,
+            sexActivity: "none",
+            bbt: 0,
+            cervicalMucus: "none",
+            cycleFactorKeys: [],
+            symptomIDs: ["cramps"],
+            notes: "",
+          }),
+        })}
+      />,
+    );
+
+    await screen.findByTestId("day-log-save-button");
+    expect(screen.getByText("Спазмы")).toBeTruthy();
+  });
+
   it("shows quick actions and reveals flow controls when period is toggled from the shortcut", async () => {
     render(
       <DashboardScreen

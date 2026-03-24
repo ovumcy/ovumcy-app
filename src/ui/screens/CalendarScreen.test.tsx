@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
+import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
 import { CalendarScreen } from "./CalendarScreen";
 
 const mockUseEffect = React.useEffect;
@@ -63,13 +64,19 @@ function createStorageMock() {
   });
 }
 
+async function waitForCalendarReady() {
+  await waitFor(() =>
+    expect(screen.getByTestId("calendar-prev-button")).toBeTruthy(),
+  );
+}
+
 describe("CalendarScreen", () => {
   it("loads a selected day through the shared local repository", async () => {
     const storage = createStorageMock();
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
 
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
@@ -78,7 +85,7 @@ describe("CalendarScreen", () => {
     );
   });
 
-  it("shows the web-style calendar legend without cryptic cell codes", async () => {
+  it("shows calendar legend as grouped day styles and marker samples", async () => {
     const storage = createStorageMock();
     storage.readProfileRecord = jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-14",
@@ -114,7 +121,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
 
     expect(screen.queryByTestId("calendar-state-badge-2026-03-24")).toBeNull();
     expect(screen.getByText(/Logged period|Отмеченная менструация/)).toBeTruthy();
@@ -129,6 +136,10 @@ describe("CalendarScreen", () => {
       screen.getAllByText(/Higher fertility|Более высокая фертильность/).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByText(/Ovulation day|День овуляции/).length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText(/Logged entry|Есть запись/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Intimacy logged|Отмечена близость/).length).toBeGreaterThan(
       0,
     );
   });
@@ -171,7 +182,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await screen.findByTestId("calendar-day-panel");
@@ -190,7 +201,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await screen.findByTestId("calendar-day-panel");
@@ -204,7 +215,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
     fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
 
     await screen.findByTestId("calendar-day-panel");
@@ -235,7 +246,7 @@ describe("CalendarScreen", () => {
 
     render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
-    await screen.findByTestId("calendar-prev-button");
+    await waitForCalendarReady();
     expect(screen.getByTestId("calendar-prediction-mode-banner")).toBeTruthy();
     expect(
       screen.getByText(/approximate guidance|приблизительный ориентир|guía aproximada/i),
@@ -277,6 +288,95 @@ describe("CalendarScreen", () => {
     );
     await waitFor(() =>
       expect(screen.queryByTestId("calendar-prediction-mode-banner")).toBeNull(),
+    );
+  });
+
+  it("saves a new period entry and returns to summary mode", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await screen.findByTestId("calendar-day-panel");
+
+    fireEvent.press(screen.getByTestId("calendar-day-add-button"));
+    await screen.findByTestId("day-log-save-button");
+    fireEvent.press(screen.getByTestId("day-log-period-toggle"));
+    fireEvent.press(screen.getByTestId("day-log-save-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
+    );
+    const panel = screen.getByTestId("calendar-day-panel");
+    expect(panel).toBeTruthy();
+    expect(screen.queryByTestId("day-log-save-button")).toBeNull();
+    expect(await storage.readDayLogRecord("2026-03-13")).toEqual(
+      expect.objectContaining({
+        date: "2026-03-13",
+        isPeriod: true,
+      }),
+    );
+  });
+
+  it("deletes an existing entry and returns to the empty-day summary", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-14"),
+      mood: 4,
+      notes: "Needs follow-up",
+    });
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await screen.findByTestId("calendar-day-panel");
+
+    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await screen.findByTestId("day-log-delete-button");
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-add-button")).toBeTruthy(),
+    );
+    expect(screen.queryByTestId("day-log-save-button")).toBeNull();
+    expect(await storage.readDayLogRecord("2026-03-14")).toEqual(
+      createEmptyDayLogRecord("2026-03-14"),
     );
   });
 });

@@ -152,7 +152,7 @@ describe("dashboard-view-service", () => {
     expect(viewData.statusItems).toEqual([
       "Cycle day 8",
       "Next period: around Apr 8",
-      "Ovulation: around Mar 25",
+      "Ovulation: around Mar 24",
     ]);
     expect(viewData.predictionExplanation).toBe(
       "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",

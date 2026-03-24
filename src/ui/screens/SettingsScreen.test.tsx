@@ -17,8 +17,15 @@ const mockUseEffect = React.useEffect;
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockDispatch = jest.fn();
+const mockParentNavigate = jest.fn();
 let preventRemoveCallback:
   | ((options: { data: { action: { type: string } } }) => void)
+  | null = null;
+let tabPressCallback:
+  | ((event: {
+      preventDefault: () => void;
+      target?: string;
+    }) => void)
   | null = null;
 
 jest.setTimeout(15000);
@@ -39,6 +46,30 @@ jest.mock("@react-navigation/native", () => {
   return {
     useNavigation: () => ({
       dispatch: mockDispatch,
+      getParent: () => ({
+        addListener: (
+          eventName: string,
+          callback: (event: {
+            preventDefault: () => void;
+            target?: string;
+          }) => void,
+        ) => {
+          if (eventName === "tabPress") {
+            tabPressCallback = callback;
+          }
+          return jest.fn();
+        },
+        getState: () => ({
+          index: 3,
+          routes: [
+            { key: "dashboard-key", name: "dashboard", params: undefined },
+            { key: "calendar-key", name: "calendar", params: undefined },
+            { key: "stats-key", name: "stats", params: undefined },
+            { key: "settings-key", name: "settings", params: undefined },
+          ],
+        }),
+        navigate: mockParentNavigate,
+      }),
     }),
     usePreventRemove: (
       preventRemove: boolean,
@@ -77,7 +108,9 @@ describe("SettingsScreen", () => {
     }
 
     preventRemoveCallback = null;
+    tabPressCallback = null;
     mockDispatch.mockReset();
+    mockParentNavigate.mockReset();
     mockOpenConfirmation.mockReset();
     mockPush.mockReset();
     mockReplace.mockReset();
@@ -221,6 +254,31 @@ describe("SettingsScreen", () => {
     fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
 
     expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+  });
+
+  it("saves pending settings before opening backup and sync", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cycleLength: 35,
+        }),
+      ),
+    );
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
   });
 
   it("renders the app-equivalent interface, backup summary, export, and danger sections", async () => {
@@ -392,6 +450,41 @@ describe("SettingsScreen", () => {
       expect(mockDispatch).toHaveBeenCalledWith(
         expect.objectContaining({ type: "NAVIGATE" }),
       ),
+    );
+  });
+
+  it("saves pending settings before switching tabs", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    expect(tabPressCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      tabPressCallback?.({
+        preventDefault: jest.fn(),
+        target: "calendar-key",
+      });
+    });
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cycleLength: 35,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(mockParentNavigate).toHaveBeenCalledWith("calendar", undefined),
     );
   });
 

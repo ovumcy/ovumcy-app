@@ -4,6 +4,7 @@ import {
   type DayLogRecord,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   IRREGULAR_CYCLE_SPREAD_DAYS,
   STATS_CYCLE_COMPARISON_DELTA,
@@ -173,6 +174,7 @@ export function buildCurrentCycleProjection(
   const predictionCycleLength = resolvePredictionCycleLength(profile, history);
   const currentCycleDay = diffLocalDays(cycleAnchor, today) + 1;
   const nextPeriodDate = formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
+  const predictedWindow = predictCycleWindow(cycleAnchorDate, predictionCycleLength);
 
   if (profile.unpredictableCycle) {
     return {
@@ -185,10 +187,18 @@ export function buildCurrentCycleProjection(
     };
   }
 
-  const ovulationOffset = Math.max(predictionCycleLength - 14, 1);
-  const ovulationDateValue = formatLocalDate(addDays(cycleAnchor, ovulationOffset));
-  const ovulationDate = parseLocalDate(ovulationDateValue);
+  if (!predictedWindow.calculable || !predictedWindow.ovulationDate) {
+    return {
+      cycleAnchorDate,
+      currentCycleDay,
+      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      nextPeriodDate,
+      ovulationDate: null,
+      predictionCycleLength,
+    };
+  }
 
+  const ovulationDate = parseLocalDate(predictedWindow.ovulationDate);
   if (!ovulationDate) {
     return {
       cycleAnchorDate,
@@ -205,7 +215,7 @@ export function buildCurrentCycleProjection(
     currentCycleDay,
     currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
     nextPeriodDate,
-    ovulationDate: ovulationDateValue,
+    ovulationDate: predictedWindow.ovulationDate,
     predictionCycleLength,
   };
 }
@@ -292,31 +302,18 @@ export function collectCycleStartDates(
   records: DayLogRecord[],
   todayValue: string,
 ): string[] {
-  const starts = new Set<string>();
-  const recordsByDate = new Map(records.map((record) => [record.date, record]));
-  const sortedPeriodRecords = [...records]
-    .filter((record) => record.isPeriod && record.date <= todayValue)
-    .sort((left, right) => left.date.localeCompare(right.date));
-
-  if (profile.lastPeriodStart && profile.lastPeriodStart <= todayValue) {
-    starts.add(profile.lastPeriodStart);
-  }
-
-  for (const record of sortedPeriodRecords) {
-    const currentDay = parseLocalDate(record.date);
-    if (!currentDay) {
-      continue;
+  const clusters = buildObservedPeriodClusters(profile, records, todayValue);
+  const starts = clusters.flatMap((cluster) => {
+    if (cluster.explicitStart) {
+      return [cluster.explicitStart];
     }
-
-    const previousDate = formatLocalDate(addDays(currentDay, -1));
-    const previousRecord = recordsByDate.get(previousDate);
-
-    if (record.cycleStart || previousRecord?.isPeriod !== true) {
-      starts.add(record.date);
+    if (cluster.hasUncertainExplicit) {
+      return [];
     }
-  }
+    return [cluster.start];
+  });
 
-  return [...starts].sort((left, right) => left.localeCompare(right));
+  return [...new Set(starts)].sort((left, right) => left.localeCompare(right));
 }
 
 function resolveObservedPeriodLength(
@@ -635,4 +632,93 @@ function sameLocalDay(left: Date, right: Date): boolean {
 
 function atLocalDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+type ObservedPeriodCluster = {
+  end: string;
+  explicitStart: string | null;
+  hasUncertainExplicit: boolean;
+  start: string;
+};
+
+type PeriodClusterRecord = {
+  cycleStart: boolean;
+  date: string;
+  isUncertain: boolean;
+};
+
+function buildObservedPeriodClusters(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+): ObservedPeriodCluster[] {
+  const periodRecords: PeriodClusterRecord[] = records
+    .filter((record) => record.isPeriod && record.date <= todayValue)
+    .map((record) => ({
+      cycleStart: record.cycleStart,
+      date: record.date,
+      isUncertain: record.isUncertain,
+    }));
+
+  if (profile.lastPeriodStart && profile.lastPeriodStart <= todayValue) {
+    periodRecords.push({
+      cycleStart: true,
+      date: profile.lastPeriodStart,
+      isUncertain: false,
+    });
+  }
+
+  const sortedRecords = periodRecords.sort((left, right) => left.date.localeCompare(right.date));
+  const clusters: ObservedPeriodCluster[] = [];
+
+  for (const record of sortedRecords) {
+    const currentDay = parseLocalDate(record.date);
+    if (!currentDay) {
+      continue;
+    }
+
+    if (clusters.length === 0) {
+      clusters.push(createObservedPeriodCluster(record));
+      continue;
+    }
+
+    const currentCluster = clusters[clusters.length - 1];
+    if (!currentCluster) {
+      continue;
+    }
+
+    const clusterEnd = parseLocalDate(currentCluster.end);
+    if (!clusterEnd) {
+      continue;
+    }
+
+    const gapDays = diffLocalDays(clusterEnd, currentDay) - 1;
+    if (gapDays >= 5) {
+      clusters.push(createObservedPeriodCluster(record));
+      continue;
+    }
+
+    currentCluster.end = record.date;
+    if (!record.cycleStart) {
+      continue;
+    }
+    if (record.isUncertain) {
+      currentCluster.hasUncertainExplicit = true;
+      continue;
+    }
+    if (!currentCluster.explicitStart || record.date < currentCluster.explicitStart) {
+      currentCluster.explicitStart = record.date;
+    }
+  }
+
+  return clusters;
+}
+
+function createObservedPeriodCluster(record: PeriodClusterRecord): ObservedPeriodCluster {
+  return {
+    end: record.date,
+    explicitStart: record.cycleStart && !record.isUncertain ? record.date : null,
+    hasUncertainExplicit: record.cycleStart && record.isUncertain,
+    start: record.date,
+  };
 }

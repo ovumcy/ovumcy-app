@@ -126,12 +126,12 @@ describe("calendar-view-service", () => {
         stateKey: "fertility_edge",
       }),
     );
-    expect(byDate.get("2026-03-27")).toEqual(
+    expect(byDate.get("2026-03-26")).toEqual(
       expect.objectContaining({
         stateKey: "fertility_peak",
       }),
     );
-    expect(byDate.get("2026-03-28")).toEqual(
+    expect(byDate.get("2026-03-27")).toEqual(
       expect.objectContaining({
         stateKey: "ovulation",
         hasOvulationMarker: true,
@@ -142,7 +142,7 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
-    expect(byDate.get("2026-03-28")?.accessibilityLabel).toContain("Ovulation");
+    expect(byDate.get("2026-03-27")?.accessibilityLabel).toContain("Ovulation");
     const mayViewData = buildCalendarViewData(
       profile,
       records,
@@ -156,7 +156,7 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
-    expect(mayByDate.get("2026-05-23")).toEqual(
+    expect(mayByDate.get("2026-05-22")).toEqual(
       expect.objectContaining({
         stateKey: "ovulation",
       }),
@@ -168,6 +168,56 @@ describe("calendar-view-service", () => {
         markersTitle: expect.any(String),
       }),
     );
+  });
+
+  it("does not flood the month with ovulation markers after nearby period logs", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-24",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    } as const;
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        isPeriod: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-02"),
+        isPeriod: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-03"),
+        isPeriod: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-24"),
+        isPeriod: true,
+      },
+    ];
+
+    const aprilViewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 24),
+      new Date(2026, 3, 1),
+      "2026-04-01",
+    );
+
+    expect(
+      aprilViewData.days.filter((day) => day.hasOvulationMarker).map((day) => day.date),
+    ).toEqual(["2026-04-01", "2026-04-24"]);
   });
 
   it("adds an approximate prediction notice when irregular cycle mode is enabled", () => {

@@ -18,9 +18,9 @@ import {
 } from "./day-log-policy";
 import { parseLocalDate } from "./profile-settings-policy";
 import {
-  buildEntryPickerSymptoms,
   filterKnownSymptomIDs,
 } from "./symptom-policy";
+import { buildLocalizedEntryPickerSymptoms } from "./symptom-presentation-service";
 
 export type DayLogEditorViewData = {
   title: string;
@@ -154,7 +154,11 @@ export function buildDayLogEditorViewData(
   locale = "en",
 ): DayLogEditorViewData {
   const dayLogCopy = getDayLogCopy(locale);
-  const pickerSymptoms = buildEntryPickerSymptoms(symptomRecords, selectedSymptomIDs);
+  const pickerSymptoms = buildLocalizedEntryPickerSymptoms(
+    symptomRecords,
+    selectedSymptomIDs,
+    locale,
+  );
 
   return {
     title: dayLogCopy.title,
@@ -202,11 +206,7 @@ export function buildDayLogEditorViewData(
         label: dayLogCopy.options.cycleFactors[value].label,
         icon: dayLogCopy.options.cycleFactors[value].icon,
       })),
-      symptoms: pickerSymptoms.map((definition) => ({
-        value: definition.id,
-        label: definition.label,
-        icon: definition.icon,
-      })),
+      symptoms: pickerSymptoms,
     },
   };
 }

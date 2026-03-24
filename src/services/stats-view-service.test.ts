@@ -118,6 +118,39 @@ describe("buildStatsViewData", () => {
     expect(viewData.bbtTrend?.points).toHaveLength(2);
   });
 
+  it("localizes built-in symptom labels in insight sections", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord(),
+      [
+        createPeriodRecord("2026-01-17"),
+        {
+          ...createEmptyDayLogRecord("2026-01-18"),
+          symptomIDs: ["cramps"],
+        },
+        createPeriodRecord("2026-02-14"),
+        {
+          ...createEmptyDayLogRecord("2026-02-15"),
+          symptomIDs: ["cramps"],
+        },
+        createPeriodRecord("2026-03-14"),
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 17),
+      "ru",
+    );
+
+    expect(viewData.symptomFrequency?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps", label: "Спазмы" }),
+      ]),
+    );
+    expect(viewData.lastCycleSymptoms?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps", label: "Спазмы" }),
+      ]),
+    );
+  });
+
   it("switches to facts-only copy when unpredictable mode is enabled", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({

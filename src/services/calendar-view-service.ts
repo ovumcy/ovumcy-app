@@ -10,6 +10,7 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
+import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   buildDayLogEditorViewData,
   type DayLogEditorViewData,
@@ -85,6 +86,7 @@ export type CalendarViewData = {
   selectedDate: string;
   prevMonthValue: string;
   nextMonthValue: string;
+  weekdayLabels: string[];
   usageGoal: ProfileRecord["usageGoal"];
   isPredictionDisabled: boolean;
   predictionNotice: CalendarPredictionNoticeViewData | null;
@@ -102,6 +104,8 @@ export type CalendarViewData = {
     guide: string;
     meaningTitle: string;
     markersTitle: string;
+    showLegend: string;
+    hideLegend: string;
     recordedPeriod: string;
     predictedPeriod: string;
     lowProbability: string;
@@ -252,6 +256,7 @@ export function buildCalendarViewData(
     selectedDate,
     prevMonthValue: formatMonthValue(addMonth(monthStart, -1)),
     nextMonthValue: formatMonthValue(addMonth(monthStart, 1)),
+    weekdayLabels: buildWeekdayLabels(locale),
     usageGoal: profile.usageGoal,
     isPredictionDisabled: profile.unpredictableCycle,
     predictionNotice,
@@ -269,6 +274,8 @@ export function buildCalendarViewData(
       guide: calendarCopy.legendGuide,
       meaningTitle: calendarCopy.legend.meaningTitle,
       markersTitle: calendarCopy.legend.markersTitle,
+      showLegend: calendarCopy.legend.showLegend,
+      hideLegend: calendarCopy.legend.hideLegend,
       recordedPeriod: calendarCopy.legend.recordedPeriod,
       predictedPeriod: calendarCopy.legend.predictedPeriod,
       lowProbability: calendarCopy.legend.lowProbability,
@@ -594,20 +601,14 @@ function buildCalendarPredictionMaps(
 
   if (projection.cycleAnchorDate) {
     appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
-  }
-
-  if (projection.ovulationDate && projection.cycleAnchorDate) {
-    appendPreFertile(
+    appendPredictedWindow(
       preFertile,
-      projection.cycleAnchorDate,
-      predictedPeriodLength,
-      projection.ovulationDate,
-    );
-    appendFertilityWindow(
       fertilityEdge,
       fertilityPeak,
       ovulation,
-      projection.ovulationDate,
+      projection.cycleAnchorDate,
+      projection.predictionCycleLength,
+      predictedPeriodLength,
     );
   }
 
@@ -662,17 +663,15 @@ function appendPredictedCycles(
       currentCycleStartValue,
       predictedPeriodLength,
     );
-
-    const ovulationDate = formatLocalDate(
-      addDays(currentCycleStart, Math.max(predictionCycleLength - 14, 1)),
-    );
-    appendPreFertile(
+    appendPredictedWindow(
       preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
       currentCycleStartValue,
+      predictionCycleLength,
       predictedPeriodLength,
-      ovulationDate,
     );
-    appendFertilityWindow(fertilityEdge, fertilityPeak, ovulation, ovulationDate);
   }
 }
 
@@ -691,45 +690,25 @@ function appendPredictedPeriod(
   }
 }
 
-function appendPreFertile(
-  target: Set<string>,
-  cycleStartDate: string,
-  periodLength: number,
-  ovulationDate: string,
-) {
-  const cycleStart = parseLocalDate(cycleStartDate);
-  const ovulation = parseLocalDate(ovulationDate);
-  if (!cycleStart || !ovulation) {
-    return;
-  }
-
-  const start = addDays(cycleStart, periodLength);
-  const end = addDays(ovulation, -6);
-  if (end < start) {
-    return;
-  }
-
-  for (let day = start; day <= end; day = addDays(day, 1)) {
-    target.add(formatLocalDate(day));
-  }
-}
-
 function appendFertilityWindow(
   fertilityEdge: Set<string>,
   fertilityPeak: Set<string>,
   ovulationTarget: Set<string>,
+  fertilityStartDate: string,
+  fertilityEndDate: string,
   ovulationDate: string,
 ) {
+  const fertilityStart = parseLocalDate(fertilityStartDate);
+  const fertilityEnd = parseLocalDate(fertilityEndDate);
   const ovulation = parseLocalDate(ovulationDate);
-  if (!ovulation) {
+  if (!fertilityStart || !fertilityEnd || !ovulation || fertilityEnd < fertilityStart) {
     return;
   }
 
-  const fertilityStart = addDays(ovulation, -5);
   const ovulationValue = formatLocalDate(ovulation);
   ovulationTarget.add(ovulationValue);
 
-  for (let day = fertilityStart; day <= ovulation; day = addDays(day, 1)) {
+  for (let day = fertilityStart; day <= fertilityEnd; day = addDays(day, 1)) {
     const value = formatLocalDate(day);
     const offset = Math.round((ovulation.getTime() - day.getTime()) / 86400000);
     if (offset >= 0 && offset <= 2) {
@@ -737,6 +716,64 @@ function appendFertilityWindow(
       continue;
     }
     fertilityEdge.add(value);
+  }
+}
+
+function appendPredictedWindow(
+  preFertile: Set<string>,
+  fertilityEdge: Set<string>,
+  fertilityPeak: Set<string>,
+  ovulation: Set<string>,
+  cycleStartDate: string,
+  cycleLength: number,
+  periodLength: number,
+) {
+  const predictedWindow = predictCycleWindow(cycleStartDate, cycleLength);
+  if (
+    !predictedWindow.calculable ||
+    !predictedWindow.ovulationDate ||
+    !predictedWindow.fertilityStart ||
+    !predictedWindow.fertilityEnd
+  ) {
+    return;
+  }
+
+  appendPreFertile(
+    preFertile,
+    cycleStartDate,
+    periodLength,
+    predictedWindow.fertilityStart,
+  );
+  appendFertilityWindow(
+    fertilityEdge,
+    fertilityPeak,
+    ovulation,
+    predictedWindow.fertilityStart,
+    predictedWindow.fertilityEnd,
+    predictedWindow.ovulationDate,
+  );
+}
+
+function appendPreFertile(
+  target: Set<string>,
+  cycleStartDate: string,
+  periodLength: number,
+  fertilityStartDate: string,
+) {
+  const cycleStart = parseLocalDate(cycleStartDate);
+  const fertilityStart = parseLocalDate(fertilityStartDate);
+  if (!cycleStart || !fertilityStart) {
+    return;
+  }
+
+  const start = addDays(cycleStart, periodLength);
+  const end = addDays(fertilityStart, -1);
+  if (end < start) {
+    return;
+  }
+
+  for (let day = start; day <= end; day = addDays(day, 1)) {
+    target.add(formatLocalDate(day));
   }
 }
 
@@ -822,4 +859,13 @@ function addMonth(value: Date, amount: number): Date {
 
 function atLocalDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function buildWeekdayLabels(locale: string): string[] {
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  const sundayReference = new Date(2026, 0, 4);
+
+  return Array.from({ length: 7 }, (_, index) =>
+    formatter.format(addCalendarDays(sundayReference, index)).replace(".", ""),
+  );
 }

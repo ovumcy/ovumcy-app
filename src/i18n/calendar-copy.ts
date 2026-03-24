@@ -24,7 +24,7 @@ const calendarCopyEn = {
   periodDayNo: "No",
   noData: "-",
   legendGuide:
-    "The cell style shows the day type. Your saved markers appear as a dot, a dash, or a heart.",
+    "The cell style shows the day type. Saved markers appear inside the cell.",
   stateHints: {
     neutral: "No recorded or predicted event is attached to this day yet.",
     recordedPeriod:
@@ -38,19 +38,21 @@ const calendarCopyEn = {
       "This day sits inside the highest-likelihood part of the fertile window.",
     ovulation: "This is the predicted ovulation day based on the current cycle model.",
     ovulationTentative:
-      "This is an estimated ovulation day without temperature confirmation.",
+      "This is a possible ovulation day without temperature confirmation.",
     loggedEntry: "You already saved a local entry for this day.",
   },
   legend: {
     meaningTitle: "Day styles",
     markersTitle: "Your markers",
+    showLegend: "How to read this calendar",
+    hideLegend: "Hide calendar key",
     recordedPeriod: "Logged period",
     predictedPeriod: "Predicted period",
     lowProbability: "Fertility may be starting",
     fertilityEdge: "Higher fertility",
     fertilityPeak: "Peak fertility",
     ovulation: "Ovulation day",
-    ovulationTentative: "Estimated ovulation",
+    ovulationTentative: "Possible ovulation day",
     loggedEntry: "Logged entry",
     sexLogged: "Intimacy logged",
     today: "Today",
@@ -81,7 +83,7 @@ const calendarCopyDe: CalendarCopy = {
   periodDayNo: "Nein",
   noData: "-",
   legendGuide:
-    "Der Zellstil zeigt den Tagestyp. Deine gespeicherten Marker erscheinen als Punkt, Strich oder Herz.",
+    "Der Zellstil zeigt den Tagestyp. Gespeicherte Marker erscheinen innerhalb der Zelle.",
   stateHints: {
     neutral: "Diesem Tag ist noch kein erfasstes oder vorhergesagtes Ereignis zugeordnet.",
     recordedPeriod:
@@ -96,19 +98,21 @@ const calendarCopyDe: CalendarCopy = {
     ovulation:
       "Dies ist der vorhergesagte Eisprungtag auf Basis des aktuellen Zyklusmodells.",
     ovulationTentative:
-      "Dies ist ein geschätzter Eisprungtag ohne Temperaturbestätigung.",
+      "Dies ist ein möglicher Eisprungtag ohne Temperaturbestätigung.",
     loggedEntry: "Für diesen Tag ist bereits ein lokaler Eintrag gespeichert.",
   },
   legend: {
     meaningTitle: "Tagesstile",
     markersTitle: "Deine Marker",
+    showLegend: "Kalenderhilfe anzeigen",
+    hideLegend: "Kalenderhilfe ausblenden",
     recordedPeriod: "Erfasste Periode",
     predictedPeriod: "Vorhergesagte Periode",
     lowProbability: "Fruchtbarkeit beginnt vielleicht",
     fertilityEdge: "Höhere Fruchtbarkeit",
     fertilityPeak: "Höchste Fruchtbarkeit",
     ovulation: "Eisprungtag",
-    ovulationTentative: "Geschätzter Eisprung",
+    ovulationTentative: "Möglicher Eisprungtag",
     loggedEntry: "Eintrag gespeichert",
     sexLogged: "Intimität erfasst",
     today: "Heute",
@@ -137,7 +141,7 @@ const calendarCopyFr: CalendarCopy = {
   periodDayNo: "Non",
   noData: "-",
   legendGuide:
-    "Le style de la case montre le type de jour. Tes marqueurs enregistrés apparaissent sous forme de point, tiret ou cœur.",
+    "Le style de la case montre le type de jour. Les marqueurs enregistrés apparaissent dans la case.",
   stateHints: {
     neutral:
       "Aucun événement enregistré ou prédit n'est encore associé à cette journée.",
@@ -154,19 +158,21 @@ const calendarCopyFr: CalendarCopy = {
     ovulation:
       "C'est le jour d'ovulation prédit selon le modèle actuel du cycle.",
     ovulationTentative:
-      "C'est un jour d'ovulation estimé sans confirmation thermique.",
+      "C'est un jour d'ovulation possible sans confirmation thermique.",
     loggedEntry: "Tu as déjà enregistré une entrée locale pour cette journée.",
   },
   legend: {
     meaningTitle: "Styles de jour",
     markersTitle: "Tes marqueurs",
+    showLegend: "Afficher l'aide du calendrier",
+    hideLegend: "Masquer la légende",
     recordedPeriod: "Règles enregistrées",
     predictedPeriod: "Règles prévues",
     lowProbability: "La fertilité peut commencer",
     fertilityEdge: "Fertilité plus élevée",
     fertilityPeak: "Pic de fertilité",
     ovulation: "Jour d'ovulation",
-    ovulationTentative: "Ovulation estimée",
+    ovulationTentative: "Jour d'ovulation possible",
     loggedEntry: "Entrée enregistrée",
     sexLogged: "Intimité enregistrée",
     today: "Aujourd'hui",
@@ -197,7 +203,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     periodDayNo: "Нет",
     noData: "-",
     legendGuide:
-      "Стиль ячейки показывает тип дня. Сохранённые отметки отображаются точкой, штрихом или сердечком.",
+      "Стиль ячейки показывает тип дня. Сохранённые отметки появляются внутри ячейки.",
     stateHints: {
       neutral: "Для этого дня пока нет ни записи, ни предсказанного события.",
       recordedPeriod:
@@ -211,19 +217,21 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
         "Этот день находится в части фертильного окна с самой высокой вероятностью.",
       ovulation: "Это предсказанный день овуляции по текущей модели цикла.",
       ovulationTentative:
-        "Это предполагаемый день овуляции без подтверждения по температуре.",
+        "Это возможный день овуляции без подтверждения по температуре.",
       loggedEntry: "Для этого дня уже сохранена локальная запись.",
     },
     legend: {
       meaningTitle: "Стили дней",
       markersTitle: "Ваши отметки",
+      showLegend: "Как читать календарь",
+      hideLegend: "Скрыть подсказку",
       recordedPeriod: "Отмеченная менструация",
       predictedPeriod: "Предсказанная менструация",
       lowProbability: "Фертильность может начинаться",
       fertilityEdge: "Более высокая фертильность",
       fertilityPeak: "Пик фертильности",
       ovulation: "День овуляции",
-      ovulationTentative: "Предполагаемая овуляция",
+      ovulationTentative: "Возможный день овуляции",
       loggedEntry: "Есть запись",
       sexLogged: "Отмечена близость",
       today: "Сегодня",
@@ -251,7 +259,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     periodDayNo: "No",
     noData: "-",
     legendGuide:
-      "El estilo de la celda muestra el tipo de día. Tus marcadores guardados aparecen como un punto, una raya o un corazón.",
+      "El estilo de la celda muestra el tipo de día. Los marcadores guardados aparecen dentro de la celda.",
     stateHints: {
       neutral: "Todavía no hay un evento registrado ni previsto para este día.",
       recordedPeriod:
@@ -266,19 +274,21 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       ovulation:
         "Este es el día de ovulación previsto según el modelo actual del ciclo.",
       ovulationTentative:
-        "Este es un día de ovulación estimado sin confirmación térmica.",
+        "Este es un posible día de ovulación sin confirmación térmica.",
       loggedEntry: "Ya guardaste un registro local para este día.",
     },
     legend: {
       meaningTitle: "Estilos de día",
       markersTitle: "Tus marcadores",
+      showLegend: "Cómo leer este calendario",
+      hideLegend: "Ocultar la leyenda",
       recordedPeriod: "Período registrado",
       predictedPeriod: "Período previsto",
       lowProbability: "La fertilidad puede estar empezando",
       fertilityEdge: "Mayor fertilidad",
       fertilityPeak: "Pico fértil",
       ovulation: "Día de ovulación",
-      ovulationTentative: "Ovulación estimada",
+      ovulationTentative: "Posible día de ovulación",
       loggedEntry: "Registro guardado",
       sexLogged: "Intimidad registrada",
       today: "Hoy",

@@ -33,7 +33,7 @@ export type SymptomRecord = {
   isDefault: boolean;
 };
 
-type BuiltinSymptomDefinition = {
+export type BuiltinSymptomDefinition = {
   id: string;
   label: string;
   icon: string;
@@ -78,6 +78,37 @@ export const BUILTIN_SYMPTOM_DEFINITIONS: readonly BuiltinSymptomDefinition[] = 
   },
   { id: "swelling", label: "Swelling", icon: "💧", color: "#64B5F6" },
 ] as const;
+
+export type BuiltinSymptomID = (typeof BUILTIN_SYMPTOM_DEFINITIONS)[number]["id"];
+
+export const BUILTIN_ENTRY_PICKER_ORDER: readonly BuiltinSymptomID[] = [
+  "cramps",
+  "headache",
+  "nausea",
+  "bloating",
+  "back_pain",
+  "swelling",
+  "breast_tenderness",
+  "food_cravings",
+  "spotting",
+  "acne",
+  "diarrhea",
+  "constipation",
+  "fatigue",
+  "mood_swings",
+  "irritability",
+  "insomnia",
+] as const;
+
+const builtinSymptomDefinitionMap = new Map(
+  BUILTIN_SYMPTOM_DEFINITIONS.map((definition) => [definition.id, definition]),
+);
+
+export function getBuiltinSymptomDefinition(
+  id: string,
+): (typeof BUILTIN_SYMPTOM_DEFINITIONS)[number] | null {
+  return builtinSymptomDefinitionMap.get(id as BuiltinSymptomID) ?? null;
+}
 
 export function createBuiltinSymptomRecords(): SymptomRecord[] {
   return BUILTIN_SYMPTOM_DEFINITIONS.map((definition, index) => ({
