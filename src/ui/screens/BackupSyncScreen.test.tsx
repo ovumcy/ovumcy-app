@@ -235,6 +235,7 @@ describe("BackupSyncScreen", () => {
     await expect(syncSecretStore.readSyncSecrets()).resolves.toEqual(
       expect.objectContaining({
         authSessionToken: "session-1",
+        managedAuthSessionToken: null,
         masterKeyHex: originalSecrets.record.masterKeyHex,
       }),
     );
@@ -271,6 +272,7 @@ describe("BackupSyncScreen", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: "session-1",
+      managedAuthSessionToken: null,
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
@@ -339,20 +341,22 @@ describe("BackupSyncScreen", () => {
         wrappedMasterKeyHex: "dd",
         phraseFingerprintHex: "ee",
       },
-      authSessionToken: "session-1",
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          mode: "managed",
-          sync_enabled: true,
-          premium_active: false,
-          recovery_supported: true,
-          push_supported: false,
-          portal_supported: false,
-          advanced_cloud_insights: false,
-          max_devices: 5,
-          max_blob_bytes: 1024,
+          account_id: "managed-account-1",
+          email: "alice@example.com",
+          session_expires_at: "2026-03-21T08:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: false,
+            source: "manual",
+            updated_at: "2026-03-20T08:05:00.000Z",
+            effective_at: "2026-03-20T08:05:00.000Z",
+            explanation: "plan inactive",
+          },
         }),
         {
           status: 200,
@@ -377,7 +381,7 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-sync-plan-blocked-banner")).toBeTruthy();
   });
 
-  it("does not show inline sync account fields in managed cloud mode", async () => {
+  it("shows managed cloud account fields on the dedicated backup and sync screen", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
         mode: "managed",
@@ -401,12 +405,10 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    expect(screen.getByTestId("settings-sync-managed-account-banner")).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-login-input")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-password-input")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-login-button")).toBeNull();
+    expect(screen.getByTestId("settings-sync-login-input")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });
 
   it("requires confirmation before recreating local sync keys", async () => {
@@ -438,6 +440,7 @@ describe("BackupSyncScreen", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
     mockOpenConfirmation.mockResolvedValue(false);
 
@@ -486,6 +489,7 @@ describe("BackupSyncScreen", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
     mockOpenConfirmation.mockResolvedValue(true);
     mockRequestSensitiveActionChallenge.mockResolvedValue({

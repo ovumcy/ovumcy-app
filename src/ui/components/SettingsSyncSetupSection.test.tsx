@@ -55,10 +55,10 @@ describe("SettingsSyncSetupSection", () => {
     expect(await screen.findByTestId("settings-sync-preparing-block")).toBeTruthy();
     expect(await screen.findByText(viewData.preparingTitle)).toBeTruthy();
     expect(await screen.findByText(viewData.preparingHint)).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
+    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
   });
 
-  it("hides inline account auth controls for managed cloud mode", async () => {
+  it("shows managed account auth controls on the dedicated backup and sync screen", async () => {
     const storage = createLocalAppStorageMock();
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
 
@@ -103,11 +103,9 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesProvider>,
     );
 
-    expect(await screen.findByTestId("settings-sync-managed-account-banner")).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-login-input")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-password-input")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
-    expect(screen.queryByTestId("settings-sync-login-button")).toBeNull();
+    expect(await screen.findByTestId("settings-sync-login-input")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });
 });

@@ -1,4 +1,20 @@
-export const MANAGED_SYNC_BASE_URL = "https://sync.ovumcy.cloud";
+const runtimeEnv =
+  typeof globalThis === "object" && "process" in globalThis
+    ? (
+        globalThis as {
+          process?: {
+            env?: Record<string, string | undefined>;
+          };
+        }
+      ).process?.env
+    : undefined;
+
+export const MANAGED_SYNC_BASE_URL =
+  runtimeEnv?.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL?.trim() ||
+  "https://sync.ovumcy.cloud";
+export const MANAGED_CLOUD_AUTH_BASE_URL =
+  runtimeEnv?.EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL?.trim() ||
+  "https://managed.ovumcy.cloud";
 
 export const SUPPORTED_SYNC_MODES = ["managed", "self_hosted"] as const;
 export const SUPPORTED_SYNC_SETUP_STATUSES = [
@@ -90,6 +106,7 @@ export type SyncSecretsRecord = {
   deviceSecretHex: string;
   wrappedKey: WrappedSyncKeyMetadata;
   authSessionToken: string | null;
+  managedAuthSessionToken: string | null;
 };
 
 export function normalizeSyncMode(
@@ -109,7 +126,7 @@ export function normalizeSyncSetupStatus(
 }
 
 export function supportsInlineSyncAccountAuth(mode: SyncMode): boolean {
-  return mode === "self_hosted";
+  return mode === "managed" || mode === "self_hosted";
 }
 
 export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {

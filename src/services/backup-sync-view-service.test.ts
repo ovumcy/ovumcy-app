@@ -29,6 +29,9 @@ describe("backup sync view service", () => {
       resolveBackupSyncErrorMessage("recovery_package_not_found", viewData.account),
     ).toBe(viewData.account.errors.recoveryPackageNotFound);
     expect(
+      resolveBackupSyncErrorMessage("sync_not_allowed", viewData.account),
+    ).toBe(viewData.account.syncBlockedNoPlan);
+    expect(
       resolveBackupSyncErrorMessage("unknown_code", viewData.account),
     ).toBe(viewData.account.errors.saveFailed);
   });

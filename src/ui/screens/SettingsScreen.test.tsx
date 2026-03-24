@@ -462,6 +462,7 @@ describe("SettingsScreen", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
 
     render(

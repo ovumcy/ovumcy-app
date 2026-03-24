@@ -29,6 +29,7 @@ describe("sync-setup-service", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
 
     const result = await loadSyncSetupState(storage, secretStore);
@@ -78,6 +79,53 @@ describe("sync-setup-service", () => {
       }),
     );
     expect(await secretStore.readSyncSecrets()).toEqual(result.secrets);
+  });
+
+  it("preserves an existing managed cloud session when recreating local sync keys", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Old phone",
+        createdAt: "2026-03-18T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+
+    const result = await prepareSyncSetup(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.secrets.managedAuthSessionToken).toBe("managed-session-1");
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        managedAuthSessionToken: "managed-session-1",
+      }),
+    );
   });
 
   it("rejects missing device labels before generating any secrets", async () => {
@@ -185,6 +233,7 @@ describe("sync-setup-service", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
 
     const result = await saveSyncPreferencesDraft(

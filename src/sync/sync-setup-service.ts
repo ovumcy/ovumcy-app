@@ -40,7 +40,9 @@ export async function loadSyncSetupState(
   ]);
 
   return {
-    hasAuthSession: typeof secrets?.authSessionToken === "string",
+    hasAuthSession:
+      typeof secrets?.authSessionToken === "string" ||
+      typeof secrets?.managedAuthSessionToken === "string",
     preferences,
     hasStoredSecrets: secrets !== null,
   };
@@ -95,15 +97,22 @@ export async function prepareSyncSetup(
   };
 
   try {
+    const existingSecrets = await secretStore.readSyncSecrets();
     const result = createSyncSecretsRecord(nextLabel, now);
-    await secretStore.writeSyncSecrets(result.record);
+    await secretStore.writeSyncSecrets({
+      ...result.record,
+      managedAuthSessionToken: existingSecrets?.managedAuthSessionToken ?? null,
+    });
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
     return {
       ok: true,
       preferences: nextPreferences,
       recoveryPhrase: result.recoveryPhrase,
-      secrets: result.record,
+      secrets: {
+        ...result.record,
+        managedAuthSessionToken: existingSecrets?.managedAuthSessionToken ?? null,
+      },
     };
   } catch {
     return {

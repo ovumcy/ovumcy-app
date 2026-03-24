@@ -22,9 +22,14 @@ import type {
   SyncSetupStatus,
 } from "./sync-contract";
 import {
+  MANAGED_CLOUD_AUTH_BASE_URL,
   createDefaultSyncPreferencesRecord,
-  supportsInlineSyncAccountAuth,
 } from "./sync-contract";
+import {
+  createManagedCloudAPIClient,
+  type ManagedCloudAPIClient,
+  type ManagedCloudAPIErrorCode,
+} from "./managed-cloud-api-client";
 import {
   createSyncAPIClient,
   type SyncAPIClient,
@@ -40,10 +45,10 @@ import {
 
 export type SyncConnectErrorCode =
   | NormalizeSyncEndpointErrorCode
-  | "managed_inline_auth_disabled"
   | "sync_not_prepared"
   | "login_required"
   | "password_required"
+  | "sync_not_allowed"
   | "invalid_registration_input"
   | "registration_failed"
   | "invalid_credentials"
@@ -54,7 +59,6 @@ export type SyncConnectErrorCode =
 
 export type SyncRecoverErrorCode =
   | NormalizeSyncEndpointErrorCode
-  | "managed_inline_auth_disabled"
   | "device_label_required"
   | "recovery_phrase_required"
   | "invalid_recovery_phrase"
@@ -62,6 +66,7 @@ export type SyncRecoverErrorCode =
   | "recovery_package_not_found"
   | "login_required"
   | "password_required"
+  | "sync_not_allowed"
   | "invalid_credentials"
   | "unauthorized"
   | "too_many_devices"
@@ -71,6 +76,7 @@ export type SyncRecoverErrorCode =
 export type SyncRunErrorCode =
   | "sync_not_prepared"
   | "not_connected"
+  | "sync_not_allowed"
   | "unauthorized"
   | "blob_not_found"
   | "invalid_blob"
@@ -80,6 +86,7 @@ export type SyncRunErrorCode =
   | "generic";
 
 type SyncAPIClientFactory = (baseURL: string) => SyncAPIClient;
+type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
 
 export async function connectSyncAccount(
   storage: LocalAppStorage,
@@ -89,6 +96,7 @@ export async function connectSyncAccount(
   mode: "register" | "login",
   now: Date,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
@@ -100,10 +108,6 @@ export async function connectSyncAccount(
       errorCode: SyncConnectErrorCode;
     }
 > {
-  if (!supportsInlineSyncAccountAuth(preferences.mode)) {
-    return { ok: false, errorCode: "managed_inline_auth_disabled" };
-  }
-
   const login = credentials.login.trim();
   if (login.length === 0) {
     return { ok: false, errorCode: "login_required" };
@@ -123,6 +127,47 @@ export async function connectSyncAccount(
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets) {
     return { ok: false, errorCode: "sync_not_prepared" };
+  }
+
+  if (preferences.mode === "managed") {
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    const authResult =
+      mode === "register"
+        ? await managedClient.register({
+            email: login,
+            password: credentials.password,
+          })
+        : await managedClient.login({
+            email: login,
+            password: credentials.password,
+          });
+    if (!authResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedConnectAPIError(authResult.errorCode),
+      };
+    }
+
+    await secretStore.writeSyncSecrets({
+      ...secrets,
+      authSessionToken: null,
+      managedAuthSessionToken: authResult.auth.sessionToken,
+    });
+
+    const nextPreferences: SyncPreferencesRecord = {
+      ...preferences,
+      normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
+      setupStatus: "connected",
+    };
+    await storage.writeSyncPreferencesRecord(nextPreferences);
+
+    return {
+      ok: true,
+      capabilities: buildManagedCapabilitiesDocument(
+        authResult.auth.entitlement.syncAllowed,
+      ),
+      preferences: nextPreferences,
+    };
   }
 
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
@@ -192,6 +237,7 @@ export async function loadConnectedSyncCapabilities(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
@@ -202,6 +248,50 @@ export async function loadConnectedSyncCapabilities(
       errorCode: SyncConnectErrorCode;
     }
 > {
+  if (preferences.mode === "managed") {
+    const secrets = await secretStore.readSyncSecrets();
+    if (!secrets?.managedAuthSessionToken) {
+      return {
+        ok: false,
+        errorCode: "unauthorized",
+      };
+    }
+
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    const sessionResult = await managedClient.getSession(
+      secrets.managedAuthSessionToken,
+    );
+    if (!sessionResult.ok) {
+      if (sessionResult.errorCode === "unauthorized") {
+        await secretStore.writeSyncSecrets({
+          ...secrets,
+          authSessionToken: null,
+          managedAuthSessionToken: null,
+        });
+      }
+      return {
+        ok: false,
+        errorCode: mapManagedConnectAPIError(sessionResult.errorCode),
+      };
+    }
+
+    if (secrets.authSessionToken) {
+      await secretStore.writeSyncSecrets({
+        ...secrets,
+        authSessionToken: sessionResult.session.entitlement.syncAllowed
+          ? secrets.authSessionToken
+          : null,
+      });
+    }
+
+    return {
+      ok: true,
+      capabilities: buildManagedCapabilitiesDocument(
+        sessionResult.session.entitlement.syncAllowed,
+      ),
+    };
+  }
+
   const prepared = await readPreparedSyncContext(secretStore, preferences);
   if (!prepared.ok) {
     return {
@@ -233,6 +323,7 @@ export async function recoverSyncAccess(
   recoveryPhrase: string,
   now: Date,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
@@ -244,10 +335,6 @@ export async function recoverSyncAccess(
       errorCode: SyncRecoverErrorCode;
     }
 > {
-  if (!supportsInlineSyncAccountAuth(preferences.mode)) {
-    return { ok: false, errorCode: "managed_inline_auth_disabled" };
-  }
-
   const login = credentials.login.trim();
   if (login.length === 0) {
     return { ok: false, errorCode: "login_required" };
@@ -273,6 +360,109 @@ export async function recoverSyncAccess(
   );
   if (!normalizedEndpoint.ok) {
     return normalizedEndpoint;
+  }
+
+  if (preferences.mode === "managed") {
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    const authResult = await managedClient.login({
+      email: login,
+      password: credentials.password,
+    });
+    if (!authResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedRecoverAPIError(authResult.errorCode),
+      };
+    }
+    if (!authResult.auth.entitlement.syncAllowed) {
+      return {
+        ok: false,
+        errorCode: "sync_not_allowed",
+      };
+    }
+
+    const syncSessionResult = await managedClient.createSyncSession(
+      authResult.auth.sessionToken,
+    );
+    if (!syncSessionResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedRecoverAPIError(syncSessionResult.errorCode),
+      };
+    }
+
+    const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
+    const recoveryKeyResult = await client.getRecoveryKey(
+      syncSessionResult.auth.sessionToken,
+    );
+    if (!recoveryKeyResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapRecoverAPIError(recoveryKeyResult.errorCode),
+      };
+    }
+
+    let recoveredSecrets: SyncSecretsRecord;
+    try {
+      recoveredSecrets = createRecoveredSyncSecretsRecord(
+        normalizedRecoveryPhrase,
+        recoveryKeyResult.recoveryKey,
+        preferences.deviceLabel,
+        now,
+      );
+    } catch {
+      return {
+        ok: false,
+        errorCode: "invalid_recovery_phrase",
+      };
+    }
+
+    const capabilities = buildManagedCapabilitiesDocument(true);
+    const attachDeviceResult = await client.attachDevice(
+      syncSessionResult.auth.sessionToken,
+      {
+        deviceID: recoveredSecrets.device.deviceID,
+        deviceLabel: recoveredSecrets.device.deviceLabel,
+      },
+    );
+    if (!attachDeviceResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapRecoverAPIError(attachDeviceResult.errorCode),
+      };
+    }
+
+    await syncRecoveryKeyIfSupported(
+      client,
+      syncSessionResult.auth.sessionToken,
+      capabilities,
+      recoveredSecrets.wrappedKey,
+    );
+
+    await secretStore.writeSyncSecrets({
+      ...recoveredSecrets,
+      authSessionToken: syncSessionResult.auth.sessionToken,
+      managedAuthSessionToken: authResult.auth.sessionToken,
+    });
+
+    const nextPreferences: SyncPreferencesRecord = {
+      ...createDefaultSyncPreferencesRecord(),
+      ...preferences,
+      deviceLabel: preferences.deviceLabel.trim(),
+      endpointInput: "",
+      normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
+      setupStatus: "connected",
+      preparedAt: now.toISOString(),
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+    };
+    await storage.writeSyncPreferencesRecord(nextPreferences);
+
+    return {
+      ok: true,
+      capabilities,
+      preferences: nextPreferences,
+    };
   }
 
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
@@ -382,6 +572,7 @@ export async function runSyncUpload(
   preferences: SyncPreferencesRecord,
   now: Date,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
@@ -392,7 +583,12 @@ export async function runSyncUpload(
       errorCode: SyncRunErrorCode;
     }
 > {
-  const prepared = await readPreparedSyncContext(secretStore, preferences);
+  const prepared = await readPreparedSyncContext(
+    secretStore,
+    preferences,
+    apiClientFactory,
+    managedClientFactory,
+  );
   if (!prepared.ok) {
     return prepared;
   }
@@ -446,6 +642,7 @@ export async function runSyncRestore(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
@@ -456,7 +653,12 @@ export async function runSyncRestore(
       errorCode: SyncRunErrorCode;
     }
 > {
-  const prepared = await readPreparedSyncContext(secretStore, preferences);
+  const prepared = await readPreparedSyncContext(
+    secretStore,
+    preferences,
+    apiClientFactory,
+    managedClientFactory,
+  );
   if (!prepared.ok) {
     return prepared;
   }
@@ -504,6 +706,7 @@ export async function disconnectSyncAccount(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<{ ok: true; preferences: SyncPreferencesRecord }> {
   const secrets = await secretStore.readSyncSecrets();
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -514,6 +717,10 @@ export async function disconnectSyncAccount(
   if (secrets?.authSessionToken && normalizedEndpoint.ok) {
     const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
     await client.logout(secrets.authSessionToken);
+  }
+  if (secrets?.managedAuthSessionToken && preferences.mode === "managed") {
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    await managedClient.logout(secrets.managedAuthSessionToken);
   }
 
   const nextPreferences = await clearLocalSyncSession(
@@ -531,16 +738,27 @@ export async function clearLocalSyncSession(
   preferences: SyncPreferencesRecord,
 ): Promise<SyncPreferencesRecord> {
   const secrets = await secretStore.readSyncSecrets();
+  const nextManagedAuthSessionToken =
+    preferences.mode === "managed" ? null : secrets?.managedAuthSessionToken ?? null;
   if (secrets) {
     await secretStore.writeSyncSecrets({
       ...secrets,
       authSessionToken: null,
+      managedAuthSessionToken: nextManagedAuthSessionToken,
     });
   }
 
+  const nextHasManagedCloudSession =
+    preferences.mode === "managed" &&
+    typeof nextManagedAuthSessionToken === "string" &&
+    nextManagedAuthSessionToken.length > 0;
   const nextPreferences: SyncPreferencesRecord = {
     ...preferences,
-    setupStatus: secrets ? "local_ready" : "not_configured",
+    setupStatus: nextHasManagedCloudSession
+      ? "connected"
+      : secrets
+        ? "local_ready"
+        : "not_configured",
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -550,11 +768,16 @@ export async function clearLocalSyncSession(
 async function readPreparedSyncContext(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
       baseURL: string;
-      secrets: SyncSecretsRecord & { authSessionToken: string };
+      secrets: SyncSecretsRecord & {
+        authSessionToken: string;
+        managedAuthSessionToken: string | null;
+      };
     }
   | {
       ok: false;
@@ -573,6 +796,65 @@ async function readPreparedSyncContext(
   if (!secrets) {
     return { ok: false, errorCode: "sync_not_prepared" };
   }
+
+  if (preferences.mode === "managed") {
+    if (!secrets.managedAuthSessionToken) {
+      return { ok: false, errorCode: "not_connected" };
+    }
+
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    const sessionResult = await managedClient.getSession(
+      secrets.managedAuthSessionToken,
+    );
+    if (!sessionResult.ok) {
+      if (sessionResult.errorCode === "unauthorized") {
+        await secretStore.writeSyncSecrets({
+          ...secrets,
+          authSessionToken: null,
+          managedAuthSessionToken: null,
+        });
+        return { ok: false, errorCode: "unauthorized" };
+      }
+
+      return {
+        ok: false,
+        errorCode: mapManagedRunAPIError(sessionResult.errorCode),
+      };
+    }
+    if (!sessionResult.session.entitlement.syncAllowed) {
+      await secretStore.writeSyncSecrets({
+        ...secrets,
+        authSessionToken: null,
+      });
+      return { ok: false, errorCode: "sync_not_allowed" };
+    }
+
+    const syncSessionResult = await managedClient.createSyncSession(
+      secrets.managedAuthSessionToken,
+    );
+    if (!syncSessionResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedRunAPIError(syncSessionResult.errorCode),
+      };
+    }
+
+    await secretStore.writeSyncSecrets({
+      ...secrets,
+      authSessionToken: syncSessionResult.auth.sessionToken,
+    });
+
+    return {
+      ok: true,
+      baseURL: normalizedEndpoint.endpoint.baseURL,
+      secrets: {
+        ...secrets,
+        authSessionToken: syncSessionResult.auth.sessionToken,
+        managedAuthSessionToken: secrets.managedAuthSessionToken,
+      },
+    };
+  }
+
   if (!secrets.authSessionToken) {
     return { ok: false, errorCode: "not_connected" };
   }
@@ -583,6 +865,7 @@ async function readPreparedSyncContext(
     secrets: {
       ...secrets,
       authSessionToken: secrets.authSessionToken,
+      managedAuthSessionToken: secrets.managedAuthSessionToken,
     },
   };
 }
@@ -647,6 +930,24 @@ function mapConnectAPIError(errorCode: SyncAPIErrorCode): SyncConnectErrorCode {
   }
 }
 
+function mapManagedConnectAPIError(
+  errorCode: ManagedCloudAPIErrorCode,
+): SyncConnectErrorCode {
+  switch (errorCode) {
+    case "invalid_registration_input":
+    case "registration_failed":
+    case "invalid_credentials":
+    case "unauthorized":
+    case "sync_not_allowed":
+    case "network_failed":
+      return errorCode;
+    case "sync_bridge_unavailable":
+      return "network_failed";
+    default:
+      return "generic";
+  }
+}
+
 function mapRecoverAPIError(errorCode: SyncAPIErrorCode): SyncRecoverErrorCode {
   switch (errorCode) {
     case "invalid_credentials":
@@ -660,6 +961,22 @@ function mapRecoverAPIError(errorCode: SyncAPIErrorCode): SyncRecoverErrorCode {
   }
 }
 
+function mapManagedRecoverAPIError(
+  errorCode: ManagedCloudAPIErrorCode,
+): SyncRecoverErrorCode {
+  switch (errorCode) {
+    case "invalid_credentials":
+    case "unauthorized":
+    case "sync_not_allowed":
+    case "network_failed":
+      return errorCode;
+    case "sync_bridge_unavailable":
+      return "network_failed";
+    default:
+      return "generic";
+  }
+}
+
 function mapRunAPIError(errorCode: SyncAPIErrorCode): SyncRunErrorCode {
   switch (errorCode) {
     case "unauthorized":
@@ -668,6 +985,21 @@ function mapRunAPIError(errorCode: SyncAPIErrorCode): SyncRunErrorCode {
     case "blob_not_found":
     case "network_failed":
       return errorCode;
+    default:
+      return "generic";
+  }
+}
+
+function mapManagedRunAPIError(
+  errorCode: ManagedCloudAPIErrorCode,
+): SyncRunErrorCode {
+  switch (errorCode) {
+    case "unauthorized":
+    case "sync_not_allowed":
+    case "network_failed":
+      return errorCode;
+    case "sync_bridge_unavailable":
+      return "network_failed";
     default:
       return "generic";
   }
@@ -695,4 +1027,20 @@ async function syncRecoveryKeyIfSupported(
   }
 
   return { ok: true };
+}
+
+function buildManagedCapabilitiesDocument(
+  syncAllowed: boolean,
+): SyncCapabilityDocument {
+  return {
+    mode: "managed",
+    syncEnabled: syncAllowed,
+    premiumActive: syncAllowed,
+    recoverySupported: true,
+    pushSupported: false,
+    portalSupported: false,
+    advancedCloudInsights: false,
+    maxDevices: 5,
+    maxBlobBytes: 16 << 20,
+  };
 }

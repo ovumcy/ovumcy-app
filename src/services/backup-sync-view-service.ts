@@ -60,8 +60,6 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.invalidRegistrationInput;
     case "registration_failed":
       return viewData.errors.registrationFailed;
-    case "managed_inline_auth_disabled":
-      return viewData.planUnavailable;
     case "invalid_credentials":
       return viewData.errors.invalidCredentials;
     case "recovery_phrase_required":
@@ -76,6 +74,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.tooManyDevices;
     case "sync_not_prepared":
       return viewData.errors.syncNotPrepared;
+    case "sync_not_allowed":
+      return viewData.syncBlockedNoPlan;
     case "not_connected":
     case "unauthorized":
       return viewData.errors.notConnected;

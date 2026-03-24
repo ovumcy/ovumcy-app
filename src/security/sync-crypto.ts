@@ -57,6 +57,7 @@ export function createSyncSecretsRecord(
       deviceSecretHex: bytesToHex(deviceSecret),
       wrappedKey,
       authSessionToken: null,
+      managedAuthSessionToken: null,
     },
   };
 }
@@ -75,6 +76,7 @@ export function createRecoveredSyncSecretsRecord(
     deviceSecretHex: bytesToHex(getRandomBytes(DEVICE_SECRET_BYTE_LENGTH)),
     wrappedKey,
     authSessionToken: null,
+    managedAuthSessionToken: null,
   };
 }
 

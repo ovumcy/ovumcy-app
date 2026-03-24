@@ -26,12 +26,37 @@ import {
   encodeSyncSnapshot,
   SYNC_SNAPSHOT_SCHEMA_VERSION,
 } from "./sync-snapshot-service";
+import type { ManagedCloudAPIClient } from "./managed-cloud-api-client";
 
 describe("sync-client-service", () => {
-  it("refuses inline managed account registration before touching the sync endpoint", async () => {
+  it("registers a prepared managed device through ovumcy-managed without touching the sync endpoint", async () => {
     const storage = createLocalAppStorageMock();
-    const secretStore = createSyncSecretStoreMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
     const apiClientFactory = jest.fn();
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+      }),
+    );
 
     const result = await connectSyncAccount(
       storage,
@@ -39,6 +64,8 @@ describe("sync-client-service", () => {
       {
         ...createDefaultSyncPreferencesRecord(),
         mode: "managed",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
       },
       {
         login: "alice@example.com",
@@ -47,13 +74,29 @@ describe("sync-client-service", () => {
       "register",
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
+      managedClientFactory,
     );
 
     expect(result).toEqual({
-      ok: false,
-      errorCode: "managed_inline_auth_disabled",
+      ok: true,
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        syncEnabled: true,
+        premiumActive: true,
+      }),
+      preferences: expect.objectContaining({
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        setupStatus: "connected",
+      }),
     });
     expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(managedClientFactory).toHaveBeenCalledTimes(1);
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: "managed-session-1",
+      }),
+    );
   });
 
   it("connects a prepared device and uploads the wrapped recovery key when supported", async () => {
@@ -260,14 +303,15 @@ describe("sync-client-service", () => {
     );
   });
 
-  it("loads sync capabilities for an already connected session", async () => {
+  it("loads managed sync capabilities from the managed cloud session", async () => {
     const preparedSecrets = createSyncSecretsRecord(
       "Pixel 7",
       new Date("2026-03-20T08:00:00.000Z"),
     );
     const secretStore = createSyncSecretStoreMock({
       ...preparedSecrets.record,
-      authSessionToken: "session-1",
+      authSessionToken: "stale-sync-session",
+      managedAuthSessionToken: "managed-session-1",
     });
     const preferences = {
       ...createDefaultSyncPreferencesRecord(),
@@ -277,27 +321,34 @@ describe("sync-client-service", () => {
       preparedAt: "2026-03-20T08:00:00.000Z",
       deviceLabel: "Pixel 7",
     };
-    const apiClientFactory = jest.fn().mockReturnValue(
-      createAPIClientMock({
-        getCapabilities: jest.fn().mockResolvedValue({
+    const apiClientFactory = jest.fn();
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({
           ok: true,
-          capabilities: {
-            mode: "managed",
-            syncEnabled: true,
-            premiumActive: false,
-            recoverySupported: true,
-            pushSupported: false,
-            portalSupported: false,
-            advancedCloudInsights: false,
-            maxDevices: 5,
-            maxBlobBytes: 1024,
+          session: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: false,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "plan inactive",
+            },
           },
         }),
       }),
     );
 
     await expect(
-      loadConnectedSyncCapabilities(secretStore, preferences, apiClientFactory),
+      loadConnectedSyncCapabilities(
+        secretStore,
+        preferences,
+        apiClientFactory,
+        managedClientFactory,
+      ),
     ).resolves.toEqual({
       ok: true,
       capabilities: expect.objectContaining({
@@ -305,6 +356,13 @@ describe("sync-client-service", () => {
         premiumActive: false,
       }),
     });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: "managed-session-1",
+      }),
+    );
   });
 
   it("restores sync access from a recovery phrase and server-side recovery package", async () => {
@@ -406,10 +464,62 @@ describe("sync-client-service", () => {
     );
   });
 
-  it("refuses managed recovery through the sync endpoint before touching the network", async () => {
+  it("recovers managed sync access through managed auth and a bridge-minted sync session", async () => {
     const storage = createLocalAppStorageMock();
     const secretStore = createSyncSecretStoreMock();
-    const apiClientFactory = jest.fn();
+    const originalSecrets = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getRecoveryKey: jest.fn().mockResolvedValue({
+          ok: true,
+          recoveryKey: originalSecrets.record.wrappedKey,
+        }),
+        attachDevice: jest.fn().mockResolvedValue({
+          ok: true,
+          device: {
+            deviceID: "recovered-device",
+            deviceLabel: "Recovered Pixel",
+            createdAt: "2026-03-20T08:05:00.000Z",
+            lastSeenAt: "2026-03-20T08:05:00.000Z",
+          },
+        }),
+        putRecoveryKey: jest.fn().mockResolvedValue({
+          ok: true,
+          recoveryKey: originalSecrets.record.wrappedKey,
+        }),
+      }),
+    );
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+        createSyncSession: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            sessionToken: "sync-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+      }),
+    );
 
     const result = await recoverSyncAccess(
       storage,
@@ -423,16 +533,31 @@ describe("sync-client-service", () => {
         login: "alice@example.com",
         password: "correct horse battery staple",
       },
-      "test test test test test test test test test test test ball",
+      originalSecrets.recoveryPhrase,
       new Date("2026-03-20T08:05:00.000Z"),
       apiClientFactory,
+      managedClientFactory,
     );
 
     expect(result).toEqual({
-      ok: false,
-      errorCode: "managed_inline_auth_disabled",
+      ok: true,
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        premiumActive: true,
+        recoverySupported: true,
+      }),
+      preferences: expect.objectContaining({
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        setupStatus: "connected",
+      }),
     });
-    expect(apiClientFactory).not.toHaveBeenCalled();
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: "sync-session-1",
+        managedAuthSessionToken: "managed-session-1",
+        masterKeyHex: originalSecrets.record.masterKeyHex,
+      }),
+    );
   });
 
   it("rejects an invalid recovery phrase before attempting network recovery", async () => {
@@ -591,6 +716,60 @@ describe("sync-client-service", () => {
       }),
     );
   });
+
+  it("clears both managed and sync sessions when disconnecting managed cloud access", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "sync-session-1",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      normalizedEndpoint: "https://sync.ovumcy.cloud",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected" as const,
+      preparedAt: "2026-03-20T08:00:00.000Z",
+    };
+    const syncLogout = jest.fn().mockResolvedValue({ ok: true });
+    const managedLogout = jest.fn().mockResolvedValue({ ok: true });
+
+    const result = await disconnectSyncAccount(
+      storage,
+      secretStore,
+      preferences,
+      jest.fn().mockReturnValue(
+        createAPIClientMock({
+          logout: syncLogout,
+        }),
+      ),
+      jest.fn().mockReturnValue(
+        createManagedClientMock({
+          logout: managedLogout,
+        }),
+      ),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      preferences: expect.objectContaining({
+        setupStatus: "local_ready",
+      }),
+    });
+    expect(syncLogout).toHaveBeenCalledWith("sync-session-1");
+    expect(managedLogout).toHaveBeenCalledWith("managed-session-1");
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: null,
+      }),
+    );
+  });
 });
 
 function createAPIClientMock(
@@ -608,4 +787,17 @@ function createAPIClientMock(
     putBlob: jest.fn(),
     ...overrides,
   } as SyncAPIClient;
+}
+
+function createManagedClientMock(
+  overrides: Partial<ManagedCloudAPIClient> = {},
+): ManagedCloudAPIClient {
+  return {
+    register: jest.fn(),
+    login: jest.fn(),
+    getSession: jest.fn(),
+    createSyncSession: jest.fn(),
+    logout: jest.fn(),
+    ...overrides,
+  } as ManagedCloudAPIClient;
 }

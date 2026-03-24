@@ -92,20 +92,22 @@ describe("settings services", () => {
         wrappedMasterKeyHex: "dd",
         phraseFingerprintHex: "ee",
       },
-      authSessionToken: "session-1",
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          mode: "managed",
-          sync_enabled: true,
-          premium_active: false,
-          recovery_supported: true,
-          push_supported: false,
-          portal_supported: false,
-          advanced_cloud_insights: false,
-          max_devices: 5,
-          max_blob_bytes: 1024,
+          account_id: "managed-account-1",
+          email: "alice@example.com",
+          session_expires_at: "2026-03-21T08:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: false,
+            source: "manual",
+            updated_at: "2026-03-20T08:05:00.000Z",
+            effective_at: "2026-03-20T08:05:00.000Z",
+            explanation: "plan inactive",
+          },
         }),
         {
           status: 200,
@@ -156,7 +158,8 @@ describe("settings services", () => {
         wrappedMasterKeyHex: "dd",
         phraseFingerprintHex: "ee",
       },
-      authSessionToken: "expired-session",
+      authSessionToken: "expired-sync-session",
+      managedAuthSessionToken: "expired-managed-session",
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -179,6 +182,7 @@ describe("settings services", () => {
     await expect(secretStore.readSyncSecrets()).resolves.toEqual(
       expect.objectContaining({
         authSessionToken: null,
+        managedAuthSessionToken: null,
       }),
     );
   });
@@ -597,6 +601,7 @@ describe("settings services", () => {
         phraseFingerprintHex: "ee",
       },
       authSessionToken: null,
+      managedAuthSessionToken: null,
     });
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
