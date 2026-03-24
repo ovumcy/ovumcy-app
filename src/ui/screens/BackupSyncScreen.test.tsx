@@ -411,6 +411,35 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });
 
+  it("shows the backup and sync title only once on the dedicated screen", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "not_configured",
+        preparedAt: null,
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={createSyncSecretStoreMock()}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    expect(screen.getAllByText(/backup & sync|резервная копия и sync/i)).toHaveLength(
+      1,
+    );
+  });
+
   it("requires confirmation before recreating local sync keys", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

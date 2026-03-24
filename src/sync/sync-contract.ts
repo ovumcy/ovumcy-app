@@ -9,12 +9,35 @@ const runtimeEnv =
       ).process?.env
     : undefined;
 
+const compileTimeSyncBaseURL =
+  typeof process !== "undefined"
+    ? process.env.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL
+    : undefined;
+const compileTimeManagedBaseURL =
+  typeof process !== "undefined"
+    ? process.env.EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL
+    : undefined;
+
+function resolvePublicBaseURL(
+  compileTimeValue: string | undefined,
+  runtimeKey: "EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL" | "EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL",
+  fallback: string,
+): string {
+  return compileTimeValue?.trim() || runtimeEnv?.[runtimeKey]?.trim() || fallback;
+}
+
 export const MANAGED_SYNC_BASE_URL =
-  runtimeEnv?.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL?.trim() ||
-  "https://sync.ovumcy.cloud";
+  resolvePublicBaseURL(
+    compileTimeSyncBaseURL,
+    "EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL",
+    "https://sync.ovumcy.cloud",
+  );
 export const MANAGED_CLOUD_AUTH_BASE_URL =
-  runtimeEnv?.EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL?.trim() ||
-  "https://managed.ovumcy.cloud";
+  resolvePublicBaseURL(
+    compileTimeManagedBaseURL,
+    "EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL",
+    "https://managed.ovumcy.cloud",
+  );
 
 export const SUPPORTED_SYNC_MODES = ["managed", "self_hosted"] as const;
 export const SUPPORTED_SYNC_SETUP_STATUSES = [

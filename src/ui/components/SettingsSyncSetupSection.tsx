@@ -42,6 +42,7 @@ type SettingsSyncSetupSectionProps = {
   onSyncNow: () => void | Promise<void>;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
+  showCardHeader?: boolean;
   statusMessage: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
@@ -75,6 +76,7 @@ export function SettingsSyncSetupSection({
   onSyncNow,
   preferences,
   recoveryPhraseValue,
+  showCardHeader = true,
   statusMessage,
   syncCapabilities,
   viewData,
@@ -98,9 +100,14 @@ export function SettingsSyncSetupSection({
     preferences.mode === "managed"
       ? selectedModeLabel
       : preferences.endpointInput.trim() || notSetLabel;
+  const shouldShowEndpointSummary = preferences.mode === "self_hosted";
   const actionLabel = hasStoredSyncSecrets
     ? viewData.regenerateLabel
     : viewData.prepareLabel;
+  const localStepTitle = renumberStepTitle(viewData.localStepTitle, 1);
+  const accountStepTitle = renumberStepTitle(viewData.accountStepTitle, 2);
+  const planStepTitle = renumberStepTitle(viewData.planStepTitle, 3);
+  const syncStepTitle = renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3);
 
   let planMessage = viewData.planUnknown;
   if (isManaged && hasSyncSession) {
@@ -115,9 +122,9 @@ export function SettingsSyncSetupSection({
 
   return (
     <FeatureCard
-      description={viewData.subtitle}
+      description={showCardHeader ? viewData.subtitle : undefined}
       testID="settings-sync-section"
-      title={viewData.title}
+      title={showCardHeader ? viewData.title : undefined}
     >
       <View style={styles.stack}>
         <View style={styles.formGroup}>
@@ -192,10 +199,12 @@ export function SettingsSyncSetupSection({
             <Text style={styles.summaryLabel}>{viewData.modeRowLabel}</Text>
             <Text style={styles.summaryValue}>{selectedModeLabel}</Text>
           </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.endpointRowLabel}</Text>
-            <Text style={styles.summaryValue}>{endpointSummary}</Text>
-          </View>
+          {shouldShowEndpointSummary ? (
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryLabel}>{viewData.endpointRowLabel}</Text>
+              <Text style={styles.summaryValue}>{endpointSummary}</Text>
+            </View>
+          ) : null}
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{viewData.encryptionRowLabel}</Text>
             <Text style={styles.summaryValue}>
@@ -231,7 +240,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-local-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{viewData.localStepTitle}</Text>
+            <Text style={styles.stepTitle}>{localStepTitle}</Text>
             <Text style={styles.helperText}>{viewData.localStepHint}</Text>
           </View>
 
@@ -275,7 +284,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-account-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{viewData.accountStepTitle}</Text>
+            <Text style={styles.stepTitle}>{accountStepTitle}</Text>
             <Text style={styles.helperText}>
               {isManaged
                 ? viewData.accountStepHintManaged
@@ -380,7 +389,7 @@ export function SettingsSyncSetupSection({
         {isManaged ? (
           <View style={styles.stepCard} testID="settings-sync-plan-step">
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>{viewData.planStepTitle}</Text>
+              <Text style={styles.stepTitle}>{planStepTitle}</Text>
               <Text style={styles.helperText}>{viewData.planStepHint}</Text>
             </View>
             <StatusBanner
@@ -394,7 +403,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-actions-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{viewData.syncStepTitle}</Text>
+            <Text style={styles.stepTitle}>{syncStepTitle}</Text>
             <Text style={styles.helperText}>
               {isManaged
                 ? viewData.syncStepHintManaged
@@ -457,6 +466,10 @@ function formatLastSync(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed);
+}
+
+function renumberStepTitle(title: string, stepNumber: number): string {
+  return `${stepNumber}. ${title.replace(/^\d+\.\s*/u, "")}`;
 }
 
 const createStyles = (colors: AppThemeColors) =>

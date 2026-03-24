@@ -123,24 +123,24 @@ const settingsCopyEn = {
       "Ovumcy is generating a recovery phrase on this device right now.",
     accountStepTitle: "2. Connect an account",
     accountStepHintManaged:
-      "Ovumcy Cloud account access is provisioned separately from the sync endpoint. This screen does not send cloud login or billing identity directly to sync.ovumcy.cloud.",
+      "Sign in to your Ovumcy Cloud account here. Your health data still syncs separately as an encrypted backup.",
     accountStepHintSelfHosted:
       "Create or sign in to the account on your own sync server.",
     planStepTitle: "3. Cloud plan",
     planStepHint:
-      "Ovumcy Cloud billing and entitlements stay separate from zero-knowledge sync transport. Sync turns on only when the managed account already has an active cloud entitlement.",
+      "Cloud access and billing are checked separately. Sync turns on only after this account has an active Ovumcy Cloud plan.",
     planUnknown:
-      "Managed cloud access is checked after a separate cloud account session has been provisioned.",
+      "Ovumcy is checking whether this cloud account has an active plan.",
     planInactive:
-      "This managed account is signed in, but it does not have an active Ovumcy Cloud entitlement yet.",
+      "This cloud account is signed in, but cloud sync is still locked because no active plan was found.",
     planCheckFailed:
-      "Ovumcy could not confirm this cloud plan right now. Try again later.",
+      "Ovumcy could not confirm this cloud plan right now. Try again in a moment.",
     planUnavailable:
-      "Managed cloud account sign-in, billing, and subscription management are handled outside the sync endpoint in this architecture.",
+      "Your Ovumcy Cloud account and billing stay separate from encrypted sync storage.",
     planActive: "Ovumcy Cloud is active for this account.",
     syncStepTitle: "4. Sync this backup",
     syncStepHintManaged:
-      "Once a managed cloud session grants an active entitlement, you can upload or restore the protected backup here.",
+      "Once this cloud account has an active plan, you can upload or restore the protected backup here.",
     syncStepHintSelfHosted:
       "After you sign in to your own server, you can upload or restore the protected backup here.",
     syncBlockedNoPlan:
@@ -149,7 +149,7 @@ const settingsCopyEn = {
     modeManaged: "Ovumcy Cloud",
     modeSelfHosted: "Self-hosted",
     managedHint:
-      "Ovumcy Cloud is the paid hosted sync service. Self-hosted keeps sync on your own server.",
+      "Ovumcy Cloud stores your encrypted backup on our hosted service. Self-hosted keeps sync on your own server.",
     selfHostedHint:
       "Use a host, IP:port, or full URL. Public http is rejected; localhost and private-network http are allowed.",
     endpointLabel: "Server endpoint",
@@ -159,7 +159,7 @@ const settingsCopyEn = {
     deviceHint:
       "Shown later in connected device lists and encrypted recovery flows.",
     devicePlaceholder: "Pixel 7",
-    stateLabel: "Recovery phrase",
+    stateLabel: "Recovery phrase status",
     stateReady: "This device already has a recovery phrase.",
     stateMissing: "This device does not have a recovery phrase yet.",
     connectionLabel: "Account session",
@@ -169,10 +169,10 @@ const settingsCopyEn = {
     lastSyncNever: "Not synced yet.",
     modeRowLabel: "Destination",
     endpointRowLabel: "Server",
-    encryptionRowLabel: "Recovery phrase",
+    encryptionRowLabel: "Device protection",
     encryptionReady: "Recovery materials are stored only on this device.",
     encryptionMissing: "No recovery phrase has been created on this device yet.",
-    loginLabel: "Account login",
+    loginLabel: "Email or login",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Password",
     passwordPlaceholder: "Enter password",
@@ -491,24 +491,24 @@ const settingsCopyDe: SettingsCopy = {
       "Ovumcy erzeugt gerade auf diesem Gerät eine Recovery Phrase.",
     accountStepTitle: "2. Konto verbinden",
     accountStepHintManaged:
-      "Der Zugriff auf das Ovumcy Cloud-Konto wird getrennt vom Sync-Endpunkt bereitgestellt. Dieser Bildschirm sendet Cloud-Login oder Abrechnungsidentität nicht direkt an sync.ovumcy.cloud.",
+      "Melde dich hier mit deinem Ovumcy-Cloud-Konto an. Deine Gesundheitsdaten werden weiterhin separat als verschlüsseltes Backup synchronisiert.",
     accountStepHintSelfHosted:
       "Erstelle ein Konto auf deinem eigenen Sync-Server oder melde dich dort an.",
     planStepTitle: "3. Cloud-Tarif",
     planStepHint:
-      "Abrechnung und Berechtigungen von Ovumcy Cloud bleiben vom Zero-Knowledge-Sync getrennt. Sync wird erst aktiv, wenn das verwaltete Konto bereits eine aktive Cloud-Berechtigung hat.",
+      "Cloud-Zugriff und Abrechnung werden getrennt geprüft. Sync wird erst aktiviert, wenn dieses Konto einen aktiven Ovumcy-Cloud-Tarif hat.",
     planUnknown:
-      "Der Zugriff auf die verwaltete Cloud wird geprüft, nachdem eine separate Cloud-Sitzung bereitgestellt wurde.",
+      "Ovumcy prüft, ob dieses Cloud-Konto einen aktiven Tarif hat.",
     planInactive:
-      "Dieses verwaltete Konto ist angemeldet, hat aber noch keine aktive Ovumcy Cloud-Berechtigung.",
+      "Dieses Cloud-Konto ist angemeldet, aber Cloud-Sync bleibt gesperrt, weil kein aktiver Tarif gefunden wurde.",
     planCheckFailed:
-      "Ovumcy konnte diesen Cloud-Tarif gerade nicht bestätigen. Versuche es später erneut.",
+      "Ovumcy konnte den Cloud-Tarif gerade nicht bestätigen. Versuche es gleich noch einmal.",
     planUnavailable:
-      "Anmeldung, Abrechnung und Verwaltung des Cloud-Abos laufen in dieser Architektur außerhalb des Sync-Endpunkts.",
+      "Dein Ovumcy-Cloud-Konto und die Abrechnung bleiben vom verschlüsselten Sync-Speicher getrennt.",
     planActive: "Ovumcy Cloud ist für dieses Konto aktiv.",
     syncStepTitle: "4. Dieses Backup synchronisieren",
     syncStepHintManaged:
-      "Sobald eine verwaltete Cloud-Sitzung eine aktive Berechtigung liefert, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
+      "Sobald dieses Cloud-Konto einen aktiven Tarif hat, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
     syncStepHintSelfHosted:
       "Sobald du an deinem eigenen Server angemeldet bist, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
     syncBlockedNoPlan:
@@ -517,7 +517,7 @@ const settingsCopyDe: SettingsCopy = {
     modeManaged: "Ovumcy Cloud",
     modeSelfHosted: "Self-hosted",
     managedHint:
-      "Ovumcy Cloud ist der kostenpflichtige gehostete Sync-Dienst. Self-hosted behält Sync auf deinem eigenen Server.",
+      "Ovumcy Cloud speichert dein verschlüsseltes Backup auf unserem gehosteten Dienst. Self-hosted behält Sync auf deinem eigenen Server.",
     selfHostedHint:
       "Nutze einen Host, IP:Port oder eine vollständige URL. Öffentliches http wird abgelehnt; localhost und privates Netzwerk-http sind erlaubt.",
     endpointLabel: "Server-Endpunkt",
@@ -527,7 +527,7 @@ const settingsCopyDe: SettingsCopy = {
     deviceHint:
       "Wird später in verbundenen Gerätelisten und in verschlüsselten Wiederherstellungsabläufen angezeigt.",
     devicePlaceholder: "Pixel 7",
-    stateLabel: "Recovery Phrase",
+    stateLabel: "Status der Recovery Phrase",
     stateReady: "Dieses Gerät hat bereits eine Recovery Phrase.",
     stateMissing: "Dieses Gerät hat noch keine Recovery Phrase.",
     connectionLabel: "Kontositzung",
@@ -538,12 +538,12 @@ const settingsCopyDe: SettingsCopy = {
     lastSyncNever: "Noch nicht synchronisiert.",
     modeRowLabel: "Ziel",
     endpointRowLabel: "Server",
-    encryptionRowLabel: "Recovery Phrase",
+    encryptionRowLabel: "Geräteschutz",
     encryptionReady:
       "Die Wiederherstellungsdaten werden nur auf diesem Gerät gespeichert.",
     encryptionMissing:
       "Auf diesem Gerät wurde noch keine Recovery Phrase erstellt.",
-    loginLabel: "Konto-Login",
+    loginLabel: "E-Mail oder Login",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Passwort",
     passwordPlaceholder: "Passwort eingeben",
@@ -893,24 +893,24 @@ const settingsCopyFr: SettingsCopy = {
       "Ovumcy génère une recovery phrase sur cet appareil en ce moment.",
     accountStepTitle: "2. Connecter un compte",
     accountStepHintManaged:
-      "L'accès au compte Ovumcy Cloud est provisionné séparément du point de terminaison de sync. Cet écran n'envoie pas directement l'identifiant cloud ou de facturation à sync.ovumcy.cloud.",
+      "Connecte-toi ici à ton compte Ovumcy Cloud. Tes données de santé restent synchronisées séparément sous forme de sauvegarde chiffrée.",
     accountStepHintSelfHosted:
       "Crée ou connecte-toi au compte de ton propre serveur de sync.",
     planStepTitle: "3. Plan cloud",
     planStepHint:
-      "La facturation et les droits Ovumcy Cloud restent séparés du transport zero-knowledge. Le sync ne s'active que lorsque le compte géré dispose déjà d'un droit cloud actif.",
+      "L'accès cloud et la facturation sont vérifiés séparément. Le sync s'active seulement quand ce compte a un plan Ovumcy Cloud actif.",
     planUnknown:
-      "L'accès cloud géré est vérifié après le provisionnement d'une session cloud séparée.",
+      "Ovumcy vérifie si ce compte cloud a un plan actif.",
     planInactive:
-      "Ce compte géré est connecté, mais il n'a pas encore de droit Ovumcy Cloud actif.",
+      "Ce compte cloud est connecté, mais le sync cloud reste bloqué car aucun plan actif n'a été trouvé.",
     planCheckFailed:
-      "Ovumcy n'a pas pu confirmer l'état du plan cloud pour le moment. Réessaie plus tard.",
+      "Ovumcy n'a pas pu confirmer le plan cloud pour le moment. Réessaie dans un instant.",
     planUnavailable:
-      "La connexion cloud gérée, la facturation et la gestion de l'abonnement sont traitées hors du point de terminaison de sync dans cette architecture.",
+      "Ton compte Ovumcy Cloud et la facturation restent séparés du stockage de sync chiffré.",
     planActive: "Ovumcy Cloud est actif pour ce compte.",
     syncStepTitle: "4. Synchroniser cette sauvegarde",
     syncStepHintManaged:
-      "Une fois qu'une session cloud gérée fournit un droit actif, tu pourras téléverser ou restaurer la sauvegarde protégée ici.",
+      "Une fois que ce compte cloud a un plan actif, tu peux téléverser ou restaurer la sauvegarde protégée ici.",
     syncStepHintSelfHosted:
       "Après connexion à ton propre serveur, tu pourras téléverser ou restaurer la sauvegarde protégée ici.",
     syncBlockedNoPlan:
@@ -919,7 +919,7 @@ const settingsCopyFr: SettingsCopy = {
     modeManaged: "Ovumcy Cloud",
     modeSelfHosted: "Self-hosted",
     managedHint:
-      "Ovumcy Cloud est le service de sync hébergé payant. Self-hosted garde le sync sur ton propre serveur.",
+      "Ovumcy Cloud stocke ta sauvegarde chiffrée sur notre service hébergé. Self-hosted garde le sync sur ton propre serveur.",
     selfHostedHint:
       "Utilise un hôte, une IP:port ou une URL complète. Le http public est refusé ; http localhost et réseau privé sont autorisés.",
     endpointLabel: "Point d'accès du serveur",
@@ -929,7 +929,7 @@ const settingsCopyFr: SettingsCopy = {
     deviceHint:
       "Sera affiché plus tard dans les listes d'appareils connectés et les flux de récupération chiffrée.",
     devicePlaceholder: "Pixel 7",
-    stateLabel: "Recovery phrase",
+    stateLabel: "Statut de la recovery phrase",
     stateReady: "Cet appareil a déjà une recovery phrase.",
     stateMissing: "Cet appareil n'a pas encore de recovery phrase.",
     connectionLabel: "Session du compte",
@@ -940,12 +940,12 @@ const settingsCopyFr: SettingsCopy = {
     lastSyncNever: "Pas encore synchronisé.",
     modeRowLabel: "Destination",
     endpointRowLabel: "Serveur",
-    encryptionRowLabel: "Recovery phrase",
+    encryptionRowLabel: "Protection de l'appareil",
     encryptionReady:
       "Les éléments de récupération sont stockés uniquement sur cet appareil.",
     encryptionMissing:
       "Aucune recovery phrase n'a encore été créée sur cet appareil.",
-    loginLabel: "Identifiant du compte",
+    loginLabel: "E-mail ou identifiant",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Mot de passe",
     passwordPlaceholder: "Saisir le mot de passe",
@@ -1294,24 +1294,24 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Ovumcy сейчас создаёт recovery phrase на этом устройстве.",
       accountStepTitle: "2. Подключить аккаунт",
       accountStepHintManaged:
-        "Доступ к аккаунту Ovumcy Cloud выдаётся отдельно от sync-endpoint. Этот экран не отправляет cloud-логин или billing identity напрямую на sync.ovumcy.cloud.",
+        "Войдите здесь в аккаунт Ovumcy Cloud. Данные здоровья всё равно синхронизируются отдельно как зашифрованная копия.",
       accountStepHintSelfHosted:
         "Создайте аккаунт на своём sync-сервере или войдите в уже существующий.",
       planStepTitle: "3. План Ovumcy Cloud",
       planStepHint:
-        "Billing и entitlement для Ovumcy Cloud отделены от zero-knowledge sync transport. Sync включается только когда у managed-аккаунта уже есть активный cloud-entitlement.",
+        "Доступ к cloud и billing проверяются отдельно. Sync включится только когда у этого аккаунта будет активный план Ovumcy Cloud.",
       planUnknown:
-        "Доступ к managed cloud проверяется после выдачи отдельной cloud-session.",
+        "Ovumcy проверяет, есть ли у этого cloud-аккаунта активный план.",
       planInactive:
-        "Managed-аккаунт уже подключён, но активного cloud-entitlement у него пока нет.",
+        "Этот cloud-аккаунт уже подключён, но cloud sync остаётся заблокированным, потому что активный план не найден.",
       planCheckFailed:
-        "Сейчас Ovumcy не смог подтвердить статус cloud-плана. Попробуйте позже.",
+        "Сейчас Ovumcy не смог подтвердить cloud-план. Попробуйте ещё раз через минуту.",
       planUnavailable:
-        "В этой архитектуре вход в managed cloud, billing и управление подпиской вынесены за пределы sync-endpoint.",
+        "Аккаунт Ovumcy Cloud и billing остаются отдельными от зашифрованного sync-хранилища.",
       planActive: "Для этого аккаунта Ovumcy Cloud уже активен.",
       syncStepTitle: "4. Синхронизировать копию",
       syncStepHintManaged:
-        "Когда managed cloud-session даёт активный entitlement, здесь можно отправить или восстановить защищённую копию.",
+        "Когда у этого cloud-аккаунта будет активный план, здесь можно отправить или восстановить защищённую копию.",
       syncStepHintSelfHosted:
         "После входа на свой сервер здесь можно отправить или восстановить защищённую копию.",
       syncBlockedNoPlan:
@@ -1320,7 +1320,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       modeManaged: "Ovumcy Cloud",
       modeSelfHosted: "Self-hosted",
       managedHint:
-        "Ovumcy Cloud — это платный hosted sync. Self-hosted оставляет sync на вашем сервере.",
+        "Ovumcy Cloud хранит вашу зашифрованную копию в нашем hosted-сервисе. Self-hosted оставляет sync на вашем сервере.",
       selfHostedHint:
         "Используйте host, IP:port или полный URL. Публичный http отклоняется; localhost и private-network http разрешены.",
       endpointLabel: "Endpoint сервера",
@@ -1330,7 +1330,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
       devicePlaceholder: "Pixel 7",
-      stateLabel: "Recovery phrase",
+      stateLabel: "Статус recovery phrase",
       stateReady: "На этом устройстве уже есть recovery phrase.",
       stateMissing: "На этом устройстве ещё нет recovery phrase.",
       connectionLabel: "Сессия аккаунта",
@@ -1340,10 +1340,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       lastSyncNever: "Синхронизации ещё не было.",
       modeRowLabel: "Назначение",
       endpointRowLabel: "Сервер",
-      encryptionRowLabel: "Recovery phrase",
+      encryptionRowLabel: "Защита устройства",
       encryptionReady: "Recovery-материалы хранятся только на этом устройстве.",
       encryptionMissing: "Recovery phrase на этом устройстве ещё не создана.",
-      loginLabel: "Логин аккаунта",
+      loginLabel: "Email или логин",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
@@ -1661,24 +1661,24 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Ovumcy está creando una recovery phrase en este dispositivo.",
       accountStepTitle: "2. Conectar una cuenta",
       accountStepHintManaged:
-        "El acceso a la cuenta de Ovumcy Cloud se aprovisiona por separado del endpoint de sync. Esta pantalla no envía directamente la identidad de cloud o facturación a sync.ovumcy.cloud.",
+        "Inicia sesión aquí con tu cuenta de Ovumcy Cloud. Tus datos de salud siguen sincronizándose aparte como copia cifrada.",
       accountStepHintSelfHosted:
         "Crea o inicia sesión en la cuenta de tu propio servidor de sync.",
       planStepTitle: "3. Plan de Ovumcy Cloud",
       planStepHint:
-        "La facturación y los permisos de Ovumcy Cloud permanecen separados del transporte zero-knowledge. El sync solo se activa cuando la cuenta gestionada ya tiene un permiso cloud activo.",
+        "El acceso cloud y la facturación se comprueban por separado. El sync solo se activa cuando esta cuenta tiene un plan activo de Ovumcy Cloud.",
       planUnknown:
-        "El acceso al cloud gestionado se comprueba después de aprovisionar una sesión cloud separada.",
+        "Ovumcy está comprobando si esta cuenta cloud tiene un plan activo.",
       planInactive:
-        "Esta cuenta gestionada ya inició sesión, pero todavía no tiene un permiso activo de Ovumcy Cloud.",
+        "Esta cuenta cloud ha iniciado sesión, pero el sync cloud sigue bloqueado porque no se encontró un plan activo.",
       planCheckFailed:
-        "Ovumcy no pudo confirmar el estado del plan cloud en este momento. Inténtalo más tarde.",
+        "Ovumcy no pudo confirmar el plan cloud en este momento. Vuelve a intentarlo enseguida.",
       planUnavailable:
-        "En esta arquitectura, el inicio de sesión gestionado, la facturación y la gestión de la suscripción ocurren fuera del endpoint de sync.",
+        "Tu cuenta de Ovumcy Cloud y la facturación permanecen separadas del almacenamiento de sync cifrado.",
       planActive: "Ovumcy Cloud está activo para esta cuenta.",
       syncStepTitle: "4. Sincronizar esta copia",
       syncStepHintManaged:
-        "Cuando una sesión cloud gestionada conceda un permiso activo, aquí podrás subir o restaurar la copia protegida.",
+        "Cuando esta cuenta cloud tenga un plan activo, aquí podrás subir o restaurar la copia protegida.",
       syncStepHintSelfHosted:
         "Después de iniciar sesión en tu propio servidor, aquí podrás subir o restaurar la copia protegida.",
       syncBlockedNoPlan:
@@ -1687,7 +1687,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       modeManaged: "Ovumcy Cloud",
       modeSelfHosted: "Self-hosted",
       managedHint:
-        "Ovumcy Cloud es el servicio de sync hospedado de pago. Self-hosted mantiene el sync en tu propio servidor.",
+        "Ovumcy Cloud guarda tu copia cifrada en nuestro servicio hospedado. Self-hosted mantiene el sync en tu propio servidor.",
       selfHostedHint:
         "Usa un host, IP:puerto o URL completa. El http público se rechaza; localhost y redes privadas sí se permiten.",
       endpointLabel: "Endpoint del servidor",
@@ -1697,7 +1697,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Más tarde aparecerá en las listas de dispositivos conectados y en los flujos de recuperación cifrada.",
       devicePlaceholder: "Pixel 7",
-      stateLabel: "Recovery phrase",
+      stateLabel: "Estado de la recovery phrase",
       stateReady: "Este dispositivo ya tiene una recovery phrase.",
       stateMissing: "Este dispositivo todavía no tiene una recovery phrase.",
       connectionLabel: "Sesión de la cuenta",
@@ -1707,10 +1707,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       lastSyncNever: "Todavía no se ha sincronizado.",
       modeRowLabel: "Destino",
       endpointRowLabel: "Servidor",
-      encryptionRowLabel: "Recovery phrase",
+      encryptionRowLabel: "Protección del dispositivo",
       encryptionReady: "Los materiales de recuperación se guardan solo en este dispositivo.",
       encryptionMissing: "Todavía no se ha creado una recovery phrase en este dispositivo.",
-      loginLabel: "Login de la cuenta",
+      loginLabel: "Correo o usuario",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Contraseña",
       passwordPlaceholder: "Introduce la contraseña",

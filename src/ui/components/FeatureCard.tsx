@@ -5,8 +5,8 @@ import type { AppThemeColors } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type FeatureCardProps = PropsWithChildren<{
-  title: string;
-  description?: string;
+  title?: string | undefined;
+  description?: string | undefined;
   testID?: string;
 }>;
 
@@ -17,13 +17,16 @@ export function FeatureCard({
   children,
 }: FeatureCardProps) {
   const styles = useThemedStyles(createStyles);
+  const hasHeader = Boolean(title || description);
 
   return (
     <View style={styles.card} testID={testID}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
-        {description ? <Text style={styles.description}>{description}</Text> : null}
-      </View>
+      {hasHeader ? (
+        <View style={styles.header}>
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {description ? <Text style={styles.description}>{description}</Text> : null}
+        </View>
+      ) : null}
       {children ? <View style={styles.content}>{children}</View> : null}
     </View>
   );

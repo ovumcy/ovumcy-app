@@ -1,7 +1,6 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { getSettingsCopy } from "../src/i18n/settings-copy";
 import { useAppScreenProtection } from "../src/security/app-screen-protection";
 import {
   AppPreferencesProvider,
@@ -17,9 +16,8 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { colors, language } = useAppPreferences();
+  const { colors } = useAppPreferences();
   useAppScreenProtection();
-  const settingsCopy = getSettingsCopy(language);
 
   return (
     <GestureHandlerRootView
@@ -42,7 +40,7 @@ function RootNavigator() {
               headerShadowVisible: false,
               headerStyle: { backgroundColor: colors.background },
               headerTintColor: colors.text,
-              title: settingsCopy.account.title,
+              title: "",
             }}
           />
         </Stack>

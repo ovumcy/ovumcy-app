@@ -37,6 +37,7 @@ type BackupSyncFlowScreenProps = {
   statusMessage: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
+  showStandaloneHeader?: boolean;
 };
 
 export function BackupSyncFlowScreen({
@@ -70,6 +71,7 @@ export function BackupSyncFlowScreen({
   statusMessage,
   syncCapabilities,
   viewData,
+  showStandaloneHeader = true,
 }: BackupSyncFlowScreenProps) {
   return (
     <ScreenScaffold
@@ -104,6 +106,7 @@ export function BackupSyncFlowScreen({
         onSyncNow={onSyncNow}
         preferences={preferences}
         recoveryPhraseValue={recoveryPhraseValue}
+        showCardHeader={!showStandaloneHeader}
         statusMessage={statusMessage}
         syncCapabilities={syncCapabilities}
         viewData={viewData}
