@@ -12,24 +12,42 @@
 
 # Ovumcy App
 
-Ovumcy App is the privacy-first, local-first mobile client for Ovumcy.
-It is built for people who want the same Ovumcy onboarding and tracking model on iOS and Android without requiring an account, sync, or managed hosting for core use.
+Ovumcy App is the local-first mobile client for Ovumcy on iOS and Android.
+It brings Ovumcy's cycle tracking, symptom logging, insights, settings, exports, and backup flows onto the device without making an account, sync, or managed hosting mandatory for core use.
+
+Core health data stays on-device by default.
+Optional sync is designed as encrypted transport, whether the owner connects a self-hosted community server or a managed Ovumcy Cloud account later.
+
+## Product Snapshot
+
+- local-first daily tracking with no account required for core use
+- native encrypted-at-rest storage for privacy-sensitive health data
+- dashboard, calendar, insights, settings, exports, and optional backup flows
+- custom symptom catalog and journal-style day logging
+- optional encrypted backup and sync instead of cloud-first dependence
+
+## Screens
+
+Dark-theme screenshots below were captured from the live Expo app on an Android emulator.
+
+| Today | Calendar | Insights |
+| --- | --- | --- |
+| ![Today screen](docs/readme/dashboard-final-dark.png) | ![Calendar screen](docs/readme/calendar-final-dark.png) | ![Insights screen](docs/readme/insights-final-dark.png) |
+
+| Settings | Backup & sync |
+| --- | --- |
+| ![Settings screen](docs/readme/settings-final-dark.png) | ![Backup and sync screen](docs/readme/backup-sync-final-dark.png) |
+
+## How It Fits Into Ovumcy
+
+- [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) is the canonical self-hosted web product.
+- [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) is the optional self-hosted encrypted sync backend for the app.
+- `ovumcy-app` is the mobile client that keeps the core experience usable even when sync is turned off.
+
+## Current Status
 
 This README describes the current `main` branch.
-The app is now in an early local-first alpha stage: onboarding, settings, dashboard, calendar, stats, custom symptoms, local export, local encrypted-at-rest storage, and optional encrypted sync flows already work on-device. Self-hosted community sync and managed-cloud transport now exist as alpha integrations, while store-billing, broader mobile release discipline, and wider production hardening are still evolving.
-
-The self-hosted web product lives in [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web). The self-hosted community sync backend for the app lives in [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community).
-
-## Why Ovumcy App Exists
-
-The web product proves the Ovumcy model in a self-hosted, privacy-first environment.
-The app exists to bring that same product contract onto devices while keeping core tracking local-first.
-
-Ovumcy App is designed around three constraints:
-
-- health data should stay on the device by default;
-- onboarding, tracking, and predictions must still make sense without sync;
-- future sync must be optional, whether self-hosted by the user or managed later.
+The app is still an early public alpha, but the main local-first slices already work on-device: onboarding, dashboard, calendar, insights, settings, custom symptoms, local export, encrypted-at-rest native storage, and optional backup/sync flows.
 
 ## How Ovumcy App Differs
 
