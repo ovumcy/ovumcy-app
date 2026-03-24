@@ -142,6 +142,25 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
+    expect(byDate.get("2026-03-28")?.accessibilityLabel).toContain("Ovulation");
+    const mayViewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 17),
+      new Date(2026, 4, 1),
+      "2026-05-09",
+    );
+    const mayByDate = new Map(mayViewData.days.map((day) => [day.date, day]));
+    expect(mayByDate.get("2026-05-09")).toEqual(
+      expect.objectContaining({
+        stateKey: "predicted",
+      }),
+    );
+    expect(mayByDate.get("2026-05-23")).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+      }),
+    );
     expect(aprilViewData.legend).toEqual(
       expect.objectContaining({
         guide: expect.any(String),
@@ -289,7 +308,9 @@ describe("calendar-view-service", () => {
       "2026-03-20",
     );
 
-    expect(state.selectedDaySummary.stateSummary.value).toBe("Low probability");
+    expect(state.selectedDaySummary.stateSummary.value).toBe(
+      "Fertility may be starting",
+    );
     expect(state.selectedDaySummary.markerSummary).toEqual({
       label: "Extra markers",
       value: "Logged entry · Intimacy logged",

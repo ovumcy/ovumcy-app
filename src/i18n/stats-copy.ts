@@ -111,7 +111,7 @@ const statsCopyEn = {
 type StatsCopy = WidenLiteral<typeof statsCopyEn>;
 
 const statsCopyDe: StatsCopy = {
-  title: "Insights",
+  title: "Einblicke",
   subtitle:
     "Sieh, wie sich Zykluslänge, Phasen und erfasste Faktoren im Laufe der Zeit verändern.",
   noData: "-",

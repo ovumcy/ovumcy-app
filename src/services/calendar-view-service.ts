@@ -36,6 +36,7 @@ export type CalendarDayStateKey =
   | "ovulation_tentative";
 
 export type CalendarDayCellViewData = {
+  accessibilityLabel: string;
   date: string;
   label: string;
   isCurrentMonth: boolean;
@@ -213,6 +214,18 @@ export function buildCalendarViewData(
     const stateKey = resolveCalendarDayStateKey(date, record, predictionMaps);
 
     days.push({
+      accessibilityLabel: buildCalendarDayAccessibilityLabel(
+        date,
+        stateKey,
+        {
+          hasData,
+          hasSex,
+          isToday: date === todayValue,
+          isPeriod: record?.isPeriod === true,
+        },
+        calendarCopy,
+        locale,
+      ),
       date,
       label: String(cursor.getDate()),
       isCurrentMonth: cursor.getMonth() === monthStart.getMonth(),
@@ -355,6 +368,39 @@ function buildCalendarMarkerSummary(
   };
 }
 
+function buildCalendarDayAccessibilityLabel(
+  date: string,
+  stateKey: CalendarDayStateKey,
+  flags: {
+    hasData: boolean;
+    hasSex: boolean;
+    isToday: boolean;
+    isPeriod: boolean;
+  },
+  calendarCopy: ReturnType<typeof getCalendarCopy>,
+  locale: string,
+): string {
+  const parts = [formatCalendarAccessibilityDate(date, locale)];
+  const stateValue = resolveCalendarStateValue(
+    stateKey,
+    flags.isPeriod,
+    flags.hasData,
+    calendarCopy,
+  );
+
+  if (stateValue) {
+    parts.push(stateValue);
+  }
+  if (flags.hasSex) {
+    parts.push(calendarCopy.legend.sexLogged);
+  }
+  if (flags.isToday) {
+    parts.push(calendarCopy.legend.today);
+  }
+
+  return parts.join(". ");
+}
+
 function buildCalendarStateSummary(
   day: CalendarDayCellViewData | null,
   calendarCopy: ReturnType<typeof getCalendarCopy>,
@@ -367,67 +413,17 @@ function buildCalendarStateSummary(
     };
   }
 
-  if (day.isPeriod) {
+  const stateValue = resolveCalendarStateValue(
+    day.stateKey,
+    day.isPeriod,
+    day.hasData,
+    calendarCopy,
+  );
+  if (stateValue) {
     return {
-      hint: calendarCopy.stateHints.recordedPeriod,
+      hint: resolveCalendarStateHint(day.stateKey, day.isPeriod, day.hasData, calendarCopy),
       label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.recordedPeriod,
-    };
-  }
-
-  if (day.stateKey === "predicted") {
-    return {
-      hint: calendarCopy.stateHints.predictedPeriod,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.predictedPeriod,
-    };
-  }
-
-  if (day.stateKey === "pre_fertile") {
-    return {
-      hint: calendarCopy.stateHints.lowProbability,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.lowProbability,
-    };
-  }
-
-  if (day.stateKey === "fertility_edge") {
-    return {
-      hint: calendarCopy.stateHints.fertilityEdge,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.fertilityEdge,
-    };
-  }
-
-  if (day.stateKey === "fertility_peak") {
-    return {
-      hint: calendarCopy.stateHints.fertilityPeak,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.fertilityPeak,
-    };
-  }
-
-  if (day.stateKey === "ovulation") {
-    return {
-      hint: calendarCopy.stateHints.ovulation,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.ovulation,
-    };
-  }
-
-  if (day.stateKey === "ovulation_tentative") {
-    return {
-      hint: calendarCopy.stateHints.ovulationTentative,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.ovulationTentative,
-    };
-  }
-
-  if (day.hasData) {
-    return {
-      hint: calendarCopy.stateHints.loggedEntry,
-      label: calendarCopy.calendarMeaning,
-      value: calendarCopy.legend.loggedEntry,
+      value: stateValue,
     };
   }
 
@@ -436,6 +432,101 @@ function buildCalendarStateSummary(
     label: calendarCopy.calendarMeaning,
     value: calendarCopy.noData,
   };
+}
+
+function resolveCalendarStateValue(
+  stateKey: CalendarDayStateKey,
+  isPeriod: boolean,
+  hasData: boolean,
+  calendarCopy: ReturnType<typeof getCalendarCopy>,
+): string | null {
+  if (isPeriod) {
+    return calendarCopy.legend.recordedPeriod;
+  }
+
+  if (stateKey === "predicted") {
+    return calendarCopy.legend.predictedPeriod;
+  }
+
+  if (stateKey === "pre_fertile") {
+    return calendarCopy.legend.lowProbability;
+  }
+
+  if (stateKey === "fertility_edge") {
+    return calendarCopy.legend.fertilityEdge;
+  }
+
+  if (stateKey === "fertility_peak") {
+    return calendarCopy.legend.fertilityPeak;
+  }
+
+  if (stateKey === "ovulation") {
+    return calendarCopy.legend.ovulation;
+  }
+
+  if (stateKey === "ovulation_tentative") {
+    return calendarCopy.legend.ovulationTentative;
+  }
+
+  if (hasData) {
+    return calendarCopy.legend.loggedEntry;
+  }
+
+  return null;
+}
+
+function resolveCalendarStateHint(
+  stateKey: CalendarDayStateKey,
+  isPeriod: boolean,
+  hasData: boolean,
+  calendarCopy: ReturnType<typeof getCalendarCopy>,
+): string {
+  if (isPeriod) {
+    return calendarCopy.stateHints.recordedPeriod;
+  }
+
+  if (stateKey === "predicted") {
+    return calendarCopy.stateHints.predictedPeriod;
+  }
+
+  if (stateKey === "pre_fertile") {
+    return calendarCopy.stateHints.lowProbability;
+  }
+
+  if (stateKey === "fertility_edge") {
+    return calendarCopy.stateHints.fertilityEdge;
+  }
+
+  if (stateKey === "fertility_peak") {
+    return calendarCopy.stateHints.fertilityPeak;
+  }
+
+  if (stateKey === "ovulation") {
+    return calendarCopy.stateHints.ovulation;
+  }
+
+  if (stateKey === "ovulation_tentative") {
+    return calendarCopy.stateHints.ovulationTentative;
+  }
+
+  if (hasData) {
+    return calendarCopy.stateHints.loggedEntry;
+  }
+
+  return calendarCopy.stateHints.neutral;
+}
+
+function formatCalendarAccessibilityDate(value: string, locale: string): string {
+  const parsed = parseLocalDate(value);
+  if (!parsed) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+  }).format(parsed);
 }
 
 function resolveCalendarDayStateKey(

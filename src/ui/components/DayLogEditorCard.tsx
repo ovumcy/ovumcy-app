@@ -3,7 +3,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
   type LayoutChangeEvent,
 } from "react-native";
@@ -11,6 +10,7 @@ import {
 import type { DayLogRecord } from "../../models/day-log";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
 import { AppButton } from "./AppButton";
+import { AppTextInput } from "./AppTextInput";
 import { BinaryToggleCard } from "./BinaryToggleCard";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
@@ -209,7 +209,7 @@ export function DayLogEditorCard({
             <View onLayout={handleSectionLayout("bbt")} style={styles.section}>
               <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
-              <TextInput
+              <AppTextInput
                 inputMode="decimal"
                 onChangeText={(value) => {
                   const normalized = value.replace(",", ".").trim();
@@ -263,7 +263,7 @@ export function DayLogEditorCard({
             <View onLayout={handleSectionLayout("bbt")} style={styles.section}>
               <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
-              <TextInput
+              <AppTextInput
                 inputMode="decimal"
                 onChangeText={(value) => {
                   const normalized = value.replace(",", ".").trim();
@@ -299,7 +299,7 @@ export function DayLogEditorCard({
         {isNotesOpen ? (
           <View style={styles.notesSection}>
             <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
-            <TextInput
+            <AppTextInput
               multiline
               onChangeText={(value) => onPatch({ notes: value })}
               placeholder={viewData.labels.notesPlaceholder}

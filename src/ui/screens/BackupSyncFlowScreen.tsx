@@ -1,5 +1,6 @@
 import type { SettingsViewData } from "../../services/settings-view-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
+import { InlineBackButton } from "../components/InlineBackButton";
 import { SettingsSyncSetupSection } from "../components/SettingsSyncSetupSection";
 import type {
   SyncCapabilityDocument,
@@ -37,6 +38,8 @@ type BackupSyncFlowScreenProps = {
   statusMessage: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
+  backLabel?: string;
+  onBack?: (() => void | Promise<void>) | undefined;
   showStandaloneHeader?: boolean;
 };
 
@@ -71,11 +74,22 @@ export function BackupSyncFlowScreen({
   statusMessage,
   syncCapabilities,
   viewData,
+  backLabel,
+  onBack,
   showStandaloneHeader = true,
 }: BackupSyncFlowScreenProps) {
   return (
     <ScreenScaffold
       description={viewData.subtitle}
+      topAccessory={
+        showStandaloneHeader && onBack && backLabel ? (
+          <InlineBackButton
+            label={backLabel}
+            onPress={onBack}
+            testID="backup-sync-back-button"
+          />
+        ) : undefined
+      }
       title={viewData.title}
     >
       <SettingsSyncSetupSection

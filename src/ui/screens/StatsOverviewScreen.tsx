@@ -46,7 +46,9 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>{viewData.title}</Text>
+            <Text style={styles.headerTitle} testID="stats-screen-title">
+              {viewData.title}
+            </Text>
             <Text style={styles.headerDescription}>{viewData.description}</Text>
           </View>
 

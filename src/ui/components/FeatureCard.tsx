@@ -53,6 +53,7 @@ const createStyles = (colors: AppThemeColors) =>
     color: colors.text,
     fontSize: 17,
     fontWeight: "700",
+    lineHeight: 24,
   },
   description: {
     color: colors.textMuted,

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
@@ -8,6 +8,7 @@ import type {
   SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
+import { AppTextInput } from "./AppTextInput";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
@@ -220,7 +221,7 @@ function SymptomEditorCard({
 
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{nameLabel}</Text>
-        <TextInput
+        <AppTextInput
           autoCapitalize="sentences"
           autoCorrect={false}
           onChangeText={(value) => onDraftChange({ label: value })}

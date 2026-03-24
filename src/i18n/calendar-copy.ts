@@ -18,13 +18,13 @@ const calendarCopyEn = {
     "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
   predictionModeUnpredictable:
     "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
-  calendarMeaning: "What the color shows",
+  calendarMeaning: "What this day means",
   calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
   periodDayNo: "No",
   noData: "-",
   legendGuide:
-    "Color shows the day type. Dots, dashes, and the heart show your saved markers.",
+    "The cell style shows the day type. Your saved markers appear as a dot, a dash, or a heart.",
   stateHints: {
     neutral: "No recorded or predicted event is attached to this day yet.",
     recordedPeriod:
@@ -32,24 +32,25 @@ const calendarCopyEn = {
     predictedPeriod:
       "This lighter range is predicted from your cycle settings and recorded history.",
     lowProbability:
-      "This sits near the predicted fertile window, but with lower probability than the peak days.",
-    fertilityEdge: "This day sits on the edge of the predicted fertile window.",
-    fertilityPeak: "This day is inside the highest-fertility part of the predicted window.",
+      "This is the early part of the predicted fertile window.",
+    fertilityEdge: "This day sits inside the likely fertile window.",
+    fertilityPeak:
+      "This day sits inside the highest-likelihood part of the fertile window.",
     ovulation: "This is the predicted ovulation day based on the current cycle model.",
     ovulationTentative:
       "This is an estimated ovulation day without temperature confirmation.",
     loggedEntry: "You already saved a local entry for this day.",
   },
   legend: {
-    meaningTitle: "By color",
+    meaningTitle: "Day styles",
     markersTitle: "Your markers",
-    recordedPeriod: "Recorded period",
+    recordedPeriod: "Logged period",
     predictedPeriod: "Predicted period",
-    lowProbability: "Low probability",
-    fertilityEdge: "Fertility edge",
+    lowProbability: "Fertility may be starting",
+    fertilityEdge: "Higher fertility",
     fertilityPeak: "Peak fertility",
-    ovulation: "Ovulation",
-    ovulationTentative: "Estimated ovulation, no thermal shift",
+    ovulation: "Ovulation day",
+    ovulationTentative: "Estimated ovulation",
     loggedEntry: "Logged entry",
     sexLogged: "Intimacy logged",
     today: "Today",
@@ -74,13 +75,13 @@ const calendarCopyDe: CalendarCopy = {
     "Der Modus für unregelmäßige Zyklen ist aktiv. Ovumcy zeigt hier weiterhin Vorhersagen an, aber sie sollten als ungefähre Orientierung und nicht als exakte Daten gelesen werden.",
   predictionModeUnpredictable:
     "Der unvorhersagbare Zyklusmodus ist aktiv. Kalender-Vorhersagen sind ausgeschaltet, daher zeigt dieser Bildschirm nur erfasste Fakten und gespeicherte Marker.",
-  calendarMeaning: "Was die Farbe zeigt",
+  calendarMeaning: "Was dieser Tag bedeutet",
   calendarMarkers: "Zusätzliche Marker",
   periodDayYes: "Ja",
   periodDayNo: "Nein",
   noData: "-",
   legendGuide:
-    "Die Farbe zeigt den Tagestyp. Punkte, Striche und das Herz zeigen deine gespeicherten Marker.",
+    "Der Zellstil zeigt den Tagestyp. Deine gespeicherten Marker erscheinen als Punkt, Strich oder Herz.",
   stateHints: {
     neutral: "Diesem Tag ist noch kein erfasstes oder vorhergesagtes Ereignis zugeordnet.",
     recordedPeriod:
@@ -88,11 +89,10 @@ const calendarCopyDe: CalendarCopy = {
     predictedPeriod:
       "Dieser hellere Bereich wird aus deinen Zykluseinstellungen und deinem Verlauf vorhergesagt.",
     lowProbability:
-      "Dieser Tag liegt in der Nähe des vorhergesagten fruchtbaren Fensters, aber mit geringerer Wahrscheinlichkeit als die Spitzentage.",
-    fertilityEdge:
-      "Dieser Tag liegt am Rand des vorhergesagten fruchtbaren Fensters.",
+      "Dies ist der frühe Teil des vorhergesagten fruchtbaren Fensters.",
+    fertilityEdge: "Dieser Tag liegt im wahrscheinlichen fruchtbaren Fenster.",
     fertilityPeak:
-      "Dieser Tag liegt im fruchtbarsten Teil des vorhergesagten Fensters.",
+      "Dieser Tag liegt im Teil des fruchtbaren Fensters mit der höchsten Wahrscheinlichkeit.",
     ovulation:
       "Dies ist der vorhergesagte Eisprungtag auf Basis des aktuellen Zyklusmodells.",
     ovulationTentative:
@@ -100,15 +100,15 @@ const calendarCopyDe: CalendarCopy = {
     loggedEntry: "Für diesen Tag ist bereits ein lokaler Eintrag gespeichert.",
   },
   legend: {
-    meaningTitle: "Nach Farbe",
+    meaningTitle: "Tagesstile",
     markersTitle: "Deine Marker",
     recordedPeriod: "Erfasste Periode",
     predictedPeriod: "Vorhergesagte Periode",
-    lowProbability: "Niedrige Wahrscheinlichkeit",
-    fertilityEdge: "Rand des fruchtbaren Fensters",
+    lowProbability: "Fruchtbarkeit beginnt vielleicht",
+    fertilityEdge: "Höhere Fruchtbarkeit",
     fertilityPeak: "Höchste Fruchtbarkeit",
-    ovulation: "Eisprung",
-    ovulationTentative: "Geschätzter Eisprung ohne Temperaturanstieg",
+    ovulation: "Eisprungtag",
+    ovulationTentative: "Geschätzter Eisprung",
     loggedEntry: "Eintrag gespeichert",
     sexLogged: "Intimität erfasst",
     today: "Heute",
@@ -131,13 +131,13 @@ const calendarCopyFr: CalendarCopy = {
     "Le mode cycle irrégulier est activé. Ovumcy affiche encore des prédictions ici, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   predictionModeUnpredictable:
     "Le mode cycle imprévisible est activé. Les prédictions du calendrier sont désactivées, donc cet écran n'affiche que les faits enregistrés et les marqueurs sauvegardés.",
-  calendarMeaning: "Ce que montre la couleur",
+  calendarMeaning: "Ce que signifie ce jour",
   calendarMarkers: "Marqueurs supplémentaires",
   periodDayYes: "Oui",
   periodDayNo: "Non",
   noData: "-",
   legendGuide:
-    "La couleur montre le type de journée. Les points, les tirets et le cœur montrent tes marqueurs enregistrés.",
+    "Le style de la case montre le type de jour. Tes marqueurs enregistrés apparaissent sous forme de point, tiret ou cœur.",
   stateHints: {
     neutral:
       "Aucun événement enregistré ou prédit n'est encore associé à cette journée.",
@@ -146,11 +146,11 @@ const calendarCopyFr: CalendarCopy = {
     predictedPeriod:
       "Cette zone plus claire est prédite à partir de tes réglages de cycle et de ton historique.",
     lowProbability:
-      "Cette journée se situe près de la fenêtre fertile prédite, mais avec une probabilité plus faible que les jours de pic.",
+      "C'est le début de la fenêtre fertile prédite.",
     fertilityEdge:
-      "Cette journée se situe au bord de la fenêtre fertile prédite.",
+      "Cette journée se situe dans la fenêtre fertile la plus probable.",
     fertilityPeak:
-      "Cette journée se situe dans la partie la plus fertile de la fenêtre prédite.",
+      "Cette journée se situe dans la partie la plus probable de la fenêtre fertile.",
     ovulation:
       "C'est le jour d'ovulation prédit selon le modèle actuel du cycle.",
     ovulationTentative:
@@ -158,15 +158,15 @@ const calendarCopyFr: CalendarCopy = {
     loggedEntry: "Tu as déjà enregistré une entrée locale pour cette journée.",
   },
   legend: {
-    meaningTitle: "Par couleur",
+    meaningTitle: "Styles de jour",
     markersTitle: "Tes marqueurs",
     recordedPeriod: "Règles enregistrées",
     predictedPeriod: "Règles prévues",
-    lowProbability: "Probabilité faible",
-    fertilityEdge: "Bord fertile",
+    lowProbability: "La fertilité peut commencer",
+    fertilityEdge: "Fertilité plus élevée",
     fertilityPeak: "Pic de fertilité",
-    ovulation: "Ovulation",
-    ovulationTentative: "Ovulation estimée sans décalage thermique",
+    ovulation: "Jour d'ovulation",
+    ovulationTentative: "Ovulation estimée",
     loggedEntry: "Entrée enregistrée",
     sexLogged: "Intimité enregistrée",
     today: "Aujourd'hui",
@@ -191,13 +191,13 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
     predictionModeUnpredictable:
       "Включён непредсказуемый режим цикла. Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
-    calendarMeaning: "Что показывает цвет",
+    calendarMeaning: "Что означает этот день",
     calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
     periodDayNo: "Нет",
     noData: "-",
     legendGuide:
-      "Цвет показывает тип дня. Точка, штрих и сердечко — ваши сохранённые отметки.",
+      "Стиль ячейки показывает тип дня. Сохранённые отметки отображаются точкой, штрихом или сердечком.",
     stateHints: {
       neutral: "Для этого дня пока нет ни записи, ни предсказанного события.",
       recordedPeriod:
@@ -205,24 +205,25 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       predictedPeriod:
         "Этот более светлый диапазон предсказан по настройкам цикла и вашей истории.",
       lowProbability:
-        "День находится рядом с предсказанным фертильным окном, но вероятность ниже, чем у пиковых дней.",
-      fertilityEdge: "Этот день находится на краю предсказанного фертильного окна.",
-      fertilityPeak: "Этот день входит в самую фертильную часть предсказанного окна.",
+        "Это ранняя часть предсказанного фертильного окна.",
+      fertilityEdge: "Этот день находится внутри вероятного фертильного окна.",
+      fertilityPeak:
+        "Этот день находится в части фертильного окна с самой высокой вероятностью.",
       ovulation: "Это предсказанный день овуляции по текущей модели цикла.",
       ovulationTentative:
         "Это предполагаемый день овуляции без подтверждения по температуре.",
       loggedEntry: "Для этого дня уже сохранена локальная запись.",
     },
     legend: {
-      meaningTitle: "По цвету",
+      meaningTitle: "Стили дней",
       markersTitle: "Ваши отметки",
       recordedPeriod: "Отмеченная менструация",
       predictedPeriod: "Предсказанная менструация",
-      lowProbability: "Низкая вероятность",
-      fertilityEdge: "Край фертильного окна",
+      lowProbability: "Фертильность может начинаться",
+      fertilityEdge: "Более высокая фертильность",
       fertilityPeak: "Пик фертильности",
-      ovulation: "Овуляция",
-      ovulationTentative: "Предполагаемая овуляция без термосдвига",
+      ovulation: "День овуляции",
+      ovulationTentative: "Предполагаемая овуляция",
       loggedEntry: "Есть запись",
       sexLogged: "Отмечена близость",
       today: "Сегодня",
@@ -244,13 +245,13 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",
     predictionModeUnpredictable:
       "El modo de ciclo impredecible está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
-    calendarMeaning: "Qué muestra el color",
+    calendarMeaning: "Qué significa este día",
     calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",
     periodDayNo: "No",
     noData: "-",
     legendGuide:
-      "El color muestra el tipo de día. Los puntos, la raya y el corazón muestran tus marcadores guardados.",
+      "El estilo de la celda muestra el tipo de día. Tus marcadores guardados aparecen como un punto, una raya o un corazón.",
     stateHints: {
       neutral: "Todavía no hay un evento registrado ni previsto para este día.",
       recordedPeriod:
@@ -258,9 +259,10 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       predictedPeriod:
         "Este rango más claro se predice a partir de tus ajustes del ciclo y del historial guardado.",
       lowProbability:
-        "Este día queda cerca de la ventana fértil prevista, pero con menor probabilidad que los días pico.",
-      fertilityEdge: "Este día está en el borde de la ventana fértil prevista.",
-      fertilityPeak: "Este día cae en la parte más fértil de la ventana prevista.",
+        "Esta es la parte inicial de la ventana fértil prevista.",
+      fertilityEdge: "Este día está dentro de la parte probable de la ventana fértil.",
+      fertilityPeak:
+        "Este día está dentro de la parte con mayor probabilidad de la ventana fértil.",
       ovulation:
         "Este es el día de ovulación previsto según el modelo actual del ciclo.",
       ovulationTentative:
@@ -268,15 +270,15 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       loggedEntry: "Ya guardaste un registro local para este día.",
     },
     legend: {
-      meaningTitle: "Por color",
+      meaningTitle: "Estilos de día",
       markersTitle: "Tus marcadores",
       recordedPeriod: "Período registrado",
       predictedPeriod: "Período previsto",
-      lowProbability: "Probabilidad baja",
-      fertilityEdge: "Borde fértil",
+      lowProbability: "La fertilidad puede estar empezando",
+      fertilityEdge: "Mayor fertilidad",
       fertilityPeak: "Pico fértil",
-      ovulation: "Ovulación",
-      ovulationTentative: "Ovulación estimada sin cambio térmico",
+      ovulation: "Día de ovulación",
+      ovulationTentative: "Ovulación estimada",
       loggedEntry: "Registro guardado",
       sexLogged: "Intimidad registrada",
       today: "Hoy",

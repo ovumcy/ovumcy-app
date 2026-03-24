@@ -33,16 +33,7 @@ function RootNavigator() {
           <Stack.Screen name="index" />
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen
-            name="backup-sync"
-            options={{
-              headerShown: true,
-              headerShadowVisible: false,
-              headerStyle: { backgroundColor: colors.background },
-              headerTintColor: colors.text,
-              title: "",
-            }}
-          />
+          <Stack.Screen name="backup-sync" />
         </Stack>
       </View>
     </GestureHandlerRootView>

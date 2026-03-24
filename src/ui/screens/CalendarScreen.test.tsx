@@ -78,6 +78,61 @@ describe("CalendarScreen", () => {
     );
   });
 
+  it("shows the web-style calendar legend without cryptic cell codes", async () => {
+    const storage = createStorageMock();
+    storage.readProfileRecord = jest.fn().mockResolvedValue({
+      lastPeriodStart: "2026-03-14",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+    storage.listDayLogRecordsInRange = jest.fn().mockResolvedValue([
+      {
+        ...createEmptyDayLogRecord("2026-01-17"),
+        isPeriod: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-02-14"),
+        isPeriod: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-14"),
+        isPeriod: true,
+      },
+    ]);
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("calendar-prev-button");
+
+    expect(screen.queryByTestId("calendar-state-badge-2026-03-24")).toBeNull();
+    expect(screen.getByText(/Logged period|Отмеченная менструация/)).toBeTruthy();
+    expect(
+      screen.getByText(/Predicted period|Предсказанная менструация/),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText(/Fertility may be starting|Фертильность может начинаться/)
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Higher fertility|Более высокая фертильность/).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Ovulation day|День овуляции/).length).toBeGreaterThan(
+      0,
+    );
+  });
+
   it("shows custom symptoms in the selected-day editor and keeps archived selected symptoms visible", async () => {
     const storage = createStorageMock();
     storage.readDayLogRecord = jest.fn().mockImplementation(async (date: string) => {

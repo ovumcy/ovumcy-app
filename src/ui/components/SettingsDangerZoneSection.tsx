@@ -1,11 +1,12 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import type { SettingsViewData } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
+import { AppTextInput } from "./AppTextInput";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
-import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsDangerZoneSectionProps = {
   confirmationValue: string;
@@ -26,7 +27,6 @@ export function SettingsDangerZoneSection({
   statusMessage,
   viewData,
 }: SettingsDangerZoneSectionProps) {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
 
   return (
@@ -44,12 +44,11 @@ export function SettingsDangerZoneSection({
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{viewData.confirmationLabel}</Text>
-          <TextInput
+          <AppTextInput
             autoCapitalize="characters"
             autoCorrect={false}
             onChangeText={onChangeConfirmationValue}
             placeholder={viewData.confirmationPlaceholder}
-            placeholderTextColor={colors.textMuted}
             style={styles.input}
             testID="settings-clear-data-confirmation-input"
             value={confirmationValue}

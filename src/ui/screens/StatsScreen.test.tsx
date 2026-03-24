@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
+import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
 import { StatsScreen } from "./StatsScreen";
 
 const mockUseEffect = React.useEffect;
@@ -48,71 +49,80 @@ function createStorageMock(overrides = {}) {
 
 describe("StatsScreen", () => {
   it("renders the empty-state hero until two completed cycles exist", async () => {
+    const storage = createStorageMock();
+
     render(
-      <StatsScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock()}
-      />,
+      <AppPreferencesProvider storage={storage}>
+        <StatsScreen
+          now={new Date(2026, 2, 17)}
+          storage={storage}
+        />
+      </AppPreferencesProvider>,
     );
 
     await screen.findByTestId("stats-empty-hero");
     expect(screen.getByTestId("stats-empty-hero")).toBeTruthy();
+    expect(screen.getByTestId("stats-screen-title").props.children).toBe("Insights");
   });
 
   it("renders stats v2 sections after local history is available", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-01-17",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: true,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: true,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-01-17"),
+          isPeriod: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-01-18"),
+          symptomIDs: ["cramps"],
+          mood: 2,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-14"),
+          isPeriod: true,
+          cycleFactorKeys: ["stress"],
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-15"),
+          symptomIDs: ["cramps"],
+          mood: 4,
+          cycleFactorKeys: ["travel"],
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-14"),
+          isPeriod: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-15"),
+          bbt: 36.48,
+          symptomIDs: ["headache"],
+        },
+      ]),
+    });
+
     render(
-      <StatsScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock({
-          readProfileRecord: jest.fn().mockResolvedValue({
-            lastPeriodStart: "2026-01-17",
-            cycleLength: 28,
-            periodLength: 5,
-            autoPeriodFill: true,
-            irregularCycle: true,
-            unpredictableCycle: false,
-            ageGroup: "",
-            usageGoal: "health",
-            trackBBT: true,
-            temperatureUnit: "c",
-            trackCervicalMucus: false,
-            hideSexChip: false,
-            languageOverride: "en",
-            themeOverride: "light",
-          }),
-          listDayLogRecordsInRange: jest.fn().mockResolvedValue([
-            {
-              ...createEmptyDayLogRecord("2026-01-17"),
-              isPeriod: true,
-            },
-            {
-              ...createEmptyDayLogRecord("2026-01-18"),
-              symptomIDs: ["cramps"],
-              mood: 2,
-            },
-            {
-              ...createEmptyDayLogRecord("2026-02-14"),
-              isPeriod: true,
-              cycleFactorKeys: ["stress"],
-            },
-            {
-              ...createEmptyDayLogRecord("2026-02-15"),
-              symptomIDs: ["cramps"],
-              mood: 4,
-              cycleFactorKeys: ["travel"],
-            },
-            {
-              ...createEmptyDayLogRecord("2026-03-14"),
-              isPeriod: true,
-            },
-            {
-              ...createEmptyDayLogRecord("2026-03-15"),
-              bbt: 36.48,
-              symptomIDs: ["headache"],
-            },
-          ]),
-        })}
-      />,
+      <AppPreferencesProvider storage={storage}>
+        <StatsScreen
+          now={new Date(2026, 2, 17)}
+          storage={storage}
+        />
+      </AppPreferencesProvider>,
     );
 
     await screen.findByTestId("stats-trend-section");

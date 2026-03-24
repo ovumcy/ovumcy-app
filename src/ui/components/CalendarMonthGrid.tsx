@@ -57,7 +57,9 @@ export function CalendarMonthGrid({
         {days.map((day) => (
           <Pressable
             key={day.date}
+            accessibilityLabel={day.accessibilityLabel}
             accessibilityRole="button"
+            accessibilityState={{ selected: day.isSelected }}
             onPress={() => onSelectDay(day)}
             style={[
               styles.cell,
@@ -197,9 +199,11 @@ const createStyles = (colors: AppThemeColors) =>
     cellFertilityPeak: {
       backgroundColor: colors.calendarFertilityPeakBg,
       borderColor: colors.calendarFertilityPeakBorder,
+      borderWidth: 2,
     },
     cellOvulation: {
       borderColor: colors.calendarFertilityPeakBorder,
+      borderWidth: 2,
     },
     cellOvulationTentative: {
       backgroundColor: colors.calendarTentativeBg,

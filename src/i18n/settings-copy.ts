@@ -115,6 +115,7 @@ const settingsCopyEn = {
     hubSubtitle:
       "Open recovery phrase, account connection, cloud plan, and sync actions on a separate screen.",
     openHubLabel: "Open backup & sync",
+    backToSettingsLabel: "Back to settings",
     localStepTitle: "1. Protect this device",
     localStepHint:
       "Create a recovery phrase on this device. Keep it offline in case you ever need to restore your data.",
@@ -483,6 +484,7 @@ const settingsCopyDe: SettingsCopy = {
     hubSubtitle:
       "Öffne Recovery Phrase, Kontoverbindung, Cloud-Tarif und Sync-Aktionen auf einem separaten Bildschirm.",
     openHubLabel: "Backup & Sync öffnen",
+    backToSettingsLabel: "Zurück zu den Einstellungen",
     localStepTitle: "1. Dieses Gerät schützen",
     localStepHint:
       "Erstelle auf diesem Gerät eine Recovery Phrase. Bewahre sie offline auf, falls du deine Daten jemals wiederherstellen musst.",
@@ -885,6 +887,7 @@ const settingsCopyFr: SettingsCopy = {
     hubSubtitle:
       "Ouvre un écran séparé pour la recovery phrase, la connexion du compte, le plan cloud et les actions de sync.",
     openHubLabel: "Ouvrir sauvegarde et sync",
+    backToSettingsLabel: "Retour aux réglages",
     localStepTitle: "1. Protéger cet appareil",
     localStepHint:
       "Crée une recovery phrase sur cet appareil. Garde-la hors ligne au cas où tu aurais besoin de restaurer tes données.",
@@ -1286,6 +1289,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hubSubtitle:
         "Откройте отдельный экран, чтобы увидеть recovery phrase, подключение аккаунта, cloud-план и действия sync.",
       openHubLabel: "Открыть резервную копию и sync",
+      backToSettingsLabel: "Назад в настройки",
       localStepTitle: "1. Защитить это устройство",
       localStepHint:
         "Создайте recovery phrase на этом устройстве. Храните её офлайн на случай восстановления данных.",
@@ -1653,6 +1657,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hubSubtitle:
         "Abre una pantalla separada para ver la recovery phrase, la conexión de la cuenta, el plan cloud y las acciones de sync.",
       openHubLabel: "Abrir copia y sync",
+      backToSettingsLabel: "Volver a ajustes",
       localStepTitle: "1. Proteger este dispositivo",
       localStepHint:
         "Crea una recovery phrase en este dispositivo. Guárdala fuera de línea por si alguna vez necesitas restaurar tus datos.",

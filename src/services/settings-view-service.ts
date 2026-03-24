@@ -124,6 +124,7 @@ export type SettingsViewData = {
     subtitle: string;
     hubSubtitle: string;
     openHubLabel: string;
+    backToSettingsLabel: string;
     localStepTitle: string;
     localStepHint: string;
     preparingTitle: string;
@@ -499,6 +500,7 @@ export function buildSettingsViewData(
       subtitle: settingsCopy.account.subtitle,
       hubSubtitle: settingsCopy.account.hubSubtitle,
       openHubLabel: settingsCopy.account.openHubLabel,
+      backToSettingsLabel: settingsCopy.account.backToSettingsLabel,
       localStepTitle: settingsCopy.account.localStepTitle,
       localStepHint: settingsCopy.account.localStepHint,
       preparingTitle: settingsCopy.account.preparingTitle,

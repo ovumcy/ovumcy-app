@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type {
@@ -10,6 +10,7 @@ import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { AppButton } from "./AppButton";
+import { AppTextInput } from "./AppTextInput";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
@@ -150,7 +151,7 @@ export function SettingsSyncSetupSection({
         {preferences.mode === "self_hosted" ? (
           <View style={styles.formGroup}>
             <Text style={styles.fieldLabel}>{viewData.endpointLabel}</Text>
-            <TextInput
+            <AppTextInput
               autoCapitalize="none"
               autoCorrect={false}
               editable={!accountActionsDisabled}
@@ -167,7 +168,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.deviceLabel}</Text>
-          <TextInput
+          <AppTextInput
             autoCapitalize="words"
             autoCorrect={false}
             editable={!accountActionsDisabled}
@@ -296,7 +297,7 @@ export function SettingsSyncSetupSection({
             <>
               <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
-                <TextInput
+                <AppTextInput
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!accountActionsDisabled}
@@ -310,7 +311,7 @@ export function SettingsSyncSetupSection({
 
               <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
-                <TextInput
+                <AppTextInput
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!accountActionsDisabled}
@@ -334,7 +335,7 @@ export function SettingsSyncSetupSection({
                     <Text style={styles.fieldLabel}>
                       {viewData.recoveryPhraseInputLabel}
                     </Text>
-                    <TextInput
+                    <AppTextInput
                       autoCapitalize="none"
                       autoCorrect={false}
                       editable={!accountActionsDisabled}

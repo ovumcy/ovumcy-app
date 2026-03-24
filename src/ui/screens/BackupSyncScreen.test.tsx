@@ -10,8 +10,10 @@ import { BackupSyncScreen } from "./BackupSyncScreen";
 
 const mockUseEffect = React.useEffect;
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
 const mockDispatch = jest.fn();
 const mockRouter = {
+  back: mockBack,
   replace: mockReplace,
 };
 let preventRemoveCallback:
@@ -70,6 +72,7 @@ describe("BackupSyncScreen", () => {
 
     preventRemoveCallback = null;
     mockDispatch.mockReset();
+    mockBack.mockReset();
     mockOpenConfirmation.mockReset();
     mockRequestSensitiveActionChallenge.mockReset();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
@@ -438,6 +441,35 @@ describe("BackupSyncScreen", () => {
     expect(screen.getAllByText(/backup & sync|резервная копия и sync/i)).toHaveLength(
       1,
     );
+  });
+
+  it("uses the inline back button instead of a native header route chrome", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "not_configured",
+        preparedAt: null,
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={createSyncSecretStoreMock()}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    fireEvent.press(screen.getByTestId("backup-sync-back-button"));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
   it("requires confirmation before recreating local sync keys", async () => {

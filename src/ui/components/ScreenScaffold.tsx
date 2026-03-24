@@ -18,6 +18,7 @@ type ScreenScaffoldProps = PropsWithChildren<{
   title: string;
   description: string;
   footer?: ReactNode;
+  topAccessory?: ReactNode;
 }>;
 
 export function ScreenScaffold({
@@ -25,6 +26,7 @@ export function ScreenScaffold({
   title,
   description,
   footer,
+  topAccessory,
   children,
 }: ScreenScaffoldProps) {
   const { width } = useWindowDimensions();
@@ -48,6 +50,7 @@ export function ScreenScaffold({
             { paddingTop: topPadding },
           ]}
         >
+          {topAccessory ? <View style={styles.topAccessory}>{topAccessory}</View> : null}
           <View style={[styles.hero, isCompact ? styles.heroCompact : null]}>
             {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
             <Text style={[styles.title, isCompact ? styles.titleCompact : null]}>
@@ -93,6 +96,9 @@ const createStyles = (colors: AppThemeColors) =>
   },
   hero: {
     gap: 6,
+  },
+  topAccessory: {
+    alignSelf: "flex-start",
   },
   heroCompact: {
     gap: 4,

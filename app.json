@@ -8,6 +8,11 @@
       "expo-secure-store"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
+    "splash": {
+      "image": "./assets/branding/ovumcy-splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f7f0e6"
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",

@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { LoadedExportState } from "../../models/export";
 import type {
@@ -6,12 +6,13 @@ import type {
   SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "./AppButton";
+import { AppTextInput } from "./AppTextInput";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
-import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
+import { useThemedStyles } from "../theme/useThemedStyles";
 
 type SettingsExportSectionProps = {
   errorMessage: string;
@@ -46,7 +47,6 @@ export function SettingsExportSection({
   statusMessage,
   viewData,
 }: SettingsExportSectionProps) {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
 
   return (
@@ -96,7 +96,7 @@ export function SettingsExportSection({
                   </Text>
                 </Pressable>
               ) : (
-                <TextInput
+                <AppTextInput
                   autoCapitalize="none"
                   autoCorrect={false}
                   inputMode="numeric"
@@ -104,7 +104,6 @@ export function SettingsExportSection({
                   maxLength={10}
                   onChangeText={onFromDateChange}
                   placeholder={viewData.datePlaceholder}
-                  placeholderTextColor={colors.textMuted}
                   style={styles.dateInput}
                   testID="settings-export-from-input"
                   value={exportState.values.fromDate}
@@ -132,7 +131,7 @@ export function SettingsExportSection({
                   </Text>
                 </Pressable>
               ) : (
-                <TextInput
+                <AppTextInput
                   autoCapitalize="none"
                   autoCorrect={false}
                   inputMode="numeric"
@@ -140,7 +139,6 @@ export function SettingsExportSection({
                   maxLength={10}
                   onChangeText={onToDateChange}
                   placeholder={viewData.datePlaceholder}
-                  placeholderTextColor={colors.textMuted}
                   style={styles.dateInput}
                   testID="settings-export-to-input"
                   value={exportState.values.toDate}

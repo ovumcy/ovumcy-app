@@ -447,6 +447,7 @@ export function BackupSyncScreen({
     <BackupSyncFlowScreen
       authLoginValue={accountLoginValue}
       authPasswordValue={accountPasswordValue}
+      backLabel={viewData.account.backToSettingsLabel}
       errorMessage={accountErrorMessage}
       generatedRecoveryPhrase={generatedRecoveryPhrase}
       hasStoredSyncSecrets={state.hasStoredSyncSecrets}
@@ -457,6 +458,9 @@ export function BackupSyncScreen({
       isRestoring={isRestoringSync}
       isSyncing={isSyncingNow}
       notSetLabel={viewData.common.notSet}
+      onBack={() => {
+        router.back();
+      }}
       onAuthLoginChange={(value) => {
         resetAccountMessages();
         setAccountLoginValue(value);
