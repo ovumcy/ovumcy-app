@@ -118,25 +118,33 @@ export function DashboardOverviewScreen({
             </Text>
           ) : null}
 
-          <View style={styles.quickActions}>
-            <QuickActionButton
-              icon="🩸"
-              label={viewData.quickActions.period}
-              onPress={() => handleQuickAction("period")}
-              testID="dashboard-quick-action-period"
-            />
-            <QuickActionButton
-              icon="😊"
-              label={viewData.quickActions.mood}
-              onPress={() => handleQuickAction("mood")}
-              testID="dashboard-quick-action-mood"
-            />
-            <QuickActionButton
-              icon="💊"
-              label={viewData.quickActions.symptom}
-              onPress={() => handleQuickAction("symptom")}
-              testID="dashboard-quick-action-symptom"
-            />
+          <View style={styles.quickActionsBlock}>
+            <Text
+              style={styles.quickActionsTitle}
+              testID="dashboard-quick-actions-title"
+            >
+              {viewData.quickActionsTitle}
+            </Text>
+            <View style={styles.quickActions}>
+              <QuickActionButton
+                icon="🩸"
+                label={viewData.quickActions.period}
+                onPress={() => handleQuickAction("period")}
+                testID="dashboard-quick-action-period"
+              />
+              <QuickActionButton
+                icon="😊"
+                label={viewData.quickActions.mood}
+                onPress={() => handleQuickAction("mood")}
+                testID="dashboard-quick-action-mood"
+              />
+              <QuickActionButton
+                icon="💊"
+                label={viewData.quickActions.symptom}
+                onPress={() => handleQuickAction("symptom")}
+                testID="dashboard-quick-action-symptom"
+              />
+            </View>
           </View>
 
           <View
@@ -269,6 +277,15 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
+    },
+    quickActionsBlock: {
+      gap: spacing.xs,
+    },
+    quickActionsTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
+      textTransform: "uppercase",
     },
     quickActions: {
       flexDirection: "row",

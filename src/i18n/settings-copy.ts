@@ -411,7 +411,7 @@ const settingsCopyDe: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Altersgruppe",
-    hint: "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Insights. Die Zyklusberechnung ändert sich dadurch nicht.",
+    hint: "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Einblicken. Die Zyklusberechnung ändert sich dadurch nicht.",
     under20: "Unter 20",
   },
   goal: {
@@ -812,7 +812,7 @@ const settingsCopyFr: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Tranche d'âge",
-    hint: "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les Insights. Cela ne change pas les calculs du cycle.",
+    hint: "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les analyses. Cela ne change pas les calculs du cycle.",
     under20: "Moins de 20 ans",
   },
   goal: {

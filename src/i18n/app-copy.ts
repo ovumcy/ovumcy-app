@@ -146,7 +146,7 @@ const appCopyDe: AppCopy = {
       predictionModeFactsOnlyHint: "Nur deine Einträge anzeigen.",
       ageGroup: "Dein Alter",
       ageGroupHint:
-        "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Insights. Die Zyklusberechnung ändert sich dadurch nicht.",
+        "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Einblicken. Die Zyklusberechnung ändert sich dadurch nicht.",
       usageGoal: "Wofür nutzt du Ovumcy?",
       usageGoalHint:
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
@@ -232,7 +232,7 @@ const appCopyFr: AppCopy = {
       predictionModeFactsOnlyHint: "Afficher seulement tes enregistrements.",
       ageGroup: "Ton âge",
       ageGroupHint:
-        "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les Insights. Cela ne change pas les calculs du cycle.",
+        "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les analyses. Cela ne change pas les calculs du cycle.",
       usageGoal: "Pourquoi utilises-tu Ovumcy ?",
       usageGoalHint:
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",

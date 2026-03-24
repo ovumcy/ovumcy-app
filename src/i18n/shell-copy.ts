@@ -31,7 +31,7 @@ const shellCopyDe: ShellCopy = {
   tabs: {
     dashboard: "Heute",
     calendar: "Kalender",
-    stats: "Insights",
+    stats: "Einblicke",
     settings: "Einstellungen",
   },
   loading: {
@@ -41,7 +41,7 @@ const shellCopyDe: ShellCopy = {
     dashboardDescription: "Dein lokaler Zykluskontext wird vorbereitet.",
     calendarTitle: "Kalender wird geladen",
     calendarDescription: "Deine lokale Monatsansicht wird vorbereitet.",
-    statsTitle: "Insights werden geladen",
+    statsTitle: "Einblicke werden geladen",
     statsDescription: "Deine lokale Verlaufsübersicht wird vorbereitet.",
     settingsTitle: "Einstellungen werden geladen",
     settingsDescription: "Deine lokalen Zykluseinstellungen werden vorbereitet.",
@@ -54,7 +54,7 @@ const shellCopyFr: ShellCopy = {
   tabs: {
     dashboard: "Aujourd'hui",
     calendar: "Calendrier",
-    stats: "Insights",
+    stats: "Analyses",
     settings: "Réglages",
   },
   loading: {
@@ -64,7 +64,7 @@ const shellCopyFr: ShellCopy = {
     dashboardDescription: "Préparation de ton contexte local de cycle.",
     calendarTitle: "Chargement du calendrier",
     calendarDescription: "Préparation de ta vue mensuelle locale.",
-    statsTitle: "Chargement des insights",
+    statsTitle: "Chargement des analyses",
     statsDescription: "Préparation du résumé de ton historique local.",
     settingsTitle: "Chargement des réglages",
     settingsDescription: "Préparation de tes réglages locaux du cycle.",

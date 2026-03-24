@@ -117,11 +117,11 @@ const statsCopyDe: StatsCopy = {
   noData: "-",
   dataNotice:
     "Es gibt noch wenige Daten. Das Bild wird klarer, je mehr Zyklen du erfasst.",
-  emptyTitle: "Erfasse weiter, um Insights freizuschalten",
+  emptyTitle: "Erfasse weiter, um Einblicke freizuschalten",
   emptyBodyZero:
-    "Schließe 2 Zyklen ab, um Insights freizuschalten. Beginne damit, den ersten Tag deiner nächsten Periode einzugeben.",
+    "Schließe 2 Zyklen ab, um Einblicke freizuschalten. Beginne damit, den ersten Tag deiner nächsten Periode einzugeben.",
   emptyBodyOne:
-    "Du hast 1 abgeschlossenen Zyklus. Schließe noch einen ab, um Insights freizuschalten.",
+    "Du hast 1 abgeschlossenen Zyklus. Schließe noch einen ab, um Einblicke freizuschalten.",
   emptyProgressHint:
     "Vorhersagen werden nach mindestens 2 abgeschlossenen Zyklen klarer.",
   completedCyclesProgress: (count: number) => `Abgeschlossene Zyklen: ${count} / 2`,
@@ -223,17 +223,17 @@ const statsCopyDe: StatsCopy = {
 };
 
 const statsCopyFr: StatsCopy = {
-  title: "Insights",
+  title: "Analyses",
   subtitle:
     "Observe comment la durée du cycle, les phases et les facteurs enregistrés évoluent au fil du temps.",
   noData: "-",
   dataNotice:
     "Les données sont encore limitées. La vue d'ensemble sera plus nette à mesure que tu enregistres plus de cycles.",
-  emptyTitle: "Continue à enregistrer pour débloquer les insights",
+  emptyTitle: "Continue à enregistrer pour débloquer les analyses",
   emptyBodyZero:
-    "Complète 2 cycles pour débloquer les insights. Commence par saisir le premier jour de tes prochaines règles.",
+    "Complète 2 cycles pour débloquer les analyses. Commence par saisir le premier jour de tes prochaines règles.",
   emptyBodyOne:
-    "Tu as 1 cycle terminé. Termine-en un autre pour débloquer les insights.",
+    "Tu as 1 cycle terminé. Termine-en un autre pour débloquer les analyses.",
   emptyProgressHint:
     "Les prédictions deviennent plus claires après au moins 2 cycles terminés.",
   completedCyclesProgress: (count: number) => `Cycles terminés : ${count} / 2`,

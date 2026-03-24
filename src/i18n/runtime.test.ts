@@ -1,4 +1,6 @@
 import { getOnboardingCopy } from "./app-copy";
+import { getShellCopy } from "./shell-copy";
+import { getStatsCopy } from "./stats-copy";
 import { getSettingsCopy } from "./settings-copy";
 import { APP_LANGUAGE_LABELS, resolveCopyLanguage } from "./runtime";
 
@@ -25,7 +27,10 @@ describe("runtime i18n helpers", () => {
   });
 
   it("returns German and French catalogs through copy getters", () => {
+    expect(getStatsCopy("en").title).toBe("Insights");
     expect(getOnboardingCopy("de").progress.step1).toBe("Schritt 1 von 2");
     expect(getSettingsCopy("fr").title).toBe("Réglages");
+    expect(getShellCopy("de").tabs.stats).toBe("Einblicke");
+    expect(getStatsCopy("fr").title).toBe("Analyses");
   });
 });

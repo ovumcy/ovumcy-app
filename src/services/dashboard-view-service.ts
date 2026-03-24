@@ -25,6 +25,7 @@ export type DashboardViewData = {
   };
   statusItems: string[];
   predictionExplanation: string;
+  quickActionsTitle: string;
   quickActions: {
     period: string;
     mood: string;
@@ -107,6 +108,7 @@ export function buildDashboardViewData(
     phaseStatus: buildPhaseStatus(projectedCycle.currentPhase, locale),
     statusItems,
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
+    quickActionsTitle: dashboardCopy.quickActionsTitle,
     quickActions: {
       period: dashboardCopy.quickActions.period,
       mood: dashboardCopy.quickActions.mood,

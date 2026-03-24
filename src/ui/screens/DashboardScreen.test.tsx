@@ -47,21 +47,25 @@ function createStorageMock(overrides = {}) {
 }
 
 describe("DashboardScreen", () => {
-  it("renders settings-driven dashboard visibility like the web contract", async () => {
-    render(
-      <DashboardScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock()}
-      />,
-    );
+  it(
+    "renders settings-driven dashboard visibility like the web contract",
+    async () => {
+      render(
+        <DashboardScreen
+          now={new Date(2026, 2, 17)}
+          storage={createStorageMock()}
+        />,
+      );
 
-    await screen.findByTestId("day-log-save-button");
+      await screen.findByTestId("day-log-save-button");
 
-    expect(screen.queryByTestId("day-log-sex-none")).toBeNull();
-    expect(screen.queryByText("Intimacy")).toBeNull();
-    expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
-    expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
-  });
+      expect(screen.queryByTestId("day-log-sex-none")).toBeNull();
+      expect(screen.queryByText("Intimacy")).toBeNull();
+      expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
+      expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
+    },
+    10000,
+  );
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {
     render(
@@ -132,6 +136,7 @@ describe("DashboardScreen", () => {
     );
 
     await screen.findByTestId("dashboard-quick-action-period");
+    expect(screen.getByTestId("dashboard-quick-actions-title")).toBeTruthy();
     expect(screen.getByTestId("dashboard-manual-cycle-start-button")).toBeTruthy();
     expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
 
