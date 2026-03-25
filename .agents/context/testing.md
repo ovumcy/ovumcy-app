@@ -43,7 +43,9 @@
 - When sync setup introduces user-facing async preparation such as recovery-phrase generation, keep one focused screen or component test that proves the preparing state is visible and understandable before the happy-path completion state appears.
 - When a settings subflow moves to its own route, keep Settings screen tests focused on summary and navigation, and move interactive behavior coverage to the extracted screen.
 - When calendar UX or day-log editing changes, cover add, edit, and delete at two levels: React Native screen tests and one live Android Expo acceptance pass. Treat raw adb interaction failures as tooling noise unless the same behavior also fails in the product state or test contract.
+- When cycle predictions become overdue, tests must prove the UI degrades to an explicit unknown state rather than continuing to show stale ovulation, next-period dates, or calendar markers.
 - When settings can leave the screen with dirty form state, cover three escape paths in Settings tests: back navigation, tab switch, and navigation into a child subflow such as `Backup & sync`.
+- Settings flows with immediate language or theme preview must test preview/render parity and all dirty-exit paths, including Android hardware back in addition to route, tab, and child-subflow navigation.
 - When a native privacy control such as screenshot protection becomes user-configurable, cover three layers: persisted interface settings, app-shell security-hook behavior for enabled and disabled modes, and one manual release-build check on Android or iOS.
 
 ## Manual Verification

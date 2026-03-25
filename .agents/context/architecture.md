@@ -68,6 +68,7 @@
 - Manual cycle start is a shared owner flow across dashboard and calendar. Keep the conflict policy in services and expose only thin screen-specific triggers; do not reimplement confirmation rules per screen.
 - Calendar day details should stay summary-first by default. Even empty days should open a no-entry summary panel before edit mode unless the canonical web flow changes.
 - When a concept appears as a first-class tab, screen title, or empty-state heading, localize that concept consistently across shell copy, screen copy, and feature copy in every supported language. Do not leave English holdouts in shipped German or French surfaces once those languages are selectable in settings.
+- Locale-dependent service view-data builders must receive the active app language from the screen or controller layer. Do not rely on implicit English defaults for owner-facing action labels or confirmations.
 - On narrow mobile screens, the calendar month grid takes priority over always-visible legend copy. Secondary calendar help should collapse behind an explicit affordance instead of shrinking the grid below a full-month view.
 - Calendar selection styling must never erase the underlying day-state meaning. Selected-day chrome is additive; it cannot replace the actual period, fertility, or ovulation visual contract.
 - Sync setup must keep non-secret preferences such as mode, endpoint input, device label, and setup status in canonical local storage, while wrapped keys, device secrets, and auth session material live only behind the secure secret-store boundary.
