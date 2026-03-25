@@ -133,6 +133,7 @@ export function sanitizeInterfaceSettingsValues(
   return {
     languageOverride: normalizeInterfaceLanguage(values.languageOverride),
     themeOverride: normalizeThemePreference(values.themeOverride),
+    screenCaptureProtectionEnabled: values.screenCaptureProtectionEnabled !== false,
   };
 }
 

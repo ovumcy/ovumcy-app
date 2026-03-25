@@ -14,6 +14,7 @@ import type {
   ProfileRecord,
   ThemePreference,
 } from "../../models/profile";
+import { resolveScreenCaptureProtectionEnabled } from "../../models/profile";
 import { appStorage } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import {
@@ -25,7 +26,9 @@ import { darkColors, lightColors, type AppThemeColors } from "../theme/tokens";
 type PreferenceOverrides = Pick<
   ProfileRecord,
   "languageOverride" | "themeOverride"
->;
+> & {
+  screenCaptureProtectionEnabled: boolean;
+};
 
 type AppPreferencesContextValue = {
   clearPreferencePreview: () => void;
@@ -35,6 +38,7 @@ type AppPreferencesContextValue = {
   languageOverride: InterfaceLanguage | null;
   previewProfilePreferences: (profile: PreferenceOverrides) => void;
   refreshPreferences: () => Promise<void>;
+  screenCaptureProtectionEnabled: boolean;
   syncProfilePreferences: (profile: PreferenceOverrides) => void;
   theme: ThemePreference;
   themeOverride: ThemePreference | null;
@@ -48,6 +52,7 @@ const defaultPreferencesContext: AppPreferencesContextValue = {
   languageOverride: null,
   previewProfilePreferences: () => {},
   refreshPreferences: async () => {},
+  screenCaptureProtectionEnabled: true,
   syncProfilePreferences: () => {},
   theme: "light",
   themeOverride: null,
@@ -69,6 +74,7 @@ export function AppPreferencesProvider({
   const [persistedOverrides, setPersistedOverrides] = useState<PreferenceOverrides>({
     languageOverride: null,
     themeOverride: null,
+    screenCaptureProtectionEnabled: true,
   });
   const [previewOverrides, setPreviewOverrides] = useState<PreferenceOverrides | null>(
     null,
@@ -81,12 +87,16 @@ export function AppPreferencesProvider({
       setPersistedOverrides({
         languageOverride: profile.languageOverride,
         themeOverride: profile.themeOverride,
+        screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+          profile.screenCaptureProtectionEnabled,
+        ),
       });
       setPreviewOverrides(null);
     } catch {
       setPersistedOverrides({
         languageOverride: null,
         themeOverride: null,
+        screenCaptureProtectionEnabled: true,
       });
       setPreviewOverrides(null);
     } finally {
@@ -118,13 +128,21 @@ export function AppPreferencesProvider({
         setPreviewOverrides({
           languageOverride: profile.languageOverride,
           themeOverride: profile.themeOverride,
+          screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+            profile.screenCaptureProtectionEnabled,
+          ),
         });
       },
       refreshPreferences,
+      screenCaptureProtectionEnabled:
+        effectiveOverrides.screenCaptureProtectionEnabled,
       syncProfilePreferences: (profile) => {
         setPersistedOverrides({
           languageOverride: profile.languageOverride,
           themeOverride: profile.themeOverride,
+          screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+            profile.screenCaptureProtectionEnabled,
+          ),
         });
         setPreviewOverrides(null);
       },

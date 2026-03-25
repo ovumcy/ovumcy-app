@@ -1,4 +1,4 @@
-import type { ProfileRecord } from "../../../models/profile";
+import type { InterfaceSettingsValues } from "../../../models/profile";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import {
   saveCycleSettings,
@@ -9,8 +9,6 @@ import type {
   LoadedSettingsState,
   SettingsViewData,
 } from "../../../services/settings-view-service";
-
-type PreferenceOverrides = Pick<ProfileRecord, "languageOverride" | "themeOverride">;
 
 type SaveSettingsActionContext = {
   effectiveNow: Date;
@@ -24,7 +22,7 @@ type SaveSettingsActionContext = {
   setState: (value: LoadedSettingsState) => void;
   setTrackingStatusMessage: (value: string) => void;
   storage: LocalAppStorage;
-  syncProfilePreferences: (profile: PreferenceOverrides) => void;
+  syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
   viewData: SettingsViewData;
 };
 
@@ -134,7 +132,7 @@ export async function runSaveInterfaceSettingsAction(
   }
 
   setState(result.state);
-  syncProfilePreferences(result.state.profile);
+  syncProfilePreferences(result.state.interfaceValues);
   setInterfaceStatusMessage(viewData.interface.status.saved);
   setIsSavingInterface(false);
   return true;
@@ -221,7 +219,7 @@ export async function runSavePendingSettingsAction(
       return false;
     }
     nextState = interfaceResult.state;
-    syncProfilePreferences(interfaceResult.state.profile);
+    syncProfilePreferences(interfaceResult.state.interfaceValues);
     setInterfaceStatusMessage(viewData.interface.status.saved);
   }
 

@@ -97,6 +97,13 @@ const settingsCopyEn = {
     previewHint: "Language and theme preview immediately. Save to keep them on this device.",
     themeLabel: "Theme",
     themeHint: "Saved only on this device.",
+    screenCaptureProtectionLabel: "Protect screenshots",
+    screenCaptureProtectionHint:
+      "Blocks screenshots and recent-app previews on supported devices.",
+    screenCaptureProtectionStateOn:
+      "Screenshots are blocked on supported devices.",
+    screenCaptureProtectionStateOff:
+      "Screenshots and app previews can be captured on this device.",
     discardChanges: "Discard changes",
     save: "Save interface",
     saveBeforeLeave: "Save and leave",
@@ -465,6 +472,13 @@ const settingsCopyDe: SettingsCopy = {
       "Sprache und Design werden sofort als Vorschau angezeigt. Speichere, um sie auf diesem Gerät zu behalten.",
     themeLabel: "Design",
     themeHint: "Wird nur auf diesem Gerät gespeichert.",
+    screenCaptureProtectionLabel: "Screenshots schützen",
+    screenCaptureProtectionHint:
+      "Blockiert Screenshots und die Vorschau im App-Umschalter auf unterstützten Geräten.",
+    screenCaptureProtectionStateOn:
+      "Screenshots sind auf unterstützten Geräten blockiert.",
+    screenCaptureProtectionStateOff:
+      "Screenshots und App-Vorschauen können auf diesem Gerät aufgenommen werden.",
     discardChanges: "Änderungen verwerfen",
     save: "Oberfläche speichern",
     saveBeforeLeave: "Speichern und verlassen",
@@ -868,6 +882,13 @@ const settingsCopyFr: SettingsCopy = {
       "La langue et le thème se prévisualisent immédiatement. Enregistre pour les conserver sur cet appareil.",
     themeLabel: "Thème",
     themeHint: "Enregistré seulement sur cet appareil.",
+    screenCaptureProtectionLabel: "Protéger les captures d’écran",
+    screenCaptureProtectionHint:
+      "Bloque les captures d’écran et l’aperçu dans le sélecteur d’apps sur les appareils compatibles.",
+    screenCaptureProtectionStateOn:
+      "Les captures d’écran sont bloquées sur les appareils compatibles.",
+    screenCaptureProtectionStateOff:
+      "Les captures d’écran et aperçus de l’app peuvent être capturés sur cet appareil.",
     discardChanges: "Annuler les modifications",
     save: "Enregistrer l'interface",
     saveBeforeLeave: "Enregistrer et quitter",
@@ -1271,6 +1292,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Язык и тема меняются сразу в предпросмотре. Сохраните, чтобы оставить их на этом устройстве.",
       themeLabel: "Тема",
       themeHint: "Сохраняется только на этом устройстве.",
+      screenCaptureProtectionLabel: "Защита скриншотов",
+      screenCaptureProtectionHint:
+        "Блокирует скриншоты и превью приложения в списке недавних на поддерживаемых устройствах.",
+      screenCaptureProtectionStateOn:
+        "Скриншоты заблокированы на поддерживаемых устройствах.",
+      screenCaptureProtectionStateOff:
+        "На этом устройстве можно делать скриншоты и получать превью приложения.",
       discardChanges: "Не сохранять",
       save: "Сохранить интерфейс",
       saveBeforeLeave: "Сохранить и выйти",
@@ -1639,6 +1667,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Idioma y tema se previsualizan al instante. Guarda para conservarlos en este dispositivo.",
       themeLabel: "Tema",
       themeHint: "Se guarda solo en este dispositivo.",
+      screenCaptureProtectionLabel: "Proteger capturas de pantalla",
+      screenCaptureProtectionHint:
+        "Bloquea capturas de pantalla y la vista previa en apps recientes en dispositivos compatibles.",
+      screenCaptureProtectionStateOn:
+        "Las capturas de pantalla están bloqueadas en dispositivos compatibles.",
+      screenCaptureProtectionStateOff:
+        "Las capturas y vistas previas de la app se pueden capturar en este dispositivo.",
       discardChanges: "Descartar cambios",
       save: "Guardar interfaz",
       saveBeforeLeave: "Guardar y salir",

@@ -80,6 +80,7 @@ export type SettingsFlowScreenProps = {
   onHideSexChipChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
+  onScreenCaptureProtectionChange: (value: boolean) => void;
   onOpenBackupSync: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
@@ -153,6 +154,7 @@ export function SettingsFlowScreen({
   onHideSexChipChange,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
+  onScreenCaptureProtectionChange,
   onOpenBackupSync,
   onPeriodLengthChange,
   onPredictionModeSelect,
@@ -263,12 +265,13 @@ export function SettingsFlowScreen({
 
           <SettingsInterfaceSection
             errorMessage={interfaceErrorMessage}
-            isSaving={isSavingInterface}
-            onLanguageSelect={onInterfaceLanguageSelect}
-            onSave={onSaveInterfaceSettings}
-            onThemeSelect={onInterfaceThemeSelect}
-            statusMessage={interfaceStatusMessage}
-            value={state.interfaceValues}
+          isSaving={isSavingInterface}
+          onLanguageSelect={onInterfaceLanguageSelect}
+          onSave={onSaveInterfaceSettings}
+          onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
+          onThemeSelect={onInterfaceThemeSelect}
+          statusMessage={interfaceStatusMessage}
+          value={state.interfaceValues}
             viewData={viewData.interface}
           />
 

@@ -10,6 +10,7 @@ import {
   refreshSettingsExportState,
   restoreSettingsSymptom,
   saveCycleSettings,
+  saveInterfaceSettings,
   saveTrackingSettings,
   updateSettingsSymptom,
 } from "./settings-screen-service";
@@ -233,6 +234,38 @@ describe("settings services", () => {
         irregularCycle: true,
         unpredictableCycle: true,
         dismissedCalendarPredictionNoticeKey: null,
+      }),
+    );
+  });
+
+  it("persists interface settings, including screenshot protection", async () => {
+    const storage = createStorageMock();
+    const state = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    const result = await saveInterfaceSettings(storage, state, {
+      languageOverride: "en",
+      themeOverride: "light",
+      screenCaptureProtectionEnabled: false,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        profile: expect.objectContaining({
+          screenCaptureProtectionEnabled: false,
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        screenCaptureProtectionEnabled: false,
       }),
     );
   });
@@ -670,6 +703,7 @@ function createStorageMock(overrides = {}) {
       hideSexChip: false,
       languageOverride: "en",
       themeOverride: "light",
+      screenCaptureProtectionEnabled: true,
       dismissedCalendarPredictionNoticeKey: null,
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({

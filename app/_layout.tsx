@@ -16,8 +16,8 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { colors } = useAppPreferences();
-  useAppScreenProtection();
+  const { colors, screenCaptureProtectionEnabled } = useAppPreferences();
+  useAppScreenProtection(screenCaptureProtectionEnabled);
 
   return (
     <GestureHandlerRootView

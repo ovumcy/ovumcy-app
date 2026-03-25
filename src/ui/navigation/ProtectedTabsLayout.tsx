@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import {
@@ -18,10 +20,17 @@ export function ProtectedTabsLayout({
   storage = appStorage,
 }: ProtectedTabsLayoutProps) {
   const { colors, language } = useAppPreferences();
+  const insets = useSafeAreaInsets();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<
     boolean | null
   >(null);
   const shellCopy = getShellCopy(language);
+  const bottomInset = Platform.OS === "android"
+    ? Math.max(insets.bottom, 18)
+    : Math.max(insets.bottom, 8);
+  const tabBarHeight = 66 + bottomInset;
+  const tabBarBottom = 12 + bottomInset;
+  const tabBarBottomPadding = Math.max(10, bottomInset);
 
   useEffect(() => {
     let isMounted = true;
@@ -56,15 +65,15 @@ export function ProtectedTabsLayout({
         tabBarInactiveTintColor: colors.textMuted,
         tabBarHideOnKeyboard: true,
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: 0,
         },
         tabBarItemStyle: {
           borderRadius: 12,
           marginHorizontal: 4,
           marginVertical: 2,
-          minHeight: 52,
+          minHeight: 50,
           paddingHorizontal: 4,
-          paddingVertical: 6,
+          paddingVertical: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -76,12 +85,12 @@ export function ProtectedTabsLayout({
           borderColor: colors.headerBorder,
           borderRadius: 16,
           borderTopWidth: 1,
-          bottom: 12,
-          height: 76,
+          bottom: tabBarBottom,
+          height: tabBarHeight,
           left: 12,
-          paddingBottom: 10,
+          paddingBottom: tabBarBottomPadding,
           paddingHorizontal: 6,
-          paddingTop: 10,
+          paddingTop: 8,
           position: "absolute",
           right: 12,
           shadowColor: colors.shadowSoft,

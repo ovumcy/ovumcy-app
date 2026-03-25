@@ -29,6 +29,10 @@ describe("settings view service", () => {
     expect(buildSettingsViewData(new Date(2026, 2, 22), "fr").interface.title).toBe(
       "Interface",
     );
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "ru").interface
+        .screenCaptureProtectionLabel,
+    ).toBe("Защита скриншотов");
   });
 
   it("builds export and symptom presentation state outside UI components", () => {
@@ -145,6 +149,7 @@ describe("settings view service", () => {
       interfaceValues: {
         ...state.interfaceValues,
         themeOverride: "dark" as const,
+        screenCaptureProtectionEnabled: false,
       },
     };
 

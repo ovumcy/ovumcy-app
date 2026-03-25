@@ -1,4 +1,4 @@
-import type { ProfileRecord } from "../../../models/profile";
+import type { InterfaceSettingsValues } from "../../../models/profile";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
@@ -7,8 +7,6 @@ import {
   isClearLocalDataConfirmationValid,
 } from "../../../services/settings-danger-zone-service";
 import type { SettingsViewData } from "../../../services/settings-view-service";
-
-type PreferenceOverrides = Pick<ProfileRecord, "languageOverride" | "themeOverride">;
 
 type DangerActionContext = {
   clearDataConfirmationValue: string;
@@ -19,7 +17,7 @@ type DangerActionContext = {
   setClearDataErrorMessage: (value: string) => void;
   setIsClearingData: (value: boolean) => void;
   storage: LocalAppStorage;
-  syncProfilePreferences: (profile: PreferenceOverrides) => void;
+  syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
   syncSecretStore: SyncSecretStore;
   viewData: SettingsViewData;
 };
@@ -68,6 +66,7 @@ export async function runClearAllDataAction(context: DangerActionContext) {
   syncProfilePreferences({
     languageOverride: null,
     themeOverride: null,
+    screenCaptureProtectionEnabled: true,
   });
   router.replace({
     pathname: "/onboarding",

@@ -56,6 +56,7 @@ export type ProfileRecord = {
   hideSexChip: boolean;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
+  screenCaptureProtectionEnabled?: boolean;
   dismissedCalendarPredictionNoticeKey?: CalendarPredictionNoticeKey | null;
   dismissedOnboardingHelperNoticeKey?: OnboardingHelperNoticeKey | null;
 };
@@ -80,7 +81,9 @@ export type TrackingSettingsValues = Pick<
 export type InterfaceSettingsValues = Pick<
   ProfileRecord,
   "languageOverride" | "themeOverride"
->;
+> & {
+  screenCaptureProtectionEnabled: boolean;
+};
 
 export function normalizeInterfaceLanguage(
   value: string | null | undefined,
@@ -104,6 +107,12 @@ export function normalizeThemePreference(
   return SUPPORTED_THEME_PREFERENCES.includes(value as ThemePreference)
     ? (value as ThemePreference)
     : null;
+}
+
+export function resolveScreenCaptureProtectionEnabled(
+  value: boolean | null | undefined,
+): boolean {
+  return value !== false;
 }
 
 export function normalizeCalendarPredictionNoticeKey(
@@ -186,6 +195,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     hideSexChip: false,
     languageOverride: null,
     themeOverride: null,
+    screenCaptureProtectionEnabled: true,
     dismissedCalendarPredictionNoticeKey: null,
     dismissedOnboardingHelperNoticeKey: null,
   };

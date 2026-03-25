@@ -17,6 +17,7 @@ export function createSettingsStorageMock(overrides = {}) {
       hideSexChip: false,
       languageOverride: "en",
       themeOverride: "light",
+      screenCaptureProtectionEnabled: true,
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",

@@ -13,7 +13,10 @@ import type {
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
-import { resolvePredictionMode } from "../models/profile";
+import {
+  resolvePredictionMode,
+  resolveScreenCaptureProtectionEnabled,
+} from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import { SYMPTOM_ICON_CATALOG } from "../models/symptom";
 import type {
@@ -109,6 +112,10 @@ export type SettingsViewData = {
     themeLabel: string;
     themeHint: string;
     themeOptions: { value: ThemePreference; label: string }[];
+    screenCaptureProtectionLabel: string;
+    screenCaptureProtectionHint: string;
+    screenCaptureProtectionStateOn: string;
+    screenCaptureProtectionStateOff: string;
     discardChangesLabel: string;
     saveLabel: string;
     saveBeforeLeaveLabel: string;
@@ -485,6 +492,14 @@ export function buildSettingsViewData(
         { value: "light", label: settingsCopy.interface.themeLight },
         { value: "dark", label: settingsCopy.interface.themeDark },
       ],
+      screenCaptureProtectionLabel:
+        settingsCopy.interface.screenCaptureProtectionLabel,
+      screenCaptureProtectionHint:
+        settingsCopy.interface.screenCaptureProtectionHint,
+      screenCaptureProtectionStateOn:
+        settingsCopy.interface.screenCaptureProtectionStateOn,
+      screenCaptureProtectionStateOff:
+        settingsCopy.interface.screenCaptureProtectionStateOff,
       discardChangesLabel: settingsCopy.interface.discardChanges,
       saveLabel: settingsCopy.interface.save,
       saveBeforeLeaveLabel: settingsCopy.interface.saveBeforeLeave,
@@ -728,6 +743,9 @@ export function createLoadedSettingsState(
     interfaceValues: {
       languageOverride: profile.languageOverride,
       themeOverride: profile.themeOverride,
+      screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+        profile.screenCaptureProtectionEnabled,
+      ),
     },
     hasSyncSession,
     syncCapabilities,
@@ -783,6 +801,9 @@ export function extractPersistedInterfaceValues(
   return {
     languageOverride: profile.languageOverride,
     themeOverride: profile.themeOverride,
+    screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+      profile.screenCaptureProtectionEnabled,
+    ),
   };
 }
 
@@ -820,7 +841,8 @@ export function areInterfaceSettingsEqual(
 ): boolean {
   return (
     left.languageOverride === right.languageOverride &&
-    left.themeOverride === right.themeOverride
+    left.themeOverride === right.themeOverride &&
+    left.screenCaptureProtectionEnabled === right.screenCaptureProtectionEnabled
   );
 }
 

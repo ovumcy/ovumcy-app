@@ -185,6 +185,25 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("saves screenshot protection through interface settings", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-screen-capture-protection"));
+    fireEvent.press(screen.getByTestId("settings-save-interface-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          screenCaptureProtectionEnabled: false,
+        }),
+      ),
+    );
+  });
+
   it("toggles tracking cards through the shared binary toggle control", async () => {
     const storage = createSettingsStorageMock();
 

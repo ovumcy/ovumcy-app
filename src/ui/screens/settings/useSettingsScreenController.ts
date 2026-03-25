@@ -578,6 +578,12 @@ export function useSettingsScreenController({
           themeOverride: value,
         });
       },
+      onScreenCaptureProtectionChange: (value) => {
+        applyInterfaceValues({
+          ...readyState.interfaceValues,
+          screenCaptureProtectionEnabled: value,
+        });
+      },
       onOpenBackupSync: () => {
         void confirmPendingSettingsThen(() => {
           void router.push("/backup-sync");

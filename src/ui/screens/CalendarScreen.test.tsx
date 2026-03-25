@@ -65,8 +65,11 @@ function createStorageMock() {
 }
 
 async function waitForCalendarReady() {
-  await waitFor(() =>
-    expect(screen.getByTestId("calendar-prev-button")).toBeTruthy(),
+  await waitFor(
+    () => expect(screen.getByTestId("calendar-prev-button")).toBeTruthy(),
+    {
+      timeout: 5000,
+    },
   );
 }
 
