@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
+import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
@@ -46,16 +47,22 @@ function createStorageMock(overrides = {}) {
   });
 }
 
+function renderDashboard(
+  storage: ReturnType<typeof createStorageMock>,
+  now = new Date(2026, 2, 17),
+) {
+  return render(
+    <AppPreferencesProvider storage={storage}>
+      <DashboardScreen now={now} storage={storage} />
+    </AppPreferencesProvider>,
+  );
+}
+
 describe("DashboardScreen", () => {
   it(
     "renders settings-driven dashboard visibility like the web contract",
     async () => {
-      render(
-        <DashboardScreen
-          now={new Date(2026, 2, 17)}
-          storage={createStorageMock()}
-        />,
-      );
+      renderDashboard(createStorageMock());
 
       await screen.findByTestId("day-log-save-button");
 
@@ -68,28 +75,25 @@ describe("DashboardScreen", () => {
   );
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {
-    render(
-      <DashboardScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock({
-          readProfileRecord: jest.fn().mockResolvedValue({
-            lastPeriodStart: "2026-03-10",
-            cycleLength: 28,
-            periodLength: 5,
-            autoPeriodFill: true,
-            irregularCycle: false,
-            unpredictableCycle: true,
-            ageGroup: "",
-            usageGoal: "health",
-            trackBBT: false,
-            temperatureUnit: "c",
-            trackCervicalMucus: false,
-            hideSexChip: false,
-            languageOverride: "en",
-            themeOverride: "light",
-          }),
-        })}
-      />,
+    renderDashboard(
+      createStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          lastPeriodStart: "2026-03-10",
+          cycleLength: 28,
+          periodLength: 5,
+          autoPeriodFill: true,
+          irregularCycle: false,
+          unpredictableCycle: true,
+          ageGroup: "",
+          usageGoal: "health",
+          trackBBT: false,
+          temperatureUnit: "c",
+          trackCervicalMucus: false,
+          hideSexChip: false,
+          languageOverride: "en",
+          themeOverride: "light",
+        }),
+      }),
     );
 
     await waitFor(() =>
@@ -98,25 +102,22 @@ describe("DashboardScreen", () => {
   });
 
   it("renders custom symptom options from the shared symptom catalog", async () => {
-    render(
-      <DashboardScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock({
-          listSymptomRecords: jest.fn().mockResolvedValue([
-            ...createDefaultSymptomRecords(),
-            {
-              id: "custom_jaw_pain",
-              slug: "jaw-pain",
-              label: "Jaw pain",
-              icon: "🔥",
-              color: "#E8799F",
-              isArchived: false,
-              sortOrder: 999,
-              isDefault: false,
-            },
-          ]),
-        })}
-      />,
+    renderDashboard(
+      createStorageMock({
+        listSymptomRecords: jest.fn().mockResolvedValue([
+          ...createDefaultSymptomRecords(),
+          {
+            id: "custom_jaw_pain",
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 999,
+            isDefault: false,
+          },
+        ]),
+      }),
     );
 
     await screen.findByTestId("day-log-save-button");
@@ -128,55 +129,46 @@ describe("DashboardScreen", () => {
   });
 
   it("shows localized builtin symptom labels in the daily log", async () => {
-    render(
-      <DashboardScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock({
-          readProfileRecord: jest.fn().mockResolvedValue({
-            lastPeriodStart: "2026-03-10",
-            cycleLength: 28,
-            periodLength: 5,
-            autoPeriodFill: true,
-            irregularCycle: false,
-            unpredictableCycle: false,
-            ageGroup: "",
-            usageGoal: "health",
-            trackBBT: false,
-            temperatureUnit: "c",
-            trackCervicalMucus: false,
-            hideSexChip: false,
-            languageOverride: "ru",
-            themeOverride: "light",
-          }),
-          readDayLogRecord: jest.fn().mockResolvedValue({
-            date: "2026-03-17",
-            isPeriod: false,
-            cycleStart: false,
-            isUncertain: false,
-            flow: "none",
-            mood: 0,
-            sexActivity: "none",
-            bbt: 0,
-            cervicalMucus: "none",
-            cycleFactorKeys: [],
-            symptomIDs: ["cramps"],
-            notes: "",
-          }),
-        })}
-      />,
+    renderDashboard(
+      createStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          lastPeriodStart: "2026-03-10",
+          cycleLength: 28,
+          periodLength: 5,
+          autoPeriodFill: true,
+          irregularCycle: false,
+          unpredictableCycle: false,
+          ageGroup: "",
+          usageGoal: "health",
+          trackBBT: false,
+          temperatureUnit: "c",
+          trackCervicalMucus: false,
+          hideSexChip: false,
+          languageOverride: "ru",
+          themeOverride: "light",
+        }),
+        readDayLogRecord: jest.fn().mockResolvedValue({
+          date: "2026-03-17",
+          isPeriod: false,
+          cycleStart: false,
+          isUncertain: false,
+          flow: "none",
+          mood: 0,
+          sexActivity: "none",
+          bbt: 0,
+          cervicalMucus: "none",
+          cycleFactorKeys: [],
+          symptomIDs: ["cramps"],
+          notes: "",
+        }),
+      }),
     );
 
-    await screen.findByTestId("day-log-save-button");
-    expect(screen.getByText("Спазмы")).toBeTruthy();
+    expect(await screen.findByText("Спазмы")).toBeTruthy();
   });
 
   it("shows quick actions and reveals flow controls when period is toggled from the shortcut", async () => {
-    render(
-      <DashboardScreen
-        now={new Date(2026, 2, 17)}
-        storage={createStorageMock()}
-      />,
-    );
+    renderDashboard(createStorageMock());
 
     await screen.findByTestId("dashboard-quick-action-period");
     expect(screen.getByTestId("dashboard-quick-actions-title")).toBeTruthy();
