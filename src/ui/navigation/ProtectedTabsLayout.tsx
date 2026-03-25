@@ -26,11 +26,10 @@ export function ProtectedTabsLayout({
   >(null);
   const shellCopy = getShellCopy(language);
   const bottomInset = Platform.OS === "android"
-    ? Math.max(insets.bottom, 18)
+    ? Math.max(insets.bottom, 10)
     : Math.max(insets.bottom, 8);
-  const tabBarHeight = 66 + bottomInset;
-  const tabBarBottom = 12 + bottomInset;
-  const tabBarBottomPadding = Math.max(10, bottomInset);
+  const tabBarBottomPadding = Math.max(bottomInset, 10);
+  const tabBarHeight = 56 + tabBarBottomPadding;
 
   useEffect(() => {
     let isMounted = true;
@@ -68,12 +67,9 @@ export function ProtectedTabsLayout({
           marginBottom: 0,
         },
         tabBarItemStyle: {
-          borderRadius: 12,
-          marginHorizontal: 4,
-          marginVertical: 2,
-          minHeight: 50,
+          minHeight: 44,
           paddingHorizontal: 4,
-          paddingVertical: 4,
+          paddingVertical: 2,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -83,20 +79,16 @@ export function ProtectedTabsLayout({
         tabBarStyle: {
           backgroundColor: colors.headerBg,
           borderColor: colors.headerBorder,
-          borderRadius: 16,
           borderTopWidth: 1,
-          bottom: tabBarBottom,
           height: tabBarHeight,
-          left: 12,
           paddingBottom: tabBarBottomPadding,
-          paddingHorizontal: 6,
-          paddingTop: 8,
-          position: "absolute",
-          right: 12,
+          paddingHorizontal: 8,
+          paddingTop: 6,
           shadowColor: colors.shadowSoft,
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.85,
-          shadowRadius: 24,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: Platform.OS === "ios" ? 0.14 : 0,
+          shadowRadius: 8,
+          elevation: Platform.OS === "android" ? 10 : 0,
         },
       }}
     >

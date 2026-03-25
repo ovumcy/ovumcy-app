@@ -23,7 +23,7 @@ import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
 import { SettingsSyncSummaryCard } from "../components/SettingsSyncSummaryCard";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
-import { spacing } from "../theme/tokens";
+import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { SettingsCycleSection } from "./settings/SettingsCycleSection";
 import { createSettingsFlowStyles } from "./settings/settings-flow-styles";
@@ -194,7 +194,7 @@ export function SettingsFlowScreen({
       <ScrollView
         contentContainerStyle={[
           styles.screenContent,
-          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+          { paddingBottom: resolveBottomContentPadding(insets.bottom) },
         ]}
         showsVerticalScrollIndicator={false}
         style={styles.screen}

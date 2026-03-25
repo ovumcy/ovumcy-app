@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { StatsViewData } from "../../services/stats-view-service";
 import { AppScreenSurface } from "../components/AppScreenSurface";
-import { spacing } from "../theme/tokens";
+import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 import { StatsOverviewEmptyState } from "./stats/StatsOverviewEmptyState";
 import { StatsOverviewPatternSections } from "./stats/StatsOverviewPatternSections";
@@ -39,7 +39,7 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
       <ScrollView
         contentContainerStyle={[
           styles.screenContent,
-          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+          { paddingBottom: resolveBottomContentPadding(insets.bottom) },
         ]}
         showsVerticalScrollIndicator={false}
         style={styles.screen}

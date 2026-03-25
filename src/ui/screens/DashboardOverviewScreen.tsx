@@ -12,6 +12,7 @@ import {
 } from "../components/DayLogEditorCard";
 import { ManualCycleStartAction } from "../components/ManualCycleStartAction";
 import { AppScreenSurface } from "../components/AppScreenSurface";
+import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
@@ -91,7 +92,7 @@ export function DashboardOverviewScreen({
       <ScrollView
         contentContainerStyle={[
           styles.screenContent,
-          { paddingBottom: Math.max(insets.bottom + 104, spacing.xl + 48) },
+          { paddingBottom: resolveBottomContentPadding(insets.bottom) },
         ]}
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
