@@ -98,6 +98,9 @@ export function CalendarMonthGrid({
                 >
                   <View style={styles.cellHeader}>
                     <Text
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.9}
+                      numberOfLines={1}
                       style={[
                         styles.dayLabel,
                         !day.isCurrentMonth ? styles.dayLabelMuted : null,
@@ -237,6 +240,8 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.text,
       fontSize: 12,
       fontWeight: "700",
+      lineHeight: 14,
+      minWidth: 14,
     },
     dayLabelMuted: {
       color: colors.textMuted,

@@ -113,6 +113,7 @@ export function CalendarScreen({
     state.records,
     state.selectedRecord,
     effectiveNow,
+    language,
   );
 
   async function handleSave() {

@@ -596,6 +596,17 @@ function buildCalendarPredictionMaps(
     };
   }
 
+  if (projection.isPredictionStale) {
+    return {
+      predictedPeriod,
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      tentativeOvulation,
+    };
+  }
+
   const gridEnd = endOfWeek(endOfMonth(monthStart));
   const predictedPeriodLength = resolvePredictedPeriodLength(profile, history);
 

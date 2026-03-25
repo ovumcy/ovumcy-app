@@ -317,6 +317,35 @@ describe("calendar-view-service", () => {
     expect(viewData.predictionNotice).toBeNull();
   });
 
+  it("removes stale prediction markers after an expected next period was missed", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-02-01",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: false,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+      },
+      [],
+      new Date(2026, 2, 25),
+      new Date(2026, 2, 1),
+      "2026-02-14",
+    );
+
+    expect(viewData.days.some((day) => day.stateKey !== "neutral")).toBe(false);
+    expect(viewData.days.some((day) => day.hasOvulationMarker)).toBe(false);
+  });
+
   it("explains saved markers separately from the selected day meaning", async () => {
     const storage = createVolatileWebAppStorage();
     await storage.writeProfileRecord({

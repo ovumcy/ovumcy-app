@@ -143,6 +143,73 @@ describe("manual-cycle-start-service", () => {
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
+  it("auto-fills the rest of the period window after a confirmed cycle start", async () => {
+    const profile = createProfileRecord({
+      autoPeriodFill: true,
+      lastPeriodStart: null,
+      periodLength: 4,
+    });
+    const storage = createLocalAppStorageMock();
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-09"),
+      isPeriod: true,
+      notes: "keep me",
+    };
+
+    await applyManualCycleStart(
+      storage,
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+      "en",
+      {
+        markUncertain: false,
+        replaceExisting: false,
+      },
+    );
+
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-10",
+        cycleStart: false,
+        isPeriod: true,
+      }),
+    );
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-11",
+        cycleStart: false,
+        isPeriod: true,
+      }),
+    );
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-12",
+        cycleStart: false,
+        isPeriod: true,
+      }),
+    );
+  });
+
+  it("localizes the manual cycle start button label with the active locale", () => {
+    const profile = createProfileRecord();
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+    };
+
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+      "de",
+    );
+
+    expect(viewData?.buttonLabel).toBe("Neuen Zyklusbeginn markieren");
+  });
+
   it("rejects dates beyond the allowed future window", async () => {
     const storage = createLocalAppStorageMock();
     const profile = createProfileRecord();

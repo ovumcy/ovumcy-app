@@ -158,4 +158,40 @@ describe("dashboard-view-service", () => {
       "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
     );
   });
+
+  it("falls back to unknown dates when the prior prediction window is stale", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-02-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+
+    const history = buildCycleHistorySummary(profile, [], new Date(2026, 2, 25));
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      history,
+      new Date(2026, 2, 25),
+    );
+
+    expect(viewData.phaseStatus).toEqual({
+      icon: "◌",
+      label: "Unknown",
+    });
+    expect(viewData.statusItems).toEqual([
+      "Next period: unknown",
+      "Ovulation: Cannot be calculated",
+    ]);
+  });
 });

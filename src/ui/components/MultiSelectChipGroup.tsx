@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
@@ -24,7 +24,9 @@ export function MultiSelectChipGroup<T extends string>({
   testIDPrefix,
 }: MultiSelectChipGroupProps<T>) {
   const styles = useThemedStyles(createStyles);
+  const { width } = useWindowDimensions();
   const selected = new Set(selectedValues);
+  const compactColumnCount = compact ? (width >= 520 ? 3 : 2) : 1;
 
   return (
     <View style={[styles.group, compact ? styles.groupCompact : null]}>
@@ -39,7 +41,8 @@ export function MultiSelectChipGroup<T extends string>({
             onPress={() => onToggle(option.value)}
             style={[
               styles.chip,
-              compact ? styles.chipCompact : null,
+              compact && compactColumnCount === 2 ? styles.chipCompactTwo : null,
+              compact && compactColumnCount === 3 ? styles.chipCompactThree : null,
               isActive ? styles.chipActive : null,
             ]}
             testID={testIDPrefix ? `${testIDPrefix}-${option.value}` : undefined}
@@ -65,7 +68,7 @@ const createStyles = (colors: AppThemeColors) =>
       flexWrap: "wrap",
     },
     chip: {
-      alignItems: "center",
+      alignItems: "flex-start",
       backgroundColor: colors.surface,
       borderColor: colors.border,
       borderRadius: 18,
@@ -75,9 +78,16 @@ const createStyles = (colors: AppThemeColors) =>
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
-    chipCompact: {
+    chipCompactTwo: {
+      flexBasis: "48%",
+      flexGrow: 0,
+      flexShrink: 0,
+      minWidth: 0,
+    },
+    chipCompactThree: {
       flexBasis: "31%",
       flexGrow: 1,
+      minWidth: 0,
     },
     chipActive: {
       backgroundColor: colors.accentSoft,
@@ -88,8 +98,12 @@ const createStyles = (colors: AppThemeColors) =>
     },
     label: {
       color: colors.text,
+      flexGrow: 1,
+      flexShrink: 1,
       fontSize: 14,
       fontWeight: "600",
+      lineHeight: 18,
+      minWidth: 0,
     },
     labelActive: {
       color: colors.accentStrong,

@@ -17,6 +17,10 @@ export function buildPredictionExplanation(
     return "";
   }
 
+  if (projection.isPredictionStale) {
+    return "";
+  }
+
   if (profile.irregularCycle) {
     return dashboardCopy.predictionsApproximateHint;
   }

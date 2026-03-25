@@ -7,7 +7,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useColorScheme } from "react-native";
 
 import type {
   InterfaceLanguage,
@@ -70,7 +69,6 @@ export function AppPreferencesProvider({
   children,
   storage = appStorage,
 }: AppPreferencesProviderProps) {
-  const systemScheme = useColorScheme();
   const [persistedOverrides, setPersistedOverrides] = useState<PreferenceOverrides>({
     languageOverride: null,
     themeOverride: null,
@@ -113,8 +111,7 @@ export function AppPreferencesProvider({
     const language =
       resolveCopyLanguage(effectiveOverrides.languageOverride) ?? resolveDeviceLanguage();
     const theme: ThemePreference =
-      effectiveOverrides.themeOverride ??
-      (systemScheme === "dark" ? "dark" : "light");
+      effectiveOverrides.themeOverride ?? "light";
 
     return {
       clearPreferencePreview: () => {
@@ -154,7 +151,6 @@ export function AppPreferencesProvider({
     isReady,
     previewOverrides,
     refreshPreferences,
-    systemScheme,
   ]);
 
   return (

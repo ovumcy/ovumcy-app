@@ -73,16 +73,18 @@ export function SettingsInterfaceSection({
       <BinaryToggleCard
         compact
         description={viewData.screenCaptureProtectionHint}
+        descriptionPosition="below"
         label={viewData.screenCaptureProtectionLabel}
         onValueChange={onScreenCaptureProtectionChange}
-        stateText={
-          value.screenCaptureProtectionEnabled
-            ? viewData.screenCaptureProtectionStateOn
-            : viewData.screenCaptureProtectionStateOff
-        }
         testID="settings-toggle-screen-capture-protection"
         value={value.screenCaptureProtectionEnabled}
       />
+
+      <Text style={styles.helperText}>
+        {value.screenCaptureProtectionEnabled
+          ? viewData.screenCaptureProtectionStateOn
+          : viewData.screenCaptureProtectionStateOff}
+      </Text>
 
       <Text style={styles.helperText}>{viewData.previewHint}</Text>
 

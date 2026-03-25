@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import type { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import { BackHandler, Platform } from "react-native";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
 import { appStorage } from "../../../services/app-bootstrap-service";
@@ -352,6 +353,46 @@ export function useSettingsScreenController({
       });
     });
   }, [confirmPendingSettingsThen, navigation]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "android") {
+        return undefined;
+      }
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        () => {
+          const hasBlockingUnsavedChanges =
+            hasUnsavedSettingsChanges &&
+            !isSavingCycle &&
+            !isSavingTracking &&
+            !isSavingInterface &&
+            !isClearingData;
+
+          if (!hasBlockingUnsavedChanges) {
+            return false;
+          }
+
+          void confirmPendingSettingsThen(() => {
+            BackHandler.exitApp();
+          });
+          return true;
+        },
+      );
+
+      return () => {
+        subscription.remove();
+      };
+    }, [
+      confirmPendingSettingsThen,
+      hasUnsavedSettingsChanges,
+      isClearingData,
+      isSavingCycle,
+      isSavingInterface,
+      isSavingTracking,
+    ]),
+  );
 
   if (isLoading || state === null) {
     return {

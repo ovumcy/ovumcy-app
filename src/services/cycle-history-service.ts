@@ -153,6 +153,7 @@ export function buildCurrentCycleProjection(
       cycleAnchorDate: null,
       currentCycleDay: null,
       currentPhase: "unknown",
+      isPredictionStale: false,
       nextPeriodDate: null,
       ovulationDate: null,
       predictionCycleLength: profile.cycleLength,
@@ -165,6 +166,7 @@ export function buildCurrentCycleProjection(
       cycleAnchorDate: null,
       currentCycleDay: null,
       currentPhase: "unknown",
+      isPredictionStale: false,
       nextPeriodDate: null,
       ovulationDate: null,
       predictionCycleLength: profile.cycleLength,
@@ -181,6 +183,7 @@ export function buildCurrentCycleProjection(
       cycleAnchorDate,
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale: false,
       nextPeriodDate,
       ovulationDate: null,
       predictionCycleLength,
@@ -192,6 +195,7 @@ export function buildCurrentCycleProjection(
       cycleAnchorDate,
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale: false,
       nextPeriodDate,
       ovulationDate: null,
       predictionCycleLength,
@@ -204,7 +208,21 @@ export function buildCurrentCycleProjection(
       cycleAnchorDate,
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale: false,
       nextPeriodDate,
+      ovulationDate: null,
+      predictionCycleLength,
+    };
+  }
+
+  const predictedNextPeriod = parseLocalDate(nextPeriodDate);
+  if (predictedNextPeriod && today > predictedNextPeriod) {
+    return {
+      cycleAnchorDate,
+      currentCycleDay: null,
+      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale: true,
+      nextPeriodDate: null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -214,6 +232,7 @@ export function buildCurrentCycleProjection(
     cycleAnchorDate,
     currentCycleDay,
     currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
+    isPredictionStale: false,
     nextPeriodDate,
     ovulationDate: predictedWindow.ovulationDate,
     predictionCycleLength,

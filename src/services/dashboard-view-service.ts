@@ -152,6 +152,13 @@ function buildStatusItems(
 
   const items: string[] = [];
 
+  if (summary.isPredictionStale) {
+    return [
+      `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
+      `${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`,
+    ];
+  }
+
   if (summary.currentCycleDay !== null) {
     items.push(`${dashboardCopy.cycleDay} ${summary.currentCycleDay}`);
   }

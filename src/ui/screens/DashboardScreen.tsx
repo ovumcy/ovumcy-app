@@ -98,6 +98,7 @@ export function DashboardScreen({
     state.historyRecords,
     state.todayEntry,
     effectiveNow,
+    language,
   );
 
   async function handleSave() {

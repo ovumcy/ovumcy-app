@@ -86,5 +86,25 @@ describe("cycle-history-service", () => {
 
     expect(projection.predictionCycleLength).toBe(23);
     expect(projection.ovulationDate).toBe("2026-04-01");
+    expect(projection.isPredictionStale).toBe(false);
+  });
+
+  it("stops exposing stale prediction dates after the expected next period has passed", () => {
+    const profile = createProfileRecord({
+      lastPeriodStart: "2026-02-01",
+    });
+    const now = new Date(2026, 2, 25);
+    const history = buildCycleHistorySummary(profile, [], now);
+    const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+    expect(projection).toEqual(
+      expect.objectContaining({
+        currentCycleDay: null,
+        currentPhase: "unknown",
+        isPredictionStale: true,
+        nextPeriodDate: null,
+        ovulationDate: null,
+      }),
+    );
   });
 });

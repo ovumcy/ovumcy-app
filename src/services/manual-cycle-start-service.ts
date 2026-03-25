@@ -1,3 +1,4 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
 import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
@@ -155,6 +156,10 @@ export async function applyManualCycleStart(
 
   const recordsToWrite = new Map<string, DayLogRecord>();
   recordsToWrite.set(nextSelectedRecord.date, nextSelectedRecord);
+
+  if (profile.autoPeriodFill && !nextSelectedRecord.isUncertain) {
+    appendAutoFilledPeriodDays(recordsToWrite, records, nextSelectedRecord, profile);
+  }
 
   for (const currentRecord of records) {
     if (currentRecord.date === nextSelectedRecord.date) {
@@ -415,6 +420,39 @@ function mergeDraftRecord(
   const merged = new Map(records.map((record) => [record.date, record]));
   merged.set(draftRecord.date, draftRecord);
   return [...merged.values()].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function appendAutoFilledPeriodDays(
+  recordsToWrite: Map<string, DayLogRecord>,
+  records: readonly DayLogRecord[],
+  cycleStartRecord: DayLogRecord,
+  profile: ProfileRecord,
+) {
+  const cycleStartDate = parseLocalDate(cycleStartRecord.date);
+  if (!cycleStartDate) {
+    return;
+  }
+
+  const recordsByDate = new Map(records.map((record) => [record.date, record]));
+
+  for (let offset = 1; offset < profile.periodLength; offset += 1) {
+    const currentDate = formatLocalDate(addDays(cycleStartDate, offset));
+    const existingRecord =
+      recordsToWrite.get(currentDate) ??
+      recordsByDate.get(currentDate) ??
+      createEmptyDayLogRecord(currentDate);
+
+    recordsToWrite.set(
+      currentDate,
+      sanitizeDayLogRecord({
+        ...existingRecord,
+        date: currentDate,
+        cycleStart: false,
+        isPeriod: true,
+        isUncertain: false,
+      }),
+    );
+  }
 }
 
 function formatPromptMessage(template: string, values: (string | number)[]): string {

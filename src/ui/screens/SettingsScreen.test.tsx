@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native";
+import { BackHandler, Platform } from "react-native";
 
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
@@ -27,6 +28,10 @@ let tabPressCallback:
       target?: string;
     }) => void)
   | null = null;
+let hardwareBackPressCallback: (() => boolean | null | undefined) | null = null;
+let addBackHandlerListenerSpy: jest.SpiedFunction<typeof BackHandler.addEventListener>;
+let exitAppSpy: jest.SpiedFunction<typeof BackHandler.exitApp>;
+const originalPlatformOS = Platform.OS;
 
 jest.setTimeout(15000);
 
@@ -116,11 +121,41 @@ describe("SettingsScreen", () => {
     mockReplace.mockReset();
     mockRequestSensitiveActionChallenge.mockReset();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "android",
+    });
+    hardwareBackPressCallback = null;
+    addBackHandlerListenerSpy = jest
+      .spyOn(BackHandler, "addEventListener")
+      .mockImplementation((eventName, callback) => {
+        if (eventName === "hardwareBackPress") {
+          hardwareBackPressCallback = callback;
+        }
+
+        return {
+          remove: jest.fn(() => {
+            if (eventName === "hardwareBackPress") {
+              hardwareBackPressCallback = null;
+            }
+          }),
+        };
+      });
+    exitAppSpy = jest.spyOn(BackHandler, "exitApp").mockImplementation(jest.fn());
     global.fetch = originalFetch;
   });
 
   afterAll(() => {
     global.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatformOS,
+    });
+    addBackHandlerListenerSpy.mockRestore();
+    exitAppSpy.mockRestore();
   });
 
   it("saves cycle settings through the canonical profile repository", async () => {
@@ -536,6 +571,41 @@ describe("SettingsScreen", () => {
     expect(
       screen.getByTestId("settings-interface-theme-light").props.accessibilityState,
     ).toEqual(expect.objectContaining({ checked: true }));
+  });
+
+  it("confirms unsaved changes before the Android hardware back exits settings", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenConfirmation.mockResolvedValue(false);
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    expect(hardwareBackPressCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      hardwareBackPressCallback?.();
+    });
+
+    await waitFor(() =>
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.any(String),
+      ),
+    );
+    await waitFor(() => expect(exitAppSpy).toHaveBeenCalledTimes(1));
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        cycleLength: 35,
+      }),
+    );
   });
 
   it("requires typed confirmation before clearing all local data", async () => {
