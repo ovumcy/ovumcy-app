@@ -188,7 +188,57 @@ describe("settings services", () => {
     );
   });
 
-  it("validates and persists cycle settings through the canonical profile repository", async () => {
+  it("persists compatible cycle settings through the canonical profile repository", async () => {
+    const storage = createStorageMock();
+
+    const result = await saveCycleSettings(
+      storage,
+      createLoadedSettingsState(
+        await storage.readProfileRecord(),
+        createDefaultSyncPreferencesRecord(),
+        false,
+        false,
+        createDefaultSymptomRecords(),
+        createExportState(),
+      ),
+      {
+        lastPeriodStart: "2026-03-16",
+        cycleLength: 21,
+        periodLength: 10,
+        autoPeriodFill: true,
+        irregularCycle: true,
+        unpredictableCycle: true,
+        ageGroup: "age_35_plus",
+        usageGoal: "trying_to_conceive",
+      },
+      new Date(2026, 2, 17),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        profile: expect.objectContaining({
+          cycleLength: 21,
+          periodLength: 10,
+          unpredictableCycle: true,
+          ageGroup: "age_35_plus",
+          usageGoal: "trying_to_conceive",
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastPeriodStart: "2026-03-16",
+        cycleLength: 21,
+        periodLength: 10,
+        irregularCycle: true,
+        unpredictableCycle: true,
+        dismissedCalendarPredictionNoticeKey: null,
+      }),
+    );
+  });
+
+  it("rejects incompatible cycle settings instead of silently clamping them", async () => {
     const storage = createStorageMock();
 
     const result = await saveCycleSettings(
@@ -215,27 +265,10 @@ describe("settings services", () => {
     );
 
     expect(result).toEqual({
-      ok: true,
-      state: expect.objectContaining({
-        profile: expect.objectContaining({
-          cycleLength: 21,
-          periodLength: 11,
-          unpredictableCycle: true,
-          ageGroup: "age_35_plus",
-          usageGoal: "trying_to_conceive",
-        }),
-      }),
+      ok: false,
+      errorCode: "invalid_cycle_settings",
     });
-    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        lastPeriodStart: "2026-03-16",
-        cycleLength: 21,
-        periodLength: 11,
-        irregularCycle: true,
-        unpredictableCycle: true,
-        dismissedCalendarPredictionNoticeKey: null,
-      }),
-    );
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
   it("persists interface settings, including screenshot protection", async () => {

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,6 +16,7 @@ import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
+import { DashboardCycleHero } from "./dashboard/DashboardCycleHero";
 
 type DashboardQuickActionKey = "period" | "mood" | "symptom";
 
@@ -52,9 +53,16 @@ export function DashboardOverviewScreen({
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const editorCardOffsetRef = useRef(0);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sectionOffsetsRef = useRef<
     Partial<Record<DayLogEditorSectionKey, number>>
   >({});
+  const [activeQuickAction, setActiveQuickAction] = useState<DashboardQuickActionKey | null>(
+    null,
+  );
+  const [highlightedSection, setHighlightedSection] = useState<DayLogEditorSectionKey | null>(
+    null,
+  );
 
   function scrollToSection(key: DayLogEditorSectionKey) {
     const offset = sectionOffsetsRef.current[key];
@@ -68,20 +76,38 @@ export function DashboardOverviewScreen({
     });
   }
 
+  function highlightSection(
+    key: DayLogEditorSectionKey,
+    action: DashboardQuickActionKey,
+  ) {
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+
+    setActiveQuickAction(action);
+    setHighlightedSection(key);
+    highlightTimeoutRef.current = setTimeout(() => {
+      setActiveQuickAction((current) => (current === action ? null : current));
+      setHighlightedSection((current) => (current === key ? null : current));
+      highlightTimeoutRef.current = null;
+    }, 1500);
+  }
+
   function handleQuickAction(action: DashboardQuickActionKey) {
     switch (action) {
       case "period":
         onPatch({ isPeriod: !record.isPeriod });
-        if (!record.isPeriod) {
-          requestAnimationFrame(() => {
-            scrollToSection("flow");
-          });
-        }
+        requestAnimationFrame(() => {
+          scrollToSection("period");
+          highlightSection("period", action);
+        });
         break;
       case "mood":
+        highlightSection("mood", action);
         scrollToSection("mood");
         break;
       case "symptom":
+        highlightSection("symptoms", action);
         scrollToSection("symptoms");
         break;
     }
@@ -99,18 +125,14 @@ export function DashboardOverviewScreen({
         style={styles.screen}
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.statusStack}>
-            <View style={styles.phasePill}>
-              <Text style={styles.phasePillIcon}>{viewData.phaseStatus.icon}</Text>
-              <Text style={styles.phasePillText}>{viewData.phaseStatus.label}</Text>
-            </View>
-            <View style={styles.statusBadges}>
-              {viewData.statusItems.map((item) => (
-                <View key={item} style={styles.statusBadge}>
-                  <Text style={styles.statusBadgeText}>{item}</Text>
-                </View>
-              ))}
-            </View>
+          <DashboardCycleHero viewData={viewData.cycleHero} />
+
+          <View style={styles.statusBadges}>
+            {viewData.statusItems.map((item) => (
+              <View key={item} style={styles.statusBadge}>
+                <Text style={styles.statusBadgeText}>{item}</Text>
+              </View>
+            ))}
           </View>
 
           {viewData.predictionExplanation ? (
@@ -128,18 +150,21 @@ export function DashboardOverviewScreen({
             </Text>
             <View style={styles.quickActions}>
               <QuickActionButton
+                active={record.isPeriod}
                 icon="🩸"
                 label={viewData.quickActions.period}
                 onPress={() => handleQuickAction("period")}
                 testID="dashboard-quick-action-period"
               />
               <QuickActionButton
+                active={activeQuickAction === "mood"}
                 icon="😊"
                 label={viewData.quickActions.mood}
                 onPress={() => handleQuickAction("mood")}
                 testID="dashboard-quick-action-mood"
               />
               <QuickActionButton
+                active={activeQuickAction === "symptom"}
                 icon="💊"
                 label={viewData.quickActions.symptom}
                 onPress={() => handleQuickAction("symptom")}
@@ -155,6 +180,7 @@ export function DashboardOverviewScreen({
           >
             <DayLogEditorCard
               entryExists={entryExists}
+              highlightedSection={highlightedSection}
               isSaving={isSaving}
               onDelete={onDelete}
               onPatch={onPatch}
@@ -189,11 +215,13 @@ export function DashboardOverviewScreen({
 }
 
 function QuickActionButton({
+  active = false,
   icon,
   label,
   onPress,
   testID,
 }: {
+  active?: boolean;
   icon: string;
   label: string;
   onPress: () => void;
@@ -206,11 +234,13 @@ function QuickActionButton({
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={styles.quickActionButton}
+      style={[styles.quickActionButton, active ? styles.quickActionButtonActive : null]}
       testID={testID}
     >
       <Text style={styles.quickActionIcon}>{icon}</Text>
-      <Text style={styles.quickActionLabel}>{label}</Text>
+      <Text style={[styles.quickActionLabel, active ? styles.quickActionLabelActive : null]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -231,30 +261,6 @@ const createStyles = (colors: AppThemeColors) =>
       paddingHorizontal: 16,
       paddingTop: 16,
       width: "100%",
-    },
-    statusStack: {
-      gap: spacing.sm,
-    },
-    phasePill: {
-      alignItems: "center",
-      alignSelf: "flex-start",
-      backgroundColor: colors.surfaceElevated,
-      borderColor: colors.lineSoft,
-      borderRadius: 999,
-      borderWidth: 1,
-      flexDirection: "row",
-      gap: spacing.xs,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-    },
-    phasePillIcon: {
-      color: colors.accentStrong,
-      fontSize: 14,
-    },
-    phasePillText: {
-      color: colors.text,
-      fontSize: 14,
-      fontWeight: "700",
     },
     statusBadges: {
       flexDirection: "row",
@@ -306,6 +312,10 @@ const createStyles = (colors: AppThemeColors) =>
       shadowOpacity: 0.72,
       shadowRadius: 14,
     },
+    quickActionButtonActive: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentStrong,
+    },
     quickActionIcon: {
       color: colors.text,
       fontSize: 18,
@@ -316,5 +326,8 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 11,
       fontWeight: "700",
       marginTop: 4,
+    },
+    quickActionLabelActive: {
+      color: colors.accentStrong,
     },
   });

@@ -6,9 +6,14 @@ import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage, readHasCompletedOnboarding } from "../../services/app-bootstrap-service";
 import {
+  createPlatformExportDeliveryClient,
+  type ExportDeliveryClient,
+} from "../../services/export-delivery";
+import {
+  type BackupSyncErrorScope,
   buildBackupSyncDirtyState,
   resolveBackupSyncConnectedStatusMessage,
-  resolveBackupSyncErrorMessage,
+  resolveBackupSyncErrorPresentation,
   revertBackupSyncDraftState,
 } from "../../services/backup-sync-view-service";
 import {
@@ -21,6 +26,7 @@ import {
   saveBackupSyncDraft,
   uploadBackupSyncSnapshot,
 } from "../../services/backup-sync-screen-service";
+import { deliverRecoveryPhraseArtifact } from "../../services/recovery-phrase-delivery-service";
 import { loadSettingsScreenState } from "../../services/settings-state-service";
 import { buildSettingsViewData, type LoadedSettingsState } from "../../services/settings-view-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
@@ -33,12 +39,14 @@ import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { BackupSyncFlowScreen } from "./BackupSyncFlowScreen";
 
 type BackupSyncScreenProps = {
+  exportDeliveryClient?: ExportDeliveryClient;
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
   now?: Date;
 };
 
 export function BackupSyncScreen({
+  exportDeliveryClient = createPlatformExportDeliveryClient(),
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
   now,
@@ -51,11 +59,15 @@ export function BackupSyncScreen({
   const [state, setState] = useState<LoadedSettingsState | null>(null);
   const [accountLoginValue, setAccountLoginValue] = useState("");
   const [accountPasswordValue, setAccountPasswordValue] = useState("");
-  const [accountErrorMessage, setAccountErrorMessage] = useState("");
+  const [errorState, setErrorState] = useState<{
+    code: string;
+    scope: BackupSyncErrorScope;
+  } | null>(null);
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
   const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
+  const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
   const [isPreparingSync, setIsPreparingSync] = useState(false);
   const [isRecoveringSync, setIsRecoveringSync] = useState(false);
   const [isRestoringSync, setIsRestoringSync] = useState(false);
@@ -64,6 +76,11 @@ export function BackupSyncScreen({
   const shellCopy = getShellCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
   const isSyncDirty = buildBackupSyncDirtyState(state);
+  const errorPresentation = resolveBackupSyncErrorPresentation(
+    errorState?.code,
+    errorState?.scope,
+    viewData.account,
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -104,18 +121,17 @@ export function BackupSyncScreen({
     }, [effectiveNow, router, storage, syncSecretStore]),
   );
 
-  const resetAccountMessages = useCallback(() => {
-    setAccountErrorMessage("");
+  const resetFeedbackMessages = useCallback(() => {
+    setErrorState(null);
     setAccountStatusMessage("");
-    setGeneratedRecoveryPhrase("");
   }, []);
 
   const revertUnsavedSync = useCallback(() => {
-    resetAccountMessages();
+    resetFeedbackMessages();
     setState((current) =>
       current ? revertBackupSyncDraftState(current) : current,
     );
-  }, [resetAccountMessages]);
+  }, [resetFeedbackMessages]);
 
   usePreventRemove(
     isSyncDirty &&
@@ -141,7 +157,7 @@ export function BackupSyncScreen({
           return;
         }
 
-        const savedState = await saveSyncDraftIfNeeded();
+        const savedState = await saveSyncDraftIfNeeded("local");
         if (savedState) {
           requestAnimationFrame(() => {
             navigation.dispatch(data.action);
@@ -151,7 +167,7 @@ export function BackupSyncScreen({
     },
   );
 
-  async function saveSyncDraftIfNeeded() {
+  async function saveSyncDraftIfNeeded(scope: BackupSyncErrorScope) {
     if (!state) {
       return null;
     }
@@ -163,12 +179,16 @@ export function BackupSyncScreen({
     const syncResult = await saveBackupSyncDraft(storage, syncSecretStore, state);
     setIsSavingSyncDraft(false);
     if (!syncResult.ok) {
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(syncResult.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: syncResult.errorCode,
+        scope,
+      });
       return null;
     }
 
+    if (!syncResult.state.hasStoredSyncSecrets) {
+      setGeneratedRecoveryPhrase("");
+    }
     setState(syncResult.state);
     return syncResult.state;
   }
@@ -178,7 +198,7 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
 
     if (state.hasStoredSyncSecrets) {
       const confirmed = await openConfirmation(
@@ -194,9 +214,15 @@ export function BackupSyncScreen({
       );
       if (!challengeResult.ok) {
         if (challengeResult.reason === "unavailable") {
-          setAccountErrorMessage(viewData.account.errors.deviceAuthUnavailable);
+          setErrorState({
+            code: "deviceAuthUnavailable",
+            scope: "local",
+          });
         } else if (challengeResult.reason === "failed") {
-          setAccountErrorMessage(viewData.account.errors.deviceAuthFailed);
+          setErrorState({
+            code: "deviceAuthFailed",
+            scope: "local",
+          });
         }
         return;
       }
@@ -211,13 +237,15 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: result.errorCode,
+        scope: "local",
+      });
       setIsPreparingSync(false);
       return;
     }
 
+    setErrorState(null);
     setState(result.state);
     setGeneratedRecoveryPhrase(result.recoveryPhrase);
     setAccountStatusMessage(
@@ -233,10 +261,10 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
     setIsAuthenticatingSync(true);
 
-    const syncReadyState = await saveSyncDraftIfNeeded();
+    const syncReadyState = await saveSyncDraftIfNeeded("account");
     if (!syncReadyState) {
       setIsAuthenticatingSync(false);
       return;
@@ -254,13 +282,15 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: result.errorCode,
+        scope: "account",
+      });
       setIsAuthenticatingSync(false);
       return;
     }
 
+    setErrorState(null);
     setState(result.state);
     setAccountPasswordValue("");
     setAccountStatusMessage(
@@ -274,10 +304,10 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
     setIsSyncingNow(true);
 
-    const syncReadyState = await saveSyncDraftIfNeeded();
+    const syncReadyState = await saveSyncDraftIfNeeded("sync");
     if (!syncReadyState) {
       setIsSyncingNow(false);
       return;
@@ -299,13 +329,15 @@ export function BackupSyncScreen({
           ),
         );
       }
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: result.errorCode,
+        scope: "sync",
+      });
       setIsSyncingNow(false);
       return;
     }
 
+    setErrorState(null);
     setState(result.state);
     setAccountStatusMessage(viewData.account.status.uploaded);
     setIsSyncingNow(false);
@@ -316,16 +348,22 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
 
     const challengeResult = await requestSensitiveActionChallenge(
       viewData.account.restoreDeviceAuthPrompt,
     );
     if (!challengeResult.ok) {
       if (challengeResult.reason === "unavailable") {
-        setAccountErrorMessage(viewData.account.errors.deviceAuthUnavailable);
+        setErrorState({
+          code: "deviceAuthUnavailable",
+          scope: "sync",
+        });
       } else if (challengeResult.reason === "failed") {
-        setAccountErrorMessage(viewData.account.errors.deviceAuthFailed);
+        setErrorState({
+          code: "deviceAuthFailed",
+          scope: "sync",
+        });
       }
       return;
     }
@@ -355,13 +393,15 @@ export function BackupSyncScreen({
           ),
         );
       }
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: result.errorCode,
+        scope: "sync",
+      });
       setIsRestoringSync(false);
       return;
     }
 
+    setErrorState(null);
     setState(result.state);
     setAccountStatusMessage(viewData.account.status.restored);
     setIsRestoringSync(false);
@@ -372,10 +412,10 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
     setIsRecoveringSync(true);
 
-    const syncReadyState = await saveSyncDraftIfNeeded();
+    const syncReadyState = await saveSyncDraftIfNeeded("account");
     if (!syncReadyState) {
       setIsRecoveringSync(false);
       return;
@@ -393,13 +433,15 @@ export function BackupSyncScreen({
       effectiveNow,
     );
     if (!result.ok) {
-      setAccountErrorMessage(
-        resolveBackupSyncErrorMessage(result.errorCode, viewData.account),
-      );
+      setErrorState({
+        code: result.errorCode,
+        scope: "account",
+      });
       setIsRecoveringSync(false);
       return;
     }
 
+    setErrorState(null);
     setState(result.state);
     setAccountPasswordValue("");
     setRecoveryPhraseInputValue("");
@@ -412,7 +454,7 @@ export function BackupSyncScreen({
       return;
     }
 
-    resetAccountMessages();
+    resetFeedbackMessages();
     const confirmed = await openConfirmation(
       viewData.account.disconnectPrompt,
       viewData.account.disconnectLabel,
@@ -426,8 +468,36 @@ export function BackupSyncScreen({
       syncSecretStore,
       state,
     );
+    setErrorState(null);
     setState(result.state);
     setAccountStatusMessage(viewData.account.status.disconnected);
+  }
+
+  async function handleExportRecoveryPhrase() {
+    if (!generatedRecoveryPhrase) {
+      return;
+    }
+
+    resetFeedbackMessages();
+    setIsExportingRecoveryPhrase(true);
+
+    const result = await deliverRecoveryPhraseArtifact(
+      exportDeliveryClient,
+      generatedRecoveryPhrase,
+      effectiveNow,
+    );
+
+    if (!result.ok) {
+      setErrorState({
+        code:
+          result.errorCode === "delivery_unavailable"
+            ? "recovery_export_unavailable"
+            : "recovery_export_failed",
+        scope: "local",
+      });
+    }
+
+    setIsExportingRecoveryPhrase(false);
   }
 
   if (isLoading || !state) {
@@ -448,29 +518,31 @@ export function BackupSyncScreen({
       authLoginValue={accountLoginValue}
       authPasswordValue={accountPasswordValue}
       backLabel={viewData.account.backToSettingsLabel}
-      errorMessage={accountErrorMessage}
+      confirmActionLabel={viewData.common.confirmAction}
+      errorPresentation={errorPresentation}
       generatedRecoveryPhrase={generatedRecoveryPhrase}
       hasStoredSyncSecrets={state.hasStoredSyncSecrets}
       hasSyncSession={state.hasSyncSession}
       isAuthenticating={isAuthenticatingSync}
+      isExportingRecoveryPhrase={isExportingRecoveryPhrase}
       isPreparing={isPreparingSync}
       isRecovering={isRecoveringSync}
       isRestoring={isRestoringSync}
       isSyncing={isSyncingNow}
       notSetLabel={viewData.common.notSet}
       onBack={() => {
-        router.back();
+        router.replace("/(tabs)/settings");
       }}
       onAuthLoginChange={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setAccountLoginValue(value);
       }}
       onAuthPasswordChange={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setAccountPasswordValue(value);
       }}
       onDeviceLabelChange={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setState((current) =>
           current
             ? {
@@ -487,7 +559,7 @@ export function BackupSyncScreen({
         void handleDisconnectSync();
       }}
       onEndpointChange={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setState((current) =>
           current
             ? {
@@ -500,11 +572,14 @@ export function BackupSyncScreen({
             : current,
         );
       }}
+      onExportRecoveryPhrase={() => {
+        void handleExportRecoveryPhrase();
+      }}
       onLogin={() => {
         void handleConnectSync("login");
       }}
       onModeSelect={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setState((current) =>
           current
             ? {
@@ -526,7 +601,7 @@ export function BackupSyncScreen({
         void handleRecoverSync();
       }}
       onRecoveryPhraseChange={(value) => {
-        resetAccountMessages();
+        resetFeedbackMessages();
         setRecoveryPhraseInputValue(value);
       }}
       onRegister={() => {

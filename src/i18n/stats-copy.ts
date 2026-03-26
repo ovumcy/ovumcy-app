@@ -13,7 +13,8 @@ const statsCopyEn = {
   emptyBodyOne:
     "You have 1 completed cycle. Complete one more cycle to unlock insights.",
   emptyProgressHint: "Predictions become clearer after at least 2 completed cycles.",
-  completedCyclesProgress: (count: number) => `Completed cycles: ${count} / 2`,
+  emptyActionLabel: "Log today to speed this up",
+  completedCyclesProgress: (count: number) => `Cycle ${count} of 2 completed`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Your cycles vary from ${minDays} to ${maxDays} days. This is an irregular rhythm. Predictions are approximate.`,
   irregularRecommendation: "Consider enabling irregular cycle mode in settings.",
@@ -124,7 +125,8 @@ const statsCopyDe: StatsCopy = {
     "Du hast 1 abgeschlossenen Zyklus. Schließe noch einen ab, um Einblicke freizuschalten.",
   emptyProgressHint:
     "Vorhersagen werden nach mindestens 2 abgeschlossenen Zyklen klarer.",
-  completedCyclesProgress: (count: number) => `Abgeschlossene Zyklen: ${count} / 2`,
+  emptyActionLabel: "Heute eintragen, damit es schneller geht",
+  completedCyclesProgress: (count: number) => `Zyklus ${count} von 2 abgeschlossen`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Deine Zyklen schwanken zwischen ${minDays} und ${maxDays} Tagen. Das ist ein unregelmäßiger Rhythmus. Vorhersagen sind nur ungefähr.`,
   irregularRecommendation:
@@ -236,7 +238,8 @@ const statsCopyFr: StatsCopy = {
     "Tu as 1 cycle terminé. Termine-en un autre pour débloquer les analyses.",
   emptyProgressHint:
     "Les prédictions deviennent plus claires après au moins 2 cycles terminés.",
-  completedCyclesProgress: (count: number) => `Cycles terminés : ${count} / 2`,
+  emptyActionLabel: "Noter aujourd'hui pour aller plus vite",
+  completedCyclesProgress: (count: number) => `Cycle ${count} sur 2 terminé`,
   irregularNotice: (minDays: number, maxDays: number) =>
     `Tes cycles varient entre ${minDays} et ${maxDays} jours. C'est un rythme irrégulier. Les prédictions restent approximatives.`,
   irregularRecommendation:
@@ -349,7 +352,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     emptyBodyOne:
       "У вас есть 1 завершённый цикл. Завершите ещё один, чтобы открыть инсайты.",
     emptyProgressHint: "Предсказания становятся точнее как минимум после 2 завершённых циклов.",
-    completedCyclesProgress: (count: number) => `Завершённые циклы: ${count} / 2`,
+    emptyActionLabel: "Записать сегодня, чтобы открыть быстрее",
+    completedCyclesProgress: (count: number) => `Завершён цикл ${count} из 2`,
     irregularNotice: (minDays: number, maxDays: number) =>
       `Ваши циклы варьируются от ${minDays} до ${maxDays} дней. Это нерегулярный ритм. Предсказания приблизительны.`,
     irregularRecommendation: "Подумайте о включении режима нерегулярного цикла в настройках.",
@@ -447,7 +451,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     emptyBodyOne:
       "Tienes 1 ciclo completado. Completa uno más para desbloquear insights.",
     emptyProgressHint: "Las predicciones se vuelven más claras tras al menos 2 ciclos completos.",
-    completedCyclesProgress: (count: number) => `Ciclos completados: ${count} / 2`,
+    emptyActionLabel: "Registrar hoy para desbloquear antes",
+    completedCyclesProgress: (count: number) => `Ciclo ${count} de 2 completado`,
     irregularNotice: (minDays: number, maxDays: number) =>
       `Tus ciclos varían entre ${minDays} y ${maxDays} días. Es un ritmo irregular. Las predicciones son aproximadas.`,
     irregularRecommendation: "Considera activar el modo de ciclo irregular en ajustes.",

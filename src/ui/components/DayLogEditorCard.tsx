@@ -23,6 +23,7 @@ import { useThemedStyles } from "../theme/useThemedStyles";
 type DayLogEditorCardProps = {
   cancelLabel?: string;
   entryExists: boolean;
+  highlightedSection?: DayLogEditorSectionKey | null;
   isSaving: boolean;
   onSectionLayout?: (
     key: DayLogEditorSectionKey,
@@ -53,6 +54,7 @@ export type DayLogEditorSectionKey =
 export function DayLogEditorCard({
   cancelLabel,
   entryExists,
+  highlightedSection = null,
   isSaving,
   onSectionLayout,
   variant = "dashboard",
@@ -102,12 +104,16 @@ export function DayLogEditorCard({
     };
   }
 
+  function resolveSectionStyle(key: DayLogEditorSectionKey, baseStyle?: object) {
+    return [baseStyle ?? null, highlightedSection === key ? styles.sectionHighlighted : null];
+  }
+
   return (
     <FeatureCard
       title={viewData.title}
       description={headerDescription}
     >
-      <View onLayout={handleSectionLayout("period")}>
+      <View onLayout={handleSectionLayout("period")} style={resolveSectionStyle("period")}>
         <BinaryToggleCard
           icon="🩸"
           label={viewData.labels.periodDay}
@@ -118,7 +124,10 @@ export function DayLogEditorCard({
       </View>
 
       {record.isPeriod ? (
-        <View onLayout={handleSectionLayout("flow")} style={styles.section}>
+        <View
+          onLayout={handleSectionLayout("flow")}
+          style={resolveSectionStyle("flow", styles.section)}
+        >
           <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
           <ChoiceGroup
             compact
@@ -130,7 +139,10 @@ export function DayLogEditorCard({
         </View>
       ) : null}
 
-      <View onLayout={handleSectionLayout("symptoms")} style={styles.section}>
+      <View
+        onLayout={handleSectionLayout("symptoms")}
+        style={resolveSectionStyle("symptoms", styles.section)}
+      >
         <Text style={styles.sectionLabel}>{viewData.labels.symptoms}</Text>
         <MultiSelectChipGroup
           compact
@@ -159,7 +171,10 @@ export function DayLogEditorCard({
         ) : null}
       </View>
 
-      <View onLayout={handleSectionLayout("mood")} style={styles.section}>
+      <View
+        onLayout={handleSectionLayout("mood")}
+        style={resolveSectionStyle("mood", styles.section)}
+      >
         <Text style={styles.sectionLabel}>{viewData.labels.mood}</Text>
         <ChoiceGroup
           compact
@@ -173,7 +188,10 @@ export function DayLogEditorCard({
         />
       </View>
 
-      <View onLayout={handleSectionLayout("cycleFactors")} style={styles.section}>
+      <View
+        onLayout={handleSectionLayout("cycleFactors")}
+        style={resolveSectionStyle("cycleFactors", styles.section)}
+      >
         <Text style={styles.sectionLabel}>{viewData.labels.cycleFactors}</Text>
         <Text style={styles.sectionHint}>{viewData.labels.cycleFactorsHint}</Text>
         <MultiSelectChipGroup
@@ -191,7 +209,10 @@ export function DayLogEditorCard({
       </View>
 
       {viewData.visibility.showSexActivity ? (
-        <View onLayout={handleSectionLayout("intimacy")} style={styles.section}>
+        <View
+          onLayout={handleSectionLayout("intimacy")}
+          style={resolveSectionStyle("intimacy", styles.section)}
+        >
           <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
           <ChoiceGroup
             compact
@@ -206,7 +227,10 @@ export function DayLogEditorCard({
       {showsCalendarOrder ? (
         <>
           {viewData.visibility.showBBT ? (
-            <View onLayout={handleSectionLayout("bbt")} style={styles.section}>
+            <View
+              onLayout={handleSectionLayout("bbt")}
+              style={resolveSectionStyle("bbt", styles.section)}
+            >
               <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
               <AppTextInput
@@ -226,7 +250,10 @@ export function DayLogEditorCard({
           ) : null}
 
           {viewData.visibility.showCervicalMucus ? (
-            <View onLayout={handleSectionLayout("cervicalMucus")} style={styles.section}>
+            <View
+              onLayout={handleSectionLayout("cervicalMucus")}
+              style={resolveSectionStyle("cervicalMucus", styles.section)}
+            >
               <Text style={styles.sectionLabel}>{viewData.labels.cervicalMucus}</Text>
               <Text style={styles.sectionHint}>
                 {viewData.labels.cervicalMucusExplainer}
@@ -244,7 +271,10 @@ export function DayLogEditorCard({
       ) : (
         <>
           {viewData.visibility.showCervicalMucus ? (
-            <View onLayout={handleSectionLayout("cervicalMucus")} style={styles.section}>
+            <View
+              onLayout={handleSectionLayout("cervicalMucus")}
+              style={resolveSectionStyle("cervicalMucus", styles.section)}
+            >
               <Text style={styles.sectionLabel}>{viewData.labels.cervicalMucus}</Text>
               <Text style={styles.sectionHint}>
                 {viewData.labels.cervicalMucusExplainer}
@@ -260,7 +290,10 @@ export function DayLogEditorCard({
           ) : null}
 
           {viewData.visibility.showBBT ? (
-            <View onLayout={handleSectionLayout("bbt")} style={styles.section}>
+            <View
+              onLayout={handleSectionLayout("bbt")}
+              style={resolveSectionStyle("bbt", styles.section)}
+            >
               <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
               <AppTextInput
@@ -281,7 +314,10 @@ export function DayLogEditorCard({
         </>
       )}
 
-      <View onLayout={handleSectionLayout("notes")} style={styles.section}>
+      <View
+        onLayout={handleSectionLayout("notes")}
+        style={resolveSectionStyle("notes", styles.section)}
+      >
         <Pressable
           onPress={() => setIsNotesOpen((current) => !current)}
           style={styles.notesToggle}
@@ -335,13 +371,15 @@ export function DayLogEditorCard({
 
       {onDelete && entryExists ? (
         <View style={styles.dangerSection}>
-          <AppButton
-            disabled={isSaving}
-            label={viewData.actions.deleteLabel}
-            onPress={onDelete}
-            testID="day-log-delete-button"
-            variant="danger"
-          />
+          <View style={styles.dangerButtonWrap}>
+            <AppButton
+              disabled={isSaving}
+              label={viewData.actions.deleteLabel}
+              onPress={onDelete}
+              testID="day-log-delete-button"
+              variant="danger_secondary"
+            />
+          </View>
           <Text style={styles.deleteHint}>{viewData.labels.deleteHint}</Text>
         </View>
       ) : null}
@@ -353,6 +391,13 @@ const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     section: {
       gap: spacing.sm,
+    },
+    sectionHighlighted: {
+      backgroundColor: colors.accentSoft,
+      borderColor: colors.accentStrong,
+      borderRadius: 18,
+      borderWidth: 1,
+      padding: spacing.sm,
     },
     sectionLabel: {
       color: colors.text,
@@ -406,10 +451,14 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 18,
     },
     dangerSection: {
+      alignItems: "flex-start",
       borderTopColor: colors.lineSoft,
       borderTopWidth: 1,
       gap: spacing.xs,
       paddingTop: spacing.sm,
+    },
+    dangerButtonWrap: {
+      alignSelf: "flex-start",
     },
   });
 

@@ -55,12 +55,12 @@ export type SettingsViewData = {
       label: string;
       secondaryLabel: string;
     }[];
-    saveLabel: string;
     messages: {
       errorIncompatible: string;
       warningApproximate: string;
       infoAdjusted: string;
       infoPeriodLong: string;
+      infoCycleLong: string;
       infoCycleShort: string;
     };
   };
@@ -100,7 +100,6 @@ export type SettingsViewData = {
       hint: string;
       options: { value: TemperatureUnit; label: string }[];
     };
-    saveLabel: string;
   };
   interface: {
     title: string;
@@ -117,7 +116,6 @@ export type SettingsViewData = {
     screenCaptureProtectionStateOn: string;
     screenCaptureProtectionStateOff: string;
     discardChangesLabel: string;
-    saveLabel: string;
     saveBeforeLeaveLabel: string;
     status: {
       saved: string;
@@ -141,6 +139,7 @@ export type SettingsViewData = {
     accountStepHintSelfHosted: string;
     planStepTitle: string;
     planStepHint: string;
+    planSignInFirst: string;
     planUnknown: string;
     planInactive: string;
     planCheckFailed: string;
@@ -196,6 +195,7 @@ export type SettingsViewData = {
     recoveryHint: string;
     recoveryNotice: string;
     recoveryShownOnce: string;
+    recoveryExportLabel: string;
     prepareLabel: string;
     regenerateLabel: string;
     regeneratePrompt: string;
@@ -235,6 +235,8 @@ export type SettingsViewData = {
       blobNotFound: string;
       invalidPayload: string;
       networkFailed: string;
+      recoveryExportUnavailable: string;
+      recoveryExportFailed: string;
       deviceAuthUnavailable: string;
       deviceAuthFailed: string;
       saveFailed: string;
@@ -415,12 +417,12 @@ export function buildSettingsViewData(
           secondaryLabel: settingsCopy.cycle.predictionModeFactsOnlyHint,
         },
       ],
-      saveLabel: settingsCopy.cycle.save,
       messages: {
         errorIncompatible: settingsCopy.cycle.errorIncompatible,
         warningApproximate: settingsCopy.cycle.warningApproximate,
         infoAdjusted: settingsCopy.cycle.infoAdjusted,
         infoPeriodLong: settingsCopy.cycle.infoPeriodLong,
+        infoCycleLong: settingsCopy.cycle.infoCycleLong,
         infoCycleShort: settingsCopy.cycle.infoCycleShort,
       },
     },
@@ -471,7 +473,6 @@ export function buildSettingsViewData(
           { value: "f", label: `°F · ${settingsCopy.tracking.temperatureUnitFahrenheit}` },
         ],
       },
-      saveLabel: settingsCopy.tracking.save,
     },
     interface: {
       title: settingsCopy.interface.title,
@@ -501,7 +502,6 @@ export function buildSettingsViewData(
       screenCaptureProtectionStateOff:
         settingsCopy.interface.screenCaptureProtectionStateOff,
       discardChangesLabel: settingsCopy.interface.discardChanges,
-      saveLabel: settingsCopy.interface.save,
       saveBeforeLeaveLabel: settingsCopy.interface.saveBeforeLeave,
       status: {
         saved: settingsCopy.interface.saved,
@@ -525,6 +525,7 @@ export function buildSettingsViewData(
       accountStepHintSelfHosted: settingsCopy.account.accountStepHintSelfHosted,
       planStepTitle: settingsCopy.account.planStepTitle,
       planStepHint: settingsCopy.account.planStepHint,
+      planSignInFirst: settingsCopy.account.planSignInFirst,
       planUnknown: settingsCopy.account.planUnknown,
       planInactive: settingsCopy.account.planInactive,
       planCheckFailed: settingsCopy.account.planCheckFailed,
@@ -584,6 +585,7 @@ export function buildSettingsViewData(
       recoveryHint: settingsCopy.account.recoveryHint,
       recoveryNotice: settingsCopy.account.recoveryNotice,
       recoveryShownOnce: settingsCopy.account.recoveryShownOnce,
+      recoveryExportLabel: settingsCopy.account.recoveryExportLabel,
       prepareLabel: settingsCopy.account.prepareLabel,
       regenerateLabel: settingsCopy.account.regenerateLabel,
       regeneratePrompt: settingsCopy.account.regeneratePrompt,
@@ -628,6 +630,9 @@ export function buildSettingsViewData(
         blobNotFound: settingsCopy.account.errors.blobNotFound,
         invalidPayload: settingsCopy.account.errors.invalidPayload,
         networkFailed: settingsCopy.account.errors.networkFailed,
+        recoveryExportUnavailable:
+          settingsCopy.account.errors.recoveryExportUnavailable,
+        recoveryExportFailed: settingsCopy.account.errors.recoveryExportFailed,
         deviceAuthUnavailable: settingsCopy.account.errors.deviceAuthUnavailable,
         deviceAuthFailed: settingsCopy.account.errors.deviceAuthFailed,
         saveFailed: settingsCopy.account.errors.saveFailed,

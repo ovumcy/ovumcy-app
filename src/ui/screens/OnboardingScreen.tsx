@@ -259,12 +259,14 @@ function resolveStepOneError(
 }
 
 function resolveStepTwoError(
-  code: "date_required" | "generic",
+  code: "date_required" | "invalid_cycle_settings" | "generic",
   viewData: ReturnType<typeof buildOnboardingViewData>,
 ): string {
   switch (code) {
     case "date_required":
       return viewData.errors.dateRequired;
+    case "invalid_cycle_settings":
+      return viewData.stepTwo.messages.errorIncompatible;
     case "generic":
       return viewData.errors.generic;
   }

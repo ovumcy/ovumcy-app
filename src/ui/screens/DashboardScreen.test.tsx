@@ -70,6 +70,10 @@ describe("DashboardScreen", () => {
       expect(screen.queryByText("Intimacy")).toBeNull();
       expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
       expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe(
+        "Day 8",
+      );
     },
     10000,
   );
@@ -98,6 +102,12 @@ describe("DashboardScreen", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("dashboard-prediction-explanation")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe(
+      "Facts only",
+    );
+    expect(screen.getByTestId("dashboard-cycle-hero-detail").props.children).toBe(
+      "Logged history only",
     );
   });
 
@@ -178,5 +188,29 @@ describe("DashboardScreen", () => {
     fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
     expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
+  });
+
+  it("clears an unsaved dashboard draft back to the empty day state", async () => {
+    renderDashboard(createStorageMock());
+
+    await screen.findByTestId("dashboard-quick-action-period");
+
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-delete-button")).toBeTruthy(),
+    );
+    expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: true }),
+    );
+
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
+        expect.objectContaining({ checked: false }),
+      ),
+    );
+    expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
   });
 });

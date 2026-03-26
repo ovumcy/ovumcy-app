@@ -1,5 +1,6 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
@@ -60,6 +61,7 @@ const mockRequestSensitiveActionChallenge = jest.mocked(
   requestSensitiveActionChallenge,
 );
 const originalFetch = global.fetch;
+const originalPlatformOS = Platform.OS;
 
 describe("BackupSyncScreen", () => {
   beforeEach(() => {
@@ -82,6 +84,13 @@ describe("BackupSyncScreen", () => {
 
   afterAll(() => {
     global.fetch = originalFetch;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: originalPlatformOS,
+    });
   });
 
   it("prepares local encrypted sync and reveals the recovery phrase once", async () => {
@@ -114,6 +123,7 @@ describe("BackupSyncScreen", () => {
         }),
       ),
     );
+    expect(screen.getByTestId("settings-sync-recovery-export-button")).toBeTruthy();
     await waitFor(() =>
       expect(screen.getByTestId("settings-sync-recovery-phrase").props.children)
         .toEqual(expect.any(String)),
@@ -216,6 +226,7 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
+    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
     expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
 
     fireEvent.changeText(
@@ -410,8 +421,74 @@ describe("BackupSyncScreen", () => {
 
     expect(screen.getByTestId("settings-sync-login-input")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-register-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-login-button")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
     expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
+  });
+
+  it("keeps the device label empty until the owner enters a real value", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "",
+        setupStatus: "not_configured",
+        preparedAt: null,
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={createSyncSecretStoreMock()}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    expect(screen.getByTestId("settings-sync-device-label-input").props.value).toBe("");
+    expect(screen.getByTestId("settings-sync-device-label-input").props.placeholder).not.toBe(
+      "Pixel 7",
+    );
+  });
+
+  it("uses a text endpoint field on web so the browser does not mark hostnames invalid", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "self_hosted",
+        endpointInput: "",
+        normalizedEndpoint: "",
+        deviceLabel: "",
+        setupStatus: "not_configured",
+        preparedAt: null,
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "web",
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={createSyncSecretStoreMock()}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    expect(screen.getByTestId("settings-sync-endpoint-input").props.keyboardType).toBe(
+      "default",
+    );
   });
 
   it("shows the backup and sync title only once on the dedicated screen", async () => {
@@ -469,7 +546,7 @@ describe("BackupSyncScreen", () => {
 
     fireEvent.press(screen.getByTestId("backup-sync-back-button"));
 
-    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
   });
 
   it("requires confirmation before recreating local sync keys", async () => {

@@ -25,8 +25,12 @@ export type CycleGuidanceState = {
   adjusted: boolean;
   periodLength: number;
   periodLong: boolean;
+  cycleLong: boolean;
   cycleShort: boolean;
 };
+
+const CYCLE_LENGTH_LONG_WARNING_THRESHOLD = 45;
+const CYCLE_LENGTH_SHORT_WARNING_THRESHOLD = 21;
 
 export type SettingsDateBounds = {
   minDate: LocalDateISO;
@@ -75,7 +79,7 @@ export function clampPeriodLength(value: number): number {
 
 export function maxPeriodLengthForCycle(cycleLength: number): number {
   const safeCycleLength = clampCycleLength(cycleLength);
-  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS;
+  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS - 1;
 
   if (maxAllowed < MIN_PERIOD_LENGTH) {
     return MIN_PERIOD_LENGTH;
@@ -98,10 +102,7 @@ export function sanitizeCycleSettingsValues(
   values: CycleSettingsValues,
 ): CycleSettingsValues {
   const cycleLength = clampCycleLength(values.cycleLength);
-  const periodLength = Math.min(
-    clampPeriodLength(values.periodLength),
-    maxPeriodLengthForCycle(cycleLength),
-  );
+  const periodLength = clampPeriodLength(values.periodLength);
 
   return {
     ...values,
@@ -160,17 +161,29 @@ export function buildCycleGuidanceState(
 ): CycleGuidanceState {
   const safeCycleLength = clampCycleLength(cycleLength);
   const safePeriodLength = clampPeriodLength(periodLength);
-  const maxAllowedPeriodLength = maxPeriodLengthForCycle(safeCycleLength);
-  const adjustedPeriodLength = Math.min(safePeriodLength, maxAllowedPeriodLength);
+  const incompatible = !isCompatibleCycleAndPeriod(safeCycleLength, safePeriodLength);
 
   return {
-    invalid: false,
+    invalid: incompatible,
     warning: false,
-    adjusted: adjustedPeriodLength !== safePeriodLength,
-    periodLength: adjustedPeriodLength,
-    periodLong: adjustedPeriodLength > 8,
-    cycleShort: safeCycleLength < 24,
+    adjusted: false,
+    periodLength: safePeriodLength,
+    periodLong: safePeriodLength > 8,
+    cycleLong: safeCycleLength > CYCLE_LENGTH_LONG_WARNING_THRESHOLD,
+    cycleShort: safeCycleLength < CYCLE_LENGTH_SHORT_WARNING_THRESHOLD,
   };
+}
+
+export function sanitizeLocalDateInput(raw: string): string {
+  const digits = String(raw).replace(/\D+/g, "").slice(0, 8);
+  if (digits.length <= 4) {
+    return digits;
+  }
+  if (digits.length <= 6) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  }
+
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
 }
 
 export function getSettingsCycleStartDateBounds(now: Date): SettingsDateBounds {

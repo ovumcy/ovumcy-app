@@ -6,48 +6,68 @@ import { createLocalAppStorageMock } from "../../test/create-local-app-storage-m
 import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./SettingsSyncSetupSection";
 
+function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["account"]) {
+  return {
+    authLoginValue: "",
+    authPasswordValue: "",
+    confirmActionLabel: "Confirm",
+    errorPresentation: {
+      accountMessage: "",
+      deviceLabelMessage: "",
+      endpointMessage: "",
+      localMessage: "",
+      loginMessage: "",
+      passwordMessage: "",
+      recoveryPhraseMessage: "",
+      syncMessage: "",
+    },
+    generatedRecoveryPhrase: "",
+    hasStoredSyncSecrets: false,
+    hasSyncSession: false,
+    isAuthenticating: false,
+    isExportingRecoveryPhrase: false,
+    isPreparing: false,
+    isRecovering: false,
+    isRestoring: false,
+    isSyncing: false,
+    notSetLabel: "Not set",
+    onAuthLoginChange: () => {},
+    onAuthPasswordChange: () => {},
+    onDisconnect: () => {},
+    onDeviceLabelChange: () => {},
+    onEndpointChange: () => {},
+    onExportRecoveryPhrase: () => {},
+    onLogin: () => {},
+    onModeSelect: () => {},
+    onPrepare: () => {},
+    onRecoverAccess: () => {},
+    onRecoveryPhraseChange: () => {},
+    onRegister: () => {},
+    onRestore: () => {},
+    onSyncNow: () => {},
+    preferences: {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      deviceLabel: "Pixel 7",
+    },
+    recoveryPhraseValue: "",
+    statusMessage: "",
+    syncCapabilities: null,
+    viewData,
+  };
+}
+
 describe("SettingsSyncSetupSection", () => {
   it("shows a clear preparing state while the recovery phrase is being generated", async () => {
     const storage = createLocalAppStorageMock();
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
 
     render(
       <AppPreferencesProvider storage={storage}>
         <SettingsSyncSetupSection
-          authLoginValue=""
-          authPasswordValue=""
-          errorMessage=""
-          generatedRecoveryPhrase=""
-          hasStoredSyncSecrets={false}
-          hasSyncSession={false}
-          isAuthenticating={false}
+          {...props}
           isPreparing
-          isRecovering={false}
-          isRestoring={false}
-          isSyncing={false}
-          notSetLabel="Not set"
-          onAuthLoginChange={() => {}}
-          onAuthPasswordChange={() => {}}
-          onDisconnect={() => {}}
-          onDeviceLabelChange={() => {}}
-          onEndpointChange={() => {}}
-          onLogin={() => {}}
-          onModeSelect={() => {}}
-          onPrepare={() => {}}
-          onRecoverAccess={() => {}}
-          onRecoveryPhraseChange={() => {}}
-          onRegister={() => {}}
-          onRestore={() => {}}
-          onSyncNow={() => {}}
-          preferences={{
-            ...createDefaultSyncPreferencesRecord(),
-            mode: "managed",
-            deviceLabel: "Pixel 7",
-          }}
-          recoveryPhraseValue=""
-          statusMessage=""
-          syncCapabilities={null}
-          viewData={viewData}
         />
       </AppPreferencesProvider>,
     );
@@ -55,102 +75,40 @@ describe("SettingsSyncSetupSection", () => {
     expect(await screen.findByTestId("settings-sync-preparing-block")).toBeTruthy();
     expect(await screen.findByText(viewData.preparingTitle)).toBeTruthy();
     expect(await screen.findByText(viewData.preparingHint)).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
   });
 
   it("shows managed account auth controls on the dedicated backup and sync screen", async () => {
     const storage = createLocalAppStorageMock();
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
 
     render(
       <AppPreferencesProvider storage={storage}>
-        <SettingsSyncSetupSection
-          authLoginValue=""
-          authPasswordValue=""
-          errorMessage=""
-          generatedRecoveryPhrase=""
-          hasStoredSyncSecrets={false}
-          hasSyncSession={false}
-          isAuthenticating={false}
-          isPreparing={false}
-          isRecovering={false}
-          isRestoring={false}
-          isSyncing={false}
-          notSetLabel="Not set"
-          onAuthLoginChange={() => {}}
-          onAuthPasswordChange={() => {}}
-          onDisconnect={() => {}}
-          onDeviceLabelChange={() => {}}
-          onEndpointChange={() => {}}
-          onLogin={() => {}}
-          onModeSelect={() => {}}
-          onPrepare={() => {}}
-          onRecoverAccess={() => {}}
-          onRecoveryPhraseChange={() => {}}
-          onRegister={() => {}}
-          onRestore={() => {}}
-          onSyncNow={() => {}}
-          preferences={{
-            ...createDefaultSyncPreferencesRecord(),
-            mode: "managed",
-            deviceLabel: "Pixel 7",
-          }}
-          recoveryPhraseValue=""
-          statusMessage=""
-          syncCapabilities={null}
-          viewData={viewData}
-        />
+        <SettingsSyncSetupSection {...props} />
       </AppPreferencesProvider>,
     );
 
     expect(await screen.findByTestId("settings-sync-login-input")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
-    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
     expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });
 
   it("renumbers the sync step for self-hosted mode when the cloud plan step is hidden", async () => {
     const storage = createLocalAppStorageMock();
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
 
     render(
       <AppPreferencesProvider storage={storage}>
         <SettingsSyncSetupSection
-          authLoginValue=""
-          authPasswordValue=""
-          errorMessage=""
-          generatedRecoveryPhrase=""
-          hasStoredSyncSecrets={false}
-          hasSyncSession={false}
-          isAuthenticating={false}
-          isPreparing={false}
-          isRecovering={false}
-          isRestoring={false}
-          isSyncing={false}
-          notSetLabel="Not set"
-          onAuthLoginChange={() => {}}
-          onAuthPasswordChange={() => {}}
-          onDisconnect={() => {}}
-          onDeviceLabelChange={() => {}}
-          onEndpointChange={() => {}}
-          onLogin={() => {}}
-          onModeSelect={() => {}}
-          onPrepare={() => {}}
-          onRecoverAccess={() => {}}
-          onRecoveryPhraseChange={() => {}}
-          onRegister={() => {}}
-          onRestore={() => {}}
-          onSyncNow={() => {}}
+          {...props}
           preferences={{
-            ...createDefaultSyncPreferencesRecord(),
+            ...props.preferences,
             mode: "self_hosted",
             endpointInput: "127.0.0.1:8080",
-            deviceLabel: "Pixel 7",
           }}
-          recoveryPhraseValue=""
-          statusMessage=""
-          syncCapabilities={null}
-          viewData={viewData}
         />
       </AppPreferencesProvider>,
     );
@@ -163,45 +121,11 @@ describe("SettingsSyncSetupSection", () => {
   it("uses clearer labels for account login and recovery summary states", async () => {
     const storage = createLocalAppStorageMock();
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
 
     render(
       <AppPreferencesProvider storage={storage}>
-        <SettingsSyncSetupSection
-          authLoginValue=""
-          authPasswordValue=""
-          errorMessage=""
-          generatedRecoveryPhrase=""
-          hasStoredSyncSecrets={false}
-          hasSyncSession={false}
-          isAuthenticating={false}
-          isPreparing={false}
-          isRecovering={false}
-          isRestoring={false}
-          isSyncing={false}
-          notSetLabel="Not set"
-          onAuthLoginChange={() => {}}
-          onAuthPasswordChange={() => {}}
-          onDisconnect={() => {}}
-          onDeviceLabelChange={() => {}}
-          onEndpointChange={() => {}}
-          onLogin={() => {}}
-          onModeSelect={() => {}}
-          onPrepare={() => {}}
-          onRecoverAccess={() => {}}
-          onRecoveryPhraseChange={() => {}}
-          onRegister={() => {}}
-          onRestore={() => {}}
-          onSyncNow={() => {}}
-          preferences={{
-            ...createDefaultSyncPreferencesRecord(),
-            mode: "managed",
-            deviceLabel: "Pixel 7",
-          }}
-          recoveryPhraseValue=""
-          statusMessage=""
-          syncCapabilities={null}
-          viewData={viewData}
-        />
+        <SettingsSyncSetupSection {...props} />
       </AppPreferencesProvider>,
     );
 

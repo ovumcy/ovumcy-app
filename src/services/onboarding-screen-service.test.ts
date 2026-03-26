@@ -171,7 +171,7 @@ describe("onboarding-screen-service", () => {
     });
   });
 
-  it("sanitizes step 2 values before persisting onboarding completion", async () => {
+  it("rejects incompatible step 2 values before persisting onboarding completion", async () => {
     const storage = createStorageMock();
     const state = patchOnboardingStepTwoValues(
       createLoadedState(),
@@ -181,25 +181,11 @@ describe("onboarding-screen-service", () => {
     const result = await finishOnboarding(storage, state);
 
     expect(result).toEqual({
-      ok: true,
-      state: expect.objectContaining({
-        stepTwoValues: expect.objectContaining({
-          cycleLength: 21,
-          periodLength: 11,
-        }),
-      }),
+      ok: false,
+      errorCode: "invalid_cycle_settings",
     });
-    expect(storage.writeBootstrapState).toHaveBeenCalledWith({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-      incompleteOnboardingStep: null,
-    });
-    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-      expect.objectContaining({
-        cycleLength: 21,
-        periodLength: 11,
-      }),
-    );
+    expect(storage.writeBootstrapState).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
   it("persists facts-only onboarding mode as an unpredictable cycle", async () => {

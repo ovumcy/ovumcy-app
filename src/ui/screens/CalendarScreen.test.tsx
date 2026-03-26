@@ -5,6 +5,7 @@ import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
+import { openConfirmation } from "../confirm/open-confirmation";
 import { CalendarScreen } from "./CalendarScreen";
 
 const mockUseEffect = React.useEffect;
@@ -16,6 +17,14 @@ jest.mock("expo-router", () => {
     },
   };
 });
+
+jest.mock("../confirm/open-confirmation", () => {
+  return {
+    openConfirmation: jest.fn(),
+  };
+});
+
+const mockOpenConfirmation = jest.mocked(openConfirmation);
 
 function createStorageMock() {
   return createLocalAppStorageMock({
@@ -74,6 +83,11 @@ async function waitForCalendarReady() {
 }
 
 describe("CalendarScreen", () => {
+  beforeEach(() => {
+    mockOpenConfirmation.mockReset();
+    mockOpenConfirmation.mockResolvedValue(true);
+  });
+
   it("loads a selected day through the shared local repository", async () => {
     const storage = createStorageMock();
 
@@ -85,6 +99,20 @@ describe("CalendarScreen", () => {
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-14"),
+    );
+  });
+
+  it("moves the selected-day panel to the new month anchor when month navigation changes", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+
+    fireEvent.press(screen.getByTestId("calendar-prev-button"));
+
+    await waitFor(() =>
+      expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-02-01"),
     );
   });
 

@@ -45,6 +45,8 @@ const appCopyEn = {
         "Period length was adjusted automatically so at least 10 days remain before the next cycle.",
       infoPeriodLong:
         "A duration above 8 days may indicate cycle irregularities; please discuss with a doctor.",
+      infoCycleLong:
+        "A cycle longer than 45 days is less common; please discuss with a doctor.",
       infoCycleShort:
         "A cycle shorter than 24 days is less common; please discuss with a doctor.",
       autoPeriodFill: "Auto-mark period days",
@@ -131,6 +133,8 @@ const appCopyDe: AppCopy = {
         "Die Periodendauer wurde automatisch angepasst, damit mindestens 10 Tage bis zum nächsten Zyklus bleiben.",
       infoPeriodLong:
         "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprich darüber mit einer Ärztin oder einem Arzt.",
+      infoCycleLong:
+        "Ein Zyklus von mehr als 45 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
       infoCycleShort:
         "Ein Zyklus unter 24 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
       autoPeriodFill: "Periodentage automatisch markieren",
@@ -217,6 +221,8 @@ const appCopyFr: AppCopy = {
         "La durée des règles a été ajustée automatiquement pour qu'il reste au moins 10 jours avant le cycle suivant.",
       infoPeriodLong:
         "Une durée supérieure à 8 jours peut indiquer des irrégularités du cycle. Parles-en avec un médecin.",
+      infoCycleLong:
+        "Un cycle de plus de 45 jours est moins courant. Parles-en avec un médecin.",
       infoCycleShort:
         "Un cycle inférieur à 24 jours est moins courant. Parles-en avec un médecin.",
       autoPeriodFill: "Marquer automatiquement les jours de règles",
@@ -305,6 +311,8 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Длительность менструации была автоматически скорректирована, чтобы до следующего цикла оставалось минимум 10 дней.",
         infoPeriodLong:
           "Длительность более 8 дней может указывать на нерегулярность цикла; обсудите это с врачом.",
+        infoCycleLong:
+          "Цикл длиннее 45 дней встречается реже; обсудите это с врачом.",
         infoCycleShort:
           "Цикл короче 24 дней встречается реже; обсудите это с врачом.",
         autoPeriodFill: "Автоматически отмечать дни менструации",
@@ -389,6 +397,8 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "La duración del período se ajustó automáticamente para que queden al menos 10 días antes del siguiente ciclo.",
         infoPeriodLong:
           "Una duración superior a 8 días puede indicar irregularidades; coméntalo con un médico.",
+        infoCycleLong:
+          "Un ciclo de más de 45 días es menos común; coméntalo con un médico.",
         infoCycleShort:
           "Un ciclo más corto de 24 días es menos común; coméntalo con un médico.",
         autoPeriodFill: "Marcar automáticamente los días del período",

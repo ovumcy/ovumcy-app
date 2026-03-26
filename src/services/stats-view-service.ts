@@ -39,6 +39,8 @@ export type StatsTopCardViewData = {
   description?: string;
 };
 
+export type StatsEmptyActionKind = "open_logging";
+
 export type StatsViewData = {
   title: string;
   description: string;
@@ -47,9 +49,14 @@ export type StatsViewData = {
   emptyState?: {
     title: string;
     body: string;
+    lockedSections: string[];
     progressLabel: string;
     progressPercent: number;
     hint: string;
+    action: {
+      kind: StatsEmptyActionKind;
+      label: string;
+    };
   };
   notices: string[];
   trendChart?: {
@@ -239,11 +246,23 @@ export function buildStatsViewData(
           history.completedCycleCount === 0
             ? statsCopy.emptyBodyZero
             : statsCopy.emptyBodyOne,
+        lockedSections: [
+          statsCopy.cycleLengthCard,
+          statsCopy.cycleTrend,
+          statsCopy.symptomFrequency,
+          statsCopy.lastCycleSymptomsTitle,
+          statsCopy.phaseMoodTitle,
+          statsCopy.phaseSymptomsTitle,
+        ],
         progressLabel: statsCopy.completedCyclesProgress(
           history.completedCycleCount,
         ),
         progressPercent: history.insightProgress,
         hint: statsCopy.emptyProgressHint,
+        action: {
+          kind: "open_logging",
+          label: statsCopy.emptyActionLabel,
+        },
       },
     };
   }

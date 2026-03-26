@@ -9,7 +9,6 @@ import type { SettingsViewData } from "../../services/settings-view-service";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
-import { AppButton } from "./AppButton";
 import { BinaryToggleCard } from "./BinaryToggleCard";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
@@ -17,10 +16,8 @@ import { StatusBanner } from "./StatusBanner";
 
 type SettingsInterfaceSectionProps = {
   errorMessage: string;
-  isSaving: boolean;
   onLanguageSelect: (value: InterfaceLanguage) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
-  onSave: () => void | Promise<void>;
   onThemeSelect: (value: ThemePreference) => void;
   statusMessage: string;
   value: InterfaceSettingsValues;
@@ -29,10 +26,8 @@ type SettingsInterfaceSectionProps = {
 
 export function SettingsInterfaceSection({
   errorMessage,
-  isSaving,
   onLanguageSelect,
   onScreenCaptureProtectionChange,
-  onSave,
   onThemeSelect,
   statusMessage,
   value,
@@ -102,14 +97,6 @@ export function SettingsInterfaceSection({
           tone="success"
         />
       ) : null}
-
-      <AppButton
-        disabled={isSaving}
-        label={viewData.saveLabel}
-        onPress={onSave}
-        testID="settings-save-interface-button"
-        variant="secondary"
-      />
     </FeatureCard>
   );
 }

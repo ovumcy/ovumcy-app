@@ -9,6 +9,7 @@ import type {
   SettingsViewData,
 } from "../../../services/settings-view-service";
 import { AppButton } from "../../components/AppButton";
+import { AppTextInput } from "../../components/AppTextInput";
 import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
@@ -17,9 +18,12 @@ import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
 type SettingsCycleSectionProps = {
+  cycleDateInputValue: string;
   cycleErrorMessage: string;
   cycleGuidance: {
     adjusted: boolean;
+    invalid: boolean;
+    cycleLong: boolean;
     cycleShort: boolean;
     periodLong: boolean;
   };
@@ -28,17 +32,18 @@ type SettingsCycleSectionProps = {
   cyclePickerValue: Date;
   cycleStatusMessage: string;
   displayedCycleStartDate: string;
-  isSavingCycle: boolean;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
   onAutoPeriodFillChange: (value: boolean) => void;
   onClearLastPeriodStart: () => void;
   onCycleLengthChange: (value: number) => void;
+  onCycleDateInputChange: (value: string) => void;
+  onDatePickerCancel: () => void;
   onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
+  onDatePickerConfirm: () => void;
   onDatePickerToggle: () => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onPeriodLengthChange: (value: number) => void;
-  onSaveCycleSettings: () => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
   predictionMode: PredictionMode;
   showDatePicker: boolean;
@@ -49,6 +54,7 @@ type SettingsCycleSectionProps = {
 };
 
 export function SettingsCycleSection({
+  cycleDateInputValue,
   cycleErrorMessage,
   cycleGuidance,
   cyclePickerMaximumDate,
@@ -56,17 +62,18 @@ export function SettingsCycleSection({
   cyclePickerValue,
   cycleStatusMessage,
   displayedCycleStartDate,
-  isSavingCycle,
   now,
   onAgeGroupSelect,
   onAutoPeriodFillChange,
   onClearLastPeriodStart,
   onCycleLengthChange,
+  onCycleDateInputChange,
+  onDatePickerCancel,
   onDatePickerChange,
+  onDatePickerConfirm,
   onDatePickerToggle,
   onPredictionModeSelect,
   onPeriodLengthChange,
-  onSaveCycleSettings,
   onUsageGoalSelect,
   predictionMode,
   showDatePicker,
@@ -75,6 +82,10 @@ export function SettingsCycleSection({
   supportsNativeDatePicker,
   viewData,
 }: SettingsCycleSectionProps) {
+  const effectiveCycleErrorMessage = cycleGuidance.invalid
+    ? viewData.cycle.messages.errorIncompatible
+    : cycleErrorMessage;
+
   return (
     <FeatureCard testID="settings-cycle-section" title={viewData.cycle.title}>
       <LabeledSliderField
@@ -125,28 +136,63 @@ export function SettingsCycleSection({
             ) : null}
           </Pressable>
         ) : (
-          <View style={styles.dateFieldShell}>
-            <Text
-              style={[
-                styles.dateFieldValue,
-                !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
-              ]}
-            >
-              {state.cycleValues.lastPeriodStart
-                ? displayedCycleStartDate
-                : viewData.common.notSet}
-            </Text>
-            <View style={styles.dateActionRow}>
-              <Pressable onPress={onDatePickerToggle} style={styles.inlineAction}>
-                <Text style={styles.inlineActionText}>{viewData.common.changeDate}</Text>
-              </Pressable>
-              {state.cycleValues.lastPeriodStart ? (
-                <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
-                  <Text style={styles.inlineActionText}>{viewData.common.clearDate}</Text>
+          <>
+            <View style={styles.dateFieldShell}>
+              <Text
+                style={[
+                  styles.dateFieldValue,
+                  !state.cycleValues.lastPeriodStart ? styles.dateFieldValueMuted : null,
+                ]}
+              >
+                {state.cycleValues.lastPeriodStart
+                  ? displayedCycleStartDate
+                  : viewData.common.notSet}
+              </Text>
+              <View style={styles.dateActionRow}>
+                <Pressable
+                  onPress={onDatePickerToggle}
+                  style={styles.inlineAction}
+                  testID="settings-cycle-date-field-button"
+                >
+                  <Text style={styles.inlineActionText}>{viewData.common.changeDate}</Text>
                 </Pressable>
-              ) : null}
+                {state.cycleValues.lastPeriodStart ? (
+                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
+                    <Text style={styles.inlineActionText}>{viewData.common.clearDate}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
-          </View>
+            {showDatePicker ? (
+              <View style={styles.formGroup}>
+                <AppTextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  onChangeText={onCycleDateInputChange}
+                  placeholder="YYYY-MM-DD"
+                  style={styles.dateInput}
+                  testID="settings-cycle-date-input"
+                  value={cycleDateInputValue}
+                />
+                <View style={styles.actionsRow}>
+                  <AppButton
+                    label={viewData.common.cancelAction}
+                    onPress={onDatePickerCancel}
+                    testID="settings-cycle-date-cancel-button"
+                    variant="secondary"
+                  />
+                  <AppButton
+                    label={viewData.common.confirmAction}
+                    onPress={onDatePickerConfirm}
+                    testID="settings-cycle-date-confirm-button"
+                  />
+                </View>
+              </View>
+            ) : null}
+          </>
         )}
         {supportsNativeDatePicker && showDatePicker ? (
           <DateTimePicker
@@ -168,14 +214,17 @@ export function SettingsCycleSection({
         {cycleGuidance.periodLong ? (
           <Text style={styles.infoText}>{viewData.cycle.messages.infoPeriodLong}</Text>
         ) : null}
+        {cycleGuidance.cycleLong ? (
+          <Text style={styles.infoText}>{viewData.cycle.messages.infoCycleLong}</Text>
+        ) : null}
         {cycleGuidance.cycleShort ? (
           <Text style={styles.infoText}>{viewData.cycle.messages.infoCycleShort}</Text>
         ) : null}
       </View>
 
-      {cycleErrorMessage ? (
+      {effectiveCycleErrorMessage ? (
         <StatusBanner
-          message={cycleErrorMessage}
+          message={effectiveCycleErrorMessage}
           testID="settings-cycle-error-banner"
           tone="error"
         />
@@ -231,13 +280,6 @@ export function SettingsCycleSection({
           testIDPrefix="settings-usage-goal"
         />
       </View>
-
-      <AppButton
-        disabled={isSavingCycle}
-        label={viewData.cycle.saveLabel}
-        onPress={onSaveCycleSettings}
-        testID="settings-save-cycle-button"
-      />
     </FeatureCard>
   );
 }

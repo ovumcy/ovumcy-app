@@ -12,7 +12,11 @@ import {
 } from "../../../services/export-delivery";
 import type { ExportServiceDependencies } from "../../../services/export-service";
 import { sanitizeExportDateInput } from "../../../services/export-policy";
-import { formatLocalDate } from "../../../services/profile-settings-policy";
+import {
+  formatLocalDate,
+  parseLocalDate,
+  sanitizeLocalDateInput,
+} from "../../../services/profile-settings-policy";
 import { loadSettingsScreenState } from "../../../services/settings-state-service";
 import {
   buildSettingsCycleGuidance,
@@ -38,10 +42,7 @@ import {
   runRefreshExportRangeAction,
 } from "./settings-screen-export-actions";
 import {
-  runSaveCycleSettingsAction,
-  runSaveInterfaceSettingsAction,
   runSavePendingSettingsAction,
-  runSaveTrackingSettingsAction,
 } from "./settings-screen-save-actions";
 import {
   runArchiveSymptomAction,
@@ -118,6 +119,7 @@ export function useSettingsScreenController({
   const [isSavingTracking, setIsSavingTracking] = useState(false);
   const [isClearingData, setIsClearingData] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [cycleDateDraftValue, setCycleDateDraftValue] = useState("");
   const [showExportDatePicker, setShowExportDatePicker] = useState<"from" | "to" | null>(
     null,
   );
@@ -154,6 +156,7 @@ export function useSettingsScreenController({
     isInterfaceDirty,
     isTrackingDirty,
   } = buildSettingsDirtyState(state);
+  const isSavingSettings = isSavingCycle || isSavingTracking || isSavingInterface;
 
   useFocusEffect(
     useCallback(() => {
@@ -185,6 +188,7 @@ export function useSettingsScreenController({
     setCycleErrorMessage("");
     setCycleStatusMessage("");
     setTrackingStatusMessage("");
+    setCycleDateDraftValue("");
     setShowDatePicker(false);
     setShowExportDatePicker(null);
     setState((current) =>
@@ -404,6 +408,9 @@ export function useSettingsScreenController({
   }
 
   const readyState = state;
+  const cycleDateInputValue = showDatePicker
+    ? cycleDateDraftValue
+    : readyState.cycleValues.lastPeriodStart ?? "";
   const cycleGuidance = buildSettingsCycleGuidance(readyState.cycleValues);
   const syncSummary = buildSettingsSyncSummary(
     readyState,
@@ -460,18 +467,18 @@ export function useSettingsScreenController({
       clearDataConfirmationValue,
       clearDataErrorMessage,
       clearDataStatusMessage,
+      cycleDateInputValue,
       cycleErrorMessage,
       cycleGuidance,
       cycleStatusMessage,
       exportErrorMessage,
       exportStatusMessage,
+      hasUnsavedSettingsChanges,
       interfaceErrorMessage,
       interfaceStatusMessage,
       isClearingData,
       isExporting,
-      isSavingCycle,
-      isSavingInterface,
-      isSavingTracking,
+      isSavingSettings,
       locale: language,
       now: effectiveNow,
       onAgeGroupSelect: (value) => {
@@ -491,6 +498,8 @@ export function useSettingsScreenController({
         setClearDataConfirmationValue(value);
       },
       onClearLastPeriodStart: () => {
+        setShowDatePicker(false);
+        setCycleDateDraftValue("");
         applyCycleUpdates({ lastPeriodStart: null });
       },
       onCreateSymptom: () => {
@@ -507,6 +516,15 @@ export function useSettingsScreenController({
       onCycleLengthChange: (value) => {
         applyCycleUpdates({ cycleLength: value });
       },
+      onCycleDateInputChange: (value) => {
+        setCycleErrorMessage("");
+        setCycleDateDraftValue(sanitizeLocalDateInput(value));
+      },
+      onDatePickerCancel: () => {
+        setCycleErrorMessage("");
+        setCycleDateDraftValue(readyState.cycleValues.lastPeriodStart ?? "");
+        setShowDatePicker(false);
+      },
       onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => {
         if (event.type === "dismissed") {
           setShowDatePicker(false);
@@ -519,7 +537,24 @@ export function useSettingsScreenController({
 
         setShowDatePicker(false);
       },
-      onDatePickerToggle: () => setShowDatePicker((current) => !current),
+      onDatePickerConfirm: () => {
+        const nextValue = cycleDateDraftValue.trim();
+        const parsed = parseLocalDate(nextValue);
+        const bounds = viewData.cycle.dateBounds;
+
+        if (!parsed || nextValue < bounds.minDate || nextValue > bounds.maxDate) {
+          setCycleErrorMessage(viewData.status.invalidLastPeriodStart);
+          return;
+        }
+
+        applyCycleUpdates({ lastPeriodStart: nextValue });
+        setShowDatePicker(false);
+      },
+      onDatePickerToggle: () => {
+        setCycleErrorMessage("");
+        setCycleDateDraftValue(readyState.cycleValues.lastPeriodStart ?? "");
+        setShowDatePicker((current) => !current);
+      },
       onExportCSV: () => {
         void runExportAction(exportActionContext, readyState, "csv");
       },
@@ -643,14 +678,12 @@ export function useSettingsScreenController({
       onRestoreSymptom: (symptomID) => {
         void runRestoreSymptomAction(symptomActionContext, readyState, symptomID);
       },
-      onSaveCycleSettings: () => {
-        void runSaveCycleSettingsAction(saveActionContext, readyState);
-      },
-      onSaveInterfaceSettings: () => {
-        void runSaveInterfaceSettingsAction(saveActionContext, readyState);
-      },
-      onSaveTrackingSettings: () => {
-        void runSaveTrackingSettingsAction(saveActionContext, readyState);
+      onSavePendingSettings: () => {
+        void runSavePendingSettingsAction(saveActionContext, readyState, {
+          isCycleDirty,
+          isInterfaceDirty,
+          isTrackingDirty,
+        });
       },
       onSymptomDraftChange: (symptomID, updates) => {
         setRowSymptomErrorMessages((current) =>

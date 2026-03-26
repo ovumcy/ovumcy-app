@@ -48,6 +48,14 @@ describe("dashboard-view-service", () => {
       icon: "◌",
       label: "Unknown",
     });
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "facts_only",
+        title: "Facts only",
+        value: "Day 8",
+        detail: "Logged history only",
+      }),
+    );
     expect(viewData.statusItems).toEqual([
       "Next period: unknown",
       "Predictions off",
@@ -101,6 +109,22 @@ describe("dashboard-view-service", () => {
       icon: "🌱",
       label: "Follicular",
     });
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "regular",
+        title: "Follicular",
+        value: "Day 8",
+        detail: "29-day rhythm",
+      }),
+    );
+    expect(viewData.cycleHero.progressPercent).toBeCloseTo(0.25, 2);
+    expect(viewData.cycleHero.markers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "start" }),
+        expect.objectContaining({ key: "fertile" }),
+        expect.objectContaining({ key: "ovulation" }),
+      ]),
+    );
     expect(viewData.journal).toEqual({
       title: "Today journal",
       dateLabel: "March 17, 2026",
@@ -154,6 +178,13 @@ describe("dashboard-view-service", () => {
       "Next period: around Apr 8",
       "Ovulation: around Mar 24",
     ]);
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "approximate",
+        value: "Day 8",
+        detail: "Approximate rhythm",
+      }),
+    );
     expect(viewData.predictionExplanation).toBe(
       "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
     );
@@ -189,6 +220,14 @@ describe("dashboard-view-service", () => {
       icon: "◌",
       label: "Unknown",
     });
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "stale",
+        title: "Unknown",
+        value: "Unknown",
+        detail: "Waiting for next cycle",
+      }),
+    );
     expect(viewData.statusItems).toEqual([
       "Next period: unknown",
       "Ovulation: Cannot be calculated",

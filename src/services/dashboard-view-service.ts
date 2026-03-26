@@ -18,7 +18,24 @@ import {
   parseLocalDate,
 } from "./profile-settings-policy";
 
+export type DashboardCycleHeroViewData = {
+  state: "regular" | "approximate" | "facts_only" | "unknown" | "stale";
+  title: string;
+  icon: string;
+  value: string;
+  detail: string;
+  caption: string;
+  progressPercent: number | null;
+  markers: {
+    key: "start" | "fertile" | "ovulation";
+    label: string;
+    offsetPercent: number;
+    tone: "period" | "fertile" | "ovulation";
+  }[];
+};
+
 export type DashboardViewData = {
+  cycleHero: DashboardCycleHeroViewData;
   phaseStatus: {
     icon: string;
     label: string;
@@ -105,6 +122,7 @@ export function buildDashboardViewData(
   const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
+    cycleHero: buildDashboardCycleHero(profile, projectedCycle, locale),
     phaseStatus: buildPhaseStatus(projectedCycle.currentPhase, locale),
     statusItems,
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
@@ -133,6 +151,72 @@ function buildPhaseStatus(
   return {
     icon: statsCopy.phaseIcons[phase],
     label: statsCopy.phaseLabels[phase],
+  };
+}
+
+function buildDashboardCycleHero(
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  locale: string,
+): DashboardCycleHeroViewData {
+  const dashboardCopy = getDashboardCopy(locale);
+  const statsCopy = getStatsCopy(locale);
+  const phaseStatus = buildPhaseStatus(projection.currentPhase, locale);
+  const cycleDayValue =
+    projection.currentCycleDay !== null
+      ? dashboardCopy.cycleHeroDay(projection.currentCycleDay)
+      : statsCopy.phaseLabels.unknown;
+
+  if (projection.isPredictionStale) {
+    return {
+      state: "stale",
+      title: statsCopy.phaseLabels.unknown,
+      icon: statsCopy.phaseIcons.unknown,
+      value: statsCopy.phaseLabels.unknown,
+      detail: dashboardCopy.cycleHeroStale,
+      caption: `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
+      progressPercent: null,
+      markers: [],
+    };
+  }
+
+  if (profile.unpredictableCycle) {
+    return {
+      state: "facts_only",
+      title: statsCopy.factsOnlyTitle,
+      icon: statsCopy.phaseIcons.unknown,
+      value: cycleDayValue,
+      detail: dashboardCopy.cycleHeroFactsOnly,
+      caption: "",
+      progressPercent: null,
+      markers: buildDashboardCycleHeroMarkers(projection, locale),
+    };
+  }
+
+  if (!projection.cycleAnchorDate || projection.currentCycleDay === null) {
+    return {
+      state: "unknown",
+      title: statsCopy.phaseLabels.unknown,
+      icon: statsCopy.phaseIcons.unknown,
+      value: statsCopy.phaseLabels.unknown,
+      detail: dashboardCopy.cycleHeroWaiting,
+      caption: dashboardCopy.nextPeriodPrompt,
+      progressPercent: null,
+      markers: [],
+    };
+  }
+
+  return {
+    state: profile.irregularCycle ? "approximate" : "regular",
+    title: phaseStatus.label,
+    icon: phaseStatus.icon,
+    value: cycleDayValue,
+    detail: profile.irregularCycle
+      ? dashboardCopy.cycleHeroApproximate
+      : dashboardCopy.cycleHeroRegular(projection.predictionCycleLength),
+    caption: buildDashboardCycleHeroCaption(profile, projection, locale),
+    progressPercent: resolveDashboardCycleHeroProgressPercent(projection),
+    markers: buildDashboardCycleHeroMarkers(projection, locale),
   };
 }
 
@@ -199,6 +283,87 @@ function buildStatusItems(
   return items;
 }
 
+function buildDashboardCycleHeroCaption(
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  locale: string,
+): string {
+  const dashboardCopy = getDashboardCopy(locale);
+
+  if (!projection.nextPeriodDate) {
+    return "";
+  }
+
+  const nextPeriodValue = profile.irregularCycle
+    ? `${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(
+        projection.nextPeriodDate,
+        locale,
+      )}`
+    : formatDisplayDate(projection.nextPeriodDate, locale);
+
+  return `${dashboardCopy.nextPeriod}: ${nextPeriodValue}`;
+}
+
+function resolveDashboardCycleHeroProgressPercent(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+): number | null {
+  if (projection.currentCycleDay === null) {
+    return null;
+  }
+
+  const denominator = Math.max(projection.predictionCycleLength - 1, 1);
+  const normalized =
+    (projection.currentCycleDay - 1) / denominator;
+
+  return clampPercent(normalized);
+}
+
+function buildDashboardCycleHeroMarkers(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  locale: string,
+): DashboardCycleHeroViewData["markers"] {
+  const dashboardCopy = getDashboardCopy(locale);
+  const markers: DashboardCycleHeroViewData["markers"] = [
+    {
+      key: "start",
+      label: dashboardCopy.cycleHeroLegendStart,
+      offsetPercent: 0,
+      tone: "period",
+    },
+  ];
+
+  if (!projection.cycleAnchorDate || !projection.ovulationDate) {
+    return markers;
+  }
+
+  const anchor = parseLocalDate(projection.cycleAnchorDate);
+  const ovulation = parseLocalDate(projection.ovulationDate);
+  if (!anchor || !ovulation) {
+    return markers;
+  }
+
+  const denominator = Math.max(projection.predictionCycleLength - 1, 1);
+  const ovulationOffset = diffLocalDays(anchor, ovulation);
+  const fertileOffset = Math.max(ovulationOffset - 5, 0);
+
+  markers.push(
+    {
+      key: "fertile",
+      label: dashboardCopy.cycleHeroLegendFertile,
+      offsetPercent: clampPercent(fertileOffset / denominator),
+      tone: "fertile",
+    },
+    {
+      key: "ovulation",
+      label: dashboardCopy.cycleHeroLegendOvulation,
+      offsetPercent: clampPercent(ovulationOffset / denominator),
+      tone: "ovulation",
+    },
+  );
+
+  return markers;
+}
+
 function formatDisplayDate(value: string, locale: string): string {
   const parsed = parseLocalDate(value);
   if (!parsed) {
@@ -209,4 +374,35 @@ function formatDisplayDate(value: string, locale: string): string {
     day: "numeric",
     month: "short",
   }).format(parsed);
+}
+
+function diffLocalDays(start: Date, end: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const startValue = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  ).getTime();
+  const endValue = new Date(
+    end.getFullYear(),
+    end.getMonth(),
+    end.getDate(),
+  ).getTime();
+
+  return Math.round((endValue - startValue) / msPerDay);
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  if (value < 0) {
+    return 0;
+  }
+  if (value > 1) {
+    return 1;
+  }
+
+  return value;
 }

@@ -4,6 +4,19 @@ import type {
   SettingsViewData,
 } from "./settings-view-service";
 
+export type BackupSyncErrorScope = "local" | "account" | "sync";
+
+export type BackupSyncErrorPresentation = {
+  accountMessage: string;
+  deviceLabelMessage: string;
+  endpointMessage: string;
+  localMessage: string;
+  loginMessage: string;
+  passwordMessage: string;
+  recoveryPhraseMessage: string;
+  syncMessage: string;
+};
+
 export function areSyncPreferencesEqual(
   left: SyncPreferencesRecord,
   right: SyncPreferencesRecord,
@@ -85,6 +98,16 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.invalidPayload;
     case "network_failed":
       return viewData.errors.networkFailed;
+    case "deviceAuthUnavailable":
+    case "device_auth_unavailable":
+      return viewData.errors.deviceAuthUnavailable;
+    case "deviceAuthFailed":
+    case "device_auth_failed":
+      return viewData.errors.deviceAuthFailed;
+    case "recovery_export_unavailable":
+      return viewData.errors.recoveryExportUnavailable;
+    case "recovery_export_failed":
+      return viewData.errors.recoveryExportFailed;
     case "stale_generation":
       return viewData.errors.syncFailed;
     default:
@@ -101,4 +124,77 @@ export function resolveBackupSyncConnectedStatusMessage(
     !state.syncCapabilities.premiumActive
     ? viewData.status.connectedNoPlan
     : viewData.status.connected;
+}
+
+export function resolveBackupSyncErrorPresentation(
+  errorCode: string | null | undefined,
+  scope: BackupSyncErrorScope | null | undefined,
+  viewData: SettingsViewData["account"],
+): BackupSyncErrorPresentation {
+  const emptyPresentation: BackupSyncErrorPresentation = {
+    accountMessage: "",
+    deviceLabelMessage: "",
+    endpointMessage: "",
+    localMessage: "",
+    loginMessage: "",
+    passwordMessage: "",
+    recoveryPhraseMessage: "",
+    syncMessage: "",
+  };
+
+  if (!errorCode) {
+    return emptyPresentation;
+  }
+
+  const message = resolveBackupSyncErrorMessage(errorCode, viewData);
+
+  switch (errorCode) {
+    case "device_label_required":
+      return {
+        ...emptyPresentation,
+        deviceLabelMessage: message,
+      };
+    case "endpoint_required":
+    case "invalid_endpoint":
+    case "unsupported_scheme":
+    case "insecure_public_http":
+      return {
+        ...emptyPresentation,
+        endpointMessage: message,
+      };
+    case "login_required":
+      return {
+        ...emptyPresentation,
+        loginMessage: message,
+      };
+    case "password_required":
+      return {
+        ...emptyPresentation,
+        passwordMessage: message,
+      };
+    case "recovery_phrase_required":
+    case "invalid_recovery_phrase":
+      return {
+        ...emptyPresentation,
+        recoveryPhraseMessage: message,
+      };
+    default:
+      if (scope === "local") {
+        return {
+          ...emptyPresentation,
+          localMessage: message,
+        };
+      }
+      if (scope === "account") {
+        return {
+          ...emptyPresentation,
+          accountMessage: message,
+        };
+      }
+
+      return {
+        ...emptyPresentation,
+        syncMessage: message,
+      };
+  }
 }

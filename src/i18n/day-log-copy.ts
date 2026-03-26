@@ -28,21 +28,23 @@ const dayLogCopyEn = {
   notesPlaceholder: "Anything you want to remember about today.",
   saveToday: "Save today",
   updateEntry: "Update entry",
-  saveDay: "Save day",
+  saveDay: "Save entry",
   saved: "Entry saved locally.",
   saveFailed: "Unable to save this entry. Please try again.",
   deleteEntry: "Clear entry",
   deleted: "Entry removed locally.",
   deleteFailed: "Unable to clear this entry. Please try again.",
+  deletePrompt:
+    "Clear this entry for this day? Period, symptoms, mood, flow, and notes will be removed from the local record.",
   deleteHint: "This removes the local record for this day.",
   periodOffHint: "Flow is available when this day is marked as a period day.",
     options: {
       mood: [
-      { value: 1, label: "😞", secondaryLabel: "1/5" },
-      { value: 2, label: "🙂", secondaryLabel: "2/5" },
-      { value: 3, label: "😌", secondaryLabel: "3/5" },
-      { value: 4, label: "😊", secondaryLabel: "4/5" },
-      { value: 5, label: "🤩", secondaryLabel: "5/5" },
+      { value: 1, label: "😞", secondaryLabel: "Terrible" },
+      { value: 2, label: "🙁", secondaryLabel: "Bad" },
+      { value: 3, label: "😌", secondaryLabel: "Okay" },
+      { value: 4, label: "🙂", secondaryLabel: "Good" },
+      { value: 5, label: "🤩", secondaryLabel: "Great" },
     ],
     flow: [
       { value: "none", label: "None" },
@@ -101,17 +103,25 @@ const dayLogCopyDe: DayLogCopy = {
   notesPlaceholder: "Alles, woran du dich heute erinnern möchtest.",
   saveToday: "Heute speichern",
   updateEntry: "Eintrag aktualisieren",
-  saveDay: "Tag speichern",
+  saveDay: "Eintrag speichern",
   saved: "Eintrag lokal gespeichert.",
   saveFailed: "Dieser Eintrag konnte nicht gespeichert werden. Bitte versuche es erneut.",
   deleteEntry: "Eintrag löschen",
   deleted: "Eintrag lokal entfernt.",
   deleteFailed: "Dieser Eintrag konnte nicht gelöscht werden. Bitte versuche es erneut.",
+  deletePrompt:
+    "Diesen Eintrag für diesen Tag löschen? Periode, Symptome, Stimmung, Stärke und Notizen werden aus dem lokalen Eintrag entfernt.",
   deleteHint: "Dadurch wird der lokale Eintrag für diesen Tag entfernt.",
   periodOffHint:
     "Die Blutungsstärke ist verfügbar, wenn dieser Tag als Periodentag markiert ist.",
   options: {
-    mood: dayLogCopyEn.options.mood,
+    mood: [
+      { value: 1, label: "😞", secondaryLabel: "Sehr schlecht" },
+      { value: 2, label: "🙁", secondaryLabel: "Schlecht" },
+      { value: 3, label: "😌", secondaryLabel: "Okay" },
+      { value: 4, label: "🙂", secondaryLabel: "Gut" },
+      { value: 5, label: "🤩", secondaryLabel: "Großartig" },
+    ],
     flow: [
       { value: "none", label: "Keine" },
       { value: "spotting", label: "Schmierblutung" },
@@ -167,17 +177,25 @@ const dayLogCopyFr: DayLogCopy = {
   notesPlaceholder: "Tout ce dont tu veux te souvenir aujourd'hui.",
   saveToday: "Enregistrer aujourd'hui",
   updateEntry: "Mettre à jour l'entrée",
-  saveDay: "Enregistrer la journée",
+  saveDay: "Enregistrer l'entrée",
   saved: "Entrée enregistrée localement.",
   saveFailed: "Impossible d'enregistrer cette entrée. Réessaie.",
   deleteEntry: "Effacer l'entrée",
   deleted: "Entrée supprimée localement.",
   deleteFailed: "Impossible d'effacer cette entrée. Réessaie.",
+  deletePrompt:
+    "Effacer cette entrée pour cette journée ? Les règles, symptômes, humeur, flux et notes seront retirés de l'enregistrement local.",
   deleteHint: "Cela supprime l'enregistrement local pour cette journée.",
   periodOffHint:
     "Le flux est disponible quand cette journée est marquée comme jour de règles.",
   options: {
-    mood: dayLogCopyEn.options.mood,
+    mood: [
+      { value: 1, label: "😞", secondaryLabel: "Très mal" },
+      { value: 2, label: "🙁", secondaryLabel: "Mal" },
+      { value: 3, label: "😌", secondaryLabel: "Ça va" },
+      { value: 4, label: "🙂", secondaryLabel: "Bien" },
+      { value: 5, label: "🤩", secondaryLabel: "Super" },
+    ],
     flow: [
       { value: "none", label: "Aucun" },
       { value: "spotting", label: "Spotting" },
@@ -235,17 +253,25 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     notesPlaceholder: "Всё, что вы хотите запомнить о сегодняшнем дне.",
     saveToday: "Сохранить сегодня",
     updateEntry: "Обновить запись",
-    saveDay: "Сохранить день",
+    saveDay: "Сохранить запись",
     saved: "Запись сохранена локально.",
     saveFailed: "Не удалось сохранить запись. Попробуйте ещё раз.",
     deleteEntry: "Очистить запись",
     deleted: "Запись удалена локально.",
     deleteFailed: "Не удалось очистить запись. Попробуйте ещё раз.",
+    deletePrompt:
+      "Очистить запись за этот день? Из локальной записи будут удалены менструация, симптомы, настроение, интенсивность и заметки.",
     deleteHint: "Это удаляет локальную запись для этого дня.",
     periodOffHint:
       "Интенсивность доступна, когда этот день отмечен как день менструации.",
     options: {
-      mood: dayLogCopyEn.options.mood,
+      mood: [
+        { value: 1, label: "😞", secondaryLabel: "Ужасно" },
+        { value: 2, label: "🙁", secondaryLabel: "Плохо" },
+        { value: 3, label: "😌", secondaryLabel: "Нормально" },
+        { value: 4, label: "🙂", secondaryLabel: "Хорошо" },
+        { value: 5, label: "🤩", secondaryLabel: "Отлично" },
+      ],
       flow: [
         { value: "none", label: "Нет" },
         { value: "spotting", label: "Мажущие" },
@@ -300,17 +326,25 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     notesPlaceholder: "Cualquier cosa que quieras recordar sobre hoy.",
     saveToday: "Guardar hoy",
     updateEntry: "Actualizar registro",
-    saveDay: "Guardar día",
+    saveDay: "Guardar registro",
     saved: "Registro guardado localmente.",
     saveFailed: "No se pudo guardar el registro. Inténtalo de nuevo.",
     deleteEntry: "Borrar registro",
     deleted: "Registro eliminado localmente.",
     deleteFailed: "No se pudo borrar el registro. Inténtalo de nuevo.",
+    deletePrompt:
+      "¿Borrar este registro de este día? El período, los síntomas, el ánimo, el flujo y las notas se quitarán del registro local.",
     deleteHint: "Esto elimina el registro local de este día.",
     periodOffHint:
       "El flujo está disponible cuando este día está marcado como día de período.",
     options: {
-      mood: dayLogCopyEn.options.mood,
+      mood: [
+        { value: 1, label: "😞", secondaryLabel: "Muy mal" },
+        { value: 2, label: "🙁", secondaryLabel: "Mal" },
+        { value: 3, label: "😌", secondaryLabel: "Normal" },
+        { value: 4, label: "🙂", secondaryLabel: "Bien" },
+        { value: 5, label: "🤩", secondaryLabel: "Genial" },
+      ],
       flow: [
         { value: "none", label: "Ninguno" },
         { value: "spotting", label: "Manchado" },

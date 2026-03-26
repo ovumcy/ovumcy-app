@@ -7,6 +7,9 @@ const settingsCopyEn = {
   subtitle:
     "Manage cycle parameters, tracking fields, export actions, and local profile behavior.",
   common: {
+    cancelAction: "Cancel",
+    confirmAction: "Confirm",
+    saveChanges: "Save changes",
     daysShort: "d",
     changeDate: "Choose date",
     clearDate: "Clear date",
@@ -28,8 +31,10 @@ const settingsCopyEn = {
       "Period length was adjusted automatically so at least 10 days remain before the next cycle.",
     infoPeriodLong:
       "A duration above 8 days may indicate cycle irregularities; please discuss with a doctor.",
+    infoCycleLong:
+      "A cycle longer than 45 days is less common; please discuss with a doctor.",
     infoCycleShort:
-      "A cycle shorter than 24 days is less common; please discuss with a doctor.",
+      "A cycle shorter than 21 days is less common; please discuss with a doctor.",
     autoPeriodFill: "Auto-fill period days",
     autoPeriodFillHint:
       "When enabled, marking the first day auto-fills the next days based on your period length.",
@@ -76,13 +81,13 @@ const settingsCopyEn = {
       "Currently visible in dashboard and calendar day editor.",
     trackCervicalMucusStateOff:
       "Currently hidden from new dashboard and calendar entries.",
-    hideSexChip: "Hide intimacy section",
+    hideSexChip: "Show intimacy section",
     hideSexChipHint:
-      "Hides intimacy in new dashboard and calendar entries.",
+      "Shows intimacy in new dashboard and calendar entries.",
     hideSexChipStateOn:
-      "Currently hidden in dashboard and calendar day editor.",
-    hideSexChipStateOff:
       "Currently visible in dashboard and calendar day editor.",
+    hideSexChipStateOff:
+      "Currently hidden in dashboard and calendar day editor.",
     temperatureUnit: "BBT unit",
     temperatureUnitHint: "Used when the BBT field is visible.",
     temperatureUnitCelsius: "Celsius",
@@ -137,6 +142,7 @@ const settingsCopyEn = {
     planStepTitle: "3. Cloud plan",
     planStepHint:
       "Cloud access and billing are checked separately. Sync turns on only after this account has an active Ovumcy Cloud plan.",
+    planSignInFirst: "Sign in first to check your plan status.",
     planUnknown:
       "Ovumcy is checking whether this cloud account has an active plan.",
     planInactive:
@@ -166,7 +172,7 @@ const settingsCopyEn = {
     deviceLabel: "Device label",
     deviceHint:
       "Shown later in connected device lists and encrypted recovery flows.",
-    devicePlaceholder: "Pixel 7",
+    devicePlaceholder: "Enter device name",
     stateLabel: "Recovery phrase status",
     stateReady: "This device already has a recovery phrase.",
     stateMissing: "This device does not have a recovery phrase yet.",
@@ -210,6 +216,7 @@ const settingsCopyEn = {
     recoveryNotice:
       "This screen shows the recovery phrase only when you prepare or recreate local sync keys.",
     recoveryShownOnce: "Shown only once after generation.",
+    recoveryExportLabel: "Export as text",
     prepareLabel: "Create recovery phrase",
     regenerateLabel: "Create a new recovery phrase",
     regeneratePrompt:
@@ -253,6 +260,10 @@ const settingsCopyEn = {
       blobNotFound: "No encrypted snapshot exists on this server yet.",
       invalidPayload: "The encrypted snapshot from the server could not be read.",
       networkFailed: "Unable to reach the sync server right now.",
+      recoveryExportUnavailable:
+        "This device cannot export the recovery phrase right now.",
+      recoveryExportFailed:
+        "The recovery phrase could not be exported right now. Please try again.",
       deviceAuthUnavailable:
         "Set up a device passcode or biometrics before recreating local sync keys.",
       deviceAuthFailed:
@@ -379,6 +390,9 @@ const settingsCopyDe: SettingsCopy = {
     "Verwalte Zyklusparameter, Tracking-Felder, Exportaktionen und das lokale Profilverhalten.",
   common: {
     ...settingsCopyEn.common,
+    cancelAction: "Abbrechen",
+    confirmAction: "Bestätigen",
+    saveChanges: "Änderungen speichern",
     changeDate: "Datum wählen",
     clearDate: "Datum löschen",
     notSet: "Nicht festgelegt",
@@ -398,8 +412,10 @@ const settingsCopyDe: SettingsCopy = {
       "Die Periodendauer wurde automatisch angepasst, damit mindestens 10 Tage bis zum nächsten Zyklus bleiben.",
     infoPeriodLong:
       "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprich darüber mit einer Ärztin oder einem Arzt.",
+    infoCycleLong:
+      "Ein Zyklus von mehr als 45 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
     infoCycleShort:
-      "Ein Zyklus unter 24 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
+      "Ein Zyklus unter 21 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
     autoPeriodFill: "Periodentage automatisch ausfüllen",
     autoPeriodFillHint:
       "Wenn diese Option aktiviert ist, füllt das Markieren des ersten Tages die folgenden Tage automatisch auf Basis deiner Periodendauer aus.",
@@ -449,13 +465,13 @@ const settingsCopyDe: SettingsCopy = {
       "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
     trackCervicalMucusStateOff:
       "Derzeit in neuen Dashboard- und Kalendereinträgen verborgen.",
-    hideSexChip: "Intimitätsbereich ausblenden",
+    hideSexChip: "Intimitätsbereich anzeigen",
     hideSexChipHint:
-      "Blendet Intimität in neuen Dashboard- und Kalendereinträgen aus.",
+      "Zeigt Intimität in neuen Dashboard- und Kalendereinträgen an.",
     hideSexChipStateOn:
-      "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
-    hideSexChipStateOff:
       "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    hideSexChipStateOff:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
     temperatureUnit: "BBT-Einheit",
     temperatureUnitHint: "Wird verwendet, wenn das BBT-Feld sichtbar ist.",
     temperatureUnitCelsius: "Celsius",
@@ -513,6 +529,7 @@ const settingsCopyDe: SettingsCopy = {
     planStepTitle: "3. Cloud-Tarif",
     planStepHint:
       "Cloud-Zugriff und Abrechnung werden getrennt geprüft. Sync wird erst aktiviert, wenn dieses Konto einen aktiven Ovumcy-Cloud-Tarif hat.",
+    planSignInFirst: "Melde dich zuerst an, um deinen Tarifstatus zu prüfen.",
     planUnknown:
       "Ovumcy prüft, ob dieses Cloud-Konto einen aktiven Tarif hat.",
     planInactive:
@@ -542,7 +559,7 @@ const settingsCopyDe: SettingsCopy = {
     deviceLabel: "Gerätebezeichnung",
     deviceHint:
       "Wird später in verbundenen Gerätelisten und in verschlüsselten Wiederherstellungsabläufen angezeigt.",
-    devicePlaceholder: "Pixel 7",
+    devicePlaceholder: "Gerätenamen eingeben",
     stateLabel: "Status der Recovery Phrase",
     stateReady: "Dieses Gerät hat bereits eine Recovery Phrase.",
     stateMissing: "Dieses Gerät hat noch keine Recovery Phrase.",
@@ -589,6 +606,7 @@ const settingsCopyDe: SettingsCopy = {
     recoveryNotice:
       "Dieser Bildschirm zeigt die Recovery Phrase nur, wenn du lokale Sync-Schlüssel vorbereitest oder neu erstellst.",
     recoveryShownOnce: "Wird nach der Erstellung nur einmal angezeigt.",
+    recoveryExportLabel: "Als Text exportieren",
     prepareLabel: "Recovery Phrase erstellen",
     regenerateLabel: "Neue Recovery Phrase erstellen",
     regeneratePrompt:
@@ -644,6 +662,10 @@ const settingsCopyDe: SettingsCopy = {
         "Der verschlüsselte Snapshot vom Server konnte nicht gelesen werden.",
       networkFailed:
         "Der Sync-Server ist gerade nicht erreichbar.",
+      recoveryExportUnavailable:
+        "Dieses Gerät kann die Recovery Phrase gerade nicht exportieren.",
+      recoveryExportFailed:
+        "Die Recovery Phrase konnte gerade nicht exportiert werden. Bitte versuche es erneut.",
       deviceAuthUnavailable:
         "Richte auf diesem Gerät zuerst einen Code oder Biometrie ein, bevor du lokale Sync-Schlüssel neu erstellst.",
       deviceAuthFailed:
@@ -788,6 +810,9 @@ const settingsCopyFr: SettingsCopy = {
     "Gère les paramètres du cycle, les champs de suivi, les actions d'export et le comportement local du profil.",
   common: {
     ...settingsCopyEn.common,
+    cancelAction: "Annuler",
+    confirmAction: "Confirmer",
+    saveChanges: "Enregistrer les modifications",
     changeDate: "Choisir une date",
     clearDate: "Effacer la date",
     notSet: "Non défini",
@@ -807,8 +832,10 @@ const settingsCopyFr: SettingsCopy = {
       "La durée des règles a été ajustée automatiquement pour qu'il reste au moins 10 jours avant le cycle suivant.",
     infoPeriodLong:
       "Une durée supérieure à 8 jours peut indiquer des irrégularités. Parles-en avec un médecin.",
+    infoCycleLong:
+      "Un cycle de plus de 45 jours est moins courant. Parles-en avec un médecin.",
     infoCycleShort:
-      "Un cycle inférieur à 24 jours est moins courant. Parles-en avec un médecin.",
+      "Un cycle inférieur à 21 jours est moins courant. Parles-en avec un médecin.",
     autoPeriodFill: "Remplir automatiquement les jours de règles",
     autoPeriodFillHint:
       "Quand cette option est activée, marquer le premier jour remplit automatiquement les jours suivants selon la durée de tes règles.",
@@ -858,13 +885,13 @@ const settingsCopyFr: SettingsCopy = {
       "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
     trackCervicalMucusStateOff:
       "Actuellement masqué dans les nouvelles entrées du dashboard et du calendrier.",
-    hideSexChip: "Masquer la section intimité",
+    hideSexChip: "Afficher la section intimité",
     hideSexChipHint:
-      "Masque l'intimité dans les nouvelles entrées du dashboard et du calendrier.",
+      "Affiche l'intimité dans les nouvelles entrées du dashboard et du calendrier.",
     hideSexChipStateOn:
-      "Actuellement masquée dans le dashboard et dans l'éditeur journalier du calendrier.",
-    hideSexChipStateOff:
       "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
+    hideSexChipStateOff:
+      "Actuellement masquée dans le dashboard et dans l'éditeur journalier du calendrier.",
     temperatureUnit: "Unité TBC",
     temperatureUnitHint: "Utilisée quand le champ TBC est visible.",
     temperatureUnitCelsius: "Celsius",
@@ -923,6 +950,8 @@ const settingsCopyFr: SettingsCopy = {
     planStepTitle: "3. Plan cloud",
     planStepHint:
       "L'accès cloud et la facturation sont vérifiés séparément. Le sync s'active seulement quand ce compte a un plan Ovumcy Cloud actif.",
+    planSignInFirst:
+      "Connecte-toi d'abord pour vérifier l'état de ton abonnement.",
     planUnknown:
       "Ovumcy vérifie si ce compte cloud a un plan actif.",
     planInactive:
@@ -952,7 +981,7 @@ const settingsCopyFr: SettingsCopy = {
     deviceLabel: "Nom de l'appareil",
     deviceHint:
       "Sera affiché plus tard dans les listes d'appareils connectés et les flux de récupération chiffrée.",
-    devicePlaceholder: "Pixel 7",
+    devicePlaceholder: "Entrer un nom d'appareil",
     stateLabel: "Statut de la recovery phrase",
     stateReady: "Cet appareil a déjà une recovery phrase.",
     stateMissing: "Cet appareil n'a pas encore de recovery phrase.",
@@ -1000,6 +1029,7 @@ const settingsCopyFr: SettingsCopy = {
     recoveryNotice:
       "Cet écran affiche la recovery phrase seulement quand tu prépares ou recrées les clés locales de sync.",
     recoveryShownOnce: "Affichée une seule fois après la génération.",
+    recoveryExportLabel: "Exporter en texte",
     prepareLabel: "Créer la recovery phrase",
     regenerateLabel: "Créer une nouvelle recovery phrase",
     regeneratePrompt:
@@ -1057,6 +1087,10 @@ const settingsCopyFr: SettingsCopy = {
         "L'instantané chiffré provenant du serveur n'a pas pu être lu.",
       networkFailed:
         "Impossible d'atteindre le serveur de sync pour le moment.",
+      recoveryExportUnavailable:
+        "Cet appareil ne peut pas exporter la recovery phrase pour le moment.",
+      recoveryExportFailed:
+        "La recovery phrase n'a pas pu être exportée pour le moment. Réessaie.",
       deviceAuthUnavailable:
         "Configure un code ou la biométrie sur cet appareil avant de recréer les clés locales de sync.",
       deviceAuthFailed:
@@ -1201,6 +1235,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     subtitle:
       "Управляйте параметрами цикла, полями трекинга, экспортом и локальным поведением профиля.",
     common: {
+      cancelAction: "Отмена",
+      confirmAction: "Подтвердить",
+      saveChanges: "Сохранить изменения",
       daysShort: "д",
       changeDate: "Выбрать дату",
       clearDate: "Очистить дату",
@@ -1222,8 +1259,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Длительность менструации была автоматически скорректирована, чтобы до следующего цикла оставалось минимум 10 дней.",
       infoPeriodLong:
         "Длительность более 8 дней может указывать на нерегулярность; обсудите это с врачом.",
+      infoCycleLong:
+        "Цикл длиннее 45 дней встречается реже; обсудите это с врачом.",
       infoCycleShort:
-        "Цикл короче 24 дней встречается реже; обсудите это с врачом.",
+        "Цикл короче 21 дня встречается реже; обсудите это с врачом.",
       autoPeriodFill: "Автозаполнение дней менструации",
       autoPeriodFillHint:
         "Когда опция включена, отметка первого дня автоматически заполнит следующие дни по длительности менструации.",
@@ -1270,13 +1309,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Сейчас видно в dashboard и редакторе дня календаря.",
       trackCervicalMucusStateOff:
         "Сейчас скрыто из новых записей dashboard и календаря.",
-      hideSexChip: "Скрыть раздел близости",
+      hideSexChip: "Показывать раздел близости",
       hideSexChipHint:
-        "Скрывает раздел близости в новых записях dashboard и календаря.",
+        "Показывает раздел близости в новых записях dashboard и календаря.",
       hideSexChipStateOn:
-        "Сейчас скрыто в dashboard и редакторе дня календаря.",
-      hideSexChipStateOff:
         "Сейчас видно в dashboard и редакторе дня календаря.",
+      hideSexChipStateOff:
+        "Сейчас скрыто в dashboard и редакторе дня календаря.",
       temperatureUnit: "Единица БТТ",
       temperatureUnitHint: "Используется, когда поле БТТ видно.",
       temperatureUnitCelsius: "Цельсий",
@@ -1332,6 +1371,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       planStepTitle: "3. План Ovumcy Cloud",
       planStepHint:
         "Доступ к cloud и billing проверяются отдельно. Sync включится только когда у этого аккаунта будет активный план Ovumcy Cloud.",
+      planSignInFirst:
+        "Сначала войдите в аккаунт, чтобы проверить статус плана.",
       planUnknown:
         "Ovumcy проверяет, есть ли у этого cloud-аккаунта активный план.",
       planInactive:
@@ -1361,7 +1402,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceLabel: "Название устройства",
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
-      devicePlaceholder: "Pixel 7",
+      devicePlaceholder: "Введите название устройства",
       stateLabel: "Статус recovery phrase",
       stateReady: "На этом устройстве уже есть recovery phrase.",
       stateMissing: "На этом устройстве ещё нет recovery phrase.",
@@ -1405,6 +1446,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryNotice:
         "Этот экран показывает recovery phrase только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
+      recoveryExportLabel: "Экспортировать как текст",
       prepareLabel: "Создать recovery phrase",
       regenerateLabel: "Создать новую recovery phrase",
       regeneratePrompt:
@@ -1452,6 +1494,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         invalidPayload:
           "Не удалось прочитать зашифрованный слепок, полученный с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
+        recoveryExportUnavailable:
+          "Сейчас это устройство не может экспортировать recovery phrase.",
+        recoveryExportFailed:
+          "Сейчас не удалось экспортировать recovery phrase. Попробуйте ещё раз.",
         deviceAuthUnavailable:
           "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
         deviceAuthFailed:
@@ -1576,6 +1622,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     subtitle:
       "Gestiona parámetros del ciclo, campos de seguimiento, acciones de exportación y el comportamiento local del perfil.",
     common: {
+      cancelAction: "Cancelar",
+      confirmAction: "Confirmar",
+      saveChanges: "Guardar cambios",
       daysShort: "d",
       changeDate: "Elegir fecha",
       clearDate: "Borrar fecha",
@@ -1597,8 +1646,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "La duración del período se ajustó automáticamente para que queden al menos 10 días antes del siguiente ciclo.",
       infoPeriodLong:
         "Una duración superior a 8 días puede indicar irregularidades; coméntalo con un médico.",
+      infoCycleLong:
+        "Un ciclo de más de 45 días es menos común; coméntalo con un médico.",
       infoCycleShort:
-        "Un ciclo más corto de 24 días es menos común; coméntalo con un médico.",
+        "Un ciclo de menos de 21 días es menos común; coméntalo con un médico.",
       autoPeriodFill: "Autocompletar días de período",
       autoPeriodFillHint:
         "Cuando está activado, marcar el primer día completa automáticamente los siguientes días según la duración del período.",
@@ -1645,13 +1696,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Actualmente visible en el dashboard y en el editor diario del calendario.",
       trackCervicalMucusStateOff:
         "Actualmente oculto de las nuevas entradas del dashboard y del calendario.",
-      hideSexChip: "Ocultar sección de intimidad",
+      hideSexChip: "Mostrar sección de intimidad",
       hideSexChipHint:
-        "Oculta la sección de intimidad en nuevas entradas del dashboard y del calendario.",
+        "Muestra la sección de intimidad en nuevas entradas del dashboard y del calendario.",
       hideSexChipStateOn:
-        "Actualmente oculta en el dashboard y en el editor diario del calendario.",
-      hideSexChipStateOff:
         "Actualmente visible en el dashboard y en el editor diario del calendario.",
+      hideSexChipStateOff:
+        "Actualmente oculta en el dashboard y en el editor diario del calendario.",
       temperatureUnit: "Unidad de TCB",
       temperatureUnitHint: "Se usa cuando el campo de TCB está visible.",
       temperatureUnitCelsius: "Celsius",
@@ -1707,6 +1758,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       planStepTitle: "3. Plan de Ovumcy Cloud",
       planStepHint:
         "El acceso cloud y la facturación se comprueban por separado. El sync solo se activa cuando esta cuenta tiene un plan activo de Ovumcy Cloud.",
+      planSignInFirst:
+        "Inicia sesión primero para comprobar el estado de tu plan.",
       planUnknown:
         "Ovumcy está comprobando si esta cuenta cloud tiene un plan activo.",
       planInactive:
@@ -1736,7 +1789,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceLabel: "Etiqueta del dispositivo",
       deviceHint:
         "Más tarde aparecerá en las listas de dispositivos conectados y en los flujos de recuperación cifrada.",
-      devicePlaceholder: "Pixel 7",
+      devicePlaceholder: "Introduce el nombre del dispositivo",
       stateLabel: "Estado de la recovery phrase",
       stateReady: "Este dispositivo ya tiene una recovery phrase.",
       stateMissing: "Este dispositivo todavía no tiene una recovery phrase.",
@@ -1780,6 +1833,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryNotice:
         "Esta pantalla muestra la frase de recuperación solo cuando preparas o recreas las claves locales de sync.",
       recoveryShownOnce: "Se muestra solo una vez después de generarse.",
+      recoveryExportLabel: "Exportar como texto",
       prepareLabel: "Crear recovery phrase",
       regenerateLabel: "Crear una nueva recovery phrase",
       regeneratePrompt:
@@ -1832,6 +1886,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo leer la instantánea cifrada recibida del servidor.",
         networkFailed:
           "No se puede alcanzar el servidor de sync ahora mismo.",
+        recoveryExportUnavailable:
+          "Este dispositivo no puede exportar la recovery phrase ahora mismo.",
+        recoveryExportFailed:
+          "No se pudo exportar la recovery phrase ahora mismo. Inténtalo de nuevo.",
         deviceAuthUnavailable:
           "Configura un código o biometría en este dispositivo antes de recrear las claves locales de sync.",
         deviceAuthFailed:

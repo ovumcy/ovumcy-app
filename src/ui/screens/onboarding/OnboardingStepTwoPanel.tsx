@@ -55,6 +55,10 @@ export function OnboardingStepTwoPanel({
   styles,
   viewData,
 }: OnboardingStepTwoPanelProps) {
+  const effectiveStepTwoError = guidance.invalid
+    ? viewData.stepTwo.messages.errorIncompatible
+    : stepTwoError;
+
   return (
     <>
       <LabeledSliderField
@@ -90,6 +94,11 @@ export function OnboardingStepTwoPanel({
             {viewData.stepTwo.messages.infoPeriodLong}
           </Text>
         ) : null}
+        {guidance.cycleLong ? (
+          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+            {viewData.stepTwo.messages.infoCycleLong}
+          </Text>
+        ) : null}
         {guidance.cycleShort ? (
           <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
             {viewData.stepTwo.messages.infoCycleShort}
@@ -97,10 +106,10 @@ export function OnboardingStepTwoPanel({
         ) : null}
       </View>
 
-      {stepTwoError ? (
+      {effectiveStepTwoError ? (
         <StatusBanner
           dismissLabel={viewData.errors.dismissError}
-          message={stepTwoError}
+          message={effectiveStepTwoError}
           onDismiss={onDismissStepTwoError}
           testID="onboarding-step-two-error"
           tone="error"
@@ -176,7 +185,7 @@ export function OnboardingStepTwoPanel({
         />
         <OnboardingPrimaryButton
           compact={compact}
-          disabled={isSaving}
+          disabled={isSaving || guidance.invalid}
           grow
           label={viewData.stepTwo.finishLabel}
           onPress={onFinish}

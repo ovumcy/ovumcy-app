@@ -32,26 +32,36 @@ describe("onboarding-policy", () => {
     expect(validateStepOneStartDate("2026-03-10", now)).toBeNull();
   });
 
-  it("sanitizes incompatible cycle and period lengths", () => {
+  it("clamps onboarding values to slider bounds without silently fixing incompatibility", () => {
     expect(sanitizeOnboardingCycleAndPeriod(14, 20)).toEqual({
       cycleLength: 15,
-      periodLength: 5,
+      periodLength: 14,
     });
     expect(sanitizeOnboardingCycleAndPeriod(21, 14)).toEqual({
       cycleLength: 21,
-      periodLength: 11,
+      periodLength: 14,
     });
   });
 
-  it("mirrors the web guidance state for step 2 messaging", () => {
+  it("surfaces incompatible cycle guidance for step 2 messaging", () => {
     expect(buildCycleGuidanceState(21, 14)).toEqual({
-      adjusted: true,
-      cycleShort: true,
-      invalid: false,
-      periodLength: 11,
+      adjusted: false,
+      cycleLong: false,
+      cycleShort: false,
+      invalid: true,
+      periodLength: 14,
       periodLong: true,
       warning: false,
     });
+  });
+
+  it("flags unusually long cycles for medical guidance", () => {
+    expect(buildCycleGuidanceState(46, 5)).toEqual(
+      expect.objectContaining({
+        cycleLong: true,
+        cycleShort: false,
+      }),
+    );
   });
 
   it("builds descending day options with relative labels for recent days", () => {

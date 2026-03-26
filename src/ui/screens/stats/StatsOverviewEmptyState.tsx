@@ -1,15 +1,18 @@
 import { Text, View } from "react-native";
 
 import type { StatsViewData } from "../../../services/stats-view-service";
+import { AppButton } from "../../components/AppButton";
 import { FeatureCard } from "../../components/FeatureCard";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewEmptyStateProps = {
+  onPrimaryAction?: (() => void) | undefined;
   styles: StatsOverviewStyles;
   viewData: StatsViewData;
 };
 
 export function StatsOverviewEmptyState({
+  onPrimaryAction,
   styles,
   viewData,
 }: StatsOverviewEmptyStateProps) {
@@ -29,15 +32,19 @@ export function StatsOverviewEmptyState({
           <View style={[styles.emptyOrb, styles.emptyOrbPrimary]} />
           <View style={[styles.emptyOrb, styles.emptyOrbSecondary]} />
           <View style={styles.emptyGrid}>
-            {Array.from({ length: 6 }).map((_, index) => (
+            {emptyState.lockedSections.map((sectionTitle, index) => (
               <View
-                key={String(index)}
+                key={sectionTitle}
                 style={[
                   styles.emptyCell,
                   index === 2 ? styles.emptyCellActive : null,
                   index === 4 ? styles.emptyCellSoft : null,
                 ]}
-              />
+              >
+                <Text style={styles.emptyCellTitle}>{sectionTitle}</Text>
+                <View style={styles.emptyCellLine} />
+                <View style={[styles.emptyCellLine, styles.emptyCellLineShort]} />
+              </View>
             ))}
           </View>
         </View>
@@ -60,6 +67,13 @@ export function StatsOverviewEmptyState({
           {emptyState.progressLabel}
         </Text>
         <Text style={styles.helperText}>{emptyState.hint}</Text>
+        {onPrimaryAction ? (
+          <AppButton
+            label={emptyState.action.label}
+            onPress={onPrimaryAction}
+            testID="stats-empty-primary-action"
+          />
+        ) : null}
       </View>
     </FeatureCard>
   );

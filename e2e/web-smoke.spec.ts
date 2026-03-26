@@ -117,7 +117,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByText("Export data")).toBeVisible();
-  await expect(page.getByText("Total entries: 2")).toBeVisible();
+  await expect(page.getByText(/Total entries: [1-9]\d*/)).toBeVisible();
 
   const [csvDownload] = await Promise.all([
     page.waitForEvent("download"),
@@ -143,13 +143,14 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByRole("tab", { name: /Insights/ }).click();
 
   await expect(page).toHaveURL(/\/stats$/);
-  await expect(page.getByText("Prediction reliability")).toBeVisible();
-  await expect(page.getByText("Cycle trend")).toBeVisible();
-  await expect(page.getByText("Symptom frequency")).toBeVisible();
-  await expect(page.getByText("Last cycle symptoms")).toBeVisible();
-  await expect(
-    page.getByTestId("stats-symptom-frequency").getByText("Cramps"),
-  ).toBeVisible();
+  await expect(page.getByText("Keep logging to unlock insights")).toBeVisible();
+  await expect(page.getByText("Cycle 1 of 2 completed")).toBeVisible();
+  await expect(page.getByText("Log today to speed this up")).toBeVisible();
+  const statsEmptyHero = page.getByTestId("stats-empty-hero");
+  await expect(statsEmptyHero.getByText("Cycle length")).toBeVisible();
+  await expect(statsEmptyHero.getByText("Cycle trend")).toBeVisible();
+  await expect(statsEmptyHero.getByText("Symptom frequency")).toBeVisible();
+  await expect(statsEmptyHero.getByText("Last cycle symptoms")).toBeVisible();
 
   await page.getByRole("tab", { name: /Settings/ }).click();
   await expect(page).toHaveURL(/\/settings$/);

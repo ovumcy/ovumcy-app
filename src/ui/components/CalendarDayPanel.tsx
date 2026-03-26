@@ -17,6 +17,7 @@ type CalendarDayPanelProps = {
   entryExists: boolean;
   isEditing: boolean;
   isSaving: boolean;
+  isFutureDate?: boolean;
   manualCycleStart?: ManualCycleStartViewData | null;
   record: DayLogRecord;
   statusMessage: string;
@@ -36,6 +37,7 @@ export function CalendarDayPanel({
   entryExists,
   isEditing,
   isSaving,
+  isFutureDate = false,
   manualCycleStart,
   record,
   statusMessage,
@@ -57,6 +59,13 @@ export function CalendarDayPanel({
 
     return (
       <View style={styles.editingStack}>
+        {isFutureDate ? (
+          <StatusBanner
+            message={summaryViewData.futureEntryWarning}
+            testID="calendar-day-future-warning"
+            tone="info"
+          />
+        ) : null}
         <DayLogEditorCard
           cancelLabel={summaryViewData.actions.cancelLabel}
           entryExists={entryExists}
@@ -94,6 +103,13 @@ export function CalendarDayPanel({
       testID="calendar-day-panel"
       title={summaryViewData.dateLabel}
     >
+      {isFutureDate ? (
+        <StatusBanner
+          message={summaryViewData.futureEntryWarning}
+          testID="calendar-day-future-warning"
+          tone="info"
+        />
+      ) : null}
       {statusMessage ? (
         <StatusBanner
           message={statusMessage}

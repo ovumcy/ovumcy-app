@@ -82,8 +82,11 @@ export const createStatsOverviewStyles = (colors: AppThemeColors) =>
       borderColor: colors.border,
       borderRadius: 16,
       borderWidth: 1,
-      height: 44,
-      width: 60,
+      gap: spacing.xs,
+      minHeight: 74,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      width: 96,
     },
     emptyCellActive: {
       backgroundColor: colors.accentSoft,
@@ -91,6 +94,21 @@ export const createStatsOverviewStyles = (colors: AppThemeColors) =>
     },
     emptyCellSoft: {
       opacity: 0.72,
+    },
+    emptyCellTitle: {
+      color: colors.text,
+      fontSize: 10,
+      fontWeight: "700",
+      lineHeight: 13,
+    },
+    emptyCellLine: {
+      backgroundColor: colors.border,
+      borderRadius: 999,
+      height: 5,
+      width: "100%",
+    },
+    emptyCellLineShort: {
+      width: "72%",
     },
     emptyNote: {
       alignItems: "center",

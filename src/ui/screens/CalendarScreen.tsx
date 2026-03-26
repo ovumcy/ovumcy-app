@@ -17,7 +17,7 @@ import {
 } from "../../services/manual-cycle-start-service";
 import {
   buildNextDayLogRecordPatch,
-  deleteDayLogEditorRecord,
+  clearDayLogEditorRecord,
   saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
 import { formatLocalDate } from "../../services/profile-settings-policy";
@@ -38,6 +38,10 @@ type EditorStatusState = {
 } | null;
 
 type CalendarEditorMode = "view" | "edit";
+
+function buildMonthAnchorDate(monthValue: string): string {
+  return `${monthValue}-01`;
+}
 
 export function CalendarScreen({
   storage = appStorage,
@@ -146,11 +150,26 @@ export function CalendarScreen({
     if (!state) {
       return;
     }
+
+    const hasPersistedEntry = state.records.some(
+      (record) => record.date === state.selectedRecord.date && hasDayLogData(record),
+    );
+    if (hasPersistedEntry) {
+      const confirmed = await openConfirmation(
+        state.editorViewData.labels.deletePrompt,
+        state.editorViewData.actions.deleteLabel,
+        dashboardCopy.cancelAction,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsSaving(true);
     setStatus(null);
 
-    const success = await deleteDayLogEditorRecord(storage, state.selectedRecord.date);
-    if (!success) {
+    const result = await clearDayLogEditorRecord(storage, state.selectedRecord.date);
+    if (!result.ok) {
       setStatus({
         message: state.editorViewData.actions.deleteFailedLabel,
         tone: "error",
@@ -159,6 +178,14 @@ export function CalendarScreen({
       return;
     }
 
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            selectedRecord: result.record,
+          }
+        : current,
+    );
     await refreshForActiveSelection();
     setEditorMode("view");
     setStatus({
@@ -246,6 +273,7 @@ export function CalendarScreen({
       entryExists={hasDayLogData(state.selectedRecord)}
       editorViewData={state.editorViewData}
       isEditing={editorMode === "edit"}
+      isFutureDate={selectedDate > formatLocalDate(effectiveNow)}
       isSaving={isSaving}
       manualCycleStart={manualCycleStart}
       onAddEntry={() => {
@@ -260,8 +288,11 @@ export function CalendarScreen({
       onDismissPredictionNotice={handleDismissPredictionNotice}
       onManualCycleStart={handleManualCycleStart}
       onNextMonth={() => {
+        const nextMonthValue = state.viewData.nextMonthValue;
         setStatus(null);
-        setMonthValue(state.viewData.nextMonthValue);
+        setEditorMode("view");
+        setMonthValue(nextMonthValue);
+        setSelectedDate(buildMonthAnchorDate(nextMonthValue));
       }}
       onPatch={(updates) => {
         setStatus(null);
@@ -278,8 +309,11 @@ export function CalendarScreen({
         );
       }}
       onPrevMonth={() => {
+        const prevMonthValue = state.viewData.prevMonthValue;
         setStatus(null);
-        setMonthValue(state.viewData.prevMonthValue);
+        setEditorMode("view");
+        setMonthValue(prevMonthValue);
+        setSelectedDate(buildMonthAnchorDate(prevMonthValue));
       }}
       onSave={handleSave}
       onSelectDay={(day) => {

@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
@@ -23,6 +23,7 @@ export function StatsScreen({
   now,
 }: StatsScreenProps) {
   const { colors, language } = useAppPreferences();
+  const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<LoadedStatsState | null>(null);
@@ -61,5 +62,14 @@ export function StatsScreen({
     );
   }
 
-  return <StatsOverviewScreen viewData={state.viewData} />;
+  return (
+    <StatsOverviewScreen
+      onEmptyStateAction={(action) => {
+        if (action === "open_logging") {
+          router.push("/(tabs)/dashboard");
+        }
+      }}
+      viewData={state.viewData}
+    />
+  );
 }

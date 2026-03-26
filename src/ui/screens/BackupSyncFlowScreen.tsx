@@ -1,4 +1,5 @@
 import type { SettingsViewData } from "../../services/settings-view-service";
+import type { BackupSyncErrorPresentation } from "../../services/backup-sync-view-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
 import { SettingsSyncSetupSection } from "../components/SettingsSyncSetupSection";
@@ -10,11 +11,13 @@ import type {
 type BackupSyncFlowScreenProps = {
   authLoginValue: string;
   authPasswordValue: string;
-  errorMessage: string;
+  confirmActionLabel: string;
+  errorPresentation: BackupSyncErrorPresentation;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
   isAuthenticating: boolean;
+  isExportingRecoveryPhrase: boolean;
   isPreparing: boolean;
   isRecovering: boolean;
   isRestoring: boolean;
@@ -25,6 +28,7 @@ type BackupSyncFlowScreenProps = {
   onDisconnect: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
   onEndpointChange: (value: string) => void;
+  onExportRecoveryPhrase: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPrepare: () => void | Promise<void>;
@@ -46,11 +50,13 @@ type BackupSyncFlowScreenProps = {
 export function BackupSyncFlowScreen({
   authLoginValue,
   authPasswordValue,
-  errorMessage,
+  confirmActionLabel,
+  errorPresentation,
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
   isAuthenticating,
+  isExportingRecoveryPhrase,
   isPreparing,
   isRecovering,
   isRestoring,
@@ -61,6 +67,7 @@ export function BackupSyncFlowScreen({
   onDisconnect,
   onDeviceLabelChange,
   onEndpointChange,
+  onExportRecoveryPhrase,
   onLogin,
   onModeSelect,
   onPrepare,
@@ -95,11 +102,13 @@ export function BackupSyncFlowScreen({
       <SettingsSyncSetupSection
         authLoginValue={authLoginValue}
         authPasswordValue={authPasswordValue}
-        errorMessage={errorMessage}
+        confirmActionLabel={confirmActionLabel}
+        errorPresentation={errorPresentation}
         generatedRecoveryPhrase={generatedRecoveryPhrase}
         hasSyncSession={hasSyncSession}
         hasStoredSyncSecrets={hasStoredSyncSecrets}
         isAuthenticating={isAuthenticating}
+        isExportingRecoveryPhrase={isExportingRecoveryPhrase}
         isPreparing={isPreparing}
         isRecovering={isRecovering}
         isRestoring={isRestoring}
@@ -110,6 +119,7 @@ export function BackupSyncFlowScreen({
         onDisconnect={onDisconnect}
         onDeviceLabelChange={onDeviceLabelChange}
         onEndpointChange={onEndpointChange}
+        onExportRecoveryPhrase={onExportRecoveryPhrase}
         onLogin={onLogin}
         onModeSelect={onModeSelect}
         onPrepare={onPrepare}

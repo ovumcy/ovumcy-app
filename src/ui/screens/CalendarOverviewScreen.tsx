@@ -33,6 +33,7 @@ type CalendarOverviewScreenProps = {
   editorViewData: DayLogEditorViewData;
   isEditing: boolean;
   isSaving: boolean;
+  isFutureDate?: boolean;
   manualCycleStart?: ManualCycleStartViewData | null;
   onAddEntry: () => void;
   onCancelEdit: () => void;
@@ -58,6 +59,7 @@ export function CalendarOverviewScreen({
   editorViewData,
   isEditing,
   isSaving,
+  isFutureDate = false,
   manualCycleStart,
   onAddEntry,
   onCancelEdit,
@@ -246,6 +248,7 @@ export function CalendarOverviewScreen({
                 editorViewData={editorViewData}
                 entryExists={entryExists}
                 isEditing={isEditing}
+                isFutureDate={isFutureDate}
                 isSaving={isSaving}
                 onAdd={onAddEntry}
                 onCancel={onCancelEdit}

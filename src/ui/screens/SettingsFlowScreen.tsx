@@ -17,6 +17,7 @@ import {
   type SettingsSyncSummaryViewData,
   type SettingsViewData,
 } from "../../services/settings-view-service";
+import { AppButton } from "../components/AppButton";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
@@ -36,8 +37,11 @@ export type SettingsFlowScreenProps = {
   clearDataConfirmationValue: string;
   clearDataErrorMessage: string;
   clearDataStatusMessage: string;
+  cycleDateInputValue: string;
   cycleGuidance: {
     adjusted: boolean;
+    invalid: boolean;
+    cycleLong: boolean;
     cycleShort: boolean;
     periodLong: boolean;
   };
@@ -45,13 +49,12 @@ export type SettingsFlowScreenProps = {
   cycleStatusMessage: string;
   exportErrorMessage: string;
   exportStatusMessage: string;
+  hasUnsavedSettingsChanges: boolean;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
   isClearingData: boolean;
   isExporting: boolean;
-  isSavingCycle: boolean;
-  isSavingInterface: boolean;
-  isSavingTracking: boolean;
+  isSavingSettings: boolean;
   locale: string;
   now: Date;
   onAgeGroupSelect: (value: LoadedSettingsState["cycleValues"]["ageGroup"]) => void;
@@ -63,7 +66,10 @@ export type SettingsFlowScreenProps = {
   onCreateSymptom: () => void | Promise<void>;
   onCreateSymptomDraftChange: (updates: Partial<SymptomDraftValues>) => void;
   onCycleLengthChange: (value: number) => void;
+  onCycleDateInputChange: (value: string) => void;
+  onDatePickerCancel: () => void;
   onDatePickerChange: (event: DateTimePickerEvent, value: Date | undefined) => void;
+  onDatePickerConfirm: () => void;
   onDatePickerToggle: () => void;
   onExportCSV: () => void | Promise<void>;
   onExportDatePickerChange: (
@@ -85,9 +91,7 @@ export type SettingsFlowScreenProps = {
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
-  onSaveCycleSettings: () => void | Promise<void>;
-  onSaveInterfaceSettings: () => void | Promise<void>;
-  onSaveTrackingSettings: () => void | Promise<void>;
+  onSavePendingSettings: () => void | Promise<void>;
   onSymptomDraftChange: (
     symptomID: SymptomID,
     updates: Partial<SymptomDraftValues>,
@@ -117,18 +121,18 @@ export function SettingsFlowScreen({
   clearDataConfirmationValue,
   clearDataErrorMessage,
   clearDataStatusMessage,
+  cycleDateInputValue,
   cycleGuidance,
   cycleErrorMessage,
   cycleStatusMessage,
   exportErrorMessage,
   exportStatusMessage,
+  hasUnsavedSettingsChanges,
   interfaceErrorMessage,
   interfaceStatusMessage,
   isClearingData,
   isExporting,
-  isSavingCycle,
-  isSavingInterface,
-  isSavingTracking,
+  isSavingSettings,
   locale,
   now,
   onAgeGroupSelect,
@@ -140,7 +144,10 @@ export function SettingsFlowScreen({
   onCreateSymptom,
   onCreateSymptomDraftChange,
   onCycleLengthChange,
+  onCycleDateInputChange,
+  onDatePickerCancel,
   onDatePickerChange,
+  onDatePickerConfirm,
   onDatePickerToggle,
   onExportCSV,
   onExportDatePickerChange,
@@ -159,9 +166,7 @@ export function SettingsFlowScreen({
   onPeriodLengthChange,
   onPredictionModeSelect,
   onRestoreSymptom,
-  onSaveCycleSettings,
-  onSaveInterfaceSettings,
-  onSaveTrackingSettings,
+  onSavePendingSettings,
   onSymptomDraftChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
@@ -207,23 +212,25 @@ export function SettingsFlowScreen({
 
           <SettingsCycleSection
             cycleErrorMessage={cycleErrorMessage}
+            cycleDateInputValue={cycleDateInputValue}
             cycleGuidance={cycleGuidance}
             cyclePickerMaximumDate={flowState.cyclePickerMaximumDate}
             cyclePickerMinimumDate={flowState.cyclePickerMinimumDate}
             cyclePickerValue={flowState.cyclePickerValue}
             cycleStatusMessage={cycleStatusMessage}
             displayedCycleStartDate={flowState.displayedCycleStartDate}
-            isSavingCycle={isSavingCycle}
             now={now}
             onAgeGroupSelect={onAgeGroupSelect}
             onAutoPeriodFillChange={onAutoPeriodFillChange}
             onClearLastPeriodStart={onClearLastPeriodStart}
             onCycleLengthChange={onCycleLengthChange}
+            onCycleDateInputChange={onCycleDateInputChange}
+            onDatePickerCancel={onDatePickerCancel}
             onDatePickerChange={onDatePickerChange}
+            onDatePickerConfirm={onDatePickerConfirm}
             onDatePickerToggle={onDatePickerToggle}
             onPeriodLengthChange={onPeriodLengthChange}
             onPredictionModeSelect={onPredictionModeSelect}
-            onSaveCycleSettings={onSaveCycleSettings}
             onUsageGoalSelect={onUsageGoalSelect}
             predictionMode={flowState.predictionMode}
             showDatePicker={showDatePicker}
@@ -251,9 +258,7 @@ export function SettingsFlowScreen({
           />
 
           <SettingsTrackingSection
-            isSavingTracking={isSavingTracking}
             onHideSexChipChange={onHideSexChipChange}
-            onSaveTrackingSettings={onSaveTrackingSettings}
             onTemperatureUnitSelect={onTemperatureUnitSelect}
             onTrackBBTChange={onTrackBBTChange}
             onTrackCervicalMucusChange={onTrackCervicalMucusChange}
@@ -265,15 +270,28 @@ export function SettingsFlowScreen({
 
           <SettingsInterfaceSection
             errorMessage={interfaceErrorMessage}
-          isSaving={isSavingInterface}
-          onLanguageSelect={onInterfaceLanguageSelect}
-          onSave={onSaveInterfaceSettings}
-          onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
-          onThemeSelect={onInterfaceThemeSelect}
-          statusMessage={interfaceStatusMessage}
-          value={state.interfaceValues}
+            onLanguageSelect={onInterfaceLanguageSelect}
+            onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
+            onThemeSelect={onInterfaceThemeSelect}
+            statusMessage={interfaceStatusMessage}
+            value={state.interfaceValues}
             viewData={viewData.interface}
           />
+
+          <View style={styles.formGroup}>
+            <AppButton
+              disabled={
+                !hasUnsavedSettingsChanges || isSavingSettings || cycleGuidance.invalid
+              }
+              label={
+                isSavingSettings
+                  ? viewData.common.saving
+                  : viewData.common.saveChanges
+              }
+              onPress={onSavePendingSettings}
+              testID="settings-save-all-button"
+            />
+          </View>
 
           <SettingsSyncSummaryCard onOpen={onOpenBackupSync} summary={syncSummary} />
 

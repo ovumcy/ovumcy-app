@@ -1,6 +1,7 @@
 import { getDayLogCopy } from "../i18n/day-log-copy";
 import {
   DAY_CYCLE_FACTOR_KEYS,
+  createEmptyDayLogRecord,
   type DayCervicalMucus,
   type DayCycleFactorKey,
   type DayFlow,
@@ -16,11 +17,15 @@ import {
   sanitizeDayLogRecord,
   trimDayLogNotes,
 } from "./day-log-policy";
+import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
 import { parseLocalDate } from "./profile-settings-policy";
 import {
   filterKnownSymptomIDs,
 } from "./symptom-policy";
 import { buildLocalizedEntryPickerSymptoms } from "./symptom-presentation-service";
+
+const MIN_CANONICAL_DAY_LOG_DATE = "0001-01-01";
+const MAX_CANONICAL_DAY_LOG_DATE = "9999-12-31";
 
 export type DayLogEditorViewData = {
   title: string;
@@ -48,6 +53,7 @@ export type DayLogEditorViewData = {
     notesPlaceholder: string;
     periodOffHint: string;
     deleteHint: string;
+    deletePrompt: string;
   };
   actions: {
     saveLabel: string;
@@ -146,6 +152,39 @@ export async function deleteDayLogEditorRecord(
   }
 }
 
+export async function clearDayLogEditorRecord(
+  storage: LocalAppStorage,
+  date: DayLogRecord["date"],
+): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
+  try {
+    const profile = await storage.readProfileRecord();
+    await storage.deleteDayLogRecord(date);
+    if (profile.lastPeriodStart === date) {
+      const remainingRecords = await storage.listDayLogRecordsInRange(
+        MIN_CANONICAL_DAY_LOG_DATE,
+        MAX_CANONICAL_DAY_LOG_DATE,
+      );
+      await storage.writeProfileRecord({
+        ...profile,
+        lastPeriodStart: resolveLatestCycleStartAnchorBeforeOrOn(
+          {
+            ...profile,
+            lastPeriodStart: null,
+          },
+          remainingRecords,
+          MAX_CANONICAL_DAY_LOG_DATE,
+        ),
+      });
+    }
+    return {
+      ok: true,
+      record: createEmptyDayLogRecord(date),
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export function buildDayLogEditorViewData(
   profile: ProfileRecord,
   date: DayLogRecord["date"],
@@ -186,10 +225,11 @@ export function buildDayLogEditorViewData(
       notesPlaceholder: dayLogCopy.notesPlaceholder,
       periodOffHint: dayLogCopy.periodOffHint,
       deleteHint: dayLogCopy.deleteHint,
+      deletePrompt: dayLogCopy.deletePrompt,
     },
     actions: {
       saveLabel: dayLogCopy.saveDay,
-      updateLabel: dayLogCopy.updateEntry,
+      updateLabel: dayLogCopy.saveDay,
       savedLabel: dayLogCopy.saved,
       saveFailedLabel: dayLogCopy.saveFailed,
       deleteLabel: dayLogCopy.deleteEntry,

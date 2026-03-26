@@ -47,7 +47,12 @@ describe("buildStatsViewData", () => {
 
     expect(viewData.hasInsights).toBe(false);
     expect(viewData.emptyState?.title).toBe("Keep logging to unlock insights");
-    expect(viewData.emptyState?.progressLabel).toBe("Completed cycles: 0 / 2");
+    expect(viewData.emptyState?.progressLabel).toBe("Cycle 0 of 2 completed");
+    expect(viewData.emptyState?.lockedSections).toContain("Cycle length");
+    expect(viewData.emptyState?.action).toEqual({
+      kind: "open_logging",
+      label: "Log today to speed this up",
+    });
   });
 
   it("builds trend, symptom, phase, and bbt insight sections after local history unlocks stats", () => {

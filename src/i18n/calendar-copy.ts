@@ -13,6 +13,8 @@ const calendarCopyEn = {
   addEntry: "Add entry",
   editEntry: "Edit entry",
   cancelEdit: "Cancel",
+  futureEntryWarning:
+    "This is a future date. Entries logged in advance may affect prediction accuracy.",
   dismissNotice: "Dismiss notice",
   predictionModeIrregular:
     "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
@@ -72,6 +74,8 @@ const calendarCopyDe: CalendarCopy = {
   addEntry: "Eintrag hinzufügen",
   editEntry: "Eintrag bearbeiten",
   cancelEdit: "Abbrechen",
+  futureEntryWarning:
+    "Dies ist ein zukünftiges Datum. Vorab eingetragene Daten können die Vorhersagegenauigkeit beeinflussen.",
   dismissNotice: "Hinweis schließen",
   predictionModeIrregular:
     "Der Modus für unregelmäßige Zyklen ist aktiv. Ovumcy zeigt hier weiterhin Vorhersagen an, aber sie sollten als ungefähre Orientierung und nicht als exakte Daten gelesen werden.",
@@ -130,6 +134,8 @@ const calendarCopyFr: CalendarCopy = {
   addEntry: "Ajouter une entrée",
   editEntry: "Modifier l'entrée",
   cancelEdit: "Annuler",
+  futureEntryWarning:
+    "Cette date est dans le futur. Les entrées ajoutées à l'avance peuvent affecter la précision des prédictions.",
   dismissNotice: "Fermer l'avis",
   predictionModeIrregular:
     "Le mode cycle irrégulier est activé. Ovumcy affiche encore des prédictions ici, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
@@ -192,6 +198,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Добавить запись",
     editEntry: "Изменить запись",
     cancelEdit: "Отмена",
+    futureEntryWarning:
+      "Это будущая дата. Записи, добавленные заранее, могут повлиять на точность предсказаний.",
     dismissNotice: "Скрыть уведомление",
     predictionModeIrregular:
       "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
@@ -248,6 +256,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     addEntry: "Añadir registro",
     editEntry: "Editar registro",
     cancelEdit: "Cancelar",
+    futureEntryWarning:
+      "Esta es una fecha futura. Las entradas registradas por adelantado pueden afectar a la precisión de las predicciones.",
     dismissNotice: "Cerrar aviso",
     predictionModeIrregular:
       "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",

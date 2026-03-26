@@ -69,6 +69,18 @@ export const createSettingsFlowStyles = (colors: AppThemeColors) =>
       flexWrap: "wrap",
       gap: spacing.md,
     },
+    dateInput: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: "600",
+      minHeight: 52,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
     inlineAction: {
       alignSelf: "flex-start",
       paddingTop: spacing.xs,
@@ -80,6 +92,11 @@ export const createSettingsFlowStyles = (colors: AppThemeColors) =>
     },
     messageStack: {
       gap: spacing.xs,
+    },
+    actionsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
     },
     infoText: {
       color: colors.textMuted,

@@ -15,6 +15,15 @@ const dashboardCopyEn = {
     "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
   factsOnlyHint:
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
+  cycleHeroDay: (day: number) => `Day ${day}`,
+  cycleHeroRegular: (days: number) => `${days}-day rhythm`,
+  cycleHeroApproximate: "Approximate rhythm",
+  cycleHeroFactsOnly: "Logged history only",
+  cycleHeroWaiting: "Add a cycle start",
+  cycleHeroStale: "Waiting for next cycle",
+  cycleHeroLegendStart: "Start",
+  cycleHeroLegendFertile: "Fertile",
+  cycleHeroLegendOvulation: "Ovulation",
   todayEditor: "Today journal",
   quickActionsTitle: "Quick actions",
   quickActions: {
@@ -39,7 +48,7 @@ const dashboardCopyEn = {
   manualCycleStartSaved: "Cycle start updated locally.",
   manualCycleStartFailed: "Unable to mark a new cycle start. Please try again.",
   invalidCycleStartDate:
-    "A new cycle start can be marked only for past days and no more than 2 days ahead.",
+    "A new cycle start can be marked only for today or past days.",
   cycleStartSuggestion:
     "This may be the first day of your period. If so, mark it as a new cycle start.",
   cycleStartReplaceMessage:
@@ -72,6 +81,15 @@ const dashboardCopyDe: DashboardCopy = {
     "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
   factsOnlyHint:
     "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
+  cycleHeroDay: (day: number) => `Tag ${day}`,
+  cycleHeroRegular: (days: number) => `${days}-Tage-Rhythmus`,
+  cycleHeroApproximate: "Ungefähre Rhythmik",
+  cycleHeroFactsOnly: "Nur protokollierter Verlauf",
+  cycleHeroWaiting: "Zyklusbeginn ergänzen",
+  cycleHeroStale: "Wartet auf den nächsten Zyklus",
+  cycleHeroLegendStart: "Start",
+  cycleHeroLegendFertile: "Fruchtbar",
+  cycleHeroLegendOvulation: "Eisprung",
   todayEditor: "Heutiges Journal",
   quickActionsTitle: "Schnellaktionen",
   quickActions: {
@@ -97,7 +115,7 @@ const dashboardCopyDe: DashboardCopy = {
   manualCycleStartFailed:
     "Ein neuer Zyklusbeginn konnte nicht markiert werden. Bitte versuche es erneut.",
   invalidCycleStartDate:
-    "Ein neuer Zyklusbeginn kann nur für vergangene Tage und höchstens 2 Tage im Voraus markiert werden.",
+    "Ein neuer Zyklusbeginn kann nur für heute oder vergangene Tage markiert werden.",
   cycleStartSuggestion:
     "Das könnte der erste Tag deiner Periode sein. Wenn ja, markiere ihn als neuen Zyklusbeginn.",
   cycleStartReplaceMessage:
@@ -129,6 +147,15 @@ const dashboardCopyFr: DashboardCopy = {
     "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   factsOnlyHint:
     "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
+  cycleHeroDay: (day: number) => `Jour ${day}`,
+  cycleHeroRegular: (days: number) => `Rythme de ${days} jours`,
+  cycleHeroApproximate: "Rythme approximatif",
+  cycleHeroFactsOnly: "Historique enregistré uniquement",
+  cycleHeroWaiting: "Ajoute un début de cycle",
+  cycleHeroStale: "En attente du prochain cycle",
+  cycleHeroLegendStart: "Début",
+  cycleHeroLegendFertile: "Fertile",
+  cycleHeroLegendOvulation: "Ovulation",
   todayEditor: "Journal d'aujourd'hui",
   quickActionsTitle: "Actions rapides",
   quickActions: {
@@ -154,7 +181,7 @@ const dashboardCopyFr: DashboardCopy = {
   manualCycleStartFailed:
     "Impossible de marquer un nouveau début de cycle. Réessaie.",
   invalidCycleStartDate:
-    "Un nouveau début de cycle peut être marqué uniquement pour des jours passés et au maximum 2 jours à l'avance.",
+    "Un nouveau début de cycle peut être marqué uniquement pour aujourd'hui ou des jours passés.",
   cycleStartSuggestion:
     "Cela peut être le premier jour de tes règles. Si c'est le cas, marque-le comme nouveau début de cycle.",
   cycleStartReplaceMessage:
@@ -188,6 +215,15 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "В режиме нерегулярного цикла предсказания остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
     factsOnlyHint:
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
+    cycleHeroDay: (day: number) => `День ${day}`,
+    cycleHeroRegular: (days: number) => `Ритм ${days} дней`,
+    cycleHeroApproximate: "Примерный ритм",
+    cycleHeroFactsOnly: "Только записанная история",
+    cycleHeroWaiting: "Добавьте начало цикла",
+    cycleHeroStale: "Ожидание следующего цикла",
+    cycleHeroLegendStart: "Старт",
+    cycleHeroLegendFertile: "Фертильность",
+    cycleHeroLegendOvulation: "Овуляция",
     todayEditor: "Сегодняшний журнал",
     quickActionsTitle: "Быстрые действия",
     quickActions: {
@@ -213,7 +249,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     manualCycleStartFailed:
       "Не удалось отметить новое начало цикла. Попробуйте ещё раз.",
     invalidCycleStartDate:
-      "Новое начало цикла можно отмечать только для прошедших дней и не более чем на 2 дня вперёд.",
+      "Новое начало цикла можно отмечать только на сегодня или прошедшие дни.",
     cycleStartSuggestion:
       "Это может быть первый день менструации. Если да, отметьте его как новое начало цикла.",
     cycleStartReplaceMessage:
@@ -244,6 +280,15 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "El modo de ciclo irregular mantiene visibles las predicciones, pero deben leerse como una guía aproximada y no como fechas exactas.",
     factsOnlyHint:
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
+    cycleHeroDay: (day: number) => `Día ${day}`,
+    cycleHeroRegular: (days: number) => `Ritmo de ${days} días`,
+    cycleHeroApproximate: "Ritmo aproximado",
+    cycleHeroFactsOnly: "Solo historial registrado",
+    cycleHeroWaiting: "Añade un inicio de ciclo",
+    cycleHeroStale: "Esperando el próximo ciclo",
+    cycleHeroLegendStart: "Inicio",
+    cycleHeroLegendFertile: "Fértil",
+    cycleHeroLegendOvulation: "Ovulación",
     todayEditor: "Registro de hoy",
     quickActionsTitle: "Acciones rápidas",
     quickActions: {
@@ -269,7 +314,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     manualCycleStartFailed:
       "No se pudo marcar un nuevo inicio de ciclo. Inténtalo de nuevo.",
     invalidCycleStartDate:
-      "Solo se puede marcar un nuevo inicio de ciclo para días pasados y no más de 2 días hacia adelante.",
+      "Solo se puede marcar un nuevo inicio de ciclo para hoy o para días pasados.",
     cycleStartSuggestion:
       "Puede ser el primer día de tu período. Si es así, márcalo como un nuevo inicio de ciclo.",
     cycleStartReplaceMessage:

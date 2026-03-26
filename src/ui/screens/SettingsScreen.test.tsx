@@ -170,7 +170,7 @@ describe("SettingsScreen", () => {
       "valueChange",
       35,
     );
-    fireEvent.press(screen.getByTestId("settings-save-cycle-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -189,7 +189,7 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-prediction-mode-facts_only"));
-    fireEvent.press(screen.getByTestId("settings-save-cycle-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -209,7 +209,7 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-temperature-unit-f"));
-    fireEvent.press(screen.getByTestId("settings-save-tracking-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -228,7 +228,7 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-screen-capture-protection"));
-    fireEvent.press(screen.getByTestId("settings-save-interface-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -247,7 +247,7 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-cycle-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-track-bbt"));
-    fireEvent.press(screen.getByTestId("settings-save-tracking-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -350,6 +350,10 @@ describe("SettingsScreen", () => {
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
     expect(screen.getByTestId("settings-export-section")).toBeTruthy();
     expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-save-all-button")).toBeTruthy();
+    expect(screen.queryByTestId("settings-save-cycle-button")).toBeNull();
+    expect(screen.queryByTestId("settings-save-tracking-button")).toBeNull();
+    expect(screen.queryByTestId("settings-save-interface-button")).toBeNull();
     expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
   });
 
@@ -440,6 +444,40 @@ describe("SettingsScreen", () => {
     );
     expect(screen.getByTestId("settings-export-to-value").props.children).toBe(
       "2026-03-17",
+    );
+  });
+
+  it("opens a web date input for the last period start and saves the typed date", async () => {
+    const storage = createSettingsStorageMock();
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "web",
+    });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+
+    const dateInput = await screen.findByTestId("settings-cycle-date-input");
+    fireEvent.changeText(dateInput, "20260312");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-cycle-date-input").props.value).toBe(
+        "2026-03-12",
+      ),
+    );
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-confirm-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lastPeriodStart: "2026-03-12",
+        }),
+      ),
     );
   });
 

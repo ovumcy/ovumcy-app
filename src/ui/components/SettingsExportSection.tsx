@@ -180,6 +180,7 @@ export function SettingsExportSection({
               label={viewData.jsonAction}
               onPress={onJSONExport}
               testID="settings-export-json-button"
+              variant="secondary"
             />
             <AppButton
               disabled={isExporting}

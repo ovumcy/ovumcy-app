@@ -3,6 +3,7 @@ import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
 import {
   buildCycleHistorySummary,
   resolveLatestCycleStartAnchorBeforeOrOn,
@@ -10,7 +11,7 @@ import {
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
-const MANUAL_CYCLE_START_FUTURE_DAYS = 2;
+const MANUAL_CYCLE_START_FUTURE_DAYS = 0;
 const MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS = 15;
 
 export type ManualCycleStartPrompt = {
@@ -188,6 +189,12 @@ export async function applyManualCycleStart(
     for (const nextRecord of recordsToWrite.values()) {
       await storage.writeDayLogRecord(nextRecord);
     }
+    await storage.writeProfileRecord(
+      resetDismissedCalendarPredictionNotice(profile, {
+        ...profile,
+        lastPeriodStart: nextSelectedRecord.date,
+      }),
+    );
   } catch {
     return {
       ok: false,

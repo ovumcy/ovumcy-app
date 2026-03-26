@@ -19,6 +19,7 @@ import {
 } from "./settings-view-service";
 import {
   getSettingsCycleStartDateBounds,
+  isCompatibleCycleAndPeriod,
   parseLocalDate,
   sanitizeCycleSettingsValues,
   sanitizeInterfaceSettingsValues,
@@ -34,7 +35,10 @@ import {
 } from "./symptom-policy";
 import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
 
-type SaveSettingsErrorCode = "invalid_last_period_start" | "generic";
+type SaveSettingsErrorCode =
+  | "invalid_cycle_settings"
+  | "invalid_last_period_start"
+  | "generic";
 type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
 type ExportSettingsErrorCode =
   | "invalid_from_date"
@@ -73,6 +77,12 @@ export async function saveCycleSettings(
     return {
       ok: false,
       errorCode: "invalid_last_period_start",
+    };
+  }
+  if (!isCompatibleCycleAndPeriod(cycleValues.cycleLength, cycleValues.periodLength)) {
+    return {
+      ok: false,
+      errorCode: "invalid_cycle_settings",
     };
   }
 

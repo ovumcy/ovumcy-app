@@ -4,7 +4,12 @@ import type {
   ExportPreset,
   ExportRangeValues,
 } from "../models/export";
-import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import {
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
+  sanitizeLocalDateInput,
+} from "./profile-settings-policy";
 
 export type ExportValidationErrorCode =
   | "invalid_from_date"
@@ -14,15 +19,7 @@ export type ExportValidationErrorCode =
 const PRESET_WINDOW_VALUES: readonly ExportPreset[] = ["all", "30", "90", "365"];
 
 export function sanitizeExportDateInput(raw: string): string {
-  const digits = String(raw).replace(/\D+/g, "").slice(0, 8);
-  if (digits.length <= 4) {
-    return digits;
-  }
-  if (digits.length <= 6) {
-    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
-  }
-
-  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+  return sanitizeLocalDateInput(raw);
 }
 
 export function createEmptyExportSummary(): ExportDataSummary {
@@ -176,7 +173,7 @@ export function validateExportRangeValues(
     };
   }
 
-  if (!isDateWithinBounds(normalizedFrom, bounds)) {
+  if (!isStartDateWithinBounds(normalizedFrom, bounds)) {
     return {
       ok: false,
       errorCode: "invalid_from_date",
@@ -250,6 +247,20 @@ function isDateWithinBounds(
     return false;
   }
   if (bounds.minDate && rawDate < bounds.minDate) {
+    return false;
+  }
+  if (bounds.maxDate && rawDate > bounds.maxDate) {
+    return false;
+  }
+
+  return true;
+}
+
+function isStartDateWithinBounds(
+  rawDate: string,
+  bounds: ExportDateBounds,
+): boolean {
+  if (!rawDate) {
     return false;
   }
   if (bounds.maxDate && rawDate > bounds.maxDate) {

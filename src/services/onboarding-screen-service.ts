@@ -10,6 +10,7 @@ import { buildInitialBootstrapState } from "./app-bootstrap-service";
 import {
   applyOnboardingRecordToProfile,
   createStepTwoDefaults,
+  buildCycleGuidanceState,
   sanitizeStepTwoValues,
   validateStepOneStartDate,
 } from "./onboarding-policy";
@@ -71,7 +72,10 @@ type SaveStepOneErrorCode =
   | "last_period_range"
   | "generic";
 
-type FinishOnboardingErrorCode = "date_required" | "generic";
+type FinishOnboardingErrorCode =
+  | "date_required"
+  | "invalid_cycle_settings"
+  | "generic";
 
 export async function loadOnboardingScreenState(
   storage: LocalAppStorage,
@@ -176,6 +180,17 @@ export async function finishOnboarding(
   }
 
   const sanitizedValues = sanitizeStepTwoValues(state.stepTwoValues);
+  if (
+    buildCycleGuidanceState(
+      sanitizedValues.cycleLength,
+      sanitizedValues.periodLength,
+    ).invalid
+  ) {
+    return {
+      ok: false,
+      errorCode: "invalid_cycle_settings",
+    };
+  }
   const predictionModeFlags = resolvePredictionModeFlags(
     sanitizedValues.predictionMode,
   );

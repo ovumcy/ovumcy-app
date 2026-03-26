@@ -60,7 +60,9 @@ export async function runSaveCycleSettingsAction(
     setCycleErrorMessage(
       result.errorCode === "invalid_last_period_start"
         ? viewData.status.invalidLastPeriodStart
-        : viewData.status.saveFailed,
+        : result.errorCode === "invalid_cycle_settings"
+          ? viewData.cycle.messages.errorIncompatible
+          : viewData.status.saveFailed,
     );
     setIsSavingCycle(false);
     return;
@@ -176,7 +178,9 @@ export async function runSavePendingSettingsAction(
       setCycleErrorMessage(
         cycleResult.errorCode === "invalid_last_period_start"
           ? viewData.status.invalidLastPeriodStart
-          : viewData.status.saveFailed,
+          : cycleResult.errorCode === "invalid_cycle_settings"
+            ? viewData.cycle.messages.errorIncompatible
+            : viewData.status.saveFailed,
       );
       setState(nextState);
       return false;

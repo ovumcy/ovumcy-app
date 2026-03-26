@@ -6,7 +6,7 @@ import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import {
-  deleteDayLogEditorRecord,
+  clearDayLogEditorRecord,
   buildNextDayLogRecordPatch,
   saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
@@ -131,11 +131,26 @@ export function DashboardScreen({
     if (!state) {
       return;
     }
+
+    const hasPersistedEntry = state.historyRecords.some(
+      (record) => record.date === state.todayEntry.date && hasDayLogData(record),
+    );
+    if (hasPersistedEntry) {
+      const confirmed = await openConfirmation(
+        state.editorViewData.labels.deletePrompt,
+        state.editorViewData.actions.deleteLabel,
+        dashboardCopy.cancelAction,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setIsSaving(true);
     setStatus(null);
 
-    const success = await deleteDayLogEditorRecord(storage, state.todayEntry.date);
-    if (!success) {
+    const result = await clearDayLogEditorRecord(storage, state.todayEntry.date);
+    if (!result.ok) {
       setStatus({
         message: state.editorViewData.actions.deleteFailedLabel,
         tone: "error",
@@ -144,6 +159,14 @@ export function DashboardScreen({
       return;
     }
 
+    setState((current) =>
+      current
+        ? {
+            ...current,
+            todayEntry: result.record,
+          }
+        : current,
+    );
     await refresh();
     setStatus({
       message: state.editorViewData.actions.deletedLabel,

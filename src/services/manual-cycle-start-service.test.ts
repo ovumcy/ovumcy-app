@@ -74,7 +74,7 @@ describe("manual-cycle-start-service", () => {
     );
   });
 
-  it("marks a new cycle start, clears competing starts in the cluster, and leaves settings untouched", async () => {
+  it("marks a new cycle start, clears competing starts in the cluster, and syncs the canonical last-period date", async () => {
     const profile = createProfileRecord();
     const records = [
       {
@@ -140,7 +140,11 @@ describe("manual-cycle-start-service", () => {
         isUncertain: false,
       }),
     );
-    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastPeriodStart: "2026-03-09",
+      }),
+    );
   });
 
   it("auto-fills the rest of the period window after a confirmed cycle start", async () => {
@@ -210,7 +214,7 @@ describe("manual-cycle-start-service", () => {
     expect(viewData?.buttonLabel).toBe("Neuen Zyklusbeginn markieren");
   });
 
-  it("rejects dates beyond the allowed future window", async () => {
+  it("rejects future dates for manual cycle starts", async () => {
     const storage = createLocalAppStorageMock();
     const profile = createProfileRecord();
     const draftRecord = createEmptyDayLogRecord("2026-03-25");
@@ -230,8 +234,7 @@ describe("manual-cycle-start-service", () => {
 
     expect(result).toEqual({
       ok: false,
-      errorMessage:
-        "A new cycle start can be marked only for past days and no more than 2 days ahead.",
+      errorMessage: "A new cycle start can be marked only for today or past days.",
     });
   });
 });

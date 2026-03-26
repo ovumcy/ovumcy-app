@@ -1,7 +1,6 @@
 import { Text, View } from "react-native";
 
 import type { LoadedSettingsState, SettingsViewData } from "../../../services/settings-view-service";
-import { AppButton } from "../../components/AppButton";
 import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
@@ -9,9 +8,7 @@ import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
 type SettingsTrackingSectionProps = {
-  isSavingTracking: boolean;
   onHideSexChipChange: (value: boolean) => void;
-  onSaveTrackingSettings: () => void | Promise<void>;
   onTemperatureUnitSelect: (
     value: LoadedSettingsState["trackingValues"]["temperatureUnit"],
   ) => void;
@@ -24,9 +21,7 @@ type SettingsTrackingSectionProps = {
 };
 
 export function SettingsTrackingSection({
-  isSavingTracking,
   onHideSexChipChange,
-  onSaveTrackingSettings,
   onTemperatureUnitSelect,
   onTrackBBTChange,
   onTrackCervicalMucusChange,
@@ -66,9 +61,11 @@ export function SettingsTrackingSection({
         descriptionPosition="below"
         icon="◦"
         label={viewData.tracking.hideSexChip.label}
-        onValueChange={onHideSexChipChange}
+        onValueChange={(value) => {
+          onHideSexChipChange(!value);
+        }}
         testID="settings-toggle-hide-sex-chip"
-        value={state.trackingValues.hideSexChip}
+        value={!state.trackingValues.hideSexChip}
       />
 
       <View style={styles.formGroup}>
@@ -90,14 +87,6 @@ export function SettingsTrackingSection({
           tone="success"
         />
       ) : null}
-
-      <AppButton
-        disabled={isSavingTracking}
-        label={viewData.tracking.saveLabel}
-        onPress={onSaveTrackingSettings}
-        testID="settings-save-tracking-button"
-        variant="secondary"
-      />
     </FeatureCard>
   );
 }

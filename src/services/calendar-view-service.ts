@@ -78,6 +78,7 @@ export type CalendarDaySummaryViewData = {
     editEntryLabel: string;
     cancelLabel: string;
   };
+  futureEntryWarning: string;
 };
 
 export type CalendarViewData = {
@@ -346,6 +347,7 @@ function buildCalendarDaySummaryViewData(
       editEntryLabel: calendarCopy.editEntry,
       cancelLabel: calendarCopy.cancelEdit,
     },
+    futureEntryWarning: calendarCopy.futureEntryWarning,
   };
 }
 

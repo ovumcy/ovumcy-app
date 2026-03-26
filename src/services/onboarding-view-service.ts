@@ -49,6 +49,7 @@ export type OnboardingViewData = {
       warningApproximate: string;
       infoAdjusted: string;
       infoPeriodLong: string;
+      infoCycleLong: string;
       infoCycleShort: string;
     };
     ageOptions: {
@@ -132,6 +133,7 @@ export function buildOnboardingViewData(
         warningApproximate: onboardingCopy.step2.warningApproximate,
         infoAdjusted: onboardingCopy.step2.infoAdjusted,
         infoPeriodLong: onboardingCopy.step2.infoPeriodLong,
+        infoCycleLong: onboardingCopy.step2.infoCycleLong,
         infoCycleShort: onboardingCopy.step2.infoCycleShort,
       },
       ageOptions: [

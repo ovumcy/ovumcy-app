@@ -1,5 +1,5 @@
 import * as React from "react";
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
@@ -7,12 +7,16 @@ import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
 import { StatsScreen } from "./StatsScreen";
 
 const mockUseEffect = React.useEffect;
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => {
   return {
     useFocusEffect: (effect: () => void | (() => void)) => {
       mockUseEffect(effect, [effect]);
     },
+    useRouter: () => ({
+      push: mockPush,
+    }),
   };
 });
 
@@ -48,6 +52,10 @@ function createStorageMock(overrides = {}) {
 }
 
 describe("StatsScreen", () => {
+  beforeEach(() => {
+    mockPush.mockReset();
+  });
+
   it("renders the empty-state hero until two completed cycles exist", async () => {
     const storage = createStorageMock();
 
@@ -63,6 +71,28 @@ describe("StatsScreen", () => {
     await screen.findByTestId("stats-empty-hero");
     expect(screen.getByTestId("stats-empty-hero")).toBeTruthy();
     expect(screen.getByTestId("stats-screen-title").props.children).toBe("Insights");
+    expect(screen.getByText("Cycle length")).toBeTruthy();
+    expect(screen.getByText("Cycle 0 of 2 completed")).toBeTruthy();
+  });
+
+  it("routes back to logging from the empty-state CTA", async () => {
+    const storage = createStorageMock();
+
+    render(
+      <AppPreferencesProvider storage={storage}>
+        <StatsScreen
+          now={new Date(2026, 2, 17)}
+          storage={storage}
+        />
+      </AppPreferencesProvider>,
+    );
+
+    await screen.findByTestId("stats-empty-primary-action");
+    fireEvent.press(screen.getByTestId("stats-empty-primary-action"));
+
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith("/(tabs)/dashboard"),
+    );
   });
 
   it("renders stats v2 sections after local history is available", async () => {

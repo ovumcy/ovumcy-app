@@ -7,7 +7,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { StatsViewData } from "../../services/stats-view-service";
+import type {
+  StatsEmptyActionKind,
+  StatsViewData,
+} from "../../services/stats-view-service";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
@@ -18,10 +21,14 @@ import { StatsOverviewTrendSections } from "./stats/StatsOverviewTrendSections";
 import { createStatsOverviewStyles } from "./stats/stats-overview-styles";
 
 type StatsOverviewScreenProps = {
+  onEmptyStateAction?: ((action: StatsEmptyActionKind) => void) | undefined;
   viewData: StatsViewData;
 };
 
-export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
+export function StatsOverviewScreen({
+  onEmptyStateAction,
+  viewData,
+}: StatsOverviewScreenProps) {
   const styles = useThemedStyles(createStatsOverviewStyles);
   const { colors } = useAppTheme();
   const { width } = useWindowDimensions();
@@ -53,7 +60,15 @@ export function StatsOverviewScreen({ viewData }: StatsOverviewScreenProps) {
           </View>
 
           {!viewData.hasInsights ? (
-            <StatsOverviewEmptyState styles={styles} viewData={viewData} />
+            <StatsOverviewEmptyState
+              onPrimaryAction={
+                viewData.emptyState?.action
+                  ? () => onEmptyStateAction?.(viewData.emptyState!.action.kind)
+                  : undefined
+              }
+              styles={styles}
+              viewData={viewData}
+            />
           ) : null}
 
           {viewData.predictionExplanation ? (
