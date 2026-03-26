@@ -26,7 +26,6 @@
 - When the web storage contract changes, keep one browser smoke assertion that proves sensitive health state does not persist across a browser reload unless that persistence is explicitly approved.
 - When settings toggles affect dashboard visibility or prediction wording, cover the contract at three levels: service tests, screen tests, and the temporary Playwright web smoke.
 - When a daily-log change affects both dashboard and calendar, cover the contract at three levels: storage/service tests, screen tests, and the temporary Playwright web smoke that proves a saved day entry is visible after navigation.
-- When cycle-start anchors change from dashboard or calendar actions, tests must prove consistency across dashboard, calendar, settings `lastPeriodStart`, and export date ranges, including destructive delete flows and future-date rejection paths.
 - When a local-history threshold unlocks a new owner flow, cover both the locked empty state and the unlocked state in service tests, screen tests, and the temporary Playwright web smoke using deterministic relative dates.
 - When export range or delivery behavior changes, cover the contract at three levels: policy or service tests, settings screen tests, and the temporary Playwright web smoke for browser download behavior.
 - When interface-language support expands, add one runtime normalization test for locale tags and one settings view-data test that proves every selectable language appears in the language picker.
@@ -36,7 +35,6 @@
 - Destructive local-data flows need both service/storage regression tests and at least one platform acceptance pass, because emulator input tooling can hide real native reset bugs behind flaky interaction behavior.
 - When a parity pass changes user-facing feedback copy or brand assets, keep browser smoke and screen tests aligned to the canonical status messages and canonical web-derived brand files.
 - When a new insight section unlocks from local history, cover both locked and unlocked states at three levels: service projections, screen visibility, and the temporary Playwright web smoke seeded with the minimum local cycle history needed to reveal the section.
-- When stats empty-state guidance changes, cover the locked state with both service and screen tests, including the owner-facing CTA target that routes back to logging without requiring sync or onboarding reset.
 - When security-sensitive app features add ESM-only crypto dependencies, keep Jest transform allowlists in sync and cover the flow at both service and screen level so crypto-backed settings UIs stay testable locally.
 - For privacy-sensitive browser smoke lanes, prefer CI settings that disable screenshots, traces, and videos by default or upload only the minimum failure report needed for diagnosis. Recovery-phrase and export flows should not leave rich failure artifacts behind by default.
 - Encrypted-at-rest storage changes need storage-level tests for encrypted roundtrips, plaintext scrubbing of legacy columns or payload slots, and the lost-key reset path before the app-level suite can be treated as trustworthy.
@@ -46,7 +44,6 @@
 - When a settings subflow moves to its own route, keep Settings screen tests focused on summary and navigation, and move interactive behavior coverage to the extracted screen.
 - When calendar UX or day-log editing changes, cover add, edit, and delete at two levels: React Native screen tests and one live Android Expo acceptance pass. Treat raw adb interaction failures as tooling noise unless the same behavior also fails in the product state or test contract.
 - When cycle predictions become overdue, tests must prove the UI degrades to an explicit unknown state rather than continuing to show stale ovulation, next-period dates, or calendar markers.
-- When dashboard cycle chrome gains a visual progress indicator, test both calculable and unknown or facts-only states so decorative UI never overstates prediction certainty.
 - When settings can leave the screen with dirty form state, cover three escape paths in Settings tests: back navigation, tab switch, and navigation into a child subflow such as `Backup & sync`.
 - Settings flows with immediate language or theme preview must test preview/render parity and all dirty-exit paths, including Android hardware back in addition to route, tab, and child-subflow navigation.
 - When a native privacy control such as screenshot protection becomes user-configurable, cover three layers: persisted interface settings, app-shell security-hook behavior for enabled and disabled modes, and one manual release-build check on Android or iOS.

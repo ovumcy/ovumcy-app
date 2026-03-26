@@ -56,7 +56,6 @@
 - Web-only storage fallbacks are acceptable as a bridge when native and web runtimes have different persistence constraints, but the fallback must remain hidden behind the same repository contract.
 - Incomplete onboarding progress must be persisted explicitly in bootstrap state. Do not infer the current onboarding step from `lastPeriodStart` or any other profile field, because relaunch and reset flows must reopen the exact unfinished step.
 - Onboarding, settings, and dashboard must share one canonical profile repository. Do not keep separate persisted records for onboarding-only values once the app has a broader local profile model.
-- `profile.lastPeriodStart` is the canonical cycle-start fallback across dashboard, calendar, settings, and export. Any manual cycle-start change or destructive day-log clear that changes the latest anchor must update this canonical profile field through shared services.
 - Dashboard, calendar, and any future stats flow must read and write the same canonical day-log repository. Do not introduce screen-specific local journal stores once daily tracking exists.
 - Stats, dashboard, and calendar must derive cycle history from the same day-log repository and shared cycle-history helpers. Do not reimplement completed-cycle detection or phase projection separately per screen.
 - Export and backup features must read from the canonical local repositories for profile, day logs, and symptom catalog. Do not assemble export payloads from screen state or derived view caches.
@@ -77,7 +76,6 @@
 - Managed cloud sync actions must stay locked until server capabilities confirm that the signed-in account has an active cloud plan. Do not unlock upload or restore from local auth state alone.
 - Settings should expose backup and sync as a summary entrypoint only. The full recovery, account, plan, and sync-action flow belongs on a dedicated screen so settings persistence and sync orchestration do not collapse back into one owner component.
 - Settings screens with unsaved owner preferences must guard route, tab, and subflow exits with an explicit save-or-discard confirmation instead of silently dropping edits.
-- Settings owner preferences may preview locally while editing, but persistence should use one explicit screen-level save action or one approved autosave model. Do not ship multiple unrelated save buttons for one settings surface.
 - Native export delivery should treat cache files as temporary transport artifacts. Create them only inside the delivery boundary and delete them again after the share or save attempt completes, whether it succeeds or fails.
 - Native SQLite storage may use encrypted payload columns for privacy-sensitive records while keeping only the minimum plaintext metadata needed for repository queries. Services and screens must still consume the same repository contract and must not branch on encrypted-vs-plaintext persistence details.
 - When a previously approved web-parity deviation is closed in the app, update the repo-local parity checklist in the same change so old exceptions do not linger as stale product guidance.
@@ -85,4 +83,3 @@
 - Native SQLite destructive reset should wipe and reseed the existing database on the same connection instead of deleting and reopening the database file. Android Expo runtimes can reject freshly reopened handles during bootstrap and reset.
 - Calendar legend and calendar cells must use the same visual contract. Do not introduce a second metaphor in the legend that differs from the grid’s actual fill, border, and marker states.
 - Device-shell privacy controls such as screenshot protection belong to canonical interface settings and app-shell security helpers. Do not reintroduce ad hoc runtime flags or screen-local toggles for the same policy.
-- Dashboard cycle visuals and stats empty states must be driven by shared service view-data. Do not hardcode progress, CTA targets, or phase certainty rules directly inside screen components.
