@@ -7,6 +7,7 @@ import {
 } from "./settings-view-service";
 import {
   buildBackupSyncDirtyState,
+  buildBackupSyncSetupPresentation,
   resolveBackupSyncConnectedStatusMessage,
   resolveBackupSyncErrorMessage,
   revertBackupSyncDraftState,
@@ -129,5 +130,33 @@ describe("backup sync view service", () => {
     expect(
       resolveBackupSyncConnectedStatusMessage(state, viewData.account),
     ).toBe(viewData.account.status.connectedNoPlan);
+  });
+
+  it("builds sync setup presentation with preformatted last sync and self-hosted step numbering", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const presentation = buildBackupSyncSetupPresentation({
+      hasStoredSyncSecrets: true,
+      hasSyncSession: true,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      notSetLabel: "Not set",
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        lastSyncedAt: "2026-03-20T08:10:00.000Z",
+      },
+      syncCapabilities: null,
+      viewData: viewData.account,
+    });
+
+    expect(presentation.shouldShowEndpointSummary).toBe(true);
+    expect(presentation.endpointSummary).toBe("192.168.1.20:8080");
+    expect(presentation.syncStepTitle).toBe("3. Sync this backup");
+    expect(presentation.lastSyncValue).not.toBe("2026-03-20T08:10:00.000Z");
   });
 });

@@ -11,6 +11,7 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
+import { calcOvulationDay } from "./cycle-prediction-policy";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { filterKnownSymptomIDs } from "./symptom-policy";
 import {
@@ -18,29 +19,37 @@ import {
   parseLocalDate,
 } from "./profile-settings-policy";
 
+type DashboardCycleHeroPhaseKey =
+  | "period"
+  | "follicular"
+  | "ovulation"
+  | "luteal";
+
 export type DashboardCycleHeroViewData = {
   state: "regular" | "approximate" | "facts_only" | "unknown" | "stale";
   title: string;
-  icon: string;
   value: string;
   detail: string;
   caption: string;
   progressPercent: number | null;
-  markers: {
-    key: "start" | "fertile" | "ovulation";
+  currentTone: DashboardCycleHeroPhaseKey | "neutral";
+  phaseSegments: {
+    key: DashboardCycleHeroPhaseKey;
+    startPercent: number;
+    endPercent: number;
+    tone: DashboardCycleHeroPhaseKey;
+  }[];
+  phaseCards: {
+    key: DashboardCycleHeroPhaseKey;
     label: string;
-    offsetPercent: number;
-    tone: "period" | "fertile" | "ovulation";
+    rangeLabel: string;
+    tone: DashboardCycleHeroPhaseKey;
+    active: boolean;
   }[];
 };
 
 export type DashboardViewData = {
   cycleHero: DashboardCycleHeroViewData;
-  phaseStatus: {
-    icon: string;
-    label: string;
-  };
-  statusItems: string[];
   predictionExplanation: string;
   quickActionsTitle: string;
   quickActions: {
@@ -119,12 +128,9 @@ export function buildDashboardViewData(
     historyRecords,
     now,
   );
-  const statusItems = buildStatusItems(profile, projectedCycle, locale);
 
   return {
     cycleHero: buildDashboardCycleHero(profile, projectedCycle, locale),
-    phaseStatus: buildPhaseStatus(projectedCycle.currentPhase, locale),
-    statusItems,
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
     quickActions: {
@@ -143,17 +149,6 @@ export function buildDashboardViewData(
   };
 }
 
-function buildPhaseStatus(
-  phase: ReturnType<typeof buildCurrentCycleProjection>["currentPhase"],
-  locale = "en",
-) {
-  const statsCopy = getStatsCopy(locale);
-  return {
-    icon: statsCopy.phaseIcons[phase],
-    label: statsCopy.phaseLabels[phase],
-  };
-}
-
 function buildDashboardCycleHero(
   profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
@@ -161,126 +156,83 @@ function buildDashboardCycleHero(
 ): DashboardCycleHeroViewData {
   const dashboardCopy = getDashboardCopy(locale);
   const statsCopy = getStatsCopy(locale);
-  const phaseStatus = buildPhaseStatus(projection.currentPhase, locale);
   const cycleDayValue =
     projection.currentCycleDay !== null
-      ? dashboardCopy.cycleHeroDay(projection.currentCycleDay)
+      ? String(projection.currentCycleDay)
       : statsCopy.phaseLabels.unknown;
+  const heroTitle = dashboardCopy.cycleHeroDayLabel;
 
   if (projection.isPredictionStale) {
     return {
       state: "stale",
-      title: statsCopy.phaseLabels.unknown,
-      icon: statsCopy.phaseIcons.unknown,
+      title: heroTitle,
       value: statsCopy.phaseLabels.unknown,
       detail: dashboardCopy.cycleHeroStale,
       caption: `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
       progressPercent: null,
-      markers: [],
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
     };
   }
 
   if (profile.unpredictableCycle) {
     return {
       state: "facts_only",
-      title: statsCopy.factsOnlyTitle,
-      icon: statsCopy.phaseIcons.unknown,
+      title: heroTitle,
       value: cycleDayValue,
       detail: dashboardCopy.cycleHeroFactsOnly,
       caption: "",
       progressPercent: null,
-      markers: buildDashboardCycleHeroMarkers(projection, locale),
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
     };
   }
 
   if (!projection.cycleAnchorDate || projection.currentCycleDay === null) {
     return {
       state: "unknown",
-      title: statsCopy.phaseLabels.unknown,
-      icon: statsCopy.phaseIcons.unknown,
+      title: heroTitle,
       value: statsCopy.phaseLabels.unknown,
       detail: dashboardCopy.cycleHeroWaiting,
       caption: dashboardCopy.nextPeriodPrompt,
       progressPercent: null,
-      markers: [],
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
     };
   }
 
+  const cyclePhases = buildDashboardCycleHeroPhases(profile, projection, locale);
+  const currentTone = resolveDashboardCycleHeroCurrentTone(
+    cyclePhases,
+    projection.currentCycleDay,
+  );
   return {
     state: profile.irregularCycle ? "approximate" : "regular",
-    title: phaseStatus.label,
-    icon: phaseStatus.icon,
+    title: heroTitle,
     value: cycleDayValue,
     detail: profile.irregularCycle
       ? dashboardCopy.cycleHeroApproximate
       : dashboardCopy.cycleHeroRegular(projection.predictionCycleLength),
     caption: buildDashboardCycleHeroCaption(profile, projection, locale),
     progressPercent: resolveDashboardCycleHeroProgressPercent(projection),
-    markers: buildDashboardCycleHeroMarkers(projection, locale),
+    currentTone,
+    phaseSegments: cyclePhases.map((phase) => ({
+      key: phase.key,
+      startPercent: phase.startPercent,
+      endPercent: phase.endPercent,
+      tone: phase.key,
+    })),
+    phaseCards: cyclePhases.map((phase) => ({
+      key: phase.key,
+      label: phase.label,
+      rangeLabel: phase.rangeLabel,
+      tone: phase.key,
+      active: phase.key === currentTone,
+    })),
   };
-}
-
-function buildStatusItems(
-  profile: ProfileRecord,
-  summary: ReturnType<typeof buildCurrentCycleProjection>,
-  locale: string,
-): string[] {
-  const dashboardCopy = getDashboardCopy(locale);
-
-  if (profile.unpredictableCycle) {
-    return [
-      `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
-      dashboardCopy.predictionsOff,
-    ];
-  }
-
-  const items: string[] = [];
-
-  if (summary.isPredictionStale) {
-    return [
-      `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
-      `${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`,
-    ];
-  }
-
-  if (summary.currentCycleDay !== null) {
-    items.push(`${dashboardCopy.cycleDay} ${summary.currentCycleDay}`);
-  }
-
-  if (!profile.lastPeriodStart) {
-    items.push(`${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodPrompt}`);
-    return items;
-  }
-
-  if (profile.irregularCycle && summary.nextPeriodDate) {
-    items.push(
-      `${dashboardCopy.nextPeriod}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(summary.nextPeriodDate, locale)}`,
-    );
-    if (summary.ovulationDate) {
-      items.push(
-        `${dashboardCopy.ovulation}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(summary.ovulationDate, locale)}`,
-      );
-    } else {
-      items.push(`${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`);
-    }
-    return items;
-  }
-
-  if (summary.nextPeriodDate) {
-    items.push(
-      `${dashboardCopy.nextPeriod}: ${formatDisplayDate(summary.nextPeriodDate, locale)}`,
-    );
-  }
-
-  if (summary.ovulationDate) {
-    items.push(
-      `${dashboardCopy.ovulation}: ${formatDisplayDate(summary.ovulationDate, locale)}`,
-    );
-  } else {
-    items.push(`${dashboardCopy.ovulation}: ${dashboardCopy.ovulationUnavailable}`);
-  }
-
-  return items;
 }
 
 function buildDashboardCycleHeroCaption(
@@ -311,57 +263,95 @@ function resolveDashboardCycleHeroProgressPercent(
     return null;
   }
 
-  const denominator = Math.max(projection.predictionCycleLength - 1, 1);
-  const normalized =
-    (projection.currentCycleDay - 1) / denominator;
+  const denominator = Math.max(projection.predictionCycleLength, 1);
+  const normalized = (projection.currentCycleDay - 1) / denominator;
 
   return clampPercent(normalized);
 }
 
-function buildDashboardCycleHeroMarkers(
+function buildDashboardCycleHeroPhases(
+  profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
   locale: string,
-): DashboardCycleHeroViewData["markers"] {
+): {
+  key: DashboardCycleHeroPhaseKey;
+  label: string;
+  rangeLabel: string;
+  startDay: number;
+  endDay: number;
+  startPercent: number;
+  endPercent: number;
+}[] {
   const dashboardCopy = getDashboardCopy(locale);
-  const markers: DashboardCycleHeroViewData["markers"] = [
+  const cycleLength = projection.predictionCycleLength;
+  const { day: ovulationDay } = calcOvulationDay(cycleLength);
+  if (!ovulationDay) {
+    return [];
+  }
+
+  const phaseRanges: {
+    key: DashboardCycleHeroPhaseKey;
+    label: string;
+    startDay: number;
+    endDay: number;
+  }[] = [
     {
-      key: "start",
-      label: dashboardCopy.cycleHeroLegendStart,
-      offsetPercent: 0,
-      tone: "period",
+      key: "period",
+      label: dashboardCopy.cycleHeroPhaseCards.period,
+      startDay: 1,
+      endDay: Math.min(profile.periodLength, cycleLength),
     },
-  ];
-
-  if (!projection.cycleAnchorDate || !projection.ovulationDate) {
-    return markers;
-  }
-
-  const anchor = parseLocalDate(projection.cycleAnchorDate);
-  const ovulation = parseLocalDate(projection.ovulationDate);
-  if (!anchor || !ovulation) {
-    return markers;
-  }
-
-  const denominator = Math.max(projection.predictionCycleLength - 1, 1);
-  const ovulationOffset = diffLocalDays(anchor, ovulation);
-  const fertileOffset = Math.max(ovulationOffset - 5, 0);
-
-  markers.push(
     {
-      key: "fertile",
-      label: dashboardCopy.cycleHeroLegendFertile,
-      offsetPercent: clampPercent(fertileOffset / denominator),
-      tone: "fertile",
+      key: "follicular",
+      label: dashboardCopy.cycleHeroPhaseCards.follicular,
+      startDay: Math.min(profile.periodLength + 1, cycleLength),
+      endDay: Math.max(ovulationDay - 1, 0),
     },
     {
       key: "ovulation",
-      label: dashboardCopy.cycleHeroLegendOvulation,
-      offsetPercent: clampPercent(ovulationOffset / denominator),
-      tone: "ovulation",
+      label: dashboardCopy.cycleHeroPhaseCards.ovulation,
+      startDay: ovulationDay,
+      endDay: ovulationDay,
     },
+    {
+      key: "luteal",
+      label: dashboardCopy.cycleHeroPhaseCards.luteal,
+      startDay: Math.min(ovulationDay + 1, cycleLength),
+      endDay: cycleLength,
+    },
+  ];
+
+  return phaseRanges
+    .filter((phase) => phase.startDay >= 1 && phase.endDay >= phase.startDay)
+    .map((phase) => ({
+      key: phase.key,
+      label: phase.label,
+      rangeLabel: dashboardCopy.cycleHeroDayRange(phase.startDay, phase.endDay),
+      startDay: phase.startDay,
+      endDay: phase.endDay,
+      startPercent: clampPercent((phase.startDay - 1) / cycleLength),
+      endPercent: clampPercent(phase.endDay / cycleLength),
+    }));
+}
+
+function resolveDashboardCycleHeroCurrentTone(
+  phases: {
+    key: DashboardCycleHeroPhaseKey;
+    startDay: number;
+    endDay: number;
+  }[],
+  currentCycleDay: number | null,
+): DashboardCycleHeroViewData["currentTone"] {
+  if (currentCycleDay === null) {
+    return "neutral";
+  }
+
+  const activePhase = phases.find(
+    (phase) =>
+      currentCycleDay >= phase.startDay && currentCycleDay <= phase.endDay,
   );
 
-  return markers;
+  return activePhase?.key ?? "neutral";
 }
 
 function formatDisplayDate(value: string, locale: string): string {
@@ -374,22 +364,6 @@ function formatDisplayDate(value: string, locale: string): string {
     day: "numeric",
     month: "short",
   }).format(parsed);
-}
-
-function diffLocalDays(start: Date, end: Date): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const startValue = new Date(
-    start.getFullYear(),
-    start.getMonth(),
-    start.getDate(),
-  ).getTime();
-  const endValue = new Date(
-    end.getFullYear(),
-    end.getMonth(),
-    end.getDate(),
-  ).getTime();
-
-  return Math.round((endValue - startValue) / msPerDay);
 }
 
 function clampPercent(value: number): number {

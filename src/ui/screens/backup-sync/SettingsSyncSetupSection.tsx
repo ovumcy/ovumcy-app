@@ -1,28 +1,31 @@
-import { useEffect, useState } from "react";
+import { type PropsWithChildren, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
   Platform,
+  type StyleProp,
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from "react-native";
 
-import type { SettingsViewData } from "../../services/settings-view-service";
-import type { BackupSyncErrorPresentation } from "../../services/backup-sync-view-service";
+import type { SettingsViewData } from "../../../services/settings-view-service";
 import type {
-  SyncCapabilityDocument,
+  BackupSyncErrorPresentation,
+  BackupSyncSetupPresentation,
+} from "../../../services/backup-sync-view-service";
+import type {
   SyncPreferencesRecord,
-} from "../../sync/sync-contract";
-import { supportsInlineSyncAccountAuth } from "../../sync/sync-contract";
-import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
-import { useThemedStyles } from "../theme/useThemedStyles";
-import { AppButton } from "./AppButton";
-import { AppTextInput } from "./AppTextInput";
-import { ChoiceGroup } from "./ChoiceGroup";
-import { FeatureCard } from "./FeatureCard";
-import { StatusBanner } from "./StatusBanner";
+} from "../../../sync/sync-contract";
+import { AppButton } from "../../components/AppButton";
+import { AppTextInput } from "../../components/AppTextInput";
+import { ChoiceGroup } from "../../components/ChoiceGroup";
+import { FeatureCard } from "../../components/FeatureCard";
+import { StatusBanner } from "../../components/StatusBanner";
+import type { AppThemeColors } from "../../theme/tokens";
+import { spacing } from "../../theme/tokens";
+import { useThemedStyles } from "../../theme/useThemedStyles";
 
 type SettingsSyncSetupSectionProps = {
   authLoginValue: string;
@@ -32,13 +35,8 @@ type SettingsSyncSetupSectionProps = {
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
-  isAuthenticating: boolean;
   isExportingRecoveryPhrase: boolean;
   isPreparing: boolean;
-  isRecovering: boolean;
-  isRestoring: boolean;
-  isSyncing: boolean;
-  notSetLabel: string;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -53,11 +51,11 @@ type SettingsSyncSetupSectionProps = {
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
+  presentation: BackupSyncSetupPresentation;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
   showCardHeader?: boolean;
   statusMessage: string;
-  syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
 };
 
@@ -69,13 +67,8 @@ export function SettingsSyncSetupSection({
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
-  isAuthenticating,
   isExportingRecoveryPhrase,
   isPreparing,
-  isRecovering,
-  isRestoring,
-  isSyncing,
-  notSetLabel,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -90,11 +83,11 @@ export function SettingsSyncSetupSection({
   onRegister,
   onRestore,
   onSyncNow,
+  presentation,
   preferences,
   recoveryPhraseValue,
   showCardHeader = true,
   statusMessage,
-  syncCapabilities,
   viewData,
 }: SettingsSyncSetupSectionProps) {
   const styles = useThemedStyles(createStyles);
@@ -103,33 +96,6 @@ export function SettingsSyncSetupSection({
   );
   const [isRecoveryPhraseModalVisible, setIsRecoveryPhraseModalVisible] =
     useState(false);
-  const isManaged = preferences.mode === "managed";
-  const supportsInlineAccountAuth = supportsInlineSyncAccountAuth(preferences.mode);
-  const hasManagedPlan = isManaged && syncCapabilities?.premiumActive === true;
-  const syncEnabled = syncCapabilities?.syncEnabled !== false;
-  const accountActionsDisabled =
-    isPreparing || isAuthenticating || isRecovering || isRestoring || isSyncing;
-  const canShowSyncActions =
-    hasStoredSyncSecrets &&
-    hasSyncSession &&
-    syncEnabled &&
-    (!isManaged || hasManagedPlan);
-  const accountActionButtonsDisabled = accountActionsDisabled || !hasStoredSyncSecrets;
-  const selectedModeLabel =
-    viewData.modeOptions.find((option) => option.value === preferences.mode)?.label ??
-    preferences.mode;
-  const endpointSummary =
-    preferences.mode === "managed"
-      ? selectedModeLabel
-      : preferences.endpointInput.trim() || notSetLabel;
-  const shouldShowEndpointSummary = preferences.mode === "self_hosted";
-  const actionLabel = hasStoredSyncSecrets
-    ? viewData.regenerateLabel
-    : viewData.prepareLabel;
-  const localStepTitle = renumberStepTitle(viewData.localStepTitle, 1);
-  const accountStepTitle = renumberStepTitle(viewData.accountStepTitle, 2);
-  const planStepTitle = renumberStepTitle(viewData.planStepTitle, 3);
-  const syncStepTitle = renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3);
 
   useEffect(() => {
     setIsRecoveryPhraseModalVisible(generatedRecoveryPhrase.length > 0);
@@ -141,15 +107,24 @@ export function SettingsSyncSetupSection({
     }
   }, [activeAccountPane, hasStoredSyncSecrets]);
 
-  let planMessage = viewData.planSignInFirst;
-  if (isManaged && hasSyncSession) {
-    if (!syncCapabilities) {
-      planMessage = viewData.planCheckFailed;
-    } else if (syncCapabilities.premiumActive) {
-      planMessage = viewData.planActive;
-    } else {
-      planMessage = viewData.planInactive;
+  function handleAccountSubmit() {
+    if (hasSyncSession) {
+      return;
     }
+
+    if (activeAccountPane === "restore" && !hasStoredSyncSecrets) {
+      if (presentation.accountActionsDisabled) {
+        return;
+      }
+      void onRecoverAccess();
+      return;
+    }
+
+    if (presentation.accountActionButtonsDisabled) {
+      return;
+    }
+
+    void onLogin();
   }
 
   return (
@@ -164,7 +139,7 @@ export function SettingsSyncSetupSection({
           <ChoiceGroup
             layout="grid2"
             onSelect={(value) => {
-              if (accountActionsDisabled) {
+              if (presentation.accountActionsDisabled) {
                 return;
               }
 
@@ -175,7 +150,9 @@ export function SettingsSyncSetupSection({
             testIDPrefix="settings-sync-mode"
           />
           <Text style={styles.helperText}>
-            {isManaged ? viewData.managedHint : viewData.selfHostedHint}
+            {presentation.isManaged
+              ? viewData.managedHint
+              : viewData.selfHostedHint}
           </Text>
         </View>
 
@@ -185,7 +162,7 @@ export function SettingsSyncSetupSection({
             <AppTextInput
               autoCapitalize="none"
               autoCorrect={false}
-              editable={!accountActionsDisabled}
+              editable={!presentation.accountActionsDisabled}
               keyboardType={Platform.OS === "web" ? "default" : "url"}
               onChangeText={onEndpointChange}
               placeholder={viewData.endpointPlaceholder}
@@ -207,7 +184,7 @@ export function SettingsSyncSetupSection({
           <AppTextInput
             autoCapitalize="words"
             autoCorrect={false}
-            editable={!accountActionsDisabled}
+            editable={!presentation.accountActionsDisabled}
             onChangeText={onDeviceLabelChange}
             placeholder={viewData.devicePlaceholder}
             style={styles.input}
@@ -239,12 +216,16 @@ export function SettingsSyncSetupSection({
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{viewData.modeRowLabel}</Text>
-            <Text style={styles.summaryValue}>{selectedModeLabel}</Text>
+            <Text style={styles.summaryValue}>
+              {presentation.selectedModeLabel}
+            </Text>
           </View>
-          {shouldShowEndpointSummary ? (
+          {presentation.shouldShowEndpointSummary ? (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryLabel}>{viewData.endpointRowLabel}</Text>
-              <Text style={styles.summaryValue}>{endpointSummary}</Text>
+              <Text style={styles.summaryValue}>
+                {presentation.endpointSummary}
+              </Text>
             </View>
           ) : null}
           <View style={styles.summaryCard}>
@@ -257,11 +238,7 @@ export function SettingsSyncSetupSection({
           </View>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>{viewData.lastSyncLabel}</Text>
-            <Text style={styles.summaryValue}>
-              {preferences.lastSyncedAt
-                ? formatLastSync(preferences.lastSyncedAt)
-                : viewData.lastSyncNever}
-            </Text>
+            <Text style={styles.summaryValue}>{presentation.lastSyncValue}</Text>
           </View>
         </View>
 
@@ -275,7 +252,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-local-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{localStepTitle}</Text>
+            <Text style={styles.stepTitle}>{presentation.localStepTitle}</Text>
             <Text style={styles.helperText}>{viewData.localStepHint}</Text>
           </View>
 
@@ -303,7 +280,6 @@ export function SettingsSyncSetupSection({
             {generatedRecoveryPhrase ? (
               <View style={styles.recoveryPhraseCard} testID="settings-sync-recovery-card">
                 <Text
-                  selectable
                   style={styles.recoveryPhrase}
                   testID="settings-sync-recovery-phrase"
                 >
@@ -324,8 +300,8 @@ export function SettingsSyncSetupSection({
           </View>
 
           <AppButton
-            disabled={accountActionsDisabled}
-            label={actionLabel}
+            disabled={presentation.accountActionsDisabled}
+            label={presentation.actionLabel}
             onPress={onPrepare}
             testID="settings-sync-prepare-button"
             variant="secondary"
@@ -334,9 +310,9 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-account-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{accountStepTitle}</Text>
+            <Text style={styles.stepTitle}>{presentation.accountStepTitle}</Text>
             <Text style={styles.helperText}>
-              {isManaged
+              {presentation.isManaged
                 ? viewData.accountStepHintManaged
                 : viewData.accountStepHintSelfHosted}
             </Text>
@@ -350,7 +326,7 @@ export function SettingsSyncSetupSection({
             />
           ) : null}
 
-          {supportsInlineAccountAuth ? (
+          {presentation.supportsInlineAccountAuth ? (
             <>
               {!hasStoredSyncSecrets ? (
                 <View style={styles.formGroup}>
@@ -376,106 +352,118 @@ export function SettingsSyncSetupSection({
                 </View>
               ) : null}
 
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
-                <AppTextInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!accountActionsDisabled}
-                  onChangeText={onAuthLoginChange}
-                  placeholder={viewData.loginPlaceholder}
-                  style={styles.input}
-                  testID="settings-sync-login-input"
-                  value={authLoginValue}
-                />
-                {errorPresentation.loginMessage ? (
-                  <Text style={styles.inlineErrorText}>
-                    {errorPresentation.loginMessage}
-                  </Text>
-                ) : null}
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
-                <AppTextInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!accountActionsDisabled}
-                  onChangeText={onAuthPasswordChange}
-                  placeholder={viewData.passwordPlaceholder}
-                  secureTextEntry
-                  style={styles.input}
-                  testID="settings-sync-password-input"
-                  value={authPasswordValue}
-                />
-                {errorPresentation.passwordMessage ? (
-                  <Text style={styles.inlineErrorText}>
-                    {errorPresentation.passwordMessage}
-                  </Text>
-                ) : null}
-              </View>
-
-              {!hasStoredSyncSecrets && activeAccountPane === "restore" ? (
-                <View
-                  style={styles.recoveryImportCard}
-                  testID="settings-sync-recovery-import-block"
-                >
-                  <Text style={styles.stepTitle}>{viewData.recoveryImportTitle}</Text>
-                  <Text style={styles.helperText}>{viewData.recoveryImportHint}</Text>
-                  <View style={styles.formGroup}>
-                    <Text style={styles.fieldLabel}>
-                      {viewData.recoveryPhraseInputLabel}
+              <SettingsSyncAccountForm
+                onSubmit={handleAccountSubmit}
+                style={styles.accountForm}
+                testID="settings-sync-account-form"
+              >
+                <View style={styles.formGroup}>
+                  <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
+                  <AppTextInput
+                    autoCapitalize="none"
+                    autoComplete="username"
+                    autoCorrect={false}
+                    editable={!presentation.accountActionsDisabled}
+                    onChangeText={onAuthLoginChange}
+                    placeholder={viewData.loginPlaceholder}
+                    style={styles.input}
+                    testID="settings-sync-login-input"
+                    textContentType="username"
+                    value={authLoginValue}
+                  />
+                  {errorPresentation.loginMessage ? (
+                    <Text style={styles.inlineErrorText}>
+                      {errorPresentation.loginMessage}
                     </Text>
-                    <AppTextInput
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!accountActionsDisabled}
-                      multiline
-                      onChangeText={onRecoveryPhraseChange}
-                      placeholder={viewData.recoveryPhraseInputPlaceholder}
-                      style={[styles.input, styles.recoveryInput]}
-                      testID="settings-sync-recovery-input"
-                      value={recoveryPhraseValue}
-                    />
-                    {errorPresentation.recoveryPhraseMessage ? (
-                      <Text style={styles.inlineErrorText}>
-                        {errorPresentation.recoveryPhraseMessage}
+                  ) : null}
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
+                  <AppTextInput
+                    autoCapitalize="none"
+                    autoComplete="current-password"
+                    autoCorrect={false}
+                    editable={!presentation.accountActionsDisabled}
+                    onChangeText={onAuthPasswordChange}
+                    onSubmitEditing={handleAccountSubmit}
+                    placeholder={viewData.passwordPlaceholder}
+                    returnKeyType="go"
+                    secureTextEntry
+                    style={styles.input}
+                    testID="settings-sync-password-input"
+                    textContentType="password"
+                    value={authPasswordValue}
+                  />
+                  {errorPresentation.passwordMessage ? (
+                    <Text style={styles.inlineErrorText}>
+                      {errorPresentation.passwordMessage}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {!hasStoredSyncSecrets && activeAccountPane === "restore" ? (
+                  <View
+                    style={styles.recoveryImportCard}
+                    testID="settings-sync-recovery-import-block"
+                  >
+                    <Text style={styles.stepTitle}>{viewData.recoveryImportTitle}</Text>
+                    <Text style={styles.helperText}>{viewData.recoveryImportHint}</Text>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.fieldLabel}>
+                        {viewData.recoveryPhraseInputLabel}
                       </Text>
-                    ) : null}
-                    <Text style={styles.helperText}>
-                      {viewData.recoveryPhraseInputHint}
-                    </Text>
+                      <AppTextInput
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!presentation.accountActionsDisabled}
+                        multiline
+                        onChangeText={onRecoveryPhraseChange}
+                        placeholder={viewData.recoveryPhraseInputPlaceholder}
+                        style={[styles.input, styles.recoveryInput]}
+                        testID="settings-sync-recovery-input"
+                        value={recoveryPhraseValue}
+                      />
+                      {errorPresentation.recoveryPhraseMessage ? (
+                        <Text style={styles.inlineErrorText}>
+                          {errorPresentation.recoveryPhraseMessage}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.helperText}>
+                        {viewData.recoveryPhraseInputHint}
+                      </Text>
+                    </View>
+                    <AppButton
+                      disabled={presentation.accountActionsDisabled}
+                      label={viewData.recoverAccessLabel}
+                      onPress={onRecoverAccess}
+                      testID="settings-sync-recover-button"
+                      variant="secondary"
+                    />
                   </View>
-                  <AppButton
-                    disabled={accountActionsDisabled}
-                    label={viewData.recoverAccessLabel}
-                    onPress={onRecoverAccess}
-                    testID="settings-sync-recover-button"
-                    variant="secondary"
-                  />
-                </View>
-              ) : null}
+                ) : null}
 
-              {!hasSyncSession && activeAccountPane === "auth" ? (
-                <View style={styles.actionsStack}>
-                  <AppButton
-                    disabled={accountActionButtonsDisabled}
-                    label={viewData.registerLabel}
-                    onPress={onRegister}
-                    testID="settings-sync-register-button"
-                    variant="secondary"
-                  />
-                  <AppButton
-                    disabled={accountActionButtonsDisabled}
-                    label={viewData.loginActionLabel}
-                    onPress={onLogin}
-                    testID="settings-sync-login-button"
-                  />
-                </View>
-              ) : null}
-              {!hasStoredSyncSecrets && !hasSyncSession && activeAccountPane === "auth" ? (
-                <Text style={styles.helperText}>{viewData.errors.syncNotPrepared}</Text>
-              ) : null}
+                {!hasSyncSession && activeAccountPane === "auth" ? (
+                  <View style={styles.actionsStack}>
+                    <AppButton
+                      disabled={presentation.accountActionButtonsDisabled}
+                      label={viewData.registerLabel}
+                      onPress={onRegister}
+                      testID="settings-sync-register-button"
+                      variant="secondary"
+                    />
+                    <AppButton
+                      disabled={presentation.accountActionButtonsDisabled}
+                      label={viewData.loginActionLabel}
+                      onPress={onLogin}
+                      testID="settings-sync-login-button"
+                    />
+                  </View>
+                ) : null}
+                {!hasStoredSyncSecrets && !hasSyncSession && activeAccountPane === "auth" ? (
+                  <Text style={styles.helperText}>{viewData.errors.syncNotPrepared}</Text>
+                ) : null}
+              </SettingsSyncAccountForm>
             </>
           ) : (
             <StatusBanner
@@ -486,16 +474,16 @@ export function SettingsSyncSetupSection({
           )}
         </View>
 
-        {isManaged ? (
+        {presentation.isManaged ? (
           <View style={styles.stepCard} testID="settings-sync-plan-step">
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>{planStepTitle}</Text>
+              <Text style={styles.stepTitle}>{presentation.planStepTitle}</Text>
               <Text style={styles.helperText}>{viewData.planStepHint}</Text>
             </View>
             <StatusBanner
-              message={planMessage}
+              message={presentation.planMessage}
               testID="settings-sync-plan-banner"
-              tone={hasManagedPlan ? "success" : "info"}
+              tone={presentation.hasManagedPlan ? "success" : "info"}
             />
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
           </View>
@@ -503,9 +491,9 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-actions-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{syncStepTitle}</Text>
+            <Text style={styles.stepTitle}>{presentation.syncStepTitle}</Text>
             <Text style={styles.helperText}>
-              {isManaged
+              {presentation.isManaged
                 ? viewData.syncStepHintManaged
                 : viewData.syncStepHintSelfHosted}
             </Text>
@@ -519,39 +507,39 @@ export function SettingsSyncSetupSection({
             />
           ) : null}
 
-          {isManaged && hasSyncSession && !hasManagedPlan ? (
+          {presentation.isManaged && hasSyncSession && !presentation.hasManagedPlan ? (
             <StatusBanner
               message={viewData.syncBlockedNoPlan}
               testID="settings-sync-plan-blocked-banner"
             />
           ) : null}
 
-          {canShowSyncActions ? (
+          {presentation.canShowSyncActions ? (
             <View style={styles.actionsStack}>
               <AppButton
-                disabled={accountActionsDisabled}
+                disabled={presentation.accountActionsDisabled}
                 label={viewData.syncNowLabel}
                 onPress={onSyncNow}
                 testID="settings-sync-upload-button"
               />
               <AppButton
-                disabled={accountActionsDisabled}
+                disabled={presentation.accountActionsDisabled}
                 label={viewData.restoreLabel}
                 onPress={onRestore}
                 testID="settings-sync-restore-button"
                 variant="secondary"
               />
               <AppButton
-                disabled={accountActionsDisabled}
+                disabled={presentation.accountActionsDisabled}
                 label={viewData.disconnectLabel}
                 onPress={onDisconnect}
                 testID="settings-sync-disconnect-button"
                 variant="secondary"
               />
             </View>
-          ) : hasStoredSyncSecrets && hasSyncSession ? (
+          ) : presentation.shouldShowDisconnectOnly ? (
             <AppButton
-              disabled={accountActionsDisabled}
+              disabled={presentation.accountActionsDisabled}
               label={viewData.disconnectLabel}
               onPress={onDisconnect}
               testID="settings-sync-disconnect-button"
@@ -580,7 +568,7 @@ export function SettingsSyncSetupSection({
                 />
               ) : null}
               <View style={styles.modalPhraseCard}>
-                <Text selectable style={styles.modalPhrase}>
+                <Text style={styles.modalPhrase}>
                   {generatedRecoveryPhrase}
                 </Text>
               </View>
@@ -608,20 +596,36 @@ export function SettingsSyncSetupSection({
   );
 }
 
-function formatLastSync(value: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
+function SettingsSyncAccountForm({
+  children,
+  onSubmit,
+  style,
+  testID,
+}: PropsWithChildren<{
+  onSubmit: () => void | Promise<void>;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}>) {
+  if (Platform.OS !== "web") {
+    return (
+      <View style={style} testID={testID}>
+        {children}
+      </View>
+    );
   }
 
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(parsed);
-}
-
-function renumberStepTitle(title: string, stepNumber: number): string {
-  return `${stepNumber}. ${title.replace(/^\d+\.\s*/u, "")}`;
+  return (
+    <form
+      data-testid={testID}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSubmit();
+      }}
+      style={{ margin: 0 }}
+    >
+      <View style={style}>{children}</View>
+    </form>
+  );
 }
 
 const createStyles = (colors: AppThemeColors) =>
@@ -631,6 +635,9 @@ const createStyles = (colors: AppThemeColors) =>
     },
     formGroup: {
       gap: spacing.sm,
+    },
+    accountForm: {
+      gap: spacing.md,
     },
     fieldLabel: {
       color: colors.text,

@@ -48,33 +48,52 @@ jest.mock("expo-router", () => {
 });
 
 jest.mock("@react-navigation/native", () => {
+  const tabsParentNavigation = {
+    addListener: (
+      eventName: string,
+      callback: (event: {
+        preventDefault: () => void;
+        target?: string;
+      }) => void,
+    ) => {
+      if (eventName === "tabPress") {
+        tabPressCallback = callback;
+      }
+      return jest.fn();
+    },
+    getState: () => ({
+      index: 3,
+      routes: [
+        { key: "dashboard-key", name: "dashboard", params: undefined },
+        { key: "calendar-key", name: "calendar", params: undefined },
+        { key: "stats-key", name: "stats", params: undefined },
+        { key: "settings-key", name: "settings", params: undefined },
+      ],
+    }),
+    getParent: () => undefined,
+    navigate: (
+      name: string,
+      params?: Record<string, unknown> | undefined,
+    ) => mockParentNavigate(name, params),
+  };
+
+  const nearestParentNavigation = {
+    addListener: () => jest.fn(),
+    getState: () => ({
+      index: 0,
+      routes: [
+        { key: "settings-stack-key", name: "settings", params: undefined },
+        { key: "backup-sync-stack-key", name: "backup-sync", params: undefined },
+      ],
+    }),
+    getParent: () => tabsParentNavigation,
+    navigate: jest.fn(),
+  };
+
   return {
     useNavigation: () => ({
       dispatch: mockDispatch,
-      getParent: () => ({
-        addListener: (
-          eventName: string,
-          callback: (event: {
-            preventDefault: () => void;
-            target?: string;
-          }) => void,
-        ) => {
-          if (eventName === "tabPress") {
-            tabPressCallback = callback;
-          }
-          return jest.fn();
-        },
-        getState: () => ({
-          index: 3,
-          routes: [
-            { key: "dashboard-key", name: "dashboard", params: undefined },
-            { key: "calendar-key", name: "calendar", params: undefined },
-            { key: "stats-key", name: "stats", params: undefined },
-            { key: "settings-key", name: "settings", params: undefined },
-          ],
-        }),
-        navigate: mockParentNavigate,
-      }),
+      getParent: () => nearestParentNavigation,
     }),
     usePreventRemove: (
       preventRemove: boolean,
@@ -704,12 +723,7 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pathname: "/onboarding",
-          params: expect.objectContaining({
-            reset: expect.any(String),
-          }),
-        }),
+        expect.stringMatching(/^\/onboarding\?reset=\d+$/),
       ),
     );
     await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();

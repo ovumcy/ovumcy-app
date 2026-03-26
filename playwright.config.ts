@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const port = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 4173);
-const retainDebugArtifacts = !process.env.CI;
+const retainDebugArtifacts = process.env.PLAYWRIGHT_DEBUG_ARTIFACTS === "1";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,7 +18,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run export:web && node ./scripts/serve-dist.mjs",
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     url: `http://127.0.0.1:${port}`,
   },

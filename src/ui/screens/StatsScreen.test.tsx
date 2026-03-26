@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
-import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
+import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { StatsScreen } from "./StatsScreen";
 
 const mockUseEffect = React.useEffect;
@@ -60,12 +60,12 @@ describe("StatsScreen", () => {
     const storage = createStorageMock();
 
     render(
-      <AppPreferencesProvider storage={storage}>
+      <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
           storage={storage}
         />
-      </AppPreferencesProvider>,
+      </AppPreferencesTestProvider>,
     );
 
     await screen.findByTestId("stats-empty-hero");
@@ -79,12 +79,12 @@ describe("StatsScreen", () => {
     const storage = createStorageMock();
 
     render(
-      <AppPreferencesProvider storage={storage}>
+      <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
           storage={storage}
         />
-      </AppPreferencesProvider>,
+      </AppPreferencesTestProvider>,
     );
 
     await screen.findByTestId("stats-empty-primary-action");
@@ -147,12 +147,12 @@ describe("StatsScreen", () => {
     });
 
     render(
-      <AppPreferencesProvider storage={storage}>
+      <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
           storage={storage}
         />
-      </AppPreferencesProvider>,
+      </AppPreferencesTestProvider>,
     );
 
     await screen.findByTestId("stats-trend-section");

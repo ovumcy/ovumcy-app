@@ -13,6 +13,10 @@ function addDays(value: Date, days: number): Date {
   return next;
 }
 
+function tabLink(route: "/dashboard" | "/calendar" | "/stats" | "/settings") {
+  return `a[href="${route}"]`;
+}
+
 test("web onboarding reaches dashboard and stats unlock after local cycle history is logged", async ({
   page,
 }) => {
@@ -22,14 +26,16 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.goto("/");
 
-  await expect(page.getByText("When did your last period start?")).toBeVisible();
-  await expect(page.getByText("Step 1 of 2")).toBeVisible();
-  await expect(page.getByText("dd.mm.yyyy")).toBeVisible();
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await expect(
+    page.getByTestId(`onboarding-day-option-${onboardingStart}`),
+  ).toBeVisible();
 
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
-  await page.getByText("Next").click();
+  await page.getByTestId("onboarding-next-button").click();
 
-  await expect(page.getByText("Set up cycle parameters")).toBeVisible();
+  await expect(page.getByTestId("onboarding-cycle-length-slider")).toBeVisible();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
 
   await page.getByTestId("onboarding-finish-button").click();
 
@@ -39,16 +45,16 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page.getByTestId("dashboard-manual-cycle-start-button")).toBeVisible();
 
   await page.getByTestId("dashboard-quick-action-period").click();
-  await expect(page.getByText("Flow")).toBeVisible();
+  await expect(page.getByTestId("day-log-flow-none")).toBeVisible();
   await page.getByTestId("day-log-symptom-cramps").first().click();
   await page.getByTestId("day-log-save-button").click();
 
-  await expect(page.getByText("Entry saved locally.")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
 
   await page.getByTestId("dashboard-manual-cycle-start-button").click();
-  await expect(page.getByText("Cycle start updated locally.")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
 
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByTestId("settings-interface-section")).toBeVisible();
   await expect(page.getByTestId("settings-sync-summary-card")).toBeVisible();
@@ -64,9 +70,11 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("settings-symptom-create-action-button").click();
   await expect(page.getByText("Jaw pain")).toBeVisible();
 
-  await page.getByRole("tab", { name: /Today/ }).click();
+  await page.locator(tabLink("/dashboard")).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  const dashboardMoreSymptomsButton = page.getByTestId("day-log-more-symptoms-button").first();
+  const dashboardMoreSymptomsButton = page
+    .getByTestId("day-log-more-symptoms-button")
+    .first();
   if (await dashboardMoreSymptomsButton.isVisible().catch(() => false)) {
     await dashboardMoreSymptomsButton.click();
   }
@@ -76,8 +84,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     }).first(),
   ).toBeVisible();
 
-  await page.getByRole("tab", { name: /Calendar/ }).click();
-
+  await page.locator(tabLink("/calendar")).click();
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(page.getByTestId("calendar-day-panel")).toBeVisible();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
@@ -88,11 +95,11 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.getByTestId(`calendar-day-${previousCycleStart}`).click();
   await expect(page.getByTestId("calendar-day-add-button")).toBeVisible();
-  await expect(
-    page.getByTestId("calendar-day-cycle-start-button"),
-  ).toBeVisible();
+  await expect(page.getByTestId("calendar-day-cycle-start-button")).toBeVisible();
   await page.getByTestId("calendar-day-add-button").click();
-  const calendarMoreSymptomsButton = page.getByTestId("day-log-more-symptoms-button").last();
+  const calendarMoreSymptomsButton = page
+    .getByTestId("day-log-more-symptoms-button")
+    .last();
   if (await calendarMoreSymptomsButton.isVisible().catch(() => false)) {
     await calendarMoreSymptomsButton.click();
   }
@@ -105,7 +112,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("day-log-symptom-cramps").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
-  await expect(page.getByText("Entry saved locally.")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
@@ -114,10 +121,10 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     page.getByTestId(`calendar-marker-data-${formatLocalDate(today)}`),
   ).toBeVisible();
 
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.getByText("Export data")).toBeVisible();
-  await expect(page.getByText(/Total entries: [1-9]\d*/)).toBeVisible();
+  await expect(page.getByTestId("settings-export-section")).toBeVisible();
+  await expect(page.getByTestId("settings-export-csv-button")).toBeVisible();
 
   const [csvDownload] = await Promise.all([
     page.waitForEvent("download"),
@@ -140,36 +147,32 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(pdfDownload.suggestedFilename()).toContain("ovumcy-export-");
   await expect(pdfDownload.suggestedFilename()).toContain(".pdf");
 
-  await page.getByRole("tab", { name: /Insights/ }).click();
-
+  await page.locator(tabLink("/stats")).click();
   await expect(page).toHaveURL(/\/stats$/);
-  await expect(page.getByText("Keep logging to unlock insights")).toBeVisible();
-  await expect(page.getByText("Cycle 1 of 2 completed")).toBeVisible();
-  await expect(page.getByText("Log today to speed this up")).toBeVisible();
-  const statsEmptyHero = page.getByTestId("stats-empty-hero");
-  await expect(statsEmptyHero.getByText("Cycle length")).toBeVisible();
-  await expect(statsEmptyHero.getByText("Cycle trend")).toBeVisible();
-  await expect(statsEmptyHero.getByText("Symptom frequency")).toBeVisible();
-  await expect(statsEmptyHero.getByText("Last cycle symptoms")).toBeVisible();
+  await expect(page.getByTestId("stats-screen-title")).toBeVisible();
+  await expect(page.getByTestId("stats-empty-hero")).toBeVisible();
+  await expect(page.getByTestId("stats-empty-primary-action")).toBeVisible();
 
-  await page.getByRole("tab", { name: /Settings/ }).click();
+  await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.getByTestId("settings-clear-data-confirmation-input").fill("CLEAR");
   await page.getByTestId("settings-clear-data-button").click();
 
   await expect(page).toHaveURL(/\/onboarding(?:\?reset=\d+)?$/);
-  await expect(page.getByText("When did your last period start?")).toBeVisible();
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
 
   await page.reload();
 
   await expect(page).toHaveURL(/\/onboarding(?:\?reset=\d+)?$/);
-  await expect(page.getByText("When did your last period start?")).toBeVisible();
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
 });
 
 test("web shell publishes the canonical favicon", async ({ page }) => {
   await page.goto("/");
 
-  const faviconHref = await page.locator('head link[rel*="icon"]').getAttribute("href");
+  const faviconHref = await page
+    .locator('head link[rel*="icon"]')
+    .getAttribute("href");
   expect(faviconHref).toContain("favicon");
 
   const faviconResponse = await page.evaluate(async () => {

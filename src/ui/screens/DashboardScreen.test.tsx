@@ -1,9 +1,9 @@
 import * as React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
-import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
+import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
@@ -50,15 +50,20 @@ function createStorageMock(overrides = {}) {
 function renderDashboard(
   storage: ReturnType<typeof createStorageMock>,
   now = new Date(2026, 2, 17),
+  languageOverride: "en" | "ru" = "en",
 ) {
   return render(
-    <AppPreferencesProvider storage={storage}>
+    <AppPreferencesTestProvider languageOverride={languageOverride}>
       <DashboardScreen now={now} storage={storage} />
-    </AppPreferencesProvider>,
+    </AppPreferencesTestProvider>,
   );
 }
 
 describe("DashboardScreen", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it(
     "renders settings-driven dashboard visibility like the web contract",
     async () => {
@@ -71,9 +76,14 @@ describe("DashboardScreen", () => {
       expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
       expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe("Day");
       expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe(
-        "Day 8",
+        "8",
       );
+      expect(screen.getByTestId("dashboard-cycle-hero-phase-card-period")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero-phase-card-follicular")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero-phase-card-ovulation")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-cycle-hero-phase-card-luteal")).toBeTruthy();
     },
     10000,
   );
@@ -104,10 +114,10 @@ describe("DashboardScreen", () => {
       expect(screen.getByTestId("dashboard-prediction-explanation")).toBeTruthy(),
     );
     expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe(
-      "Facts only",
+      "Day",
     );
     expect(screen.getByTestId("dashboard-cycle-hero-detail").props.children).toBe(
-      "Logged history only",
+      "Predictions off",
     );
   });
 
@@ -172,9 +182,14 @@ describe("DashboardScreen", () => {
           notes: "",
         }),
       }),
+      new Date(2026, 2, 17),
+      "ru",
     );
 
     expect(await screen.findByText("Спазмы")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe(
+      "День",
+    );
   });
 
   it("shows quick actions and reveals flow controls when period is toggled from the shortcut", async () => {
@@ -188,6 +203,29 @@ describe("DashboardScreen", () => {
     fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
     expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
+  });
+
+  it("clears temporary quick action highlight state after the timeout window", async () => {
+    renderDashboard(createStorageMock());
+
+    await screen.findByTestId("dashboard-quick-action-mood");
+    jest.useFakeTimers();
+
+    const moodAction = screen.getByTestId("dashboard-quick-action-mood");
+
+    fireEvent.press(moodAction);
+
+    expect(screen.getByTestId("dashboard-quick-action-mood").props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    expect(screen.getByTestId("dashboard-quick-action-mood").props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: false }),
+    );
   });
 
   it("clears an unsaved dashboard draft back to the empty day state", async () => {

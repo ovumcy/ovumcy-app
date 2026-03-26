@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -53,6 +53,7 @@ export function DashboardOverviewScreen({
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const editorCardOffsetRef = useRef(0);
+  const quickActionFrameRef = useRef<number | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sectionOffsetsRef = useRef<
     Partial<Record<DayLogEditorSectionKey, number>>
@@ -63,6 +64,19 @@ export function DashboardOverviewScreen({
   const [highlightedSection, setHighlightedSection] = useState<DayLogEditorSectionKey | null>(
     null,
   );
+
+  useEffect(() => {
+    return () => {
+      if (quickActionFrameRef.current !== null) {
+        cancelAnimationFrame(quickActionFrameRef.current);
+        quickActionFrameRef.current = null;
+      }
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   function scrollToSection(key: DayLogEditorSectionKey) {
     const offset = sectionOffsetsRef.current[key];
@@ -97,9 +111,13 @@ export function DashboardOverviewScreen({
     switch (action) {
       case "period":
         onPatch({ isPeriod: !record.isPeriod });
-        requestAnimationFrame(() => {
+        highlightSection("period", action);
+        if (quickActionFrameRef.current !== null) {
+          cancelAnimationFrame(quickActionFrameRef.current);
+        }
+        quickActionFrameRef.current = requestAnimationFrame(() => {
           scrollToSection("period");
-          highlightSection("period", action);
+          quickActionFrameRef.current = null;
         });
         break;
       case "mood":
@@ -126,14 +144,6 @@ export function DashboardOverviewScreen({
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
           <DashboardCycleHero viewData={viewData.cycleHero} />
-
-          <View style={styles.statusBadges}>
-            {viewData.statusItems.map((item) => (
-              <View key={item} style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>{item}</Text>
-              </View>
-            ))}
-          </View>
 
           {viewData.predictionExplanation ? (
             <Text style={styles.helperText} testID="dashboard-prediction-explanation">
@@ -233,6 +243,7 @@ function QuickActionButton({
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={[styles.quickActionButton, active ? styles.quickActionButtonActive : null]}
       testID={testID}
@@ -261,24 +272,6 @@ const createStyles = (colors: AppThemeColors) =>
       paddingHorizontal: 16,
       paddingTop: 16,
       width: "100%",
-    },
-    statusBadges: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: spacing.xs,
-    },
-    statusBadge: {
-      backgroundColor: colors.surfaceTint,
-      borderColor: colors.lineSoft,
-      borderRadius: 999,
-      borderWidth: 1,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    statusBadgeText: {
-      color: colors.textMuted,
-      fontSize: 14,
-      fontWeight: "600",
     },
     helperText: {
       color: colors.textMuted,

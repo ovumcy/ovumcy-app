@@ -45,6 +45,7 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.0",
     "react-native-worklets": "0.5.1"
   },
@@ -63,6 +64,7 @@
   "overrides": {
     "@tootallnate/once": "^3.0.1",
     "flatted": "^3.4.2",
+    "node-forge": "^1.4.0",
     "picomatch@^2": "2.3.2",
     "picomatch@^3": "3.0.2",
     "picomatch@^4": "4.0.4",

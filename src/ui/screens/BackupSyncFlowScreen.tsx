@@ -1,14 +1,14 @@
 import type { SettingsViewData } from "../../services/settings-view-service";
-import type { BackupSyncErrorPresentation } from "../../services/backup-sync-view-service";
+import type {
+  BackupSyncErrorPresentation,
+  BackupSyncSetupPresentation,
+} from "../../services/backup-sync-view-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
-import { SettingsSyncSetupSection } from "../components/SettingsSyncSetupSection";
-import type {
-  SyncCapabilityDocument,
-  SyncPreferencesRecord,
-} from "../../sync/sync-contract";
+import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
+import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 
-type BackupSyncFlowScreenProps = {
+export type BackupSyncFlowScreenProps = {
   authLoginValue: string;
   authPasswordValue: string;
   confirmActionLabel: string;
@@ -16,13 +16,8 @@ type BackupSyncFlowScreenProps = {
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
-  isAuthenticating: boolean;
   isExportingRecoveryPhrase: boolean;
   isPreparing: boolean;
-  isRecovering: boolean;
-  isRestoring: boolean;
-  isSyncing: boolean;
-  notSetLabel: string;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -37,10 +32,10 @@ type BackupSyncFlowScreenProps = {
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
+  presentation: BackupSyncSetupPresentation;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
   statusMessage: string;
-  syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -55,13 +50,8 @@ export function BackupSyncFlowScreen({
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
-  isAuthenticating,
   isExportingRecoveryPhrase,
   isPreparing,
-  isRecovering,
-  isRestoring,
-  isSyncing,
-  notSetLabel,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -76,10 +66,10 @@ export function BackupSyncFlowScreen({
   onRegister,
   onRestore,
   onSyncNow,
+  presentation,
   preferences,
   recoveryPhraseValue,
   statusMessage,
-  syncCapabilities,
   viewData,
   backLabel,
   onBack,
@@ -107,13 +97,8 @@ export function BackupSyncFlowScreen({
         generatedRecoveryPhrase={generatedRecoveryPhrase}
         hasSyncSession={hasSyncSession}
         hasStoredSyncSecrets={hasStoredSyncSecrets}
-        isAuthenticating={isAuthenticating}
         isExportingRecoveryPhrase={isExportingRecoveryPhrase}
         isPreparing={isPreparing}
-        isRecovering={isRecovering}
-        isRestoring={isRestoring}
-        isSyncing={isSyncing}
-        notSetLabel={notSetLabel}
         onAuthLoginChange={onAuthLoginChange}
         onAuthPasswordChange={onAuthPasswordChange}
         onDisconnect={onDisconnect}
@@ -128,11 +113,11 @@ export function BackupSyncFlowScreen({
         onRegister={onRegister}
         onRestore={onRestore}
         onSyncNow={onSyncNow}
+        presentation={presentation}
         preferences={preferences}
         recoveryPhraseValue={recoveryPhraseValue}
         showCardHeader={!showStandaloneHeader}
         statusMessage={statusMessage}
-        syncCapabilities={syncCapabilities}
         viewData={viewData}
       />
     </ScreenScaffold>

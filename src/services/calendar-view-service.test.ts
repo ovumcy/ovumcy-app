@@ -170,7 +170,7 @@ describe("calendar-view-service", () => {
     );
   });
 
-  it("does not flood the month with ovulation markers after nearby period logs", () => {
+  it("keeps a single settings-backed ovulation marker after nearby period logs", () => {
     const profile = {
       lastPeriodStart: "2026-03-24",
       cycleLength: 28,
@@ -217,7 +217,7 @@ describe("calendar-view-service", () => {
 
     expect(
       aprilViewData.days.filter((day) => day.hasOvulationMarker).map((day) => day.date),
-    ).toEqual(["2026-04-01", "2026-04-24"]);
+    ).toEqual(["2026-04-06"]);
   });
 
   it("adds an approximate prediction notice when irregular cycle mode is enabled", () => {

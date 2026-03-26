@@ -43,23 +43,55 @@ type AppPreferencesContextValue = {
   themeOverride: ThemePreference | null;
 };
 
-const defaultPreferencesContext: AppPreferencesContextValue = {
-  clearPreferencePreview: () => {},
-  colors: lightColors,
-  isReady: false,
-  language: resolveDeviceLanguage(),
-  languageOverride: null,
-  previewProfilePreferences: () => {},
-  refreshPreferences: async () => {},
-  screenCaptureProtectionEnabled: true,
-  syncProfilePreferences: () => {},
-  theme: "light",
-  themeOverride: null,
+type StaticAppPreferencesOverrides = {
+  isReady?: boolean;
+  languageOverride?: InterfaceLanguage | null;
+  screenCaptureProtectionEnabled?: boolean;
+  themeOverride?: ThemePreference | null;
 };
+
+export function createAppPreferencesContextValue(
+  overrides: StaticAppPreferencesOverrides = {},
+): AppPreferencesContextValue {
+  const languageOverride = overrides.languageOverride ?? null;
+  const themeOverride = overrides.themeOverride ?? null;
+  const theme: ThemePreference = themeOverride ?? "light";
+
+  return {
+    clearPreferencePreview: () => {},
+    colors: theme === "dark" ? darkColors : lightColors,
+    isReady: overrides.isReady ?? true,
+    language: resolveCopyLanguage(languageOverride) ?? resolveDeviceLanguage(),
+    languageOverride,
+    previewProfilePreferences: () => {},
+    refreshPreferences: async () => {},
+    screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
+      overrides.screenCaptureProtectionEnabled,
+    ),
+    syncProfilePreferences: () => {},
+    theme,
+    themeOverride,
+  };
+}
+
+const defaultPreferencesContext = createAppPreferencesContextValue({
+  isReady: false,
+});
 
 const AppPreferencesContext = createContext<AppPreferencesContextValue>(
   defaultPreferencesContext,
 );
+
+export function AppPreferencesContextProvider({
+  children,
+  value,
+}: PropsWithChildren<{ value: AppPreferencesContextValue }>) {
+  return (
+    <AppPreferencesContext.Provider value={value}>
+      {children}
+    </AppPreferencesContext.Provider>
+  );
+}
 
 type AppPreferencesProviderProps = PropsWithChildren<{
   storage?: LocalAppStorage;

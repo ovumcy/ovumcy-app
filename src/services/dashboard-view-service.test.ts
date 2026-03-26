@@ -44,22 +44,17 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.phaseStatus).toEqual({
-      icon: "◌",
-      label: "Unknown",
-    });
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "facts_only",
-        title: "Facts only",
-        value: "Day 8",
-        detail: "Logged history only",
+        title: "Day",
+        value: "8",
+        detail: "Predictions off",
+        phaseCards: [],
+        phaseSegments: [],
+        currentTone: "neutral",
       }),
     );
-    expect(viewData.statusItems).toEqual([
-      "Next period: unknown",
-      "Predictions off",
-    ]);
     expect(viewData.predictionExplanation).toBe(
       "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
     );
@@ -105,30 +100,86 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.phaseStatus).toEqual({
-      icon: "🌱",
-      label: "Follicular",
-    });
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "regular",
-        title: "Follicular",
-        value: "Day 8",
-        detail: "29-day rhythm",
+        title: "Day",
+        value: "8",
+        detail: "Cycle 29 days",
+        currentTone: "follicular",
       }),
     );
-    expect(viewData.cycleHero.progressPercent).toBeCloseTo(0.25, 2);
-    expect(viewData.cycleHero.markers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: "start" }),
-        expect.objectContaining({ key: "fertile" }),
-        expect.objectContaining({ key: "ovulation" }),
-      ]),
-    );
+    expect(viewData.cycleHero.progressPercent).toBeCloseTo(7 / 29, 3);
+    expect(viewData.cycleHero.phaseCards).toEqual([
+      expect.objectContaining({ key: "period", label: "Period", rangeLabel: "Days 1-5" }),
+      expect.objectContaining({
+        key: "follicular",
+        label: "Follicular",
+        rangeLabel: "Days 6-14",
+        active: true,
+      }),
+      expect.objectContaining({ key: "ovulation", label: "Ovulation", rangeLabel: "Day 15" }),
+      expect.objectContaining({ key: "luteal", label: "Luteal", rangeLabel: "Days 16-29" }),
+    ]);
     expect(viewData.journal).toEqual({
       title: "Today journal",
       dateLabel: "March 17, 2026",
     });
+  });
+
+  it("uses compact hero-only phase labels for narrow localized dashboard chrome", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 29,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "ru",
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-03-17",
+        isPeriod: false,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "none",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17)),
+      new Date(2026, 2, 17),
+      "ru",
+    );
+
+    expect(viewData.cycleHero.title).toBe("День");
+    expect(viewData.cycleHero.phaseCards).toEqual([
+      expect.objectContaining({ key: "period", label: "Месячные", rangeLabel: "д. 1-5" }),
+      expect.objectContaining({
+        key: "follicular",
+        label: "Фолликулярная",
+        rangeLabel: "д. 6-14",
+      }),
+      expect.objectContaining({ key: "ovulation", label: "Овуляция", rangeLabel: "д. 15" }),
+      expect.objectContaining({ key: "luteal", label: "Лютеиновая", rangeLabel: "д. 16-29" }),
+    ]);
   });
 
   it("shows approximate guidance when irregular cycle mode is enabled", () => {
@@ -173,16 +224,12 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 17),
     );
 
-    expect(viewData.statusItems).toEqual([
-      "Cycle day 8",
-      "Next period: around Apr 8",
-      "Ovulation: around Mar 24",
-    ]);
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "approximate",
-        value: "Day 8",
-        detail: "Approximate rhythm",
+        title: "Day",
+        value: "8",
+        detail: "Approximate cycle",
       }),
     );
     expect(viewData.predictionExplanation).toBe(
@@ -216,21 +263,89 @@ describe("dashboard-view-service", () => {
       new Date(2026, 2, 25),
     );
 
-    expect(viewData.phaseStatus).toEqual({
-      icon: "◌",
-      label: "Unknown",
-    });
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "stale",
-        title: "Unknown",
+        title: "Day",
         value: "Unknown",
         detail: "Waiting for next cycle",
+        phaseCards: [],
       }),
     );
-    expect(viewData.statusItems).toEqual([
-      "Next period: unknown",
-      "Ovulation: Cannot be calculated",
-    ]);
+  });
+
+  it("keeps using the settings cycle length until at least two completed cycles exist", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-25",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-02-05",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-03-25",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 26));
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      history,
+      new Date(2026, 2, 26),
+    );
+
+    expect(history.completedCycleCount).toBe(1);
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "regular",
+        title: "Day",
+        value: "2",
+        detail: "Cycle 28 days",
+        caption: "Next period: Apr 22",
+        currentTone: "period",
+        phaseCards: [
+          expect.objectContaining({ key: "period", rangeLabel: "Days 1-5", active: true }),
+          expect.objectContaining({ key: "follicular", rangeLabel: "Days 6-13", active: false }),
+          expect.objectContaining({ key: "ovulation", rangeLabel: "Day 14", active: false }),
+          expect.objectContaining({ key: "luteal", rangeLabel: "Days 15-28", active: false }),
+        ],
+      }),
+    );
   });
 });

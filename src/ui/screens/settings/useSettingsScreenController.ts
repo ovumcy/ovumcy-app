@@ -1,8 +1,6 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigation, usePreventRemove } from "@react-navigation/native";
+import { useCallback, useMemo, useState } from "react";
 import type { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import { BackHandler, Platform } from "react-native";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
 import { appStorage } from "../../../services/app-bootstrap-service";
@@ -34,6 +32,7 @@ import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
 import { openConfirmation } from "../../confirm/open-confirmation";
+import { useRegisterTabLeaveGuard } from "../../navigation/TabLeaveGuardContext";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type { SettingsFlowScreenProps } from "../SettingsFlowScreen";
 import { runClearAllDataAction } from "./settings-screen-danger-actions";
@@ -60,6 +59,7 @@ import {
   replaceExportDraftValues,
   replaceInterfaceValues,
 } from "./settings-screen-updaters";
+import { useSettingsExitGuards } from "./useSettingsExitGuards";
 
 type UseSettingsScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient;
@@ -76,25 +76,6 @@ type SettingsScreenControllerResult = {
   loadingTitle: string;
 };
 
-type ParentTabNavigation = {
-  addListener: (
-    eventName: "tabPress",
-    callback: (event: { preventDefault: () => void; target?: string }) => void,
-  ) => () => void;
-  getState: () => {
-    index: number;
-    routes: {
-      key: string;
-      name: string;
-      params?: Record<string, unknown> | undefined;
-    }[];
-  };
-  navigate: (
-    name: string,
-    params?: Record<string, unknown> | undefined,
-  ) => void;
-};
-
 export function useSettingsScreenController({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
@@ -109,7 +90,6 @@ export function useSettingsScreenController({
     previewProfilePreferences,
     syncProfilePreferences,
   } = useAppPreferences();
-  const navigation = useNavigation();
   const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
@@ -157,6 +137,12 @@ export function useSettingsScreenController({
     isTrackingDirty,
   } = buildSettingsDirtyState(state);
   const isSavingSettings = isSavingCycle || isSavingTracking || isSavingInterface;
+  const hasBlockingUnsavedSettingsChanges =
+    hasUnsavedSettingsChanges &&
+    !isSavingCycle &&
+    !isSavingTracking &&
+    !isSavingInterface &&
+    !isClearingData;
 
   useFocusEffect(
     useCallback(() => {
@@ -270,133 +256,64 @@ export function useSettingsScreenController({
     [effectiveNow, commitState, storage, syncProfilePreferences, viewData],
   );
 
+  const confirmPendingSettingsLeave = useCallback(async () => {
+    if (!hasBlockingUnsavedSettingsChanges || state === null) {
+      return true;
+    }
+
+    const shouldSave = await openConfirmation(
+      viewData.interface.unsavedPrompt,
+      viewData.interface.saveBeforeLeaveLabel,
+      viewData.interface.discardChangesLabel,
+    );
+
+    if (!shouldSave) {
+      revertUnsavedSettings();
+      return true;
+    }
+
+    return runSavePendingSettingsAction(saveActionContext, state, {
+      isCycleDirty,
+      isInterfaceDirty,
+      isTrackingDirty,
+    });
+  }, [
+    hasBlockingUnsavedSettingsChanges,
+    isCycleDirty,
+    isInterfaceDirty,
+    isTrackingDirty,
+    revertUnsavedSettings,
+    saveActionContext,
+    state,
+    viewData.interface.discardChangesLabel,
+    viewData.interface.saveBeforeLeaveLabel,
+    viewData.interface.unsavedPrompt,
+  ]);
+
   const confirmPendingSettingsThen = useCallback(
     async (continueLeave: () => void) => {
-      const hasBlockingUnsavedChanges =
-        hasUnsavedSettingsChanges &&
-        !isSavingCycle &&
-        !isSavingTracking &&
-        !isSavingInterface &&
-        !isClearingData;
-
-      if (!hasBlockingUnsavedChanges || state === null) {
+      if (!hasBlockingUnsavedSettingsChanges || state === null) {
         continueLeave();
         return;
       }
 
-      const shouldSave = await openConfirmation(
-        viewData.interface.unsavedPrompt,
-        viewData.interface.saveBeforeLeaveLabel,
-        viewData.interface.discardChangesLabel,
-      );
-
-      if (!shouldSave) {
-        revertUnsavedSettings();
-        requestAnimationFrame(continueLeave);
-        return;
-      }
-
-      const didSave = await runSavePendingSettingsAction(saveActionContext, state, {
-        isCycleDirty,
-        isInterfaceDirty,
-        isTrackingDirty,
-      });
-      if (didSave) {
+      const canLeave = await confirmPendingSettingsLeave();
+      if (canLeave) {
         requestAnimationFrame(continueLeave);
       }
     },
-    [
-      hasUnsavedSettingsChanges,
-      isClearingData,
-      isCycleDirty,
-      isInterfaceDirty,
-      isSavingCycle,
-      isSavingInterface,
-      isSavingTracking,
-      isTrackingDirty,
-      revertUnsavedSettings,
-      saveActionContext,
-      state,
-      viewData.interface.discardChangesLabel,
-      viewData.interface.saveBeforeLeaveLabel,
-      viewData.interface.unsavedPrompt,
-    ],
+    [confirmPendingSettingsLeave, hasBlockingUnsavedSettingsChanges, state],
   );
 
-  usePreventRemove(
-    hasUnsavedSettingsChanges &&
-      !isSavingCycle &&
-      !isSavingTracking &&
-      !isSavingInterface &&
-      !isClearingData,
-    ({ data }) => {
-      void confirmPendingSettingsThen(() => {
-        navigation.dispatch(data.action);
-      });
-    },
+  useRegisterTabLeaveGuard(
+    "settings",
+    hasBlockingUnsavedSettingsChanges ? confirmPendingSettingsLeave : null,
   );
 
-  useEffect(() => {
-    const parentNavigation = navigation.getParent() as ParentTabNavigation | undefined;
-    if (!parentNavigation) {
-      return;
-    }
-
-    return parentNavigation.addListener("tabPress", (event) => {
-      const parentState = parentNavigation.getState();
-      const currentRoute = parentState.routes[parentState.index];
-      const targetRoute = parentState.routes.find((route) => route.key === event.target);
-
-      if (!targetRoute || !currentRoute || targetRoute.key === currentRoute.key) {
-        return;
-      }
-
-      event.preventDefault();
-      void confirmPendingSettingsThen(() => {
-        parentNavigation.navigate(targetRoute.name, targetRoute.params);
-      });
-    });
-  }, [confirmPendingSettingsThen, navigation]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== "android") {
-        return undefined;
-      }
-
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        () => {
-          const hasBlockingUnsavedChanges =
-            hasUnsavedSettingsChanges &&
-            !isSavingCycle &&
-            !isSavingTracking &&
-            !isSavingInterface &&
-            !isClearingData;
-
-          if (!hasBlockingUnsavedChanges) {
-            return false;
-          }
-
-          void confirmPendingSettingsThen(() => {
-            BackHandler.exitApp();
-          });
-          return true;
-        },
-      );
-
-      return () => {
-        subscription.remove();
-      };
-    }, [
-      confirmPendingSettingsThen,
-      hasUnsavedSettingsChanges,
-      isClearingData,
-      isSavingCycle,
-      isSavingInterface,
-      isSavingTracking,
-    ]),
-  );
+  useSettingsExitGuards({
+    enabled: hasBlockingUnsavedSettingsChanges,
+    onConfirmLeave: confirmPendingSettingsThen,
+  });
 
   if (isLoading || state === null) {
     return {

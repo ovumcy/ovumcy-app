@@ -15,7 +15,6 @@ import {
   type LoadedDashboardState,
 } from "../../services/dashboard-view-service";
 import {
-  applyManualCycleStart,
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
 import { hasDayLogData } from "../../models/day-log";
@@ -23,6 +22,7 @@ import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
+import { runManualCycleStartAction } from "./day-log/run-manual-cycle-start-action";
 import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
 
 type DashboardScreenProps = {
@@ -180,42 +180,24 @@ export function DashboardScreen({
       return;
     }
 
-    let replaceExisting = false;
-    let markUncertain = false;
-
-    for (const prompt of manualCycleStart.prompts) {
-      const confirmed = await openConfirmation(
-        prompt.message,
-        prompt.acceptLabel,
-        dashboardCopy.cancelAction,
-      );
-      if (!confirmed) {
-        return;
-      }
-
-      if (prompt.kind === "replace_existing") {
-        replaceExisting = true;
-      }
-      if (prompt.kind === "short_gap") {
-        markUncertain = true;
-      }
-    }
-
     setIsSaving(true);
     setStatus(null);
 
-    const result = await applyManualCycleStart(
+    const result = await runManualCycleStartAction({
+      cancelLabel: dashboardCopy.cancelAction,
+      confirmPrompt: openConfirmation,
+      locale: language,
+      manualCycleStart,
+      now: effectiveNow,
+      profile: state.profile,
+      record: state.todayEntry,
+      records: state.historyRecords,
       storage,
-      state.profile,
-      state.historyRecords,
-      state.todayEntry,
-      effectiveNow,
-      language,
-      {
-        markUncertain,
-        replaceExisting,
-      },
-    );
+    });
+    if (result === null) {
+      setIsSaving(false);
+      return;
+    }
 
     if (!result.ok) {
       setStatus({

@@ -17,7 +17,7 @@ Run on an Android emulator or physical device.
 3. Step 2 renders without clipped sliders, toggles, or buttons.
 4. Finish redirects to dashboard.
 5. Relaunch keeps the completed onboarding state.
-6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy.
+6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy, with a distinct ovulation marker and four equal-sized phase cards under the cycle hero.
 7. Saving a today-journal entry on the dashboard persists locally after returning to the app.
 8. Calendar opens the current month with all visible weeks fitting above the tab bar on a narrow screen, and any extra calendar help stays secondary instead of pushing the month grid off-screen.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
@@ -26,7 +26,7 @@ Run on an Android emulator or physical device.
 12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and recent-app previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
-  - `Hide intimacy` hides the intimacy section
+  - `Show intimacy section` keeps intimacy visible when on and hides it when off
   - `Track BBT` shows the BBT section with the selected temperature unit
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
@@ -49,7 +49,7 @@ Run on an iOS simulator or physical device.
 3. Step 2 renders without clipped sliders, toggles, or buttons.
 4. Finish redirects to dashboard.
 5. Relaunch keeps the completed onboarding state.
-6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy.
+6. Dashboard shows a real cycle snapshot and today-journal surface, not shell placeholder copy, with a distinct ovulation marker and four equal-sized phase cards under the cycle hero.
 7. Saving a today-journal entry on the dashboard persists locally after returning to the app.
 8. Calendar opens the current month with all visible weeks fitting above the tab bar on a narrow screen, and any extra calendar help stays secondary instead of pushing the month grid off-screen.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
@@ -58,7 +58,7 @@ Run on an iOS simulator or physical device.
 12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and app-switcher previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
-  - `Hide intimacy` hides the intimacy section
+  - `Show intimacy section` keeps intimacy visible when on and hides it when off
   - `Track BBT` shows the BBT section with the selected temperature unit
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
@@ -80,7 +80,7 @@ Run when web support, branding, or app-shell navigation is touched.
 2. Manual browser check:
    - `/` opens onboarding on a clean local state
    - onboarding finish leads to dashboard
-   - dashboard renders cycle snapshot and the today-journal editor section
+   - dashboard renders cycle snapshot with a distinct ovulation marker, uniform phase cards, and the today-journal editor section
    - saving a day entry on the dashboard updates local state without a page error
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
    - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
@@ -106,3 +106,4 @@ During the same pass, confirm:
 - app behavior still makes sense with sync absent
 - web preview does not retain health data after a browser reload or a new session
 - exported filenames stay generic and do not include notes, symptom names, or user identifiers
+- recovery phrase is only available through the explicit backup and export flow, not direct text selection or clipboard copy

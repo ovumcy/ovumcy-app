@@ -8,6 +8,10 @@ type SensitiveActionChallengeResult =
       reason: "cancelled" | "failed" | "unavailable";
     };
 
+type SensitiveActionChallengeOptions = {
+  allowWebBypass?: boolean;
+};
+
 const CANCELLED_ERRORS = new Set([
   "app_cancel",
   "system_cancel",
@@ -23,9 +27,13 @@ const UNAVAILABLE_ERRORS = new Set([
 
 export async function requestSensitiveActionChallenge(
   promptMessage: string,
+  options: SensitiveActionChallengeOptions = {},
 ): Promise<SensitiveActionChallengeResult> {
   if (Platform.OS === "web") {
-    return { ok: true };
+    if (options.allowWebBypass) {
+      return { ok: true };
+    }
+    return { ok: false, reason: "unavailable" };
   }
 
   try {

@@ -1,23 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
-import { createDefaultProfileRecord } from "../../models/profile";
-import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
-import { AppPreferencesProvider } from "../providers/AppPreferencesProvider";
+import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { darkColors } from "../theme/tokens";
 import { BinaryToggleCard } from "./BinaryToggleCard";
 
 describe("BinaryToggleCard", () => {
   it("uses dark-theme active colors instead of the light washed-out shell", async () => {
-    const storage = createLocalAppStorageMock({
-      readProfileRecord: jest.fn().mockResolvedValue({
-        ...createDefaultProfileRecord(),
-        themeOverride: "dark",
-      }),
-    });
-
     render(
-      <AppPreferencesProvider storage={storage}>
+      <AppPreferencesTestProvider themeOverride="dark">
         <BinaryToggleCard
           description="Visible in new entries."
           label="Show BBT field"
@@ -26,7 +17,7 @@ describe("BinaryToggleCard", () => {
           testID="binary-toggle-card"
           value
         />
-      </AppPreferencesProvider>,
+      </AppPreferencesTestProvider>,
     );
 
     const shell = await screen.findByTestId("binary-toggle-card");

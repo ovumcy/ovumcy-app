@@ -1,4 +1,9 @@
-import type { SyncPreferencesRecord } from "../sync/sync-contract";
+import { formatSettingsLastSync } from "./settings-view-service";
+import {
+  supportsInlineSyncAccountAuth,
+  type SyncCapabilityDocument,
+  type SyncPreferencesRecord,
+} from "../sync/sync-contract";
 import type {
   LoadedSettingsState,
   SettingsViewData,
@@ -15,6 +20,26 @@ export type BackupSyncErrorPresentation = {
   passwordMessage: string;
   recoveryPhraseMessage: string;
   syncMessage: string;
+};
+
+export type BackupSyncSetupPresentation = {
+  accountActionButtonsDisabled: boolean;
+  accountActionsDisabled: boolean;
+  accountStepTitle: string;
+  actionLabel: string;
+  canShowSyncActions: boolean;
+  endpointSummary: string;
+  hasManagedPlan: boolean;
+  isManaged: boolean;
+  lastSyncValue: string;
+  localStepTitle: string;
+  planMessage: string;
+  planStepTitle: string;
+  selectedModeLabel: string;
+  shouldShowDisconnectOnly: boolean;
+  shouldShowEndpointSummary: boolean;
+  supportsInlineAccountAuth: boolean;
+  syncStepTitle: string;
 };
 
 export function areSyncPreferencesEqual(
@@ -47,6 +72,89 @@ export function revertBackupSyncDraftState(
   return {
     ...state,
     syncPreferences: state.savedSyncPreferences,
+  };
+}
+
+export function buildBackupSyncSetupPresentation({
+  hasStoredSyncSecrets,
+  hasSyncSession,
+  isAuthenticating,
+  isPreparing,
+  isRecovering,
+  isRestoring,
+  isSyncing,
+  locale,
+  notSetLabel,
+  preferences,
+  syncCapabilities,
+  viewData,
+}: {
+  hasStoredSyncSecrets: boolean;
+  hasSyncSession: boolean;
+  isAuthenticating: boolean;
+  isPreparing: boolean;
+  isRecovering: boolean;
+  isRestoring: boolean;
+  isSyncing: boolean;
+  locale?: string;
+  notSetLabel: string;
+  preferences: SyncPreferencesRecord;
+  syncCapabilities: SyncCapabilityDocument | null;
+  viewData: SettingsViewData["account"];
+}): BackupSyncSetupPresentation {
+  const isManaged = preferences.mode === "managed";
+  const supportsInlineAccountAuth = supportsInlineSyncAccountAuth(preferences.mode);
+  const hasManagedPlan = isManaged && syncCapabilities?.premiumActive === true;
+  const syncEnabled = syncCapabilities?.syncEnabled !== false;
+  const accountActionsDisabled =
+    isPreparing || isAuthenticating || isRecovering || isRestoring || isSyncing;
+  const canShowSyncActions =
+    hasStoredSyncSecrets &&
+    hasSyncSession &&
+    syncEnabled &&
+    (!isManaged || hasManagedPlan);
+  const selectedModeLabel =
+    viewData.modeOptions.find((option) => option.value === preferences.mode)?.label ??
+    preferences.mode;
+  const endpointSummary =
+    preferences.mode === "managed"
+      ? selectedModeLabel
+      : preferences.endpointInput.trim() || notSetLabel;
+
+  let planMessage = viewData.planSignInFirst;
+  if (isManaged && hasSyncSession) {
+    if (!syncCapabilities) {
+      planMessage = viewData.planCheckFailed;
+    } else if (syncCapabilities.premiumActive) {
+      planMessage = viewData.planActive;
+    } else {
+      planMessage = viewData.planInactive;
+    }
+  }
+
+  return {
+    accountActionButtonsDisabled: accountActionsDisabled || !hasStoredSyncSecrets,
+    accountActionsDisabled,
+    accountStepTitle: renumberStepTitle(viewData.accountStepTitle, 2),
+    actionLabel: hasStoredSyncSecrets
+      ? viewData.regenerateLabel
+      : viewData.prepareLabel,
+    canShowSyncActions,
+    endpointSummary,
+    hasManagedPlan,
+    isManaged,
+    lastSyncValue: preferences.lastSyncedAt
+      ? formatSettingsLastSync(preferences.lastSyncedAt, locale)
+      : viewData.lastSyncNever,
+    localStepTitle: renumberStepTitle(viewData.localStepTitle, 1),
+    planMessage,
+    planStepTitle: renumberStepTitle(viewData.planStepTitle, 3),
+    selectedModeLabel,
+    shouldShowDisconnectOnly:
+      !canShowSyncActions && hasStoredSyncSecrets && hasSyncSession,
+    shouldShowEndpointSummary: preferences.mode === "self_hosted",
+    supportsInlineAccountAuth,
+    syncStepTitle: renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3),
   };
 }
 
@@ -197,4 +305,8 @@ export function resolveBackupSyncErrorPresentation(
         syncMessage: message,
       };
   }
+}
+
+function renumberStepTitle(title: string, stepNumber: number): string {
+  return `${stepNumber}. ${title.replace(/^\d+\.\s*/u, "")}`;
 }

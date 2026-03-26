@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { getStatusBannerCopy } from "../../i18n/status-banner-copy";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type StatusBannerProps = {
   autoDismissAfterMs?: number;
+  badgeLabel?: string;
   dismissLabel?: string;
   message: string;
   onDismiss?: (() => void | Promise<void>) | undefined;
@@ -16,6 +19,7 @@ type StatusBannerProps = {
 
 export function StatusBanner({
   autoDismissAfterMs,
+  badgeLabel,
   dismissLabel,
   message,
   onDismiss,
@@ -23,9 +27,13 @@ export function StatusBanner({
   testID,
 }: StatusBannerProps) {
   const styles = useThemedStyles(createStyles);
+  const { language } = useAppPreferences();
   const [isVisible, setIsVisible] = useState(Boolean(message));
   const dismissAfterMs =
     autoDismissAfterMs ?? (tone === "success" ? 2800 : undefined);
+  const copy = getStatusBannerCopy(language);
+  const resolvedBadgeLabel = badgeLabel ?? copy.tones[tone];
+  const resolvedDismissLabel = dismissLabel ?? copy.dismissAction;
 
   useEffect(() => {
     setIsVisible(Boolean(message));
@@ -70,11 +78,11 @@ export function StatusBanner({
                 : styles.badgeInfo,
           ]}
         >
-          {tone === "success" ? "Done" : tone === "error" ? "Error" : "Info"}
+          {resolvedBadgeLabel}
         </Text>
         {onDismiss ? (
           <Pressable
-            accessibilityLabel={dismissLabel ?? "Dismiss"}
+            accessibilityLabel={resolvedDismissLabel}
             accessibilityRole="button"
             hitSlop={10}
             onPress={() => {

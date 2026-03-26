@@ -12,7 +12,7 @@ type DangerActionContext = {
   clearDataConfirmationValue: string;
   resetClearDataMessages: () => void;
   router: {
-    replace: (value: { pathname: "/onboarding"; params: { reset: string } }) => void;
+    replace: (value: "/onboarding" | `/onboarding?reset=${string}`) => void;
   };
   setClearDataErrorMessage: (value: string) => void;
   setIsClearingData: (value: boolean) => void;
@@ -44,6 +44,9 @@ export async function runClearAllDataAction(context: DangerActionContext) {
 
   const challengeResult = await requestSensitiveActionChallenge(
     viewData.danger.deviceAuthPrompt,
+    {
+      allowWebBypass: true,
+    },
   );
   if (!challengeResult.ok) {
     if (challengeResult.reason === "unavailable") {
@@ -68,10 +71,5 @@ export async function runClearAllDataAction(context: DangerActionContext) {
     themeOverride: null,
     screenCaptureProtectionEnabled: true,
   });
-  router.replace({
-    pathname: "/onboarding",
-    params: {
-      reset: Date.now().toString(),
-    },
-  });
+  router.replace(`/onboarding?reset=${Date.now().toString()}`);
 }

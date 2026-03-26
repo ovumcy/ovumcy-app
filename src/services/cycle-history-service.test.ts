@@ -60,7 +60,7 @@ describe("cycle-history-service", () => {
     ]);
   });
 
-  it("uses a supported future ovulation prediction instead of flooding the month", () => {
+  it("keeps the settings cycle length until there are at least two completed cycles", () => {
     const profile = createProfileRecord();
     const records = [
       {
@@ -84,8 +84,8 @@ describe("cycle-history-service", () => {
     const history = buildCycleHistorySummary(profile, records, now);
     const projection = buildCurrentCycleProjection(profile, history, records, now);
 
-    expect(projection.predictionCycleLength).toBe(23);
-    expect(projection.ovulationDate).toBe("2026-04-01");
+    expect(projection.predictionCycleLength).toBe(28);
+    expect(projection.ovulationDate).toBe("2026-04-06");
     expect(projection.isPredictionStale).toBe(false);
   });
 

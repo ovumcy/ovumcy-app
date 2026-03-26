@@ -43,6 +43,7 @@ jest.mock("expo-router", () => {
   return {
     Redirect,
     Tabs,
+    usePathname: () => "/dashboard",
   };
 });
 

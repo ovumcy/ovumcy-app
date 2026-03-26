@@ -28,15 +28,15 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 
 ## Screens
 
-Dark-theme screenshots below were captured from the live Expo app on an Android emulator.
+Current light-theme mobile-view screenshots below reflect the latest dashboard, calendar, settings, and backup/sync UI contracts.
 
-| Today | Calendar | Insights |
-| --- | --- | --- |
-| ![Today screen](docs/readme/dashboard-final-dark.png) | ![Calendar screen](docs/readme/calendar-final-dark.png) | ![Insights screen](docs/readme/insights-final-dark.png) |
+| Today | Calendar |
+| --- | --- |
+| ![Today screen](docs/readme/dashboard-current-light.png) | ![Calendar screen](docs/readme/calendar-current-light.png) |
 
 | Settings | Backup & sync |
 | --- | --- |
-| ![Settings screen](docs/readme/settings-final-dark.png) | ![Backup and sync screen](docs/readme/backup-sync-final-dark.png) |
+| ![Settings screen](docs/readme/settings-current-light.png) | ![Backup and sync screen](docs/readme/backup-sync-current-light.png) |
 
 ## How It Fits Into Ovumcy
 
@@ -124,6 +124,7 @@ What this repository still does **not** claim yet:
 - Native bootstrap, profile, day-log, and symptom data now live behind a SQLite-backed repository boundary with encrypted-at-rest payloads and secure local key storage.
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
 - Local encrypted sync setup keeps non-secret preferences in canonical local storage and stores wrapped secrets only in secure storage.
+- Recovery phrases are shown only during explicit local setup or rekey flows and are exported through an explicit local artifact flow instead of clipboard copy.
 - Self-hosted and managed sync transports are designed so health payloads are encrypted before upload. Sync servers should store ciphertext, device metadata, and auth/session metadata, not decrypted health content.
 - Managed cloud auth and billing are a separate plane from sync transport. The sync endpoint should not become the place where email/password billing identity is handled.
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
@@ -154,7 +155,8 @@ Local Sync Setup -> Account/Auth Transport -> Self-hosted or managed sync servic
 - `src/models/`: canonical domain types and product shapes.
 - `src/services/`: reusable product logic and view-data assembly.
 - `src/storage/`: local repositories, persistence contracts, and migrations.
-- `src/ui/`: shared design tokens, components, and screen presentation.
+- `src/ui/`: shared design tokens and visual primitives.
+- `src/ui/screens/`: screen-level presentation and feature-local screen sections.
 - `src/sync/`: optional sync contracts, endpoint policy, and setup orchestration.
 
 The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-trust-model.md).

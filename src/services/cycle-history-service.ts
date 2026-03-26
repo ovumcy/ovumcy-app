@@ -514,10 +514,16 @@ function resolvePredictionCycleLength(
   profile: ProfileRecord,
   history: StatsCycleHistorySummary,
 ): number {
-  if (history.averageCycleLength > 0) {
+  if (
+    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
+    history.averageCycleLength > 0
+  ) {
     return Math.round(history.averageCycleLength);
   }
-  if (history.medianCycleLength > 0) {
+  if (
+    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
+    history.medianCycleLength > 0
+  ) {
     return history.medianCycleLength;
   }
   return profile.cycleLength;

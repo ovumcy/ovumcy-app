@@ -4,6 +4,8 @@ import type {
 } from "./export-delivery";
 import { formatLocalDate } from "./profile-settings-policy";
 
+const PRIVATE_EXPORT_FILENAME_PREFIX = "ovumcy-private-export";
+
 export async function deliverRecoveryPhraseArtifact(
   deliveryClient: ExportDeliveryClient,
   recoveryPhrase: string,
@@ -18,7 +20,7 @@ export async function deliverRecoveryPhraseArtifact(
   }
 
   return deliveryClient.deliver({
-    filename: `ovumcy-recovery-${formatLocalDate(now)}.txt`,
+    filename: `${PRIVATE_EXPORT_FILENAME_PREFIX}-${formatLocalDate(now)}.txt`,
     mimeType: "text/plain",
     content: `Ovumcy recovery phrase\n\n${normalizedRecoveryPhrase}\n`,
   });
