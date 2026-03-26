@@ -1,5 +1,6 @@
 import { getCalendarCopy } from "../i18n/calendar-copy";
 import {
+  createEmptyDayLogRecord,
   hasDayLogData,
   hasDayLogSex,
   type DayLogRecord,
@@ -153,11 +154,16 @@ export async function loadCalendarScreenState(
     ...selectedRecord,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
   };
+  const effectiveSelectedRecord = resolveCalendarVisibleRecord(
+    profile,
+    filteredSelectedRecord,
+    activeDate,
+  );
   const editorViewData = buildDayLogEditorViewData(
     profile,
     activeDate,
     symptomRecords,
-    filteredSelectedRecord.symptomIDs,
+    effectiveSelectedRecord.symptomIDs,
     locale,
   );
   const viewData = buildCalendarViewData(
@@ -174,9 +180,9 @@ export async function loadCalendarScreenState(
   return {
     records: logs,
     profile,
-    selectedRecord: filteredSelectedRecord,
+    selectedRecord: effectiveSelectedRecord,
     selectedDaySummary: buildCalendarDaySummaryViewData(
-      filteredSelectedRecord,
+      effectiveSelectedRecord,
       editorViewData,
       selectedDay,
       locale,
@@ -203,7 +209,7 @@ export function buildCalendarViewData(
     projection,
     monthStart,
   );
-  const recordsByDay = new Map(records.map((record) => [record.date, record]));
+  const recordsByDay = buildCalendarRecordsByDay(profile, records);
   const gridStart = startOfWeek(startOfMonth(monthStart));
   const gridEnd = endOfWeek(endOfMonth(monthStart));
   const todayValue = formatLocalDate(today);
@@ -596,17 +602,6 @@ function buildCalendarPredictionMaps(
     };
   }
 
-  if (projection.isPredictionStale) {
-    return {
-      predictedPeriod,
-      preFertile,
-      fertilityEdge,
-      fertilityPeak,
-      ovulation,
-      tentativeOvulation,
-    };
-  }
-
   const gridEnd = endOfWeek(endOfMonth(monthStart));
   const predictedPeriodLength = resolvePredictedPeriodLength(profile, history);
 
@@ -621,6 +616,24 @@ function buildCalendarPredictionMaps(
       projection.predictionCycleLength,
       predictedPeriodLength,
     );
+  }
+
+  if (projection.isPredictionStale) {
+    appendImmediateStalePeriod(
+      predictedPeriod,
+      projection.cycleAnchorDate,
+      projection.predictionCycleLength,
+      predictedPeriodLength,
+    );
+
+    return {
+      predictedPeriod,
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      tentativeOvulation,
+    };
   }
 
   if (projection.nextPeriodDate) {
@@ -645,6 +658,28 @@ function buildCalendarPredictionMaps(
     ovulation,
     tentativeOvulation,
   };
+}
+
+function appendImmediateStalePeriod(
+  predictedPeriod: Set<string>,
+  cycleAnchorDate: string | null,
+  predictionCycleLength: number,
+  predictedPeriodLength: number,
+) {
+  if (!cycleAnchorDate) {
+    return;
+  }
+
+  const cycleAnchor = parseLocalDate(cycleAnchorDate);
+  if (!cycleAnchor) {
+    return;
+  }
+
+  appendPredictedPeriod(
+    predictedPeriod,
+    formatLocalDate(addDays(cycleAnchor, predictionCycleLength)),
+    predictedPeriodLength,
+  );
 }
 
 function appendPredictedCycles(
@@ -879,4 +914,42 @@ function buildWeekdayLabels(locale: string): string[] {
   return Array.from({ length: 7 }, (_, index) =>
     formatter.format(addCalendarDays(sundayReference, index)).replace(".", ""),
   );
+}
+
+function buildCalendarRecordsByDay(
+  profile: ProfileRecord,
+  records: readonly DayLogRecord[],
+): Map<string, DayLogRecord> {
+  const recordsByDay = new Map(records.map((record) => [record.date, record]));
+
+  if (profile.lastPeriodStart) {
+    recordsByDay.set(
+      profile.lastPeriodStart,
+      resolveCalendarVisibleRecord(
+        profile,
+        recordsByDay.get(profile.lastPeriodStart),
+        profile.lastPeriodStart,
+      ),
+    );
+  }
+
+  return recordsByDay;
+}
+
+function resolveCalendarVisibleRecord(
+  profile: ProfileRecord,
+  record: DayLogRecord | undefined,
+  date: string,
+): DayLogRecord {
+  if (profile.lastPeriodStart !== date) {
+    return record ?? createEmptyDayLogRecord(date);
+  }
+
+  return {
+    ...(record ?? createEmptyDayLogRecord(date)),
+    date,
+    cycleStart: true,
+    isPeriod: true,
+    isUncertain: false,
+  };
 }

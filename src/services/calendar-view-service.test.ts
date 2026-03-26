@@ -317,7 +317,57 @@ describe("calendar-view-service", () => {
     expect(viewData.predictionNotice).toBeNull();
   });
 
-  it("removes stale prediction markers after an expected next period was missed", () => {
+  it("keeps the last recorded period start visible in calendar history even without a stored day-log row", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-02-08",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 2, 26),
+      "2026-02",
+      "2026-02-08",
+    );
+    const byDate = new Map(state.viewData.days.map((day) => [day.date, day]));
+
+    expect(byDate.get("2026-02-08")).toEqual(
+      expect.objectContaining({
+        stateKey: "period",
+        isPeriod: true,
+        hasData: true,
+      }),
+    );
+    expect(byDate.get("2026-02-21")).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+        hasOvulationMarker: true,
+      }),
+    );
+    expect(state.selectedRecord).toEqual(
+      expect.objectContaining({
+        date: "2026-02-08",
+        cycleStart: true,
+        isPeriod: true,
+      }),
+    );
+  });
+
+  it("keeps the missed period window visible after a stale cycle but stops extending a new fertile window", () => {
     const viewData = buildCalendarViewData(
       {
         lastPeriodStart: "2026-02-01",
@@ -339,11 +389,20 @@ describe("calendar-view-service", () => {
       [],
       new Date(2026, 2, 25),
       new Date(2026, 2, 1),
-      "2026-02-14",
+      "2026-03-14",
     );
+    const byDate = new Map(viewData.days.map((day) => [day.date, day]));
 
-    expect(viewData.days.some((day) => day.stateKey !== "neutral")).toBe(false);
-    expect(viewData.days.some((day) => day.hasOvulationMarker)).toBe(false);
+    expect(byDate.get("2026-03-01")).toEqual(
+      expect.objectContaining({
+        stateKey: "predicted",
+      }),
+    );
+    expect(
+      viewData.days.some(
+        (day) => day.date.startsWith("2026-03") && day.hasOvulationMarker,
+      ),
+    ).toBe(false);
   });
 
   it("explains saved markers separately from the selected day meaning", async () => {
