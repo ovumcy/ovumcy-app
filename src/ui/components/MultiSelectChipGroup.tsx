@@ -1,4 +1,12 @@
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { useState } from "react";
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
@@ -26,10 +34,25 @@ export function MultiSelectChipGroup<T extends string>({
   const styles = useThemedStyles(createStyles);
   const { width } = useWindowDimensions();
   const selected = new Set(selectedValues);
-  const compactColumnCount = compact ? (width >= 520 ? 3 : 2) : 1;
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+  const compactColumnCount = resolveMultiSelectChipColumnCount(
+    compact,
+    measuredWidth ?? width,
+  );
+
+  function handleLayout(event: LayoutChangeEvent) {
+    const nextWidth = event.nativeEvent.layout.width;
+    setMeasuredWidth((current) =>
+      current === nextWidth || nextWidth <= 0 ? current : nextWidth,
+    );
+  }
 
   return (
-    <View style={[styles.group, compact ? styles.groupCompact : null]}>
+    <View
+      onLayout={handleLayout}
+      style={[styles.group, compact ? styles.groupCompact : null]}
+      testID={testIDPrefix ? `${testIDPrefix}-group` : undefined}
+    >
       {options.map((option) => {
         const isActive = selected.has(option.value);
 
@@ -41,6 +64,7 @@ export function MultiSelectChipGroup<T extends string>({
             onPress={() => onToggle(option.value)}
             style={[
               styles.chip,
+              compact && compactColumnCount === 1 ? styles.chipCompactSingle : null,
               compact && compactColumnCount === 2 ? styles.chipCompactTwo : null,
               compact && compactColumnCount === 3 ? styles.chipCompactThree : null,
               isActive ? styles.chipActive : null,
@@ -75,18 +99,25 @@ const createStyles = (colors: AppThemeColors) =>
       borderWidth: 1,
       flexDirection: "row",
       gap: spacing.xs,
+      minWidth: 0,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
+    chipCompactSingle: {
+      flexBasis: "100%",
+      flexGrow: 1,
+      minWidth: 0,
+    },
     chipCompactTwo: {
       flexBasis: "48%",
-      flexGrow: 0,
-      flexShrink: 0,
+      flexGrow: 1,
+      flexShrink: 1,
       minWidth: 0,
     },
     chipCompactThree: {
       flexBasis: "31%",
       flexGrow: 1,
+      flexShrink: 1,
       minWidth: 0,
     },
     chipActive: {
@@ -109,3 +140,18 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.accentStrong,
     },
   });
+
+export function resolveMultiSelectChipColumnCount(
+  compact: boolean,
+  availableWidth: number,
+) {
+  if (!compact) {
+    return 1;
+  }
+
+  if (availableWidth >= 520) {
+    return 3;
+  }
+
+  return availableWidth >= 360 ? 2 : 1;
+}

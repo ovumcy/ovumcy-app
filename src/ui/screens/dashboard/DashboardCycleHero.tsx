@@ -165,7 +165,7 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
       </View>
 
       {viewData.phaseCards.length > 0 ? (
-        <View style={styles.phaseGrid}>
+        <View style={styles.phaseGrid} testID="dashboard-cycle-hero-phase-grid">
           {viewData.phaseCards.map((phaseCard) => (
             <View
               key={phaseCard.key}
@@ -517,10 +517,12 @@ const createStyles = (colors: AppThemeColors) =>
       textAlign: "center",
     },
     phaseGrid: {
+      alignSelf: "center",
       columnGap: 10,
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
+      maxWidth: 304,
       rowGap: 10,
       width: "100%",
     },
@@ -528,10 +530,10 @@ const createStyles = (colors: AppThemeColors) =>
       borderRadius: 16,
       borderWidth: 1,
       justifyContent: "space-between",
-      minHeight: 84,
+      minHeight: 80,
       opacity: 0.72,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
       width: "48.25%",
     },
     phaseCardActive: {

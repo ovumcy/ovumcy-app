@@ -1,4 +1,3 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
 import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
@@ -9,6 +8,7 @@ import {
   resolveLatestCycleStartAnchorBeforeOrOn,
 } from "./cycle-history-service";
 import { sanitizeDayLogRecord } from "./day-log-policy";
+import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 const MANUAL_CYCLE_START_FUTURE_DAYS = 0;
@@ -427,39 +427,6 @@ function mergeDraftRecord(
   const merged = new Map(records.map((record) => [record.date, record]));
   merged.set(draftRecord.date, draftRecord);
   return [...merged.values()].sort((left, right) => left.date.localeCompare(right.date));
-}
-
-function appendAutoFilledPeriodDays(
-  recordsToWrite: Map<string, DayLogRecord>,
-  records: readonly DayLogRecord[],
-  cycleStartRecord: DayLogRecord,
-  profile: ProfileRecord,
-) {
-  const cycleStartDate = parseLocalDate(cycleStartRecord.date);
-  if (!cycleStartDate) {
-    return;
-  }
-
-  const recordsByDate = new Map(records.map((record) => [record.date, record]));
-
-  for (let offset = 1; offset < profile.periodLength; offset += 1) {
-    const currentDate = formatLocalDate(addDays(cycleStartDate, offset));
-    const existingRecord =
-      recordsToWrite.get(currentDate) ??
-      recordsByDate.get(currentDate) ??
-      createEmptyDayLogRecord(currentDate);
-
-    recordsToWrite.set(
-      currentDate,
-      sanitizeDayLogRecord({
-        ...existingRecord,
-        date: currentDate,
-        cycleStart: false,
-        isPeriod: true,
-        isUncertain: false,
-      }),
-    );
-  }
 }
 
 function formatPromptMessage(template: string, values: (string | number)[]): string {

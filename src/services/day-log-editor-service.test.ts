@@ -48,6 +48,61 @@ describe("day-log-editor-service", () => {
     );
   });
 
+  it("auto-fills the remaining period window when the first day is newly marked", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      isPeriod: true,
+    });
+
+    const result = await saveDayLogEditorRecord(storage, record);
+
+    expect(result).toEqual({
+      ok: true,
+      record: expect.objectContaining({
+        date: "2026-03-17",
+        isPeriod: true,
+      }),
+    });
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-18",
+        isPeriod: true,
+      }),
+    );
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-21",
+        isPeriod: true,
+      }),
+    );
+  });
+
+  it("does not auto-fill when the previous day is already a period day", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-03-16"),
+          isPeriod: true,
+        },
+      ]),
+    });
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      isPeriod: true,
+    });
+
+    await saveDayLogEditorRecord(storage, record);
+
+    expect(storage.writeDayLogRecord).toHaveBeenCalledTimes(1);
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: "2026-03-17",
+        isPeriod: true,
+      }),
+    );
+  });
+
   it("shows custom symptoms for new entries and keeps selected archived symptoms available", async () => {
     const customSymptom: SymptomRecord = {
       id: "custom_jaw_pain",

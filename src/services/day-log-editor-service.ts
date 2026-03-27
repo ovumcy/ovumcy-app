@@ -17,8 +17,12 @@ import {
   sanitizeDayLogRecord,
   trimDayLogNotes,
 } from "./day-log-policy";
+import {
+  appendAutoFilledPeriodDays,
+  shouldAutoFillPeriodWindowFromSave,
+} from "./period-auto-fill-service";
 import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
-import { parseLocalDate } from "./profile-settings-policy";
+import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import {
   filterKnownSymptomIDs,
 } from "./symptom-policy";
@@ -122,14 +126,29 @@ export async function saveDayLogEditorRecord(
   storage: LocalAppStorage,
   record: DayLogRecord,
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
-  const symptomRecords = await storage.listSymptomRecords();
+  const [profile, symptomRecords] = await Promise.all([
+    storage.readProfileRecord(),
+    storage.listSymptomRecords(),
+  ]);
   const normalized = sanitizeDayLogRecord({
     ...record,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
   });
+  const relevantRecords = await loadAutoFillRelevantRecords(
+    storage,
+    profile,
+    normalized.date,
+  );
+  const recordsToWrite = new Map<string, DayLogRecord>([[normalized.date, normalized]]);
+
+  if (shouldAutoFillPeriodWindowFromSave(profile, relevantRecords, normalized)) {
+    appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile);
+  }
 
   try {
-    await storage.writeDayLogRecord(normalized);
+    for (const nextRecord of recordsToWrite.values()) {
+      await storage.writeDayLogRecord(nextRecord);
+    }
   } catch {
     return { ok: false };
   }
@@ -277,4 +296,20 @@ function formatDayLogDateLabel(
     month: "long",
     year: "numeric",
   }).format(parsed);
+}
+
+async function loadAutoFillRelevantRecords(
+  storage: LocalAppStorage,
+  profile: ProfileRecord,
+  date: DayLogRecord["date"],
+) {
+  const parsedDate = parseLocalDate(date);
+  if (!parsedDate) {
+    return [];
+  }
+
+  return storage.listDayLogRecordsInRange(
+    formatLocalDate(addDays(parsedDate, -1)),
+    formatLocalDate(addDays(parsedDate, Math.max(profile.periodLength - 1, 0))),
+  );
 }

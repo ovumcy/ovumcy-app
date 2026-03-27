@@ -92,6 +92,9 @@ describe("DashboardCycleHero", () => {
   it("keeps all phase cards on the same fixed-size grid", () => {
     renderHero();
 
+    const gridStyle = StyleSheet.flatten(
+      screen.getByTestId("dashboard-cycle-hero-phase-grid").props.style,
+    );
     const periodCardStyle = StyleSheet.flatten(
       screen.getByTestId("dashboard-cycle-hero-phase-card-period").props.style,
     );
@@ -99,15 +102,22 @@ describe("DashboardCycleHero", () => {
       screen.getByTestId("dashboard-cycle-hero-phase-card-ovulation").props.style,
     );
 
+    expect(gridStyle).toEqual(
+      expect.objectContaining({
+        alignSelf: "center",
+        maxWidth: 304,
+        width: "100%",
+      }),
+    );
     expect(periodCardStyle).toEqual(
       expect.objectContaining({
-        minHeight: 84,
+        minHeight: 80,
         width: "48.25%",
       }),
     );
     expect(ovulationCardStyle).toEqual(
       expect.objectContaining({
-        minHeight: 84,
+        minHeight: 80,
         width: "48.25%",
       }),
     );

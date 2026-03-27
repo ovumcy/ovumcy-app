@@ -13,6 +13,11 @@ function addDays(value: Date, days: number): Date {
   return next;
 }
 
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
+}
+
 function tabLink(route: "/dashboard" | "/calendar" | "/stats" | "/settings") {
   return `a[href="${route}"]`;
 }
@@ -112,8 +117,22 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("day-log-symptom-cramps").last().click();
   await page.getByTestId("day-log-save-button").last().click();
 
-  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
+  await expect(
+    page.getByTestId("calendar-day-panel").getByText(
+      /Logged period|Отмеченная менструация/,
+    ),
+  ).toBeVisible();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
+  const nextAutoFilledDay = formatLocalDate(
+    addDays(parseLocalDate(previousCycleStart), 1),
+  );
+  await page.getByTestId(`calendar-day-${nextAutoFilledDay}`).click();
+  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
+  await expect(
+    page.getByTestId("calendar-day-panel").getByText(
+      /Logged period|Отмеченная менструация/,
+    ),
+  ).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();

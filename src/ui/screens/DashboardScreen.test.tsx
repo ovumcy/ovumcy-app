@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
+import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
@@ -250,5 +251,43 @@ describe("DashboardScreen", () => {
       ),
     );
     expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
+  });
+
+  it("auto-fills the next period days after saving a newly marked first day", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("day-log-save-button");
+
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    fireEvent.press(screen.getByTestId("day-log-save-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
+    );
+    expect(await storage.readDayLogRecord("2026-03-18")).toEqual(
+      expect.objectContaining({
+        date: "2026-03-18",
+        isPeriod: true,
+      }),
+    );
   });
 });

@@ -365,6 +365,12 @@ describe("CalendarScreen", () => {
         isPeriod: true,
       }),
     );
+    expect(await storage.readDayLogRecord("2026-03-14")).toEqual(
+      expect.objectContaining({
+        date: "2026-03-14",
+        isPeriod: true,
+      }),
+    );
   });
 
   it("deletes an existing entry and returns to the empty-day summary", async () => {

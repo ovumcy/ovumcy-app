@@ -62,6 +62,7 @@
     "typescript": "^5.9.3"
   },
   "overrides": {
+    "brace-expansion": "5.0.5",
     "@tootallnate/once": "^3.0.1",
     "flatted": "^3.4.2",
     "node-forge": "^1.4.0",
