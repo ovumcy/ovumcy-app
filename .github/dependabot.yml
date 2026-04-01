@@ -11,6 +11,13 @@ updates:
     allow:
       - dependency-type: "direct"
     ignore:
+      # Expo SDK pins these packages; upgrade them during an SDK-aligned dependency pass.
+      - dependency-name: "@react-native-community/datetimepicker"
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-worklets"
+      - dependency-name: "react-test-renderer"
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
