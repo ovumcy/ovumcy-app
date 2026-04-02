@@ -6,6 +6,7 @@ This file is the entry point for the local Ovumcy app AI context set. Read it to
 - `.agents/context/security.md`
 - `.agents/context/deployment.md`
 - `.agents/context/testing.md`
+- `.agents/context/ownership.md`
 - `.agents/context/forbidden_changes.md`
 
 ## Core Principles
@@ -55,3 +56,15 @@ This file is the entry point for the local Ovumcy app AI context set. Read it to
 - UI and feature changes should be covered with React Native tests plus manual Android/iOS smoke checks when appropriate.
 - TypeScript and lint gates are required for non-trivial changes.
 - See `.agents/context/testing.md` for test expectations and audit rules.
+
+## Cross-Repo Governance
+
+- For cross-repo authority, active-repo status, and orchestration rules, read:
+  - `D:\ovumcy-governance\ACTIVE_REPOS.md`
+  - `D:\ovumcy-governance\DOMAIN_AUTHORITY_MATRIX.md`
+  - `D:\ovumcy-governance\ORCHESTRATION_PROTOCOL.md`
+  - `D:\ovumcy-governance\REPO_STRUCTURE_STANDARD.md`
+  - `D:\ovumcy-governance\SKILL_CATALOG.md`
+  - `D:\ovumcy-governance\CONTEXT_LOADING_ORDER.md`
+- This repository remains the local source of truth for app implementation and app-domain behavior.
+- Cross-repo consumers should align to app-domain authority through the governance layer instead of inferring ownership ad hoc.
