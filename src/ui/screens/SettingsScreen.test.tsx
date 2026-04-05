@@ -277,6 +277,25 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("persists the hide-notes privacy toggle through settings", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-hide-notes"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hideNotes: true,
+        }),
+      ),
+    );
+  });
+
   it("creates and archives a custom symptom through the settings flow", async () => {
     const storage = createSettingsStorageMock();
 
@@ -374,6 +393,7 @@ describe("SettingsScreen", () => {
     expect(screen.queryByTestId("settings-save-tracking-button")).toBeNull();
     expect(screen.queryByTestId("settings-save-interface-button")).toBeNull();
     expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-export-pdf-hint-banner")).toBeTruthy();
   });
 
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
@@ -406,12 +426,64 @@ describe("SettingsScreen", () => {
 
   it("prepares a PDF export through the settings flow and hands it to the delivery client", async () => {
     const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
     const buildPDFContent = jest
       .fn()
       .mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
     const exportDeliveryClient = {
       deliver: jest.fn().mockResolvedValue({ ok: true }),
     };
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "billing_subscription",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "plan active",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            doctor_pdf_allowed: true,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
 
     render(
       <SettingsScreen
@@ -419,10 +491,12 @@ describe("SettingsScreen", () => {
         exportServiceDependencies={{ buildPDFContent }}
         now={new Date(2026, 2, 17)}
         storage={storage}
+        syncSecretStore={syncSecretStore}
       />,
     );
 
     await screen.findByTestId("settings-cycle-section");
+    expect(screen.queryByTestId("settings-export-pdf-hint-banner")).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-export-pdf-button"));
 

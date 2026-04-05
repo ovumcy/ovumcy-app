@@ -556,6 +556,9 @@ export function useSettingsScreenController({
         resetExportMessages();
         setShowExportDatePicker("to");
       },
+      onHideNotesChange: (value) => {
+        applyTrackingUpdates({ hideNotes: value }, { resetExportMessages: true });
+      },
       onHideSexChipChange: (value) => {
         applyTrackingUpdates({ hideSexChip: value }, { resetExportMessages: true });
       },

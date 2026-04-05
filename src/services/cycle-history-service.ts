@@ -155,6 +155,8 @@ export function buildCurrentCycleProjection(
       currentPhase: "unknown",
       isPredictionStale: false,
       nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
       ovulationDate: null,
       predictionCycleLength: profile.cycleLength,
     };
@@ -168,6 +170,8 @@ export function buildCurrentCycleProjection(
       currentPhase: "unknown",
       isPredictionStale: false,
       nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
       ovulationDate: null,
       predictionCycleLength: profile.cycleLength,
     };
@@ -176,6 +180,11 @@ export function buildCurrentCycleProjection(
   const predictionCycleLength = resolvePredictionCycleLength(profile, history);
   const currentCycleDay = diffLocalDays(cycleAnchor, today) + 1;
   const nextPeriodDate = formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
+  const nextPeriodWindow = resolveNextPeriodWindow(
+    cycleAnchor,
+    history,
+    predictionCycleLength,
+  );
   const predictedWindow = predictCycleWindow(cycleAnchorDate, predictionCycleLength);
 
   if (profile.unpredictableCycle) {
@@ -185,6 +194,8 @@ export function buildCurrentCycleProjection(
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
       nextPeriodDate,
+      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
+      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -197,6 +208,8 @@ export function buildCurrentCycleProjection(
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
       nextPeriodDate,
+      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
+      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -210,6 +223,8 @@ export function buildCurrentCycleProjection(
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
       nextPeriodDate,
+      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
+      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -223,6 +238,8 @@ export function buildCurrentCycleProjection(
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: true,
       nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -234,8 +251,32 @@ export function buildCurrentCycleProjection(
     currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
     isPredictionStale: false,
     nextPeriodDate,
+    nextPeriodWindowStartDate: nextPeriodWindow.startDate,
+    nextPeriodWindowEndDate: nextPeriodWindow.endDate,
     ovulationDate: predictedWindow.ovulationDate,
     predictionCycleLength,
+  };
+}
+
+function resolveNextPeriodWindow(
+  cycleAnchor: Date,
+  history: StatsCycleHistorySummary,
+  predictionCycleLength: number,
+): {
+  endDate: string;
+  startDate: string;
+} {
+  const recentLengths =
+    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
+    history.recentCycleLengths.length > 0
+      ? history.recentCycleLengths
+      : [predictionCycleLength];
+  const windowStartLength = Math.max(Math.min(...recentLengths), 1);
+  const windowEndLength = Math.max(Math.max(...recentLengths), windowStartLength);
+
+  return {
+    startDate: formatLocalDate(addDays(cycleAnchor, windowStartLength)),
+    endDate: formatLocalDate(addDays(cycleAnchor, windowEndLength)),
   };
 }
 

@@ -96,35 +96,133 @@ describe("settings services", () => {
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
     });
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          account_id: "managed-account-1",
-          email: "alice@example.com",
-          session_expires_at: "2026-03-21T08:00:00.000Z",
-          sync_entitlement: {
-            sync_allowed: false,
-            source: "manual",
-            updated_at: "2026-03-20T08:05:00.000Z",
-            effective_at: "2026-03-20T08:05:00.000Z",
-            explanation: "plan inactive",
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "manual",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "plan inactive",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
           },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    ) as typeof fetch;
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            doctor_pdf_allowed: false,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
 
     await expect(
       loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
     ).resolves.toEqual(
       expect.objectContaining({
         hasSyncSession: true,
+        managedDoctorPDFAllowed: false,
         syncCapabilities: expect.objectContaining({
           mode: "managed",
           premiumActive: false,
+        }),
+      }),
+    );
+  });
+
+  it("loads managed cloud capabilities for a signed-in managed device before sync upload is used", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "billing_subscription",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "plan active",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            doctor_pdf_allowed: true,
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    await expect(
+      loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        hasSyncSession: true,
+        syncPreferences: expect.objectContaining({
+          mode: "managed",
+          setupStatus: "local_ready",
+        }),
+        managedDoctorPDFAllowed: true,
+        syncCapabilities: expect.objectContaining({
+          mode: "managed",
+          premiumActive: true,
         }),
       }),
     );
@@ -402,6 +500,7 @@ describe("settings services", () => {
         temperatureUnit: "F" as "f",
         trackCervicalMucus: true,
         hideSexChip: true,
+        hideNotes: true,
       },
     );
 
@@ -413,6 +512,7 @@ describe("settings services", () => {
           temperatureUnit: "f",
           trackCervicalMucus: true,
           hideSexChip: true,
+          hideNotes: true,
         }),
       }),
     });
@@ -600,6 +700,80 @@ describe("settings services", () => {
       state: expect.any(Object),
       artifact: expect.objectContaining({
         filename: "ovumcy-export-2026-03-18.json",
+      }),
+    });
+  });
+
+  it("blocks PDF export when no managed cloud plan is active", async () => {
+    const storage = createStorageMock();
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    await expect(
+      prepareSettingsExportArtifact(
+        storage,
+        initialState,
+        "pdf",
+        new Date("2026-03-18T10:00:00.000Z"),
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: "pdf_locked",
+      state: initialState,
+    });
+  });
+
+  it("allows PDF export only when the managed billing entitlement is active", async () => {
+    const storage = createStorageMock();
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+      },
+      false,
+      true,
+      createDefaultSymptomRecords(),
+      createExportState(),
+      undefined,
+      {
+        mode: "managed",
+        syncEnabled: true,
+        premiumActive: false,
+        recoverySupported: true,
+        pushSupported: false,
+        portalSupported: false,
+        advancedCloudInsights: false,
+        maxDevices: 5,
+        maxBlobBytes: 1024,
+      },
+      true,
+    );
+
+    await expect(
+      prepareSettingsExportArtifact(
+        storage,
+        initialState,
+        "pdf",
+        new Date("2026-03-18T10:00:00.000Z"),
+        {
+          buildPDFContent: jest
+            .fn()
+            .mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46])),
+        },
+      ),
+    ).resolves.toEqual({
+      ok: true,
+      state: expect.any(Object),
+      artifact: expect.objectContaining({
+        filename: "ovumcy-export-2026-03-18.pdf",
+        mimeType: "application/pdf",
       }),
     });
   });

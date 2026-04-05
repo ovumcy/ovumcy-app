@@ -58,7 +58,12 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
   );
 
   return (
-    <View style={styles.card} testID="dashboard-cycle-hero">
+    <View
+      accessibilityLabel={buildDashboardCycleHeroAccessibilityLabel(viewData)}
+      accessible
+      style={styles.card}
+      testID="dashboard-cycle-hero"
+    >
       <View style={styles.glowPrimary} />
       <View style={styles.glowSecondary} />
 
@@ -207,6 +212,21 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
       ) : null}
     </View>
   );
+}
+
+function buildDashboardCycleHeroAccessibilityLabel(
+  viewData: DashboardCycleHeroViewData,
+): string {
+  const activePhase = viewData.phaseCards.find((phaseCard) => phaseCard.active)?.label ?? "";
+
+  return [
+    `${viewData.title} ${viewData.value}`,
+    activePhase,
+    viewData.detail,
+    viewData.caption,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
 }
 
 function resolveCircularPosition(

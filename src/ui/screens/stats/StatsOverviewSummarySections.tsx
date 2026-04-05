@@ -19,7 +19,12 @@ export function StatsOverviewSummarySections({
     <>
       <View style={styles.cardGrid}>
         {viewData.topCards.map((card) => (
-          <View key={card.key} style={[styles.statCard, { width: cardWidth }]}>
+          <View
+            accessibilityLabel={buildSummaryCardAccessibilityLabel(card)}
+            accessible
+            key={card.key}
+            style={[styles.statCard, { width: cardWidth }]}
+          >
             <Text style={styles.cardLabel}>{card.title}</Text>
             <Text style={styles.cardValue}>{card.value}</Text>
             {card.description ? (
@@ -126,4 +131,12 @@ export function StatsOverviewSummarySections({
       ) : null}
     </>
   );
+}
+
+function buildSummaryCardAccessibilityLabel(
+  card: StatsViewData["topCards"][number],
+): string {
+  return [card.title, card.value, card.description ?? ""]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
 }

@@ -88,6 +88,13 @@ const settingsCopyEn = {
       "Currently visible in dashboard and calendar day editor.",
     hideSexChipStateOff:
       "Currently hidden in dashboard and calendar day editor.",
+    hideNotes: "Show notes section",
+    hideNotesHint:
+      "Hides notes in dashboard and calendar entries without deleting saved notes.",
+    hideNotesStateOn:
+      "Currently visible in dashboard and calendar day editor.",
+    hideNotesStateOff:
+      "Currently hidden in dashboard and calendar day editor.",
     temperatureUnit: "BBT unit",
     temperatureUnitHint: "Used when the BBT field is visible.",
     temperatureUnitCelsius: "Celsius",
@@ -320,6 +327,10 @@ const settingsCopyEn = {
       "Exports include only manually tracked records. Predictions are not included.",
     sensitiveHint:
       "Exported files are sensitive. Save and share them only where you trust the device or destination.",
+    pdfCloudOnlyHint:
+      "PDF export is an Ovumcy Cloud perk. CSV and JSON stay available locally on this device.",
+    pdfPlanHint:
+      "This Ovumcy Cloud account needs an active plan to unlock PDF export.",
     noData:
       "No tracked entries yet. Once you log days in dashboard or calendar, export becomes available here.",
     presetLabel: "Presets",
@@ -343,6 +354,7 @@ const settingsCopyEn = {
       invalidFromDate: "Use a valid start date.",
       invalidToDate: "Use a valid end date.",
       invalidRange: "End date must be on or after start date.",
+      pdfLocked: "PDF export is available only with an active Ovumcy Cloud plan.",
       exportFailed: "Unable to prepare your export right now. Please try again.",
       deliveryUnavailable:
         "This device cannot open the export destination right now. Try again from a supported browser or share-capable device.",
@@ -471,6 +483,13 @@ const settingsCopyDe: SettingsCopy = {
     hideSexChipStateOn:
       "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
     hideSexChipStateOff:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
+    hideNotes: "Notizbereich anzeigen",
+    hideNotesHint:
+      "Blendet Notizen in Dashboard- und Kalendereinträgen aus, ohne gespeicherte Notizen zu löschen.",
+    hideNotesStateOn:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    hideNotesStateOff:
       "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
     temperatureUnit: "BBT-Einheit",
     temperatureUnitHint: "Wird verwendet, wenn das BBT-Feld sichtbar ist.",
@@ -734,6 +753,10 @@ const settingsCopyDe: SettingsCopy = {
       "Exporte enthalten nur manuell erfasste Einträge. Vorhersagen sind nicht enthalten.",
     sensitiveHint:
       "Exportierte Dateien sind sensibel. Speichere und teile sie nur an Orten, denen du vertraust.",
+    pdfCloudOnlyHint:
+      "Der PDF-Export ist ein Ovumcy-Cloud-Vorteil. CSV und JSON bleiben lokal auf diesem Gerät verfügbar.",
+    pdfPlanHint:
+      "Dieses Ovumcy-Cloud-Konto braucht einen aktiven Tarif, um den PDF-Export freizuschalten.",
     noData:
       "Es gibt noch keine erfassten Einträge. Sobald du Tage im Dashboard oder Kalender protokollierst, wird der Export hier verfügbar.",
     presetLabel: "Voreinstellungen",
@@ -758,6 +781,8 @@ const settingsCopyDe: SettingsCopy = {
       invalidToDate: "Verwende ein gültiges Enddatum.",
       invalidRange:
         "Das Enddatum muss am oder nach dem Startdatum liegen.",
+      pdfLocked:
+        "Der PDF-Export ist nur mit einem aktiven Ovumcy-Cloud-Tarif verfügbar.",
       exportFailed:
         "Der Export konnte gerade nicht vorbereitet werden. Bitte versuche es erneut.",
       deliveryUnavailable:
@@ -891,6 +916,13 @@ const settingsCopyFr: SettingsCopy = {
     hideSexChipStateOn:
       "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
     hideSexChipStateOff:
+      "Actuellement masquée dans le dashboard et dans l'éditeur journalier du calendrier.",
+    hideNotes: "Afficher la section notes",
+    hideNotesHint:
+      "Masque les notes dans le dashboard et les entrées du calendrier sans supprimer les notes enregistrées.",
+    hideNotesStateOn:
+      "Actuellement visible dans le dashboard et dans l'éditeur journalier du calendrier.",
+    hideNotesStateOff:
       "Actuellement masquée dans le dashboard et dans l'éditeur journalier du calendrier.",
     temperatureUnit: "Unité TBC",
     temperatureUnitHint: "Utilisée quand le champ TBC est visible.",
@@ -1159,6 +1191,10 @@ const settingsCopyFr: SettingsCopy = {
       "Les exports incluent seulement les enregistrements saisis manuellement. Les prédictions ne sont pas incluses.",
     sensitiveHint:
       "Les fichiers exportés sont sensibles. Enregistre-les et partage-les seulement vers une destination de confiance.",
+    pdfCloudOnlyHint:
+      "L'export PDF est un avantage Ovumcy Cloud. CSV et JSON restent disponibles localement sur cet appareil.",
+    pdfPlanHint:
+      "Ce compte Ovumcy Cloud a besoin d'un plan actif pour débloquer l'export PDF.",
     noData:
       "Aucune entrée enregistrée pour le moment. Une fois des jours saisis dans le dashboard ou le calendrier, l'export apparaîtra ici.",
     presetLabel: "Préréglages",
@@ -1183,6 +1219,8 @@ const settingsCopyFr: SettingsCopy = {
       invalidToDate: "Utilise une date de fin valide.",
       invalidRange:
         "La date de fin doit être postérieure ou égale à la date de début.",
+      pdfLocked:
+        "L'export PDF est disponible seulement avec un plan Ovumcy Cloud actif.",
       exportFailed:
         "Impossible de préparer ton export pour le moment. Réessaie.",
       deliveryUnavailable:
@@ -1315,6 +1353,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hideSexChipStateOn:
         "Сейчас видно в dashboard и редакторе дня календаря.",
       hideSexChipStateOff:
+        "Сейчас скрыто в dashboard и редакторе дня календаря.",
+      hideNotes: "Показывать раздел заметок",
+      hideNotesHint:
+        "Скрывает заметки в dashboard и записях календаря, не удаляя сохранённые заметки.",
+      hideNotesStateOn:
+        "Сейчас видно в dashboard и редакторе дня календаря.",
+      hideNotesStateOff:
         "Сейчас скрыто в dashboard и редакторе дня календаря.",
       temperatureUnit: "Единица БТТ",
       temperatureUnitHint: "Используется, когда поле БТТ видно.",
@@ -1556,6 +1601,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Экспорт включает только вручную записанные данные. Предсказания не включаются.",
       sensitiveHint:
         "Экспортированные файлы чувствительны. Сохраняйте и отправляйте их только туда, где доверяете устройству или получателю.",
+      pdfCloudOnlyHint:
+        "PDF-экспорт относится к плюшкам Ovumcy Cloud. CSV и JSON по-прежнему доступны локально на этом устройстве.",
+      pdfPlanHint:
+        "Для этого аккаунта Ovumcy Cloud нужен активный план, чтобы открыть PDF-экспорт.",
       noData:
         "Пока нет записанных дней. После записей в dashboard или календаре экспорт станет доступен здесь.",
       presetLabel: "Пресеты",
@@ -1579,6 +1628,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         invalidFromDate: "Введите корректную начальную дату.",
         invalidToDate: "Введите корректную конечную дату.",
         invalidRange: "Дата окончания должна быть не раньше даты начала.",
+        pdfLocked:
+          "PDF-экспорт доступен только при активном плане Ovumcy Cloud.",
         exportFailed: "Не удалось подготовить экспорт. Попробуйте ещё раз.",
         deliveryUnavailable:
           "Это устройство сейчас не может открыть экспорт. Попробуйте из поддерживаемого браузера или на устройстве с share/save.",
@@ -1702,6 +1753,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       hideSexChipStateOn:
         "Actualmente visible en el dashboard y en el editor diario del calendario.",
       hideSexChipStateOff:
+        "Actualmente oculta en el dashboard y en el editor diario del calendario.",
+      hideNotes: "Mostrar sección de notas",
+      hideNotesHint:
+        "Oculta las notas en el dashboard y en las entradas del calendario sin borrar las notas guardadas.",
+      hideNotesStateOn:
+        "Actualmente visible en el dashboard y en el editor diario del calendario.",
+      hideNotesStateOff:
         "Actualmente oculta en el dashboard y en el editor diario del calendario.",
       temperatureUnit: "Unidad de TCB",
       temperatureUnitHint: "Se usa cuando el campo de TCB está visible.",
@@ -1948,6 +2006,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Las exportaciones incluyen solo registros introducidos manualmente. Las predicciones no se incluyen.",
       sensitiveHint:
         "Los archivos exportados son sensibles. Guárdalos y compártelos solo donde confíes en el dispositivo o destino.",
+      pdfCloudOnlyHint:
+        "La exportación en PDF es una ventaja de Ovumcy Cloud. CSV y JSON siguen disponibles localmente en este dispositivo.",
+      pdfPlanHint:
+        "Esta cuenta de Ovumcy Cloud necesita un plan activo para desbloquear la exportación en PDF.",
       noData:
         "Todavía no hay entradas registradas. Cuando registres días en dashboard o calendario, la exportación aparecerá aquí.",
       presetLabel: "Preajustes",
@@ -1971,6 +2033,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         invalidFromDate: "Usa una fecha inicial válida.",
         invalidToDate: "Usa una fecha final válida.",
         invalidRange: "La fecha final debe ser igual o posterior a la inicial.",
+        pdfLocked:
+          "La exportación en PDF solo está disponible con un plan activo de Ovumcy Cloud.",
         exportFailed: "No se pudo preparar la exportación. Inténtalo de nuevo.",
         deliveryUnavailable:
           "Este dispositivo no puede abrir el destino de exportación ahora. Inténtalo desde un navegador compatible o un dispositivo con share/save.",

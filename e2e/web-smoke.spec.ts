@@ -45,19 +45,18 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("onboarding-finish-button").click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByTestId("day-log-save-button")).toBeVisible();
+  await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
   await expect(page.getByTestId("dashboard-quick-action-symptom")).toBeVisible();
   await expect(page.getByTestId("dashboard-manual-cycle-start-button")).toBeVisible();
 
   await page.getByTestId("dashboard-quick-action-period").click();
   await expect(page.getByTestId("day-log-flow-none")).toBeVisible();
   await page.getByTestId("day-log-symptom-cramps").first().click();
-  await page.getByTestId("day-log-save-button").click();
 
-  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
 
   await page.getByTestId("dashboard-manual-cycle-start-button").click();
-  await expect(page.getByTestId("day-log-status-banner")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
 
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
@@ -99,9 +98,8 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   }
 
   await page.getByTestId(`calendar-day-${previousCycleStart}`).click();
-  await expect(page.getByTestId("calendar-day-add-button")).toBeVisible();
+  await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
   await expect(page.getByTestId("calendar-day-cycle-start-button")).toBeVisible();
-  await page.getByTestId("calendar-day-add-button").click();
   const calendarMoreSymptomsButton = page
     .getByTestId("day-log-more-symptoms-button")
     .last();
@@ -115,24 +113,12 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   ).toBeVisible();
   await page.getByTestId("day-log-period-toggle").last().click();
   await page.getByTestId("day-log-symptom-cramps").last().click();
-  await page.getByTestId("day-log-save-button").last().click();
-
-  await expect(
-    page.getByTestId("calendar-day-panel").getByText(
-      /Logged period|Отмеченная менструация/,
-    ),
-  ).toBeVisible();
-  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
+  await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+  await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
   const nextAutoFilledDay = formatLocalDate(
     addDays(parseLocalDate(previousCycleStart), 1),
   );
-  await page.getByTestId(`calendar-day-${nextAutoFilledDay}`).click();
-  await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
-  await expect(
-    page.getByTestId("calendar-day-panel").getByText(
-      /Logged period|Отмеченная менструация/,
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId(`calendar-marker-data-${nextAutoFilledDay}`)).toBeVisible();
 
   await page.getByTestId("calendar-today-button").click();
   await expect(page.getByTestId("calendar-day-edit-button")).toBeVisible();
@@ -159,12 +145,11 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(jsonDownload.suggestedFilename()).toContain("ovumcy-export-");
   await expect(jsonDownload.suggestedFilename()).toContain(".json");
 
-  const [pdfDownload] = await Promise.all([
-    page.waitForEvent("download"),
-    page.getByTestId("settings-export-pdf-button").click(),
-  ]);
-  await expect(pdfDownload.suggestedFilename()).toContain("ovumcy-export-");
-  await expect(pdfDownload.suggestedFilename()).toContain(".pdf");
+  await expect(page.getByTestId("settings-export-pdf-hint-banner")).toBeVisible();
+  await expect(page.getByTestId("settings-export-pdf-button")).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
 
   await page.locator(tabLink("/stats")).click();
   await expect(page).toHaveURL(/\/stats$/);

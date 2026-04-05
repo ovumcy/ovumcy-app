@@ -1,7 +1,7 @@
 import { createManagedCloudAPIClient } from "./managed-cloud-api-client";
 
 describe("managed-cloud-api-client", () => {
-  it("maps register, session, and sync-session responses", async () => {
+  it("maps register, session, billing, and sync-session responses", async () => {
     const fetch = jest
       .fn()
       .mockResolvedValueOnce(
@@ -38,6 +38,17 @@ describe("managed-cloud-api-client", () => {
               effective_at: "2026-03-23T00:10:00.000Z",
               explanation: "Granted for beta.",
             },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            doctor_pdf_allowed: true,
           }),
           {
             status: 200,
@@ -89,6 +100,13 @@ describe("managed-cloud-api-client", () => {
           syncAllowed: true,
         }),
       }),
+    });
+
+    await expect(client.getBillingSnapshot("managed-session-1")).resolves.toEqual({
+      ok: true,
+      billing: {
+        doctorPDFAllowed: true,
+      },
     });
 
     await expect(client.createSyncSession("managed-session-1")).resolves.toEqual({

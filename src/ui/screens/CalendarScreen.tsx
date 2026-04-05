@@ -25,9 +25,11 @@ import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { runManualCycleStartAction } from "./day-log/run-manual-cycle-start-action";
+import { useDayLogAutosave } from "./day-log/use-day-log-autosave";
 import { CalendarOverviewScreen } from "./CalendarOverviewScreen";
 
 type CalendarScreenProps = {
+  autosaveDebounceMs?: number;
   storage?: LocalAppStorage;
   now?: Date;
 };
@@ -44,6 +46,7 @@ function buildMonthAnchorDate(monthValue: string): string {
 }
 
 export function CalendarScreen({
+  autosaveDebounceMs,
   storage = appStorage,
   now,
 }: CalendarScreenProps) {
@@ -58,6 +61,7 @@ export function CalendarScreen({
   const [state, setState] = useState<LoadedCalendarState | null>(null);
   const [status, setStatus] = useState<EditorStatusState>(null);
   const [editorMode, setEditorMode] = useState<CalendarEditorMode>("view");
+  const [draftVersion, setDraftVersion] = useState(0);
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
@@ -98,6 +102,36 @@ export function CalendarScreen({
     }, [effectiveNow, language, monthValue, selectedDate, storage]),
   );
 
+  const {
+    flushPendingDraft,
+    hasSaveError,
+    isAutosaving,
+    resetAutosave,
+    saveNow,
+    status: autosaveStatus,
+  } = useDayLogAutosave({
+    draftVersion,
+    labels: state
+      ? {
+          saveFailedLabel: state.editorViewData.actions.saveFailedLabel,
+          savedLabel: state.editorViewData.actions.savedLabel,
+          savingLabel: state.editorViewData.actions.savingLabel,
+        }
+      : null,
+    onPersist: (record) => saveDayLogEditorRecord(storage, record),
+    onSaved: refreshForActiveSelection,
+    record: state?.selectedRecord ?? null,
+    ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        void flushPendingDraft();
+      };
+    }, [flushPendingDraft]),
+  );
+
   if (isLoading || !state) {
     return (
       <ScreenScaffold
@@ -120,32 +154,6 @@ export function CalendarScreen({
     language,
   );
 
-  async function handleSave() {
-    if (!state) {
-      return;
-    }
-    setIsSaving(true);
-    setStatus(null);
-
-    const result = await saveDayLogEditorRecord(storage, state.selectedRecord);
-    if (!result.ok) {
-      setStatus({
-        message: state.editorViewData.actions.saveFailedLabel,
-        tone: "error",
-      });
-      setIsSaving(false);
-      return;
-    }
-
-    await refreshForActiveSelection();
-    setEditorMode("view");
-    setStatus({
-      message: state.editorViewData.actions.savedLabel,
-      tone: "success",
-    });
-    setIsSaving(false);
-  }
-
   async function handleDelete() {
     if (!state) {
       return;
@@ -165,6 +173,7 @@ export function CalendarScreen({
       }
     }
 
+    resetAutosave(draftVersion);
     setIsSaving(true);
     setStatus(null);
 
@@ -200,6 +209,7 @@ export function CalendarScreen({
       return;
     }
 
+    resetAutosave(draftVersion);
     setIsSaving(true);
     setStatus(null);
 
@@ -256,7 +266,7 @@ export function CalendarScreen({
       editorViewData={state.editorViewData}
       isEditing={editorMode === "edit"}
       isFutureDate={selectedDate > formatLocalDate(effectiveNow)}
-      isSaving={isSaving}
+      isSaving={isSaving || isAutosaving}
       manualCycleStart={manualCycleStart}
       onAddEntry={() => {
         setStatus(null);
@@ -269,7 +279,8 @@ export function CalendarScreen({
       onDelete={handleDelete}
       onDismissPredictionNotice={handleDismissPredictionNotice}
       onManualCycleStart={handleManualCycleStart}
-      onNextMonth={() => {
+      onNextMonth={async () => {
+        await flushPendingDraft();
         const nextMonthValue = state.viewData.nextMonthValue;
         setStatus(null);
         setEditorMode("view");
@@ -278,6 +289,7 @@ export function CalendarScreen({
       }}
       onPatch={(updates) => {
         setStatus(null);
+        setDraftVersion((current) => current + 1);
         setState((current) =>
           current
             ? {
@@ -290,15 +302,17 @@ export function CalendarScreen({
             : current,
         );
       }}
-      onPrevMonth={() => {
+      onPrevMonth={async () => {
+        await flushPendingDraft();
         const prevMonthValue = state.viewData.prevMonthValue;
         setStatus(null);
         setEditorMode("view");
         setMonthValue(prevMonthValue);
         setSelectedDate(buildMonthAnchorDate(prevMonthValue));
       }}
-      onSave={handleSave}
-      onSelectDay={(day) => {
+      onSave={saveNow}
+      onSelectDay={async (day) => {
+        await flushPendingDraft();
         setStatus(null);
         setSelectedDate(day.date);
         setEditorMode(day.openEditDirectly ? "edit" : "view");
@@ -307,7 +321,8 @@ export function CalendarScreen({
         setStatus(null);
         setEditorMode("edit");
       }}
-      onToday={() => {
+      onToday={async () => {
+        await flushPendingDraft();
         const today = formatLocalDate(effectiveNow);
         setStatus(null);
         setMonthValue(today.slice(0, 7));
@@ -315,8 +330,9 @@ export function CalendarScreen({
         setEditorMode("view");
       }}
       record={state.selectedRecord ?? createEmptyDayLogRecord(selectedDate)}
-      statusMessage={status?.message ?? ""}
-      statusTone={status?.tone}
+      showsSaveAction={hasSaveError}
+      statusMessage={status?.message ?? autosaveStatus?.message ?? ""}
+      statusTone={status?.tone ?? autosaveStatus?.tone}
       summaryViewData={state.selectedDaySummary}
       viewData={state.viewData}
     />

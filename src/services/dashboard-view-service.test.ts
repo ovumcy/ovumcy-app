@@ -237,6 +237,84 @@ describe("dashboard-view-service", () => {
     );
   });
 
+  it("shows a next-period window when recent cycle history varies", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-16",
+      cycleLength: 29,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-01-17",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-02-14",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-03-16",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 26));
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      history,
+      new Date(2026, 2, 26),
+    );
+
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "approximate",
+        caption: "Next period: Apr 13 - Apr 15",
+      }),
+    );
+  });
+
   it("falls back to unknown dates when the prior prediction window is stale", () => {
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-02-01",

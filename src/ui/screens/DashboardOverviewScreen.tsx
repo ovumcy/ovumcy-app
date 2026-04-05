@@ -30,9 +30,10 @@ type DashboardOverviewScreenProps = {
   onSave: () => void | Promise<void>;
   record: DayLogRecord;
   statusMessage: string;
-  statusTone?: "success" | "error" | undefined;
+  statusTone?: "error" | "info" | "success" | undefined;
   viewData: DashboardViewData;
   manualCycleStart?: ManualCycleStartViewData | null;
+  showsSaveAction?: boolean;
 };
 
 export function DashboardOverviewScreen({
@@ -48,6 +49,7 @@ export function DashboardOverviewScreen({
   statusTone,
   viewData,
   manualCycleStart,
+  showsSaveAction = true,
 }: DashboardOverviewScreenProps) {
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -199,6 +201,7 @@ export function DashboardOverviewScreen({
                 sectionOffsetsRef.current[key] = editorCardOffsetRef.current + y;
               }}
               record={record}
+              showsSaveAction={showsSaveAction}
               statusMessage={statusMessage}
               statusTone={statusTone}
               viewData={{

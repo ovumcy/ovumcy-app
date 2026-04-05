@@ -32,12 +32,13 @@ type DayLogEditorCardProps = {
   variant?: "dashboard" | "calendar";
   record: DayLogRecord;
   statusMessage: string;
-  statusTone?: "success" | "error" | undefined;
+  statusTone?: "error" | "info" | "success" | undefined;
   viewData: DayLogEditorViewData;
   onCancel?: () => void;
   onDelete?: () => void | Promise<void>;
   onPatch: (updates: Partial<DayLogRecord>) => void;
   onSave: () => void | Promise<void>;
+  showsSaveAction?: boolean;
 };
 
 export type DayLogEditorSectionKey =
@@ -66,6 +67,7 @@ export function DayLogEditorCard({
   onDelete,
   onPatch,
   onSave,
+  showsSaveAction = true,
 }: DayLogEditorCardProps) {
   const styles = useThemedStyles(createStyles);
   const showsCalendarOrder = variant === "calendar";
@@ -85,6 +87,12 @@ export function DayLogEditorCard({
   const symptomOptions = showsAllSymptoms
     ? viewData.options.symptoms
     : collapsedSymptomsState.options;
+  const notesToggleLabel =
+    record.notes.trim().length > 0
+      ? isNotesOpen
+        ? viewData.labels.hideNote
+        : viewData.labels.editNote
+      : viewData.labels.addNote;
 
   useEffect(() => {
     if (record.notes.trim().length > 0) {
@@ -158,6 +166,13 @@ export function DayLogEditorCard({
         />
         {collapsedSymptomsState.hiddenCount > 0 ? (
           <Pressable
+            accessibilityLabel={
+              showsAllSymptoms
+                ? viewData.labels.showFewerSymptoms
+                : `${viewData.labels.showMoreSymptoms} (${collapsedSymptomsState.hiddenCount})`
+            }
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showsAllSymptoms }}
             onPress={() => setShowsAllSymptoms((current) => !current)}
             style={styles.moreSymptomsButton}
             testID="day-log-more-symptoms-button"
@@ -314,56 +329,61 @@ export function DayLogEditorCard({
         </>
       )}
 
-      <View
-        onLayout={handleSectionLayout("notes")}
-        style={resolveSectionStyle("notes", styles.section)}
-      >
-        <Pressable
-          onPress={() => setIsNotesOpen((current) => !current)}
-          style={styles.notesToggle}
-          testID="day-log-notes-toggle"
+      {viewData.visibility.showNotes ? (
+        <View
+          onLayout={handleSectionLayout("notes")}
+          style={resolveSectionStyle("notes", styles.section)}
         >
-          <Text style={styles.notesToggleText}>
-            {record.notes.trim().length > 0
-              ? isNotesOpen
-                ? viewData.labels.hideNote
-                : viewData.labels.editNote
-              : viewData.labels.addNote}
-          </Text>
-        </Pressable>
+          <Pressable
+            accessibilityLabel={notesToggleLabel}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: isNotesOpen }}
+            onPress={() => setIsNotesOpen((current) => !current)}
+            style={styles.notesToggle}
+            testID="day-log-notes-toggle"
+          >
+            <Text style={styles.notesToggleText}>
+              {notesToggleLabel}
+            </Text>
+          </Pressable>
 
-        {isNotesOpen ? (
-          <View style={styles.notesSection}>
-            <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
-            <AppTextInput
-              multiline
-              onChangeText={(value) => onPatch({ notes: value })}
-              placeholder={viewData.labels.notesPlaceholder}
-              style={[styles.input, styles.notesInput]}
-              testID="day-log-notes-input"
-              value={record.notes}
+          {isNotesOpen ? (
+            <View style={styles.notesSection}>
+              <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
+              <AppTextInput
+                multiline
+                onChangeText={(value) => onPatch({ notes: value })}
+                placeholder={viewData.labels.notesPlaceholder}
+                style={[styles.input, styles.notesInput]}
+                testID="day-log-notes-input"
+                value={record.notes}
+              />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {showsSaveAction || onCancel ? (
+        <View style={styles.actions}>
+          {showsSaveAction ? (
+            <AppButton
+              disabled={isSaving}
+              label={entryExists ? viewData.actions.updateLabel : viewData.actions.saveLabel}
+              onPress={onSave}
+              testID="day-log-save-button"
             />
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.actions}>
-        <AppButton
-          disabled={isSaving}
-          label={entryExists ? viewData.actions.updateLabel : viewData.actions.saveLabel}
-          onPress={onSave}
-          testID="day-log-save-button"
-        />
-        {onCancel ? (
-          <AppButton
-            disabled={isSaving}
-            label={cancelLabel ?? ""}
-            onPress={onCancel}
-            testID="day-log-cancel-button"
-            variant="secondary"
-          />
-        ) : null}
-      </View>
+          ) : null}
+          {onCancel ? (
+            <AppButton
+              disabled={isSaving}
+              label={cancelLabel ?? ""}
+              onPress={onCancel}
+              testID="day-log-cancel-button"
+              variant="secondary"
+            />
+          ) : null}
+        </View>
+      ) : null}
 
       {statusMessage ? (
         <StatusBanner message={statusMessage} tone={statusTone} testID="day-log-status-banner" />

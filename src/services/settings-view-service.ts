@@ -31,6 +31,7 @@ import {
   parseLocalDate,
   resolveDisplayedAgeGroup,
 } from "./profile-settings-policy";
+import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
 
 type SettingsCopy = ReturnType<typeof getSettingsCopy>;
@@ -90,6 +91,12 @@ export type SettingsViewData = {
       stateOff: string;
     };
     hideSexChip: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    hideNotes: {
       label: string;
       hint: string;
       stateOn: string;
@@ -278,6 +285,8 @@ export type SettingsViewData = {
     subtitle: string;
     storageHint: string;
     sensitiveHint: string;
+    pdfCloudOnlyHint: string;
+    pdfPlanHint: string;
     noData: string;
     presetLabel: string;
     presetOptions: {
@@ -326,6 +335,7 @@ export type LoadedSettingsState = {
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
   hasSyncSession: boolean;
+  managedDoctorPDFAllowed: boolean;
   syncCapabilities: SyncCapabilityDocument | null;
   savedSyncPreferences: SyncPreferencesRecord;
   syncPreferences: SyncPreferencesRecord;
@@ -364,6 +374,8 @@ export type SettingsExportSectionPresentationState = {
   summaryRangeLabel: string;
   summaryTotalLabel: string;
   supportsNativeDatePicker: boolean;
+  canExportPDF: boolean;
+  pdfHint: string;
 };
 
 export type SettingsFlowPresentationState = {
@@ -464,6 +476,12 @@ export function buildSettingsViewData(
         hint: settingsCopy.tracking.hideSexChipHint,
         stateOn: settingsCopy.tracking.hideSexChipStateOn,
         stateOff: settingsCopy.tracking.hideSexChipStateOff,
+      },
+      hideNotes: {
+        label: settingsCopy.tracking.hideNotes,
+        hint: settingsCopy.tracking.hideNotesHint,
+        stateOn: settingsCopy.tracking.hideNotesStateOn,
+        stateOff: settingsCopy.tracking.hideNotesStateOff,
       },
       temperatureUnit: {
         label: settingsCopy.tracking.temperatureUnit,
@@ -677,6 +695,8 @@ export function buildSettingsViewData(
       subtitle: settingsCopy.export.subtitle,
       storageHint: settingsCopy.export.storageHint,
       sensitiveHint: settingsCopy.export.sensitiveHint,
+      pdfCloudOnlyHint: settingsCopy.export.pdfCloudOnlyHint,
+      pdfPlanHint: settingsCopy.export.pdfPlanHint,
       noData: settingsCopy.export.noData,
       presetLabel: settingsCopy.export.presetLabel,
       presetOptions: [
@@ -732,6 +752,7 @@ export function createLoadedSettingsState(
   exportState: LoadedExportState,
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
   syncCapabilities: SyncCapabilityDocument | null = null,
+  managedDoctorPDFAllowed = false,
 ): LoadedSettingsState {
   return {
     profile,
@@ -753,6 +774,7 @@ export function createLoadedSettingsState(
       ),
     },
     hasSyncSession,
+    managedDoctorPDFAllowed,
     syncCapabilities,
     savedSyncPreferences,
     syncPreferences,
@@ -762,6 +784,7 @@ export function createLoadedSettingsState(
       temperatureUnit: profile.temperatureUnit,
       trackCervicalMucus: profile.trackCervicalMucus,
       hideSexChip: profile.hideSexChip,
+      hideNotes: profile.hideNotes === true,
     },
     symptomRecords,
     exportState,
@@ -797,6 +820,7 @@ export function extractPersistedTrackingValues(
     temperatureUnit: profile.temperatureUnit,
     trackCervicalMucus: profile.trackCervicalMucus,
     hideSexChip: profile.hideSexChip,
+    hideNotes: profile.hideNotes === true,
   };
 }
 
@@ -836,7 +860,8 @@ export function areTrackingSettingsEqual(
     left.trackBBT === right.trackBBT &&
     left.temperatureUnit === right.temperatureUnit &&
     left.trackCervicalMucus === right.trackCervicalMucus &&
-    left.hideSexChip === right.hideSexChip
+    left.hideSexChip === right.hideSexChip &&
+    left.hideNotes === right.hideNotes
   );
 }
 
@@ -967,21 +992,40 @@ export function buildSettingsCycleGuidance(cycleValues: CycleSettingsValues) {
 }
 
 export function buildSettingsExportSectionPresentationState(
-  exportState: LoadedExportState,
+  state: Pick<
+    LoadedSettingsState,
+    | "exportState"
+    | "hasSyncSession"
+    | "managedDoctorPDFAllowed"
+    | "syncPreferences"
+  >,
   viewData: SettingsViewData["export"],
   platformOS: string,
 ): SettingsExportSectionPresentationState {
+  const pdfAccess = resolvePDFExportAccessState({
+    hasSyncSession: state.hasSyncSession,
+    managedDoctorPDFAllowed: state.managedDoctorPDFAllowed,
+    syncMode: state.syncPreferences.mode,
+  });
+
   return {
-    hasAnyData: exportState.availableSummary.hasData,
+    hasAnyData: state.exportState.availableSummary.hasData,
     summaryRangeLabel: buildSummaryRangeLabel(
       viewData.summaryRangeTemplate,
       viewData.summaryRangeEmpty,
-      exportState,
+      state.exportState,
     ),
     summaryTotalLabel: formatTemplate(viewData.summaryTotalTemplate, [
-      String(exportState.summary.totalEntries),
+      String(state.exportState.summary.totalEntries),
     ]),
     supportsNativeDatePicker: platformOS !== "web",
+    canExportPDF: pdfAccess.enabled,
+    pdfHint:
+      pdfAccess.reason === "cloud_only"
+        ? viewData.pdfCloudOnlyHint
+        : pdfAccess.reason === "plan_required"
+          ? viewData.pdfPlanHint
+          : "",
   };
 }
 
@@ -1019,7 +1063,7 @@ export function buildSettingsFlowPresentationState(
       now,
     ),
     exportSection: buildSettingsExportSectionPresentationState(
-      state.exportState,
+      state,
       viewData.export,
       platformOS,
     ),

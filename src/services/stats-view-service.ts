@@ -401,7 +401,9 @@ export function buildStatsViewData(
       profile,
       history,
       projection,
+      records,
       reliability,
+      locale,
       statsCopy,
     ),
     cycleOverview: {
@@ -470,7 +472,9 @@ function buildTopCards(
   profile: ProfileRecord,
   history: ReturnType<typeof buildCycleHistorySummary>,
   projection: StatsCycleProjection,
+  records: readonly DayLogRecord[],
   reliability: ReturnType<typeof buildStatsReliability>,
+  locale: string,
   statsCopy: ReturnType<typeof getStatsCopy>,
 ): StatsTopCardViewData[] {
   const cards: StatsTopCardViewData[] = [
@@ -491,6 +495,12 @@ function buildTopCards(
           : statsCopy.noData,
     },
   ];
+  const mucusFertilityCard = buildMucusFertilityCard(
+    projection,
+    records,
+    locale,
+    statsCopy,
+  );
 
   if (profile.unpredictableCycle) {
     cards.push({
@@ -499,6 +509,8 @@ function buildTopCards(
       value: statsCopy.factsOnlyValue,
       description: statsCopy.factsOnlyHint,
     });
+  } else if (mucusFertilityCard) {
+    cards.push(mucusFertilityCard);
   } else {
     const description =
       projection.currentCycleDay !== null
@@ -530,6 +542,40 @@ function buildTopCards(
   }
 
   return cards;
+}
+
+function buildMucusFertilityCard(
+  projection: StatsCycleProjection,
+  records: readonly DayLogRecord[],
+  locale: string,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): StatsTopCardViewData | null {
+  const cycleAnchorDate = projection.cycleAnchorDate;
+  if (!cycleAnchorDate) {
+    return null;
+  }
+
+  const eggWhiteRecords = records
+    .filter(
+      (record) =>
+        record.date >= cycleAnchorDate &&
+        record.cervicalMucus === "eggwhite",
+    )
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const latestSignal = eggWhiteRecords[eggWhiteRecords.length - 1];
+
+  if (!latestSignal) {
+    return null;
+  }
+
+  return {
+    key: "mucus-fertility",
+    title: statsCopy.mucusFertilityTitle,
+    value: statsCopy.mucusFertilityValue,
+    description: statsCopy.mucusFertilityDescription(
+      formatDisplayDate(latestSignal.date, locale),
+    ),
+  };
 }
 
 function buildStatsNotices(

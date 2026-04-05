@@ -92,6 +92,8 @@ export type StatsCycleProjection = {
   currentPhase: StatsPhase;
   isPredictionStale: boolean;
   nextPeriodDate: LocalDateISO | null;
+  nextPeriodWindowStartDate: LocalDateISO | null;
+  nextPeriodWindowEndDate: LocalDateISO | null;
   ovulationDate: LocalDateISO | null;
   predictionCycleLength: number;
 };

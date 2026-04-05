@@ -171,7 +171,7 @@ before and after UI changes.
   - cervical mucus if enabled
   - BBT if enabled
   - note disclosure
-  - save row
+  - autosave status row, with an explicit save action shown only as retry on failure
 - No extra summary card should push the editor down before the main journal.
 
 ### Calendar
@@ -260,10 +260,11 @@ before and after UI changes.
 - Interface section:
   - language block
   - theme block
-- Account section:
-  - profile block
-  - change-password block
-  - recovery-code block
+- Backup & sync section:
+  - local encrypted sync setup block
+  - managed account status block
+  - recovery phrase block
+  - plan and sync status block
 - Export section:
   - from / to date fields
   - presets
@@ -271,11 +272,11 @@ before and after UI changes.
   - export buttons:
     - CSV
     - JSON
-    - PDF
+  - app-owned managed export perk:
+    - PDF only when the current managed cloud account has an active plan
   - summary lines and local data hint
 - Danger zone:
   - clear-data path
-  - delete-account path
 
 #### Settings Density Rules
 
@@ -284,7 +285,7 @@ before and after UI changes.
 - age-group choices stack as one column on narrow mobile widths
 - temperature-unit choices stay in a two-column switch
 - usage-goal choices remain a compact single-column stack
-- export action row keeps `CSV`, `JSON`, then `PDF`
+- export action row keeps `CSV` and `JSON`, with `PDF` appearing as a managed-only perk when available
 
 ## Allowed App Deviations
 
@@ -311,8 +312,12 @@ before and after UI changes.
   now align closely with the canonical web contract.
 - Remaining deviations are intentional product-capability gaps, not silent UI
   drift:
+  - dashboard and calendar journals use autosave with explicit retry-only save
+    affordances instead of a permanent save row;
   - account-backed auth and recovery flows are replaced by local encrypted sync
     setup only;
+  - PDF export is an app-managed perk gated by an active managed cloud plan,
+    while CSV and JSON remain local-first exports;
   - account deletion remains a local clear-data flow;
   - mobile bottom tabs remain platform-native chrome.
 

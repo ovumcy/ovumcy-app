@@ -241,6 +241,11 @@ function buildDashboardCycleHeroCaption(
   locale: string,
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
+  const rangeLabel = buildDashboardCycleHeroDateRange(projection, locale);
+
+  if (rangeLabel) {
+    return `${dashboardCopy.nextPeriod}: ${rangeLabel}`;
+  }
 
   if (!projection.nextPeriodDate) {
     return "";
@@ -254,6 +259,24 @@ function buildDashboardCycleHeroCaption(
     : formatDisplayDate(projection.nextPeriodDate, locale);
 
   return `${dashboardCopy.nextPeriod}: ${nextPeriodValue}`;
+}
+
+function buildDashboardCycleHeroDateRange(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  locale: string,
+): string | null {
+  const startDate = projection.nextPeriodWindowStartDate;
+  const endDate = projection.nextPeriodWindowEndDate;
+
+  if (!startDate || !endDate) {
+    return null;
+  }
+
+  if (startDate === endDate) {
+    return null;
+  }
+
+  return formatDisplayDateRange(startDate, endDate, locale);
 }
 
 function resolveDashboardCycleHeroProgressPercent(
@@ -364,6 +387,17 @@ function formatDisplayDate(value: string, locale: string): string {
     day: "numeric",
     month: "short",
   }).format(parsed);
+}
+
+function formatDisplayDateRange(
+  startValue: string,
+  endValue: string,
+  locale: string,
+): string {
+  return `${formatDisplayDate(startValue, locale)} - ${formatDisplayDate(
+    endValue,
+    locale,
+  )}`;
 }
 
 function clampPercent(value: number): number {

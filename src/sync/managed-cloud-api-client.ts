@@ -27,6 +27,10 @@ export type ManagedCloudSessionView = {
   entitlement: ManagedCloudEntitlement;
 };
 
+export type ManagedCloudBillingSnapshot = {
+  doctorPDFAllowed: boolean;
+};
+
 export type ManagedCloudAuthResult = {
   accountID: string;
   email: string;
@@ -40,6 +44,12 @@ export type ManagedCloudAPIClient = {
     sessionToken: string,
   ): Promise<
     | { ok: true; auth: SyncAuthResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  getBillingSnapshot(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; billing: ManagedCloudBillingSnapshot }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   getSession(
@@ -91,6 +101,10 @@ type RawManagedCloudSessionView = {
   email: string;
   session_expires_at: string;
   sync_entitlement: RawManagedCloudEntitlement;
+};
+
+type RawManagedCloudBillingSnapshot = {
+  doctor_pdf_allowed?: boolean;
 };
 
 type ErrorPayload = {
@@ -149,6 +163,23 @@ export function createManagedCloudAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, auth: mapSyncAuthResult(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async getBillingSnapshot(sessionToken) {
+      return requestJSON<RawManagedCloudBillingSnapshot>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/billing",
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawManagedCloudBillingSnapshot,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, billing: mapBillingSnapshot(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -338,6 +369,16 @@ function isRawManagedCloudSessionView(
   );
 }
 
+function isRawManagedCloudBillingSnapshot(
+  value: unknown,
+): value is RawManagedCloudBillingSnapshot {
+  return (
+    isObject(value) &&
+    (typeof value.doctor_pdf_allowed === "boolean" ||
+      typeof value.doctor_pdf_allowed === "undefined")
+  );
+}
+
 function isRawSyncAuthResult(value: unknown): value is RawSyncAuthResult {
   return (
     isObject(value) &&
@@ -375,6 +416,14 @@ function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionVie
     email: raw.email,
     sessionExpiresAt: raw.session_expires_at,
     entitlement: mapEntitlement(raw.sync_entitlement),
+  };
+}
+
+function mapBillingSnapshot(
+  raw: RawManagedCloudBillingSnapshot,
+): ManagedCloudBillingSnapshot {
+  return {
+    doctorPDFAllowed: raw.doctor_pdf_allowed === true,
   };
 }
 

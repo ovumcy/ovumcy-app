@@ -25,6 +25,7 @@ import {
   sanitizeInterfaceSettingsValues,
   sanitizeTrackingSettingsValues,
 } from "./profile-settings-policy";
+import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
 import {
   archiveCustomSymptomRecord,
   createCustomSymptomRecord,
@@ -44,6 +45,7 @@ type ExportSettingsErrorCode =
   | "invalid_from_date"
   | "invalid_to_date"
   | "invalid_range"
+  | "pdf_locked"
   | "generic";
 
 type SaveStateResult<ErrorCode extends string> =
@@ -111,6 +113,7 @@ export async function saveCycleSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -145,6 +148,7 @@ export async function saveTrackingSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -179,6 +183,7 @@ export async function saveInterfaceSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -213,6 +218,7 @@ export async function createSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -254,6 +260,7 @@ export async function updateSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -290,6 +297,7 @@ export async function archiveSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -326,6 +334,7 @@ export async function restoreSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -346,6 +355,7 @@ export async function refreshSettingsExportState(
     result.state,
     currentState.syncPreferences,
     currentState.syncCapabilities,
+    currentState.managedDoctorPDFAllowed,
   );
   if (result.errorCode) {
     return {
@@ -379,6 +389,21 @@ export async function prepareSettingsExportArtifact(
       state: LoadedSettingsState;
     }
 > {
+  if (format === "pdf") {
+    const pdfAccess = resolvePDFExportAccessState({
+      hasSyncSession: currentState.hasSyncSession,
+      managedDoctorPDFAllowed: currentState.managedDoctorPDFAllowed,
+      syncMode: currentState.syncPreferences.mode,
+    });
+    if (!pdfAccess.enabled) {
+      return {
+        ok: false,
+        errorCode: "pdf_locked",
+        state: currentState,
+      };
+    }
+  }
+
   const result = await buildLocalExportArtifact(
     storage,
     currentState.exportState,
@@ -395,6 +420,7 @@ export async function prepareSettingsExportArtifact(
     result.state,
     currentState.syncPreferences,
     currentState.syncCapabilities,
+    currentState.managedDoctorPDFAllowed,
   );
 
   if (!result.ok) {

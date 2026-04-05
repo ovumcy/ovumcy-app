@@ -83,6 +83,7 @@ export type SettingsFlowScreenProps = {
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
   onExportToDatePress: () => void;
+  onHideNotesChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
@@ -158,6 +159,7 @@ export function SettingsFlowScreen({
   onExportPresetSelect,
   onExportToDateChange,
   onExportToDatePress,
+  onHideNotesChange,
   onHideSexChipChange,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
@@ -258,6 +260,7 @@ export function SettingsFlowScreen({
           />
 
           <SettingsTrackingSection
+            onHideNotesChange={onHideNotesChange}
             onHideSexChipChange={onHideSexChipChange}
             onTemperatureUnitSelect={onTemperatureUnitSelect}
             onTrackBBTChange={onTrackBBTChange}

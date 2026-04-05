@@ -54,6 +54,7 @@ export type ProfileRecord = {
   temperatureUnit: TemperatureUnit;
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
+  hideNotes?: boolean;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
   screenCaptureProtectionEnabled?: boolean;
@@ -73,10 +74,13 @@ export type CycleSettingsValues = Pick<
   | "usageGoal"
 >;
 
-export type TrackingSettingsValues = Pick<
-  ProfileRecord,
-  "trackBBT" | "temperatureUnit" | "trackCervicalMucus" | "hideSexChip"
->;
+export type TrackingSettingsValues = {
+  trackBBT: boolean;
+  temperatureUnit: TemperatureUnit;
+  trackCervicalMucus: boolean;
+  hideSexChip: boolean;
+  hideNotes: boolean;
+};
 
 export type InterfaceSettingsValues = Pick<
   ProfileRecord,
@@ -193,6 +197,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     temperatureUnit: DEFAULT_TEMPERATURE_UNIT,
     trackCervicalMucus: false,
     hideSexChip: false,
+    hideNotes: false,
     languageOverride: null,
     themeOverride: null,
     screenCaptureProtectionEnabled: true,

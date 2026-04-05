@@ -21,7 +21,7 @@ export function StatsOverviewInsightEmptyState({
   styles,
 }: StatsOverviewInsightEmptyStateProps) {
   return (
-    <View style={styles.emptyState}>
+    <View accessibilityLabel={label} accessible style={styles.emptyState}>
       <Text style={styles.emptyStateIcon}>{icon}</Text>
       <Text style={styles.helperText}>{label}</Text>
     </View>
@@ -35,7 +35,11 @@ export function StatsOverviewSymptomRow({
   styles,
 }: StatsOverviewSymptomRowProps) {
   return (
-    <View style={styles.symptomRow}>
+    <View
+      accessibilityLabel={`${label}. ${frequencySummary}.`}
+      accessible
+      style={styles.symptomRow}
+    >
       <View style={styles.metaRow}>
         <Text style={styles.metaIcon}>{icon}</Text>
         <Text style={styles.metaLabel}>{label}</Text>

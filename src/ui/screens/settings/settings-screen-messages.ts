@@ -32,6 +32,8 @@ export function resolveSettingsExportErrorMessage(
       return viewData.export.errors.invalidToDate;
     case "invalid_range":
       return viewData.export.errors.invalidRange;
+    case "pdf_locked":
+      return viewData.export.errors.pdfLocked;
     case "delivery_unavailable":
       return viewData.export.errors.deliveryUnavailable;
     case "delivery_failed":

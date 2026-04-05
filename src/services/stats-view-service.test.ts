@@ -123,6 +123,43 @@ describe("buildStatsViewData", () => {
     expect(viewData.bbtTrend?.points).toHaveLength(2);
   });
 
+  it("adds a mucus-based fertility insight when egg-white mucus is logged in the current cycle", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord({
+        trackCervicalMucus: true,
+      }),
+      [
+        createPeriodRecord("2026-01-17"),
+        createPeriodRecord("2026-02-14"),
+        createPeriodRecord("2026-03-14"),
+        {
+          ...createEmptyDayLogRecord("2026-03-16"),
+          cervicalMucus: "eggwhite",
+        },
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData.topCards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "High fertility",
+          value: "Mucus signal",
+          description: "Egg-white mucus was logged on Mar 16.",
+        }),
+      ]),
+    );
+    expect(viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "current-phase",
+        }),
+      ]),
+    );
+    expect(viewData.topCards.length).toBeLessThanOrEqual(4);
+  });
+
   it("localizes built-in symptom labels in insight sections", () => {
     const viewData = buildStatsViewData(
       createProfileRecord(),

@@ -223,6 +223,7 @@ export function buildCalendarViewData(
     const hasData = record ? hasDayLogData(record) : false;
     const hasSex = record ? hasDayLogSex(record) : false;
     const stateKey = resolveCalendarDayStateKey(date, record, predictionMaps);
+    const openEditDirectly = !hasData;
 
     days.push({
       accessibilityLabel: buildCalendarDayAccessibilityLabel(
@@ -243,7 +244,7 @@ export function buildCalendarViewData(
       isToday: date === todayValue,
       isSelected: date === selectedDate,
       isPeriod: record?.isPeriod === true,
-      openEditDirectly: false,
+      openEditDirectly,
       stateKey,
       hasData,
       hasSex,

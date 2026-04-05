@@ -166,6 +166,12 @@ export function SettingsExportSection({
               testID="settings-export-status-banner"
             />
           ) : null}
+          {presentationState.pdfHint ? (
+            <StatusBanner
+              message={presentationState.pdfHint}
+              testID="settings-export-pdf-hint-banner"
+            />
+          ) : null}
 
           <View style={styles.actionsRow}>
             <AppButton
@@ -183,7 +189,7 @@ export function SettingsExportSection({
               variant="secondary"
             />
             <AppButton
-              disabled={isExporting}
+              disabled={isExporting || !presentationState.canExportPDF}
               label={viewData.pdfAction}
               onPress={onPDFExport}
               testID="settings-export-pdf-button"

@@ -162,5 +162,7 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-phase-mood")).toBeTruthy();
     expect(screen.getByTestId("stats-bbt-trend")).toBeTruthy();
     expect(screen.getByTestId("stats-factor-context")).toBeTruthy();
+    expect(screen.getByLabelText(/Cycle trend/)).toBeTruthy();
+    expect(screen.getByLabelText(/Prediction reliability\. Early estimate\./)).toBeTruthy();
   });
 });

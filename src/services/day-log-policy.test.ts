@@ -59,6 +59,7 @@ describe("day-log-policy", () => {
         temperatureUnit: "f",
         trackCervicalMucus: false,
         hideSexChip: true,
+        hideNotes: true,
         languageOverride: null,
         themeOverride: null,
       }),
@@ -66,6 +67,7 @@ describe("day-log-policy", () => {
       showSexActivity: false,
       showBBT: true,
       showCervicalMucus: false,
+      showNotes: false,
     });
   });
 });

@@ -49,7 +49,8 @@ type CalendarOverviewScreenProps = {
   onToday: () => void;
   record: DayLogRecord;
   statusMessage: string;
-  statusTone?: "success" | "error" | undefined;
+  statusTone?: "error" | "info" | "success" | undefined;
+  showsSaveAction?: boolean;
   summaryViewData: CalendarDaySummaryViewData;
   viewData: CalendarViewData;
 };
@@ -76,6 +77,7 @@ export function CalendarOverviewScreen({
   record,
   statusMessage,
   statusTone,
+  showsSaveAction = true,
   summaryViewData,
   viewData,
 }: CalendarOverviewScreenProps) {
@@ -257,6 +259,7 @@ export function CalendarOverviewScreen({
                 onPatch={onPatch}
                 onSave={onSave}
                 record={record}
+                showsSaveAction={showsSaveAction}
                 statusMessage={statusMessage}
                 statusTone={statusTone}
                 summaryViewData={summaryViewData}

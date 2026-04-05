@@ -63,6 +63,52 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("opens empty days in direct-edit mode while keeping saved days summary-first", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-10",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+      },
+      [
+        {
+          ...createEmptyDayLogRecord("2026-03-17"),
+          mood: 4,
+        },
+      ],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-13",
+    );
+
+    const byDate = new Map(viewData.days.map((day) => [day.date, day]));
+
+    expect(byDate.get("2026-03-13")).toEqual(
+      expect.objectContaining({
+        hasData: false,
+        openEditDirectly: true,
+      }),
+    );
+    expect(byDate.get("2026-03-17")).toEqual(
+      expect.objectContaining({
+        hasData: true,
+        openEditDirectly: false,
+      }),
+    );
+  });
+
   it("builds multi-cycle fertility and prediction states from shared history", () => {
     const profile = {
       lastPeriodStart: "2026-03-14",

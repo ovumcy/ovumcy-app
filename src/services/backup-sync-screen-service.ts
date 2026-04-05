@@ -66,6 +66,7 @@ export async function prepareBackupSyncSetup(
       currentState.exportState,
       result.preferences,
       null,
+      currentState.managedDoctorPDFAllowed,
     ),
     recoveryPhrase: result.recoveryPhrase,
     regenerated,
@@ -108,6 +109,7 @@ export async function saveBackupSyncDraft(
       currentState.exportState,
       result.preferences,
       null,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -154,6 +156,7 @@ export async function connectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       result.capabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -198,6 +201,7 @@ export async function recoverBackupSyncAccess(
       currentState.exportState,
       result.preferences,
       result.capabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -238,6 +242,7 @@ export async function uploadBackupSyncSnapshot(
       currentState.exportState,
       result.preferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -281,6 +286,7 @@ export async function restoreBackupSyncSnapshot(
       exportResult.state,
       result.preferences,
       currentState.syncCapabilities,
+      currentState.managedDoctorPDFAllowed,
     ),
   };
 }
@@ -310,6 +316,7 @@ export async function disconnectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       null,
+      false,
     ),
   };
 }
@@ -334,5 +341,6 @@ export async function clearUnauthorizedBackupSyncSession(
     currentState.exportState,
     nextPreferences,
     null,
+    false,
   );
 }

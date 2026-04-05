@@ -62,6 +62,7 @@ export type DayLogEditorViewData = {
   actions: {
     saveLabel: string;
     updateLabel: string;
+    savingLabel: string;
     savedLabel: string;
     saveFailedLabel: string;
     deleteLabel: string;
@@ -249,6 +250,7 @@ export function buildDayLogEditorViewData(
     actions: {
       saveLabel: dayLogCopy.saveDay,
       updateLabel: dayLogCopy.saveDay,
+      savingLabel: dayLogCopy.saving,
       savedLabel: dayLogCopy.saved,
       saveFailedLabel: dayLogCopy.saveFailed,
       deleteLabel: dayLogCopy.deleteEntry,

@@ -21,6 +21,7 @@ export type DayLogVisibility = {
   showSexActivity: boolean;
   showBBT: boolean;
   showCervicalMucus: boolean;
+  showNotes: boolean;
 };
 
 export function buildDayLogVisibility(profile: ProfileRecord): DayLogVisibility {
@@ -28,6 +29,7 @@ export function buildDayLogVisibility(profile: ProfileRecord): DayLogVisibility 
     showSexActivity: !profile.hideSexChip,
     showBBT: profile.trackBBT,
     showCervicalMucus: profile.trackCervicalMucus,
+    showNotes: profile.hideNotes !== true,
   };
 }
 

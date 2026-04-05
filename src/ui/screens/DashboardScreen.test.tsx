@@ -52,10 +52,17 @@ function renderDashboard(
   storage: ReturnType<typeof createStorageMock>,
   now = new Date(2026, 2, 17),
   languageOverride: "en" | "ru" = "en",
+  autosaveDebounceMs?: number,
 ) {
   return render(
     <AppPreferencesTestProvider languageOverride={languageOverride}>
-      <DashboardScreen now={now} storage={storage} />
+      <DashboardScreen
+        now={now}
+        storage={storage}
+        {...(autosaveDebounceMs !== undefined
+          ? { autosaveDebounceMs }
+          : {})}
+      />
     </AppPreferencesTestProvider>,
   );
 }
@@ -70,13 +77,23 @@ describe("DashboardScreen", () => {
     async () => {
       renderDashboard(createStorageMock());
 
-      await screen.findByTestId("day-log-save-button");
+      await screen.findByTestId("day-log-period-toggle");
 
       expect(screen.queryByTestId("day-log-sex-none")).toBeNull();
       expect(screen.queryByText("Intimacy")).toBeNull();
       expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
       expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
+      expect(screen.getByTestId("day-log-notes-toggle")).toBeTruthy();
+      expect(screen.getByTestId("day-log-notes-toggle").props.accessibilityRole).toBe(
+        "button",
+      );
+      expect(
+        screen.getByTestId("day-log-notes-toggle").props.accessibilityState,
+      ).toEqual(expect.objectContaining({ expanded: false }));
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+      expect(
+        screen.getByLabelText("Day 8. Follicular. Cycle 28 days. Next period: Apr 7"),
+      ).toBeTruthy();
       expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe("Day");
       expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe(
         "8",
@@ -88,6 +105,35 @@ describe("DashboardScreen", () => {
     },
     10000,
   );
+
+  it("hides notes from the daily editor when the privacy toggle is enabled", async () => {
+    renderDashboard(
+      createStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          lastPeriodStart: "2026-03-10",
+          cycleLength: 28,
+          periodLength: 5,
+          autoPeriodFill: true,
+          irregularCycle: false,
+          unpredictableCycle: false,
+          ageGroup: "",
+          usageGoal: "health",
+          trackBBT: false,
+          temperatureUnit: "c",
+          trackCervicalMucus: false,
+          hideSexChip: false,
+          hideNotes: true,
+          languageOverride: "en",
+          themeOverride: "light",
+        }),
+      }),
+    );
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    expect(screen.queryByTestId("day-log-notes-toggle")).toBeNull();
+    expect(screen.queryByTestId("day-log-notes-input")).toBeNull();
+  });
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {
     renderDashboard(
@@ -141,12 +187,21 @@ describe("DashboardScreen", () => {
       }),
     );
 
-    await screen.findByTestId("day-log-save-button");
+    await screen.findByTestId("day-log-period-toggle");
     expect(screen.getByTestId("day-log-more-symptoms-button")).toBeTruthy();
+    expect(
+      screen.getByTestId("day-log-more-symptoms-button").props.accessibilityRole,
+    ).toBe("button");
+    expect(
+      screen.getByTestId("day-log-more-symptoms-button").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ expanded: false }));
 
     fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
 
     expect(screen.getByText("Jaw pain")).toBeTruthy();
+    expect(
+      screen.getByTestId("day-log-more-symptoms-button").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ expanded: true }));
   });
 
   it("shows localized builtin symptom labels in the daily log", async () => {
@@ -253,7 +308,7 @@ describe("DashboardScreen", () => {
     expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
   });
 
-  it("auto-fills the next period days after saving a newly marked first day", async () => {
+  it("auto-fills the next period days after autosaving a newly marked first day", async () => {
     const storage = createVolatileWebAppStorage();
     await storage.writeProfileRecord({
       lastPeriodStart: "2026-03-10",
@@ -273,12 +328,11 @@ describe("DashboardScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    renderDashboard(storage);
+    renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
 
-    await screen.findByTestId("day-log-save-button");
+    await screen.findByTestId("day-log-period-toggle");
 
     fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
-    fireEvent.press(screen.getByTestId("day-log-save-button"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
@@ -288,6 +342,80 @@ describe("DashboardScreen", () => {
         date: "2026-03-18",
         isPeriod: true,
       }),
+    );
+  });
+
+  it("autosaves day-log edits after the debounce window", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
+
+    await screen.findByTestId("day-log-period-toggle");
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    expect(screen.queryByTestId("day-log-save-button")).toBeNull();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
+    );
+    expect(await storage.readDayLogRecord("2026-03-17")).toEqual(
+      expect.objectContaining({
+        date: "2026-03-17",
+        isPeriod: true,
+      }),
+    );
+  });
+
+  it("flushes pending day-log edits when leaving the screen before debounce ends", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    const view = renderDashboard(storage, new Date(2026, 2, 17), "en", 1000);
+
+    await screen.findByTestId("day-log-period-toggle");
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+
+    view.unmount();
+
+    await waitFor(async () =>
+      expect(await storage.readDayLogRecord("2026-03-17")).toEqual(
+        expect.objectContaining({
+          date: "2026-03-17",
+          isPeriod: true,
+        }),
+      ),
     );
   });
 });

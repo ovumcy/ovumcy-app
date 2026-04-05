@@ -18,6 +18,7 @@ describe("day-log-editor-service", () => {
       showSexActivity: false,
       showBBT: true,
       showCervicalMucus: false,
+      showNotes: true,
     });
     expect(state.viewData.labels.bbtHint).toContain("°F");
   });
@@ -163,6 +164,7 @@ function createStorageMock(overrides = {}) {
       temperatureUnit: "f",
       trackCervicalMucus: false,
       hideSexChip: true,
+      hideNotes: false,
     }),
     readOnboardingRecord: jest.fn().mockResolvedValue({
       lastPeriodStart: "2026-03-10",

@@ -16,6 +16,7 @@ const CHART_PADDING = spacing.md;
 
 type StatsBarChartProps = {
   accentColor?: string;
+  accessibilityLabel?: string;
   baselineValue?: number | null;
   emptyLabel: string;
   points: StatsBarChartPoint[];
@@ -27,6 +28,7 @@ type StatsBarChartProps = {
 
 export function StatsBarChart({
   accentColor,
+  accessibilityLabel,
   baselineValue,
   emptyLabel,
   points,
@@ -62,7 +64,13 @@ export function StatsBarChart({
       : null;
 
   return (
-    <View style={styles.wrapper} testID={testID}>
+    <View
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="image"
+      accessible={Boolean(accessibilityLabel)}
+      style={styles.wrapper}
+      testID={testID}
+    >
       <View style={styles.chartShell}>
         {baselineOffset ? (
           <View style={[styles.baseline, { bottom: baselineOffset }]} />

@@ -69,6 +69,11 @@ export function StatsOverviewTrendSections({
             >
               <StatsBarChart
                 accentColor={colors.accentSecondary}
+                accessibilityLabel={buildChartAccessibilityLabel(
+                  viewData.bbtTrend.title,
+                  viewData.bbtTrend.points,
+                  ` ${viewData.bbtTrend.unitLabel}`,
+                )}
                 emptyLabel={viewData.trendChart?.emptyLabel ?? ""}
                 points={viewData.bbtTrend.points}
                 scaleMode="range"
@@ -105,6 +110,13 @@ export function StatsOverviewTrendSections({
                 ) : null}
               </View>
               <StatsBarChart
+                accessibilityLabel={buildChartAccessibilityLabel(
+                  viewData.trendChart.title,
+                  viewData.trendChart.points,
+                  ` ${viewData.trendChart.valueSuffix}`,
+                  viewData.trendChart.baselineValue,
+                  viewData.trendChart.legendAverageLabel,
+                )}
                 baselineValue={viewData.trendChart.baselineValue}
                 emptyLabel={viewData.trendChart.emptyLabel}
                 points={viewData.trendChart.points}
@@ -146,4 +158,30 @@ export function StatsOverviewTrendSections({
       </View>
     </>
   );
+}
+
+function buildChartAccessibilityLabel(
+  title: string,
+  points: {
+    label: string;
+    value: number;
+  }[],
+  valueSuffix: string,
+  baselineValue?: number | null,
+  baselineLabel?: string,
+): string {
+  const pointSummary =
+    points.length > 0
+      ? points
+          .map((point) => `${point.label}: ${point.value}${valueSuffix}`)
+          .join(". ")
+      : "";
+  const baselineSummary =
+    baselineValue !== null && baselineValue !== undefined && baselineLabel
+      ? `${baselineLabel}: ${baselineValue}${valueSuffix}.`
+      : "";
+
+  return [title, baselineSummary, pointSummary]
+    .filter((value) => value.trim().length > 0)
+    .join(" ");
 }

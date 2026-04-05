@@ -125,6 +125,7 @@ export function sanitizeTrackingSettingsValues(
     temperatureUnit: normalizeTemperatureUnit(values.temperatureUnit),
     trackCervicalMucus: values.trackCervicalMucus,
     hideSexChip: values.hideSexChip,
+    hideNotes: values.hideNotes,
   };
 }
 

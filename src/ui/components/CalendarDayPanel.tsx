@@ -21,7 +21,7 @@ type CalendarDayPanelProps = {
   manualCycleStart?: ManualCycleStartViewData | null;
   record: DayLogRecord;
   statusMessage: string;
-  statusTone?: "success" | "error" | undefined;
+  statusTone?: "error" | "info" | "success" | undefined;
   summaryViewData: CalendarDaySummaryViewData;
   editorViewData: DayLogEditorViewData;
   onAdd: () => void;
@@ -31,6 +31,7 @@ type CalendarDayPanelProps = {
   onManualCycleStart?: () => void | Promise<void>;
   onPatch: (updates: Partial<DayLogRecord>) => void;
   onSave: () => void | Promise<void>;
+  showsSaveAction?: boolean;
 };
 
 export function CalendarDayPanel({
@@ -51,6 +52,7 @@ export function CalendarDayPanel({
   onManualCycleStart,
   onPatch,
   onSave,
+  showsSaveAction = true,
 }: CalendarDayPanelProps) {
   const styles = useThemedStyles(createStyles);
 
@@ -74,6 +76,7 @@ export function CalendarDayPanel({
           onPatch={onPatch}
           onSave={onSave}
           record={record}
+          showsSaveAction={showsSaveAction}
           statusMessage={statusMessage}
           statusTone={statusTone}
           variant="calendar"

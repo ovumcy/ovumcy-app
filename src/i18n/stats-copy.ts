@@ -27,6 +27,10 @@ const statsCopyEn = {
   factsOnlyValue: "Predictions off",
   factsOnlyHint:
     "This mode keeps the page focused on logged history rather than estimates.",
+  mucusFertilityTitle: "High fertility",
+  mucusFertilityValue: "Mucus signal",
+  mucusFertilityDescription: (date: string) =>
+    `Egg-white mucus was logged on ${date}.`,
   cycleLengthCard: "Cycle length",
   cycleRange: "Range",
   averageLabel: "Average",
@@ -141,6 +145,10 @@ const statsCopyDe: StatsCopy = {
   factsOnlyValue: "Vorhersagen aus",
   factsOnlyHint:
     "In diesem Modus konzentriert sich die Seite auf deinen erfassten Verlauf statt auf Schätzungen.",
+  mucusFertilityTitle: "Hohe Fruchtbarkeit",
+  mucusFertilityValue: "Schleim-Signal",
+  mucusFertilityDescription: (date: string) =>
+    `Eiweißartiger Schleim wurde am ${date} erfasst.`,
   cycleLengthCard: "Zykluslänge",
   cycleRange: "Bereich",
   averageLabel: "Durchschnitt",
@@ -254,6 +262,10 @@ const statsCopyFr: StatsCopy = {
   factsOnlyValue: "Prédictions désactivées",
   factsOnlyHint:
     "Ce mode garde la page centrée sur l'historique enregistré plutôt que sur des estimations.",
+  mucusFertilityTitle: "Fertilité élevée",
+  mucusFertilityValue: "Signal de glaire",
+  mucusFertilityDescription: (date: string) =>
+    `Une glaire type blanc d'œuf a été enregistrée le ${date}.`,
   cycleLengthCard: "Durée du cycle",
   cycleRange: "Plage",
   averageLabel: "Moyenne",
@@ -366,6 +378,10 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     factsOnlyValue: "Предсказания выключены",
     factsOnlyHint:
       "Этот режим держит страницу сфокусированной на записанной истории, а не на оценках.",
+    mucusFertilityTitle: "Высокая фертильность",
+    mucusFertilityValue: "Сигнал по слизи",
+    mucusFertilityDescription: (date: string) =>
+      `Слизь как яичный белок была отмечена ${date}.`,
     cycleLengthCard: "Длина цикла",
     cycleRange: "Диапазон",
     averageLabel: "Среднее",
@@ -465,6 +481,10 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     factsOnlyValue: "Predicciones desactivadas",
     factsOnlyHint:
       "Este modo mantiene la página centrada en el historial registrado y no en estimaciones.",
+    mucusFertilityTitle: "Alta fertilidad",
+    mucusFertilityValue: "Señal por moco",
+    mucusFertilityDescription: (date: string) =>
+      `Se registró moco tipo clara de huevo el ${date}.`,
     cycleLengthCard: "Duración del ciclo",
     cycleRange: "Rango",
     averageLabel: "Promedio",

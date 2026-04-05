@@ -8,6 +8,7 @@ import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
 type SettingsTrackingSectionProps = {
+  onHideNotesChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
   onTemperatureUnitSelect: (
     value: LoadedSettingsState["trackingValues"]["temperatureUnit"],
@@ -21,6 +22,7 @@ type SettingsTrackingSectionProps = {
 };
 
 export function SettingsTrackingSection({
+  onHideNotesChange,
   onHideSexChipChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
@@ -66,6 +68,18 @@ export function SettingsTrackingSection({
         }}
         testID="settings-toggle-hide-sex-chip"
         value={!state.trackingValues.hideSexChip}
+      />
+
+      <BinaryToggleCard
+        description={viewData.tracking.hideNotes.hint}
+        descriptionPosition="below"
+        icon="📝"
+        label={viewData.tracking.hideNotes.label}
+        onValueChange={(value) => {
+          onHideNotesChange(!value);
+        }}
+        testID="settings-toggle-hide-notes"
+        value={!state.trackingValues.hideNotes}
       />
 
       <View style={styles.formGroup}>
