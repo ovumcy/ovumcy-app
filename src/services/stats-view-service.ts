@@ -238,6 +238,7 @@ export async function loadStatsScreenState(
     advancedInsights: false,
     doctorPDF: false,
     extendedReports: false,
+    partnerAccess: false,
   },
 ): Promise<LoadedStatsState> {
   const today = atLocalDay(now);
@@ -277,6 +278,7 @@ export function buildStatsViewData(
     advancedInsights: false,
     doctorPDF: false,
     extendedReports: false,
+    partnerAccess: false,
   },
 ): StatsViewData {
   const statsCopy = getStatsCopy(locale);

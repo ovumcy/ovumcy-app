@@ -6,7 +6,13 @@ import type {
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
+import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
+import type { PartnerCopy } from "../../i18n/partner-copy";
+import type {
+  ManagedCloudPartnerAccessLevel,
+  ManagedCloudPartnerAccessOverview,
+} from "../../sync/managed-cloud-api-client";
 
 export type BackupSyncFlowScreenProps = {
   authLoginValue: string;
@@ -17,6 +23,7 @@ export type BackupSyncFlowScreenProps = {
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
   isExportingRecoveryPhrase: boolean;
+  isPartnerBusy: boolean;
   isPreparing: boolean;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
@@ -24,8 +31,14 @@ export type BackupSyncFlowScreenProps = {
   onDeviceLabelChange: (value: string) => void;
   onEndpointChange: (value: string) => void;
   onExportRecoveryPhrase: () => void | Promise<void>;
+  onIssuePartnerInvite: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
+  onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
+  onPartnerAcceptInvite: () => void | Promise<void>;
+  onPartnerInviteEmailChange: (value: string) => void;
+  onPartnerRevokeGrant: (grantID: string) => void | Promise<void>;
+  onPartnerRevokeInvite: (inviteID: string) => void | Promise<void>;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
@@ -33,8 +46,18 @@ export type BackupSyncFlowScreenProps = {
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
   presentation: BackupSyncSetupPresentation;
+  partnerCopy: PartnerCopy;
+  partnerErrorMessage: string;
+  partnerInviteAccessLevel: ManagedCloudPartnerAccessLevel;
+  partnerInviteEmailValue: string;
+  partnerInviteLink: string;
+  partnerOverview: ManagedCloudPartnerAccessOverview | null;
+  pendingPartnerInviteToken: string;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
+  showPartnerOwnerControls: boolean;
+  showPartnerSection: boolean;
+  partnerStatusMessage: string;
   statusMessage: string;
   viewData: SettingsViewData["account"];
   backLabel?: string;
@@ -51,6 +74,7 @@ export function BackupSyncFlowScreen({
   hasSyncSession,
   hasStoredSyncSecrets,
   isExportingRecoveryPhrase,
+  isPartnerBusy,
   isPreparing,
   onAuthLoginChange,
   onAuthPasswordChange,
@@ -58,8 +82,14 @@ export function BackupSyncFlowScreen({
   onDeviceLabelChange,
   onEndpointChange,
   onExportRecoveryPhrase,
+  onIssuePartnerInvite,
   onLogin,
   onModeSelect,
+  onPartnerAccessLevelChange,
+  onPartnerAcceptInvite,
+  onPartnerInviteEmailChange,
+  onPartnerRevokeGrant,
+  onPartnerRevokeInvite,
   onPrepare,
   onRecoverAccess,
   onRecoveryPhraseChange,
@@ -67,8 +97,18 @@ export function BackupSyncFlowScreen({
   onRestore,
   onSyncNow,
   presentation,
+  partnerCopy,
+  partnerErrorMessage,
+  partnerInviteAccessLevel,
+  partnerInviteEmailValue,
+  partnerInviteLink,
+  partnerOverview,
+  pendingPartnerInviteToken,
   preferences,
   recoveryPhraseValue,
+  showPartnerOwnerControls,
+  showPartnerSection,
+  partnerStatusMessage,
   statusMessage,
   viewData,
   backLabel,
@@ -120,6 +160,27 @@ export function BackupSyncFlowScreen({
         statusMessage={statusMessage}
         viewData={viewData}
       />
+      {showPartnerSection ? (
+        <SettingsPartnerAccessSection
+          copy={partnerCopy}
+          errorMessage={partnerErrorMessage}
+          hasManagedSession={hasSyncSession && presentation.isManaged}
+          inviteAccessLevel={partnerInviteAccessLevel}
+          inviteEmailValue={partnerInviteEmailValue}
+          inviteLink={partnerInviteLink}
+          isBusy={isPartnerBusy}
+          onAcceptInvite={onPartnerAcceptInvite}
+          onAccessLevelChange={onPartnerAccessLevelChange}
+          onInviteEmailChange={onPartnerInviteEmailChange}
+          onIssueInvite={onIssuePartnerInvite}
+          onRevokeGrant={onPartnerRevokeGrant}
+          onRevokeInvite={onPartnerRevokeInvite}
+          overview={partnerOverview}
+          pendingInviteToken={pendingPartnerInviteToken}
+          showOwnerControls={showPartnerOwnerControls}
+          statusMessage={partnerStatusMessage}
+        />
+      ) : null}
     </ScreenScaffold>
   );
 }

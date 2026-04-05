@@ -338,6 +338,7 @@ describe("buildStatsViewData", () => {
         advancedInsights: true,
         doctorPDF: false,
         extendedReports: true,
+        partnerAccess: false,
       },
     );
 

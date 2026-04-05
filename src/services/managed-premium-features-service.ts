@@ -10,6 +10,7 @@ export const EMPTY_MANAGED_PREMIUM_FEATURES: ManagedCloudPremiumFeatures = {
   advancedInsights: false,
   doctorPDF: false,
   extendedReports: false,
+  partnerAccess: false,
 };
 
 export async function loadManagedPremiumFeatures(

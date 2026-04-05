@@ -17,6 +17,7 @@ const mockRouter = {
   back: mockBack,
   replace: mockReplace,
 };
+let mockSearchParams: { invite_token?: string | string[] } = {};
 let preventRemoveCallback:
   | ((options: { data: { action: { type: string } } }) => void)
   | null = null;
@@ -26,6 +27,7 @@ jest.mock("expo-router", () => {
     useFocusEffect: (effect: () => void | (() => void)) => {
       mockUseEffect(effect, [effect]);
     },
+    useLocalSearchParams: () => mockSearchParams,
     useRouter: () => mockRouter,
   };
 });
@@ -63,6 +65,13 @@ const mockRequestSensitiveActionChallenge = jest.mocked(
 const originalFetch = global.fetch;
 const originalPlatformOS = Platform.OS;
 
+function createJSONResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 describe("BackupSyncScreen", () => {
   beforeEach(() => {
     if (!global.requestAnimationFrame) {
@@ -79,6 +88,7 @@ describe("BackupSyncScreen", () => {
     mockRequestSensitiveActionChallenge.mockReset();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
     mockReplace.mockReset();
+    mockSearchParams = {};
     global.fetch = originalFetch;
   });
 
@@ -393,6 +403,334 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByTestId("settings-sync-restore-button")).toBeNull();
     expect(screen.getByTestId("settings-sync-disconnect-button")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-plan-blocked-banner")).toBeTruthy();
+  });
+
+  it("shows managed partner owner controls and issues an invite link for premium accounts", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          account_id: "managed-account-1",
+          email: "owner@example.com",
+          session_expires_at: "2026-03-21T08:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "manual",
+            updated_at: "2026-03-20T08:05:00.000Z",
+            effective_at: "2026-03-20T08:05:00.000Z",
+            explanation: "plan active",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: true,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: true,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          owned: {
+            invites: [],
+            grants: [],
+          },
+          shared_with_me: [],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse(
+          {
+            invite: {
+              id: "invite-1",
+              owner_account_id: "managed-account-1",
+              invited_email: "partner@example.com",
+              access_level: "full",
+              email_notifications_allowed: false,
+              status: "pending",
+              expires_at: "2026-04-10T00:00:00.000Z",
+              created_by: "managed-account-1",
+              created_at: "2026-04-03T00:00:00.000Z",
+              updated_at: "2026-04-03T00:00:00.000Z",
+            },
+            invite_token: "invite-token-1",
+          },
+          201,
+        ),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: true,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          owned: {
+            invites: [
+              {
+                id: "invite-1",
+                owner_account_id: "managed-account-1",
+                invited_email: "partner@example.com",
+                access_level: "full",
+                email_notifications_allowed: false,
+                status: "pending",
+                expires_at: "2026-04-10T00:00:00.000Z",
+                created_by: "managed-account-1",
+                created_at: "2026-04-03T00:00:00.000Z",
+                updated_at: "2026-04-03T00:00:00.000Z",
+              },
+            ],
+            grants: [],
+          },
+          shared_with_me: [],
+        })) as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-partner-section");
+    expect(screen.getByTestId("settings-partner-invite-email-input")).toBeTruthy();
+    expect(screen.queryByTestId("settings-partner-plan-banner")).toBeNull();
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-partner-invite-email-input"),
+      "partner@example.com",
+    );
+    fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
+    fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
+
+    await screen.findByTestId("settings-partner-invite-link-card");
+    expect(screen.getByTestId("settings-partner-invite-link").props.children).toBe(
+      "ovumcy://backup-sync?invite_token=invite-token-1",
+    );
+    expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
+  });
+
+  it("accepts a managed partner invite from the route token and clears the pending card", async () => {
+    mockSearchParams = { invite_token: "invite-token-1" };
+
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          account_id: "managed-account-1",
+          email: "partner@example.com",
+          session_expires_at: "2026-03-21T08:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "manual",
+            updated_at: "2026-03-20T08:05:00.000Z",
+            effective_at: "2026-03-20T08:05:00.000Z",
+            explanation: "plan active",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: false,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: false,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          owned: {
+            invites: [],
+            grants: [],
+          },
+          shared_with_me: [],
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          invite: {
+            id: "invite-1",
+            owner_account_id: "owner-1",
+            invited_email: "partner@example.com",
+            access_level: "summary",
+            email_notifications_allowed: false,
+            status: "accepted",
+            expires_at: "2026-04-10T00:00:00.000Z",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            accepted_account_id: "managed-account-1",
+            created_by: "owner-1",
+            created_at: "2026-04-03T00:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          },
+          grant: {
+            id: "grant-1",
+            owner_account_id: "owner-1",
+            partner_account_id: "managed-account-1",
+            partner_email: "partner@example.com",
+            access_level: "summary",
+            email_notifications_allowed: false,
+            source_invite_id: "invite-1",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            last_seen_at: "2026-04-05T08:05:00.000Z",
+            created_at: "2026-04-05T08:00:00.000Z",
+            updated_at: "2026-04-05T08:05:00.000Z",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: false,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          owned: {
+            invites: [],
+            grants: [],
+          },
+          shared_with_me: [
+            {
+              id: "grant-1",
+              owner_account_id: "owner-1",
+              partner_account_id: "managed-account-1",
+              partner_email: "partner@example.com",
+              access_level: "summary",
+              email_notifications_allowed: false,
+              source_invite_id: "invite-1",
+              accepted_at: "2026-04-05T08:00:00.000Z",
+              last_seen_at: "2026-04-05T08:05:00.000Z",
+              created_at: "2026-04-05T08:00:00.000Z",
+              updated_at: "2026-04-05T08:05:00.000Z",
+            },
+          ],
+        }),
+      ) as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-partner-accept-card");
+    fireEvent.press(screen.getByTestId("settings-partner-accept-button"));
+
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("settings-partner-accept-card")).toBeNull(),
+    );
+    expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-shared-grant-grant-1")).toBeTruthy();
   });
 
   it("shows managed cloud account fields on the dedicated backup and sync screen", async () => {

@@ -4,6 +4,12 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
   | "registration_failed"
   | "invalid_credentials"
+  | "invalid_partner_invite"
+  | "partner_access_not_found"
+  | "partner_access_unavailable"
+  | "partner_invite_email_mismatch"
+  | "partner_invite_expired"
+  | "partner_invite_not_found"
   | "unauthorized"
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
@@ -32,10 +38,59 @@ export type ManagedCloudPremiumFeatures = {
   advancedFertility: boolean;
   doctorPDF: boolean;
   extendedReports: boolean;
+  partnerAccess: boolean;
 };
 
 export type ManagedCloudBillingSnapshot = {
   premiumFeatures: ManagedCloudPremiumFeatures;
+};
+
+export type ManagedCloudPartnerAccessLevel = "summary" | "full";
+
+export type ManagedCloudPartnerInvite = {
+  id: string;
+  ownerAccountID: string;
+  invitedEmail: string;
+  accessLevel: ManagedCloudPartnerAccessLevel;
+  emailNotificationsAllowed: boolean;
+  status: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  acceptedAccountID: string | null;
+  revokedAt: string | null;
+  revokedReason: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ManagedCloudPartnerAccessGrant = {
+  id: string;
+  ownerAccountID: string;
+  partnerAccountID: string;
+  partnerEmail: string;
+  accessLevel: ManagedCloudPartnerAccessLevel;
+  emailNotificationsAllowed: boolean;
+  sourceInviteID: string | null;
+  acceptedAt: string;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+  revokedReason: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ManagedCloudPartnerAccessOverview = {
+  owned: {
+    invites: ManagedCloudPartnerInvite[];
+    grants: ManagedCloudPartnerAccessGrant[];
+  };
+  sharedWithMe: ManagedCloudPartnerAccessGrant[];
+};
+
+export type ManagedCloudPartnerInviteIssueResult = {
+  invite: ManagedCloudPartnerInvite;
+  inviteToken: string;
 };
 
 export type ManagedCloudAuthResult = {
@@ -59,6 +114,12 @@ export type ManagedCloudAPIClient = {
     | { ok: true; billing: ManagedCloudBillingSnapshot }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  getPartnerAccess(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; overview: ManagedCloudPartnerAccessOverview }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   getSession(
     sessionToken: string,
   ): Promise<
@@ -74,10 +135,46 @@ export type ManagedCloudAPIClient = {
   logout(
     sessionToken: string,
   ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  issuePartnerInvite(
+    sessionToken: string,
+    input: {
+      invitedEmail: string;
+      accessLevel: ManagedCloudPartnerAccessLevel;
+      emailNotificationsAllowed: boolean;
+    },
+  ): Promise<
+    | { ok: true; result: ManagedCloudPartnerInviteIssueResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   register(
     input: { email: string; password: string },
   ): Promise<
     | { ok: true; auth: ManagedCloudAuthResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  acceptPartnerInvite(
+    sessionToken: string,
+    inviteToken: string,
+  ): Promise<
+    | {
+        ok: true;
+        invite: ManagedCloudPartnerInvite;
+        grant: ManagedCloudPartnerAccessGrant;
+      }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  revokePartnerInvite(
+    sessionToken: string,
+    inviteID: string,
+  ): Promise<
+    | { ok: true; invite: ManagedCloudPartnerInvite }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  revokePartnerGrant(
+    sessionToken: string,
+    grantID: string,
+  ): Promise<
+    | { ok: true; grant: ManagedCloudPartnerAccessGrant }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
 };
@@ -116,7 +213,59 @@ type RawManagedCloudBillingSnapshot = {
     advanced_insights?: boolean;
     doctor_pdf?: boolean;
     extended_reports?: boolean;
+    partner_access?: boolean;
   };
+};
+
+type RawManagedCloudPartnerInvite = {
+  id: string;
+  owner_account_id: string;
+  invited_email: string;
+  access_level: ManagedCloudPartnerAccessLevel;
+  email_notifications_allowed: boolean;
+  status: string;
+  expires_at: string;
+  accepted_at?: string | null;
+  accepted_account_id?: string | null;
+  revoked_at?: string | null;
+  revoked_reason?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type RawManagedCloudPartnerAccessGrant = {
+  id: string;
+  owner_account_id: string;
+  partner_account_id: string;
+  partner_email: string;
+  access_level: ManagedCloudPartnerAccessLevel;
+  email_notifications_allowed: boolean;
+  source_invite_id?: string | null;
+  accepted_at: string;
+  last_seen_at?: string | null;
+  revoked_at?: string | null;
+  revoked_reason?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type RawManagedCloudPartnerAccessOverview = {
+  owned: {
+    invites: RawManagedCloudPartnerInvite[];
+    grants: RawManagedCloudPartnerAccessGrant[];
+  };
+  shared_with_me: RawManagedCloudPartnerAccessGrant[];
+};
+
+type RawManagedCloudPartnerInviteIssueResult = {
+  invite: RawManagedCloudPartnerInvite;
+  invite_token: string;
+};
+
+type RawManagedCloudPartnerInviteAcceptResult = {
+  invite: RawManagedCloudPartnerInvite;
+  grant: RawManagedCloudPartnerAccessGrant;
 };
 
 type ErrorPayload = {
@@ -195,6 +344,101 @@ export function createManagedCloudAPIClient(
           : { ok: false, errorCode: result.errorCode },
       );
     },
+
+    async getPartnerAccess(sessionToken) {
+      return requestJSON<RawManagedCloudPartnerAccessOverview>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/partner/access",
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawManagedCloudPartnerAccessOverview,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, overview: mapPartnerAccessOverview(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async issuePartnerInvite(sessionToken, input) {
+      return requestJSON<RawManagedCloudPartnerInviteIssueResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/partner/invites",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            invited_email: input.invitedEmail,
+            access_level: input.accessLevel,
+            email_notifications_allowed: input.emailNotificationsAllowed,
+          },
+        },
+        isRawManagedCloudPartnerInviteIssueResult,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, result: mapPartnerInviteIssueResult(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async acceptPartnerInvite(sessionToken, inviteToken) {
+      return requestJSON<RawManagedCloudPartnerInviteAcceptResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/partner/invites/accept",
+        {
+          method: "POST",
+          sessionToken,
+          body: { invite_token: inviteToken },
+        },
+        isRawManagedCloudPartnerInviteAcceptResult,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              invite: mapPartnerInvite(result.payload.invite),
+              grant: mapPartnerAccessGrant(result.payload.grant),
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async revokePartnerInvite(sessionToken, inviteID) {
+      return requestJSON<RawManagedCloudPartnerInvite>(
+        fetchImpl,
+        normalizedBaseURL,
+        `/account/partner/invites/${encodeURIComponent(inviteID)}`,
+        {
+          method: "DELETE",
+          sessionToken,
+        },
+        isRawManagedCloudPartnerInvite,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, invite: mapPartnerInvite(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async revokePartnerGrant(sessionToken, grantID) {
+      return requestJSON<RawManagedCloudPartnerAccessGrant>(
+        fetchImpl,
+        normalizedBaseURL,
+        `/account/partner/grants/${encodeURIComponent(grantID)}`,
+        {
+          method: "DELETE",
+          sessionToken,
+        },
+        isRawManagedCloudPartnerAccessGrant,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, grant: mapPartnerAccessGrant(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
   };
 }
 
@@ -248,7 +492,7 @@ async function requestJSON<T>(
   baseURL: string,
   path: string,
   options: {
-    method: "GET" | "POST";
+    method: "GET" | "POST" | "DELETE";
     body?: unknown;
     sessionToken?: string;
   },
@@ -326,6 +570,12 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "invalid_registration_input":
       case "registration_failed":
       case "invalid_credentials":
+      case "invalid_partner_invite":
+      case "partner_access_not_found":
+      case "partner_access_unavailable":
+      case "partner_invite_email_mismatch":
+      case "partner_invite_expired":
+      case "partner_invite_not_found":
       case "unauthorized":
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
@@ -402,7 +652,107 @@ function isRawManagedCloudBillingSnapshot(
     (typeof features.advanced_insights === "boolean" ||
       typeof features.advanced_insights === "undefined") &&
     (typeof features.extended_reports === "boolean" ||
-      typeof features.extended_reports === "undefined")
+      typeof features.extended_reports === "undefined") &&
+    (typeof features.partner_access === "boolean" ||
+      typeof features.partner_access === "undefined")
+  );
+}
+
+function isPartnerAccessLevel(
+  value: unknown,
+): value is ManagedCloudPartnerAccessLevel {
+  return value === "summary" || value === "full";
+}
+
+function isRawManagedCloudPartnerInvite(
+  value: unknown,
+): value is RawManagedCloudPartnerInvite {
+  return (
+    isObject(value) &&
+    typeof value.id === "string" &&
+    typeof value.owner_account_id === "string" &&
+    typeof value.invited_email === "string" &&
+    isPartnerAccessLevel(value.access_level) &&
+    typeof value.email_notifications_allowed === "boolean" &&
+    typeof value.status === "string" &&
+    typeof value.expires_at === "string" &&
+    (typeof value.accepted_at === "string" ||
+      value.accepted_at === null ||
+      typeof value.accepted_at === "undefined") &&
+    (typeof value.accepted_account_id === "string" ||
+      value.accepted_account_id === null ||
+      typeof value.accepted_account_id === "undefined") &&
+    (typeof value.revoked_at === "string" ||
+      value.revoked_at === null ||
+      typeof value.revoked_at === "undefined") &&
+    (typeof value.revoked_reason === "string" ||
+      typeof value.revoked_reason === "undefined") &&
+    typeof value.created_by === "string" &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function isRawManagedCloudPartnerAccessGrant(
+  value: unknown,
+): value is RawManagedCloudPartnerAccessGrant {
+  return (
+    isObject(value) &&
+    typeof value.id === "string" &&
+    typeof value.owner_account_id === "string" &&
+    typeof value.partner_account_id === "string" &&
+    typeof value.partner_email === "string" &&
+    isPartnerAccessLevel(value.access_level) &&
+    typeof value.email_notifications_allowed === "boolean" &&
+    (typeof value.source_invite_id === "string" ||
+      value.source_invite_id === null ||
+      typeof value.source_invite_id === "undefined") &&
+    typeof value.accepted_at === "string" &&
+    (typeof value.last_seen_at === "string" ||
+      value.last_seen_at === null ||
+      typeof value.last_seen_at === "undefined") &&
+    (typeof value.revoked_at === "string" ||
+      value.revoked_at === null ||
+      typeof value.revoked_at === "undefined") &&
+    (typeof value.revoked_reason === "string" ||
+      typeof value.revoked_reason === "undefined") &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function isRawManagedCloudPartnerAccessOverview(
+  value: unknown,
+): value is RawManagedCloudPartnerAccessOverview {
+  return (
+    isObject(value) &&
+    isObject(value.owned) &&
+    Array.isArray(value.owned.invites) &&
+    value.owned.invites.every(isRawManagedCloudPartnerInvite) &&
+    Array.isArray(value.owned.grants) &&
+    value.owned.grants.every(isRawManagedCloudPartnerAccessGrant) &&
+    Array.isArray(value.shared_with_me) &&
+    value.shared_with_me.every(isRawManagedCloudPartnerAccessGrant)
+  );
+}
+
+function isRawManagedCloudPartnerInviteIssueResult(
+  value: unknown,
+): value is RawManagedCloudPartnerInviteIssueResult {
+  return (
+    isObject(value) &&
+    typeof value.invite_token === "string" &&
+    isRawManagedCloudPartnerInvite(value.invite)
+  );
+}
+
+function isRawManagedCloudPartnerInviteAcceptResult(
+  value: unknown,
+): value is RawManagedCloudPartnerInviteAcceptResult {
+  return (
+    isObject(value) &&
+    isRawManagedCloudPartnerInvite(value.invite) &&
+    isRawManagedCloudPartnerAccessGrant(value.grant)
   );
 }
 
@@ -457,7 +807,70 @@ function mapBillingSnapshot(
       advancedInsights: features.advanced_insights === true,
       doctorPDF: features.doctor_pdf === true,
       extendedReports: features.extended_reports === true,
+      partnerAccess: features.partner_access === true,
     },
+  };
+}
+
+function mapPartnerInvite(
+  raw: RawManagedCloudPartnerInvite,
+): ManagedCloudPartnerInvite {
+  return {
+    id: raw.id,
+    ownerAccountID: raw.owner_account_id,
+    invitedEmail: raw.invited_email,
+    accessLevel: raw.access_level,
+    emailNotificationsAllowed: raw.email_notifications_allowed,
+    status: raw.status,
+    expiresAt: raw.expires_at,
+    acceptedAt: raw.accepted_at ?? null,
+    acceptedAccountID: raw.accepted_account_id ?? null,
+    revokedAt: raw.revoked_at ?? null,
+    revokedReason: raw.revoked_reason ?? "",
+    createdBy: raw.created_by,
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
+}
+
+function mapPartnerAccessGrant(
+  raw: RawManagedCloudPartnerAccessGrant,
+): ManagedCloudPartnerAccessGrant {
+  return {
+    id: raw.id,
+    ownerAccountID: raw.owner_account_id,
+    partnerAccountID: raw.partner_account_id,
+    partnerEmail: raw.partner_email,
+    accessLevel: raw.access_level,
+    emailNotificationsAllowed: raw.email_notifications_allowed,
+    sourceInviteID: raw.source_invite_id ?? null,
+    acceptedAt: raw.accepted_at,
+    lastSeenAt: raw.last_seen_at ?? null,
+    revokedAt: raw.revoked_at ?? null,
+    revokedReason: raw.revoked_reason ?? "",
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
+}
+
+function mapPartnerAccessOverview(
+  raw: RawManagedCloudPartnerAccessOverview,
+): ManagedCloudPartnerAccessOverview {
+  return {
+    owned: {
+      invites: raw.owned.invites.map(mapPartnerInvite),
+      grants: raw.owned.grants.map(mapPartnerAccessGrant),
+    },
+    sharedWithMe: raw.shared_with_me.map(mapPartnerAccessGrant),
+  };
+}
+
+function mapPartnerInviteIssueResult(
+  raw: RawManagedCloudPartnerInviteIssueResult,
+): ManagedCloudPartnerInviteIssueResult {
+  return {
+    invite: mapPartnerInvite(raw.invite),
+    inviteToken: raw.invite_token,
   };
 }
 

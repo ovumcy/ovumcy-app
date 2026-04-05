@@ -1,8 +1,9 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
+import { getPartnerCopy } from "../../../i18n/partner-copy";
 import { appStorage, readHasCompletedOnboarding } from "../../../services/app-bootstrap-service";
 import {
   buildBackupSyncDirtyState,
@@ -12,6 +13,15 @@ import {
   revertBackupSyncDraftState,
   type BackupSyncErrorScope,
 } from "../../../services/backup-sync-view-service";
+import {
+  acceptManagedPartnerInvite,
+  buildManagedPartnerInviteLink,
+  issueManagedPartnerInvite,
+  loadManagedPartnerAccess,
+  revokeManagedPartnerGrant,
+  revokeManagedPartnerInvite,
+} from "../../../services/managed-partner-access-service";
+import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
 import {
   clearUnauthorizedBackupSyncSession,
   connectBackupSyncAccount,
@@ -39,6 +49,10 @@ import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-syn
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type { BackupSyncFlowScreenProps } from "../BackupSyncFlowScreen";
+import type {
+  ManagedCloudPartnerAccessLevel,
+  ManagedCloudPartnerAccessOverview,
+} from "../../../sync/managed-cloud-api-client";
 
 type BackupSyncScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient | undefined;
@@ -63,6 +77,7 @@ export function useBackupSyncScreenController({
   const { colors, language } = useAppPreferences();
   const navigation = useNavigation();
   const router = useRouter();
+  const searchParams = useLocalSearchParams<{ invite_token?: string | string[] }>();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<LoadedSettingsState | null>(null);
@@ -82,13 +97,80 @@ export function useBackupSyncScreenController({
   const [isRestoringSync, setIsRestoringSync] = useState(false);
   const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
   const [isSyncingNow, setIsSyncingNow] = useState(false);
+  const [partnerOverview, setPartnerOverview] =
+    useState<ManagedCloudPartnerAccessOverview | null>(null);
+  const [partnerInviteEmailValue, setPartnerInviteEmailValue] = useState("");
+  const [partnerInviteAccessLevel, setPartnerInviteAccessLevel] =
+    useState<ManagedCloudPartnerAccessLevel>("summary");
+  const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
+  const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
+  const [partnerInviteLink, setPartnerInviteLink] = useState("");
+  const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState("");
+  const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
+  const [isPartnerBusy, setIsPartnerBusy] = useState(false);
   const shellCopy = getShellCopy(language);
+  const partnerCopy = getPartnerCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
   const isSyncDirty = buildBackupSyncDirtyState(state);
   const errorPresentation = resolveBackupSyncErrorPresentation(
     errorState?.code,
     errorState?.scope,
     viewData.account,
+  );
+
+  useEffect(() => {
+    const rawInviteToken = searchParams.invite_token;
+    const nextInviteToken = Array.isArray(rawInviteToken)
+      ? rawInviteToken[0] ?? ""
+      : rawInviteToken ?? "";
+    setPendingPartnerInviteToken(String(nextInviteToken).trim());
+  }, [searchParams.invite_token]);
+
+  const resetPartnerFeedback = useCallback(() => {
+    setPartnerErrorMessage("");
+    setPartnerStatusMessage("");
+  }, []);
+
+  const loadPartnerState = useCallback(
+    async (loadedState: LoadedSettingsState) => {
+      if (
+        loadedState.syncPreferences.mode !== "managed" ||
+        !loadedState.hasSyncSession
+      ) {
+        return {
+          errorMessage: "",
+          overview: null as ManagedCloudPartnerAccessOverview | null,
+          showOwnerControls: false,
+        };
+      }
+
+      const premiumFeatures = await loadManagedPremiumFeatures(
+        syncSecretStore,
+        loadedState.syncPreferences.mode,
+      );
+
+      const partnerResult = await loadManagedPartnerAccess(
+        syncSecretStore,
+        loadedState.syncPreferences.mode,
+      );
+      if (!partnerResult.ok) {
+        return {
+          errorMessage: resolvePartnerErrorMessage(
+            partnerResult.errorCode,
+            partnerCopy,
+          ),
+          overview: null as ManagedCloudPartnerAccessOverview | null,
+          showOwnerControls: premiumFeatures.partnerAccess,
+        };
+      }
+
+      return {
+        errorMessage: "",
+        overview: partnerResult.value,
+        showOwnerControls: premiumFeatures.partnerAccess,
+      };
+    },
+    [partnerCopy, syncSecretStore],
   );
 
   useFocusEffect(
@@ -118,6 +200,14 @@ export function useBackupSyncScreenController({
         setState(loadedState);
         setGeneratedRecoveryPhrase("");
         setRecoveryPhraseInputValue("");
+        resetPartnerFeedback();
+        const partnerState = await loadPartnerState(loadedState);
+        if (!isMounted) {
+          return;
+        }
+        setShowPartnerOwnerControls(partnerState.showOwnerControls);
+        setPartnerOverview(partnerState.overview);
+        setPartnerErrorMessage(partnerState.errorMessage);
         setIsLoading(false);
       }
 
@@ -127,7 +217,14 @@ export function useBackupSyncScreenController({
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, router, storage, syncSecretStore]),
+    }, [
+      effectiveNow,
+      loadPartnerState,
+      resetPartnerFeedback,
+      router,
+      storage,
+      syncSecretStore,
+    ]),
   );
 
   const resetFeedbackMessages = useCallback(() => {
@@ -141,6 +238,134 @@ export function useBackupSyncScreenController({
       current ? revertBackupSyncDraftState(current) : current,
     );
   }, [resetFeedbackMessages]);
+
+  async function reloadPartnerAccess(nextState: LoadedSettingsState) {
+    const partnerState = await loadPartnerState(nextState);
+    setShowPartnerOwnerControls(partnerState.showOwnerControls);
+    setPartnerOverview(partnerState.overview);
+    setPartnerErrorMessage(partnerState.errorMessage);
+  }
+
+  async function handleIssuePartnerInvite() {
+    if (!state) {
+      return;
+    }
+
+    resetPartnerFeedback();
+    setIsPartnerBusy(true);
+
+    const result = await issueManagedPartnerInvite(
+      syncSecretStore,
+      state.syncPreferences.mode,
+      {
+        invitedEmail: partnerInviteEmailValue,
+        accessLevel: partnerInviteAccessLevel,
+        emailNotificationsAllowed: false,
+      },
+    );
+
+    if (!result.ok) {
+      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    setPartnerInviteEmailValue("");
+    setPartnerInviteLink(buildManagedPartnerInviteLink(result.value.inviteToken));
+    setPartnerStatusMessage(partnerCopy.statusInviteIssued);
+    await reloadPartnerAccess(state);
+    setIsPartnerBusy(false);
+  }
+
+  async function handleAcceptPartnerInvite() {
+    if (!state || pendingPartnerInviteToken.length === 0) {
+      return;
+    }
+
+    resetPartnerFeedback();
+    setIsPartnerBusy(true);
+
+    const result = await acceptManagedPartnerInvite(
+      syncSecretStore,
+      state.syncPreferences.mode,
+      pendingPartnerInviteToken,
+    );
+    if (!result.ok) {
+      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    setPartnerStatusMessage(partnerCopy.statusInviteAccepted);
+    setPendingPartnerInviteToken("");
+    router.replace("/backup-sync");
+    await reloadPartnerAccess(state);
+    setIsPartnerBusy(false);
+  }
+
+  async function handleRevokePartnerInvite(inviteID: string) {
+    if (!state) {
+      return;
+    }
+
+    resetPartnerFeedback();
+    const confirmed = await openConfirmation(
+      partnerCopy.revokeInviteLabel,
+      viewData.common.confirmAction,
+      viewData.common.cancelAction,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsPartnerBusy(true);
+    const result = await revokeManagedPartnerInvite(
+      syncSecretStore,
+      state.syncPreferences.mode,
+      inviteID,
+    );
+    if (!result.ok) {
+      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    setPartnerStatusMessage(partnerCopy.statusInviteRevoked);
+    await reloadPartnerAccess(state);
+    setIsPartnerBusy(false);
+  }
+
+  async function handleRevokePartnerGrant(grantID: string) {
+    if (!state) {
+      return;
+    }
+
+    resetPartnerFeedback();
+    const confirmed = await openConfirmation(
+      partnerCopy.revokeGrantLabel,
+      viewData.common.confirmAction,
+      viewData.common.cancelAction,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsPartnerBusy(true);
+    const result = await revokeManagedPartnerGrant(
+      syncSecretStore,
+      state.syncPreferences.mode,
+      grantID,
+    );
+    if (!result.ok) {
+      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    setPartnerStatusMessage(partnerCopy.statusGrantRevoked);
+    await reloadPartnerAccess(state);
+    setIsPartnerBusy(false);
+  }
 
   usePreventRemove(
     isSyncDirty &&
@@ -256,6 +481,7 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setGeneratedRecoveryPhrase(result.recoveryPhrase);
     setAccountStatusMessage(
       result.regenerated
@@ -301,6 +527,7 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setAccountPasswordValue("");
     setAccountStatusMessage(
       resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
@@ -330,13 +557,13 @@ export function useBackupSyncScreenController({
     );
     if (!result.ok) {
       if (result.errorCode === "unauthorized") {
-        setState(
-          await clearUnauthorizedBackupSyncSession(
-            storage,
-            syncSecretStore,
-            syncReadyState,
-          ),
+        const clearedState = await clearUnauthorizedBackupSyncSession(
+          storage,
+          syncSecretStore,
+          syncReadyState,
         );
+        setState(clearedState);
+        await reloadPartnerAccess(clearedState);
       }
       setErrorState({
         code: result.errorCode,
@@ -348,6 +575,7 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setAccountStatusMessage(viewData.account.status.uploaded);
     setIsSyncingNow(false);
   }
@@ -394,13 +622,13 @@ export function useBackupSyncScreenController({
     );
     if (!result.ok) {
       if (result.errorCode === "unauthorized") {
-        setState(
-          await clearUnauthorizedBackupSyncSession(
-            storage,
-            syncSecretStore,
-            state,
-          ),
+        const clearedState = await clearUnauthorizedBackupSyncSession(
+          storage,
+          syncSecretStore,
+          state,
         );
+        setState(clearedState);
+        await reloadPartnerAccess(clearedState);
       }
       setErrorState({
         code: result.errorCode,
@@ -412,6 +640,7 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setAccountStatusMessage(viewData.account.status.restored);
     setIsRestoringSync(false);
   }
@@ -452,6 +681,7 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setAccountPasswordValue("");
     setRecoveryPhraseInputValue("");
     setAccountStatusMessage(viewData.account.status.recovered);
@@ -479,6 +709,7 @@ export function useBackupSyncScreenController({
     );
     setErrorState(null);
     setState(result.state);
+    await reloadPartnerAccess(result.state);
     setAccountStatusMessage(viewData.account.status.disconnected);
   }
 
@@ -532,6 +763,14 @@ export function useBackupSyncScreenController({
     syncCapabilities: state.syncCapabilities,
     viewData: viewData.account,
   });
+  const showPartnerSection =
+    presentation.isManaged &&
+    (pendingPartnerInviteToken.length > 0 ||
+      showPartnerOwnerControls ||
+      partnerInviteLink.length > 0 ||
+      (partnerOverview?.owned.invites.length ?? 0) > 0 ||
+      (partnerOverview?.owned.grants.length ?? 0) > 0 ||
+      (partnerOverview?.sharedWithMe.length ?? 0) > 0);
 
   return {
     accentColor: colors.accent,
@@ -545,6 +784,7 @@ export function useBackupSyncScreenController({
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,
       hasSyncSession: state.hasSyncSession,
       isExportingRecoveryPhrase,
+      isPartnerBusy,
       isPreparing: isPreparingSync,
       onBack: () => {
         router.replace("/(tabs)/settings");
@@ -591,11 +831,18 @@ export function useBackupSyncScreenController({
       onExportRecoveryPhrase: () => {
         void handleExportRecoveryPhrase();
       },
+      onIssuePartnerInvite: () => {
+        void handleIssuePartnerInvite();
+      },
       onLogin: () => {
         void handleConnectSync("login");
       },
       onModeSelect: (value) => {
         resetFeedbackMessages();
+        resetPartnerFeedback();
+        setPartnerInviteLink("");
+        setPartnerOverview(null);
+        setShowPartnerOwnerControls(false);
         setState((current) =>
           current
             ? {
@@ -609,6 +856,23 @@ export function useBackupSyncScreenController({
               }
             : current,
         );
+      },
+      onPartnerAcceptInvite: () => {
+        void handleAcceptPartnerInvite();
+      },
+      onPartnerAccessLevelChange: (value) => {
+        resetPartnerFeedback();
+        setPartnerInviteAccessLevel(value);
+      },
+      onPartnerInviteEmailChange: (value) => {
+        resetPartnerFeedback();
+        setPartnerInviteEmailValue(value);
+      },
+      onPartnerRevokeGrant: (grantID) => {
+        void handleRevokePartnerGrant(grantID);
+      },
+      onPartnerRevokeInvite: (inviteID) => {
+        void handleRevokePartnerInvite(inviteID);
       },
       onPrepare: () => {
         void handlePrepareSyncSetup();
@@ -629,13 +893,49 @@ export function useBackupSyncScreenController({
       onSyncNow: () => {
         void handleSyncNow();
       },
+      partnerCopy,
+      partnerErrorMessage,
+      partnerInviteAccessLevel,
+      partnerInviteEmailValue,
+      partnerInviteLink,
+      partnerOverview,
+      partnerStatusMessage,
+      pendingPartnerInviteToken,
       presentation,
       preferences: state.syncPreferences,
       recoveryPhraseValue: recoveryPhraseInputValue,
+      showPartnerOwnerControls,
+      showPartnerSection,
       statusMessage: accountStatusMessage,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,
     loadingTitle: shellCopy.loading.backupSyncTitle,
   };
+}
+
+function resolvePartnerErrorMessage(
+  errorCode: string,
+  copy: ReturnType<typeof getPartnerCopy>,
+): string {
+  switch (errorCode) {
+    case "not_connected":
+      return copy.errors.notConnected;
+    case "invalid_partner_invite":
+      return copy.errors.invalidPartnerInvite;
+    case "partner_invite_not_found":
+      return copy.errors.partnerInviteNotFound;
+    case "partner_invite_expired":
+      return copy.errors.partnerInviteExpired;
+    case "partner_invite_email_mismatch":
+      return copy.errors.partnerInviteEmailMismatch;
+    case "partner_access_unavailable":
+      return copy.errors.partnerAccessUnavailable;
+    case "partner_access_not_found":
+      return copy.errors.partnerAccessNotFound;
+    case "network_failed":
+      return copy.errors.networkFailed;
+    default:
+      return copy.errors.generic;
+  }
 }
