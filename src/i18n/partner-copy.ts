@@ -15,6 +15,12 @@ const partnerCopyEn = {
   accessLevelLabel: "Access level",
   accessLevelSummary: "Summary only",
   accessLevelFull: "Full access",
+  emailNotificationsLabel: "Partner email updates",
+  emailNotificationsHint:
+    "Allow Ovumcy Cloud to send partner-facing email updates for this invite and any accepted access created from it.",
+  emailNotificationsEnabled: "Allowed",
+  emailNotificationsDisabled: "Off",
+  emailNotificationsStatusLabel: "Email updates",
   issueInviteLabel: "Create invite link",
   inviteLinkTitle: "Invite link",
   inviteLinkHint:
@@ -70,6 +76,12 @@ const partnerCopyDe = {
   accessLevelLabel: "Zugriffslevel",
   accessLevelSummary: "Nur Zusammenfassung",
   accessLevelFull: "Voller Zugriff",
+  emailNotificationsLabel: "E-Mail-Updates an Partner",
+  emailNotificationsHint:
+    "Erlaube Ovumcy Cloud, partnerbezogene E-Mail-Updates für diese Einladung und den daraus angenommenen Zugriff zu senden.",
+  emailNotificationsEnabled: "Erlaubt",
+  emailNotificationsDisabled: "Aus",
+  emailNotificationsStatusLabel: "E-Mail-Updates",
   issueInviteLabel: "Einladungslink erstellen",
   inviteLinkTitle: "Einladungslink",
   inviteLinkHint:
@@ -125,6 +137,12 @@ const partnerCopyFr = {
   accessLevelLabel: "Niveau d’accès",
   accessLevelSummary: "Résumé seulement",
   accessLevelFull: "Accès complet",
+  emailNotificationsLabel: "Mises à jour e-mail au partenaire",
+  emailNotificationsHint:
+    "Autorise Ovumcy Cloud à envoyer des mises à jour e-mail côté partenaire pour cette invitation et tout accès accepté qui en découle.",
+  emailNotificationsEnabled: "Autorisées",
+  emailNotificationsDisabled: "Désactivées",
+  emailNotificationsStatusLabel: "Mises à jour e-mail",
   issueInviteLabel: "Créer un lien d’invitation",
   inviteLinkTitle: "Lien d’invitation",
   inviteLinkHint:
@@ -180,6 +198,12 @@ const partnerCopyRu = {
   accessLevelLabel: "Уровень доступа",
   accessLevelSummary: "Только сводка",
   accessLevelFull: "Полный доступ",
+  emailNotificationsLabel: "Email-обновления для партнёра",
+  emailNotificationsHint:
+    "Разрешить Ovumcy Cloud отправлять партнёру email-обновления для этого приглашения и принятого по нему доступа.",
+  emailNotificationsEnabled: "Разрешены",
+  emailNotificationsDisabled: "Выключены",
+  emailNotificationsStatusLabel: "Email-обновления",
   issueInviteLabel: "Создать ссылку-приглашение",
   inviteLinkTitle: "Ссылка-приглашение",
   inviteLinkHint:
@@ -235,6 +259,12 @@ const partnerCopyEs = {
   accessLevelLabel: "Nivel de acceso",
   accessLevelSummary: "Solo resumen",
   accessLevelFull: "Acceso completo",
+  emailNotificationsLabel: "Actualizaciones por correo para la pareja",
+  emailNotificationsHint:
+    "Permite que Ovumcy Cloud envíe actualizaciones por correo para esta invitación y para cualquier acceso aceptado que se cree a partir de ella.",
+  emailNotificationsEnabled: "Permitidas",
+  emailNotificationsDisabled: "Desactivadas",
+  emailNotificationsStatusLabel: "Actualizaciones por correo",
   issueInviteLabel: "Crear enlace de invitación",
   inviteLinkTitle: "Enlace de invitación",
   inviteLinkHint:

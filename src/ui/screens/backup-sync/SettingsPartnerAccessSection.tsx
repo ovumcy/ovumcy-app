@@ -9,6 +9,7 @@ import type {
 } from "../../../sync/managed-cloud-api-client";
 import { AppButton } from "../../components/AppButton";
 import { AppTextInput } from "../../components/AppTextInput";
+import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
 import { StatusBanner } from "../../components/StatusBanner";
@@ -22,11 +23,13 @@ type SettingsPartnerAccessSectionProps = {
   hasManagedSession: boolean;
   inviteAccessLevel: ManagedCloudPartnerAccessLevel;
   inviteEmailValue: string;
+  inviteEmailNotificationsAllowed: boolean;
   inviteLink: string;
   isBusy: boolean;
   onAcceptInvite: () => void | Promise<void>;
   onAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onInviteEmailChange: (value: string) => void;
+  onInviteEmailNotificationsAllowedChange: (value: boolean) => void;
   onIssueInvite: () => void | Promise<void>;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
   onRevokeInvite: (inviteID: string) => void | Promise<void>;
@@ -42,11 +45,13 @@ export function SettingsPartnerAccessSection({
   hasManagedSession,
   inviteAccessLevel,
   inviteEmailValue,
+  inviteEmailNotificationsAllowed,
   inviteLink,
   isBusy,
   onAcceptInvite,
   onAccessLevelChange,
   onInviteEmailChange,
+  onInviteEmailNotificationsAllowedChange,
   onIssueInvite,
   onRevokeGrant,
   onRevokeInvite,
@@ -138,6 +143,20 @@ export function SettingsPartnerAccessSection({
                   />
                 </View>
 
+                <BinaryToggleCard
+                  compact
+                  description={copy.emailNotificationsHint}
+                  label={copy.emailNotificationsLabel}
+                  onValueChange={onInviteEmailNotificationsAllowedChange}
+                  stateText={
+                    inviteEmailNotificationsAllowed
+                      ? copy.emailNotificationsEnabled
+                      : copy.emailNotificationsDisabled
+                  }
+                  testID="settings-partner-email-notifications-toggle"
+                  value={inviteEmailNotificationsAllowed}
+                />
+
                 <AppButton
                   disabled={isBusy}
                   label={copy.issueInviteLabel}
@@ -223,6 +242,12 @@ function PartnerInviteList({
                 ? copy.accessLevelFull
                 : copy.accessLevelSummary}
             </Text>
+            <Text style={styles.helperText}>
+              {copy.emailNotificationsStatusLabel}:{" "}
+              {invite.emailNotificationsAllowed
+                ? copy.emailNotificationsEnabled
+                : copy.emailNotificationsDisabled}
+            </Text>
             <AppButton
               label={copy.revokeInviteLabel}
               onPress={() => {
@@ -268,6 +293,12 @@ function PartnerGrantList({
                 : copy.accessLevelSummary}
             </Text>
             <Text style={styles.helperText}>
+              {copy.emailNotificationsStatusLabel}:{" "}
+              {grant.emailNotificationsAllowed
+                ? copy.emailNotificationsEnabled
+                : copy.emailNotificationsDisabled}
+            </Text>
+            <Text style={styles.helperText}>
               {copy.lastSeenLabel}: {grant.lastSeenAt ?? copy.lastSeenNever}
             </Text>
             <AppButton
@@ -309,6 +340,12 @@ function PartnerSharedGrantList({
               {grant.accessLevel === "full"
                 ? copy.accessLevelFull
                 : copy.accessLevelSummary}
+            </Text>
+            <Text style={styles.helperText}>
+              {copy.emailNotificationsStatusLabel}:{" "}
+              {grant.emailNotificationsAllowed
+                ? copy.emailNotificationsEnabled
+                : copy.emailNotificationsDisabled}
             </Text>
             <Text style={styles.helperText}>
               {copy.lastSeenLabel}: {grant.lastSeenAt ?? copy.lastSeenNever}

@@ -102,6 +102,8 @@ export function useBackupSyncScreenController({
   const [partnerInviteEmailValue, setPartnerInviteEmailValue] = useState("");
   const [partnerInviteAccessLevel, setPartnerInviteAccessLevel] =
     useState<ManagedCloudPartnerAccessLevel>("summary");
+  const [partnerInviteEmailNotificationsAllowed, setPartnerInviteEmailNotificationsAllowed] =
+    useState(false);
   const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
   const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
   const [partnerInviteLink, setPartnerInviteLink] = useState("");
@@ -260,7 +262,7 @@ export function useBackupSyncScreenController({
       {
         invitedEmail: partnerInviteEmailValue,
         accessLevel: partnerInviteAccessLevel,
-        emailNotificationsAllowed: false,
+        emailNotificationsAllowed: partnerInviteEmailNotificationsAllowed,
       },
     );
 
@@ -868,6 +870,10 @@ export function useBackupSyncScreenController({
         resetPartnerFeedback();
         setPartnerInviteEmailValue(value);
       },
+      onPartnerInviteEmailNotificationsAllowedChange: (value) => {
+        resetPartnerFeedback();
+        setPartnerInviteEmailNotificationsAllowed(value);
+      },
       onPartnerRevokeGrant: (grantID) => {
         void handleRevokePartnerGrant(grantID);
       },
@@ -897,6 +903,7 @@ export function useBackupSyncScreenController({
       partnerErrorMessage,
       partnerInviteAccessLevel,
       partnerInviteEmailValue,
+      partnerInviteEmailNotificationsAllowed,
       partnerInviteLink,
       partnerOverview,
       partnerStatusMessage,

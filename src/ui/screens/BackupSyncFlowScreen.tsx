@@ -37,6 +37,7 @@ export type BackupSyncFlowScreenProps = {
   onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onPartnerAcceptInvite: () => void | Promise<void>;
   onPartnerInviteEmailChange: (value: string) => void;
+  onPartnerInviteEmailNotificationsAllowedChange: (value: boolean) => void;
   onPartnerRevokeGrant: (grantID: string) => void | Promise<void>;
   onPartnerRevokeInvite: (inviteID: string) => void | Promise<void>;
   onPrepare: () => void | Promise<void>;
@@ -50,6 +51,7 @@ export type BackupSyncFlowScreenProps = {
   partnerErrorMessage: string;
   partnerInviteAccessLevel: ManagedCloudPartnerAccessLevel;
   partnerInviteEmailValue: string;
+  partnerInviteEmailNotificationsAllowed: boolean;
   partnerInviteLink: string;
   partnerOverview: ManagedCloudPartnerAccessOverview | null;
   pendingPartnerInviteToken: string;
@@ -88,6 +90,7 @@ export function BackupSyncFlowScreen({
   onPartnerAccessLevelChange,
   onPartnerAcceptInvite,
   onPartnerInviteEmailChange,
+  onPartnerInviteEmailNotificationsAllowedChange,
   onPartnerRevokeGrant,
   onPartnerRevokeInvite,
   onPrepare,
@@ -101,6 +104,7 @@ export function BackupSyncFlowScreen({
   partnerErrorMessage,
   partnerInviteAccessLevel,
   partnerInviteEmailValue,
+  partnerInviteEmailNotificationsAllowed,
   partnerInviteLink,
   partnerOverview,
   pendingPartnerInviteToken,
@@ -167,11 +171,15 @@ export function BackupSyncFlowScreen({
           hasManagedSession={hasSyncSession && presentation.isManaged}
           inviteAccessLevel={partnerInviteAccessLevel}
           inviteEmailValue={partnerInviteEmailValue}
+          inviteEmailNotificationsAllowed={partnerInviteEmailNotificationsAllowed}
           inviteLink={partnerInviteLink}
           isBusy={isPartnerBusy}
           onAcceptInvite={onPartnerAcceptInvite}
           onAccessLevelChange={onPartnerAccessLevelChange}
           onInviteEmailChange={onPartnerInviteEmailChange}
+          onInviteEmailNotificationsAllowedChange={
+            onPartnerInviteEmailNotificationsAllowedChange
+          }
           onIssueInvite={onIssuePartnerInvite}
           onRevokeGrant={onPartnerRevokeGrant}
           onRevokeInvite={onPartnerRevokeInvite}

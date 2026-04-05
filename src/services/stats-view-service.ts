@@ -33,6 +33,7 @@ import {
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
+import { buildStatsPremiumPhaseInsights } from "./stats-premium-phase-insights-service";
 import { buildStatsPremiumInsights } from "./stats-premium-insights-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
@@ -347,8 +348,15 @@ export function buildStatsViewData(
   const premiumInsights = premiumFeatures.advancedInsights
     ? buildStatsPremiumInsights(history)
     : null;
+  const premiumPhaseInsights = premiumFeatures.advancedInsights
+    ? buildStatsPremiumPhaseInsights(phaseMoodInsights, phaseSymptomInsights)
+    : null;
   const advancedInsightsSection = premiumInsights
-    ? buildAdvancedInsightsSection(premiumInsights, statsCopy)
+    ? buildAdvancedInsightsSection(
+        premiumInsights,
+        premiumPhaseInsights,
+        statsCopy,
+      )
     : null;
   const premiumFertility = premiumFeatures.advancedFertility
     ? buildStatsAdvancedFertility(
@@ -592,6 +600,7 @@ export function buildStatsViewData(
 
 function buildAdvancedInsightsSection(
   premiumInsights: ReturnType<typeof buildStatsPremiumInsights>,
+  premiumPhaseInsights: ReturnType<typeof buildStatsPremiumPhaseInsights> | null,
   statsCopy: ReturnType<typeof getStatsCopy>,
 ): StatsPremiumSectionViewData | null {
   const items: StatsPremiumSectionViewData["items"] = [];
@@ -678,6 +687,45 @@ function buildAdvancedInsightsSection(
         insight.deltaDays,
       ),
       tone: "info",
+    });
+  }
+
+  if (premiumPhaseInsights?.moodContrast) {
+    const insight = premiumPhaseInsights.moodContrast;
+    const bestPhaseLabel = statsCopy.phaseLabels[insight.bestPhase];
+    const worstPhaseLabel = statsCopy.phaseLabels[insight.worstPhase];
+    items.push({
+      key: "phase-mood-contrast",
+      title: statsCopy.advancedInsights.phaseMoodContrastTitle,
+      value: statsCopy.advancedInsights.phaseMoodContrastValue(
+        bestPhaseLabel,
+        worstPhaseLabel,
+      ),
+      description: statsCopy.advancedInsights.phaseMoodContrastDescription(
+        bestPhaseLabel,
+        insight.bestAverageMood,
+        worstPhaseLabel,
+        insight.worstAverageMood,
+        insight.deltaMood,
+      ),
+      tone: "info",
+    });
+  }
+
+  if (premiumPhaseInsights?.symptomPeak) {
+    const insight = premiumPhaseInsights.symptomPeak;
+    const phaseLabel = statsCopy.phaseLabels[insight.phase];
+    items.push({
+      key: "phase-symptom-peak",
+      title: statsCopy.advancedInsights.phaseSymptomPeakTitle,
+      value: insight.symptom.label,
+      description: statsCopy.advancedInsights.phaseSymptomPeakDescription(
+        phaseLabel,
+        insight.symptom.label,
+        insight.percentage,
+        insight.totalDays,
+      ),
+      tone: insight.percentage >= 50 ? "warning" : "info",
     });
   }
 

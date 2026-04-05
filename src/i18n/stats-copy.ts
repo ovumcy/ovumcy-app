@@ -118,6 +118,25 @@ const statsCopyEn = {
       deltaDays: number,
     ) =>
       `Cycles look longest in ${longestSeason} (${longestAverage.toFixed(1)} d) and shortest in ${shortestSeason} (${shortestAverage.toFixed(1)} d), a ${deltaDays.toFixed(1)} d swing.`,
+    phaseMoodContrastTitle: "Phase mood contrast",
+    phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+      `${bestPhase} vs ${worstPhase}`,
+    phaseMoodContrastDescription: (
+      bestPhase: string,
+      bestAverageMood: number,
+      worstPhase: string,
+      worstAverageMood: number,
+      deltaMood: number,
+    ) =>
+      `Average mood peaks in ${bestPhase} (${bestAverageMood.toFixed(1)}/5) and dips in ${worstPhase} (${worstAverageMood.toFixed(1)}/5), a ${deltaMood.toFixed(1)} point gap.`,
+    phaseSymptomPeakTitle: "Phase symptom peak",
+    phaseSymptomPeakDescription: (
+      phase: string,
+      symptom: string,
+      percentage: number,
+      totalDays: number,
+    ) =>
+      `${symptom} appears most often in the ${phase} phase, on ${percentage.toFixed(0)}% of ${totalDays} tracked days.`,
     seasonLabels: {
       winter: "Winter",
       spring: "Spring",
@@ -349,6 +368,25 @@ const statsCopyDe: StatsCopy = {
       deltaDays: number,
     ) =>
       `Deine Zyklen wirken in ${longestSeason} am längsten (${longestAverage.toFixed(1)} T.) und in ${shortestSeason} am kürzesten (${shortestAverage.toFixed(1)} T.), mit einer Spanne von ${deltaDays.toFixed(1)} T.`,
+    phaseMoodContrastTitle: "Stimmungskontrast der Phasen",
+    phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+      `${bestPhase} vs ${worstPhase}`,
+    phaseMoodContrastDescription: (
+      bestPhase: string,
+      bestAverageMood: number,
+      worstPhase: string,
+      worstAverageMood: number,
+      deltaMood: number,
+    ) =>
+      `Die durchschnittliche Stimmung ist in ${bestPhase} am höchsten (${bestAverageMood.toFixed(1)}/5) und in ${worstPhase} am niedrigsten (${worstAverageMood.toFixed(1)}/5), mit ${deltaMood.toFixed(1)} Punkten Unterschied.`,
+    phaseSymptomPeakTitle: "Symptomhöhepunkt einer Phase",
+    phaseSymptomPeakDescription: (
+      phase: string,
+      symptom: string,
+      percentage: number,
+      totalDays: number,
+    ) =>
+      `${symptom} tritt in der ${phase}-Phase am häufigsten auf: an ${percentage.toFixed(0)}% von ${totalDays} erfassten Tagen.`,
     seasonLabels: {
       winter: "Winter",
       spring: "Frühling",
@@ -574,6 +612,25 @@ const statsCopyFr: StatsCopy = {
       deltaDays: number,
     ) =>
       `Tes cycles paraissent les plus longs en ${longestSeason} (${longestAverage.toFixed(1)} j) et les plus courts en ${shortestSeason} (${shortestAverage.toFixed(1)} j), avec un écart de ${deltaDays.toFixed(1)} j.`,
+    phaseMoodContrastTitle: "Contraste d’humeur par phase",
+    phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+      `${bestPhase} vs ${worstPhase}`,
+    phaseMoodContrastDescription: (
+      bestPhase: string,
+      bestAverageMood: number,
+      worstPhase: string,
+      worstAverageMood: number,
+      deltaMood: number,
+    ) =>
+      `L’humeur moyenne est la plus haute en ${bestPhase} (${bestAverageMood.toFixed(1)}/5) et la plus basse en ${worstPhase} (${worstAverageMood.toFixed(1)}/5), soit ${deltaMood.toFixed(1)} point d’écart.`,
+    phaseSymptomPeakTitle: "Pic de symptôme par phase",
+    phaseSymptomPeakDescription: (
+      phase: string,
+      symptom: string,
+      percentage: number,
+      totalDays: number,
+    ) =>
+      `${symptom} apparaît le plus souvent pendant la phase ${phase}, sur ${percentage.toFixed(0)}% de ${totalDays} jours suivis.`,
     seasonLabels: {
       winter: "hiver",
       spring: "printemps",
@@ -788,6 +845,25 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         deltaDays: number,
       ) =>
         `Циклы выглядят самыми длинными в сезон ${longestSeason} (${longestAverage.toFixed(1)} д.) и самыми короткими в ${shortestSeason} (${shortestAverage.toFixed(1)} д.), разница ${deltaDays.toFixed(1)} д.`,
+      phaseMoodContrastTitle: "Контраст настроения по фазам",
+      phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+        `${bestPhase} vs ${worstPhase}`,
+      phaseMoodContrastDescription: (
+        bestPhase: string,
+        bestAverageMood: number,
+        worstPhase: string,
+        worstAverageMood: number,
+        deltaMood: number,
+      ) =>
+        `Среднее настроение самое высокое в фазе ${bestPhase} (${bestAverageMood.toFixed(1)}/5) и самое низкое в фазе ${worstPhase} (${worstAverageMood.toFixed(1)}/5), разница ${deltaMood.toFixed(1)} балла.`,
+      phaseSymptomPeakTitle: "Пик симптома по фазе",
+      phaseSymptomPeakDescription: (
+        phase: string,
+        symptom: string,
+        percentage: number,
+        totalDays: number,
+      ) =>
+        `${symptom} чаще всего встречается в фазе ${phase}: на ${percentage.toFixed(0)}% из ${totalDays} отмеченных дней.`,
       seasonLabels: {
         winter: "зима",
         spring: "весна",
@@ -997,6 +1073,25 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         deltaDays: number,
       ) =>
         `Tus ciclos parecen más largos en ${longestSeason} (${longestAverage.toFixed(1)} d) y más cortos en ${shortestSeason} (${shortestAverage.toFixed(1)} d), con una diferencia de ${deltaDays.toFixed(1)} d.`,
+      phaseMoodContrastTitle: "Contraste de ánimo por fase",
+      phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+        `${bestPhase} vs ${worstPhase}`,
+      phaseMoodContrastDescription: (
+        bestPhase: string,
+        bestAverageMood: number,
+        worstPhase: string,
+        worstAverageMood: number,
+        deltaMood: number,
+      ) =>
+        `El ánimo medio es más alto en ${bestPhase} (${bestAverageMood.toFixed(1)}/5) y más bajo en ${worstPhase} (${worstAverageMood.toFixed(1)}/5), con una diferencia de ${deltaMood.toFixed(1)} puntos.`,
+      phaseSymptomPeakTitle: "Pico de síntoma por fase",
+      phaseSymptomPeakDescription: (
+        phase: string,
+        symptom: string,
+        percentage: number,
+        totalDays: number,
+      ) =>
+        `${symptom} aparece con mayor frecuencia en la fase ${phase}, en el ${percentage.toFixed(0)}% de ${totalDays} días registrados.`,
       seasonLabels: {
         winter: "invierno",
         spring: "primavera",

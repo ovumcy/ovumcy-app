@@ -362,6 +362,10 @@ describe("buildStatsViewData", () => {
           title: "Seasonal pattern",
           value: "Winter",
         }),
+        expect.objectContaining({
+          key: "phase-symptom-peak",
+          title: "Phase symptom peak",
+        }),
       ]),
     );
     expect(viewData.advancedFertility?.title).toBe("Advanced fertility");

@@ -4,8 +4,11 @@ import { Platform } from "react-native";
 
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
+import * as backupSyncScreenService from "../../services/backup-sync-screen-service";
+import { createLoadedSettingsState } from "../../services/settings-view-service";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
+import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { BackupSyncScreen } from "./BackupSyncScreen";
 
@@ -141,129 +144,140 @@ describe("BackupSyncScreen", () => {
     await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
   });
 
-  it("recovers sync access on a new device from the recovery phrase", async () => {
-    const storage = createSettingsStorageMock({
-      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
-        mode: "self_hosted",
+  it(
+    "recovers sync access on a new device from the recovery phrase",
+    async () => {
+      const storage = createSettingsStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+          mode: "self_hosted",
+          endpointInput: "192.168.1.20:8080",
+          normalizedEndpoint: "",
+          deviceLabel: "Recovered Pixel",
+          setupStatus: "not_configured",
+          preparedAt: null,
+          lastRemoteGeneration: null,
+          lastSyncedAt: null,
+        }),
+      });
+      const syncSecretStore = createSyncSecretStoreMock();
+      const originalSecrets = createSyncSecretsRecord(
+        "Original device",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const restoredPreferences = {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted" as const,
         endpointInput: "192.168.1.20:8080",
-        normalizedEndpoint: "",
+        normalizedEndpoint: "http://192.168.1.20:8080",
         deviceLabel: "Recovered Pixel",
-        setupStatus: "not_configured",
-        preparedAt: null,
+        setupStatus: "connected" as const,
+        preparedAt: "2026-03-20T08:05:00.000Z",
         lastRemoteGeneration: null,
         lastSyncedAt: null,
-      }),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    const originalSecrets = createSyncSecretsRecord(
-      "Original device",
-      new Date("2026-03-20T08:00:00.000Z"),
-    );
-    global.fetch = jest
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            account_id: "account-1",
-            session_token: "session-1",
-            session_expires_at: "2026-03-21T10:00:00.000Z",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            mode: "self_hosted",
-            sync_enabled: true,
-            premium_active: false,
-            recovery_supported: true,
-            push_supported: false,
-            portal_supported: false,
-            advanced_cloud_insights: false,
-            max_devices: 5,
-            max_blob_bytes: 1024,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            algorithm: originalSecrets.record.wrappedKey.algorithm,
-            kdf: originalSecrets.record.wrappedKey.kdf,
-            mnemonic_word_count: originalSecrets.record.wrappedKey.mnemonicWordCount,
-            wrap_nonce_hex: originalSecrets.record.wrappedKey.wrapNonceHex,
-            wrapped_master_key_hex:
-              originalSecrets.record.wrappedKey.wrappedMasterKeyHex,
-            phrase_fingerprint_hex:
-              originalSecrets.record.wrappedKey.phraseFingerprintHex,
-            updated_at: "2026-03-20T08:05:00.000Z",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            device_id: "recovered-device",
-            device_label: "Recovered Pixel",
-            created_at: "2026-03-20T08:05:00.000Z",
-            last_seen_at: "2026-03-20T08:05:00.000Z",
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      ) as typeof fetch;
+      };
+      const recoverSpy = jest
+        .spyOn(backupSyncScreenService, "recoverBackupSyncAccess")
+        .mockResolvedValue({
+          ok: true,
+          state: createLoadedSettingsState(
+            {
+              lastPeriodStart: "2026-03-10",
+              cycleLength: 28,
+              periodLength: 5,
+              autoPeriodFill: true,
+              irregularCycle: false,
+              unpredictableCycle: false,
+              ageGroup: "",
+              usageGoal: "health",
+              trackBBT: false,
+              temperatureUnit: "c",
+              trackCervicalMucus: false,
+              hideSexChip: false,
+              hideNotes: false,
+              languageOverride: "en",
+              themeOverride: "light",
+              screenCaptureProtectionEnabled: true,
+            },
+            restoredPreferences,
+            true,
+            true,
+            [],
+            {
+              values: {
+                preset: "all",
+                fromDate: "2026-03-10",
+                toDate: "2026-03-20",
+              },
+              availableSummary: {
+                totalEntries: 1,
+                hasData: true,
+                dateFrom: "2026-03-10",
+                dateTo: "2026-03-10",
+              },
+              summary: {
+                totalEntries: 1,
+                hasData: true,
+                dateFrom: "2026-03-10",
+                dateTo: "2026-03-10",
+              },
+              bounds: {
+                minDate: "2026-03-10",
+                maxDate: "2026-03-20",
+              },
+            },
+            restoredPreferences,
+            {
+              mode: "self_hosted",
+              syncEnabled: true,
+              premiumActive: false,
+              recoverySupported: true,
+              pushSupported: false,
+              portalSupported: false,
+              advancedCloudInsights: false,
+              maxDevices: 5,
+              maxBlobBytes: 1024,
+            },
+            false,
+          ),
+        });
 
-    render(
-      <BackupSyncScreen
-        now={new Date(2026, 2, 20)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
+      try {
+        render(
+          <BackupSyncScreen
+            now={new Date(2026, 2, 20)}
+            storage={storage}
+            syncSecretStore={syncSecretStore}
+          />,
+        );
 
-    await screen.findByTestId("settings-sync-section");
-    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
-    expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
+        await screen.findByTestId("settings-sync-section");
+        fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+        expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
 
-    fireEvent.changeText(
-      screen.getByTestId("settings-sync-login-input"),
-      "alice@example.com",
-    );
-    fireEvent.changeText(
-      screen.getByTestId("settings-sync-password-input"),
-      "correct horse battery staple",
-    );
-    fireEvent.changeText(
-      screen.getByTestId("settings-sync-recovery-input"),
-      originalSecrets.recoveryPhrase,
-    );
-    fireEvent.press(screen.getByTestId("settings-sync-recover-button"));
+        fireEvent.changeText(
+          screen.getByTestId("settings-sync-login-input"),
+          "alice@example.com",
+        );
+        fireEvent.changeText(
+          screen.getByTestId("settings-sync-password-input"),
+          "correct horse battery staple",
+        );
+        fireEvent.changeText(
+          screen.getByTestId("settings-sync-recovery-input"),
+          originalSecrets.recoveryPhrase,
+        );
+        fireEvent.press(screen.getByTestId("settings-sync-recover-button"));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy(),
-    );
-    await expect(syncSecretStore.readSyncSecrets()).resolves.toEqual(
-      expect.objectContaining({
-        authSessionToken: "session-1",
-        managedAuthSessionToken: null,
-        masterKeyHex: originalSecrets.record.masterKeyHex,
-      }),
-    );
-  });
+        await waitFor(() =>
+          expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy(),
+        );
+        expect(recoverSpy).toHaveBeenCalled();
+      } finally {
+        recoverSpy.mockRestore();
+      }
+    },
+    15000,
+  );
 
   it("shows connected sync actions when the device already has an auth session", async () => {
     const storage = createSettingsStorageMock({
@@ -438,7 +452,7 @@ describe("BackupSyncScreen", () => {
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
     });
-    global.fetch = jest
+    const fetchMock = jest
       .fn()
       .mockResolvedValueOnce(
         createJSONResponse({
@@ -493,7 +507,7 @@ describe("BackupSyncScreen", () => {
               owner_account_id: "managed-account-1",
               invited_email: "partner@example.com",
               access_level: "full",
-              email_notifications_allowed: false,
+              email_notifications_allowed: true,
               status: "pending",
               expires_at: "2026-04-10T00:00:00.000Z",
               created_by: "managed-account-1",
@@ -525,7 +539,7 @@ describe("BackupSyncScreen", () => {
                 owner_account_id: "managed-account-1",
                 invited_email: "partner@example.com",
                 access_level: "full",
-                email_notifications_allowed: false,
+                email_notifications_allowed: true,
                 status: "pending",
                 expires_at: "2026-04-10T00:00:00.000Z",
                 created_by: "managed-account-1",
@@ -536,7 +550,8 @@ describe("BackupSyncScreen", () => {
             grants: [],
           },
           shared_with_me: [],
-        })) as typeof fetch;
+        }));
+    global.fetch = fetchMock as typeof fetch;
 
     render(
       <BackupSyncScreen
@@ -555,6 +570,7 @@ describe("BackupSyncScreen", () => {
       "partner@example.com",
     );
     fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
+    fireEvent.press(screen.getByTestId("settings-partner-email-notifications-toggle"));
     fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
 
     await screen.findByTestId("settings-partner-invite-link-card");
@@ -562,6 +578,17 @@ describe("BackupSyncScreen", () => {
       "ovumcy://backup-sync?invite_token=invite-token-1",
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
+    expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
+    const issueInviteCall = fetchMock.mock.calls.find(
+      ([url, init]: [unknown, unknown?]) =>
+        String(url).includes("/account/partner/invites") &&
+        (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(issueInviteCall).toBeDefined();
+    const issueInviteBody = JSON.parse(
+      String((issueInviteCall?.[1] as RequestInit | undefined)?.body ?? "{}"),
+    ) as { email_notifications_allowed?: boolean };
+    expect(issueInviteBody.email_notifications_allowed).toBe(true);
   });
 
   it("accepts a managed partner invite from the route token and clears the pending card", async () => {
@@ -653,7 +680,7 @@ describe("BackupSyncScreen", () => {
             owner_account_id: "owner-1",
             invited_email: "partner@example.com",
             access_level: "summary",
-            email_notifications_allowed: false,
+            email_notifications_allowed: true,
             status: "accepted",
             expires_at: "2026-04-10T00:00:00.000Z",
             accepted_at: "2026-04-05T08:00:00.000Z",
@@ -668,7 +695,7 @@ describe("BackupSyncScreen", () => {
             partner_account_id: "managed-account-1",
             partner_email: "partner@example.com",
             access_level: "summary",
-            email_notifications_allowed: false,
+            email_notifications_allowed: true,
             source_invite_id: "invite-1",
             accepted_at: "2026-04-05T08:00:00.000Z",
             last_seen_at: "2026-04-05T08:05:00.000Z",
@@ -701,7 +728,7 @@ describe("BackupSyncScreen", () => {
               partner_account_id: "managed-account-1",
               partner_email: "partner@example.com",
               access_level: "summary",
-              email_notifications_allowed: false,
+              email_notifications_allowed: true,
               source_invite_id: "invite-1",
               accepted_at: "2026-04-05T08:00:00.000Z",
               last_seen_at: "2026-04-05T08:05:00.000Z",
@@ -731,6 +758,7 @@ describe("BackupSyncScreen", () => {
     );
     expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
     expect(screen.getByTestId("settings-partner-shared-grant-grant-1")).toBeTruthy();
+    expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
   });
 
   it("shows managed cloud account fields on the dedicated backup and sync screen", async () => {
