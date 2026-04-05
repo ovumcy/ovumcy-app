@@ -312,6 +312,8 @@ describe("buildStatsViewData", () => {
         {
           ...createEmptyDayLogRecord("2026-03-30"),
           bbt: 36.32,
+          cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2026-03-31"),
@@ -339,6 +341,7 @@ describe("buildStatsViewData", () => {
         doctorPDF: false,
         extendedReports: true,
         partnerAccess: false,
+        reminders: false,
       },
     );
 
@@ -386,6 +389,14 @@ describe("buildStatsViewData", () => {
         expect.objectContaining({
           key: "thermal-shift",
           title: "Thermal shift",
+        }),
+        expect.objectContaining({
+          key: "ovulation-confirmation",
+          title: "Ovulation confirmation",
+        }),
+        expect.objectContaining({
+          key: "lh-peak",
+          title: "LH peak",
         }),
       ]),
     );

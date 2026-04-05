@@ -18,6 +18,10 @@ import {
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
+import {
+  buildCurrentCycleAdvancedFertilitySummary,
+  type CurrentCycleAdvancedFertilitySummaryViewData,
+} from "./current-cycle-advanced-fertility-summary-service";
 
 type DashboardCycleHeroPhaseKey =
   | "period"
@@ -51,6 +55,7 @@ export type DashboardCycleHeroViewData = {
 export type DashboardViewData = {
   cycleHero: DashboardCycleHeroViewData;
   predictionExplanation: string;
+  advancedFertilitySummary?: CurrentCycleAdvancedFertilitySummaryViewData;
   quickActionsTitle: string;
   quickActions: {
     period: string;
@@ -75,6 +80,9 @@ export async function loadDashboardScreenState(
   storage: LocalAppStorage,
   now: Date,
   locale = "en",
+  options: {
+    showLHTests?: boolean;
+  } = {},
 ): Promise<LoadedDashboardState> {
   const today = formatLocalDate(now);
   const rangeStart = formatLocalDate(
@@ -91,6 +99,8 @@ export async function loadDashboardScreenState(
     symptomIDs: filterKnownSymptomIDs(symptomRecords, todayEntry.symptomIDs),
   };
   const history = buildCycleHistorySummary(profile, historyRecords, now);
+  const editorPremiumOptions =
+    options.showLHTests === true ? { showLHTests: true as const } : {};
 
   return {
     historyRecords,
@@ -102,6 +112,9 @@ export async function loadDashboardScreenState(
       history,
       now,
       locale,
+      {
+        showAdvancedFertilitySummary: options.showLHTests === true,
+      },
     ),
     editorViewData: buildDayLogEditorViewData(
       profile,
@@ -109,6 +122,7 @@ export async function loadDashboardScreenState(
       symptomRecords,
       filteredTodayEntry.symptomIDs,
       locale,
+      editorPremiumOptions,
     ),
   };
 }
@@ -119,6 +133,9 @@ export function buildDashboardViewData(
   history: ReturnType<typeof buildCycleHistorySummary>,
   now: Date,
   locale = "en",
+  options: {
+    showAdvancedFertilitySummary?: boolean;
+  } = {},
 ): DashboardViewData {
   const dashboardCopy = getDashboardCopy(locale);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -128,10 +145,21 @@ export function buildDashboardViewData(
     historyRecords,
     now,
   );
+  const advancedFertilitySummary =
+    options.showAdvancedFertilitySummary === true
+      ? buildCurrentCycleAdvancedFertilitySummary(
+          history,
+          historyRecords,
+          projectedCycle.cycleAnchorDate,
+          profile.temperatureUnit,
+          locale,
+        )
+      : null;
 
   return {
     cycleHero: buildDashboardCycleHero(profile, projectedCycle, locale),
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
+    ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
     quickActions: {
       period: dashboardCopy.quickActions.period,

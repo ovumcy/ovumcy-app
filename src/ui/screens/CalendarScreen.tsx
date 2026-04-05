@@ -11,6 +11,9 @@ import {
   type LoadedCalendarState,
 } from "../../services/calendar-view-service";
 import { dismissCalendarPredictionNotice } from "../../services/calendar-notice-service";
+import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
+import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
+import { syncManagedLocalReminderSchedule } from "../../services/local-reminder-sync-service";
 import {
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
@@ -19,8 +22,11 @@ import {
   clearDayLogEditorRecord,
   saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
+import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { formatLocalDate } from "../../services/profile-settings-policy";
+import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
@@ -32,6 +38,8 @@ type CalendarScreenProps = {
   autosaveDebounceMs?: number;
   storage?: LocalAppStorage;
   now?: Date;
+  reminderScheduler?: LocalReminderScheduler;
+  syncSecretStore?: SyncSecretStore;
 };
 
 type EditorStatusState = {
@@ -49,6 +57,8 @@ export function CalendarScreen({
   autosaveDebounceMs,
   storage = appStorage,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
+  syncSecretStore = defaultSyncSecretStore,
 }: CalendarScreenProps) {
   const { colors, language } = useAppPreferences();
   const [effectiveNow] = useState(() => now ?? new Date());
@@ -65,41 +75,77 @@ export function CalendarScreen({
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
-  const refreshForActiveSelection = useCallback(async () => {
+  const refreshForActiveSelection = useCallback(async (options?: { syncReminders?: boolean }) => {
+    const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
+      storage,
+      syncSecretStore,
+    );
     const loadedState = await loadCalendarScreenState(
       storage,
       effectiveNow,
       monthValue,
       selectedDate,
       language,
+      {
+        showLHTests: premiumFeatures.advancedFertility,
+      },
     );
     setState(loadedState);
     setIsLoading(false);
-  }, [effectiveNow, language, monthValue, selectedDate, storage]);
+    if (options?.syncReminders) {
+      await syncManagedLocalReminderSchedule(
+        storage,
+        syncSecretStore,
+        reminderScheduler,
+        loadedState.profile,
+        {
+          locale: language,
+          now: effectiveNow,
+        },
+      );
+    }
+    return loadedState;
+  }, [
+    effectiveNow,
+    language,
+    monthValue,
+    reminderScheduler,
+    selectedDate,
+    storage,
+    syncSecretStore,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      void loadCalendarScreenState(
-        storage,
-        effectiveNow,
-        monthValue,
-        selectedDate,
-        language,
-      ).then((loadedState) => {
+      void (async () => {
+        const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
+          storage,
+          syncSecretStore,
+        );
+        const loadedState = await loadCalendarScreenState(
+          storage,
+          effectiveNow,
+          monthValue,
+          selectedDate,
+          language,
+          {
+            showLHTests: premiumFeatures.advancedFertility,
+          },
+        );
         if (!isMounted) {
           return;
         }
 
         setState(loadedState);
         setIsLoading(false);
-      });
+      })();
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, language, monthValue, selectedDate, storage]),
+    }, [effectiveNow, language, monthValue, selectedDate, storage, syncSecretStore]),
   );
 
   const {
@@ -119,7 +165,9 @@ export function CalendarScreen({
         }
       : null,
     onPersist: (record) => saveDayLogEditorRecord(storage, record),
-    onSaved: refreshForActiveSelection,
+    onSaved: async () => {
+      await refreshForActiveSelection({ syncReminders: true });
+    },
     record: state?.selectedRecord ?? null,
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
   });
@@ -195,7 +243,7 @@ export function CalendarScreen({
           }
         : current,
     );
-    await refreshForActiveSelection();
+    await refreshForActiveSelection({ syncReminders: true });
     setEditorMode("view");
     setStatus({
       message: state.editorViewData.actions.deletedLabel,
@@ -238,7 +286,7 @@ export function CalendarScreen({
       return;
     }
 
-    await refreshForActiveSelection();
+    await refreshForActiveSelection({ syncReminders: true });
     setEditorMode("view");
     setStatus({
       message: dashboardCopy.manualCycleStartSaved,

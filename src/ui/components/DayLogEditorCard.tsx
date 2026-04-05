@@ -50,6 +50,7 @@ export type DayLogEditorSectionKey =
   | "intimacy"
   | "bbt"
   | "cervicalMucus"
+  | "lhTest"
   | "notes";
 
 export function DayLogEditorCard({
@@ -282,6 +283,23 @@ export function DayLogEditorCard({
               />
             </View>
           ) : null}
+
+          {viewData.visibility.showLHTest ? (
+            <View
+              onLayout={handleSectionLayout("lhTest")}
+              style={resolveSectionStyle("lhTest", styles.section)}
+            >
+              <Text style={styles.sectionLabel}>{viewData.labels.lhTest}</Text>
+              <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
+              <ChoiceGroup
+                compact
+                onSelect={(value) => onPatch({ lhTest: value })}
+                options={viewData.options.lhTest}
+                selectedValue={record.lhTest}
+                testIDPrefix="day-log-lh"
+              />
+            </View>
+          ) : null}
         </>
       ) : (
         <>
@@ -300,6 +318,23 @@ export function DayLogEditorCard({
                 options={viewData.options.cervicalMucus}
                 selectedValue={record.cervicalMucus}
                 testIDPrefix="day-log-cervical"
+              />
+            </View>
+          ) : null}
+
+          {viewData.visibility.showLHTest ? (
+            <View
+              onLayout={handleSectionLayout("lhTest")}
+              style={resolveSectionStyle("lhTest", styles.section)}
+            >
+              <Text style={styles.sectionLabel}>{viewData.labels.lhTest}</Text>
+              <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
+              <ChoiceGroup
+                compact
+                onSelect={(value) => onPatch({ lhTest: value })}
+                options={viewData.options.lhTest}
+                selectedValue={record.lhTest}
+                testIDPrefix="day-log-lh"
               />
             </View>
           ) : null}

@@ -6,6 +6,8 @@ import {
   type ExportDeliveryClient,
 } from "../../services/export-delivery";
 import type { ExportServiceDependencies } from "../../services/export-service";
+import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
+import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
@@ -17,6 +19,7 @@ type SettingsScreenProps = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies;
   now?: Date;
+  reminderScheduler?: LocalReminderScheduler;
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
 };
@@ -25,6 +28,7 @@ export function SettingsScreen({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
 }: SettingsScreenProps) {
@@ -33,6 +37,7 @@ export function SettingsScreen({
       exportDeliveryClient,
       exportServiceDependencies,
       now,
+      reminderScheduler,
       storage,
       syncSecretStore,
     });

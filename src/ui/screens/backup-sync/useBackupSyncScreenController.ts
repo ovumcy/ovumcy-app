@@ -15,7 +15,6 @@ import {
 } from "../../../services/backup-sync-view-service";
 import {
   acceptManagedPartnerInvite,
-  buildManagedPartnerInviteLink,
   issueManagedPartnerInvite,
   loadManagedPartnerAccess,
   revokeManagedPartnerGrant,
@@ -273,8 +272,8 @@ export function useBackupSyncScreenController({
     }
 
     setPartnerInviteEmailValue("");
-    setPartnerInviteLink(buildManagedPartnerInviteLink(result.value.inviteToken));
-    setPartnerStatusMessage(partnerCopy.statusInviteIssued);
+    setPartnerInviteLink(result.value.inviteURL);
+    setPartnerStatusMessage(resolvePartnerInviteIssuedStatusMessage(result.value, partnerCopy));
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
   }
@@ -905,6 +904,7 @@ export function useBackupSyncScreenController({
       partnerInviteEmailValue,
       partnerInviteEmailNotificationsAllowed,
       partnerInviteLink,
+      partnerLocale: language,
       partnerOverview,
       partnerStatusMessage,
       pendingPartnerInviteToken,
@@ -944,5 +944,30 @@ function resolvePartnerErrorMessage(
       return copy.errors.networkFailed;
     default:
       return copy.errors.generic;
+  }
+}
+
+function resolvePartnerInviteIssuedStatusMessage(
+  result: {
+    emailDelivery: {
+      requested: boolean;
+      status: "disabled" | "sent" | "failed" | "unavailable";
+    };
+  },
+  copy: ReturnType<typeof getPartnerCopy>,
+): string {
+  if (!result.emailDelivery.requested || result.emailDelivery.status === "disabled") {
+    return copy.statusInviteIssued;
+  }
+
+  switch (result.emailDelivery.status) {
+    case "sent":
+      return copy.statusInviteIssuedEmailSent;
+    case "failed":
+      return copy.statusInviteIssuedEmailFailed;
+    case "unavailable":
+      return copy.statusInviteIssuedEmailUnavailable;
+    default:
+      return copy.statusInviteIssued;
   }
 }

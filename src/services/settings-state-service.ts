@@ -27,7 +27,10 @@ export async function loadSettingsScreenState(
   let syncCapabilities = null;
   let syncPreferences = syncState.preferences;
   let hasSyncSession = syncState.hasAuthSession;
-  let managedDoctorPDFAllowed = false;
+  let managedPremiumAccess = {
+    doctorPDF: false,
+    reminders: false,
+  };
   if (
     syncState.hasAuthSession &&
     (syncState.preferences.setupStatus === "connected" ||
@@ -39,12 +42,14 @@ export async function loadSettingsScreenState(
     );
     if (capabilitiesResult.ok) {
       syncCapabilities = capabilitiesResult.capabilities;
-      managedDoctorPDFAllowed = (
-        await loadManagedPremiumFeatures(
-          secretStore,
-          syncState.preferences.mode,
-        )
-      ).doctorPDF;
+      const premiumFeatures = await loadManagedPremiumFeatures(
+        secretStore,
+        syncState.preferences.mode,
+      );
+      managedPremiumAccess = {
+        doctorPDF: premiumFeatures.doctorPDF,
+        reminders: premiumFeatures.reminders,
+      };
     } else if (capabilitiesResult.errorCode === "unauthorized") {
       syncPreferences = await clearLocalSyncSession(
         storage,
@@ -64,6 +69,6 @@ export async function loadSettingsScreenState(
     exportResult.state,
     syncPreferences,
     syncCapabilities,
-    managedDoctorPDFAllowed,
+    managedPremiumAccess,
   );
 }

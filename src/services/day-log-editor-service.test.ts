@@ -18,9 +18,30 @@ describe("day-log-editor-service", () => {
       showSexActivity: false,
       showBBT: true,
       showCervicalMucus: false,
+      showLHTest: false,
       showNotes: true,
     });
     expect(state.viewData.labels.bbtHint).toContain("°F");
+  });
+
+  it("shows LH test controls only when advanced fertility premium is enabled", async () => {
+    const state = await loadDayLogEditorState(
+      createStorageMock(),
+      "2026-03-17",
+      "en",
+      {
+        showLHTests: true,
+      },
+    );
+
+    expect(state.viewData.visibility.showLHTest).toBe(true);
+    expect(state.viewData.options.lhTest).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "negative", label: "Negative" }),
+        expect.objectContaining({ value: "high", label: "High" }),
+        expect.objectContaining({ value: "peak", label: "Peak" }),
+      ]),
+    );
   });
 
   it("normalizes day log patches before persisting", async () => {

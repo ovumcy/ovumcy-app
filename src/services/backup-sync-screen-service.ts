@@ -66,7 +66,7 @@ export async function prepareBackupSyncSetup(
       currentState.exportState,
       result.preferences,
       null,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
     recoveryPhrase: result.recoveryPhrase,
     regenerated,
@@ -109,7 +109,7 @@ export async function saveBackupSyncDraft(
       currentState.exportState,
       result.preferences,
       null,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -156,7 +156,7 @@ export async function connectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       result.capabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -201,7 +201,7 @@ export async function recoverBackupSyncAccess(
       currentState.exportState,
       result.preferences,
       result.capabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -242,7 +242,7 @@ export async function uploadBackupSyncSnapshot(
       currentState.exportState,
       result.preferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -286,7 +286,7 @@ export async function restoreBackupSyncSnapshot(
       exportResult.state,
       result.preferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -316,7 +316,10 @@ export async function disconnectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       null,
-      false,
+      {
+        doctorPDF: false,
+        reminders: false,
+      },
     ),
   };
 }
@@ -341,6 +344,9 @@ export async function clearUnauthorizedBackupSyncSession(
     currentState.exportState,
     nextPreferences,
     null,
-    false,
+    {
+      doctorPDF: false,
+      reminders: false,
+    },
   );
 }

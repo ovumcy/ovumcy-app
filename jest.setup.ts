@@ -25,6 +25,27 @@ jest.mock("@react-native-community/slider", () => {
   };
 });
 
+jest.mock("expo-notifications", () => ({
+  AndroidImportance: {
+    DEFAULT: "DEFAULT",
+  },
+  IosAuthorizationStatus: {
+    PROVISIONAL: 3,
+  },
+  getPermissionsAsync: jest.fn(async () => ({
+    granted: true,
+    ios: { status: 3 },
+  })),
+  requestPermissionsAsync: jest.fn(async () => ({
+    granted: true,
+    ios: { status: 3 },
+  })),
+  getAllScheduledNotificationsAsync: jest.fn(async () => []),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  scheduleNotificationAsync: jest.fn(async () => "notification-1"),
+  setNotificationChannelAsync: jest.fn(async () => undefined),
+}));
+
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");

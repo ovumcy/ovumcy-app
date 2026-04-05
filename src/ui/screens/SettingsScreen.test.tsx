@@ -9,6 +9,7 @@ import {
 import { BackHandler, Platform } from "react-native";
 
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
+import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { openConfirmation } from "../confirm/open-confirmation";
@@ -383,6 +384,8 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
     expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
     expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-reminders-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-reminders-locked-banner")).toBeTruthy();
     expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
@@ -479,6 +482,7 @@ describe("SettingsScreen", () => {
             premium_features: {
               doctor_pdf: true,
               advanced_insights: true,
+              reminders: false,
             },
           }),
           {
@@ -512,6 +516,136 @@ describe("SettingsScreen", () => {
       ),
     );
     expect(buildPDFContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves managed reminder settings and syncs the local device schedule", async () => {
+    const storage = createSettingsStorageMock();
+    const reminderScheduler: LocalReminderScheduler = {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    };
+    const syncSecretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "billing_subscription",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "plan active",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            premium_features: {
+              doctor_pdf: false,
+              advanced_insights: false,
+              reminders: true,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            premium_features: {
+              doctor_pdf: false,
+              advanced_insights: false,
+              reminders: true,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            enabled: false,
+            schedules: [],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        reminderScheduler={reminderScheduler}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-reminders-section");
+    expect(screen.queryByTestId("settings-reminders-locked-banner")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
+    fireEvent.changeText(screen.getByTestId("settings-reminder-time-input"), "21:30");
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dailyLogReminderEnabled: true,
+          reminderTime: "21:30",
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(reminderScheduler.sync).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "daily_log",
+            trigger: {
+              type: "daily",
+              hour: 21,
+              minute: 30,
+            },
+          }),
+        ]),
+      ),
+    );
+    expect(screen.getByTestId("settings-reminders-status-banner")).toBeTruthy();
   });
 
   it("updates the native export range through the date picker instead of free-text input", async () => {

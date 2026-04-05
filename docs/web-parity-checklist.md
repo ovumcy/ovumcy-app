@@ -238,6 +238,7 @@ before and after UI changes.
   - cycle section
   - symptoms section
   - tracking section
+  - reminders section
   - interface section
   - account / recovery blocks
   - data / export section
@@ -275,6 +276,11 @@ before and after UI changes.
   - app-owned managed export perk:
     - PDF only when the current managed cloud account has an active plan
   - summary lines and local data hint
+- Reminders section:
+  - appears between tracking and interface
+  - keeps local-only privacy copy visible
+  - stores reminder preferences locally
+  - shows a managed-premium locked state until reminders entitlement is active
 - Danger zone:
   - clear-data path
 
@@ -314,6 +320,8 @@ before and after UI changes.
   drift:
   - dashboard and calendar journals use autosave with explicit retry-only save
     affordances instead of a permanent save row;
+  - reminders are delivered through local device notifications only, with a
+    managed premium entitlement acting as the scheduler gate;
   - account-backed auth and recovery flows are replaced by local encrypted sync
     setup only;
   - PDF export is an app-managed perk gated by an active managed cloud plan,

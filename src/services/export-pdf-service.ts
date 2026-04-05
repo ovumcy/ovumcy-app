@@ -40,7 +40,7 @@ const MONTH_WEEKDAY_HEIGHT = 10;
 const MONTH_DAY_HEIGHT = 13;
 const TABLE_ROW_HEIGHT = 16;
 const TABLE_HEADER_HEIGHT = 18;
-const TABLE_COLUMN_WIDTHS = [52, 38, 34, 42, 34, 40, 42, 56, 124, 122] as const;
+const TABLE_COLUMN_WIDTHS = [52, 38, 34, 42, 34, 40, 42, 56, 42, 112, 92] as const;
 
 const COLOR_TEXT = hexColor("#4B3D31");
 const COLOR_MUTED = hexColor("#7F6A57");
@@ -84,6 +84,7 @@ type ExportPDFCycleTableColumn = {
     | "sex"
     | "bbt"
     | "cervical"
+    | "lh"
     | "symptoms"
     | "notes";
   width: number;
@@ -98,8 +99,9 @@ const TABLE_COLUMNS: readonly ExportPDFCycleTableColumn[] = [
   { key: "sex", width: TABLE_COLUMN_WIDTHS[5] },
   { key: "bbt", width: TABLE_COLUMN_WIDTHS[6] },
   { key: "cervical", width: TABLE_COLUMN_WIDTHS[7] },
-  { key: "symptoms", width: TABLE_COLUMN_WIDTHS[8] },
-  { key: "notes", width: TABLE_COLUMN_WIDTHS[9] },
+  { key: "lh", width: TABLE_COLUMN_WIDTHS[8] },
+  { key: "symptoms", width: TABLE_COLUMN_WIDTHS[9] },
+  { key: "notes", width: TABLE_COLUMN_WIDTHS[10] },
 ];
 
 export async function buildExportPDFContent(
@@ -175,6 +177,7 @@ function buildExportPDFCycleDay(
     sexActivity: resolveSexActivityLabel(record.sexActivity, dayLogLabels),
     bbt: record.bbt > 0 ? record.bbt : 0,
     cervicalMucus: resolveCervicalMucusLabel(record.cervicalMucus, dayLogLabels),
+    lhTest: resolveLHTestLabel(record.lhTest, dayLogLabels),
     cycleFactors: resolveCycleFactorLabels(record.cycleFactorKeys, dayLogLabels),
     symptoms: resolveSymptomLabels(record.symptomIDs, symptomLookup),
     notes: record.notes.trim(),
@@ -660,6 +663,8 @@ function resolveCycleTableValue(
       return entry.bbt > 0 ? `${entry.bbt.toFixed(2)} ${temperatureUnit.toUpperCase()}` : "";
     case "cervical":
       return entry.cervicalMucus;
+    case "lh":
+      return entry.lhTest;
     case "symptoms":
       return entry.symptoms.join(", ");
     case "notes": {
@@ -859,6 +864,16 @@ function resolveCervicalMucusLabel(
     ? ""
     : (dayLogLabels.options.cervicalMucus.find((option) => option.value === value)
         ?.label ?? value);
+}
+
+function resolveLHTestLabel(
+  value: DayLogRecord["lhTest"],
+  dayLogLabels: ReturnType<typeof getDayLogCopy>,
+): string {
+  return value === "none"
+    ? ""
+    : (dayLogLabels.options.lhTest.find((option) => option.value === value)?.label ??
+        value);
 }
 
 function resolveCycleFactorLabels(

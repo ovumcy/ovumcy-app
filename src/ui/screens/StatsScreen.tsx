@@ -53,6 +53,7 @@ export function StatsScreen({
                 doctorPDF: false,
                 extendedReports: false,
                 partnerAccess: false,
+                reminders: false,
               };
         const loadedState = await loadStatsScreenState(
           storage,

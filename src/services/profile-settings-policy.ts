@@ -1,6 +1,7 @@
 import {
   DEFAULT_CYCLE_LENGTH,
   DEFAULT_PERIOD_LENGTH,
+  DEFAULT_REMINDER_TIME,
   DEFAULT_TEMPERATURE_UNIT,
   MAX_CYCLE_LENGTH,
   MAX_PERIOD_LENGTH,
@@ -12,6 +13,7 @@ import {
   type CycleSettingsValues,
   type InterfaceSettingsValues,
   type LocalDateISO,
+  type ReminderSettingsValues,
   type TemperatureUnit,
   type TrackingSettingsValues,
   type UsageGoal,
@@ -126,6 +128,45 @@ export function sanitizeTrackingSettingsValues(
     trackCervicalMucus: values.trackCervicalMucus,
     hideSexChip: values.hideSexChip,
     hideNotes: values.hideNotes,
+  };
+}
+
+export function normalizeReminderTime(value: string): string {
+  const normalized = String(value ?? "").trim();
+  const match = /^(\d{1,2}):(\d{2})$/.exec(normalized);
+  if (!match) {
+    return DEFAULT_REMINDER_TIME;
+  }
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (
+    !Number.isInteger(hours) ||
+    !Number.isInteger(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return DEFAULT_REMINDER_TIME;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+export function isValidReminderTime(value: string): boolean {
+  return normalizeReminderTime(value) === String(value ?? "").trim();
+}
+
+export function sanitizeReminderSettingsValues(
+  values: ReminderSettingsValues,
+): ReminderSettingsValues {
+  return {
+    dailyLogReminderEnabled: values.dailyLogReminderEnabled,
+    upcomingPeriodReminderEnabled: values.upcomingPeriodReminderEnabled,
+    fertileWindowReminderEnabled: values.fertileWindowReminderEnabled,
+    managedReminderEmailsEnabled: values.managedReminderEmailsEnabled,
+    reminderTime: normalizeReminderTime(values.reminderTime),
   };
 }
 

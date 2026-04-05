@@ -7,6 +7,7 @@ const ADVANCED_FERTILITY_CYCLE_LIMIT = 4;
 const MAX_OBSERVED_LUTEAL_DAYS = 18;
 const MIN_OBSERVED_LUTEAL_DAYS = 8;
 const MIN_SHIFT_SAMPLE_COUNT = 4;
+const MAX_OVULATION_CONFIRMATION_GAP_DAYS = 4;
 const CONFIRMED_SHIFT_THRESHOLD_CELSIUS = 0.2;
 const CONFIRMED_SHIFT_THRESHOLD_FAHRENHEIT = 0.35;
 
@@ -25,12 +26,26 @@ export type StatsObservedLutealConsistencySummary = {
 };
 
 export type StatsAdvancedFertilitySummary = {
+  lhPeakSignal: StatsLHPeakSignalSummary | null;
   observedLutealAverageDays: number | null;
   observedLutealConsistency: StatsObservedLutealConsistencySummary | null;
   observedLutealSampleCount: number;
+  ovulationConfirmation: StatsOvulationConfirmationSummary | null;
   signalCoverageCount: number;
   signalCoverageSampleCount: number;
   thermalShift: StatsThermalShiftSummary | null;
+};
+
+export type StatsOvulationConfirmationSummary = {
+  kind: "building" | "confirmed";
+  gapDays: number;
+  mucusDate: string;
+};
+
+export type StatsLHPeakSignalSummary = {
+  kind: "logged" | "aligned";
+  date: string;
+  gapDays: number | null;
 };
 
 export function buildStatsAdvancedFertility(
@@ -54,9 +69,16 @@ export function buildStatsAdvancedFertility(
     const lastEggWhiteSignal = [...cycleRecords]
       .reverse()
       .find((record) => record.cervicalMucus === "eggwhite");
+    const lastLHPeakSignal = [...cycleRecords]
+      .reverse()
+      .find((record) => record.lhTest === "peak");
 
-    if (lastEggWhiteSignal) {
-      const lutealDays = diffLocalDays(lastEggWhiteSignal.date, cycle.nextStartDate);
+    if (lastEggWhiteSignal || lastLHPeakSignal) {
+      const anchorSignal = lastLHPeakSignal ?? lastEggWhiteSignal;
+      const lutealDays = diffLocalDays(
+        anchorSignal?.date ?? cycle.startDate,
+        cycle.nextStartDate,
+      );
       if (
         lutealDays >= MIN_OBSERVED_LUTEAL_DAYS &&
         lutealDays <= MAX_OBSERVED_LUTEAL_DAYS
@@ -66,27 +88,39 @@ export function buildStatsAdvancedFertility(
     }
 
     const thermalShift = detectThermalShift(cycleRecords, temperatureUnit);
-    if (lastEggWhiteSignal || thermalShift) {
+    if (lastEggWhiteSignal || lastLHPeakSignal || thermalShift) {
       signalCoverageCount += 1;
     }
   }
 
-  const thermalShift = currentCycleAnchorDate
-    ? detectThermalShift(
-        records
-          .filter((record) => record.date >= currentCycleAnchorDate)
-          .sort((left, right) => left.date.localeCompare(right.date)),
-        temperatureUnit,
-      )
+  const currentCycleRecords = currentCycleAnchorDate
+    ? records
+        .filter((record) => record.date >= currentCycleAnchorDate)
+        .sort((left, right) => left.date.localeCompare(right.date))
+    : [];
+  const thermalShift = currentCycleRecords.length
+    ? detectThermalShift(currentCycleRecords, temperatureUnit)
     : null;
+  const lhPeakSignal = buildLHPeakSignal(currentCycleRecords, thermalShift);
+  const ovulationConfirmation = buildOvulationConfirmation(
+    currentCycleRecords,
+    thermalShift,
+  );
   const hasObservedLuteal = observedLutealValues.length > 0;
   const hasSignalCoverage = recentCycles.length > 0;
 
-  if (!hasObservedLuteal && !hasSignalCoverage && !thermalShift) {
+  if (
+    !hasObservedLuteal &&
+    !hasSignalCoverage &&
+    !thermalShift &&
+    !lhPeakSignal &&
+    !ovulationConfirmation
+  ) {
     return null;
   }
 
   return {
+    lhPeakSignal,
     observedLutealAverageDays: hasObservedLuteal
       ? observedLutealValues.reduce((total, value) => total + value, 0) /
         observedLutealValues.length
@@ -95,6 +129,7 @@ export function buildStatsAdvancedFertility(
       observedLutealValues,
     ),
     observedLutealSampleCount: observedLutealValues.length,
+    ovulationConfirmation,
     signalCoverageCount,
     signalCoverageSampleCount: recentCycles.length,
     thermalShift,
@@ -163,6 +198,70 @@ function detectThermalShift(
   }
 
   return null;
+}
+
+function buildOvulationConfirmation(
+  records: readonly DayLogRecord[],
+  thermalShift: StatsThermalShiftSummary | null,
+): StatsOvulationConfirmationSummary | null {
+  if (!thermalShift || records.length === 0) {
+    return null;
+  }
+
+  const lastEggWhiteSignal = [...records]
+    .reverse()
+    .find((record) => record.cervicalMucus === "eggwhite");
+  const lastBBTRecord = [...records].reverse().find((record) => record.bbt > 0);
+  if (!lastEggWhiteSignal || !lastBBTRecord) {
+    return null;
+  }
+
+  const gapDays = diffLocalDays(lastEggWhiteSignal.date, lastBBTRecord.date);
+  if (gapDays < 0 || gapDays > MAX_OVULATION_CONFIRMATION_GAP_DAYS) {
+    return null;
+  }
+
+  return {
+    kind: thermalShift.kind,
+    gapDays,
+    mucusDate: lastEggWhiteSignal.date,
+  };
+}
+
+function buildLHPeakSignal(
+  records: readonly DayLogRecord[],
+  thermalShift: StatsThermalShiftSummary | null,
+): StatsLHPeakSignalSummary | null {
+  const lastLHPeakSignal = [...records]
+    .reverse()
+    .find((record) => record.lhTest === "peak");
+  if (!lastLHPeakSignal) {
+    return null;
+  }
+
+  const lastBBTRecord = [...records].reverse().find((record) => record.bbt > 0);
+  if (!thermalShift || !lastBBTRecord) {
+    return {
+      kind: "logged",
+      date: lastLHPeakSignal.date,
+      gapDays: null,
+    };
+  }
+
+  const gapDays = diffLocalDays(lastLHPeakSignal.date, lastBBTRecord.date);
+  if (gapDays < 0 || gapDays > MAX_OVULATION_CONFIRMATION_GAP_DAYS) {
+    return {
+      kind: "logged",
+      date: lastLHPeakSignal.date,
+      gapDays: null,
+    };
+  }
+
+  return {
+    kind: "aligned",
+    date: lastLHPeakSignal.date,
+    gapDays,
+  };
 }
 
 function diffLocalDays(startDate: string, endDate: string): number {

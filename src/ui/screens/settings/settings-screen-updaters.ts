@@ -36,6 +36,19 @@ export function patchTrackingValues(
   };
 }
 
+export function patchReminderValues(
+  state: LoadedSettingsState,
+  updates: Partial<LoadedSettingsState["reminderValues"]>,
+): LoadedSettingsState {
+  return {
+    ...state,
+    reminderValues: {
+      ...state.reminderValues,
+      ...updates,
+    },
+  };
+}
+
 export function replaceInterfaceValues(
   state: LoadedSettingsState,
   interfaceValues: LoadedSettingsState["interfaceValues"],

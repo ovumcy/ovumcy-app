@@ -158,6 +158,18 @@ export function buildBackupSyncSetupPresentation({
   };
 }
 
+export function formatBackupSyncLastSeen(
+  value: string | null,
+  locale: string | undefined,
+  neverLabel: string,
+): string {
+  if (!value) {
+    return neverLabel;
+  }
+
+  return formatSettingsLastSync(value, locale);
+}
+
 export function resolveBackupSyncErrorMessage(
   errorCode: string,
   viewData: SettingsViewData["account"],

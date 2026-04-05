@@ -58,7 +58,7 @@ import {
 } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 10;
+const DATABASE_VERSION = 11;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -102,6 +102,7 @@ const CREATE_DAY_LOGS_TABLE = `
     sex_activity TEXT NOT NULL DEFAULT 'none',
     bbt REAL NOT NULL DEFAULT 0,
     cervical_mucus TEXT NOT NULL DEFAULT 'none',
+    lh_test TEXT NOT NULL DEFAULT 'none',
     cycle_factor_keys TEXT NOT NULL DEFAULT '[]',
     symptom_ids TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT '',
@@ -175,6 +176,10 @@ const ADD_SYNC_ENCRYPTED_PAYLOAD_COLUMN = `
   ALTER TABLE sync_preferences ADD COLUMN encrypted_payload TEXT;
 `;
 
+const ADD_DAY_LOG_LH_TEST_COLUMN = `
+  ALTER TABLE day_logs ADD COLUMN lh_test TEXT NOT NULL DEFAULT 'none';
+`;
+
 type BootstrapStateRow = {
   has_completed_onboarding: number;
   profile_version: number;
@@ -226,6 +231,7 @@ type DayLogRow = {
   sex_activity: string;
   bbt: number;
   cervical_mucus: string;
+  lh_test: string;
   cycle_factor_keys: string;
   symptom_ids: string;
   notes: string;
@@ -560,6 +566,7 @@ export function createSQLiteAppStorage(
         sex_activity,
         bbt,
         cervical_mucus,
+        lh_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -605,6 +612,7 @@ export function createSQLiteAppStorage(
         sex_activity,
         bbt,
         cervical_mucus,
+        lh_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -635,6 +643,7 @@ export function createSQLiteAppStorage(
         sex_activity,
         bbt,
         cervical_mucus,
+        lh_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -975,6 +984,12 @@ async function migrateV8SyncMetadata(
 	);
 }
 
+async function migrateV11DayLogLHTest(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await execIgnoringDuplicateColumn(database, ADD_DAY_LOG_LH_TEST_COLUMN);
+}
+
 async function reconcileBootstrapStateSchema(
   database: LocalAppDatabase,
 ): Promise<void> {
@@ -1009,6 +1024,7 @@ async function reconcileDayLogsSchema(
 ): Promise<void> {
   await runSchemaStatement(database, CREATE_DAY_LOGS_TABLE);
   await migrateV7EncryptedLocalData(database);
+  await migrateV11DayLogLHTest(database);
 }
 
 async function reconcileSyncPreferencesSchema(
@@ -1230,6 +1246,7 @@ async function migratePlaintextLocalDataRows(
           sex_activity,
           bbt,
           cervical_mucus,
+          lh_test,
           cycle_factor_keys,
           symptom_ids,
           notes,
@@ -1497,12 +1514,13 @@ async function upsertDayLogRecord(
        sex_activity,
        bbt,
        cervical_mucus,
+       lh_test,
        cycle_factor_keys,
        symptom_ids,
        notes,
        encrypted_payload
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(day) DO UPDATE SET
        is_period = excluded.is_period,
        cycle_start = excluded.cycle_start,
@@ -1512,6 +1530,7 @@ async function upsertDayLogRecord(
        sex_activity = excluded.sex_activity,
        bbt = excluded.bbt,
        cervical_mucus = excluded.cervical_mucus,
+       lh_test = excluded.lh_test,
        cycle_factor_keys = excluded.cycle_factor_keys,
        symptom_ids = excluded.symptom_ids,
        notes = excluded.notes,
@@ -1525,6 +1544,7 @@ async function upsertDayLogRecord(
     defaults.sexActivity,
     defaults.bbt,
     defaults.cervicalMucus,
+    defaults.lhTest,
     JSON.stringify(defaults.cycleFactorKeys),
     JSON.stringify(defaults.symptomIDs),
     defaults.notes,
@@ -1732,6 +1752,7 @@ function mapLegacyDayLogRow(row: DayLogRow): DayLogRecord {
     sexActivity: row.sex_activity as DayLogRecord["sexActivity"],
     bbt: row.bbt,
     cervicalMucus: row.cervical_mucus as DayLogRecord["cervicalMucus"],
+    lhTest: row.lh_test as DayLogRecord["lhTest"],
     cycleFactorKeys: cycleFactorKeys as DayLogRecord["cycleFactorKeys"],
     symptomIDs: symptomIDs as DayLogRecord["symptomIDs"],
     notes: row.notes,

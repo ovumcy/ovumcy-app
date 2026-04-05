@@ -61,6 +61,8 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByTestId("settings-interface-section")).toBeVisible();
+  await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
+  await expect(page.getByTestId("settings-reminders-locked-banner")).toBeVisible();
   await expect(page.getByTestId("settings-sync-summary-card")).toBeVisible();
   await page.getByTestId("settings-open-backup-sync-button").click();
   await expect(page).toHaveURL(/\/backup-sync$/);
@@ -129,6 +131,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByTestId("settings-export-section")).toBeVisible();
+  await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
   await expect(page.getByTestId("settings-export-csv-button")).toBeVisible();
 
   const [csvDownload] = await Promise.all([

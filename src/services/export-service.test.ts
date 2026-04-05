@@ -70,7 +70,11 @@ describe("export-service", () => {
         }),
         dayLogs: expect.arrayContaining([
           expect.objectContaining({ date: "2026-03-01", notes: "Cycle start" }),
-          expect.objectContaining({ date: "2026-03-18", notes: "Jaw pain" }),
+          expect.objectContaining({
+            date: "2026-03-18",
+            notes: "Jaw pain",
+            lhTest: "peak",
+          }),
         ]),
       }),
     );
@@ -96,8 +100,10 @@ describe("export-service", () => {
 
     expect(result.artifact.filename).toBe("ovumcy-export-2026-03-18.csv");
     expect(result.artifact.content).toContain("Date,Period,Flow,Mood rating");
+    expect(result.artifact.content).toContain("LH test");
     expect(result.artifact.content).toContain("2026-03-18");
     expect(result.artifact.content).toContain("Jaw pain");
+    expect(result.artifact.content).toContain("peak");
     expect(result.artifact.content).toContain("Yes");
   });
 
@@ -155,6 +161,7 @@ function createStorageMock() {
     },
     {
       ...createEmptyDayLogRecord("2026-03-18"),
+      lhTest: "peak",
       notes: "Jaw pain",
       symptomIDs: ["custom_jaw_pain", "fatigue"],
     },

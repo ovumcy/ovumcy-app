@@ -22,7 +22,7 @@ Run on an Android emulator or physical device.
 8. Calendar opens the current month with all visible weeks fitting above the tab bar on a narrow screen, and any extra calendar help stays secondary instead of pushing the month grid off-screen.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
 10. Empty days open directly in the editor, existing entries can still be edited from summary mode, and switching days or deleting an entry does not lose the last saved local state or leave the editor stuck half-open.
-11. Settings screen saves cycle parameters locally, and the dashboard snapshot reflects the new values after returning.
+11. Settings screen saves cycle parameters locally, the dashboard snapshot reflects the new values after returning, and the reminders section keeps device-only reminder choices local with clear locked or permission feedback.
 12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and recent-app previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
@@ -54,7 +54,7 @@ Run on an iOS simulator or physical device.
 8. Calendar opens the current month with all visible weeks fitting above the tab bar on a narrow screen, and any extra calendar help stays secondary instead of pushing the month grid off-screen.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
 10. Empty days open directly in the editor, existing entries can still be edited from summary mode, and switching days or deleting an entry does not lose the last saved local state or leave the editor stuck half-open.
-11. Settings screen saves cycle parameters locally, and the dashboard snapshot reflects the new values after returning.
+11. Settings screen saves cycle parameters locally, the dashboard snapshot reflects the new values after returning, and the reminders section keeps device-only reminder choices local with clear locked or permission feedback.
 12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and app-switcher previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
@@ -88,6 +88,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - changing a settings value and then switching tabs or opening `Backup & sync` shows a save-or-discard confirmation with working `Save`, `Discard`, and `Cancel` outcomes
    - interface settings can save and re-open a screenshot-protection toggle without throwing runtime errors in the browser shell
    - settings shows explicit `Interface` controls plus a `Backup & sync` summary card, and the dedicated `Backup & sync` screen supports local encrypted sync preparation with a one-time recovery phrase while keeping `Managed` cloud auth separate from the sync endpoint
+   - settings reminders section renders without runtime errors, stays device-local, and shows a locked state until a managed premium entitlement is present
    - settings export summary reflects the current logged range, CSV/JSON downloads succeed with local file downloads instead of opening sensitive data in the URL, and PDF stays disabled until an active managed cloud plan is present
    - danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the browser shell to onboarding
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage

@@ -25,6 +25,13 @@ export const DAY_CERVICAL_MUCUS_VALUES = [
   "eggwhite",
 ] as const;
 
+export const DAY_LH_TEST_VALUES = [
+  "none",
+  "negative",
+  "high",
+  "peak",
+] as const;
+
 export const DAY_CYCLE_FACTOR_KEYS = [
   "stress",
   "illness",
@@ -36,6 +43,7 @@ export const DAY_CYCLE_FACTOR_KEYS = [
 export type DayFlow = (typeof DAY_FLOW_VALUES)[number];
 export type DaySexActivity = (typeof DAY_SEX_ACTIVITY_VALUES)[number];
 export type DayCervicalMucus = (typeof DAY_CERVICAL_MUCUS_VALUES)[number];
+export type DayLHTest = (typeof DAY_LH_TEST_VALUES)[number];
 export type DayCycleFactorKey = (typeof DAY_CYCLE_FACTOR_KEYS)[number];
 export type DaySymptomID = SymptomID;
 
@@ -49,6 +57,7 @@ export type DayLogRecord = {
   sexActivity: DaySexActivity;
   bbt: number;
   cervicalMucus: DayCervicalMucus;
+  lhTest: DayLHTest;
   cycleFactorKeys: DayCycleFactorKey[];
   symptomIDs: DaySymptomID[];
   notes: string;
@@ -65,6 +74,7 @@ export function createEmptyDayLogRecord(date: LocalDateISO): DayLogRecord {
     sexActivity: "none",
     bbt: 0,
     cervicalMucus: "none",
+    lhTest: "none",
     cycleFactorKeys: [],
     symptomIDs: [],
     notes: "",
@@ -80,6 +90,7 @@ export function hasDayLogData(record: DayLogRecord): boolean {
     record.sexActivity !== "none" ||
     record.bbt > 0 ||
     record.cervicalMucus !== "none" ||
+    record.lhTest !== "none" ||
     record.cycleFactorKeys.length > 0 ||
     record.symptomIDs.length > 0 ||
     record.notes.trim().length > 0

@@ -16,6 +16,7 @@ describe("day-log-policy", () => {
         sexActivity: "invalid" as unknown as "none",
         bbt: 47,
         cervicalMucus: "wet" as unknown as "none",
+        lhTest: "surge" as unknown as "none",
         cycleFactorKeys: [
           "travel",
           "travel",
@@ -38,6 +39,7 @@ describe("day-log-policy", () => {
       sexActivity: "none",
       bbt: 0,
       cervicalMucus: "none",
+      lhTest: "none",
       cycleFactorKeys: ["travel"],
       symptomIDs: ["cramps", "unknown", "bloating"],
       notes: "a".repeat(2000),
@@ -67,6 +69,7 @@ describe("day-log-policy", () => {
       showSexActivity: false,
       showBBT: true,
       showCervicalMucus: false,
+      showLHTest: false,
       showNotes: false,
     });
   });

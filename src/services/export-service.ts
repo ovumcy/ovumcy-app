@@ -60,6 +60,7 @@ export const EXPORT_CSV_HEADERS = [
   "Sex activity",
   "BBT",
   "Cervical mucus",
+  "LH test",
   "Cramps",
   "Headache",
   "Acne",
@@ -335,6 +336,7 @@ export function buildExportCSVRows(
       sexActivity: normalizeExportSexActivity(record.sexActivity),
       bbt: normalizeExportBBT(record.bbt),
       cervicalMucus: normalizeExportCervicalMucus(record.cervicalMucus),
+      lhTest: normalizeExportLHTest(record.lhTest),
       cycleFactors: [...record.cycleFactorKeys],
       symptoms: flags,
       otherSymptoms,
@@ -360,6 +362,7 @@ export function serializeExportCSV(
         row.sexActivity,
         row.bbt > 0 ? String(row.bbt) : "",
         row.cervicalMucus,
+        row.lhTest,
         booleanToCSV(row.symptoms.cramps),
         booleanToCSV(row.symptoms.headache),
         booleanToCSV(row.symptoms.acne),
@@ -472,6 +475,10 @@ function normalizeExportBBT(value: DayLogRecord["bbt"]): number {
 function normalizeExportCervicalMucus(
   value: DayLogRecord["cervicalMucus"],
 ): string {
+  return value === "none" ? "" : value;
+}
+
+function normalizeExportLHTest(value: DayLogRecord["lhTest"]): string {
   return value === "none" ? "" : value;
 }
 

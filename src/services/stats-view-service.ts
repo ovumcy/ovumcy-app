@@ -240,6 +240,7 @@ export async function loadStatsScreenState(
     doctorPDF: false,
     extendedReports: false,
     partnerAccess: false,
+    reminders: false,
   },
 ): Promise<LoadedStatsState> {
   const today = atLocalDay(now);
@@ -280,6 +281,7 @@ export function buildStatsViewData(
     doctorPDF: false,
     extendedReports: false,
     partnerAccess: false,
+    reminders: false,
   },
 ): StatsViewData {
   const statsCopy = getStatsCopy(locale);
@@ -367,7 +369,7 @@ export function buildStatsViewData(
       )
     : null;
   const advancedFertilitySection = premiumFertility
-    ? buildAdvancedFertilitySection(premiumFertility, profile, statsCopy)
+    ? buildAdvancedFertilitySection(premiumFertility, profile, statsCopy, locale)
     : null;
   const personalForecastsSection =
     personalForecasts.length > 0
@@ -744,6 +746,7 @@ function buildAdvancedFertilitySection(
   premiumFertility: NonNullable<ReturnType<typeof buildStatsAdvancedFertility>>,
   profile: ProfileRecord,
   statsCopy: ReturnType<typeof getStatsCopy>,
+  locale: string,
 ): StatsPremiumSectionViewData | null {
   const items: StatsPremiumSectionViewData["items"] = [];
 
@@ -838,6 +841,45 @@ function buildAdvancedFertilitySection(
               premiumFertility.thermalShift.sampleCount,
             ),
       tone: premiumFertility.thermalShift.kind === "confirmed" ? "success" : "info",
+    });
+  }
+
+  if (premiumFertility.ovulationConfirmation) {
+    const confirmation = premiumFertility.ovulationConfirmation;
+    items.push({
+      key: "ovulation-confirmation",
+      title: statsCopy.advancedFertility.ovulationConfirmationTitle,
+      value:
+        confirmation.kind === "confirmed"
+          ? statsCopy.advancedFertility.ovulationConfirmationConfirmedValue
+          : statsCopy.advancedFertility.ovulationConfirmationBuildingValue,
+      description: statsCopy.advancedFertility.ovulationConfirmationDescription(
+        formatDisplayDate(confirmation.mucusDate, locale),
+        confirmation.gapDays,
+      ),
+      tone: confirmation.kind === "confirmed" ? "success" : "info",
+    });
+  }
+
+  if (premiumFertility.lhPeakSignal) {
+    const lhPeakSignal = premiumFertility.lhPeakSignal;
+    items.push({
+      key: "lh-peak",
+      title: statsCopy.advancedFertility.lhPeakTitle,
+      value:
+        lhPeakSignal.kind === "aligned"
+          ? statsCopy.advancedFertility.lhPeakAlignedValue
+          : statsCopy.advancedFertility.lhPeakLoggedValue,
+      description:
+        lhPeakSignal.kind === "aligned" && lhPeakSignal.gapDays !== null
+          ? statsCopy.advancedFertility.lhPeakAlignedDescription(
+              formatDisplayDate(lhPeakSignal.date, locale),
+              lhPeakSignal.gapDays,
+            )
+          : statsCopy.advancedFertility.lhPeakLoggedDescription(
+              formatDisplayDate(lhPeakSignal.date, locale),
+            ),
+      tone: lhPeakSignal.kind === "aligned" ? "success" : "info",
     });
   }
 

@@ -7,6 +7,7 @@ import type { ManualCycleStartViewData } from "../../services/manual-cycle-start
 import { AppButton } from "./AppButton";
 import { DayLogEditorCard } from "./DayLogEditorCard";
 import { FeatureCard } from "./FeatureCard";
+import { InsightSummaryCard } from "./InsightSummaryCard";
 import { ManualCycleStartAction } from "./ManualCycleStartAction";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
@@ -61,6 +62,12 @@ export function CalendarDayPanel({
 
     return (
       <View style={styles.editingStack}>
+        {summaryViewData.advancedFertilitySummary ? (
+          <InsightSummaryCard
+            testID="calendar-advanced-fertility-summary"
+            viewData={summaryViewData.advancedFertilitySummary}
+          />
+        ) : null}
         {isFutureDate ? (
           <StatusBanner
             message={summaryViewData.futureEntryWarning}
@@ -106,6 +113,12 @@ export function CalendarDayPanel({
       testID="calendar-day-panel"
       title={summaryViewData.dateLabel}
     >
+      {summaryViewData.advancedFertilitySummary ? (
+        <InsightSummaryCard
+          testID="calendar-advanced-fertility-summary"
+          viewData={summaryViewData.advancedFertilitySummary}
+        />
+      ) : null}
       {isFutureDate ? (
         <StatusBanner
           message={summaryViewData.futureEntryWarning}

@@ -3,11 +3,13 @@ import {
   DAY_CERVICAL_MUCUS_VALUES,
   DAY_CYCLE_FACTOR_KEYS,
   DAY_FLOW_VALUES,
+  DAY_LH_TEST_VALUES,
   DAY_SEX_ACTIVITY_VALUES,
   MAX_DAY_NOTES_LENGTH,
   type DayCervicalMucus,
   type DayCycleFactorKey,
   type DayFlow,
+  type DayLHTest,
   type DayLogRecord,
   type DaySexActivity,
 } from "../models/day-log";
@@ -21,14 +23,23 @@ export type DayLogVisibility = {
   showSexActivity: boolean;
   showBBT: boolean;
   showCervicalMucus: boolean;
+  showLHTest: boolean;
   showNotes: boolean;
 };
 
-export function buildDayLogVisibility(profile: ProfileRecord): DayLogVisibility {
+export type DayLogVisibilityOptions = {
+  showLHTests?: boolean;
+};
+
+export function buildDayLogVisibility(
+  profile: ProfileRecord,
+  options: DayLogVisibilityOptions = {},
+): DayLogVisibility {
   return {
     showSexActivity: !profile.hideSexChip,
     showBBT: profile.trackBBT,
     showCervicalMucus: profile.trackCervicalMucus,
+    showLHTest: options.showLHTests === true,
     showNotes: profile.hideNotes !== true,
   };
 }
@@ -48,6 +59,7 @@ export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
     sexActivity: normalizeDaySexActivity(record.sexActivity),
     bbt: normalizeDayBBT(record.bbt),
     cervicalMucus: normalizeDayCervicalMucus(record.cervicalMucus),
+    lhTest: normalizeDayLHTest(record.lhTest),
     cycleFactorKeys: normalizeDayCycleFactorKeys(record.cycleFactorKeys),
     symptomIDs: normalizeDayLogSymptomIDs(record.symptomIDs),
     notes: normalizedNotes,
@@ -67,6 +79,12 @@ export function normalizeDaySexActivity(value: string): DaySexActivity {
 export function normalizeDayCervicalMucus(value: string): DayCervicalMucus {
   return DAY_CERVICAL_MUCUS_VALUES.includes(value as DayCervicalMucus)
     ? (value as DayCervicalMucus)
+    : "none";
+}
+
+export function normalizeDayLHTest(value: string): DayLHTest {
+  return DAY_LH_TEST_VALUES.includes(value as DayLHTest)
+    ? (value as DayLHTest)
     : "none";
 }
 

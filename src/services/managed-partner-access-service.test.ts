@@ -1,8 +1,5 @@
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
-import {
-  buildManagedPartnerInviteLink,
-  loadManagedPartnerAccess,
-} from "./managed-partner-access-service";
+import { loadManagedPartnerAccess } from "./managed-partner-access-service";
 
 describe("managed-partner-access-service", () => {
   const originalFetch = global.fetch;
@@ -21,13 +18,6 @@ describe("managed-partner-access-service", () => {
       errorCode: "not_connected",
     });
   });
-
-  it("builds a deep link for managed partner invites", () => {
-    expect(buildManagedPartnerInviteLink("invite token/1")).toBe(
-      "ovumcy://backup-sync?invite_token=invite%20token%2F1",
-    );
-  });
-
   it("loads partner access through the managed session token", async () => {
     const syncSecretStore = createSyncSecretStoreMock();
     await syncSecretStore.writeSyncSecrets({

@@ -123,10 +123,6 @@ export async function revokeManagedPartnerGrant(
     : { ok: false, errorCode: result.errorCode };
 }
 
-export function buildManagedPartnerInviteLink(inviteToken: string): string {
-  return `ovumcy://backup-sync?invite_token=${encodeURIComponent(inviteToken)}`;
-}
-
 async function readManagedSessionToken(
   secretStore: SyncSecretStore,
   syncMode: SyncMode,

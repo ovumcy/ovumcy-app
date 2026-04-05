@@ -180,7 +180,35 @@ const statsCopyEn = {
       unit: string,
       count: number,
     ) => `A possible +${rise} ${unit} rise is forming across ${count} readings.`,
+    ovulationConfirmationTitle: "Ovulation confirmation",
+    ovulationConfirmationConfirmedValue: "Signals aligned",
+    ovulationConfirmationBuildingValue: "Signals building",
+    ovulationConfirmationDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `Egg-white mucus and the latest temperature rise were both logged on ${date}.`
+        : `Egg-white mucus was logged on ${date}, and the latest temperature rise followed ${gapDays} d later.`,
+    ovulationConfirmationConfirmedHint:
+      "This usually means ovulation likely happened recently and the fertile window may be closing.",
+    ovulationConfirmationBuildingHint:
+      "Keep logging BBT over the next 1-2 mornings to see whether this turns into a confirmed shift.",
+    lhPeakTitle: "LH peak",
+    lhPeakLoggedValue: "Peak logged",
+    lhPeakAlignedValue: "Peak + thermal rise",
+    lhPeakLoggedDescription: (date: string) =>
+      `A peak LH test was logged on ${date}.`,
+    lhPeakAlignedDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `A peak LH test and the latest temperature rise were both logged on ${date}.`
+        : `A peak LH test was logged on ${date}, and the latest temperature rise followed ${gapDays} d later.`,
+    lhPeakLoggedHint:
+      "A peak LH test often lands near the most fertile days. Keep logging BBT over the next 1-3 mornings.",
+    lhPeakAlignedHint:
+      "Peak LH plus a later rise suggests the most fertile days likely just happened.",
     daysValue: (value: string) => `${value} d`,
+    thermalShiftConfirmedHint:
+      "A sustained rise usually means ovulation may have happened recently. Keep logging to confirm it stays elevated.",
+    thermalShiftBuildingHint:
+      "Keep logging BBT for another 2-3 mornings before treating this as a confirmed shift.",
   },
   personalForecasts: {
     title: "Personal forecasts",
@@ -430,7 +458,35 @@ const statsCopyDe: StatsCopy = {
       unit: string,
       count: number,
     ) => `Ein möglicher Anstieg von +${rise} ${unit} zeichnet sich über ${count} Messungen ab.`,
+    ovulationConfirmationTitle: "Ovulationsbestätigung",
+    ovulationConfirmationConfirmedValue: "Signale stimmen überein",
+    ovulationConfirmationBuildingValue: "Signale bauen sich auf",
+    ovulationConfirmationDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `Eiweißartiger Schleim und der jüngste Temperaturanstieg wurden beide am ${date} erfasst.`
+        : `Eiweißartiger Schleim wurde am ${date} erfasst, und der jüngste Temperaturanstieg folgte ${gapDays} T. später.`,
+    ovulationConfirmationConfirmedHint:
+      "Das bedeutet meist, dass der Eisprung wahrscheinlich gerade stattgefunden hat und das fruchtbare Fenster sich schließt.",
+    ovulationConfirmationBuildingHint:
+      "Miss in den nächsten 1-2 Morgen weiter die BBT, um zu sehen, ob daraus ein bestätigter Anstieg wird.",
+    lhPeakTitle: "LH-Peak",
+    lhPeakLoggedValue: "Peak erfasst",
+    lhPeakAlignedValue: "Peak + Temperaturanstieg",
+    lhPeakLoggedDescription: (date: string) =>
+      `Ein LH-Test mit Peak wurde am ${date} erfasst.`,
+    lhPeakAlignedDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `Ein LH-Test mit Peak und der jüngste Temperaturanstieg wurden beide am ${date} erfasst.`
+        : `Ein LH-Test mit Peak wurde am ${date} erfasst, und der jüngste Temperaturanstieg folgte ${gapDays} T. später.`,
+    lhPeakLoggedHint:
+      "Ein LH-Peak liegt oft nahe an den fruchtbarsten Tagen. Miss in den nächsten 1-3 Morgen weiter die BBT.",
+    lhPeakAlignedHint:
+      "LH-Peak plus späterer Temperaturanstieg deutet darauf hin, dass die fruchtbarsten Tage wahrscheinlich gerade vorbei sind.",
     daysValue: (value: string) => `${value} T.`,
+    thermalShiftConfirmedHint:
+      "Ein stabiler Anstieg bedeutet meist, dass der Eisprung vor Kurzem stattgefunden hat. Miss weiter, um zu bestätigen, dass die Werte erhöht bleiben.",
+    thermalShiftBuildingHint:
+      "Miss die BBT noch 2-3 Morgen weiter, bevor du dies als bestätigten Anstieg wertest.",
   },
   personalForecasts: {
     title: "Persönliche Vorhersagen",
@@ -674,7 +730,35 @@ const statsCopyFr: StatsCopy = {
       unit: string,
       count: number,
     ) => `Une possible hausse de +${rise} ${unit} se forme sur ${count} mesures.`,
+    ovulationConfirmationTitle: "Confirmation de l’ovulation",
+    ovulationConfirmationConfirmedValue: "Signaux alignés",
+    ovulationConfirmationBuildingValue: "Signaux en cours",
+    ovulationConfirmationDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `La glaire type blanc d’œuf et la dernière hausse thermique ont été enregistrées le ${date}.`
+        : `Une glaire type blanc d’œuf a été enregistrée le ${date}, puis la dernière hausse thermique a suivi ${gapDays} j plus tard.`,
+    ovulationConfirmationConfirmedHint:
+      "Cela signifie généralement que l’ovulation a probablement eu lieu récemment et que la fenêtre fertile se referme.",
+    ovulationConfirmationBuildingHint:
+      "Continue à enregistrer la TBC pendant les 1-2 prochains matins pour voir si cela devient une hausse confirmée.",
+    lhPeakTitle: "Pic LH",
+    lhPeakLoggedValue: "Pic enregistré",
+    lhPeakAlignedValue: "Pic + hausse thermique",
+    lhPeakLoggedDescription: (date: string) =>
+      `Un test LH au pic a été enregistré le ${date}.`,
+    lhPeakAlignedDescription: (date: string, gapDays: number) =>
+      gapDays === 0
+        ? `Un test LH au pic et la dernière hausse thermique ont été enregistrés le ${date}.`
+        : `Un test LH au pic a été enregistré le ${date}, puis la dernière hausse thermique a suivi ${gapDays} j plus tard.`,
+    lhPeakLoggedHint:
+      "Un pic LH tombe souvent près des jours les plus fertiles. Continue à enregistrer la TBC pendant les 1-3 prochains matins.",
+    lhPeakAlignedHint:
+      "Un pic LH suivi d’une hausse thermique suggère que les jours les plus fertiles viennent probablement de passer.",
     daysValue: (value: string) => `${value} j`,
+    thermalShiftConfirmedHint:
+      "Une hausse durable signifie souvent que l’ovulation a peut-être eu lieu récemment. Continue à enregistrer pour vérifier qu’elle reste élevée.",
+    thermalShiftBuildingHint:
+      "Continue à enregistrer la TBC encore 2-3 matins avant de traiter cela comme une hausse confirmée.",
   },
   personalForecasts: {
     title: "Prévisions personnelles",
@@ -907,7 +991,35 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         unit: string,
         count: number,
       ) => `В текущем цикле формируется возможный подъём на +${rise} ${unit} по ${count} измерениям.`,
+      ovulationConfirmationTitle: "Подтверждение овуляции",
+      ovulationConfirmationConfirmedValue: "Сигналы совпали",
+      ovulationConfirmationBuildingValue: "Сигналы формируются",
+      ovulationConfirmationDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `Слизь типа яичного белка и последний температурный подъём были отмечены в один день: ${date}.`
+          : `Слизь типа яичного белка была отмечена ${date}, а последний температурный подъём последовал через ${gapDays} д.`,
+      ovulationConfirmationConfirmedHint:
+        "Обычно это значит, что овуляция, вероятно, уже произошла недавно и фертильное окно может закрываться.",
+      ovulationConfirmationBuildingHint:
+        "Продолжайте отмечать БТТ ещё 1-2 утра, чтобы понять, превратится ли это в подтверждённый подъём.",
+      lhPeakTitle: "Пик LH",
+      lhPeakLoggedValue: "Пик отмечен",
+      lhPeakAlignedValue: "Пик + температурный подъём",
+      lhPeakLoggedDescription: (date: string) =>
+        `Пиковый LH-тест был отмечен ${date}.`,
+      lhPeakAlignedDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `Пиковый LH-тест и последний температурный подъём были отмечены в один день: ${date}.`
+          : `Пиковый LH-тест был отмечен ${date}, а последний температурный подъём последовал через ${gapDays} д.`,
+      lhPeakLoggedHint:
+        "Пик LH часто приходится на самые фертильные дни. Продолжайте отмечать БТТ ещё 1-3 утра.",
+      lhPeakAlignedHint:
+        "Пик LH вместе с более поздним температурным подъёмом подсказывает, что самые фертильные дни, вероятно, только что прошли.",
       daysValue: (value: string) => `${value} д.`,
+      thermalShiftConfirmedHint:
+        "Устойчивый подъём обычно означает, что овуляция могла произойти недавно. Продолжайте измерения, чтобы убедиться, что температура остаётся повышенной.",
+      thermalShiftBuildingHint:
+        "Продолжайте отмечать БТТ ещё 2-3 утра, прежде чем считать этот подъём подтверждённым.",
     },
     personalForecasts: {
       title: "Личные прогнозы",
@@ -1135,7 +1247,35 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         unit: string,
         count: number,
       ) => `Se está formando un posible aumento de +${rise} ${unit} en ${count} mediciones.`,
+      ovulationConfirmationTitle: "Confirmación de ovulación",
+      ovulationConfirmationConfirmedValue: "Señales alineadas",
+      ovulationConfirmationBuildingValue: "Señales en progreso",
+      ovulationConfirmationDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `El moco tipo clara de huevo y el último aumento térmico se registraron el mismo día: ${date}.`
+          : `Se registró moco tipo clara de huevo el ${date}, y el último aumento térmico apareció ${gapDays} d después.`,
+      ovulationConfirmationConfirmedHint:
+        "Esto suele significar que la ovulación probablemente ocurrió hace poco y que la ventana fértil puede estar cerrándose.",
+      ovulationConfirmationBuildingHint:
+        "Sigue registrando la TCB durante las próximas 1-2 mañanas para ver si esto se convierte en un aumento confirmado.",
+      lhPeakTitle: "Pico LH",
+      lhPeakLoggedValue: "Pico registrado",
+      lhPeakAlignedValue: "Pico + aumento térmico",
+      lhPeakLoggedDescription: (date: string) =>
+        `Se registró un test LH en pico el ${date}.`,
+      lhPeakAlignedDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `Se registraron el mismo día un test LH en pico y el último aumento térmico: ${date}.`
+          : `Se registró un test LH en pico el ${date}, y el último aumento térmico apareció ${gapDays} d después.`,
+      lhPeakLoggedHint:
+        "Un pico LH suele aparecer cerca de los días más fértiles. Sigue registrando la TCB durante las próximas 1-3 mañanas.",
+      lhPeakAlignedHint:
+        "Un pico LH junto con un aumento térmico posterior sugiere que los días más fértiles probablemente acaban de pasar.",
       daysValue: (value: string) => `${value} d`,
+      thermalShiftConfirmedHint:
+        "Un aumento sostenido suele significar que la ovulación pudo ocurrir hace poco. Sigue registrando para confirmar que se mantiene elevada.",
+      thermalShiftBuildingHint:
+        "Sigue registrando la TCB otras 2-3 mañanas antes de tomar esto como un aumento confirmado.",
     },
     personalForecasts: {
       title: "Pronósticos personales",

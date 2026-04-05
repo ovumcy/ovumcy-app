@@ -17,6 +17,8 @@ const dayLogCopyEn = {
   cervicalMucus: "Cervical mucus",
   cervicalMucusExplainer:
     "Cervical mucus means vaginal discharge. Egg-white mucus often appears near peak fertility.",
+  lhTest: "LH test",
+  lhTestHint: "Optional ovulation strip result for today.",
   bbt: "BBT",
   bbtHint: "Enter a basal body temperature reading for today.",
   notes: "Notes",
@@ -66,6 +68,12 @@ const dayLogCopyEn = {
       { value: "creamy", label: "Creamy" },
       { value: "eggwhite", label: "Egg white" },
     ],
+    lhTest: [
+      { value: "none", label: "None" },
+      { value: "negative", label: "Negative" },
+      { value: "high", label: "High" },
+      { value: "peak", label: "Peak" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Illness", icon: "🤒" },
@@ -93,6 +101,8 @@ const dayLogCopyDe: DayLogCopy = {
   cervicalMucus: "Zervixschleim",
   cervicalMucusExplainer:
     "Zervixschleim bedeutet vaginalen Ausfluss. Eiweißartiger Schleim erscheint oft nahe dem Fruchtbarkeitshöhepunkt.",
+  lhTest: "LH-Test",
+  lhTestHint: "Optionales Ergebnis eines Ovulationstests für heute.",
   bbt: "BBT",
   bbtHint: "Trage für heute einen Basaltemperaturwert ein.",
   notes: "Notizen",
@@ -143,6 +153,12 @@ const dayLogCopyDe: DayLogCopy = {
       { value: "creamy", label: "Cremig" },
       { value: "eggwhite", label: "Eiweißartig" },
     ],
+    lhTest: [
+      { value: "none", label: "Kein Test" },
+      { value: "negative", label: "Negativ" },
+      { value: "high", label: "Hoch" },
+      { value: "peak", label: "Peak" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Krankheit", icon: "🤒" },
@@ -168,6 +184,8 @@ const dayLogCopyFr: DayLogCopy = {
   cervicalMucus: "Glaire cervicale",
   cervicalMucusExplainer:
     "La glaire cervicale correspond aux pertes vaginales. Une glaire type blanc d'œuf apparaît souvent près du pic de fertilité.",
+  lhTest: "Test LH",
+  lhTestHint: "Résultat optionnel de test d'ovulation pour aujourd'hui.",
   bbt: "TBC",
   bbtHint: "Saisis une température basale pour aujourd'hui.",
   notes: "Notes",
@@ -218,6 +236,12 @@ const dayLogCopyFr: DayLogCopy = {
       { value: "creamy", label: "Crémeux" },
       { value: "eggwhite", label: "Blanc d'œuf" },
     ],
+    lhTest: [
+      { value: "none", label: "Pas de test" },
+      { value: "negative", label: "Négatif" },
+      { value: "high", label: "Élevé" },
+      { value: "peak", label: "Pic" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Maladie", icon: "🤒" },
@@ -245,6 +269,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     cervicalMucus: "Цервикальная слизь",
     cervicalMucusExplainer:
       "Цервикальная слизь означает вагинальные выделения. Выделения как яичный белок часто появляются ближе к пику фертильности.",
+    lhTest: "LH-тест",
+    lhTestHint: "Необязательный результат овуляционного теста за сегодня.",
     bbt: "БТТ",
     bbtHint: "Введите сегодняшнее значение базальной температуры тела.",
     notes: "Заметки",
@@ -295,6 +321,12 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
         { value: "creamy", label: "Кремообразная" },
         { value: "eggwhite", label: "Как яичный белок" },
       ],
+      lhTest: [
+        { value: "none", label: "Нет теста" },
+        { value: "negative", label: "Отрицательный" },
+        { value: "high", label: "Высокий" },
+        { value: "peak", label: "Пик" },
+      ],
       cycleFactors: {
         stress: { label: "Стресс", icon: "⚡" },
         illness: { label: "Болезнь", icon: "🤒" },
@@ -319,6 +351,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     cervicalMucus: "Moco cervical",
     cervicalMucusExplainer:
       "El moco cervical es el flujo vaginal. El moco tipo clara de huevo suele aparecer cerca del pico fértil.",
+    lhTest: "Test LH",
+    lhTestHint: "Resultado opcional del test de ovulación para hoy.",
     bbt: "TCB",
     bbtHint: "Introduce una lectura de temperatura basal para hoy.",
     notes: "Notas",
@@ -368,6 +402,12 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
         { value: "moist", label: "Húmedo" },
         { value: "creamy", label: "Cremoso" },
         { value: "eggwhite", label: "Clara de huevo" },
+      ],
+      lhTest: [
+        { value: "none", label: "Sin test" },
+        { value: "negative", label: "Negativo" },
+        { value: "high", label: "Alto" },
+        { value: "peak", label: "Pico" },
       ],
       cycleFactors: {
         stress: { label: "Estrés", icon: "⚡" },

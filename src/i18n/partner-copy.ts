@@ -15,6 +15,10 @@ const partnerCopyEn = {
   accessLevelLabel: "Access level",
   accessLevelSummary: "Summary only",
   accessLevelFull: "Full access",
+  accessLevelSummaryHint:
+    "Share the lighter summary view instead of detailed day-by-day history.",
+  accessLevelFullHint:
+    "Allow the full shared view, including detailed day-by-day history when it is available.",
   emailNotificationsLabel: "Partner email updates",
   emailNotificationsHint:
     "Allow Ovumcy Cloud to send partner-facing email updates for this invite and any accepted access created from it.",
@@ -44,6 +48,12 @@ const partnerCopyEn = {
     "Sign in to your managed account first, then accept this partner invite on this device.",
   acceptActionLabel: "Accept invite",
   statusInviteIssued: "Partner invite link created.",
+  statusInviteIssuedEmailSent:
+    "Partner invite link created and the email update was sent.",
+  statusInviteIssuedEmailFailed:
+    "Partner invite link created, but the email update could not be sent. Share the link manually.",
+  statusInviteIssuedEmailUnavailable:
+    "Partner invite link created, but Ovumcy Cloud email delivery is unavailable right now. Share the link manually.",
   statusInviteAccepted: "Partner invite accepted on this device.",
   statusInviteRevoked: "Pending partner invite revoked.",
   statusGrantRevoked: "Partner access revoked.",
@@ -76,6 +86,10 @@ const partnerCopyDe = {
   accessLevelLabel: "Zugriffslevel",
   accessLevelSummary: "Nur Zusammenfassung",
   accessLevelFull: "Voller Zugriff",
+  accessLevelSummaryHint:
+    "Teilt die leichtere Zusammenfassung statt einer detaillierten Tageshistorie.",
+  accessLevelFullHint:
+    "Erlaubt die vollständige geteilte Ansicht, inklusive detaillierter Tageshistorie, wenn sie verfügbar ist.",
   emailNotificationsLabel: "E-Mail-Updates an Partner",
   emailNotificationsHint:
     "Erlaube Ovumcy Cloud, partnerbezogene E-Mail-Updates für diese Einladung und den daraus angenommenen Zugriff zu senden.",
@@ -105,6 +119,12 @@ const partnerCopyDe = {
     "Melde dich zuerst bei deinem Managed-Konto an und nimm dann diese Partnereinladung auf diesem Gerät an.",
   acceptActionLabel: "Einladung annehmen",
   statusInviteIssued: "Partner-Einladungslink erstellt.",
+  statusInviteIssuedEmailSent:
+    "Partner-Einladungslink erstellt und das E-Mail-Update wurde gesendet.",
+  statusInviteIssuedEmailFailed:
+    "Partner-Einladungslink erstellt, aber das E-Mail-Update konnte nicht gesendet werden. Teile den Link manuell.",
+  statusInviteIssuedEmailUnavailable:
+    "Partner-Einladungslink erstellt, aber die Ovumcy-Cloud-E-Mail-Zustellung ist gerade nicht verfügbar. Teile den Link manuell.",
   statusInviteAccepted: "Partnereinladung auf diesem Gerät angenommen.",
   statusInviteRevoked: "Ausstehende Partnereinladung widerrufen.",
   statusGrantRevoked: "Partnerzugriff widerrufen.",
@@ -137,6 +157,10 @@ const partnerCopyFr = {
   accessLevelLabel: "Niveau d’accès",
   accessLevelSummary: "Résumé seulement",
   accessLevelFull: "Accès complet",
+  accessLevelSummaryHint:
+    "Partage la vue récapitulative légère au lieu d’un historique détaillé jour par jour.",
+  accessLevelFullHint:
+    "Autorise la vue partagée complète, y compris l’historique détaillé jour par jour lorsqu’il est disponible.",
   emailNotificationsLabel: "Mises à jour e-mail au partenaire",
   emailNotificationsHint:
     "Autorise Ovumcy Cloud à envoyer des mises à jour e-mail côté partenaire pour cette invitation et tout accès accepté qui en découle.",
@@ -166,6 +190,12 @@ const partnerCopyFr = {
     "Connecte-toi d’abord à ton compte géré, puis accepte cette invitation partenaire sur cet appareil.",
   acceptActionLabel: "Accepter l’invitation",
   statusInviteIssued: "Lien d’invitation partenaire créé.",
+  statusInviteIssuedEmailSent:
+    "Le lien d’invitation partenaire a été créé et l’e-mail a été envoyé.",
+  statusInviteIssuedEmailFailed:
+    "Le lien d’invitation partenaire a été créé, mais l’e-mail n’a pas pu être envoyé. Partage le lien manuellement.",
+  statusInviteIssuedEmailUnavailable:
+    "Le lien d’invitation partenaire a été créé, mais l’envoi d’e-mails Ovumcy Cloud est indisponible pour le moment. Partage le lien manuellement.",
   statusInviteAccepted: "Invitation partenaire acceptée sur cet appareil.",
   statusInviteRevoked: "Invitation partenaire en attente retirée.",
   statusGrantRevoked: "Accès partenaire retiré.",
@@ -198,6 +228,10 @@ const partnerCopyRu = {
   accessLevelLabel: "Уровень доступа",
   accessLevelSummary: "Только сводка",
   accessLevelFull: "Полный доступ",
+  accessLevelSummaryHint:
+    "Открывает облегчённую сводку вместо подробной истории по дням.",
+  accessLevelFullHint:
+    "Открывает полный общий просмотр, включая подробную историю по дням, когда она доступна.",
   emailNotificationsLabel: "Email-обновления для партнёра",
   emailNotificationsHint:
     "Разрешить Ovumcy Cloud отправлять партнёру email-обновления для этого приглашения и принятого по нему доступа.",
@@ -227,6 +261,12 @@ const partnerCopyRu = {
     "Сначала войди в свой managed-аккаунт, а потом прими это приглашение партнёра на этом устройстве.",
   acceptActionLabel: "Принять приглашение",
   statusInviteIssued: "Ссылка-приглашение для партнёра создана.",
+  statusInviteIssuedEmailSent:
+    "Ссылка-приглашение для партнёра создана, и email-уведомление отправлено.",
+  statusInviteIssuedEmailFailed:
+    "Ссылка-приглашение для партнёра создана, но email-уведомление отправить не удалось. Поделись ссылкой вручную.",
+  statusInviteIssuedEmailUnavailable:
+    "Ссылка-приглашение для партнёра создана, но отправка email через Ovumcy Cloud сейчас недоступна. Поделись ссылкой вручную.",
   statusInviteAccepted: "Приглашение партнёра принято на этом устройстве.",
   statusInviteRevoked: "Ожидающее приглашение партнёра отозвано.",
   statusGrantRevoked: "Доступ партнёра отозван.",
@@ -259,6 +299,10 @@ const partnerCopyEs = {
   accessLevelLabel: "Nivel de acceso",
   accessLevelSummary: "Solo resumen",
   accessLevelFull: "Acceso completo",
+  accessLevelSummaryHint:
+    "Comparte la vista resumida en lugar de un historial detallado día por día.",
+  accessLevelFullHint:
+    "Permite la vista compartida completa, incluido el historial detallado día por día cuando esté disponible.",
   emailNotificationsLabel: "Actualizaciones por correo para la pareja",
   emailNotificationsHint:
     "Permite que Ovumcy Cloud envíe actualizaciones por correo para esta invitación y para cualquier acceso aceptado que se cree a partir de ella.",
@@ -288,6 +332,12 @@ const partnerCopyEs = {
     "Primero inicia sesión en tu cuenta managed y después acepta esta invitación de pareja en este dispositivo.",
   acceptActionLabel: "Aceptar invitación",
   statusInviteIssued: "Se creó el enlace de invitación de pareja.",
+  statusInviteIssuedEmailSent:
+    "Se creó el enlace de invitación de pareja y se envió el correo.",
+  statusInviteIssuedEmailFailed:
+    "Se creó el enlace de invitación de pareja, pero no se pudo enviar el correo. Comparte el enlace manualmente.",
+  statusInviteIssuedEmailUnavailable:
+    "Se creó el enlace de invitación de pareja, pero la entrega de correo de Ovumcy Cloud no está disponible ahora mismo. Comparte el enlace manualmente.",
   statusInviteAccepted: "La invitación de pareja se aceptó en este dispositivo.",
   statusInviteRevoked: "Se revocó la invitación de pareja pendiente.",
   statusGrantRevoked: "Se revocó el acceso de pareja.",

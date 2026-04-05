@@ -66,6 +66,7 @@ export type ExportCSVRow = {
   sexActivity: string;
   bbt: number;
   cervicalMucus: string;
+  lhTest: string;
   cycleFactors: string[];
   symptoms: ExportSymptomFlags;
   otherSymptoms: string[];
@@ -96,6 +97,7 @@ export type ExportPDFCycleDay = {
   sexActivity: string;
   bbt: number;
   cervicalMucus: string;
+  lhTest: string;
   cycleFactors: string[];
   symptoms: string[];
   notes: string;

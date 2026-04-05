@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type { PartnerCopy } from "../../../i18n/partner-copy";
+import { formatBackupSyncLastSeen } from "../../../services/backup-sync-view-service";
 import type {
   ManagedCloudPartnerAccessGrant,
   ManagedCloudPartnerAccessLevel,
@@ -26,6 +27,7 @@ type SettingsPartnerAccessSectionProps = {
   inviteEmailNotificationsAllowed: boolean;
   inviteLink: string;
   isBusy: boolean;
+  locale?: string | undefined;
   onAcceptInvite: () => void | Promise<void>;
   onAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onInviteEmailChange: (value: string) => void;
@@ -48,6 +50,7 @@ export function SettingsPartnerAccessSection({
   inviteEmailNotificationsAllowed,
   inviteLink,
   isBusy,
+  locale,
   onAcceptInvite,
   onAccessLevelChange,
   onInviteEmailChange,
@@ -135,8 +138,16 @@ export function SettingsPartnerAccessSection({
                       onAccessLevelChange(value as ManagedCloudPartnerAccessLevel);
                     }}
                     options={[
-                      { value: "summary", label: copy.accessLevelSummary },
-                      { value: "full", label: copy.accessLevelFull },
+                      {
+                        value: "summary",
+                        label: copy.accessLevelSummary,
+                        secondaryLabel: copy.accessLevelSummaryHint,
+                      },
+                      {
+                        value: "full",
+                        label: copy.accessLevelFull,
+                        secondaryLabel: copy.accessLevelFullHint,
+                      },
                     ]}
                     selectedValue={inviteAccessLevel}
                     testIDPrefix="settings-partner-access-level"
@@ -191,6 +202,7 @@ export function SettingsPartnerAccessSection({
             <PartnerGrantList
               copy={copy}
               grants={ownedGrants}
+              locale={locale}
               onRevokeGrant={onRevokeGrant}
               styles={styles}
             />
@@ -204,6 +216,7 @@ export function SettingsPartnerAccessSection({
             <PartnerSharedGrantList
               copy={copy}
               grants={sharedWithMeGrants}
+              locale={locale}
               styles={styles}
             />
           </View>
@@ -266,11 +279,13 @@ function PartnerInviteList({
 function PartnerGrantList({
   copy,
   grants,
+  locale,
   onRevokeGrant,
   styles,
 }: {
   copy: PartnerCopy;
   grants: ManagedCloudPartnerAccessGrant[];
+  locale?: string | undefined;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
   styles: ReturnType<typeof createStyles>;
 }) {
@@ -293,13 +308,19 @@ function PartnerGrantList({
                 : copy.accessLevelSummary}
             </Text>
             <Text style={styles.helperText}>
+              {grant.accessLevel === "full"
+                ? copy.accessLevelFullHint
+                : copy.accessLevelSummaryHint}
+            </Text>
+            <Text style={styles.helperText}>
               {copy.emailNotificationsStatusLabel}:{" "}
               {grant.emailNotificationsAllowed
                 ? copy.emailNotificationsEnabled
                 : copy.emailNotificationsDisabled}
             </Text>
             <Text style={styles.helperText}>
-              {copy.lastSeenLabel}: {grant.lastSeenAt ?? copy.lastSeenNever}
+              {copy.lastSeenLabel}:{" "}
+              {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
             </Text>
             <AppButton
               label={copy.revokeGrantLabel}
@@ -319,10 +340,12 @@ function PartnerGrantList({
 function PartnerSharedGrantList({
   copy,
   grants,
+  locale,
   styles,
 }: {
   copy: PartnerCopy;
   grants: ManagedCloudPartnerAccessGrant[];
+  locale?: string | undefined;
   styles: ReturnType<typeof createStyles>;
 }) {
   return (
@@ -342,13 +365,19 @@ function PartnerSharedGrantList({
                 : copy.accessLevelSummary}
             </Text>
             <Text style={styles.helperText}>
+              {grant.accessLevel === "full"
+                ? copy.accessLevelFullHint
+                : copy.accessLevelSummaryHint}
+            </Text>
+            <Text style={styles.helperText}>
               {copy.emailNotificationsStatusLabel}:{" "}
               {grant.emailNotificationsAllowed
                 ? copy.emailNotificationsEnabled
                 : copy.emailNotificationsDisabled}
             </Text>
             <Text style={styles.helperText}>
-              {copy.lastSeenLabel}: {grant.lastSeenAt ?? copy.lastSeenNever}
+              {copy.lastSeenLabel}:{" "}
+              {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
             </Text>
           </View>
         ))

@@ -5,6 +5,7 @@ import {
   type DayCervicalMucus,
   type DayCycleFactorKey,
   type DayFlow,
+  type DayLHTest,
   type DayLogRecord,
   type DaySexActivity,
   type DaySymptomID,
@@ -14,6 +15,7 @@ import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildDayLogVisibility,
+  type DayLogVisibilityOptions,
   sanitizeDayLogRecord,
   trimDayLogNotes,
 } from "./day-log-policy";
@@ -46,6 +48,8 @@ export type DayLogEditorViewData = {
     intimacy: string;
     cervicalMucus: string;
     cervicalMucusExplainer: string;
+    lhTest: string;
+    lhTestHint: string;
     bbt: string;
     bbtHint: string;
     notes: string;
@@ -74,6 +78,11 @@ export type DayLogEditorViewData = {
     flow: readonly { value: DayFlow; label: string }[];
     sexActivity: readonly { value: DaySexActivity; label: string }[];
     cervicalMucus: readonly { value: DayCervicalMucus; label: string }[];
+    lhTest: readonly {
+      value: DayLHTest;
+      label: string;
+      secondaryLabel?: string;
+    }[];
     cycleFactors: readonly {
       value: DayCycleFactorKey;
       label: string;
@@ -94,10 +103,13 @@ export type LoadedDayLogEditorState = {
   viewData: DayLogEditorViewData;
 };
 
+export type DayLogEditorPremiumOptions = Pick<DayLogVisibilityOptions, "showLHTests">;
+
 export async function loadDayLogEditorState(
   storage: LocalAppStorage,
   date: DayLogRecord["date"],
   locale = "en",
+  premiumOptions: DayLogEditorPremiumOptions = {},
 ): Promise<LoadedDayLogEditorState> {
   const [profile, record, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
@@ -119,6 +131,7 @@ export async function loadDayLogEditorState(
       symptomRecords,
       filteredRecord.symptomIDs,
       locale,
+      premiumOptions,
     ),
   };
 }
@@ -211,6 +224,7 @@ export function buildDayLogEditorViewData(
   symptomRecords: readonly SymptomRecord[],
   selectedSymptomIDs: readonly DaySymptomID[] = [],
   locale = "en",
+  premiumOptions: DayLogEditorPremiumOptions = {},
 ): DayLogEditorViewData {
   const dayLogCopy = getDayLogCopy(locale);
   const pickerSymptoms = buildLocalizedEntryPickerSymptoms(
@@ -223,7 +237,7 @@ export function buildDayLogEditorViewData(
     title: dayLogCopy.title,
     subtitle: dayLogCopy.subtitle,
     dateLabel: formatDayLogDateLabel(date, locale),
-    visibility: buildDayLogVisibility(profile),
+    visibility: buildDayLogVisibility(profile, premiumOptions),
     labels: {
       periodDay: dayLogCopy.periodDay,
       symptoms: dayLogCopy.symptoms,
@@ -234,6 +248,8 @@ export function buildDayLogEditorViewData(
       intimacy: dayLogCopy.intimacy,
       cervicalMucus: dayLogCopy.cervicalMucus,
       cervicalMucusExplainer: dayLogCopy.cervicalMucusExplainer,
+      lhTest: dayLogCopy.lhTest,
+      lhTestHint: dayLogCopy.lhTestHint,
       bbt: dayLogCopy.bbt,
       bbtHint: `${dayLogCopy.bbtHint} ${profile.temperatureUnit === "f" ? "°F" : "°C"}.`,
       notes: dayLogCopy.notes,
@@ -262,6 +278,7 @@ export function buildDayLogEditorViewData(
       flow: [...dayLogCopy.options.flow],
       sexActivity: [...dayLogCopy.options.sexActivity],
       cervicalMucus: [...dayLogCopy.options.cervicalMucus],
+      lhTest: [...dayLogCopy.options.lhTest],
       cycleFactors: DAY_CYCLE_FACTOR_KEYS.map((value) => ({
         value,
         label: dayLogCopy.options.cycleFactors[value].label,

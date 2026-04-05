@@ -101,6 +101,57 @@ const settingsCopyEn = {
     temperatureUnitFahrenheit: "Fahrenheit",
     save: "Save tracking",
   },
+  reminders: {
+    title: "Reminders",
+    subtitle:
+      "Keep device reminders private on this device and use privacy-safe email prompts when premium delivery is enabled.",
+    localOnlyHint:
+      "On-device reminders stay on this device only. They do not send your health data to a server.",
+    emailHint:
+      "Premium reminder emails send only generic prompts. They never include symptoms, notes, or fertile details.",
+    lockedHint:
+      "Premium reminder delivery needs an active Ovumcy Cloud plan on this device. Your saved reminder choices stay local.",
+    timeLabel: "Reminder time",
+    timeHint:
+      "Used for daily logging and for the next scheduled cycle reminders on this device.",
+    emailDelivery: "Also send reminder emails",
+    emailDeliveryHint:
+      "Uses managed email delivery with privacy-safe prompts based on your enabled reminder types.",
+    emailDeliveryStateOn: "Managed reminder emails will be synced when available.",
+    emailDeliveryStateOff: "Reminder emails are turned off.",
+    dailyLog: "Remind me to log today",
+    dailyLogHint:
+      "Schedules a daily reminder to open Ovumcy and update today's entry.",
+    dailyLogStateOn: "A daily on-device reminder is enabled.",
+    dailyLogStateOff: "No daily logging reminder is scheduled.",
+    upcomingPeriod: "Remind me before the next period window",
+    upcomingPeriodHint:
+      "Schedules a local reminder ahead of the next predicted period window when predictions are available.",
+    upcomingPeriodStateOn:
+      "A local upcoming-period reminder can be scheduled.",
+    upcomingPeriodStateOff: "No upcoming-period reminder is scheduled.",
+    fertileWindow: "Remind me before the fertile window",
+    fertileWindowHint:
+      "Schedules a local reminder ahead of the next predicted fertile window when predictions are available.",
+    fertileWindowStateOn:
+      "A local fertile-window reminder can be scheduled.",
+    fertileWindowStateOff: "No fertile-window reminder is scheduled.",
+    saved: "Reminder settings updated for this device.",
+    savedWithEmail:
+      "Reminder settings updated. Managed reminder emails now use privacy-safe prompts.",
+    emailUnavailable:
+      "Reminder settings were saved, but managed reminder emails are unavailable right now.",
+    emailSyncFailed:
+      "Reminder settings were saved, but managed reminder emails could not be updated right now.",
+    permissionDenied:
+      "Allow notifications in device settings to receive reminders on this device.",
+    unavailable: "This device cannot schedule local reminders right now.",
+    errors: {
+      invalidTime: "Use a valid reminder time in HH:MM format.",
+      saveFailed:
+        "Unable to save reminder settings right now. Please try again.",
+    },
+  },
   interface: {
     title: "Interface",
     subtitle: "Control app language and appearance on this device.",
@@ -496,6 +547,62 @@ const settingsCopyDe: SettingsCopy = {
     temperatureUnitCelsius: "Celsius",
     temperatureUnitFahrenheit: "Fahrenheit",
     save: "Tracking speichern",
+  },
+  reminders: {
+    title: "Erinnerungen",
+    subtitle:
+      "Halte Geräte-Erinnerungen privat auf diesem Gerät und nutze datensparsame E-Mail-Hinweise, wenn Premium-Zustellung aktiv ist.",
+    localOnlyHint:
+      "Geräte-Erinnerungen bleiben nur auf diesem Gerät. Es werden keine Gesundheitsdaten an einen Server gesendet.",
+    emailHint:
+      "Premium-Erinnerungs-E-Mails senden nur allgemeine Hinweise. Symptome, Notizen oder fruchtbare Details werden nie aufgenommen.",
+    lockedHint:
+      "Premium-Erinnerungszustellung benötigt auf diesem Gerät einen aktiven Ovumcy-Cloud-Plan. Deine gespeicherten Auswahloptionen bleiben lokal.",
+    timeLabel: "Erinnerungszeit",
+    timeHint:
+      "Wird für tägliche Log-Erinnerungen und für die nächsten geplanten Zyklus-Erinnerungen auf diesem Gerät verwendet.",
+    emailDelivery: "Auch Erinnerungs-E-Mails senden",
+    emailDeliveryHint:
+      "Verwendet verwaltete E-Mail-Zustellung mit datensparsamen Hinweisen basierend auf deinen aktivierten Erinnerungstypen.",
+    emailDeliveryStateOn:
+      "Verwaltete Erinnerungs-E-Mails werden synchronisiert, wenn sie verfügbar sind.",
+    emailDeliveryStateOff: "Erinnerungs-E-Mails sind ausgeschaltet.",
+    dailyLog: "Mich an den heutigen Eintrag erinnern",
+    dailyLogHint:
+      "Plant eine tägliche Erinnerung, Ovumcy zu öffnen und den heutigen Eintrag zu aktualisieren.",
+    dailyLogStateOn: "Eine tägliche Geräte-Erinnerung ist aktiviert.",
+    dailyLogStateOff: "Es ist keine tägliche Log-Erinnerung geplant.",
+    upcomingPeriod: "Vor dem nächsten Periodenfenster erinnern",
+    upcomingPeriodHint:
+      "Plant eine lokale Erinnerung vor dem nächsten vorhergesagten Periodenfenster, wenn Vorhersagen verfügbar sind.",
+    upcomingPeriodStateOn:
+      "Eine lokale Erinnerung vor der nächsten Periode kann geplant werden.",
+    upcomingPeriodStateOff:
+      "Es ist keine Erinnerung vor der nächsten Periode geplant.",
+    fertileWindow: "Vor dem fruchtbaren Fenster erinnern",
+    fertileWindowHint:
+      "Plant eine lokale Erinnerung vor dem nächsten vorhergesagten fruchtbaren Fenster, wenn Vorhersagen verfügbar sind.",
+    fertileWindowStateOn:
+      "Eine lokale Erinnerung vor dem fruchtbaren Fenster kann geplant werden.",
+    fertileWindowStateOff:
+      "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
+    saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
+    savedWithEmail:
+      "Erinnerungseinstellungen wurden aktualisiert. Verwaltete Erinnerungs-E-Mails nutzen jetzt datensparsame Hinweise.",
+    emailUnavailable:
+      "Die Erinnerungseinstellungen wurden gespeichert, aber verwaltete Erinnerungs-E-Mails sind gerade nicht verfügbar.",
+    emailSyncFailed:
+      "Die Erinnerungseinstellungen wurden gespeichert, aber verwaltete Erinnerungs-E-Mails konnten gerade nicht aktualisiert werden.",
+    permissionDenied:
+      "Erlaube Benachrichtigungen in den Geräteeinstellungen, um Erinnerungen auf diesem Gerät zu erhalten.",
+    unavailable:
+      "Dieses Gerät kann lokale Erinnerungen im Moment nicht planen.",
+    errors: {
+      invalidTime:
+        "Verwende eine gültige Erinnerungszeit im Format HH:MM.",
+      saveFailed:
+        "Die Erinnerungseinstellungen konnten gerade nicht gespeichert werden. Bitte versuche es erneut.",
+    },
   },
   interface: {
     ...settingsCopyEn.interface,
@@ -929,6 +1036,62 @@ const settingsCopyFr: SettingsCopy = {
     temperatureUnitCelsius: "Celsius",
     temperatureUnitFahrenheit: "Fahrenheit",
     save: "Enregistrer le suivi",
+  },
+  reminders: {
+    title: "Rappels",
+    subtitle:
+      "Garde les rappels de l’appareil privés sur cet appareil et utilise des e-mails prudents quand la livraison premium est active.",
+    localOnlyHint:
+      "Les rappels de l’appareil restent sur cet appareil uniquement. Ils n’envoient pas tes données de santé à un serveur.",
+    emailHint:
+      "Les e-mails de rappel premium envoient seulement des messages génériques. Ils n’incluent jamais les symptômes, les notes ni des détails fertiles.",
+    lockedHint:
+      "La livraison premium des rappels nécessite un abonnement Ovumcy Cloud actif sur cet appareil. Tes choix enregistrés restent locaux.",
+    timeLabel: "Heure du rappel",
+    timeHint:
+      "Utilisée pour le rappel quotidien et pour les prochains rappels de cycle planifiés sur cet appareil.",
+    emailDelivery: "Envoyer aussi des e-mails de rappel",
+    emailDeliveryHint:
+      "Utilise la livraison e-mail gérée avec des messages prudents basés sur les types de rappels activés.",
+    emailDeliveryStateOn:
+      "Les e-mails de rappel gérés seront synchronisés lorsqu’ils sont disponibles.",
+    emailDeliveryStateOff: "Les e-mails de rappel sont désactivés.",
+    dailyLog: "Me rappeler de noter aujourd’hui",
+    dailyLogHint:
+      "Planifie un rappel quotidien pour ouvrir Ovumcy et mettre à jour l’entrée du jour.",
+    dailyLogStateOn: "Un rappel quotidien sur l’appareil est activé.",
+    dailyLogStateOff:
+      "Aucun rappel quotidien de saisie n’est planifié.",
+    upcomingPeriod: "Me rappeler avant la prochaine fenêtre de règles",
+    upcomingPeriodHint:
+      "Planifie un rappel local avant la prochaine fenêtre de règles prédite lorsque les prédictions sont disponibles.",
+    upcomingPeriodStateOn:
+      "Un rappel local avant les prochaines règles peut être planifié.",
+    upcomingPeriodStateOff:
+      "Aucun rappel avant les prochaines règles n’est planifié.",
+    fertileWindow: "Me rappeler avant la fenêtre fertile",
+    fertileWindowHint:
+      "Planifie un rappel local avant la prochaine fenêtre fertile prédite lorsque les prédictions sont disponibles.",
+    fertileWindowStateOn:
+      "Un rappel local avant la fenêtre fertile peut être planifié.",
+    fertileWindowStateOff:
+      "Aucun rappel avant la fenêtre fertile n’est planifié.",
+    saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
+    savedWithEmail:
+      "Les réglages de rappel ont été mis à jour. Les e-mails gérés utilisent maintenant des messages prudents.",
+    emailUnavailable:
+      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel gérés sont indisponibles pour le moment.",
+    emailSyncFailed:
+      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel gérés n’ont pas pu être mis à jour pour le moment.",
+    permissionDenied:
+      "Autorise les notifications dans les réglages de l’appareil pour recevoir les rappels sur cet appareil.",
+    unavailable:
+      "Cet appareil ne peut pas planifier de rappels locaux pour le moment.",
+    errors: {
+      invalidTime: "Utilise une heure valide au format HH:MM.",
+      saveFailed:
+        "Impossible d’enregistrer les réglages de rappel pour le moment. Réessaie.",
+    },
   },
   interface: {
     ...settingsCopyEn.interface,
@@ -1367,6 +1530,64 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       temperatureUnitFahrenheit: "Фаренгейт",
       save: "Сохранить трекинг",
     },
+    reminders: {
+      title: "Напоминания",
+      subtitle:
+        "Оставляйте уведомления устройства приватными на этом устройстве и используйте privacy-safe email-подсказки, когда premium-доставка включена.",
+      localOnlyHint:
+        "Напоминания устройства остаются только на этом устройстве. Данные о здоровье не отправляются на сервер.",
+      emailHint:
+        "Premium email-напоминания отправляют только общие подсказки. В них никогда не попадают симптомы, заметки или фертильные детали.",
+      lockedHint:
+        "Premium-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются локально.",
+      timeLabel: "Время напоминания",
+      timeHint:
+        "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
+      emailDelivery: "Также отправлять email-напоминания",
+      emailDeliveryHint:
+        "Использует managed email-доставку с privacy-safe текстом на основе включённых типов напоминаний.",
+      emailDeliveryStateOn:
+        "Managed email-напоминания будут синхронизироваться, когда это доступно.",
+      emailDeliveryStateOff: "Email-напоминания выключены.",
+      dailyLog: "Напоминать заполнить запись за сегодня",
+      dailyLogHint:
+        "Планирует ежедневное напоминание открыть Ovumcy и обновить сегодняшнюю запись.",
+      dailyLogStateOn:
+        "Ежедневное локальное напоминание включено.",
+      dailyLogStateOff:
+        "Ежедневное напоминание о записи не запланировано.",
+      upcomingPeriod: "Напоминать перед следующим окном месячных",
+      upcomingPeriodHint:
+        "Планирует локальное напоминание перед следующим прогнозируемым окном месячных, когда прогноз доступен.",
+      upcomingPeriodStateOn:
+        "Локальное напоминание перед следующим окном месячных может быть запланировано.",
+      upcomingPeriodStateOff:
+        "Напоминание перед следующим окном месячных не запланировано.",
+      fertileWindow: "Напоминать перед фертильным окном",
+      fertileWindowHint:
+        "Планирует локальное напоминание перед следующим прогнозируемым фертильным окном, когда прогноз доступен.",
+      fertileWindowStateOn:
+        "Локальное напоминание перед фертильным окном может быть запланировано.",
+      fertileWindowStateOff:
+        "Напоминание перед фертильным окном не запланировано.",
+      saved: "Настройки напоминаний обновлены для этого устройства.",
+      savedWithEmail:
+        "Настройки напоминаний обновлены. Managed email-напоминания теперь используют privacy-safe подсказки.",
+      emailUnavailable:
+        "Настройки напоминаний сохранены, но managed email-напоминания сейчас недоступны.",
+      emailSyncFailed:
+        "Настройки напоминаний сохранены, но managed email-напоминания сейчас не удалось обновить.",
+      permissionDenied:
+        "Разрешите уведомления в настройках устройства, чтобы получать напоминания на этом устройстве.",
+      unavailable:
+        "Сейчас это устройство не может планировать локальные напоминания.",
+      errors: {
+        invalidTime:
+          "Используйте корректное время напоминания в формате HH:MM.",
+        saveFailed:
+          "Сейчас не удалось сохранить настройки напоминаний. Попробуйте ещё раз.",
+      },
+    },
     interface: {
       title: "Интерфейс",
       subtitle: "Управляйте языком приложения и темой на этом устройстве.",
@@ -1766,6 +1987,64 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       temperatureUnitCelsius: "Celsius",
       temperatureUnitFahrenheit: "Fahrenheit",
       save: "Guardar seguimiento",
+    },
+    reminders: {
+      title: "Recordatorios",
+      subtitle:
+        "Mantén privadas las notificaciones del dispositivo y usa avisos por correo respetuosos con la privacidad cuando la entrega premium esté activa.",
+      localOnlyHint:
+        "Los recordatorios del dispositivo se quedan solo en este dispositivo. No envían tus datos de salud a un servidor.",
+      emailHint:
+        "Los correos premium de recordatorio envían solo avisos genéricos. Nunca incluyen síntomas, notas ni detalles fértiles.",
+      lockedHint:
+        "La entrega premium de recordatorios necesita un plan activo de Ovumcy Cloud en este dispositivo. Tus opciones guardadas siguen siendo locales.",
+      timeLabel: "Hora del recordatorio",
+      timeHint:
+        "Se usa para el recordatorio diario y para los próximos recordatorios del ciclo programados en este dispositivo.",
+      emailDelivery: "Enviar también correos de recordatorio",
+      emailDeliveryHint:
+        "Usa entrega gestionada por correo con avisos respetuosos con la privacidad según los tipos de recordatorio activados.",
+      emailDeliveryStateOn:
+        "Los correos gestionados de recordatorio se sincronizarán cuando estén disponibles.",
+      emailDeliveryStateOff: "Los correos de recordatorio están desactivados.",
+      dailyLog: "Recuérdame registrar hoy",
+      dailyLogHint:
+        "Programa un recordatorio diario para abrir Ovumcy y actualizar la entrada de hoy.",
+      dailyLogStateOn:
+        "Hay un recordatorio diario del dispositivo activado.",
+      dailyLogStateOff:
+        "No hay recordatorio diario de registro programado.",
+      upcomingPeriod: "Recuérdame antes de la próxima ventana del período",
+      upcomingPeriodHint:
+        "Programa un recordatorio local antes de la próxima ventana de período prevista cuando haya predicciones disponibles.",
+      upcomingPeriodStateOn:
+        "Se puede programar un recordatorio local antes del próximo período.",
+      upcomingPeriodStateOff:
+        "No hay recordatorio antes del próximo período programado.",
+      fertileWindow: "Recuérdame antes de la ventana fértil",
+      fertileWindowHint:
+        "Programa un recordatorio local antes de la próxima ventana fértil prevista cuando haya predicciones disponibles.",
+      fertileWindowStateOn:
+        "Se puede programar un recordatorio local antes de la ventana fértil.",
+      fertileWindowStateOff:
+        "No hay recordatorio antes de la ventana fértil programado.",
+      saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
+      savedWithEmail:
+        "Los ajustes de recordatorios se actualizaron. Los correos gestionados ahora usan avisos respetuosos con la privacidad.",
+      emailUnavailable:
+        "Los ajustes de recordatorios se guardaron, pero los correos gestionados no están disponibles ahora mismo.",
+      emailSyncFailed:
+        "Los ajustes de recordatorios se guardaron, pero no se pudieron actualizar los correos gestionados ahora mismo.",
+      permissionDenied:
+        "Permite las notificaciones en los ajustes del dispositivo para recibir recordatorios en este dispositivo.",
+      unavailable:
+        "Este dispositivo no puede programar recordatorios locales ahora mismo.",
+      errors: {
+        invalidTime:
+          "Usa una hora válida para el recordatorio con formato HH:MM.",
+        saveFailed:
+          "No se pudieron guardar los ajustes de recordatorios ahora. Inténtalo de nuevo.",
+      },
     },
     interface: {
       title: "Interfaz",

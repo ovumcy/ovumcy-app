@@ -8,12 +8,14 @@ import type {
   InterfaceSettingsValues,
   PredictionMode,
   ProfileRecord,
+  ReminderSettingsValues,
   TemperatureUnit,
   ThemePreference,
   TrackingSettingsValues,
   UsageGoal,
 } from "../models/profile";
 import {
+  DEFAULT_REMINDER_TIME,
   resolvePredictionMode,
   resolveScreenCaptureProtectionEnabled,
 } from "../models/profile";
@@ -106,6 +108,51 @@ export type SettingsViewData = {
       label: string;
       hint: string;
       options: { value: TemperatureUnit; label: string }[];
+    };
+  };
+  reminders: {
+    title: string;
+    subtitle: string;
+    localOnlyHint: string;
+    lockedHint: string;
+    emailHint: string;
+    timeLabel: string;
+    timeHint: string;
+    emailDelivery: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    dailyLog: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    upcomingPeriod: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    fertileWindow: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
+    status: {
+      saved: string;
+      savedWithEmail: string;
+      emailUnavailable: string;
+      emailSyncFailed: string;
+      permissionDenied: string;
+      unavailable: string;
+    };
+    errors: {
+      invalidTime: string;
+      saveFailed: string;
     };
   };
   interface: {
@@ -330,16 +377,22 @@ export type SettingsViewData = {
   status: SettingsCopy["status"];
 };
 
+export type SettingsManagedPremiumAccess = {
+  doctorPDF: boolean;
+  reminders: boolean;
+};
+
 export type LoadedSettingsState = {
   profile: ProfileRecord;
   cycleValues: CycleSettingsValues;
   interfaceValues: InterfaceSettingsValues;
   hasSyncSession: boolean;
-  managedDoctorPDFAllowed: boolean;
+  managedPremiumAccess: SettingsManagedPremiumAccess;
   syncCapabilities: SyncCapabilityDocument | null;
   savedSyncPreferences: SyncPreferencesRecord;
   syncPreferences: SyncPreferencesRecord;
   hasStoredSyncSecrets: boolean;
+  reminderValues: ReminderSettingsValues;
   trackingValues: TrackingSettingsValues;
   symptomRecords: SymptomRecord[];
   exportState: LoadedExportState;
@@ -364,6 +417,7 @@ export type SettingsSymptomsState = {
 
 export type SettingsDirtyState = {
   isCycleDirty: boolean;
+  isReminderDirty: boolean;
   isTrackingDirty: boolean;
   isInterfaceDirty: boolean;
   hasUnsavedSettingsChanges: boolean;
@@ -490,6 +544,51 @@ export function buildSettingsViewData(
           { value: "c", label: `°C · ${settingsCopy.tracking.temperatureUnitCelsius}` },
           { value: "f", label: `°F · ${settingsCopy.tracking.temperatureUnitFahrenheit}` },
         ],
+      },
+    },
+    reminders: {
+      title: settingsCopy.reminders.title,
+      subtitle: settingsCopy.reminders.subtitle,
+      localOnlyHint: settingsCopy.reminders.localOnlyHint,
+      lockedHint: settingsCopy.reminders.lockedHint,
+      emailHint: settingsCopy.reminders.emailHint,
+      timeLabel: settingsCopy.reminders.timeLabel,
+      timeHint: settingsCopy.reminders.timeHint,
+      emailDelivery: {
+        label: settingsCopy.reminders.emailDelivery,
+        hint: settingsCopy.reminders.emailDeliveryHint,
+        stateOn: settingsCopy.reminders.emailDeliveryStateOn,
+        stateOff: settingsCopy.reminders.emailDeliveryStateOff,
+      },
+      dailyLog: {
+        label: settingsCopy.reminders.dailyLog,
+        hint: settingsCopy.reminders.dailyLogHint,
+        stateOn: settingsCopy.reminders.dailyLogStateOn,
+        stateOff: settingsCopy.reminders.dailyLogStateOff,
+      },
+      upcomingPeriod: {
+        label: settingsCopy.reminders.upcomingPeriod,
+        hint: settingsCopy.reminders.upcomingPeriodHint,
+        stateOn: settingsCopy.reminders.upcomingPeriodStateOn,
+        stateOff: settingsCopy.reminders.upcomingPeriodStateOff,
+      },
+      fertileWindow: {
+        label: settingsCopy.reminders.fertileWindow,
+        hint: settingsCopy.reminders.fertileWindowHint,
+        stateOn: settingsCopy.reminders.fertileWindowStateOn,
+        stateOff: settingsCopy.reminders.fertileWindowStateOff,
+      },
+      status: {
+        saved: settingsCopy.reminders.saved,
+        savedWithEmail: settingsCopy.reminders.savedWithEmail,
+        emailUnavailable: settingsCopy.reminders.emailUnavailable,
+        emailSyncFailed: settingsCopy.reminders.emailSyncFailed,
+        permissionDenied: settingsCopy.reminders.permissionDenied,
+        unavailable: settingsCopy.reminders.unavailable,
+      },
+      errors: {
+        invalidTime: settingsCopy.reminders.errors.invalidTime,
+        saveFailed: settingsCopy.reminders.errors.saveFailed,
       },
     },
     interface: {
@@ -752,7 +851,10 @@ export function createLoadedSettingsState(
   exportState: LoadedExportState,
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
   syncCapabilities: SyncCapabilityDocument | null = null,
-  managedDoctorPDFAllowed = false,
+  managedPremiumAccess: SettingsManagedPremiumAccess = {
+    doctorPDF: false,
+    reminders: false,
+  },
 ): LoadedSettingsState {
   return {
     profile,
@@ -774,11 +876,19 @@ export function createLoadedSettingsState(
       ),
     },
     hasSyncSession,
-    managedDoctorPDFAllowed,
+    managedPremiumAccess,
     syncCapabilities,
     savedSyncPreferences,
     syncPreferences,
     hasStoredSyncSecrets,
+    reminderValues: {
+      dailyLogReminderEnabled: profile.dailyLogReminderEnabled === true,
+      upcomingPeriodReminderEnabled: profile.upcomingPeriodReminderEnabled === true,
+      fertileWindowReminderEnabled: profile.fertileWindowReminderEnabled === true,
+      managedReminderEmailsEnabled:
+        profile.managedReminderEmailsEnabled === true,
+      reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
+    },
     trackingValues: {
       trackBBT: profile.trackBBT,
       temperatureUnit: profile.temperatureUnit,
@@ -824,6 +934,18 @@ export function extractPersistedTrackingValues(
   };
 }
 
+export function extractPersistedReminderValues(
+  profile: LoadedSettingsState["profile"],
+): LoadedSettingsState["reminderValues"] {
+  return {
+    dailyLogReminderEnabled: profile.dailyLogReminderEnabled === true,
+    upcomingPeriodReminderEnabled: profile.upcomingPeriodReminderEnabled === true,
+    fertileWindowReminderEnabled: profile.fertileWindowReminderEnabled === true,
+    managedReminderEmailsEnabled: profile.managedReminderEmailsEnabled === true,
+    reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
+  };
+}
+
 export function extractPersistedInterfaceValues(
   profile: LoadedSettingsState["profile"],
 ): LoadedSettingsState["interfaceValues"] {
@@ -865,6 +987,19 @@ export function areTrackingSettingsEqual(
   );
 }
 
+export function areReminderSettingsEqual(
+  left: LoadedSettingsState["reminderValues"],
+  right: LoadedSettingsState["reminderValues"],
+): boolean {
+  return (
+    left.dailyLogReminderEnabled === right.dailyLogReminderEnabled &&
+    left.upcomingPeriodReminderEnabled === right.upcomingPeriodReminderEnabled &&
+    left.fertileWindowReminderEnabled === right.fertileWindowReminderEnabled &&
+    left.managedReminderEmailsEnabled === right.managedReminderEmailsEnabled &&
+    left.reminderTime === right.reminderTime
+  );
+}
+
 export function areInterfaceSettingsEqual(
   left: LoadedSettingsState["interfaceValues"],
   right: LoadedSettingsState["interfaceValues"],
@@ -882,6 +1017,7 @@ export function buildSettingsDirtyState(
   if (!state) {
     return {
       isCycleDirty: false,
+      isReminderDirty: false,
       isTrackingDirty: false,
       isInterfaceDirty: false,
       hasUnsavedSettingsChanges: false,
@@ -891,6 +1027,10 @@ export function buildSettingsDirtyState(
   const isCycleDirty = !areCycleSettingsEqual(
     state.cycleValues,
     extractPersistedCycleValues(state.profile),
+  );
+  const isReminderDirty = !areReminderSettingsEqual(
+    state.reminderValues,
+    extractPersistedReminderValues(state.profile),
   );
   const isTrackingDirty = !areTrackingSettingsEqual(
     state.trackingValues,
@@ -903,10 +1043,11 @@ export function buildSettingsDirtyState(
 
   return {
     isCycleDirty,
+    isReminderDirty,
     isTrackingDirty,
     isInterfaceDirty,
     hasUnsavedSettingsChanges:
-      isCycleDirty || isTrackingDirty || isInterfaceDirty,
+      isCycleDirty || isReminderDirty || isTrackingDirty || isInterfaceDirty,
   };
 }
 
@@ -916,6 +1057,7 @@ export function revertLoadedSettingsDraftValues(
   return {
     ...state,
     cycleValues: extractPersistedCycleValues(state.profile),
+    reminderValues: extractPersistedReminderValues(state.profile),
     trackingValues: extractPersistedTrackingValues(state.profile),
     interfaceValues: extractPersistedInterfaceValues(state.profile),
   };
@@ -996,7 +1138,7 @@ export function buildSettingsExportSectionPresentationState(
     LoadedSettingsState,
     | "exportState"
     | "hasSyncSession"
-    | "managedDoctorPDFAllowed"
+    | "managedPremiumAccess"
     | "syncPreferences"
   >,
   viewData: SettingsViewData["export"],
@@ -1004,7 +1146,7 @@ export function buildSettingsExportSectionPresentationState(
 ): SettingsExportSectionPresentationState {
   const pdfAccess = resolvePDFExportAccessState({
     hasSyncSession: state.hasSyncSession,
-    managedDoctorPDFAllowed: state.managedDoctorPDFAllowed,
+    managedDoctorPDFAllowed: state.managedPremiumAccess.doctorPDF,
     syncMode: state.syncPreferences.mode,
   });
 

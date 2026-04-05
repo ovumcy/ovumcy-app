@@ -3,6 +3,7 @@ import type {
   CycleSettingsValues,
   InterfaceSettingsValues,
   ProfileRecord,
+  ReminderSettingsValues,
   TrackingSettingsValues,
 } from "../models/profile";
 import type { SymptomID } from "../models/symptom";
@@ -20,9 +21,11 @@ import {
 import {
   getSettingsCycleStartDateBounds,
   isCompatibleCycleAndPeriod,
+  isValidReminderTime,
   parseLocalDate,
   sanitizeCycleSettingsValues,
   sanitizeInterfaceSettingsValues,
+  sanitizeReminderSettingsValues,
   sanitizeTrackingSettingsValues,
 } from "./profile-settings-policy";
 import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
@@ -39,6 +42,7 @@ import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-servic
 type SaveSettingsErrorCode =
   | "invalid_cycle_settings"
   | "invalid_last_period_start"
+  | "invalid_reminder_time"
   | "generic";
 type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
 type ExportSettingsErrorCode =
@@ -113,7 +117,49 @@ export async function saveCycleSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
+    ),
+  };
+}
+
+export async function saveReminderSettings(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  reminderValues: ReminderSettingsValues,
+): Promise<SaveStateResult<SaveSettingsErrorCode>> {
+  if (!isValidReminderTime(reminderValues.reminderTime)) {
+    return {
+      ok: false,
+      errorCode: "invalid_reminder_time",
+    };
+  }
+
+  const nextProfile: ProfileRecord = {
+    ...currentState.profile,
+    ...sanitizeReminderSettingsValues(reminderValues),
+  };
+
+  try {
+    await storage.writeProfileRecord(nextProfile);
+  } catch {
+    return {
+      ok: false,
+      errorCode: "generic",
+    };
+  }
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      nextProfile,
+      currentState.savedSyncPreferences,
+      currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
+      currentState.symptomRecords,
+      currentState.exportState,
+      currentState.syncPreferences,
+      currentState.syncCapabilities,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -148,7 +194,7 @@ export async function saveTrackingSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -183,7 +229,7 @@ export async function saveInterfaceSettings(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -218,7 +264,7 @@ export async function createSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -260,7 +306,7 @@ export async function updateSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -297,7 +343,7 @@ export async function archiveSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -334,7 +380,7 @@ export async function restoreSettingsSymptom(
       currentState.exportState,
       currentState.syncPreferences,
       currentState.syncCapabilities,
-      currentState.managedDoctorPDFAllowed,
+      currentState.managedPremiumAccess,
     ),
   };
 }
@@ -355,7 +401,7 @@ export async function refreshSettingsExportState(
     result.state,
     currentState.syncPreferences,
     currentState.syncCapabilities,
-    currentState.managedDoctorPDFAllowed,
+    currentState.managedPremiumAccess,
   );
   if (result.errorCode) {
     return {
@@ -392,7 +438,7 @@ export async function prepareSettingsExportArtifact(
   if (format === "pdf") {
     const pdfAccess = resolvePDFExportAccessState({
       hasSyncSession: currentState.hasSyncSession,
-      managedDoctorPDFAllowed: currentState.managedDoctorPDFAllowed,
+      managedDoctorPDFAllowed: currentState.managedPremiumAccess.doctorPDF,
       syncMode: currentState.syncPreferences.mode,
     });
     if (!pdfAccess.enabled) {
@@ -420,7 +466,7 @@ export async function prepareSettingsExportArtifact(
     result.state,
     currentState.syncPreferences,
     currentState.syncCapabilities,
-    currentState.managedDoctorPDFAllowed,
+    currentState.managedPremiumAccess,
   );
 
   if (!result.ok) {

@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
+import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import {
   clearDayLogEditorRecord,
   buildNextDayLogRecordPatch,
@@ -14,11 +15,16 @@ import {
   loadDashboardScreenState,
   type LoadedDashboardState,
 } from "../../services/dashboard-view-service";
+import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
+import { syncManagedLocalReminderSchedule } from "../../services/local-reminder-sync-service";
 import {
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
+import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { hasDayLogData } from "../../models/day-log";
+import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
@@ -30,6 +36,8 @@ type DashboardScreenProps = {
   autosaveDebounceMs?: number;
   storage?: LocalAppStorage;
   now?: Date;
+  reminderScheduler?: LocalReminderScheduler;
+  syncSecretStore?: SyncSecretStore;
 };
 
 type EditorStatusState = {
@@ -41,6 +49,8 @@ export function DashboardScreen({
   autosaveDebounceMs,
   storage = appStorage,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
+  syncSecretStore = defaultSyncSecretStore,
 }: DashboardScreenProps) {
   const { colors, language } = useAppPreferences();
   const [effectiveNow] = useState(() => now ?? new Date());
@@ -52,35 +62,65 @@ export function DashboardScreen({
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { syncReminders?: boolean }) => {
+    const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
+      storage,
+      syncSecretStore,
+    );
     const loadedState = await loadDashboardScreenState(
       storage,
       effectiveNow,
       language,
+      {
+        showLHTests: premiumFeatures.advancedFertility,
+      },
     );
     setState(loadedState);
     setIsLoading(false);
-  }, [effectiveNow, language, storage]);
+    if (options?.syncReminders) {
+      await syncManagedLocalReminderSchedule(
+        storage,
+        syncSecretStore,
+        reminderScheduler,
+        loadedState.profile,
+        {
+          locale: language,
+          now: effectiveNow,
+        },
+      );
+    }
+    return loadedState;
+  }, [effectiveNow, language, reminderScheduler, storage, syncSecretStore]);
 
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      void loadDashboardScreenState(storage, effectiveNow, language).then(
-        (loadedState) => {
-          if (!isMounted) {
-            return;
-          }
+      void (async () => {
+        const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
+          storage,
+          syncSecretStore,
+        );
+        const loadedState = await loadDashboardScreenState(
+          storage,
+          effectiveNow,
+          language,
+          {
+            showLHTests: premiumFeatures.advancedFertility,
+          },
+        );
+        if (!isMounted) {
+          return;
+        }
 
-          setState(loadedState);
-          setIsLoading(false);
-        },
-      );
+        setState(loadedState);
+        setIsLoading(false);
+      })();
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, language, storage]),
+    }, [effectiveNow, language, storage, syncSecretStore]),
   );
 
   const {
@@ -100,7 +140,9 @@ export function DashboardScreen({
         }
       : null,
     onPersist: (record) => saveDayLogEditorRecord(storage, record),
-    onSaved: refresh,
+    onSaved: async () => {
+      await refresh({ syncReminders: true });
+    },
     record: state?.todayEntry ?? null,
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
   });
@@ -176,7 +218,7 @@ export function DashboardScreen({
           }
         : current,
     );
-    await refresh();
+    await refresh({ syncReminders: true });
     setStatus({
       message: state.editorViewData.actions.deletedLabel,
       tone: "success",
@@ -218,7 +260,7 @@ export function DashboardScreen({
       return;
     }
 
-    await refresh();
+    await refresh({ syncReminders: true });
     setStatus({
       message: dashboardCopy.manualCycleStartSaved,
       tone: "success",

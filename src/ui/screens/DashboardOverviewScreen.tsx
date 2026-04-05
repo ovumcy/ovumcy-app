@@ -10,6 +10,7 @@ import {
   DayLogEditorCard,
   type DayLogEditorSectionKey,
 } from "../components/DayLogEditorCard";
+import { InsightSummaryCard } from "../components/InsightSummaryCard";
 import { ManualCycleStartAction } from "../components/ManualCycleStartAction";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
@@ -151,6 +152,13 @@ export function DashboardOverviewScreen({
             <Text style={styles.helperText} testID="dashboard-prediction-explanation">
               {viewData.predictionExplanation}
             </Text>
+          ) : null}
+
+          {viewData.advancedFertilitySummary ? (
+            <InsightSummaryCard
+              testID="dashboard-advanced-fertility-summary"
+              viewData={viewData.advancedFertilitySummary}
+            />
           ) : null}
 
           <View style={styles.quickActionsBlock}>

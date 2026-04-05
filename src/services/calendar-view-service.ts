@@ -26,6 +26,10 @@ import {
   buildCalendarPredictionNotice,
   type CalendarPredictionNoticeViewData,
 } from "./calendar-notice-service";
+import {
+  buildCurrentCycleAdvancedFertilitySummary,
+  type CurrentCycleAdvancedFertilitySummaryViewData,
+} from "./current-cycle-advanced-fertility-summary-service";
 
 export type CalendarDayStateKey =
   | "neutral"
@@ -56,6 +60,7 @@ export type CalendarDayCellViewData = {
 export type CalendarDaySummaryViewData = {
   dateLabel: string;
   subtitle: string;
+  advancedFertilitySummary: CurrentCycleAdvancedFertilitySummaryViewData | null;
   markerSummary: {
     label: string;
     value: string;
@@ -136,6 +141,9 @@ export async function loadCalendarScreenState(
   monthValue?: string,
   selectedDate?: string,
   locale = "en",
+  options: {
+    showLHTests?: boolean;
+  } = {},
 ): Promise<LoadedCalendarState> {
   const today = atLocalDay(now);
   const monthStart = parseMonthValue(monthValue) ?? startOfMonth(today);
@@ -155,17 +163,22 @@ export async function loadCalendarScreenState(
     ...selectedRecord,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
   };
+  const history = buildCycleHistorySummary(profile, logs, today);
+  const projection = buildCurrentCycleProjection(profile, history, logs, today);
   const effectiveSelectedRecord = resolveCalendarVisibleRecord(
     profile,
     filteredSelectedRecord,
     activeDate,
   );
+  const editorPremiumOptions =
+    options.showLHTests === true ? { showLHTests: true as const } : {};
   const editorViewData = buildDayLogEditorViewData(
     profile,
     activeDate,
     symptomRecords,
     effectiveSelectedRecord.symptomIDs,
     locale,
+    editorPremiumOptions,
   );
   const viewData = buildCalendarViewData(
     profile,
@@ -174,9 +187,26 @@ export async function loadCalendarScreenState(
     monthStart,
     activeDate,
     locale,
+    {
+      history,
+      projection,
+    },
   );
   const selectedDay =
     viewData.days.find((day) => day.date === activeDate) ?? null;
+  const advancedFertilitySummary =
+    options.showLHTests === true
+      ? buildCurrentCycleAdvancedFertilitySummary(
+          history,
+          logs,
+          projection.cycleAnchorDate,
+          profile.temperatureUnit,
+          locale,
+          {
+            visibleDate: activeDate,
+          },
+        )
+      : null;
 
   return {
     records: logs,
@@ -186,6 +216,7 @@ export async function loadCalendarScreenState(
       effectiveSelectedRecord,
       editorViewData,
       selectedDay,
+      advancedFertilitySummary,
       locale,
     ),
     editorViewData,
@@ -200,10 +231,17 @@ export function buildCalendarViewData(
   monthStart: Date,
   selectedDate: string,
   locale = "en",
+  options: {
+    history?: ReturnType<typeof buildCycleHistorySummary>;
+    projection?: ReturnType<typeof buildCurrentCycleProjection>;
+  } = {},
 ): CalendarViewData {
   const calendarCopy = getCalendarCopy(locale);
-  const history = buildCycleHistorySummary(profile, records, today);
-  const projection = buildCurrentCycleProjection(profile, history, records, today);
+  const history =
+    options.history ?? buildCycleHistorySummary(profile, records, today);
+  const projection =
+    options.projection ??
+    buildCurrentCycleProjection(profile, history, records, today);
   const predictionMaps = buildCalendarPredictionMaps(
     profile,
     history,
@@ -302,6 +340,7 @@ function buildCalendarDaySummaryViewData(
   record: DayLogRecord,
   editorViewData: DayLogEditorViewData,
   selectedDay: CalendarDayCellViewData | null,
+  advancedFertilitySummary: CurrentCycleAdvancedFertilitySummaryViewData | null,
   locale: string,
 ): CalendarDaySummaryViewData {
   const calendarCopy = getCalendarCopy(locale);
@@ -318,6 +357,7 @@ function buildCalendarDaySummaryViewData(
   return {
     dateLabel: formatCalendarSummaryDate(record.date, locale),
     subtitle: calendarCopy.dayEditorSubtitle,
+    advancedFertilitySummary,
     markerSummary: buildCalendarMarkerSummary(selectedDay, calendarCopy),
     stateSummary: buildCalendarStateSummary(selectedDay, calendarCopy),
     noEntryLabel: calendarCopy.noEntry,

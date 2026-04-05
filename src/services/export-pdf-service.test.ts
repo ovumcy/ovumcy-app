@@ -58,6 +58,7 @@ describe("export-pdf-service", () => {
           ...createEmptyDayLogRecord("2026-02-03"),
           mood: 4,
           sexActivity: "protected",
+          lhTest: "peak",
           symptomIDs: ["jaw_pain"],
           notes: "Felt better",
         },
@@ -112,6 +113,7 @@ describe("export-pdf-service", () => {
           expect.objectContaining({
             date: "2026-02-03",
             cycleDay: 3,
+            lhTest: "Пик",
             sexActivity: "С защитой",
             symptoms: ["Jaw pain"],
           }),

@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
+import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
 import { openConfirmation } from "../confirm/open-confirmation";
@@ -24,7 +25,23 @@ jest.mock("../confirm/open-confirmation", () => {
   };
 });
 
+jest.mock("../../services/managed-premium-features-service", () => {
+  return {
+    loadManagedPremiumFeaturesForCurrentSession: jest.fn().mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    }),
+  };
+});
+
 const mockOpenConfirmation = jest.mocked(openConfirmation);
+const mockLoadManagedPremiumFeaturesForCurrentSession = jest.mocked(
+  loadManagedPremiumFeaturesForCurrentSession,
+);
 
 function createStorageMock() {
   return createLocalAppStorageMock({
@@ -88,10 +105,78 @@ async function waitForSelectedDayPanel(dateLabel: string) {
   });
 }
 
+async function createAdvancedFertilityStorage() {
+  const storage = createVolatileWebAppStorage();
+  await storage.writeProfileRecord({
+    lastPeriodStart: "2026-03-29",
+    cycleLength: 29,
+    periodLength: 5,
+    autoPeriodFill: true,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "trying_to_conceive",
+    trackBBT: true,
+    temperatureUnit: "c",
+    trackCervicalMucus: true,
+    hideSexChip: false,
+    languageOverride: "en",
+    themeOverride: "light",
+    dismissedCalendarPredictionNoticeKey: null,
+  });
+
+  const records = [
+    {
+      ...createEmptyDayLogRecord("2026-03-29"),
+      isPeriod: true,
+      cycleStart: true,
+      flow: "medium" as const,
+      bbt: 36.3,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-03-30"),
+      bbt: 36.32,
+      cervicalMucus: "eggwhite" as const,
+      lhTest: "peak" as const,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-03-31"),
+      bbt: 36.34,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-04-01"),
+      bbt: 36.57,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-04-02"),
+      bbt: 36.6,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-04-03"),
+      bbt: 36.63,
+    },
+  ];
+
+  for (const record of records) {
+    await storage.writeDayLogRecord(record);
+  }
+
+  return storage;
+}
+
 describe("CalendarScreen", () => {
   beforeEach(() => {
     mockOpenConfirmation.mockReset();
     mockOpenConfirmation.mockResolvedValue(true);
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockReset();
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
   });
 
   it("loads a selected day through the shared local repository", async () => {
@@ -276,6 +361,57 @@ describe("CalendarScreen", () => {
     await screen.findByTestId("day-log-period-toggle");
     expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy();
     expect(screen.queryByTestId("calendar-day-add-button")).toBeNull();
+  });
+
+  it("shows LH test controls when the managed advanced fertility entitlement is active", async () => {
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: true,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    expect(screen.getByTestId("day-log-lh-none")).toBeTruthy();
+    expect(screen.getByTestId("day-log-lh-peak")).toBeTruthy();
+  });
+
+  it("shows a premium advanced fertility summary for current-cycle days when entitlement is active", async () => {
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: true,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
+
+    const storage = await createAdvancedFertilityStorage();
+
+    render(<CalendarScreen now={new Date(2026, 3, 3)} storage={storage} />);
+
+    await screen.findByTestId("calendar-advanced-fertility-summary");
+
+    expect(screen.getByTestId("calendar-advanced-fertility-summary-title").props.children).toBe(
+      "Advanced fertility",
+    );
+    expect(screen.getByTestId("calendar-advanced-fertility-summary-label").props.children).toBe(
+      "Ovulation confirmation",
+    );
+    expect(screen.getByTestId("calendar-advanced-fertility-summary-value").props.children).toBe(
+      "Signals aligned",
+    );
+    expect(screen.getByTestId("calendar-advanced-fertility-summary-hint").props.children).toBe(
+      "This usually means ovulation likely happened recently and the fertile window may be closing.",
+    );
   });
 
   it("shows an approximate prediction notice when irregular cycle mode is enabled", async () => {

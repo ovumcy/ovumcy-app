@@ -2,6 +2,7 @@ export const DEFAULT_CYCLE_LENGTH = 28;
 export const DEFAULT_PERIOD_LENGTH = 5;
 export const DEFAULT_AUTO_PERIOD_FILL = true;
 export const DEFAULT_TEMPERATURE_UNIT = "c";
+export const DEFAULT_REMINDER_TIME = "20:00";
 
 export const MIN_CYCLE_LENGTH = 15;
 export const MAX_CYCLE_LENGTH = 90;
@@ -20,6 +21,7 @@ export type TemperatureUnit = "c" | "f";
 export type InterfaceLanguage = "en" | "ru" | "es" | "de" | "fr";
 export type ThemePreference = "light" | "dark";
 export type PredictionMode = "regular" | "irregular" | "facts_only";
+export type ReminderTime = string;
 export type CalendarPredictionNoticeKey =
   | "calendar_irregular_prediction_notice_v1"
   | "calendar_unpredictable_prediction_notice_v1";
@@ -55,6 +57,11 @@ export type ProfileRecord = {
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
   hideNotes?: boolean;
+  dailyLogReminderEnabled?: boolean;
+  upcomingPeriodReminderEnabled?: boolean;
+  fertileWindowReminderEnabled?: boolean;
+  managedReminderEmailsEnabled?: boolean;
+  reminderTime?: ReminderTime;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
   screenCaptureProtectionEnabled?: boolean;
@@ -80,6 +87,14 @@ export type TrackingSettingsValues = {
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
   hideNotes: boolean;
+};
+
+export type ReminderSettingsValues = {
+  dailyLogReminderEnabled: boolean;
+  upcomingPeriodReminderEnabled: boolean;
+  fertileWindowReminderEnabled: boolean;
+  managedReminderEmailsEnabled: boolean;
+  reminderTime: ReminderTime;
 };
 
 export type InterfaceSettingsValues = Pick<
@@ -198,6 +213,11 @@ export function createDefaultProfileRecord(): ProfileRecord {
     trackCervicalMucus: false,
     hideSexChip: false,
     hideNotes: false,
+    dailyLogReminderEnabled: false,
+    upcomingPeriodReminderEnabled: false,
+    fertileWindowReminderEnabled: false,
+    managedReminderEmailsEnabled: false,
+    reminderTime: DEFAULT_REMINDER_TIME,
     languageOverride: null,
     themeOverride: null,
     screenCaptureProtectionEnabled: true,

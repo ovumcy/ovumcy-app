@@ -40,6 +40,7 @@ type FakeDatabaseState = {
     sex_activity: string;
     bbt: number;
     cervical_mucus: string;
+    lh_test?: string;
     cycle_factor_keys: string;
     symptom_ids: string;
     notes: string;
@@ -131,6 +132,13 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       databaseState.dayLogRows = databaseState.dayLogRows.map((row) => ({
         ...row,
         encrypted_payload: row.encrypted_payload ?? null,
+      }));
+    }
+
+    if (source.includes("ALTER TABLE day_logs ADD COLUMN lh_test")) {
+      databaseState.dayLogRows = databaseState.dayLogRows.map((row) => ({
+        ...row,
+        lh_test: row.lh_test ?? "none",
       }));
     }
 
@@ -438,10 +446,11 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           sex_activity: String(params[6]),
           bbt: Number(params[7]),
           cervical_mucus: String(params[8]),
-          cycle_factor_keys: String(params[9]),
-          symptom_ids: String(params[10]),
-          notes: String(params[11]),
-          encrypted_payload: (params[12] as string | null) ?? null,
+          lh_test: String(params[9]),
+          cycle_factor_keys: String(params[10]),
+          symptom_ids: String(params[11]),
+          notes: String(params[12]),
+          encrypted_payload: (params[13] as string | null) ?? null,
         };
         databaseState.dayLogRows = databaseState.dayLogRows.filter(
           (row) => row.day !== nextRow.day,
@@ -789,6 +798,7 @@ describe("sqlite-app-storage", () => {
       sexActivity: "protected",
       bbt: 36.55,
       cervicalMucus: "creamy",
+      lhTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
@@ -804,6 +814,7 @@ describe("sqlite-app-storage", () => {
       sexActivity: "protected",
       bbt: 36.55,
       cervicalMucus: "creamy",
+      lhTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
@@ -837,6 +848,7 @@ describe("sqlite-app-storage", () => {
       sexActivity: "none",
       bbt: 0,
       cervicalMucus: "none",
+      lhTest: "none",
       cycleFactorKeys: [],
       symptomIDs: [],
       notes: "",
@@ -896,6 +908,7 @@ describe("sqlite-app-storage", () => {
       sexActivity: "protected",
       bbt: 36.7,
       cervicalMucus: "eggwhite",
+      lhTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Reset me",
@@ -1387,6 +1400,7 @@ describe("sqlite-app-storage", () => {
       sexActivity: "protected",
       bbt: 36.7,
       cervicalMucus: "eggwhite",
+      lhTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Reset me",

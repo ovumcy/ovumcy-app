@@ -2,6 +2,7 @@ import * as React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createDefaultSymptomRecords } from "../../models/symptom";
+import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
@@ -16,6 +17,23 @@ jest.mock("expo-router", () => {
     },
   };
 });
+
+jest.mock("../../services/managed-premium-features-service", () => {
+  return {
+    loadManagedPremiumFeaturesForCurrentSession: jest.fn().mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    }),
+  };
+});
+
+const mockLoadManagedPremiumFeaturesForCurrentSession = jest.mocked(
+  loadManagedPremiumFeaturesForCurrentSession,
+);
 
 function createStorageMock(overrides = {}) {
   return createLocalAppStorageMock({
@@ -67,9 +85,139 @@ function renderDashboard(
   );
 }
 
+async function createAdvancedFertilityStorage() {
+  const storage = createVolatileWebAppStorage();
+  await storage.writeProfileRecord({
+    lastPeriodStart: "2026-03-29",
+    cycleLength: 29,
+    periodLength: 5,
+    autoPeriodFill: true,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "trying_to_conceive",
+    trackBBT: true,
+    temperatureUnit: "c",
+    trackCervicalMucus: true,
+    hideSexChip: false,
+    hideNotes: false,
+    languageOverride: "en",
+    themeOverride: "light",
+    dismissedCalendarPredictionNoticeKey: null,
+  });
+
+  const records = [
+    {
+      date: "2026-03-29",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "medium" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.3,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-03-30",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.32,
+      cervicalMucus: "eggwhite" as const,
+      lhTest: "peak" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-03-31",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.34,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-01",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.57,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-02",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.6,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-03",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.63,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+  ];
+
+  for (const record of records) {
+    await storage.writeDayLogRecord(record);
+  }
+
+  return storage;
+}
+
 describe("DashboardScreen", () => {
   afterEach(() => {
     jest.useRealTimers();
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockReset();
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
   });
 
   it(
@@ -133,6 +281,64 @@ describe("DashboardScreen", () => {
 
     expect(screen.queryByTestId("day-log-notes-toggle")).toBeNull();
     expect(screen.queryByTestId("day-log-notes-input")).toBeNull();
+  });
+
+  it("shows LH test controls when the managed advanced fertility entitlement is active", async () => {
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: true,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
+
+    renderDashboard(createStorageMock());
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    expect(screen.getByTestId("day-log-lh-none")).toBeTruthy();
+    expect(screen.getByTestId("day-log-lh-peak")).toBeTruthy();
+  });
+
+  it("shows a premium advanced fertility summary when aligned current-cycle signals exist", async () => {
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
+      advancedFertility: true,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    });
+
+    const storage = await createAdvancedFertilityStorage();
+
+    renderDashboard(storage, new Date(2026, 3, 3));
+
+    await screen.findByTestId("dashboard-advanced-fertility-summary");
+
+    expect(screen.getByTestId("dashboard-advanced-fertility-summary-title").props.children).toBe(
+      "Advanced fertility",
+    );
+    expect(screen.getByTestId("dashboard-advanced-fertility-summary-label").props.children).toBe(
+      "Ovulation confirmation",
+    );
+    expect(screen.getByTestId("dashboard-advanced-fertility-summary-value").props.children).toBe(
+      "Signals aligned",
+    );
+    expect(screen.getByTestId("dashboard-advanced-fertility-summary-hint").props.children).toBe(
+      "This usually means ovulation likely happened recently and the fertile window may be closing.",
+    );
+  });
+
+  it("keeps the advanced fertility summary locked without the premium entitlement", async () => {
+    const storage = await createAdvancedFertilityStorage();
+
+    renderDashboard(storage, new Date(2026, 3, 3));
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    expect(screen.queryByTestId("dashboard-advanced-fertility-summary")).toBeNull();
   });
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {

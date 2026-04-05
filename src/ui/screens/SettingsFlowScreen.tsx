@@ -27,6 +27,7 @@ import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { SettingsCycleSection } from "./settings/SettingsCycleSection";
+import { SettingsRemindersSection } from "./settings/SettingsRemindersSection";
 import { createSettingsFlowStyles } from "./settings/settings-flow-styles";
 import { SettingsTrackingSection } from "./settings/SettingsTrackingSection";
 
@@ -83,6 +84,9 @@ export type SettingsFlowScreenProps = {
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
   onExportToDatePress: () => void;
+  onDailyLogReminderChange: (value: boolean) => void;
+  onFertileWindowReminderChange: (value: boolean) => void;
+  onManagedReminderEmailsChange: (value: boolean) => void;
   onHideNotesChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
@@ -92,6 +96,7 @@ export type SettingsFlowScreenProps = {
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
+  onReminderTimeChange: (value: string) => void;
   onSavePendingSettings: () => void | Promise<void>;
   onSymptomDraftChange: (
     symptomID: SymptomID,
@@ -102,8 +107,11 @@ export type SettingsFlowScreenProps = {
   ) => void;
   onTrackBBTChange: (value: boolean) => void;
   onTrackCervicalMucusChange: (value: boolean) => void;
+  onUpcomingPeriodReminderChange: (value: boolean) => void;
   onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
+  reminderStatusMessage: string;
+  reminderStatusTone: "success" | "error" | "info";
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
   rowSymptomErrorMessages: Record<string, string>;
   rowSymptomStatusMessages: Record<string, string>;
@@ -159,6 +167,9 @@ export function SettingsFlowScreen({
   onExportPresetSelect,
   onExportToDateChange,
   onExportToDatePress,
+  onDailyLogReminderChange,
+  onFertileWindowReminderChange,
+  onManagedReminderEmailsChange,
   onHideNotesChange,
   onHideSexChipChange,
   onInterfaceLanguageSelect,
@@ -168,13 +179,17 @@ export function SettingsFlowScreen({
   onPeriodLengthChange,
   onPredictionModeSelect,
   onRestoreSymptom,
+  onReminderTimeChange,
   onSavePendingSettings,
   onSymptomDraftChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
   onTrackCervicalMucusChange,
+  onUpcomingPeriodReminderChange,
   onUpdateSymptom,
   onUsageGoalSelect,
+  reminderStatusMessage,
+  reminderStatusTone,
   rowSymptomDrafts,
   rowSymptomErrorMessages,
   rowSymptomStatusMessages,
@@ -268,6 +283,19 @@ export function SettingsFlowScreen({
             state={state}
             styles={styles}
             trackingStatusMessage={trackingStatusMessage}
+            viewData={viewData}
+          />
+
+          <SettingsRemindersSection
+            onDailyLogReminderChange={onDailyLogReminderChange}
+            onFertileWindowReminderChange={onFertileWindowReminderChange}
+            onManagedReminderEmailsChange={onManagedReminderEmailsChange}
+            onReminderTimeChange={onReminderTimeChange}
+            onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}
+            reminderStatusMessage={reminderStatusMessage}
+            reminderStatusTone={reminderStatusTone}
+            state={state}
+            styles={styles}
             viewData={viewData}
           />
 

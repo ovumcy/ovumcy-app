@@ -9,6 +9,7 @@ import {
   prepareSettingsExportArtifact,
   refreshSettingsExportState,
   restoreSettingsSymptom,
+  saveReminderSettings,
   saveCycleSettings,
   saveInterfaceSettings,
   saveTrackingSettings,
@@ -124,6 +125,7 @@ describe("settings services", () => {
             premium_features: {
               doctor_pdf: false,
               advanced_insights: false,
+              reminders: false,
             },
           }),
           {
@@ -138,7 +140,10 @@ describe("settings services", () => {
     ).resolves.toEqual(
       expect.objectContaining({
         hasSyncSession: true,
-        managedDoctorPDFAllowed: false,
+        managedPremiumAccess: {
+          doctorPDF: false,
+          reminders: false,
+        },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
           premiumActive: false,
@@ -207,6 +212,7 @@ describe("settings services", () => {
             premium_features: {
               doctor_pdf: true,
               advanced_insights: true,
+              reminders: true,
             },
           }),
           {
@@ -225,7 +231,10 @@ describe("settings services", () => {
           mode: "managed",
           setupStatus: "local_ready",
         }),
-        managedDoctorPDFAllowed: true,
+        managedPremiumAccess: {
+          doctorPDF: true,
+          reminders: true,
+        },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
           premiumActive: true,
@@ -529,6 +538,48 @@ describe("settings services", () => {
     );
   });
 
+  it("validates and persists reminder settings locally", async () => {
+    const storage = createStorageMock();
+    const state = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    const result = await saveReminderSettings(storage, state, {
+      dailyLogReminderEnabled: true,
+      upcomingPeriodReminderEnabled: true,
+      fertileWindowReminderEnabled: false,
+      managedReminderEmailsEnabled: true,
+      reminderTime: "21:30",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      state: expect.objectContaining({
+        profile: expect.objectContaining({
+          dailyLogReminderEnabled: true,
+          upcomingPeriodReminderEnabled: true,
+          fertileWindowReminderEnabled: false,
+          managedReminderEmailsEnabled: true,
+          reminderTime: "21:30",
+        }),
+      }),
+    });
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dailyLogReminderEnabled: true,
+        upcomingPeriodReminderEnabled: true,
+        fertileWindowReminderEnabled: false,
+        managedReminderEmailsEnabled: true,
+        reminderTime: "21:30",
+      }),
+    );
+  });
+
   it("creates, updates, archives, and restores custom symptoms through the canonical repository", async () => {
     const storage = createStorageMock();
     const initialState = createLoadedSettingsState(
@@ -759,7 +810,10 @@ describe("settings services", () => {
         maxDevices: 5,
         maxBlobBytes: 1024,
       },
-      true,
+      {
+        doctorPDF: true,
+        reminders: false,
+      },
     );
 
     await expect(

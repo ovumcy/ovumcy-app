@@ -155,6 +155,7 @@ describe("settings view service", () => {
 
     expect(buildSettingsDirtyState(dirtyState)).toEqual({
       isCycleDirty: true,
+      isReminderDirty: false,
       isTrackingDirty: true,
       isInterfaceDirty: true,
       hasUnsavedSettingsChanges: true,

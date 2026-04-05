@@ -9,6 +9,8 @@ import {
   type ExportDeliveryClient,
 } from "../../../services/export-delivery";
 import type { ExportServiceDependencies } from "../../../services/export-service";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { sanitizeExportDateInput } from "../../../services/export-policy";
 import {
   formatLocalDate,
@@ -54,6 +56,7 @@ import {
   hasCompleteExportDates,
   patchCycleValues,
   patchPredictionMode,
+  patchReminderValues,
   patchTrackingValues,
   removeRowMessage,
   replaceExportDraftValues,
@@ -65,6 +68,7 @@ type UseSettingsScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies | undefined;
   now?: Date | undefined;
+  reminderScheduler?: LocalReminderScheduler;
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
 };
@@ -80,6 +84,7 @@ export function useSettingsScreenController({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
 }: UseSettingsScreenControllerOptions): SettingsScreenControllerResult {
@@ -94,6 +99,7 @@ export function useSettingsScreenController({
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSavingReminders, setIsSavingReminders] = useState(false);
   const [isSavingCycle, setIsSavingCycle] = useState(false);
   const [isSavingInterface, setIsSavingInterface] = useState(false);
   const [isSavingTracking, setIsSavingTracking] = useState(false);
@@ -113,6 +119,10 @@ export function useSettingsScreenController({
   const [exportStatusMessage, setExportStatusMessage] = useState("");
   const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
   const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
+  const [reminderStatusMessage, setReminderStatusMessage] = useState("");
+  const [reminderStatusTone, setReminderStatusTone] = useState<
+    "success" | "error" | "info"
+  >("success");
   const [trackingStatusMessage, setTrackingStatusMessage] = useState("");
   const [createSymptomDraft, setCreateSymptomDraft] = useState<SymptomDraftValues>(
     () => createDefaultSymptomDraft(),
@@ -134,13 +144,16 @@ export function useSettingsScreenController({
     hasUnsavedSettingsChanges,
     isCycleDirty,
     isInterfaceDirty,
+    isReminderDirty,
     isTrackingDirty,
   } = buildSettingsDirtyState(state);
-  const isSavingSettings = isSavingCycle || isSavingTracking || isSavingInterface;
+  const isSavingSettings =
+    isSavingCycle || isSavingTracking || isSavingReminders || isSavingInterface;
   const hasBlockingUnsavedSettingsChanges =
     hasUnsavedSettingsChanges &&
     !isSavingCycle &&
     !isSavingTracking &&
+    !isSavingReminders &&
     !isSavingInterface &&
     !isClearingData;
 
@@ -171,6 +184,8 @@ export function useSettingsScreenController({
     clearPreferencePreview();
     setInterfaceErrorMessage("");
     setInterfaceStatusMessage("");
+    setReminderStatusMessage("");
+    setReminderStatusTone("success");
     setCycleErrorMessage("");
     setCycleStatusMessage("");
     setTrackingStatusMessage("");
@@ -226,6 +241,16 @@ export function useSettingsScreenController({
     );
   }
 
+  function applyReminderUpdates(
+    updates: Partial<LoadedSettingsState["reminderValues"]>,
+  ) {
+    setReminderStatusMessage("");
+    setReminderStatusTone("success");
+    setState((current) =>
+      current ? patchReminderValues(current, updates) : current,
+    );
+  }
+
   function applyInterfaceValues(
     nextValues: LoadedSettingsState["interfaceValues"],
   ) {
@@ -244,16 +269,31 @@ export function useSettingsScreenController({
       setCycleStatusMessage,
       setInterfaceErrorMessage,
       setInterfaceStatusMessage,
+      setIsSavingReminders,
       setIsSavingCycle,
       setIsSavingInterface,
       setIsSavingTracking,
+      setReminderStatusMessage,
+      setReminderStatusTone,
       setState: commitState,
       setTrackingStatusMessage,
+      reminderScheduler,
+      locale: language,
       storage,
+      syncSecretStore,
       syncProfilePreferences,
       viewData,
     }),
-    [effectiveNow, commitState, storage, syncProfilePreferences, viewData],
+    [
+      effectiveNow,
+      commitState,
+      language,
+      reminderScheduler,
+      storage,
+      syncSecretStore,
+      syncProfilePreferences,
+      viewData,
+    ],
   );
 
   const confirmPendingSettingsLeave = useCallback(async () => {
@@ -275,12 +315,14 @@ export function useSettingsScreenController({
     return runSavePendingSettingsAction(saveActionContext, state, {
       isCycleDirty,
       isInterfaceDirty,
+      isReminderDirty,
       isTrackingDirty,
     });
   }, [
     hasBlockingUnsavedSettingsChanges,
     isCycleDirty,
     isInterfaceDirty,
+    isReminderDirty,
     isTrackingDirty,
     revertUnsavedSettings,
     saveActionContext,
@@ -398,6 +440,8 @@ export function useSettingsScreenController({
       isSavingSettings,
       locale: language,
       now: effectiveNow,
+      reminderStatusMessage,
+      reminderStatusTone,
       onAgeGroupSelect: (value) => {
         applyCycleUpdates({ ageGroup: value });
       },
@@ -537,6 +581,9 @@ export function useSettingsScreenController({
           preset: value,
         });
       },
+      onDailyLogReminderChange: (value) => {
+        applyReminderUpdates({ dailyLogReminderEnabled: value });
+      },
       onExportToDateChange: (value) => {
         const sanitizedValue = sanitizeExportDateInput(value);
         const nextValues: LoadedSettingsState["exportState"]["values"] = {
@@ -555,6 +602,12 @@ export function useSettingsScreenController({
       onExportToDatePress: () => {
         resetExportMessages();
         setShowExportDatePicker("to");
+      },
+      onFertileWindowReminderChange: (value) => {
+        applyReminderUpdates({ fertileWindowReminderEnabled: value });
+      },
+      onManagedReminderEmailsChange: (value) => {
+        applyReminderUpdates({ managedReminderEmailsEnabled: value });
       },
       onHideNotesChange: (value) => {
         applyTrackingUpdates({ hideNotes: value }, { resetExportMessages: true });
@@ -598,10 +651,14 @@ export function useSettingsScreenController({
       onRestoreSymptom: (symptomID) => {
         void runRestoreSymptomAction(symptomActionContext, readyState, symptomID);
       },
+      onReminderTimeChange: (value) => {
+        applyReminderUpdates({ reminderTime: value });
+      },
       onSavePendingSettings: () => {
         void runSavePendingSettingsAction(saveActionContext, readyState, {
           isCycleDirty,
           isInterfaceDirty,
+          isReminderDirty,
           isTrackingDirty,
         });
       },
@@ -630,6 +687,9 @@ export function useSettingsScreenController({
           { trackCervicalMucus: value },
           { resetExportMessages: true },
         );
+      },
+      onUpcomingPeriodReminderChange: (value) => {
+        applyReminderUpdates({ upcomingPeriodReminderEnabled: value });
       },
       onUpdateSymptom: (symptomID) => {
         void runUpdateSymptomAction(

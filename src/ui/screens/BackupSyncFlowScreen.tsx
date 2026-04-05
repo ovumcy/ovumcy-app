@@ -53,6 +53,7 @@ export type BackupSyncFlowScreenProps = {
   partnerInviteEmailValue: string;
   partnerInviteEmailNotificationsAllowed: boolean;
   partnerInviteLink: string;
+  partnerLocale?: string | undefined;
   partnerOverview: ManagedCloudPartnerAccessOverview | null;
   pendingPartnerInviteToken: string;
   preferences: SyncPreferencesRecord;
@@ -106,6 +107,7 @@ export function BackupSyncFlowScreen({
   partnerInviteEmailValue,
   partnerInviteEmailNotificationsAllowed,
   partnerInviteLink,
+  partnerLocale,
   partnerOverview,
   pendingPartnerInviteToken,
   preferences,
@@ -174,6 +176,7 @@ export function BackupSyncFlowScreen({
           inviteEmailNotificationsAllowed={partnerInviteEmailNotificationsAllowed}
           inviteLink={partnerInviteLink}
           isBusy={isPartnerBusy}
+          locale={partnerLocale}
           onAcceptInvite={onPartnerAcceptInvite}
           onAccessLevelChange={onPartnerAccessLevelChange}
           onInviteEmailChange={onPartnerInviteEmailChange}

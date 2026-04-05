@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import * as backupSyncScreenService from "../../services/backup-sync-screen-service";
+import { formatBackupSyncLastSeen } from "../../services/backup-sync-view-service";
 import { createLoadedSettingsState } from "../../services/settings-view-service";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
@@ -237,7 +238,10 @@ describe("BackupSyncScreen", () => {
               maxDevices: 5,
               maxBlobBytes: 1024,
             },
-            false,
+            {
+              doctorPDF: false,
+              reminders: false,
+            },
           ),
         });
 
@@ -515,6 +519,11 @@ describe("BackupSyncScreen", () => {
               updated_at: "2026-04-03T00:00:00.000Z",
             },
             invite_token: "invite-token-1",
+            invite_url: "ovumcy://backup-sync?invite_token=invite-token-1",
+            email_delivery: {
+              requested: true,
+              status: "sent",
+            },
           },
           201,
         ),
@@ -578,6 +587,9 @@ describe("BackupSyncScreen", () => {
       "ovumcy://backup-sync?invite_token=invite-token-1",
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
+    expect(
+      screen.getByText("Partner invite link created and the email update was sent."),
+    ).toBeTruthy();
     expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
     const issueInviteCall = fetchMock.mock.calls.find(
       ([url, init]: [unknown, unknown?]) =>
@@ -759,6 +771,119 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
     expect(screen.getByTestId("settings-partner-shared-grant-grant-1")).toBeTruthy();
     expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
+  });
+
+  it("formats partner last seen values and explains access levels in the partner section", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const rawLastSeen = "2026-04-05T10:30:00.000Z";
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/auth/session")) {
+        return createJSONResponse({
+          account_id: "managed-account-1",
+          email: "owner@example.com",
+          session_expires_at: "2026-03-21T08:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "manual",
+            updated_at: "2026-03-20T08:05:00.000Z",
+            effective_at: "2026-03-20T08:05:00.000Z",
+            explanation: "plan active",
+          },
+        });
+      }
+
+      if (url.includes("/account/billing")) {
+        return createJSONResponse({
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: true,
+            reminders: false,
+          },
+        });
+      }
+
+      if (url.includes("/account/partner/access")) {
+        return createJSONResponse({
+          owned: {
+            invites: [],
+            grants: [
+              {
+                id: "grant-1",
+                owner_account_id: "managed-account-1",
+                partner_account_id: "partner-account-1",
+                partner_email: "partner@example.com",
+                access_level: "summary",
+                email_notifications_allowed: true,
+                source_invite_id: "invite-1",
+                accepted_at: "2026-04-04T10:30:00.000Z",
+                last_seen_at: rawLastSeen,
+                created_at: "2026-04-04T10:30:00.000Z",
+                updated_at: "2026-04-05T10:30:00.000Z",
+              },
+            ],
+          },
+          shared_with_me: [],
+        });
+      }
+
+      throw new Error(`Unexpected fetch in test: ${url}`);
+    }) as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-partner-grant-grant-1");
+    expect(
+      screen.getAllByText(
+        "Share the lighter summary view instead of detailed day-by-day history.",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(rawLastSeen)).toBeNull();
+    expect(
+      screen.getByText(
+        `Last seen: ${formatBackupSyncLastSeen(rawLastSeen, "en", "Not opened yet.")}`,
+      ),
+    ).toBeTruthy();
   });
 
   it("shows managed cloud account fields on the dedicated backup and sync screen", async () => {
