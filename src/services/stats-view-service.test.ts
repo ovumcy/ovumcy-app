@@ -254,4 +254,144 @@ describe("buildStatsViewData", () => {
       "After 35, cycle variability naturally increases.",
     );
   });
+
+  it("adds advanced insights when the managed premium entitlement is active", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord({
+        trackBBT: true,
+        trackCervicalMucus: true,
+      }),
+      [
+        createPeriodRecord("2025-10-01"),
+        {
+          ...createEmptyDayLogRecord("2025-10-14"),
+          cervicalMucus: "eggwhite",
+        },
+        {
+          ...createEmptyDayLogRecord("2025-10-11"),
+          symptomIDs: ["headache"],
+        },
+        createPeriodRecord("2025-10-29"),
+        {
+          ...createEmptyDayLogRecord("2025-11-12"),
+          cervicalMucus: "eggwhite",
+        },
+        {
+          ...createEmptyDayLogRecord("2025-11-08"),
+          symptomIDs: ["headache"],
+        },
+        createPeriodRecord("2025-11-26"),
+        {
+          ...createEmptyDayLogRecord("2025-12-10"),
+          cervicalMucus: "eggwhite",
+        },
+        {
+          ...createEmptyDayLogRecord("2025-12-06"),
+          symptomIDs: ["headache"],
+        },
+        createPeriodRecord("2025-12-24"),
+        {
+          ...createEmptyDayLogRecord("2026-01-08"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2026-01-21"),
+        {
+          ...createEmptyDayLogRecord("2026-02-04"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2026-02-18"),
+        {
+          ...createEmptyDayLogRecord("2026-03-12"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2026-03-28"),
+        {
+          ...createEmptyDayLogRecord("2026-03-29"),
+          bbt: 36.3,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-30"),
+          bbt: 36.32,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-31"),
+          bbt: 36.34,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-01"),
+          bbt: 36.57,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-02"),
+          bbt: 36.6,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-03"),
+          bbt: 36.63,
+        },
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 3, 4),
+      "en",
+      {
+        advancedFertility: true,
+        advancedInsights: true,
+        doctorPDF: false,
+        extendedReports: true,
+      },
+    );
+
+    expect(viewData.advancedInsights?.title).toBe("Advanced insights");
+    expect(viewData.advancedInsights?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "weighted-average",
+          title: "Weighted average",
+        }),
+        expect.objectContaining({
+          key: "pattern-drift",
+          title: "Pattern drift",
+        }),
+        expect.objectContaining({
+          key: "anomalous-cycle",
+          title: "Anomalous cycle",
+        }),
+      ]),
+    );
+    expect(viewData.advancedFertility?.title).toBe("Advanced fertility");
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "observed-luteal",
+          title: "Observed luteal phase",
+        }),
+        expect.objectContaining({
+          key: "signal-coverage",
+          title: "Signal coverage",
+        }),
+        expect.objectContaining({
+          key: "thermal-shift",
+          title: "Thermal shift",
+        }),
+      ]),
+    );
+    expect(viewData.personalForecasts?.title).toBe("Personal forecasts");
+    expect(viewData.personalForecasts?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: "Headache",
+          value: "In 3 days",
+        }),
+      ]),
+    );
+    expect(viewData.extendedReports?.title).toBe("Extended reports");
+    expect(viewData.extendedReports?.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cycleLengthLabel: expect.stringContaining("Cycle"),
+          periodLengthLabel: expect.stringContaining("Period"),
+        }),
+      ]),
+    );
+  });
 });

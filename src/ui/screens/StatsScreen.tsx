@@ -4,11 +4,15 @@ import { ActivityIndicator, View } from "react-native";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
+import { loadManagedPremiumFeatures } from "../../services/managed-premium-features-service";
 import {
   loadStatsScreenState,
   type LoadedStatsState,
 } from "../../services/stats-view-service";
+import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
+import { loadSyncSetupState } from "../../sync/sync-setup-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { StatsOverviewScreen } from "./StatsOverviewScreen";
@@ -16,11 +20,13 @@ import { StatsOverviewScreen } from "./StatsOverviewScreen";
 type StatsScreenProps = {
   storage?: LocalAppStorage;
   now?: Date;
+  syncSecretStore?: SyncSecretStore;
 };
 
 export function StatsScreen({
   storage = appStorage,
   now,
+  syncSecretStore = defaultSyncSecretStore,
 }: StatsScreenProps) {
   const { colors, language } = useAppPreferences();
   const router = useRouter();
@@ -33,19 +39,38 @@ export function StatsScreen({
     useCallback(() => {
       let isMounted = true;
 
-      void loadStatsScreenState(storage, effectiveNow, language).then((loadedState) => {
+      void (async () => {
+        const syncState = await loadSyncSetupState(storage, syncSecretStore);
+        const premiumFeatures =
+          syncState.hasAuthSession && syncState.preferences.mode === "managed"
+            ? await loadManagedPremiumFeatures(
+                syncSecretStore,
+                syncState.preferences.mode,
+              )
+            : {
+                advancedFertility: false,
+                advancedInsights: false,
+                doctorPDF: false,
+                extendedReports: false,
+              };
+        const loadedState = await loadStatsScreenState(
+          storage,
+          effectiveNow,
+          language,
+          premiumFeatures,
+        );
         if (!isMounted) {
           return;
         }
 
         setState(loadedState);
         setIsLoading(false);
-      });
+      })();
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, language, storage]),
+    }, [effectiveNow, language, storage, syncSecretStore]),
   );
 
   if (isLoading || !state) {

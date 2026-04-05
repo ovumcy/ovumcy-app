@@ -20,6 +20,7 @@ import {
   shouldShowIrregularModeRecommendation,
 } from "./cycle-history-service";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
+import type { ManagedCloudPremiumFeatures } from "../sync/managed-cloud-api-client";
 import {
   buildLastCycleSymptomFrequency,
   buildStatsBBTSeries,
@@ -29,6 +30,10 @@ import {
   buildStatsSymptomPatterns,
   buildStatsTrendPoints,
 } from "./stats-insights-service";
+import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
+import { buildStatsExtendedReports } from "./stats-extended-reports-service";
+import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
+import { buildStatsPremiumInsights } from "./stats-premium-insights-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
 
@@ -41,11 +46,38 @@ export type StatsTopCardViewData = {
 
 export type StatsEmptyActionKind = "open_logging";
 
+export type StatsPremiumSectionViewData = {
+  title: string;
+  subtitle: string;
+  items: {
+    key: string;
+    title: string;
+    value: string;
+    description: string;
+    tone: "info" | "success" | "warning";
+  }[];
+};
+
 export type StatsViewData = {
   title: string;
   description: string;
   hasInsights: boolean;
   predictionExplanation?: string;
+  extendedReports?: {
+    title: string;
+    subtitle: string;
+    summary: string;
+    rows: {
+      key: string;
+      title: string;
+      cycleLengthLabel: string;
+      periodLengthLabel: string;
+      comparisonLabel: string;
+    }[];
+  };
+  advancedInsights?: StatsPremiumSectionViewData;
+  advancedFertility?: StatsPremiumSectionViewData;
+  personalForecasts?: StatsPremiumSectionViewData;
   emptyState?: {
     title: string;
     body: string;
@@ -201,6 +233,12 @@ export async function loadStatsScreenState(
   storage: LocalAppStorage,
   now: Date,
   locale = "en",
+  premiumFeatures: ManagedCloudPremiumFeatures = {
+    advancedFertility: false,
+    advancedInsights: false,
+    doctorPDF: false,
+    extendedReports: false,
+  },
 ): Promise<LoadedStatsState> {
   const today = atLocalDay(now);
   const rangeStart = formatLocalDate(
@@ -217,7 +255,14 @@ export async function loadStatsScreenState(
     profile,
     records,
     symptomRecords,
-    viewData: buildStatsViewData(profile, records, symptomRecords, now, locale),
+    viewData: buildStatsViewData(
+      profile,
+      records,
+      symptomRecords,
+      now,
+      locale,
+      premiumFeatures,
+    ),
   };
 }
 
@@ -227,6 +272,12 @@ export function buildStatsViewData(
   symptomRecords: SymptomRecord[],
   now: Date,
   locale = "en",
+  premiumFeatures: ManagedCloudPremiumFeatures = {
+    advancedFertility: false,
+    advancedInsights: false,
+    doctorPDF: false,
+    extendedReports: false,
+  },
 ): StatsViewData {
   const statsCopy = getStatsCopy(locale);
   const dayLogCopy = getDayLogCopy(locale);
@@ -288,12 +339,81 @@ export function buildStatsViewData(
     records,
     localizedSymptomRecords,
   );
+  const personalForecasts = premiumFeatures.advancedInsights
+    ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
+    : [];
+  const premiumInsights = premiumFeatures.advancedInsights
+    ? buildStatsPremiumInsights(history)
+    : null;
+  const advancedInsightsSection = premiumInsights
+    ? buildAdvancedInsightsSection(premiumInsights, statsCopy)
+    : null;
+  const premiumFertility = premiumFeatures.advancedFertility
+    ? buildStatsAdvancedFertility(
+        history,
+        records,
+        projection.cycleAnchorDate,
+        profile.temperatureUnit,
+      )
+    : null;
+  const advancedFertilitySection = premiumFertility
+    ? buildAdvancedFertilitySection(premiumFertility, profile, statsCopy)
+    : null;
+  const personalForecastsSection =
+    personalForecasts.length > 0
+      ? buildPersonalForecastsSection(personalForecasts, statsCopy)
+      : null;
+  const extendedReports = premiumFeatures.extendedReports
+    ? buildStatsExtendedReports(history)
+    : null;
   const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
 
   return {
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,
+    ...(advancedInsightsSection
+      ? {
+          advancedInsights: advancedInsightsSection,
+        }
+      : {}),
+    ...(advancedFertilitySection
+      ? {
+          advancedFertility: advancedFertilitySection,
+        }
+      : {}),
+    ...(personalForecastsSection
+      ? {
+          personalForecasts: personalForecastsSection,
+        }
+      : {}),
+    ...(extendedReports
+      ? {
+          extendedReports: {
+            title: statsCopy.extendedReports.title,
+            subtitle: statsCopy.extendedReports.subtitle,
+            summary: statsCopy.extendedReports.summary(
+              extendedReports.rowCount,
+              extendedReports.minCycleLength,
+              extendedReports.maxCycleLength,
+            ),
+            rows: extendedReports.rows.map((row) => ({
+              key: row.key,
+              title: statsCopy.extendedReports.rowTitle(
+                formatDisplayDate(row.startDate, locale),
+              ),
+              cycleLengthLabel: statsCopy.extendedReports.cycleLengthLabel(
+                row.cycleLength,
+              ),
+              periodLengthLabel: statsCopy.extendedReports.periodLengthLabel(
+                row.periodLength,
+              ),
+              comparisonLabel:
+                statsCopy.extendedReports.comparisonLabels[row.comparisonKind],
+            })),
+          },
+        }
+      : {}),
     predictionExplanation: buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
@@ -466,6 +586,221 @@ export function buildStatsViewData(
         }
       : {}),
   };
+}
+
+function buildAdvancedInsightsSection(
+  premiumInsights: ReturnType<typeof buildStatsPremiumInsights>,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): StatsPremiumSectionViewData | null {
+  const items: StatsPremiumSectionViewData["items"] = [];
+
+  if (premiumInsights.weightedAverageCycleLength !== null) {
+    items.push({
+      key: "weighted-average",
+      title: statsCopy.advancedInsights.weightedAverageTitle,
+      value: formatDaysValue(
+        premiumInsights.weightedAverageCycleLength,
+        statsCopy,
+      ),
+      description: statsCopy.advancedInsights.weightedAverageDescription(
+        premiumInsights.weightedAverageSampleCount,
+      ),
+      tone: "success",
+    });
+  }
+
+  if (premiumInsights.patternDrift) {
+    const insight = premiumInsights.patternDrift;
+    items.push({
+      key: "pattern-drift",
+      title: statsCopy.advancedInsights.patternDriftTitle,
+      value:
+        insight.kind === "stable"
+          ? statsCopy.advancedInsights.patternDriftStableValue
+          : insight.kind === "drifting"
+            ? statsCopy.advancedInsights.patternDriftDriftingValue
+            : statsCopy.advancedInsights.patternDriftStrongValue,
+      description:
+        insight.kind === "stable"
+          ? statsCopy.advancedInsights.patternDriftStableDescription(
+              insight.recentAverage,
+              insight.baselineAverage,
+            )
+          : statsCopy.advancedInsights.patternDriftDescription(
+              insight.deltaDays,
+              insight.recentAverage,
+              insight.baselineAverage,
+            ),
+      tone:
+        insight.kind === "stable"
+          ? "success"
+          : insight.kind === "drifting"
+            ? "info"
+            : "warning",
+    });
+  }
+
+  if (premiumInsights.anomalousCycle) {
+    const insight = premiumInsights.anomalousCycle;
+    items.push({
+      key: "anomalous-cycle",
+      title: statsCopy.advancedInsights.anomalousCycleTitle,
+      value:
+        insight.kind === "longer"
+          ? statsCopy.advancedInsights.anomalousCycleLongerValue
+          : statsCopy.advancedInsights.anomalousCycleShorterValue,
+      description: statsCopy.advancedInsights.anomalousCycleDescription(
+        insight.cycleLength,
+        insight.baselineLength,
+        insight.deltaDays,
+      ),
+      tone: "warning",
+    });
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    title: statsCopy.advancedInsights.title,
+    subtitle: statsCopy.advancedInsights.subtitle,
+    items,
+  };
+}
+
+function buildAdvancedFertilitySection(
+  premiumFertility: NonNullable<ReturnType<typeof buildStatsAdvancedFertility>>,
+  profile: ProfileRecord,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): StatsPremiumSectionViewData | null {
+  const items: StatsPremiumSectionViewData["items"] = [];
+
+  if (
+    premiumFertility.observedLutealAverageDays !== null &&
+    premiumFertility.observedLutealSampleCount > 0
+  ) {
+    items.push({
+      key: "observed-luteal",
+      title: statsCopy.advancedFertility.observedLutealTitle,
+      value: statsCopy.advancedFertility.daysValue(
+        premiumFertility.observedLutealAverageDays.toFixed(1),
+      ),
+      description: statsCopy.advancedFertility.observedLutealDescription(
+        premiumFertility.observedLutealSampleCount,
+        premiumFertility.observedLutealAverageDays.toFixed(1),
+      ),
+      tone: "info",
+    });
+  }
+
+  if (premiumFertility.signalCoverageSampleCount > 0) {
+    items.push({
+      key: "signal-coverage",
+      title: statsCopy.advancedFertility.signalCoverageTitle,
+      value: statsCopy.advancedFertility.signalCoverageValue(
+        premiumFertility.signalCoverageCount,
+        premiumFertility.signalCoverageSampleCount,
+      ),
+      description: statsCopy.advancedFertility.signalCoverageDescription(
+        premiumFertility.signalCoverageCount,
+        premiumFertility.signalCoverageSampleCount,
+      ),
+      tone:
+        premiumFertility.signalCoverageCount === 0
+          ? "warning"
+          : premiumFertility.signalCoverageCount >=
+              premiumFertility.signalCoverageSampleCount / 2
+            ? "success"
+            : "info",
+    });
+  }
+
+  if (premiumFertility.thermalShift) {
+    const unitLabel =
+      profile.temperatureUnit === "f"
+        ? statsCopy.bbtUnitFahrenheit
+        : statsCopy.bbtUnitCelsius;
+    items.push({
+      key: "thermal-shift",
+      title: statsCopy.advancedFertility.thermalShiftTitle,
+      value:
+        premiumFertility.thermalShift.kind === "confirmed"
+          ? statsCopy.advancedFertility.thermalShiftConfirmedValue
+          : statsCopy.advancedFertility.thermalShiftBuildingValue,
+      description:
+        premiumFertility.thermalShift.kind === "confirmed"
+          ? statsCopy.advancedFertility.thermalShiftConfirmedDescription(
+              premiumFertility.thermalShift.rise.toFixed(2),
+              unitLabel,
+              premiumFertility.thermalShift.sampleCount,
+            )
+          : statsCopy.advancedFertility.thermalShiftBuildingDescription(
+              premiumFertility.thermalShift.rise.toFixed(2),
+              unitLabel,
+              premiumFertility.thermalShift.sampleCount,
+            ),
+      tone: premiumFertility.thermalShift.kind === "confirmed" ? "success" : "info",
+    });
+  }
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    title: statsCopy.advancedFertility.title,
+    subtitle: statsCopy.advancedFertility.subtitle,
+    items,
+  };
+}
+
+function buildPersonalForecastsSection(
+  forecasts: ReturnType<typeof buildStatsPersonalForecasts>,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): StatsPremiumSectionViewData | null {
+  const items: StatsPremiumSectionViewData["items"] = forecasts.map((forecast) => ({
+    key: forecast.id,
+    title: forecast.label,
+    value:
+      forecast.offsetStart <= 0
+        ? statsCopy.personalForecasts.aroundNowValue
+        : forecast.offsetStart === forecast.offsetEnd
+          ? statsCopy.personalForecasts.inDaysValue(forecast.offsetStart)
+          : statsCopy.personalForecasts.inDayRangeValue(
+              forecast.offsetStart,
+              forecast.offsetEnd,
+            ),
+    description:
+      forecast.dayStart === forecast.dayEnd
+        ? statsCopy.personalForecasts.descriptionSingle(forecast.dayStart)
+        : statsCopy.personalForecasts.descriptionRange(
+            forecast.dayStart,
+            forecast.dayEnd,
+          ),
+    tone: forecast.offsetStart <= 0 ? "success" : "info",
+  }));
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return {
+    title: statsCopy.personalForecasts.title,
+    subtitle: statsCopy.personalForecasts.subtitle,
+    items,
+  };
+}
+
+function formatDaysValue(
+  value: number,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): string {
+  const rounded = Math.round(value * 10) / 10;
+  const displayValue =
+    Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+
+  return statsCopy.advancedInsights.daysValue(displayValue);
 }
 
 function buildTopCards(

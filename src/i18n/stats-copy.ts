@@ -82,6 +82,86 @@ const statsCopyEn = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "BBT appears only when you track it. Readings stay local and are shown for the current cycle only.",
+  advancedInsights: {
+    title: "Advanced insights",
+    subtitle: "Premium patterns derived only from your recent local cycle history.",
+    weightedAverageTitle: "Weighted average",
+    weightedAverageDescription: (count: number) =>
+      `Recent cycles are weighted toward your last ${count} completed cycles.`,
+    patternDriftTitle: "Pattern drift",
+    patternDriftStableValue: "Stable rhythm",
+    patternDriftDriftingValue: "Drifting",
+    patternDriftStrongValue: "Strong drift",
+    patternDriftStableDescription: (recent: number, baseline: number) =>
+      `Recent average ${recent.toFixed(1)} d vs baseline ${baseline.toFixed(1)} d.`,
+    patternDriftDescription: (
+      delta: number,
+      recent: number,
+      baseline: number,
+    ) =>
+      `Recent average ${recent.toFixed(1)} d vs baseline ${baseline.toFixed(1)} d (${delta > 0 ? "+" : ""}${delta.toFixed(1)} d).`,
+    anomalousCycleTitle: "Anomalous cycle",
+    anomalousCycleLongerValue: "Longer than usual",
+    anomalousCycleShorterValue: "Shorter than usual",
+    anomalousCycleDescription: (
+      cycleLength: number,
+      baselineLength: number,
+      deltaDays: number,
+    ) =>
+      `Last completed cycle ${cycleLength} d vs expected ${baselineLength.toFixed(1)} d (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} d).`,
+    daysValue: (value: string) => `${value} d`,
+  },
+  advancedFertility: {
+    title: "Advanced fertility",
+    subtitle:
+      "Premium fertility signals derived from your local BBT and cervical mucus history.",
+    observedLutealTitle: "Observed luteal phase",
+    observedLutealDescription: (count: number, value: string) =>
+      `Signal-derived average from ${count} recent cycles: ${value} d.`,
+    signalCoverageTitle: "Signal coverage",
+    signalCoverageValue: (count: number, total: number) => `${count}/${total} cycles`,
+    signalCoverageDescription: (count: number, total: number) =>
+      `Fertile-quality mucus or a thermal rise appeared in ${count} of your last ${total} completed cycles.`,
+    thermalShiftTitle: "Thermal shift",
+    thermalShiftConfirmedValue: "Confirmed",
+    thermalShiftBuildingValue: "Building",
+    thermalShiftConfirmedDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `Current cycle shows a sustained +${rise} ${unit} rise across ${count} readings.`,
+    thermalShiftBuildingDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `A possible +${rise} ${unit} rise is forming across ${count} readings.`,
+    daysValue: (value: string) => `${value} d`,
+  },
+  personalForecasts: {
+    title: "Personal forecasts",
+    subtitle:
+      "Premium hints about what your repeated symptom timing may suggest next.",
+    aroundNowValue: "Around now",
+    inDaysValue: (days: number) => (days === 1 ? "In 1 day" : `In ${days} days`),
+    inDayRangeValue: (start: number, end: number) => `In ${start}-${end} days`,
+    descriptionSingle: (day: number) => `Usually around cycle day ${day}.`,
+    descriptionRange: (start: number, end: number) =>
+      `Usually around cycle days ${start}-${end}.`,
+  },
+  extendedReports: {
+    title: "Extended reports",
+    subtitle: "Compare recent completed cycles side by side.",
+    summary: (count: number, minDays: number, maxDays: number) =>
+      `Showing ${count} completed cycles. Range ${minDays}-${maxDays} d.`,
+    rowTitle: (date: string) => `Started ${date}`,
+    cycleLengthLabel: (days: number) => `Cycle ${days} d`,
+    periodLengthLabel: (days: number) => `Period ${days} d`,
+    comparisonLabels: {
+      longer: "Longer than your usual pattern",
+      shorter: "Shorter than your usual pattern",
+      variable: "Within a variable pattern",
+    },
+  },
   reliabilityLabels: {
     early: "Early estimate",
     building: "Building pattern",
@@ -207,6 +287,86 @@ const statsCopyDe: StatsCopy = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "BBT erscheint nur, wenn du sie erfasst. Die Werte bleiben lokal und werden nur für den aktuellen Zyklus angezeigt.",
+  advancedInsights: {
+    title: "Erweiterte Analysen",
+    subtitle: "Premium-Muster nur aus deinem lokalen Zyklusverlauf der letzten Zyklen.",
+    weightedAverageTitle: "Gewichteter Durchschnitt",
+    weightedAverageDescription: (count: number) =>
+      `Neuere Zyklen zählen stärker, basierend auf den letzten ${count} abgeschlossenen Zyklen.`,
+    patternDriftTitle: "Musterdrift",
+    patternDriftStableValue: "Stabiler Rhythmus",
+    patternDriftDriftingValue: "Leichte Drift",
+    patternDriftStrongValue: "Starke Drift",
+    patternDriftStableDescription: (recent: number, baseline: number) =>
+      `Jüngster Durchschnitt ${recent.toFixed(1)} T. gegenüber Basis ${baseline.toFixed(1)} T.`,
+    patternDriftDescription: (
+      delta: number,
+      recent: number,
+      baseline: number,
+    ) =>
+      `Jüngster Durchschnitt ${recent.toFixed(1)} T. gegenüber Basis ${baseline.toFixed(1)} T. (${delta > 0 ? "+" : ""}${delta.toFixed(1)} T.).`,
+    anomalousCycleTitle: "Auffälliger Zyklus",
+    anomalousCycleLongerValue: "Länger als üblich",
+    anomalousCycleShorterValue: "Kürzer als üblich",
+    anomalousCycleDescription: (
+      cycleLength: number,
+      baselineLength: number,
+      deltaDays: number,
+    ) =>
+      `Letzter abgeschlossener Zyklus ${cycleLength} T. statt erwarteter ${baselineLength.toFixed(1)} T. (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} T.).`,
+    daysValue: (value: string) => `${value} T.`,
+  },
+  advancedFertility: {
+    title: "Erweiterte Fruchtbarkeit",
+    subtitle:
+      "Premium-Fruchtbarkeitssignale aus deinem lokalen BBT- und Zervixschleim-Verlauf.",
+    observedLutealTitle: "Beobachtete Lutealphase",
+    observedLutealDescription: (count: number, value: string) =>
+      `Signalbasierter Durchschnitt aus ${count} letzten Zyklen: ${value} T.`,
+    signalCoverageTitle: "Signalabdeckung",
+    signalCoverageValue: (count: number, total: number) => `${count}/${total} Zyklen`,
+    signalCoverageDescription: (count: number, total: number) =>
+      `Fruchtbarer Schleim oder ein Temperaturanstieg erschien in ${count} deiner letzten ${total} abgeschlossenen Zyklen.`,
+    thermalShiftTitle: "Temperaturanstieg",
+    thermalShiftConfirmedValue: "Bestätigt",
+    thermalShiftBuildingValue: "Im Aufbau",
+    thermalShiftConfirmedDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `Der aktuelle Zyklus zeigt einen stabilen Anstieg von +${rise} ${unit} über ${count} Messungen.`,
+    thermalShiftBuildingDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `Ein möglicher Anstieg von +${rise} ${unit} zeichnet sich über ${count} Messungen ab.`,
+    daysValue: (value: string) => `${value} T.`,
+  },
+  personalForecasts: {
+    title: "Persönliche Vorhersagen",
+    subtitle:
+      "Premium-Hinweise dazu, was dein wiederkehrendes Symptom-Timing als Nächstes andeutet.",
+    aroundNowValue: "Etwa jetzt",
+    inDaysValue: (days: number) => (days === 1 ? "In 1 Tag" : `In ${days} Tagen`),
+    inDayRangeValue: (start: number, end: number) => `In ${start}-${end} Tagen`,
+    descriptionSingle: (day: number) => `Meist um Zyklustag ${day}.`,
+    descriptionRange: (start: number, end: number) =>
+      `Meist um die Zyklustage ${start}-${end}.`,
+  },
+  extendedReports: {
+    title: "Erweiterte Berichte",
+    subtitle: "Vergleiche deine letzten abgeschlossenen Zyklen nebeneinander.",
+    summary: (count: number, minDays: number, maxDays: number) =>
+      `${count} abgeschlossene Zyklen. Bereich ${minDays}-${maxDays} T.`,
+    rowTitle: (date: string) => `Beginn ${date}`,
+    cycleLengthLabel: (days: number) => `Zyklus ${days} T.`,
+    periodLengthLabel: (days: number) => `Periode ${days} T.`,
+    comparisonLabels: {
+      longer: "Länger als dein übliches Muster",
+      shorter: "Kürzer als dein übliches Muster",
+      variable: "Innerhalb eines variablen Musters",
+    },
+  },
   reliabilityLabels: {
     early: "Frühe Schätzung",
     building: "Muster entsteht",
@@ -326,6 +486,87 @@ const statsCopyFr: StatsCopy = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "La TBC apparaît seulement quand tu la suis. Les mesures restent locales et ne sont affichées que pour le cycle en cours.",
+  advancedInsights: {
+    title: "Analyses avancées",
+    subtitle: "Schémas premium calculés uniquement à partir de ton historique local récent.",
+    weightedAverageTitle: "Moyenne pondérée",
+    weightedAverageDescription: (count: number) =>
+      `Les cycles récents comptent davantage sur les ${count} derniers cycles terminés.`,
+    patternDriftTitle: "Dérive du schéma",
+    patternDriftStableValue: "Rythme stable",
+    patternDriftDriftingValue: "Dérive légère",
+    patternDriftStrongValue: "Dérive marquée",
+    patternDriftStableDescription: (recent: number, baseline: number) =>
+      `Moyenne récente ${recent.toFixed(1)} j contre base ${baseline.toFixed(1)} j.`,
+    patternDriftDescription: (
+      delta: number,
+      recent: number,
+      baseline: number,
+    ) =>
+      `Moyenne récente ${recent.toFixed(1)} j contre base ${baseline.toFixed(1)} j (${delta > 0 ? "+" : ""}${delta.toFixed(1)} j).`,
+    anomalousCycleTitle: "Cycle inhabituel",
+    anomalousCycleLongerValue: "Plus long que d'habitude",
+    anomalousCycleShorterValue: "Plus court que d'habitude",
+    anomalousCycleDescription: (
+      cycleLength: number,
+      baselineLength: number,
+      deltaDays: number,
+    ) =>
+      `Dernier cycle terminé ${cycleLength} j au lieu de ${baselineLength.toFixed(1)} j attendus (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} j).`,
+    daysValue: (value: string) => `${value} j`,
+  },
+  advancedFertility: {
+    title: "Fertilité avancée",
+    subtitle:
+      "Signaux premium de fertilité issus de ton historique local de TBC et de glaire cervicale.",
+    observedLutealTitle: "Phase lutéale observée",
+    observedLutealDescription: (count: number, value: string) =>
+      `Moyenne dérivée du signal sur ${count} cycles récents : ${value} j.`,
+    signalCoverageTitle: "Couverture des signaux",
+    signalCoverageValue: (count: number, total: number) => `${count}/${total} cycles`,
+    signalCoverageDescription: (count: number, total: number) =>
+      `Une glaire fertile ou une hausse thermique est apparue dans ${count} de tes ${total} derniers cycles terminés.`,
+    thermalShiftTitle: "Hausse thermique",
+    thermalShiftConfirmedValue: "Confirmée",
+    thermalShiftBuildingValue: "En cours",
+    thermalShiftConfirmedDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `Le cycle actuel montre une hausse stable de +${rise} ${unit} sur ${count} mesures.`,
+    thermalShiftBuildingDescription: (
+      rise: string,
+      unit: string,
+      count: number,
+    ) => `Une possible hausse de +${rise} ${unit} se forme sur ${count} mesures.`,
+    daysValue: (value: string) => `${value} j`,
+  },
+  personalForecasts: {
+    title: "Prévisions personnelles",
+    subtitle:
+      "Indices premium sur ce que le timing répété de tes symptômes peut annoncer ensuite.",
+    aroundNowValue: "Autour de maintenant",
+    inDaysValue: (days: number) => (days === 1 ? "Dans 1 jour" : `Dans ${days} jours`),
+    inDayRangeValue: (start: number, end: number) => `Dans ${start}-${end} jours`,
+    descriptionSingle: (day: number) =>
+      `Habituellement vers le jour ${day} du cycle.`,
+    descriptionRange: (start: number, end: number) =>
+      `Habituellement vers les jours ${start}-${end} du cycle.`,
+  },
+  extendedReports: {
+    title: "Rapports étendus",
+    subtitle: "Compare tes derniers cycles terminés côte à côte.",
+    summary: (count: number, minDays: number, maxDays: number) =>
+      `${count} cycles terminés. Plage ${minDays}-${maxDays} j.`,
+    rowTitle: (date: string) => `Début ${date}`,
+    cycleLengthLabel: (days: number) => `Cycle ${days} j`,
+    periodLengthLabel: (days: number) => `Règles ${days} j`,
+    comparisonLabels: {
+      longer: "Plus long que ton schéma habituel",
+      shorter: "Plus court que ton schéma habituel",
+      variable: "Dans un schéma variable",
+    },
+  },
   reliabilityLabels: {
     early: "Estimation précoce",
     building: "Schéma en cours",
@@ -433,6 +674,86 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "БТТ появляется только когда вы её отслеживаете. Показания остаются локальными и показываются только для текущего цикла.",
+    advancedInsights: {
+      title: "Продвинутые инсайты",
+      subtitle: "Премиум-паттерны, рассчитанные только по вашей недавней локальной истории циклов.",
+      weightedAverageTitle: "Взвешенное среднее",
+      weightedAverageDescription: (count: number) =>
+        `Последние ${count} завершённых циклов имеют больший вес.`,
+      patternDriftTitle: "Дрейф паттерна",
+      patternDriftStableValue: "Стабильный ритм",
+      patternDriftDriftingValue: "Есть дрейф",
+      patternDriftStrongValue: "Сильный дрейф",
+      patternDriftStableDescription: (recent: number, baseline: number) =>
+        `Недавнее среднее ${recent.toFixed(1)} д. против базового ${baseline.toFixed(1)} д.`,
+      patternDriftDescription: (
+        delta: number,
+        recent: number,
+        baseline: number,
+      ) =>
+        `Недавнее среднее ${recent.toFixed(1)} д. против базового ${baseline.toFixed(1)} д. (${delta > 0 ? "+" : ""}${delta.toFixed(1)} д.).`,
+      anomalousCycleTitle: "Аномальный цикл",
+      anomalousCycleLongerValue: "Длиннее обычного",
+      anomalousCycleShorterValue: "Короче обычного",
+    anomalousCycleDescription: (
+      cycleLength: number,
+      baselineLength: number,
+      deltaDays: number,
+    ) =>
+      `Последний завершённый цикл ${cycleLength} д. вместо ожидаемых ${baselineLength.toFixed(1)} д. (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} д.).`,
+    daysValue: (value: string) => `${value} д.`,
+  },
+    advancedFertility: {
+      title: "Продвинутая фертильность",
+      subtitle:
+        "Премиальные сигналы фертильности на основе локальной истории БТТ и цервикальной слизи.",
+      observedLutealTitle: "Наблюдаемая лютеиновая фаза",
+      observedLutealDescription: (count: number, value: string) =>
+        `Среднее по сигналам за последние ${count} циклов: ${value} д.`,
+      signalCoverageTitle: "Покрытие сигналами",
+      signalCoverageValue: (count: number, total: number) => `${count}/${total} циклов`,
+      signalCoverageDescription: (count: number, total: number) =>
+        `Фертильная слизь или температурный подъём были в ${count} из последних ${total} завершённых циклов.`,
+      thermalShiftTitle: "Температурный подъём",
+      thermalShiftConfirmedValue: "Подтверждён",
+      thermalShiftBuildingValue: "Формируется",
+      thermalShiftConfirmedDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `Текущий цикл показывает устойчивый подъём на +${rise} ${unit} по ${count} измерениям.`,
+      thermalShiftBuildingDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `В текущем цикле формируется возможный подъём на +${rise} ${unit} по ${count} измерениям.`,
+      daysValue: (value: string) => `${value} д.`,
+    },
+    personalForecasts: {
+      title: "Личные прогнозы",
+      subtitle:
+        "Премиальные подсказки о том, что дальше может подсказывать повторяющийся тайминг симптомов.",
+      aroundNowValue: "Примерно сейчас",
+      inDaysValue: (days: number) => (days === 1 ? "Через 1 день" : `Через ${days} д.`),
+      inDayRangeValue: (start: number, end: number) => `Через ${start}-${end} д.`,
+      descriptionSingle: (day: number) => `Обычно около ${day}-го дня цикла.`,
+      descriptionRange: (start: number, end: number) =>
+        `Обычно около ${start}-${end}-го дней цикла.`,
+    },
+    extendedReports: {
+      title: "Расширенные отчёты",
+      subtitle: "Сравнение последних завершённых циклов рядом.",
+      summary: (count: number, minDays: number, maxDays: number) =>
+        `${count} завершённых циклов. Диапазон ${minDays}-${maxDays} д.`,
+      rowTitle: (date: string) => `Начало ${date}`,
+      cycleLengthLabel: (days: number) => `Цикл ${days} д.`,
+      periodLengthLabel: (days: number) => `Менструация ${days} д.`,
+      comparisonLabels: {
+        longer: "Длиннее вашего обычного паттерна",
+        shorter: "Короче вашего обычного паттерна",
+        variable: "В пределах вариативного паттерна",
+      },
+    },
     reliabilityLabels: {
       early: "Ранняя оценка",
       building: "Паттерн формируется",
@@ -536,6 +857,87 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "La TCB aparece solo cuando la registras. Las lecturas siguen siendo locales y se muestran solo para el ciclo actual.",
+    advancedInsights: {
+      title: "Insights avanzados",
+      subtitle: "Patrones premium calculados solo a partir de tu historial local reciente.",
+      weightedAverageTitle: "Promedio ponderado",
+      weightedAverageDescription: (count: number) =>
+        `Los ciclos recientes pesan más, basándose en los últimos ${count} ciclos completados.`,
+      patternDriftTitle: "Deriva del patrón",
+      patternDriftStableValue: "Ritmo estable",
+      patternDriftDriftingValue: "Con deriva",
+      patternDriftStrongValue: "Deriva fuerte",
+      patternDriftStableDescription: (recent: number, baseline: number) =>
+        `Promedio reciente ${recent.toFixed(1)} d frente a base ${baseline.toFixed(1)} d.`,
+      patternDriftDescription: (
+        delta: number,
+        recent: number,
+        baseline: number,
+      ) =>
+        `Promedio reciente ${recent.toFixed(1)} d frente a base ${baseline.toFixed(1)} d (${delta > 0 ? "+" : ""}${delta.toFixed(1)} d).`,
+      anomalousCycleTitle: "Ciclo anómalo",
+      anomalousCycleLongerValue: "Más largo de lo normal",
+      anomalousCycleShorterValue: "Más corto de lo normal",
+    anomalousCycleDescription: (
+      cycleLength: number,
+      baselineLength: number,
+      deltaDays: number,
+    ) =>
+      `Último ciclo completo ${cycleLength} d frente a ${baselineLength.toFixed(1)} d esperados (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} d).`,
+    daysValue: (value: string) => `${value} d`,
+  },
+    advancedFertility: {
+      title: "Fertilidad avanzada",
+      subtitle:
+        "Señales premium de fertilidad a partir de tu historial local de TCB y moco cervical.",
+      observedLutealTitle: "Fase lútea observada",
+      observedLutealDescription: (count: number, value: string) =>
+        `Promedio derivado de señales en ${count} ciclos recientes: ${value} d.`,
+      signalCoverageTitle: "Cobertura de señales",
+      signalCoverageValue: (count: number, total: number) => `${count}/${total} ciclos`,
+      signalCoverageDescription: (count: number, total: number) =>
+        `Moco fértil o aumento térmico apareció en ${count} de tus últimos ${total} ciclos completados.`,
+      thermalShiftTitle: "Aumento térmico",
+      thermalShiftConfirmedValue: "Confirmado",
+      thermalShiftBuildingValue: "En curso",
+      thermalShiftConfirmedDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `El ciclo actual muestra un aumento estable de +${rise} ${unit} en ${count} mediciones.`,
+      thermalShiftBuildingDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `Se está formando un posible aumento de +${rise} ${unit} en ${count} mediciones.`,
+      daysValue: (value: string) => `${value} d`,
+    },
+    personalForecasts: {
+      title: "Pronósticos personales",
+      subtitle:
+        "Pistas premium sobre lo que puede venir según el momento repetido de tus síntomas.",
+      aroundNowValue: "Por ahora",
+      inDaysValue: (days: number) => (days === 1 ? "En 1 día" : `En ${days} días`),
+      inDayRangeValue: (start: number, end: number) => `En ${start}-${end} días`,
+      descriptionSingle: (day: number) =>
+        `Suele aparecer alrededor del día ${day} del ciclo.`,
+      descriptionRange: (start: number, end: number) =>
+        `Suele aparecer alrededor de los días ${start}-${end} del ciclo.`,
+    },
+    extendedReports: {
+      title: "Informes ampliados",
+      subtitle: "Compara tus ciclos completos recientes lado a lado.",
+      summary: (count: number, minDays: number, maxDays: number) =>
+        `${count} ciclos completos. Rango ${minDays}-${maxDays} d.`,
+      rowTitle: (date: string) => `Inicio ${date}`,
+      cycleLengthLabel: (days: number) => `Ciclo ${days} d`,
+      periodLengthLabel: (days: number) => `Período ${days} d`,
+      comparisonLabels: {
+        longer: "Más largo que tu patrón habitual",
+        shorter: "Más corto que tu patrón habitual",
+        variable: "Dentro de un patrón variable",
+      },
+    },
     reliabilityLabels: {
       early: "Estimación temprana",
       building: "Patrón en construcción",

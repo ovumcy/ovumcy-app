@@ -121,7 +121,10 @@ describe("settings services", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            doctor_pdf_allowed: false,
+            premium_features: {
+              doctor_pdf: false,
+              advanced_insights: false,
+            },
           }),
           {
             status: 200,
@@ -201,7 +204,10 @@ describe("settings services", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            doctor_pdf_allowed: true,
+            premium_features: {
+              doctor_pdf: true,
+              advanced_insights: true,
+            },
           }),
           {
             status: 200,

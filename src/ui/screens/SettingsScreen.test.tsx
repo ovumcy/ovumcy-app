@@ -476,7 +476,10 @@ describe("SettingsScreen", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            doctor_pdf_allowed: true,
+            premium_features: {
+              doctor_pdf: true,
+              advanced_insights: true,
+            },
           }),
           {
             status: 200,

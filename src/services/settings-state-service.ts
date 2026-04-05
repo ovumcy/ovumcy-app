@@ -1,6 +1,4 @@
 import type { SyncSecretStore } from "../security/sync-secret-store";
-import { createManagedCloudAPIClient } from "../sync/managed-cloud-api-client";
-import { MANAGED_CLOUD_AUTH_BASE_URL } from "../sync/sync-contract";
 import {
   clearLocalSyncSession,
   loadConnectedSyncCapabilities,
@@ -8,6 +6,7 @@ import {
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadLocalExportState } from "./export-service";
+import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
 import {
   createLoadedSettingsState,
   type LoadedSettingsState,
@@ -40,10 +39,12 @@ export async function loadSettingsScreenState(
     );
     if (capabilitiesResult.ok) {
       syncCapabilities = capabilitiesResult.capabilities;
-      managedDoctorPDFAllowed = await loadManagedDoctorPDFAllowed(
-        secretStore,
-        syncState.preferences.mode,
-      );
+      managedDoctorPDFAllowed = (
+        await loadManagedPremiumFeatures(
+          secretStore,
+          syncState.preferences.mode,
+        )
+      ).doctorPDF;
     } else if (capabilitiesResult.errorCode === "unauthorized") {
       syncPreferences = await clearLocalSyncSession(
         storage,
@@ -65,24 +66,4 @@ export async function loadSettingsScreenState(
     syncCapabilities,
     managedDoctorPDFAllowed,
   );
-}
-
-async function loadManagedDoctorPDFAllowed(
-  secretStore: SyncSecretStore,
-  syncMode: "managed" | "self_hosted",
-): Promise<boolean> {
-  if (syncMode !== "managed") {
-    return false;
-  }
-
-  const secrets = await secretStore.readSyncSecrets();
-  if (!secrets?.managedAuthSessionToken) {
-    return false;
-  }
-
-  const billingResult = await createManagedCloudAPIClient(
-    MANAGED_CLOUD_AUTH_BASE_URL,
-  ).getBillingSnapshot(secrets.managedAuthSessionToken);
-
-  return billingResult.ok ? billingResult.billing.doctorPDFAllowed : false;
 }

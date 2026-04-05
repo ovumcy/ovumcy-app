@@ -27,8 +27,15 @@ export type ManagedCloudSessionView = {
   entitlement: ManagedCloudEntitlement;
 };
 
+export type ManagedCloudPremiumFeatures = {
+  advancedInsights: boolean;
+  advancedFertility: boolean;
+  doctorPDF: boolean;
+  extendedReports: boolean;
+};
+
 export type ManagedCloudBillingSnapshot = {
-  doctorPDFAllowed: boolean;
+  premiumFeatures: ManagedCloudPremiumFeatures;
 };
 
 export type ManagedCloudAuthResult = {
@@ -104,7 +111,12 @@ type RawManagedCloudSessionView = {
 };
 
 type RawManagedCloudBillingSnapshot = {
-  doctor_pdf_allowed?: boolean;
+  premium_features?: {
+    advanced_fertility?: boolean;
+    advanced_insights?: boolean;
+    doctor_pdf?: boolean;
+    extended_reports?: boolean;
+  };
 };
 
 type ErrorPayload = {
@@ -372,10 +384,25 @@ function isRawManagedCloudSessionView(
 function isRawManagedCloudBillingSnapshot(
   value: unknown,
 ): value is RawManagedCloudBillingSnapshot {
+  if (!isObject(value)) {
+    return false;
+  }
+
+  const features = value.premium_features;
+  if (typeof features === "undefined") {
+    return true;
+  }
+
   return (
-    isObject(value) &&
-    (typeof value.doctor_pdf_allowed === "boolean" ||
-      typeof value.doctor_pdf_allowed === "undefined")
+    isObject(features) &&
+    (typeof features.doctor_pdf === "boolean" ||
+      typeof features.doctor_pdf === "undefined") &&
+    (typeof features.advanced_fertility === "boolean" ||
+      typeof features.advanced_fertility === "undefined") &&
+    (typeof features.advanced_insights === "boolean" ||
+      typeof features.advanced_insights === "undefined") &&
+    (typeof features.extended_reports === "boolean" ||
+      typeof features.extended_reports === "undefined")
   );
 }
 
@@ -422,8 +449,15 @@ function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionVie
 function mapBillingSnapshot(
   raw: RawManagedCloudBillingSnapshot,
 ): ManagedCloudBillingSnapshot {
+  const features = isObject(raw.premium_features) ? raw.premium_features : {};
+
   return {
-    doctorPDFAllowed: raw.doctor_pdf_allowed === true,
+    premiumFeatures: {
+      advancedFertility: features.advanced_fertility === true,
+      advancedInsights: features.advanced_insights === true,
+      doctorPDF: features.doctor_pdf === true,
+      extendedReports: features.extended_reports === true,
+    },
   };
 }
 

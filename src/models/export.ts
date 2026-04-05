@@ -1,5 +1,6 @@
 import type { DayLogRecord } from "./day-log";
 import type {
+  InterfaceLanguage,
   LocalDateISO,
   ProfileRecord,
   TemperatureUnit,
@@ -127,6 +128,7 @@ export type ExportPDFSummary = {
 
 export type ExportPDFReport = {
   generatedAt: string;
+  language: InterfaceLanguage;
   summary: ExportPDFSummary;
   calendarDays: ExportPDFCalendarDay[];
   cycles: ExportPDFCycle[];

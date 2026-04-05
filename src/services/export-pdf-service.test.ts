@@ -34,7 +34,7 @@ describe("export-pdf-service", () => {
         temperatureUnit: "c",
         trackCervicalMucus: true,
         hideSexChip: false,
-        languageOverride: null,
+        languageOverride: "ru",
         themeOverride: null,
       },
       symptomRecords: [...symptoms, jawPain],
@@ -74,6 +74,7 @@ describe("export-pdf-service", () => {
       ],
     });
 
+    expect(report.language).toBe("ru");
     expect(report.summary).toEqual({
       loggedDays: 3,
       completedCycles: 1,
@@ -100,18 +101,18 @@ describe("export-pdf-service", () => {
           expect.objectContaining({
             date: "2026-02-01",
             cycleDay: 1,
-            flow: "Medium",
+            flow: "Средняя",
             symptoms: ["Cramps"],
           }),
           expect.objectContaining({
             date: "2026-02-02",
             cycleDay: 2,
-            flow: "Light",
+            flow: "Слабая",
           }),
           expect.objectContaining({
             date: "2026-02-03",
             cycleDay: 3,
-            sexActivity: "Protected",
+            sexActivity: "С защитой",
             symptoms: ["Jaw pain"],
           }),
         ],
@@ -142,7 +143,7 @@ describe("export-pdf-service", () => {
           temperatureUnit: "c",
           trackCervicalMucus: true,
           hideSexChip: false,
-          languageOverride: null,
+          languageOverride: "ru",
           themeOverride: null,
         },
         symptomRecords: symptoms,

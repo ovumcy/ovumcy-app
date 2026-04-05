@@ -48,7 +48,12 @@ describe("managed-cloud-api-client", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
-            doctor_pdf_allowed: true,
+            premium_features: {
+              advanced_fertility: true,
+              doctor_pdf: true,
+              advanced_insights: true,
+              extended_reports: true,
+            },
           }),
           {
             status: 200,
@@ -105,7 +110,12 @@ describe("managed-cloud-api-client", () => {
     await expect(client.getBillingSnapshot("managed-session-1")).resolves.toEqual({
       ok: true,
       billing: {
-        doctorPDFAllowed: true,
+        premiumFeatures: {
+          advancedFertility: true,
+          advancedInsights: true,
+          doctorPDF: true,
+          extendedReports: true,
+        },
       },
     });
 

@@ -15,7 +15,9 @@ import { AppScreenSurface } from "../components/AppScreenSurface";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 import { StatsOverviewEmptyState } from "./stats/StatsOverviewEmptyState";
+import { StatsOverviewExtendedReportsSection } from "./stats/StatsOverviewExtendedReportsSection";
 import { StatsOverviewPatternSections } from "./stats/StatsOverviewPatternSections";
+import { StatsOverviewPremiumSections } from "./stats/StatsOverviewPremiumSections";
 import { StatsOverviewSummarySections } from "./stats/StatsOverviewSummarySections";
 import { StatsOverviewTrendSections } from "./stats/StatsOverviewTrendSections";
 import { createStatsOverviewStyles } from "./stats/stats-overview-styles";
@@ -96,6 +98,14 @@ export function StatsOverviewScreen({
                 styles={styles}
                 trendPrimaryWidth={trendPrimaryWidth}
                 trendSecondaryWidth={trendSecondaryWidth}
+                viewData={viewData}
+              />
+              <StatsOverviewPremiumSections
+                styles={styles}
+                viewData={viewData}
+              />
+              <StatsOverviewExtendedReportsSection
+                styles={styles}
                 viewData={viewData}
               />
               <StatsOverviewPatternSections
