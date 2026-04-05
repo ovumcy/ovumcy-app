@@ -1,4 +1,0 @@
-interface:
-  display_name: "Contract Change"
-  short_description: "Plan safe cross-repo changes with explicit ownership and rollout order."
-  default_prompt: "Define the cross-repo contract for this Ovumcy change. Identify the authority repo, consumer repos, ownership of UI/API/domain rules, key risks, rollout order, and the minimum safe verification plan."

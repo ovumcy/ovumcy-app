@@ -1,4 +1,0 @@
-interface:
-  display_name: "Architecture Explorer"
-  short_description: "Audit Ovumcy repos for authority, boundaries, and architectural drift."
-  default_prompt: "Review this Ovumcy repository in read-only mode. Use the governance docs plus the repo's AGENTS.md and AI_CONTEXT.md to identify the affected domain, the authority repo, architectural mismatches, and the highest-risk boundary drift."
