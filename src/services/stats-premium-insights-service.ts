@@ -1,9 +1,16 @@
-import type { StatsComparisonKind, StatsCycleHistorySummary } from "../models/stats";
+import type {
+  CompletedCycleSummary,
+  StatsComparisonKind,
+  StatsCycleHistorySummary,
+} from "../models/stats";
 
 const RECENT_WEIGHT_LIMIT = 6;
 const RECENT_DRIFT_WINDOW = 3;
 const MIN_DRIFT_BASELINE_WINDOW = 2;
 const ANOMALOUS_CYCLE_DELTA_DAYS = 4;
+const MIN_SEASONAL_PATTERN_DELTA_DAYS = 1.5;
+
+export type StatsSeasonKey = "winter" | "spring" | "summer" | "autumn";
 
 export type StatsPatternDriftInsight = {
   baselineAverage: number;
@@ -19,9 +26,18 @@ export type StatsAnomalousCycleInsight = {
   kind: StatsComparisonKind;
 };
 
+export type StatsSeasonalPatternInsight = {
+  deltaDays: number;
+  longestAverage: number;
+  longestSeason: StatsSeasonKey;
+  shortestAverage: number;
+  shortestSeason: StatsSeasonKey;
+};
+
 export type StatsPremiumInsightsSummary = {
   anomalousCycle: StatsAnomalousCycleInsight | null;
   patternDrift: StatsPatternDriftInsight | null;
+  seasonalPattern: StatsSeasonalPatternInsight | null;
   weightedAverageCycleLength: number | null;
   weightedAverageSampleCount: number;
 };
@@ -35,6 +51,7 @@ export function buildStatsPremiumInsights(
   return {
     anomalousCycle: buildAnomalousCycleInsight(lengths),
     patternDrift: buildPatternDriftInsight(lengths),
+    seasonalPattern: buildSeasonalPatternInsight(history.completedCycles),
     weightedAverageCycleLength: weightedAverage.value,
     weightedAverageSampleCount: weightedAverage.sampleCount,
   };
@@ -131,6 +148,69 @@ function buildAnomalousCycleInsight(
     deltaDays,
     kind: deltaDays > 0 ? "longer" : "shorter",
   };
+}
+
+function buildSeasonalPatternInsight(
+  cycles: readonly CompletedCycleSummary[],
+): StatsSeasonalPatternInsight | null {
+  if (cycles.length < 3) {
+    return null;
+  }
+
+  const seasonalBuckets = new Map<StatsSeasonKey, number[]>();
+  for (const cycle of cycles) {
+    const seasonKey = resolveSeasonKey(cycle.startDate);
+    const bucket = seasonalBuckets.get(seasonKey) ?? [];
+    bucket.push(cycle.cycleLength);
+    seasonalBuckets.set(seasonKey, bucket);
+  }
+
+  const seasonalAverages = [...seasonalBuckets.entries()]
+    .filter((entry) => entry[1].length > 0)
+    .map(([season, values]) => ({
+      season,
+      average: average(values),
+    }))
+    .sort((left, right) => left.average - right.average);
+
+  if (seasonalAverages.length < 2) {
+    return null;
+  }
+
+  const shortest = seasonalAverages[0];
+  const longest = seasonalAverages[seasonalAverages.length - 1];
+  if (!shortest || !longest || shortest.season === longest.season) {
+    return null;
+  }
+
+  const deltaDays = longest.average - shortest.average;
+  if (deltaDays < MIN_SEASONAL_PATTERN_DELTA_DAYS) {
+    return null;
+  }
+
+  return {
+    deltaDays,
+    longestAverage: longest.average,
+    longestSeason: longest.season,
+    shortestAverage: shortest.average,
+    shortestSeason: shortest.season,
+  };
+}
+
+function resolveSeasonKey(startDate: string): StatsSeasonKey {
+  const month = Number.parseInt(startDate.slice(5, 7), 10);
+
+  if (month === 12 || month <= 2) {
+    return "winter";
+  }
+  if (month >= 3 && month <= 5) {
+    return "spring";
+  }
+  if (month >= 6 && month <= 8) {
+    return "summer";
+  }
+
+  return "autumn";
 }
 
 function average(values: readonly number[]): number {

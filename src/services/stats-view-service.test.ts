@@ -357,6 +357,11 @@ describe("buildStatsViewData", () => {
           key: "anomalous-cycle",
           title: "Anomalous cycle",
         }),
+        expect.objectContaining({
+          key: "seasonal-pattern",
+          title: "Seasonal pattern",
+          value: "Winter",
+        }),
       ]),
     );
     expect(viewData.advancedFertility?.title).toBe("Advanced fertility");
@@ -369,6 +374,10 @@ describe("buildStatsViewData", () => {
         expect.objectContaining({
           key: "signal-coverage",
           title: "Signal coverage",
+        }),
+        expect.objectContaining({
+          key: "luteal-consistency",
+          title: "Luteal consistency",
         }),
         expect.objectContaining({
           key: "thermal-shift",

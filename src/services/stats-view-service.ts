@@ -660,6 +660,27 @@ function buildAdvancedInsightsSection(
     });
   }
 
+  if (premiumInsights.seasonalPattern) {
+    const insight = premiumInsights.seasonalPattern;
+    const longestSeasonLabel =
+      statsCopy.advancedInsights.seasonLabels[insight.longestSeason];
+    const shortestSeasonLabel =
+      statsCopy.advancedInsights.seasonLabels[insight.shortestSeason];
+    items.push({
+      key: "seasonal-pattern",
+      title: statsCopy.advancedInsights.seasonalPatternTitle,
+      value: longestSeasonLabel,
+      description: statsCopy.advancedInsights.seasonalPatternDescription(
+        longestSeasonLabel,
+        insight.longestAverage,
+        shortestSeasonLabel,
+        insight.shortestAverage,
+        insight.deltaDays,
+      ),
+      tone: "info",
+    });
+  }
+
   if (items.length === 0) {
     return null;
   }
@@ -693,6 +714,32 @@ function buildAdvancedFertilitySection(
         premiumFertility.observedLutealAverageDays.toFixed(1),
       ),
       tone: "info",
+    });
+  }
+
+  if (premiumFertility.observedLutealConsistency) {
+    const consistency = premiumFertility.observedLutealConsistency;
+    items.push({
+      key: "luteal-consistency",
+      title: statsCopy.advancedFertility.lutealConsistencyTitle,
+      value:
+        consistency.kind === "stable"
+          ? statsCopy.advancedFertility.lutealConsistencyStableValue
+          : consistency.kind === "variable"
+            ? statsCopy.advancedFertility.lutealConsistencyVariableValue
+            : statsCopy.advancedFertility.lutealConsistencyStrongValue,
+      description: statsCopy.advancedFertility.lutealConsistencyDescription(
+        consistency.sampleCount,
+        consistency.minDays,
+        consistency.maxDays,
+        consistency.spreadDays,
+      ),
+      tone:
+        consistency.kind === "stable"
+          ? "success"
+          : consistency.kind === "variable"
+            ? "info"
+            : "warning",
     });
   }
 

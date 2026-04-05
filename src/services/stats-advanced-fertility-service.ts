@@ -16,8 +16,17 @@ export type StatsThermalShiftSummary = {
   sampleCount: number;
 };
 
+export type StatsObservedLutealConsistencySummary = {
+  kind: "stable" | "variable" | "strong_variation";
+  maxDays: number;
+  minDays: number;
+  sampleCount: number;
+  spreadDays: number;
+};
+
 export type StatsAdvancedFertilitySummary = {
   observedLutealAverageDays: number | null;
+  observedLutealConsistency: StatsObservedLutealConsistencySummary | null;
   observedLutealSampleCount: number;
   signalCoverageCount: number;
   signalCoverageSampleCount: number;
@@ -82,10 +91,38 @@ export function buildStatsAdvancedFertility(
       ? observedLutealValues.reduce((total, value) => total + value, 0) /
         observedLutealValues.length
       : null,
+    observedLutealConsistency: buildObservedLutealConsistency(
+      observedLutealValues,
+    ),
     observedLutealSampleCount: observedLutealValues.length,
     signalCoverageCount,
     signalCoverageSampleCount: recentCycles.length,
     thermalShift,
+  };
+}
+
+function buildObservedLutealConsistency(
+  observedLutealValues: readonly number[],
+): StatsObservedLutealConsistencySummary | null {
+  if (observedLutealValues.length < 2) {
+    return null;
+  }
+
+  const minDays = Math.min(...observedLutealValues);
+  const maxDays = Math.max(...observedLutealValues);
+  const spreadDays = maxDays - minDays;
+
+  return {
+    kind:
+      spreadDays <= 1
+        ? "stable"
+        : spreadDays <= 2
+          ? "variable"
+          : "strong_variation",
+    maxDays,
+    minDays,
+    sampleCount: observedLutealValues.length,
+    spreadDays,
   };
 }
 

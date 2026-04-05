@@ -109,6 +109,21 @@ const statsCopyEn = {
       deltaDays: number,
     ) =>
       `Last completed cycle ${cycleLength} d vs expected ${baselineLength.toFixed(1)} d (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} d).`,
+    seasonalPatternTitle: "Seasonal pattern",
+    seasonalPatternDescription: (
+      longestSeason: string,
+      longestAverage: number,
+      shortestSeason: string,
+      shortestAverage: number,
+      deltaDays: number,
+    ) =>
+      `Cycles look longest in ${longestSeason} (${longestAverage.toFixed(1)} d) and shortest in ${shortestSeason} (${shortestAverage.toFixed(1)} d), a ${deltaDays.toFixed(1)} d swing.`,
+    seasonLabels: {
+      winter: "Winter",
+      spring: "Spring",
+      summer: "Summer",
+      autumn: "Autumn",
+    },
     daysValue: (value: string) => `${value} d`,
   },
   advancedFertility: {
@@ -118,6 +133,17 @@ const statsCopyEn = {
     observedLutealTitle: "Observed luteal phase",
     observedLutealDescription: (count: number, value: string) =>
       `Signal-derived average from ${count} recent cycles: ${value} d.`,
+    lutealConsistencyTitle: "Luteal consistency",
+    lutealConsistencyStableValue: "Consistent",
+    lutealConsistencyVariableValue: "Some variation",
+    lutealConsistencyStrongValue: "Variable",
+    lutealConsistencyDescription: (
+      count: number,
+      minDays: number,
+      maxDays: number,
+      spreadDays: number,
+    ) =>
+      `Observed luteal days ranged from ${minDays} to ${maxDays} d across ${count} cycles (${spreadDays.toFixed(1)} d spread).`,
     signalCoverageTitle: "Signal coverage",
     signalCoverageValue: (count: number, total: number) => `${count}/${total} cycles`,
     signalCoverageDescription: (count: number, total: number) =>
@@ -314,6 +340,21 @@ const statsCopyDe: StatsCopy = {
       deltaDays: number,
     ) =>
       `Letzter abgeschlossener Zyklus ${cycleLength} T. statt erwarteter ${baselineLength.toFixed(1)} T. (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} T.).`,
+    seasonalPatternTitle: "Saisonales Muster",
+    seasonalPatternDescription: (
+      longestSeason: string,
+      longestAverage: number,
+      shortestSeason: string,
+      shortestAverage: number,
+      deltaDays: number,
+    ) =>
+      `Deine Zyklen wirken in ${longestSeason} am längsten (${longestAverage.toFixed(1)} T.) und in ${shortestSeason} am kürzesten (${shortestAverage.toFixed(1)} T.), mit einer Spanne von ${deltaDays.toFixed(1)} T.`,
+    seasonLabels: {
+      winter: "Winter",
+      spring: "Frühling",
+      summer: "Sommer",
+      autumn: "Herbst",
+    },
     daysValue: (value: string) => `${value} T.`,
   },
   advancedFertility: {
@@ -323,6 +364,17 @@ const statsCopyDe: StatsCopy = {
     observedLutealTitle: "Beobachtete Lutealphase",
     observedLutealDescription: (count: number, value: string) =>
       `Signalbasierter Durchschnitt aus ${count} letzten Zyklen: ${value} T.`,
+    lutealConsistencyTitle: "Lutealkonstanz",
+    lutealConsistencyStableValue: "Konstant",
+    lutealConsistencyVariableValue: "Etwas variabel",
+    lutealConsistencyStrongValue: "Variabel",
+    lutealConsistencyDescription: (
+      count: number,
+      minDays: number,
+      maxDays: number,
+      spreadDays: number,
+    ) =>
+      `Beobachtete Lutealtage lagen in ${count} Zyklen zwischen ${minDays} und ${maxDays} T. (${spreadDays.toFixed(1)} T. Spannweite).`,
     signalCoverageTitle: "Signalabdeckung",
     signalCoverageValue: (count: number, total: number) => `${count}/${total} Zyklen`,
     signalCoverageDescription: (count: number, total: number) =>
@@ -513,6 +565,21 @@ const statsCopyFr: StatsCopy = {
       deltaDays: number,
     ) =>
       `Dernier cycle terminé ${cycleLength} j au lieu de ${baselineLength.toFixed(1)} j attendus (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} j).`,
+    seasonalPatternTitle: "Tendance saisonnière",
+    seasonalPatternDescription: (
+      longestSeason: string,
+      longestAverage: number,
+      shortestSeason: string,
+      shortestAverage: number,
+      deltaDays: number,
+    ) =>
+      `Tes cycles paraissent les plus longs en ${longestSeason} (${longestAverage.toFixed(1)} j) et les plus courts en ${shortestSeason} (${shortestAverage.toFixed(1)} j), avec un écart de ${deltaDays.toFixed(1)} j.`,
+    seasonLabels: {
+      winter: "hiver",
+      spring: "printemps",
+      summer: "été",
+      autumn: "automne",
+    },
     daysValue: (value: string) => `${value} j`,
   },
   advancedFertility: {
@@ -522,6 +589,17 @@ const statsCopyFr: StatsCopy = {
     observedLutealTitle: "Phase lutéale observée",
     observedLutealDescription: (count: number, value: string) =>
       `Moyenne dérivée du signal sur ${count} cycles récents : ${value} j.`,
+    lutealConsistencyTitle: "Régularité lutéale",
+    lutealConsistencyStableValue: "Régulière",
+    lutealConsistencyVariableValue: "Légère variation",
+    lutealConsistencyStrongValue: "Variable",
+    lutealConsistencyDescription: (
+      count: number,
+      minDays: number,
+      maxDays: number,
+      spreadDays: number,
+    ) =>
+      `Les jours lutéaux observés vont de ${minDays} à ${maxDays} j sur ${count} cycles (${spreadDays.toFixed(1)} j d’écart).`,
     signalCoverageTitle: "Couverture des signaux",
     signalCoverageValue: (count: number, total: number) => `${count}/${total} cycles`,
     signalCoverageDescription: (count: number, total: number) =>
@@ -695,14 +773,29 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       anomalousCycleTitle: "Аномальный цикл",
       anomalousCycleLongerValue: "Длиннее обычного",
       anomalousCycleShorterValue: "Короче обычного",
-    anomalousCycleDescription: (
-      cycleLength: number,
-      baselineLength: number,
-      deltaDays: number,
-    ) =>
-      `Последний завершённый цикл ${cycleLength} д. вместо ожидаемых ${baselineLength.toFixed(1)} д. (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} д.).`,
-    daysValue: (value: string) => `${value} д.`,
-  },
+      anomalousCycleDescription: (
+        cycleLength: number,
+        baselineLength: number,
+        deltaDays: number,
+      ) =>
+        `Последний завершённый цикл ${cycleLength} д. вместо ожидаемых ${baselineLength.toFixed(1)} д. (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} д.).`,
+      seasonalPatternTitle: "Сезонный паттерн",
+      seasonalPatternDescription: (
+        longestSeason: string,
+        longestAverage: number,
+        shortestSeason: string,
+        shortestAverage: number,
+        deltaDays: number,
+      ) =>
+        `Циклы выглядят самыми длинными в сезон ${longestSeason} (${longestAverage.toFixed(1)} д.) и самыми короткими в ${shortestSeason} (${shortestAverage.toFixed(1)} д.), разница ${deltaDays.toFixed(1)} д.`,
+      seasonLabels: {
+        winter: "зима",
+        spring: "весна",
+        summer: "лето",
+        autumn: "осень",
+      },
+      daysValue: (value: string) => `${value} д.`,
+    },
     advancedFertility: {
       title: "Продвинутая фертильность",
       subtitle:
@@ -710,6 +803,17 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       observedLutealTitle: "Наблюдаемая лютеиновая фаза",
       observedLutealDescription: (count: number, value: string) =>
         `Среднее по сигналам за последние ${count} циклов: ${value} д.`,
+      lutealConsistencyTitle: "Стабильность лютеиновой фазы",
+      lutealConsistencyStableValue: "Стабильно",
+      lutealConsistencyVariableValue: "Есть вариации",
+      lutealConsistencyStrongValue: "Вариабельно",
+      lutealConsistencyDescription: (
+        count: number,
+        minDays: number,
+        maxDays: number,
+        spreadDays: number,
+      ) =>
+        `Наблюдаемая длина лютеиновой фазы колебалась от ${minDays} до ${maxDays} д. в ${count} циклах (разброс ${spreadDays.toFixed(1)} д.).`,
       signalCoverageTitle: "Покрытие сигналами",
       signalCoverageValue: (count: number, total: number) => `${count}/${total} циклов`,
       signalCoverageDescription: (count: number, total: number) =>
@@ -878,14 +982,29 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       anomalousCycleTitle: "Ciclo anómalo",
       anomalousCycleLongerValue: "Más largo de lo normal",
       anomalousCycleShorterValue: "Más corto de lo normal",
-    anomalousCycleDescription: (
-      cycleLength: number,
-      baselineLength: number,
-      deltaDays: number,
-    ) =>
-      `Último ciclo completo ${cycleLength} d frente a ${baselineLength.toFixed(1)} d esperados (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} d).`,
-    daysValue: (value: string) => `${value} d`,
-  },
+      anomalousCycleDescription: (
+        cycleLength: number,
+        baselineLength: number,
+        deltaDays: number,
+      ) =>
+        `Último ciclo completo ${cycleLength} d frente a ${baselineLength.toFixed(1)} d esperados (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} d).`,
+      seasonalPatternTitle: "Patrón estacional",
+      seasonalPatternDescription: (
+        longestSeason: string,
+        longestAverage: number,
+        shortestSeason: string,
+        shortestAverage: number,
+        deltaDays: number,
+      ) =>
+        `Tus ciclos parecen más largos en ${longestSeason} (${longestAverage.toFixed(1)} d) y más cortos en ${shortestSeason} (${shortestAverage.toFixed(1)} d), con una diferencia de ${deltaDays.toFixed(1)} d.`,
+      seasonLabels: {
+        winter: "invierno",
+        spring: "primavera",
+        summer: "verano",
+        autumn: "otoño",
+      },
+      daysValue: (value: string) => `${value} d`,
+    },
     advancedFertility: {
       title: "Fertilidad avanzada",
       subtitle:
@@ -893,6 +1012,17 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       observedLutealTitle: "Fase lútea observada",
       observedLutealDescription: (count: number, value: string) =>
         `Promedio derivado de señales en ${count} ciclos recientes: ${value} d.`,
+      lutealConsistencyTitle: "Consistencia lútea",
+      lutealConsistencyStableValue: "Constante",
+      lutealConsistencyVariableValue: "Con algo de variación",
+      lutealConsistencyStrongValue: "Variable",
+      lutealConsistencyDescription: (
+        count: number,
+        minDays: number,
+        maxDays: number,
+        spreadDays: number,
+      ) =>
+        `Los días lúteos observados variaron entre ${minDays} y ${maxDays} d en ${count} ciclos (${spreadDays.toFixed(1)} d de diferencia).`,
       signalCoverageTitle: "Cobertura de señales",
       signalCoverageValue: (count: number, total: number) => `${count}/${total} ciclos`,
       signalCoverageDescription: (count: number, total: number) =>
