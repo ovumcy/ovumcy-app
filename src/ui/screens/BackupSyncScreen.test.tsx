@@ -509,21 +509,14 @@ describe("BackupSyncScreen", () => {
             invite: {
               id: "invite-1",
               owner_account_id: "managed-account-1",
-              invited_email: "partner@example.com",
               access_level: "full",
-              email_notifications_allowed: true,
               status: "pending",
               expires_at: "2026-04-10T00:00:00.000Z",
               created_by: "managed-account-1",
               created_at: "2026-04-03T00:00:00.000Z",
               updated_at: "2026-04-03T00:00:00.000Z",
             },
-            invite_token: "invite-token-1",
             invite_url: "ovumcy://backup-sync?invite_token=invite-token-1",
-            email_delivery: {
-              requested: true,
-              status: "sent",
-            },
           },
           201,
         ),
@@ -546,9 +539,7 @@ describe("BackupSyncScreen", () => {
               {
                 id: "invite-1",
                 owner_account_id: "managed-account-1",
-                invited_email: "partner@example.com",
                 access_level: "full",
-                email_notifications_allowed: true,
                 status: "pending",
                 expires_at: "2026-04-10T00:00:00.000Z",
                 created_by: "managed-account-1",
@@ -571,15 +562,9 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-partner-section");
-    expect(screen.getByTestId("settings-partner-invite-email-input")).toBeTruthy();
     expect(screen.queryByTestId("settings-partner-plan-banner")).toBeNull();
 
-    fireEvent.changeText(
-      screen.getByTestId("settings-partner-invite-email-input"),
-      "partner@example.com",
-    );
     fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
-    fireEvent.press(screen.getByTestId("settings-partner-email-notifications-toggle"));
     fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
 
     await screen.findByTestId("settings-partner-invite-link-card");
@@ -587,10 +572,7 @@ describe("BackupSyncScreen", () => {
       "ovumcy://backup-sync?invite_token=invite-token-1",
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
-    expect(
-      screen.getByText("Partner invite link created and the email update was sent."),
-    ).toBeTruthy();
-    expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
+    expect(screen.getByText("Partner invite link created.")).toBeTruthy();
     const issueInviteCall = fetchMock.mock.calls.find(
       ([url, init]: [unknown, unknown?]) =>
         String(url).includes("/account/partner/invites") &&
@@ -599,8 +581,10 @@ describe("BackupSyncScreen", () => {
     expect(issueInviteCall).toBeDefined();
     const issueInviteBody = JSON.parse(
       String((issueInviteCall?.[1] as RequestInit | undefined)?.body ?? "{}"),
-    ) as { email_notifications_allowed?: boolean };
-    expect(issueInviteBody.email_notifications_allowed).toBe(true);
+    ) as { access_level?: string; invited_email?: string; email_notifications_allowed?: boolean };
+    expect(issueInviteBody.access_level).toBe("full");
+    expect(issueInviteBody.invited_email).toBeUndefined();
+    expect(issueInviteBody.email_notifications_allowed).toBeUndefined();
   });
 
   it("accepts a managed partner invite from the route token and clears the pending card", async () => {
@@ -690,9 +674,7 @@ describe("BackupSyncScreen", () => {
           invite: {
             id: "invite-1",
             owner_account_id: "owner-1",
-            invited_email: "partner@example.com",
             access_level: "summary",
-            email_notifications_allowed: true,
             status: "accepted",
             expires_at: "2026-04-10T00:00:00.000Z",
             accepted_at: "2026-04-05T08:00:00.000Z",
@@ -705,9 +687,7 @@ describe("BackupSyncScreen", () => {
             id: "grant-1",
             owner_account_id: "owner-1",
             partner_account_id: "managed-account-1",
-            partner_email: "partner@example.com",
             access_level: "summary",
-            email_notifications_allowed: true,
             source_invite_id: "invite-1",
             accepted_at: "2026-04-05T08:00:00.000Z",
             last_seen_at: "2026-04-05T08:05:00.000Z",
@@ -738,9 +718,7 @@ describe("BackupSyncScreen", () => {
               id: "grant-1",
               owner_account_id: "owner-1",
               partner_account_id: "managed-account-1",
-              partner_email: "partner@example.com",
               access_level: "summary",
-              email_notifications_allowed: true,
               source_invite_id: "invite-1",
               accepted_at: "2026-04-05T08:00:00.000Z",
               last_seen_at: "2026-04-05T08:05:00.000Z",
@@ -770,7 +748,6 @@ describe("BackupSyncScreen", () => {
     );
     expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
     expect(screen.getByTestId("settings-partner-shared-grant-grant-1")).toBeTruthy();
-    expect(screen.getByText("Email updates: Allowed")).toBeTruthy();
   });
 
   it("formats partner last seen values and explains access levels in the partner section", async () => {
@@ -846,9 +823,7 @@ describe("BackupSyncScreen", () => {
                 id: "grant-1",
                 owner_account_id: "managed-account-1",
                 partner_account_id: "partner-account-1",
-                partner_email: "partner@example.com",
                 access_level: "summary",
-                email_notifications_allowed: true,
                 source_invite_id: "invite-1",
                 accepted_at: "2026-04-04T10:30:00.000Z",
                 last_seen_at: rawLastSeen,

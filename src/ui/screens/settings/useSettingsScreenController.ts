@@ -31,7 +31,9 @@ import {
   type SymptomDraftValues,
 } from "../../../services/symptom-policy";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
+import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useRegisterTabLeaveGuard } from "../../navigation/TabLeaveGuardContext";
@@ -68,6 +70,7 @@ type UseSettingsScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies | undefined;
   now?: Date | undefined;
+  partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
@@ -84,6 +87,7 @@ export function useSettingsScreenController({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
   now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
@@ -278,6 +282,7 @@ export function useSettingsScreenController({
       setState: commitState,
       setTrackingStatusMessage,
       reminderScheduler,
+      partnerShareSecretStore,
       locale: language,
       storage,
       syncSecretStore,
@@ -289,6 +294,7 @@ export function useSettingsScreenController({
       commitState,
       language,
       reminderScheduler,
+      partnerShareSecretStore,
       storage,
       syncSecretStore,
       syncProfilePreferences,

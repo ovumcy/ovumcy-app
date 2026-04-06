@@ -20,6 +20,12 @@ import {
   revokeManagedPartnerGrant,
   revokeManagedPartnerInvite,
 } from "../../../services/managed-partner-access-service";
+import {
+  reconcileManagedPartnerShareKeys,
+  storeAcceptedManagedPartnerGrantKey,
+  storeIssuedManagedPartnerInviteKey,
+} from "../../../services/managed-partner-share-service";
+import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
 import {
   clearUnauthorizedBackupSyncSession,
@@ -44,6 +50,8 @@ import {
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
+import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
@@ -56,6 +64,7 @@ import type {
 type BackupSyncScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient | undefined;
   now?: Date | undefined;
+  partnerShareSecretStore?: PartnerShareSecretStore | undefined;
   storage?: LocalAppStorage | undefined;
   syncSecretStore?: SyncSecretStore | undefined;
 };
@@ -70,6 +79,7 @@ type BackupSyncScreenControllerResult = {
 export function useBackupSyncScreenController({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
 }: BackupSyncScreenControllerOptions): BackupSyncScreenControllerResult {
@@ -98,11 +108,8 @@ export function useBackupSyncScreenController({
   const [isSyncingNow, setIsSyncingNow] = useState(false);
   const [partnerOverview, setPartnerOverview] =
     useState<ManagedCloudPartnerAccessOverview | null>(null);
-  const [partnerInviteEmailValue, setPartnerInviteEmailValue] = useState("");
   const [partnerInviteAccessLevel, setPartnerInviteAccessLevel] =
     useState<ManagedCloudPartnerAccessLevel>("summary");
-  const [partnerInviteEmailNotificationsAllowed, setPartnerInviteEmailNotificationsAllowed] =
-    useState(false);
   const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
   const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
   const [partnerInviteLink, setPartnerInviteLink] = useState("");
@@ -165,13 +172,26 @@ export function useBackupSyncScreenController({
         };
       }
 
+      await reconcileManagedPartnerShareKeys(
+        partnerShareSecretStore,
+        partnerResult.value,
+      );
+      if (partnerResult.value.owned.grants.length > 0) {
+        await syncManagedPartnerSharedProjections(
+          storage,
+          syncSecretStore,
+          partnerShareSecretStore,
+          effectiveNow,
+        );
+      }
+
       return {
         errorMessage: "",
         overview: partnerResult.value,
         showOwnerControls: premiumFeatures.partnerAccess,
       };
     },
-    [partnerCopy, syncSecretStore],
+    [effectiveNow, partnerCopy, partnerShareSecretStore, storage, syncSecretStore],
   );
 
   useFocusEffect(
@@ -259,9 +279,7 @@ export function useBackupSyncScreenController({
       syncSecretStore,
       state.syncPreferences.mode,
       {
-        invitedEmail: partnerInviteEmailValue,
         accessLevel: partnerInviteAccessLevel,
-        emailNotificationsAllowed: partnerInviteEmailNotificationsAllowed,
       },
     );
 
@@ -271,9 +289,19 @@ export function useBackupSyncScreenController({
       return;
     }
 
-    setPartnerInviteEmailValue("");
+    try {
+      await storeIssuedManagedPartnerInviteKey(
+        partnerShareSecretStore,
+        result.value,
+      );
+    } catch {
+      setPartnerErrorMessage(partnerCopy.errors.generic);
+      setIsPartnerBusy(false);
+      return;
+    }
+
     setPartnerInviteLink(result.value.inviteURL);
-    setPartnerStatusMessage(resolvePartnerInviteIssuedStatusMessage(result.value, partnerCopy));
+    setPartnerStatusMessage(partnerCopy.statusInviteIssued);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
   }
@@ -293,6 +321,18 @@ export function useBackupSyncScreenController({
     );
     if (!result.ok) {
       setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    try {
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        result.value.grant.id,
+        pendingPartnerInviteToken,
+      );
+    } catch {
+      setPartnerErrorMessage(partnerCopy.errors.generic);
       setIsPartnerBusy(false);
       return;
     }
@@ -366,6 +406,15 @@ export function useBackupSyncScreenController({
     setPartnerStatusMessage(partnerCopy.statusGrantRevoked);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
+  }
+
+  function handleOpenPartnerGrant(grantID: string) {
+    router.push({
+      pathname: "/partner-shared",
+      params: {
+        grant_id: grantID,
+      },
+    });
   }
 
   usePreventRemove(
@@ -865,13 +914,8 @@ export function useBackupSyncScreenController({
         resetPartnerFeedback();
         setPartnerInviteAccessLevel(value);
       },
-      onPartnerInviteEmailChange: (value) => {
-        resetPartnerFeedback();
-        setPartnerInviteEmailValue(value);
-      },
-      onPartnerInviteEmailNotificationsAllowedChange: (value) => {
-        resetPartnerFeedback();
-        setPartnerInviteEmailNotificationsAllowed(value);
+      onPartnerOpenGrant: (grantID) => {
+        handleOpenPartnerGrant(grantID);
       },
       onPartnerRevokeGrant: (grantID) => {
         void handleRevokePartnerGrant(grantID);
@@ -901,8 +945,6 @@ export function useBackupSyncScreenController({
       partnerCopy,
       partnerErrorMessage,
       partnerInviteAccessLevel,
-      partnerInviteEmailValue,
-      partnerInviteEmailNotificationsAllowed,
       partnerInviteLink,
       partnerLocale: language,
       partnerOverview,
@@ -934,8 +976,6 @@ function resolvePartnerErrorMessage(
       return copy.errors.partnerInviteNotFound;
     case "partner_invite_expired":
       return copy.errors.partnerInviteExpired;
-    case "partner_invite_email_mismatch":
-      return copy.errors.partnerInviteEmailMismatch;
     case "partner_access_unavailable":
       return copy.errors.partnerAccessUnavailable;
     case "partner_access_not_found":
@@ -944,30 +984,5 @@ function resolvePartnerErrorMessage(
       return copy.errors.networkFailed;
     default:
       return copy.errors.generic;
-  }
-}
-
-function resolvePartnerInviteIssuedStatusMessage(
-  result: {
-    emailDelivery: {
-      requested: boolean;
-      status: "disabled" | "sent" | "failed" | "unavailable";
-    };
-  },
-  copy: ReturnType<typeof getPartnerCopy>,
-): string {
-  if (!result.emailDelivery.requested || result.emailDelivery.status === "disabled") {
-    return copy.statusInviteIssued;
-  }
-
-  switch (result.emailDelivery.status) {
-    case "sent":
-      return copy.statusInviteIssuedEmailSent;
-    case "failed":
-      return copy.statusInviteIssuedEmailFailed;
-    case "unavailable":
-      return copy.statusInviteIssuedEmailUnavailable;
-    default:
-      return copy.statusInviteIssued;
   }
 }

@@ -10,11 +10,13 @@ import {
   syncReminderDeliveryState,
   type ReminderDeliverySyncResult,
 } from "../../../services/local-reminder-sync-service";
+import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
 import type {
   LoadedSettingsState,
   SettingsViewData,
 } from "../../../services/settings-view-service";
+import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 
 type SaveSettingsActionContext = {
@@ -33,6 +35,7 @@ type SaveSettingsActionContext = {
   setTrackingStatusMessage: (value: string) => void;
   reminderScheduler: LocalReminderScheduler;
   locale: string;
+  partnerShareSecretStore: PartnerShareSecretStore;
   storage: LocalAppStorage;
   syncSecretStore: SyncSecretStore;
   syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
@@ -52,11 +55,13 @@ export async function runSaveCycleSettingsAction(
 ) {
   const {
     effectiveNow,
+    partnerShareSecretStore,
     setCycleErrorMessage,
     setCycleStatusMessage,
     setIsSavingCycle,
     setState,
     storage,
+    syncSecretStore,
     viewData,
   } = context;
 
@@ -84,6 +89,12 @@ export async function runSaveCycleSettingsAction(
 
   setState(result.state);
   setCycleStatusMessage(viewData.status.cycleSaved);
+  await syncManagedPartnerSharedProjections(
+    storage,
+    syncSecretStore,
+    partnerShareSecretStore,
+    effectiveNow,
+  );
   setIsSavingCycle(false);
 }
 
@@ -92,10 +103,13 @@ export async function runSaveTrackingSettingsAction(
   readyState: LoadedSettingsState,
 ) {
   const {
+    effectiveNow,
+    partnerShareSecretStore,
     setIsSavingTracking,
     setState,
     setTrackingStatusMessage,
     storage,
+    syncSecretStore,
     viewData,
   } = context;
 
@@ -115,6 +129,12 @@ export async function runSaveTrackingSettingsAction(
 
   setState(result.state);
   setTrackingStatusMessage(viewData.status.trackingSaved);
+  await syncManagedPartnerSharedProjections(
+    storage,
+    syncSecretStore,
+    partnerShareSecretStore,
+    effectiveNow,
+  );
   setIsSavingTracking(false);
 }
 
@@ -229,6 +249,7 @@ export async function runSavePendingSettingsAction(
     setReminderStatusTone,
     setState,
     setTrackingStatusMessage,
+    partnerShareSecretStore,
     storage,
     syncSecretStore,
     syncProfilePreferences,
@@ -262,6 +283,12 @@ export async function runSavePendingSettingsAction(
     }
     nextState = cycleResult.state;
     setCycleStatusMessage(viewData.status.cycleSaved);
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
   }
 
   if (isTrackingDirty) {
@@ -280,6 +307,12 @@ export async function runSavePendingSettingsAction(
     }
     nextState = trackingResult.state;
     setTrackingStatusMessage(viewData.status.trackingSaved);
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
   }
 
   if (isReminderDirty) {

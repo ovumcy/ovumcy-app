@@ -36,9 +36,7 @@ export async function issueManagedPartnerInvite(
   secretStore: SyncSecretStore,
   syncMode: SyncMode,
   input: {
-    invitedEmail: string;
     accessLevel: ManagedCloudPartnerAccessLevel;
-    emailNotificationsAllowed: boolean;
   },
 ): Promise<ManagedPartnerAccessResult<ManagedCloudPartnerInviteIssueResult>> {
   const sessionToken = await readManagedSessionToken(secretStore, syncMode);

@@ -144,9 +144,7 @@ describe("managed-cloud-api-client", () => {
                 {
                   id: "invite-1",
                   owner_account_id: "owner-1",
-                  invited_email: "partner@example.com",
                   access_level: "summary",
-                  email_notifications_allowed: false,
                   status: "pending",
                   expires_at: "2026-04-10T00:00:00.000Z",
                   created_by: "owner-1",
@@ -170,21 +168,14 @@ describe("managed-cloud-api-client", () => {
             invite: {
               id: "invite-2",
               owner_account_id: "owner-1",
-              invited_email: "friend@example.com",
               access_level: "full",
-              email_notifications_allowed: false,
               status: "pending",
               expires_at: "2026-04-11T00:00:00.000Z",
               created_by: "owner-1",
               created_at: "2026-04-04T00:00:00.000Z",
               updated_at: "2026-04-04T00:00:00.000Z",
             },
-            invite_token: "invite-token-2",
             invite_url: "ovumcy://backup-sync?invite_token=invite-token-2",
-            email_delivery: {
-              requested: false,
-              status: "disabled",
-            },
           }),
           {
             status: 201,
@@ -198,9 +189,7 @@ describe("managed-cloud-api-client", () => {
             invite: {
               id: "invite-2",
               owner_account_id: "owner-1",
-              invited_email: "friend@example.com",
               access_level: "full",
-              email_notifications_allowed: false,
               status: "accepted",
               expires_at: "2026-04-11T00:00:00.000Z",
               accepted_at: "2026-04-04T10:00:00.000Z",
@@ -213,9 +202,7 @@ describe("managed-cloud-api-client", () => {
               id: "grant-1",
               owner_account_id: "owner-1",
               partner_account_id: "partner-1",
-              partner_email: "friend@example.com",
               access_level: "full",
-              email_notifications_allowed: false,
               source_invite_id: "invite-2",
               accepted_at: "2026-04-04T10:00:00.000Z",
               last_seen_at: "2026-04-04T10:00:00.000Z",
@@ -234,9 +221,7 @@ describe("managed-cloud-api-client", () => {
           JSON.stringify({
             id: "invite-1",
             owner_account_id: "owner-1",
-            invited_email: "partner@example.com",
             access_level: "summary",
-            email_notifications_allowed: false,
             status: "revoked",
             expires_at: "2026-04-10T00:00:00.000Z",
             revoked_at: "2026-04-05T00:00:00.000Z",
@@ -257,9 +242,7 @@ describe("managed-cloud-api-client", () => {
             id: "grant-1",
             owner_account_id: "owner-1",
             partner_account_id: "partner-1",
-            partner_email: "friend@example.com",
             access_level: "full",
-            email_notifications_allowed: false,
             source_invite_id: "invite-2",
             accepted_at: "2026-04-04T10:00:00.000Z",
             last_seen_at: "2026-04-04T10:00:00.000Z",
@@ -287,7 +270,6 @@ describe("managed-cloud-api-client", () => {
           invites: [
             expect.objectContaining({
               id: "invite-1",
-              invitedEmail: "partner@example.com",
             }),
           ],
         }),
@@ -296,19 +278,12 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.issuePartnerInvite("managed-session-1", {
-        invitedEmail: "friend@example.com",
         accessLevel: "full",
-        emailNotificationsAllowed: false,
       }),
     ).resolves.toEqual({
       ok: true,
       result: expect.objectContaining({
-        inviteToken: "invite-token-2",
         inviteURL: "ovumcy://backup-sync?invite_token=invite-token-2",
-        emailDelivery: {
-          requested: false,
-          status: "disabled",
-        },
         invite: expect.objectContaining({
           id: "invite-2",
           accessLevel: "full",
@@ -325,7 +300,6 @@ describe("managed-cloud-api-client", () => {
       }),
       grant: expect.objectContaining({
         id: "grant-1",
-        partnerEmail: "friend@example.com",
       }),
     });
 
@@ -345,6 +319,77 @@ describe("managed-cloud-api-client", () => {
       grant: expect.objectContaining({
         id: "grant-1",
         revokedAt: "2026-04-05T00:00:00.000Z",
+      }),
+    });
+  });
+
+  it("maps partner projection upload and read responses", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            grant_id: "grant-1",
+            access_level: "full",
+            schema_version: 1,
+            checksum_sha256: "deadbeef",
+            ciphertext_base64: "c29tZS1jaXBoZXJ0ZXh0",
+            ciphertext_size: 15,
+            created_at: "2026-04-05T08:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            grant_id: "grant-1",
+            access_level: "full",
+            schema_version: 1,
+            checksum_sha256: "deadbeef",
+            ciphertext_base64: "c29tZS1jaXBoZXJ0ZXh0",
+            ciphertext_size: 15,
+            created_at: "2026-04-05T08:00:00.000Z",
+            updated_at: "2026-04-05T08:10:00.000Z",
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 15,
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      projection: expect.objectContaining({
+        grantID: "grant-1",
+        checksumSHA256: "deadbeef",
+      }),
+    });
+
+    await expect(
+      client.getPartnerProjection("managed-session-1", "grant-1"),
+    ).resolves.toEqual({
+      ok: true,
+      projection: expect.objectContaining({
+        grantID: "grant-1",
+        updatedAt: "2026-04-05T08:10:00.000Z",
       }),
     });
   });

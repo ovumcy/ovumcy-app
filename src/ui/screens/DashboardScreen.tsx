@@ -6,6 +6,7 @@ import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
+import { syncManagedPartnerSharedProjections } from "../../services/managed-partner-share-sync-service";
 import {
   clearDayLogEditorRecord,
   buildNextDayLogRecordPatch,
@@ -23,7 +24,9 @@ import {
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { hasDayLogData } from "../../models/day-log";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
+import type { PartnerShareSecretStore } from "../../security/partner-share-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
@@ -36,6 +39,7 @@ type DashboardScreenProps = {
   autosaveDebounceMs?: number;
   storage?: LocalAppStorage;
   now?: Date;
+  partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
   syncSecretStore?: SyncSecretStore;
 };
@@ -49,6 +53,7 @@ export function DashboardScreen({
   autosaveDebounceMs,
   storage = appStorage,
   now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
   syncSecretStore = defaultSyncSecretStore,
 }: DashboardScreenProps) {
@@ -142,6 +147,12 @@ export function DashboardScreen({
     onPersist: (record) => saveDayLogEditorRecord(storage, record),
     onSaved: async () => {
       await refresh({ syncReminders: true });
+      await syncManagedPartnerSharedProjections(
+        storage,
+        syncSecretStore,
+        partnerShareSecretStore,
+        effectiveNow,
+      );
     },
     record: state?.todayEntry ?? null,
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
@@ -219,6 +230,12 @@ export function DashboardScreen({
         : current,
     );
     await refresh({ syncReminders: true });
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
     setStatus({
       message: state.editorViewData.actions.deletedLabel,
       tone: "success",
@@ -261,6 +278,12 @@ export function DashboardScreen({
     }
 
     await refresh({ syncReminders: true });
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
     setStatus({
       message: dashboardCopy.manualCycleStartSaved,
       tone: "success",

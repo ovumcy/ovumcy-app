@@ -34,6 +34,7 @@ function RootNavigator() {
           <Stack.Screen name="onboarding" />
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="backup-sync" />
+          <Stack.Screen name="partner-shared" />
         </Stack>
       </View>
     </GestureHandlerRootView>

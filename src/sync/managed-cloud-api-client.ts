@@ -6,9 +6,10 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_credentials"
   | "invalid_reminder_schedule"
   | "invalid_partner_invite"
+  | "invalid_partner_projection"
   | "partner_access_not_found"
+  | "partner_projection_not_found"
   | "partner_access_unavailable"
-  | "partner_invite_email_mismatch"
   | "partner_invite_expired"
   | "partner_invite_not_found"
   | "reminder_schedule_unavailable"
@@ -75,17 +76,10 @@ export type ManagedCloudReminderEmailScheduleSnapshot = {
 
 export type ManagedCloudPartnerAccessLevel = "summary" | "full";
 
-export type ManagedCloudPartnerEmailDelivery = {
-  requested: boolean;
-  status: "disabled" | "sent" | "failed" | "unavailable";
-};
-
 export type ManagedCloudPartnerInvite = {
   id: string;
   ownerAccountID: string;
-  invitedEmail: string;
   accessLevel: ManagedCloudPartnerAccessLevel;
-  emailNotificationsAllowed: boolean;
   status: string;
   expiresAt: string;
   acceptedAt: string | null;
@@ -101,9 +95,7 @@ export type ManagedCloudPartnerAccessGrant = {
   id: string;
   ownerAccountID: string;
   partnerAccountID: string;
-  partnerEmail: string;
   accessLevel: ManagedCloudPartnerAccessLevel;
-  emailNotificationsAllowed: boolean;
   sourceInviteID: string | null;
   acceptedAt: string;
   lastSeenAt: string | null;
@@ -123,9 +115,18 @@ export type ManagedCloudPartnerAccessOverview = {
 
 export type ManagedCloudPartnerInviteIssueResult = {
   invite: ManagedCloudPartnerInvite;
-  inviteToken: string;
   inviteURL: string;
-  emailDelivery: ManagedCloudPartnerEmailDelivery;
+};
+
+export type ManagedCloudPartnerProjection = {
+  grantID: string;
+  accessLevel: ManagedCloudPartnerAccessLevel;
+  schemaVersion: number;
+  checksumSHA256: string;
+  ciphertextBase64: string;
+  ciphertextSize: number;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ManagedCloudAuthResult = {
@@ -161,6 +162,13 @@ export type ManagedCloudAPIClient = {
     | { ok: true; overview: ManagedCloudPartnerAccessOverview }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  getPartnerProjection(
+    sessionToken: string,
+    grantID: string,
+  ): Promise<
+    | { ok: true; projection: ManagedCloudPartnerProjection }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   getSession(
     sessionToken: string,
   ): Promise<
@@ -179,9 +187,7 @@ export type ManagedCloudAPIClient = {
   issuePartnerInvite(
     sessionToken: string,
     input: {
-      invitedEmail: string;
       accessLevel: ManagedCloudPartnerAccessLevel;
-      emailNotificationsAllowed: boolean;
     },
   ): Promise<
     | { ok: true; result: ManagedCloudPartnerInviteIssueResult }
@@ -233,6 +239,19 @@ export type ManagedCloudAPIClient = {
     grantID: string,
   ): Promise<
     | { ok: true; grant: ManagedCloudPartnerAccessGrant }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  upsertPartnerProjection(
+    sessionToken: string,
+    grantID: string,
+    input: {
+      schemaVersion: number;
+      checksumSHA256: string;
+      ciphertextBase64: string;
+      ciphertextSize: number;
+    },
+  ): Promise<
+    | { ok: true; projection: ManagedCloudPartnerProjection }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   clearReminderEmailSchedules(
@@ -303,9 +322,7 @@ type RawManagedCloudReminderEmailScheduleSnapshot = {
 type RawManagedCloudPartnerInvite = {
   id: string;
   owner_account_id: string;
-  invited_email: string;
   access_level: ManagedCloudPartnerAccessLevel;
-  email_notifications_allowed: boolean;
   status: string;
   expires_at: string;
   accepted_at?: string | null;
@@ -321,9 +338,7 @@ type RawManagedCloudPartnerAccessGrant = {
   id: string;
   owner_account_id: string;
   partner_account_id: string;
-  partner_email: string;
   access_level: ManagedCloudPartnerAccessLevel;
-  email_notifications_allowed: boolean;
   source_invite_id?: string | null;
   accepted_at: string;
   last_seen_at?: string | null;
@@ -343,17 +358,23 @@ type RawManagedCloudPartnerAccessOverview = {
 
 type RawManagedCloudPartnerInviteIssueResult = {
   invite: RawManagedCloudPartnerInvite;
-  invite_token: string;
   invite_url: string;
-  email_delivery: {
-    requested: boolean;
-    status: "disabled" | "sent" | "failed" | "unavailable";
-  };
 };
 
 type RawManagedCloudPartnerInviteAcceptResult = {
   invite: RawManagedCloudPartnerInvite;
   grant: RawManagedCloudPartnerAccessGrant;
+};
+
+type RawManagedCloudPartnerProjection = {
+  grant_id: string;
+  access_level: ManagedCloudPartnerAccessLevel;
+  schema_version: number;
+  checksum_sha256: string;
+  ciphertext_base64: string;
+  ciphertext_size: number;
+  created_at: string;
+  updated_at: string;
 };
 
 type ErrorPayload = {
@@ -467,6 +488,23 @@ export function createManagedCloudAPIClient(
       );
     },
 
+    async getPartnerProjection(sessionToken, grantID) {
+      return requestJSON<RawManagedCloudPartnerProjection>(
+        fetchImpl,
+        normalizedBaseURL,
+        `/account/partner/grants/${encodeURIComponent(grantID)}/projection`,
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawManagedCloudPartnerProjection,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, projection: mapPartnerProjection(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
     async issuePartnerInvite(sessionToken, input) {
       return requestJSON<RawManagedCloudPartnerInviteIssueResult>(
         fetchImpl,
@@ -476,9 +514,7 @@ export function createManagedCloudAPIClient(
           method: "POST",
           sessionToken,
           body: {
-            invited_email: input.invitedEmail,
             access_level: input.accessLevel,
-            email_notifications_allowed: input.emailNotificationsAllowed,
           },
         },
         isRawManagedCloudPartnerInviteIssueResult,
@@ -569,6 +605,29 @@ export function createManagedCloudAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, grant: mapPartnerAccessGrant(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async upsertPartnerProjection(sessionToken, grantID, input) {
+      return requestJSON<RawManagedCloudPartnerProjection>(
+        fetchImpl,
+        normalizedBaseURL,
+        `/account/partner/grants/${encodeURIComponent(grantID)}/projection`,
+        {
+          method: "PUT",
+          sessionToken,
+          body: {
+            schema_version: input.schemaVersion,
+            checksum_sha256: input.checksumSHA256,
+            ciphertext_base64: input.ciphertextBase64,
+            ciphertext_size: input.ciphertextSize,
+          },
+        },
+        isRawManagedCloudPartnerProjection,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, projection: mapPartnerProjection(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -724,7 +783,6 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "invalid_partner_invite":
       case "partner_access_not_found":
       case "partner_access_unavailable":
-      case "partner_invite_email_mismatch":
       case "partner_invite_expired":
       case "partner_invite_not_found":
       case "reminder_schedule_unavailable":
@@ -874,9 +932,7 @@ function isRawManagedCloudPartnerInvite(
     isObject(value) &&
     typeof value.id === "string" &&
     typeof value.owner_account_id === "string" &&
-    typeof value.invited_email === "string" &&
     isPartnerAccessLevel(value.access_level) &&
-    typeof value.email_notifications_allowed === "boolean" &&
     typeof value.status === "string" &&
     typeof value.expires_at === "string" &&
     (typeof value.accepted_at === "string" ||
@@ -904,9 +960,7 @@ function isRawManagedCloudPartnerAccessGrant(
     typeof value.id === "string" &&
     typeof value.owner_account_id === "string" &&
     typeof value.partner_account_id === "string" &&
-    typeof value.partner_email === "string" &&
     isPartnerAccessLevel(value.access_level) &&
-    typeof value.email_notifications_allowed === "boolean" &&
     (typeof value.source_invite_id === "string" ||
       value.source_invite_id === null ||
       typeof value.source_invite_id === "undefined") &&
@@ -919,6 +973,22 @@ function isRawManagedCloudPartnerAccessGrant(
       typeof value.revoked_at === "undefined") &&
     (typeof value.revoked_reason === "string" ||
       typeof value.revoked_reason === "undefined") &&
+    typeof value.created_at === "string" &&
+    typeof value.updated_at === "string"
+  );
+}
+
+function isRawManagedCloudPartnerProjection(
+  value: unknown,
+): value is RawManagedCloudPartnerProjection {
+  return (
+    isObject(value) &&
+    typeof value.grant_id === "string" &&
+    isPartnerAccessLevel(value.access_level) &&
+    typeof value.schema_version === "number" &&
+    typeof value.checksum_sha256 === "string" &&
+    typeof value.ciphertext_base64 === "string" &&
+    typeof value.ciphertext_size === "number" &&
     typeof value.created_at === "string" &&
     typeof value.updated_at === "string"
   );
@@ -944,14 +1014,7 @@ function isRawManagedCloudPartnerInviteIssueResult(
 ): value is RawManagedCloudPartnerInviteIssueResult {
   return (
     isObject(value) &&
-    typeof value.invite_token === "string" &&
     typeof value.invite_url === "string" &&
-    isObject(value.email_delivery) &&
-    typeof value.email_delivery.requested === "boolean" &&
-    (value.email_delivery.status === "disabled" ||
-      value.email_delivery.status === "sent" ||
-      value.email_delivery.status === "failed" ||
-      value.email_delivery.status === "unavailable") &&
     isRawManagedCloudPartnerInvite(value.invite)
   );
 }
@@ -1055,9 +1118,7 @@ function mapPartnerInvite(
   return {
     id: raw.id,
     ownerAccountID: raw.owner_account_id,
-    invitedEmail: raw.invited_email,
     accessLevel: raw.access_level,
-    emailNotificationsAllowed: raw.email_notifications_allowed,
     status: raw.status,
     expiresAt: raw.expires_at,
     acceptedAt: raw.accepted_at ?? null,
@@ -1077,14 +1138,27 @@ function mapPartnerAccessGrant(
     id: raw.id,
     ownerAccountID: raw.owner_account_id,
     partnerAccountID: raw.partner_account_id,
-    partnerEmail: raw.partner_email,
     accessLevel: raw.access_level,
-    emailNotificationsAllowed: raw.email_notifications_allowed,
     sourceInviteID: raw.source_invite_id ?? null,
     acceptedAt: raw.accepted_at,
     lastSeenAt: raw.last_seen_at ?? null,
     revokedAt: raw.revoked_at ?? null,
     revokedReason: raw.revoked_reason ?? "",
+    createdAt: raw.created_at,
+    updatedAt: raw.updated_at,
+  };
+}
+
+function mapPartnerProjection(
+  raw: RawManagedCloudPartnerProjection,
+): ManagedCloudPartnerProjection {
+  return {
+    grantID: raw.grant_id,
+    accessLevel: raw.access_level,
+    schemaVersion: raw.schema_version,
+    checksumSHA256: raw.checksum_sha256,
+    ciphertextBase64: raw.ciphertext_base64,
+    ciphertextSize: raw.ciphertext_size,
     createdAt: raw.created_at,
     updatedAt: raw.updated_at,
   };
@@ -1107,12 +1181,7 @@ function mapPartnerInviteIssueResult(
 ): ManagedCloudPartnerInviteIssueResult {
   return {
     invite: mapPartnerInvite(raw.invite),
-    inviteToken: raw.invite_token,
     inviteURL: raw.invite_url,
-    emailDelivery: {
-      requested: raw.email_delivery.requested,
-      status: raw.email_delivery.status,
-    },
   };
 }
 

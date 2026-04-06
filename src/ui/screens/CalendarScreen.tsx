@@ -12,6 +12,7 @@ import {
 } from "../../services/calendar-view-service";
 import { dismissCalendarPredictionNotice } from "../../services/calendar-notice-service";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
+import { syncManagedPartnerSharedProjections } from "../../services/managed-partner-share-sync-service";
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { syncManagedLocalReminderSchedule } from "../../services/local-reminder-sync-service";
 import {
@@ -25,7 +26,9 @@ import {
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { formatLocalDate } from "../../services/profile-settings-policy";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
+import type { PartnerShareSecretStore } from "../../security/partner-share-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
@@ -38,6 +41,7 @@ type CalendarScreenProps = {
   autosaveDebounceMs?: number;
   storage?: LocalAppStorage;
   now?: Date;
+  partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
   syncSecretStore?: SyncSecretStore;
 };
@@ -57,6 +61,7 @@ export function CalendarScreen({
   autosaveDebounceMs,
   storage = appStorage,
   now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
   syncSecretStore = defaultSyncSecretStore,
 }: CalendarScreenProps) {
@@ -167,6 +172,12 @@ export function CalendarScreen({
     onPersist: (record) => saveDayLogEditorRecord(storage, record),
     onSaved: async () => {
       await refreshForActiveSelection({ syncReminders: true });
+      await syncManagedPartnerSharedProjections(
+        storage,
+        syncSecretStore,
+        partnerShareSecretStore,
+        effectiveNow,
+      );
     },
     record: state?.selectedRecord ?? null,
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
@@ -244,6 +255,12 @@ export function CalendarScreen({
         : current,
     );
     await refreshForActiveSelection({ syncReminders: true });
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
     setEditorMode("view");
     setStatus({
       message: state.editorViewData.actions.deletedLabel,
@@ -287,6 +304,12 @@ export function CalendarScreen({
     }
 
     await refreshForActiveSelection({ syncReminders: true });
+    await syncManagedPartnerSharedProjections(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      effectiveNow,
+    );
     setEditorMode("view");
     setStatus({
       message: dashboardCopy.manualCycleStartSaved,

@@ -36,10 +36,9 @@ export type BackupSyncFlowScreenProps = {
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onPartnerAcceptInvite: () => void | Promise<void>;
-  onPartnerInviteEmailChange: (value: string) => void;
-  onPartnerInviteEmailNotificationsAllowedChange: (value: boolean) => void;
   onPartnerRevokeGrant: (grantID: string) => void | Promise<void>;
   onPartnerRevokeInvite: (inviteID: string) => void | Promise<void>;
+  onPartnerOpenGrant: (grantID: string) => void | Promise<void>;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
@@ -50,8 +49,6 @@ export type BackupSyncFlowScreenProps = {
   partnerCopy: PartnerCopy;
   partnerErrorMessage: string;
   partnerInviteAccessLevel: ManagedCloudPartnerAccessLevel;
-  partnerInviteEmailValue: string;
-  partnerInviteEmailNotificationsAllowed: boolean;
   partnerInviteLink: string;
   partnerLocale?: string | undefined;
   partnerOverview: ManagedCloudPartnerAccessOverview | null;
@@ -90,8 +87,7 @@ export function BackupSyncFlowScreen({
   onModeSelect,
   onPartnerAccessLevelChange,
   onPartnerAcceptInvite,
-  onPartnerInviteEmailChange,
-  onPartnerInviteEmailNotificationsAllowedChange,
+  onPartnerOpenGrant,
   onPartnerRevokeGrant,
   onPartnerRevokeInvite,
   onPrepare,
@@ -104,8 +100,6 @@ export function BackupSyncFlowScreen({
   partnerCopy,
   partnerErrorMessage,
   partnerInviteAccessLevel,
-  partnerInviteEmailValue,
-  partnerInviteEmailNotificationsAllowed,
   partnerInviteLink,
   partnerLocale,
   partnerOverview,
@@ -172,18 +166,13 @@ export function BackupSyncFlowScreen({
           errorMessage={partnerErrorMessage}
           hasManagedSession={hasSyncSession && presentation.isManaged}
           inviteAccessLevel={partnerInviteAccessLevel}
-          inviteEmailValue={partnerInviteEmailValue}
-          inviteEmailNotificationsAllowed={partnerInviteEmailNotificationsAllowed}
           inviteLink={partnerInviteLink}
           isBusy={isPartnerBusy}
           locale={partnerLocale}
           onAcceptInvite={onPartnerAcceptInvite}
           onAccessLevelChange={onPartnerAccessLevelChange}
-          onInviteEmailChange={onPartnerInviteEmailChange}
-          onInviteEmailNotificationsAllowedChange={
-            onPartnerInviteEmailNotificationsAllowedChange
-          }
           onIssueInvite={onIssuePartnerInvite}
+          onOpenGrant={onPartnerOpenGrant}
           onRevokeGrant={onPartnerRevokeGrant}
           onRevokeInvite={onPartnerRevokeInvite}
           overview={partnerOverview}

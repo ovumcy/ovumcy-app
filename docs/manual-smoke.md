@@ -35,10 +35,11 @@ Run on an Android emulator or physical device.
 18. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 19. Settings export section shows the current entry summary; `Export as CSV` and `Export as JSON` always open a local share or save flow without leaking data into a URL, while `Export as PDF` stays locked unless the current managed cloud account has an active plan.
 20. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
-21. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
-22. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-23. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the Android system navigation buttons.
-24. No account, sync, or cloud requirement is shown for core local use.
+21. If managed `Partner access` is unlocked, owner-side controls create a link-only invite without asking for partner email, show the canonical invite URL, and allow revoke of pending or accepted access.
+22. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
+23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the Android system navigation buttons.
+25. No account, sync, or cloud requirement is shown for core local use.
 
 ## iOS
 
@@ -67,10 +68,11 @@ Run on an iOS simulator or physical device.
 18. Archiving a custom symptom removes it from new-entry symptom pickers without breaking older day entries that already used it.
 19. Settings export section shows the current entry summary; `Export as CSV` and `Export as JSON` always open a local share or save flow without leaking data into a URL, while `Export as PDF` stays locked unless the current managed cloud account has an active plan.
 20. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
-21. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
-22. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-23. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the iOS home indicator or system navigation area.
-24. No account, sync, or cloud requirement is shown for core local use.
+21. If managed `Partner access` is unlocked, owner-side controls create a link-only invite without asking for partner email, show the canonical invite URL, and allow revoke of pending or accepted access.
+22. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
+23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the iOS home indicator or system navigation area.
+25. No account, sync, or cloud requirement is shown for core local use.
 
 ## Web Smoke
 
@@ -90,6 +92,7 @@ Run when web support, branding, or app-shell navigation is touched.
    - settings shows explicit `Interface` controls plus a `Backup & sync` summary card, and the dedicated `Backup & sync` screen supports local encrypted sync preparation with a one-time recovery phrase while keeping `Managed` cloud auth separate from the sync endpoint
    - settings reminders section renders without runtime errors, stays device-local, and shows a locked state until a managed premium entitlement is present
    - settings export summary reflects the current logged range, CSV/JSON downloads succeed with local file downloads instead of opening sensitive data in the URL, and PDF stays disabled until an active managed cloud plan is present
+   - if managed `Partner access` is unlocked, the owner can create a link-only invite without entering partner email, copy the canonical invite URL, and still revoke pending or accepted access
    - danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the browser shell to onboarding
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles

@@ -51,9 +51,7 @@ describe("managed-partner-access-service", () => {
               id: "grant-1",
               owner_account_id: "owner-1",
               partner_account_id: "partner-1",
-              partner_email: "partner@example.com",
               access_level: "summary",
-              email_notifications_allowed: false,
               source_invite_id: "invite-1",
               accepted_at: "2026-04-05T08:00:00.000Z",
               last_seen_at: "2026-04-05T08:10:00.000Z",
@@ -81,7 +79,6 @@ describe("managed-partner-access-service", () => {
         sharedWithMe: [
           expect.objectContaining({
             id: "grant-1",
-            partnerEmail: "partner@example.com",
           }),
         ],
       },

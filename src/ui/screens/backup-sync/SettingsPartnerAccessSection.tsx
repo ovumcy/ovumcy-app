@@ -9,8 +9,6 @@ import type {
   ManagedCloudPartnerInvite,
 } from "../../../sync/managed-cloud-api-client";
 import { AppButton } from "../../components/AppButton";
-import { AppTextInput } from "../../components/AppTextInput";
-import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
 import { StatusBanner } from "../../components/StatusBanner";
@@ -23,16 +21,13 @@ type SettingsPartnerAccessSectionProps = {
   errorMessage: string;
   hasManagedSession: boolean;
   inviteAccessLevel: ManagedCloudPartnerAccessLevel;
-  inviteEmailValue: string;
-  inviteEmailNotificationsAllowed: boolean;
   inviteLink: string;
   isBusy: boolean;
   locale?: string | undefined;
   onAcceptInvite: () => void | Promise<void>;
   onAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
-  onInviteEmailChange: (value: string) => void;
-  onInviteEmailNotificationsAllowedChange: (value: boolean) => void;
   onIssueInvite: () => void | Promise<void>;
+  onOpenGrant: (grantID: string) => void | Promise<void>;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
   onRevokeInvite: (inviteID: string) => void | Promise<void>;
   overview: ManagedCloudPartnerAccessOverview | null;
@@ -46,16 +41,13 @@ export function SettingsPartnerAccessSection({
   errorMessage,
   hasManagedSession,
   inviteAccessLevel,
-  inviteEmailValue,
-  inviteEmailNotificationsAllowed,
   inviteLink,
   isBusy,
   locale,
   onAcceptInvite,
   onAccessLevelChange,
-  onInviteEmailChange,
-  onInviteEmailNotificationsAllowedChange,
   onIssueInvite,
+  onOpenGrant,
   onRevokeGrant,
   onRevokeInvite,
   overview,
@@ -116,21 +108,6 @@ export function SettingsPartnerAccessSection({
             {showOwnerControls ? (
               <>
                 <View style={styles.formGroup}>
-                  <Text style={styles.fieldLabel}>{copy.inviteEmailLabel}</Text>
-                  <AppTextInput
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isBusy}
-                    keyboardType="email-address"
-                    onChangeText={onInviteEmailChange}
-                    placeholder={copy.inviteEmailPlaceholder}
-                    style={styles.input}
-                    testID="settings-partner-invite-email-input"
-                    value={inviteEmailValue}
-                  />
-                </View>
-
-                <View style={styles.formGroup}>
                   <Text style={styles.fieldLabel}>{copy.accessLevelLabel}</Text>
                   <ChoiceGroup
                     layout="grid2"
@@ -153,20 +130,6 @@ export function SettingsPartnerAccessSection({
                     testIDPrefix="settings-partner-access-level"
                   />
                 </View>
-
-                <BinaryToggleCard
-                  compact
-                  description={copy.emailNotificationsHint}
-                  label={copy.emailNotificationsLabel}
-                  onValueChange={onInviteEmailNotificationsAllowedChange}
-                  stateText={
-                    inviteEmailNotificationsAllowed
-                      ? copy.emailNotificationsEnabled
-                      : copy.emailNotificationsDisabled
-                  }
-                  testID="settings-partner-email-notifications-toggle"
-                  value={inviteEmailNotificationsAllowed}
-                />
 
                 <AppButton
                   disabled={isBusy}
@@ -203,6 +166,7 @@ export function SettingsPartnerAccessSection({
               copy={copy}
               grants={ownedGrants}
               locale={locale}
+              onOpenGrant={onOpenGrant}
               onRevokeGrant={onRevokeGrant}
               styles={styles}
             />
@@ -217,6 +181,7 @@ export function SettingsPartnerAccessSection({
               copy={copy}
               grants={sharedWithMeGrants}
               locale={locale}
+              onOpenGrant={onOpenGrant}
               styles={styles}
             />
           </View>
@@ -239,7 +204,7 @@ function PartnerInviteList({
 }) {
   return (
     <View style={styles.subsection}>
-      <Text style={styles.sectionTitle}>{copy.pendingInvitesTitle}</Text>
+            <Text style={styles.sectionTitle}>{copy.pendingInvitesTitle}</Text>
       {invites.length === 0 ? (
         <Text style={styles.helperText}>{copy.pendingInvitesEmpty}</Text>
       ) : (
@@ -249,17 +214,11 @@ function PartnerInviteList({
             style={styles.itemCard}
             testID={`settings-partner-invite-${invite.id}`}
           >
-            <Text style={styles.itemTitle}>{invite.invitedEmail}</Text>
+            <Text style={styles.itemTitle}>{copy.pendingInviteLabel}</Text>
             <Text style={styles.helperText}>
               {invite.accessLevel === "full"
                 ? copy.accessLevelFull
                 : copy.accessLevelSummary}
-            </Text>
-            <Text style={styles.helperText}>
-              {copy.emailNotificationsStatusLabel}:{" "}
-              {invite.emailNotificationsAllowed
-                ? copy.emailNotificationsEnabled
-                : copy.emailNotificationsDisabled}
             </Text>
             <AppButton
               label={copy.revokeInviteLabel}
@@ -280,12 +239,14 @@ function PartnerGrantList({
   copy,
   grants,
   locale,
+  onOpenGrant,
   onRevokeGrant,
   styles,
 }: {
   copy: PartnerCopy;
   grants: ManagedCloudPartnerAccessGrant[];
   locale?: string | undefined;
+  onOpenGrant: (grantID: string) => void | Promise<void>;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
   styles: ReturnType<typeof createStyles>;
 }) {
@@ -301,7 +262,7 @@ function PartnerGrantList({
             style={styles.itemCard}
             testID={`settings-partner-grant-${grant.id}`}
           >
-            <Text style={styles.itemTitle}>{grant.partnerEmail}</Text>
+            <Text style={styles.itemTitle}>{copy.activePartnerLabel}</Text>
             <Text style={styles.helperText}>
               {grant.accessLevel === "full"
                 ? copy.accessLevelFull
@@ -313,15 +274,17 @@ function PartnerGrantList({
                 : copy.accessLevelSummaryHint}
             </Text>
             <Text style={styles.helperText}>
-              {copy.emailNotificationsStatusLabel}:{" "}
-              {grant.emailNotificationsAllowed
-                ? copy.emailNotificationsEnabled
-                : copy.emailNotificationsDisabled}
-            </Text>
-            <Text style={styles.helperText}>
               {copy.lastSeenLabel}:{" "}
               {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
             </Text>
+            <AppButton
+              label={copy.openSharedViewLabel}
+              onPress={() => {
+                void onOpenGrant(grant.id);
+              }}
+              testID={`settings-partner-open-grant-${grant.id}`}
+              variant="secondary"
+            />
             <AppButton
               label={copy.revokeGrantLabel}
               onPress={() => {
@@ -341,11 +304,13 @@ function PartnerSharedGrantList({
   copy,
   grants,
   locale,
+  onOpenGrant,
   styles,
 }: {
   copy: PartnerCopy;
   grants: ManagedCloudPartnerAccessGrant[];
   locale?: string | undefined;
+  onOpenGrant: (grantID: string) => void | Promise<void>;
   styles: ReturnType<typeof createStyles>;
 }) {
   return (
@@ -360,9 +325,7 @@ function PartnerSharedGrantList({
             testID={`settings-partner-shared-grant-${grant.id}`}
           >
             <Text style={styles.itemTitle}>
-              {grant.accessLevel === "full"
-                ? copy.accessLevelFull
-                : copy.accessLevelSummary}
+              {copy.sharedGrantLabel}
             </Text>
             <Text style={styles.helperText}>
               {grant.accessLevel === "full"
@@ -370,15 +333,17 @@ function PartnerSharedGrantList({
                 : copy.accessLevelSummaryHint}
             </Text>
             <Text style={styles.helperText}>
-              {copy.emailNotificationsStatusLabel}:{" "}
-              {grant.emailNotificationsAllowed
-                ? copy.emailNotificationsEnabled
-                : copy.emailNotificationsDisabled}
-            </Text>
-            <Text style={styles.helperText}>
               {copy.lastSeenLabel}:{" "}
               {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
             </Text>
+            <AppButton
+              label={copy.openSharedViewLabel}
+              onPress={() => {
+                void onOpenGrant(grant.id);
+              }}
+              testID={`settings-partner-open-shared-grant-${grant.id}`}
+              variant="secondary"
+            />
           </View>
         ))
       )}
@@ -414,16 +379,6 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      color: colors.text,
-      fontSize: 15,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
     },
     sectionTitle: {
       color: colors.text,

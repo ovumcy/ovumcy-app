@@ -322,6 +322,9 @@ before and after UI changes.
     affordances instead of a permanent save row;
   - reminders are delivered through local device notifications only, with a
     managed premium entitlement acting as the scheduler gate;
+  - managed partner access is a link-only owner-management flow under `Backup & sync`;
+    the app shares the canonical invite URL returned by `ovumcy-managed` and
+    does not ask for partner email or promise partner email delivery;
   - account-backed auth and recovery flows are replaced by local encrypted sync
     setup only;
   - PDF export is an app-managed perk gated by an active managed cloud plan,
