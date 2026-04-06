@@ -29,6 +29,10 @@ jest.mock("expo-notifications", () => ({
   AndroidImportance: {
     DEFAULT: "DEFAULT",
   },
+  SchedulableTriggerInputTypes: {
+    DAILY: "daily",
+    DATE: "date",
+  },
   IosAuthorizationStatus: {
     PROVISIONAL: 3,
   },

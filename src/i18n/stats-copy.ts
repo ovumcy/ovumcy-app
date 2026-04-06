@@ -1070,15 +1070,15 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseIcons: statsCopyEn.phaseIcons,
   },
   es: {
-    title: "Insights",
+    title: "Análisis",
     subtitle: "Observa cómo cambian con el tiempo la duración del ciclo, las fases y los factores registrados.",
     noData: "-",
     dataNotice: "Todavía hay pocos datos. La imagen será más clara a medida que registres más ciclos.",
-    emptyTitle: "Sigue registrando para desbloquear insights",
+    emptyTitle: "Sigue registrando para desbloquear análisis",
     emptyBodyZero:
-      "Completa 2 ciclos para desbloquear insights. Empieza introduciendo el primer día de tu próximo período.",
+      "Completa 2 ciclos para desbloquear análisis. Empieza introduciendo el primer día de tu próximo período.",
     emptyBodyOne:
-      "Tienes 1 ciclo completado. Completa uno más para desbloquear insights.",
+      "Tienes 1 ciclo completado. Completa uno más para desbloquear análisis.",
     emptyProgressHint: "Las predicciones se vuelven más claras tras al menos 2 ciclos completos.",
     emptyActionLabel: "Registrar hoy para desbloquear antes",
     completedCyclesProgress: (count: number) => `Ciclo ${count} de 2 completado`,
@@ -1150,7 +1150,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtCaption:
       "La TCB aparece solo cuando la registras. Las lecturas siguen siendo locales y se muestran solo para el ciclo actual.",
     advancedInsights: {
-      title: "Insights avanzados",
+      title: "Análisis avanzados",
       subtitle: "Patrones premium calculados solo a partir de tu historial local reciente.",
       weightedAverageTitle: "Promedio ponderado",
       weightedAverageDescription: (count: number) =>

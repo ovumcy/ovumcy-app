@@ -823,6 +823,7 @@ export function useBackupSyncScreenController({
     isRestoring: isRestoringSync,
     isSyncing: isSyncingNow,
     locale: language,
+    managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
     preferences: state.syncPreferences,
     syncCapabilities: state.syncCapabilities,

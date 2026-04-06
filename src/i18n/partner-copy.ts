@@ -6,10 +6,10 @@ const partnerCopyEn = {
   subtitle:
     "Invite a partner by link, choose the access level, and revoke access quickly when needed.",
   planLocked:
-    "Partner access is a managed premium feature for the owner account that creates the invite.",
+    "Partner access is a premium Ovumcy Cloud feature for the owner account that creates the invite.",
   ownerTitle: "Invite a partner",
   ownerHint:
-    "Ovumcy issues a private invite link from your managed account. The partner signs in on their own device and accepts the link in app.",
+    "Ovumcy issues a private invite link from your Ovumcy Cloud account. The partner signs in on their own device and accepts the link in app.",
   accessLevelLabel: "Access level",
   accessLevelSummary: "Summary only",
   accessLevelFull: "Full access",
@@ -20,7 +20,7 @@ const partnerCopyEn = {
   issueInviteLabel: "Create invite link",
   inviteLinkTitle: "Invite link",
   inviteLinkHint:
-    "Open or share this link with the partner. Acceptance still requires their own managed sign-in.",
+    "Open or share this link with the partner. Acceptance still requires their own Ovumcy Cloud sign-in.",
   pendingInvitesTitle: "Pending invites",
   pendingInvitesEmpty: "No pending invites yet.",
   pendingInviteLabel: "Invite link pending",
@@ -29,7 +29,7 @@ const partnerCopyEn = {
   activePartnerLabel: "Partner access",
   sharedWithMeTitle: "Access shared with this account",
   sharedWithMeHint:
-    "This managed account already has partner access. The granted access level stays visible here even after the invite banner is gone.",
+    "This Ovumcy Cloud account already has partner access. The granted access level stays visible here even after the invite banner is gone.",
   sharedWithMeEmpty: "No partner access has been shared with this account.",
   sharedGrantLabel: "Shared cycle view",
   lastSeenLabel: "Last seen",
@@ -39,9 +39,9 @@ const partnerCopyEn = {
   revokeGrantLabel: "Revoke access",
   acceptTitle: "Accept partner invite",
   acceptReadyHint:
-    "This link is ready to be accepted on the currently signed-in managed account.",
+    "This link is ready to be accepted on the currently signed-in Ovumcy Cloud account.",
   acceptSignInHint:
-    "Sign in to your managed account first, then accept this partner invite on this device.",
+    "Sign in to your Ovumcy Cloud account first, then accept this partner invite on this device.",
   acceptActionLabel: "Accept invite",
   statusInviteIssued: "Partner invite link created.",
   statusInviteAccepted: "Partner invite accepted on this device.",
@@ -49,11 +49,11 @@ const partnerCopyEn = {
   statusGrantRevoked: "Partner access revoked.",
   sharedViewTitle: "Shared cycle view",
   sharedViewSubtitle:
-    "This read-only view comes only from Ovumcy Managed partner sharing.",
+    "This read-only view is available only through Ovumcy Cloud partner sharing.",
   sharedViewBackLabel: "Back to partner access",
   sharedViewLoadingTitle: "Loading shared view",
   sharedViewLoadingSubtitle:
-    "Decrypting the shared partner snapshot on this device.",
+    "Decrypting the shared partner view on this device.",
   sharedViewNotReady:
     "The owner has not uploaded shared data for this grant yet.",
   sharedViewLocked:
@@ -79,7 +79,7 @@ const partnerCopyEn = {
     partnerInviteNotFound: "This partner invite could not be found.",
     partnerInviteExpired: "This partner invite has expired.",
     partnerAccessUnavailable:
-      "Partner access is not available for this managed account right now.",
+      "Partner access is not available for this Ovumcy Cloud account right now.",
     partnerAccessNotFound: "This partner access record could not be found.",
     networkFailed: "Unable to reach Ovumcy Cloud right now.",
     generic: "Unable to update partner access right now. Please try again.",
@@ -91,10 +91,10 @@ const partnerCopyDe = {
   subtitle:
     "Partner per Link einladen, Zugriffslevel wählen und den Zugriff bei Bedarf schnell widerrufen.",
   planLocked:
-    "Partnerzugriff ist eine Premium-Funktion des Managed-Kontos, das die Einladung erstellt.",
+    "Partnerzugriff ist eine Premium-Funktion des Ovumcy-Cloud-Kontos, das die Einladung erstellt.",
   ownerTitle: "Partner einladen",
   ownerHint:
-    "Ovumcy erstellt einen privaten Einladungslink aus deinem Managed-Konto. Der Partner meldet sich auf seinem eigenen Gerät an und nimmt den Link in der App an.",
+    "Ovumcy erstellt einen privaten Einladungslink aus deinem Ovumcy-Cloud-Konto. Der Partner meldet sich auf seinem eigenen Gerät an und nimmt den Link in der App an.",
   accessLevelLabel: "Zugriffslevel",
   accessLevelSummary: "Nur Zusammenfassung",
   accessLevelFull: "Voller Zugriff",
@@ -105,7 +105,7 @@ const partnerCopyDe = {
   issueInviteLabel: "Einladungslink erstellen",
   inviteLinkTitle: "Einladungslink",
   inviteLinkHint:
-    "Diesen Link mit dem Partner teilen oder öffnen. Die Annahme erfordert trotzdem eine eigene Managed-Anmeldung.",
+    "Diesen Link mit dem Partner teilen oder öffnen. Die Annahme erfordert trotzdem eine eigene Anmeldung bei Ovumcy Cloud.",
   pendingInvitesTitle: "Ausstehende Einladungen",
   pendingInvitesEmpty: "Noch keine ausstehenden Einladungen.",
   pendingInviteLabel: "Einladungslink ausstehend",
@@ -114,7 +114,7 @@ const partnerCopyDe = {
   activePartnerLabel: "Partnerzugriff",
   sharedWithMeTitle: "Mit diesem Konto geteilter Zugriff",
   sharedWithMeHint:
-    "Dieses Managed-Konto hat bereits Partnerzugriff. Das gewährte Zugriffslevel bleibt hier sichtbar, auch nachdem das Einladungsbanner verschwunden ist.",
+    "Dieses Ovumcy-Cloud-Konto hat bereits Partnerzugriff. Das gewährte Zugriffslevel bleibt hier sichtbar, auch nachdem das Einladungsbanner verschwunden ist.",
   sharedWithMeEmpty: "Mit diesem Konto wurde noch kein Partnerzugriff geteilt.",
   sharedGrantLabel: "Geteilte Zyklusansicht",
   lastSeenLabel: "Zuletzt gesehen",
@@ -124,9 +124,9 @@ const partnerCopyDe = {
   revokeGrantLabel: "Zugriff widerrufen",
   acceptTitle: "Partnereinladung annehmen",
   acceptReadyHint:
-    "Dieser Link kann mit dem aktuell angemeldeten Managed-Konto angenommen werden.",
+    "Dieser Link kann mit dem aktuell angemeldeten Ovumcy-Cloud-Konto angenommen werden.",
   acceptSignInHint:
-    "Melde dich zuerst bei deinem Managed-Konto an und nimm dann diese Partnereinladung auf diesem Gerät an.",
+    "Melde dich zuerst bei deinem Ovumcy-Cloud-Konto an und nimm dann diese Partnereinladung auf diesem Gerät an.",
   acceptActionLabel: "Einladung annehmen",
   statusInviteIssued: "Partner-Einladungslink erstellt.",
   statusInviteAccepted: "Partnereinladung auf diesem Gerät angenommen.",
@@ -134,19 +134,19 @@ const partnerCopyDe = {
   statusGrantRevoked: "Partnerzugriff widerrufen.",
   sharedViewTitle: "Geteilte Zyklusansicht",
   sharedViewSubtitle:
-    "Diese schreibgeschützte Ansicht stammt nur aus dem Ovumcy-Managed-Partnerzugriff.",
+    "Diese schreibgeschützte Ansicht ist nur über den Partnerzugriff in Ovumcy Cloud verfügbar.",
   sharedViewBackLabel: "Zurück zum Partnerzugriff",
   sharedViewLoadingTitle: "Geteilte Ansicht wird geladen",
   sharedViewLoadingSubtitle:
-    "Der geteilte Partner-Snapshot wird auf diesem Gerät entschlüsselt.",
+    "Die geteilte Partneransicht wird auf diesem Gerät entschlüsselt.",
   sharedViewNotReady:
-    "Der Owner hat für diesen Zugriff noch keine geteilten Daten hochgeladen.",
+    "Die Besitzerin oder der Besitzer hat für diesen Zugriff noch keine geteilten Daten hochgeladen.",
   sharedViewLocked:
     "Diese geteilte Ansicht kann auf diesem Gerät nicht geöffnet werden, weil der Einladungsschlüssel fehlt.",
   sharedViewSummaryHint:
     "Zusammenfassender Zugriff behält die leichtere Übersicht ohne detaillierte Tageshistorie.",
   sharedViewFullHint:
-    "Voller Zugriff enthält die geteilte Übersicht und die detaillierte Tageshistorie, die der Owner erlaubt hat.",
+    "Voller Zugriff enthält die geteilte Übersicht und die detaillierte Tageshistorie, die von der Besitzerin oder dem Besitzer freigegeben wurde.",
   sharedViewGeneratedAtLabel: "Aktualisiert",
   sharedViewMetricsTitle: "Geteilte Zusammenfassung",
   sharedViewHistoryTitle: "Letzte geteilte Historie",
@@ -164,7 +164,7 @@ const partnerCopyDe = {
     partnerInviteNotFound: "Diese Partnereinladung wurde nicht gefunden.",
     partnerInviteExpired: "Diese Partnereinladung ist abgelaufen.",
     partnerAccessUnavailable:
-      "Partnerzugriff ist für dieses Managed-Konto gerade nicht verfügbar.",
+      "Partnerzugriff ist für dieses Ovumcy-Cloud-Konto gerade nicht verfügbar.",
     partnerAccessNotFound: "Dieser Partnerzugriff wurde nicht gefunden.",
     networkFailed: "Ovumcy Cloud ist gerade nicht erreichbar.",
     generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuche es erneut.",
@@ -176,10 +176,10 @@ const partnerCopyFr = {
   subtitle:
     "Inviter un partenaire par lien, choisir le niveau d’accès et retirer rapidement l’accès si besoin.",
   planLocked:
-    "L’accès partenaire est une fonction premium du compte géré qui crée l’invitation.",
+    "L’accès partenaire est une fonction premium du compte Ovumcy Cloud qui crée l’invitation.",
   ownerTitle: "Inviter un partenaire",
   ownerHint:
-    "Ovumcy crée un lien d’invitation privé depuis ton compte géré. Le partenaire se connecte sur son propre appareil et accepte le lien dans l’app.",
+    "Ovumcy crée un lien d’invitation privé depuis ton compte Ovumcy Cloud. Le partenaire se connecte sur son propre appareil et accepte le lien dans l’app.",
   accessLevelLabel: "Niveau d’accès",
   accessLevelSummary: "Résumé seulement",
   accessLevelFull: "Accès complet",
@@ -190,7 +190,7 @@ const partnerCopyFr = {
   issueInviteLabel: "Créer un lien d’invitation",
   inviteLinkTitle: "Lien d’invitation",
   inviteLinkHint:
-    "Partage ou ouvre ce lien avec le partenaire. L’acceptation demande quand même sa propre connexion gérée.",
+    "Partage ou ouvre ce lien avec le partenaire. L’acceptation demande quand même sa propre connexion à Ovumcy Cloud.",
   pendingInvitesTitle: "Invitations en attente",
   pendingInvitesEmpty: "Aucune invitation en attente pour le moment.",
   pendingInviteLabel: "Lien d’invitation en attente",
@@ -199,7 +199,7 @@ const partnerCopyFr = {
   activePartnerLabel: "Accès partenaire",
   sharedWithMeTitle: "Accès partagé avec ce compte",
   sharedWithMeHint:
-    "Ce compte géré dispose déjà d’un accès partenaire. Le niveau accordé reste visible ici même après la disparition de la bannière d’invitation.",
+    "Ce compte Ovumcy Cloud dispose déjà d’un accès partenaire. Le niveau accordé reste visible ici même après la disparition de la bannière d’invitation.",
   sharedWithMeEmpty: "Aucun accès partenaire n’a encore été partagé avec ce compte.",
   sharedGrantLabel: "Vue de cycle partagée",
   lastSeenLabel: "Dernière ouverture",
@@ -209,9 +209,9 @@ const partnerCopyFr = {
   revokeGrantLabel: "Retirer l’accès",
   acceptTitle: "Accepter l’invitation partenaire",
   acceptReadyHint:
-    "Ce lien peut être accepté avec le compte géré actuellement connecté.",
+    "Ce lien peut être accepté avec le compte Ovumcy Cloud actuellement connecté.",
   acceptSignInHint:
-    "Connecte-toi d’abord à ton compte géré, puis accepte cette invitation partenaire sur cet appareil.",
+    "Connecte-toi d’abord à ton compte Ovumcy Cloud, puis accepte cette invitation partenaire sur cet appareil.",
   acceptActionLabel: "Accepter l’invitation",
   statusInviteIssued: "Lien d’invitation partenaire créé.",
   statusInviteAccepted: "Invitation partenaire acceptée sur cet appareil.",
@@ -219,11 +219,11 @@ const partnerCopyFr = {
   statusGrantRevoked: "Accès partenaire retiré.",
   sharedViewTitle: "Vue de cycle partagée",
   sharedViewSubtitle:
-    "Cette vue en lecture seule vient uniquement du partage partenaire Ovumcy Managed.",
+    "Cette vue en lecture seule est disponible uniquement via le partage partenaire Ovumcy Cloud.",
   sharedViewBackLabel: "Retour à l’accès partenaire",
   sharedViewLoadingTitle: "Chargement de la vue partagée",
   sharedViewLoadingSubtitle:
-    "Le snapshot partenaire partagé est déchiffré sur cet appareil.",
+    "La vue partenaire partagée est déchiffrée sur cet appareil.",
   sharedViewNotReady:
     "Le propriétaire n’a pas encore téléversé de données partagées pour cet accès.",
   sharedViewLocked:
@@ -249,7 +249,7 @@ const partnerCopyFr = {
     partnerInviteNotFound: "Cette invitation partenaire est introuvable.",
     partnerInviteExpired: "Cette invitation partenaire a expiré.",
     partnerAccessUnavailable:
-      "L’accès partenaire n’est pas disponible pour ce compte géré pour le moment.",
+      "L’accès partenaire n’est pas disponible pour ce compte Ovumcy Cloud pour le moment.",
     partnerAccessNotFound: "Cet accès partenaire est introuvable.",
     networkFailed: "Impossible de joindre Ovumcy Cloud pour le moment.",
     generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessaie.",
@@ -261,10 +261,10 @@ const partnerCopyRu = {
   subtitle:
     "Приглашай партнёра по ссылке, выбирай уровень доступа и быстро отзыви доступ при необходимости.",
   planLocked:
-    "Доступ партнёра — это premium-функция managed-аккаунта, который создаёт приглашение.",
+    "Доступ партнёра — это премиум-функция аккаунта Ovumcy Cloud, который создаёт приглашение.",
   ownerTitle: "Пригласить партнёра",
   ownerHint:
-    "Ovumcy создаёт приватную ссылку-приглашение из твоего managed-аккаунта. Партнёр входит на своём устройстве и принимает ссылку прямо в приложении.",
+    "Ovumcy создаёт приватную ссылку-приглашение из твоего аккаунта Ovumcy Cloud. Партнёр входит на своём устройстве и принимает ссылку прямо в приложении.",
   accessLevelLabel: "Уровень доступа",
   accessLevelSummary: "Только сводка",
   accessLevelFull: "Полный доступ",
@@ -275,7 +275,7 @@ const partnerCopyRu = {
   issueInviteLabel: "Создать ссылку-приглашение",
   inviteLinkTitle: "Ссылка-приглашение",
   inviteLinkHint:
-    "Поделись этой ссылкой с партнёром или открой её. Для принятия всё равно нужен его собственный managed-вход.",
+    "Поделись этой ссылкой с партнёром или открой её. Для принятия всё равно нужен его собственный вход в Ovumcy Cloud.",
   pendingInvitesTitle: "Ожидающие приглашения",
   pendingInvitesEmpty: "Пока нет ожидающих приглашений.",
   pendingInviteLabel: "Ссылка-приглашение ожидает принятия",
@@ -284,7 +284,7 @@ const partnerCopyRu = {
   activePartnerLabel: "Доступ партнёра",
   sharedWithMeTitle: "Доступ, выданный этому аккаунту",
   sharedWithMeHint:
-    "У этого managed-аккаунта уже есть партнёрский доступ. Выданный уровень доступа остаётся видимым здесь даже после исчезновения баннера приглашения.",
+    "У этого аккаунта Ovumcy Cloud уже есть партнёрский доступ. Выданный уровень доступа остаётся видимым здесь даже после исчезновения баннера приглашения.",
   sharedWithMeEmpty: "Этому аккаунту ещё не выдан партнёрский доступ.",
   sharedGrantLabel: "Общий просмотр цикла",
   lastSeenLabel: "Последний вход",
@@ -294,9 +294,9 @@ const partnerCopyRu = {
   revokeGrantLabel: "Отозвать доступ",
   acceptTitle: "Принять приглашение партнёра",
   acceptReadyHint:
-    "Эту ссылку можно принять в текущем вошедшем managed-аккаунте.",
+    "Эту ссылку можно принять в текущем вошедшем аккаунте Ovumcy Cloud.",
   acceptSignInHint:
-    "Сначала войди в свой managed-аккаунт, а потом прими это приглашение партнёра на этом устройстве.",
+    "Сначала войди в свой аккаунт Ovumcy Cloud, а потом прими это приглашение партнёра на этом устройстве.",
   acceptActionLabel: "Принять приглашение",
   statusInviteIssued: "Ссылка-приглашение для партнёра создана.",
   statusInviteAccepted: "Приглашение партнёра принято на этом устройстве.",
@@ -304,11 +304,11 @@ const partnerCopyRu = {
   statusGrantRevoked: "Доступ партнёра отозван.",
   sharedViewTitle: "Общий просмотр цикла",
   sharedViewSubtitle:
-    "Этот read-only просмотр приходит только из managed-партнёрского доступа Ovumcy.",
+    "Этот просмотр только для чтения доступен только через партнёрский доступ Ovumcy Cloud.",
   sharedViewBackLabel: "Назад к доступу партнёра",
   sharedViewLoadingTitle: "Загружаем общий просмотр",
   sharedViewLoadingSubtitle:
-    "Общий partner snapshot расшифровывается прямо на этом устройстве.",
+    "Общие данные партнёра расшифровываются прямо на этом устройстве.",
   sharedViewNotReady:
     "Владелец ещё не загрузил общие данные для этого доступа.",
   sharedViewLocked:
@@ -334,7 +334,7 @@ const partnerCopyRu = {
     partnerInviteNotFound: "Это приглашение партнёра не найдено.",
     partnerInviteExpired: "Срок действия этого приглашения партнёра истёк.",
     partnerAccessUnavailable:
-      "Доступ партнёра сейчас недоступен для этого managed-аккаунта.",
+      "Доступ партнёра сейчас недоступен для этого аккаунта Ovumcy Cloud.",
     partnerAccessNotFound: "Эта запись доступа партнёра не найдена.",
     networkFailed: "Сейчас не удаётся связаться с Ovumcy Cloud.",
     generic: "Сейчас не удалось обновить доступ партнёра. Попробуй ещё раз.",
@@ -346,10 +346,10 @@ const partnerCopyEs = {
   subtitle:
     "Invita a una pareja por enlace, elige el nivel de acceso y retira el acceso rápidamente si hace falta.",
   planLocked:
-    "El acceso de pareja es una función premium de la cuenta managed que crea la invitación.",
+    "El acceso de pareja es una función premium de la cuenta de Ovumcy Cloud que crea la invitación.",
   ownerTitle: "Invitar a una pareja",
   ownerHint:
-    "Ovumcy crea un enlace privado de invitación desde tu cuenta managed. La pareja inicia sesión en su propio dispositivo y acepta el enlace dentro de la app.",
+    "Ovumcy crea un enlace privado de invitación desde tu cuenta de Ovumcy Cloud. La pareja inicia sesión en su propio dispositivo y acepta el enlace dentro de la app.",
   accessLevelLabel: "Nivel de acceso",
   accessLevelSummary: "Solo resumen",
   accessLevelFull: "Acceso completo",
@@ -360,7 +360,7 @@ const partnerCopyEs = {
   issueInviteLabel: "Crear enlace de invitación",
   inviteLinkTitle: "Enlace de invitación",
   inviteLinkHint:
-    "Comparte o abre este enlace con la pareja. La aceptación igualmente requiere su propio inicio de sesión managed.",
+    "Comparte o abre este enlace con la pareja. La aceptación igualmente requiere su propio inicio de sesión en Ovumcy Cloud.",
   pendingInvitesTitle: "Invitaciones pendientes",
   pendingInvitesEmpty: "Todavía no hay invitaciones pendientes.",
   pendingInviteLabel: "Enlace de invitación pendiente",
@@ -369,7 +369,7 @@ const partnerCopyEs = {
   activePartnerLabel: "Acceso de pareja",
   sharedWithMeTitle: "Acceso compartido con esta cuenta",
   sharedWithMeHint:
-    "Esta cuenta managed ya tiene acceso de pareja. El nivel concedido sigue visible aquí incluso después de que desaparezca el banner de invitación.",
+    "Esta cuenta de Ovumcy Cloud ya tiene acceso de pareja. El nivel concedido sigue visible aquí incluso después de que desaparezca el banner de invitación.",
   sharedWithMeEmpty: "Todavía no se ha compartido acceso de pareja con esta cuenta.",
   sharedGrantLabel: "Vista compartida del ciclo",
   lastSeenLabel: "Última visita",
@@ -379,9 +379,9 @@ const partnerCopyEs = {
   revokeGrantLabel: "Revocar acceso",
   acceptTitle: "Aceptar invitación de pareja",
   acceptReadyHint:
-    "Este enlace puede aceptarse con la cuenta managed que ya inició sesión.",
+    "Este enlace puede aceptarse con la cuenta de Ovumcy Cloud que ya inició sesión.",
   acceptSignInHint:
-    "Primero inicia sesión en tu cuenta managed y después acepta esta invitación de pareja en este dispositivo.",
+    "Primero inicia sesión en tu cuenta de Ovumcy Cloud y después acepta esta invitación de pareja en este dispositivo.",
   acceptActionLabel: "Aceptar invitación",
   statusInviteIssued: "Se creó el enlace de invitación de pareja.",
   statusInviteAccepted: "La invitación de pareja se aceptó en este dispositivo.",
@@ -389,11 +389,11 @@ const partnerCopyEs = {
   statusGrantRevoked: "Se revocó el acceso de pareja.",
   sharedViewTitle: "Vista compartida del ciclo",
   sharedViewSubtitle:
-    "Esta vista de solo lectura llega solo desde el acceso de pareja de Ovumcy Managed.",
+    "Esta vista de solo lectura solo está disponible mediante el acceso de pareja de Ovumcy Cloud.",
   sharedViewBackLabel: "Volver al acceso de pareja",
   sharedViewLoadingTitle: "Cargando vista compartida",
   sharedViewLoadingSubtitle:
-    "El snapshot compartido de pareja se está descifrando en este dispositivo.",
+    "La vista compartida de la pareja se está descifrando en este dispositivo.",
   sharedViewNotReady:
     "La persona propietaria todavía no ha subido datos compartidos para este acceso.",
   sharedViewLocked:
@@ -419,7 +419,7 @@ const partnerCopyEs = {
     partnerInviteNotFound: "No se encontró esta invitación de pareja.",
     partnerInviteExpired: "Esta invitación de pareja ha caducado.",
     partnerAccessUnavailable:
-      "El acceso de pareja no está disponible para esta cuenta managed ahora mismo.",
+      "El acceso de pareja no está disponible para esta cuenta de Ovumcy Cloud ahora mismo.",
     partnerAccessNotFound: "No se encontró este acceso de pareja.",
     networkFailed: "No se puede contactar con Ovumcy Cloud ahora mismo.",
     generic: "No se pudo actualizar el acceso de pareja ahora mismo. Inténtalo otra vez.",

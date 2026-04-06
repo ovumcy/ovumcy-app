@@ -317,6 +317,7 @@ export async function disconnectBackupSyncAccount(
       result.preferences,
       null,
       {
+        planStatus: "unknown",
         doctorPDF: false,
         reminders: false,
       },
@@ -345,6 +346,7 @@ export async function clearUnauthorizedBackupSyncSession(
     nextPreferences,
     null,
     {
+      planStatus: "unknown",
       doctorPDF: false,
       reminders: false,
     },

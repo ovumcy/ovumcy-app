@@ -241,6 +241,7 @@ describe("BackupSyncScreen", () => {
               maxBlobBytes: 1024,
             },
             {
+              planStatus: "unknown",
               doctorPDF: false,
               reminders: false,
             },
@@ -388,26 +389,61 @@ describe("BackupSyncScreen", () => {
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
     });
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          account_id: "managed-account-1",
-          email: "alice@example.com",
-          session_expires_at: "2026-03-21T08:00:00.000Z",
-          sync_entitlement: {
-            sync_allowed: false,
-            source: "manual",
-            updated_at: "2026-03-20T08:05:00.000Z",
-            effective_at: "2026-03-20T08:05:00.000Z",
-            explanation: "plan inactive",
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/auth/session")) {
+        return new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "manual",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "plan inactive",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
           },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    ) as typeof fetch;
+        );
+      }
+
+      if (url.includes("/account/billing")) {
+        return new Response(
+          JSON.stringify({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.includes("/account/partner/access")) {
+        return createJSONResponse({
+          owned: {
+            invites: [],
+            grants: [],
+          },
+          shared_with_me: [],
+        });
+      }
+
+      throw new Error(`Unexpected fetch in test: ${url}`);
+    }) as typeof fetch;
 
     render(
       <BackupSyncScreen
@@ -476,6 +512,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: true,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -487,6 +524,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: true,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -525,6 +563,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: true,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -642,6 +681,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: false,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -653,6 +693,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: false,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -700,6 +741,7 @@ describe("BackupSyncScreen", () => {
       )
       .mockResolvedValueOnce(
         createJSONResponse({
+          has_active_plan: false,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,
@@ -809,6 +851,7 @@ describe("BackupSyncScreen", () => {
 
       if (url.includes("/account/billing")) {
         return createJSONResponse({
+          has_active_plan: true,
           premium_features: {
             advanced_fertility: false,
             advanced_insights: false,

@@ -2,7 +2,7 @@ import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getShellCopy } from "../../i18n/shell-copy";
@@ -10,17 +10,32 @@ import {
   appStorage,
   readHasCompletedOnboarding,
 } from "../../services/app-bootstrap-service";
+import { refreshManagedPartnerSharedProjectionsOnAppActive } from "../../services/managed-partner-share-refresh-service";
+import type { PartnerShareSecretStore } from "../../security/partner-share-secret-store";
+import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
+import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { GuardedTabBarButton } from "./GuardedTabBarButton";
 import { TabLeaveGuardProvider } from "./TabLeaveGuardContext";
 
 type ProtectedTabsLayoutProps = {
+  managedPartnerShareRefresh?:
+    | typeof refreshManagedPartnerSharedProjectionsOnAppActive
+    | undefined;
+  now?: Date | undefined;
+  partnerShareSecretStore?: PartnerShareSecretStore | undefined;
   storage?: LocalAppStorage;
+  syncSecretStore?: SyncSecretStore | undefined;
 };
 
 export function ProtectedTabsLayout({
+  managedPartnerShareRefresh = refreshManagedPartnerSharedProjectionsOnAppActive,
+  now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   storage = appStorage,
+  syncSecretStore = defaultSyncSecretStore,
 }: ProtectedTabsLayoutProps) {
   const { colors, language } = useAppPreferences();
   const insets = useSafeAreaInsets();
@@ -53,6 +68,54 @@ export function ProtectedTabsLayout({
       isMounted = false;
     };
   }, [storage]);
+
+  useEffect(() => {
+    if (hasCompletedOnboarding !== true) {
+      return;
+    }
+
+    let isMounted = true;
+    let isRefreshing = false;
+
+    const runPartnerRefresh = async () => {
+      if (!isMounted || isRefreshing) {
+        return;
+      }
+
+      isRefreshing = true;
+      try {
+        await managedPartnerShareRefresh(
+          storage,
+          syncSecretStore,
+          partnerShareSecretStore,
+          now ?? new Date(),
+        );
+      } catch {
+        // Best-effort refresh: keep the main app usable even if the sync path fails.
+      } finally {
+        isRefreshing = false;
+      }
+    };
+
+    void runPartnerRefresh();
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void runPartnerRefresh();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [
+    hasCompletedOnboarding,
+    managedPartnerShareRefresh,
+    now,
+    partnerShareSecretStore,
+    storage,
+    syncSecretStore,
+  ]);
 
   if (hasCompletedOnboarding === null) {
     return null;

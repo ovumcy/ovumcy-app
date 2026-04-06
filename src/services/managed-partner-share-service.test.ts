@@ -89,6 +89,41 @@ describe("managed-partner-share-service", () => {
     expect(reconciled.grantKeysByGrantID["grant-1"]).toEqual(expect.any(String));
   });
 
+  it("drops pending invite keys once the invite is no longer active", async () => {
+    const partnerShareSecretStore = createPartnerShareSecretStoreMock();
+
+    await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
+      invite: {
+        id: "invite-1",
+        ownerAccountID: "owner-1",
+        accessLevel: "summary",
+        status: "pending",
+        expiresAt: "2026-04-10T00:00:00.000Z",
+        acceptedAt: null,
+        acceptedAccountID: null,
+        revokedAt: null,
+        revokedReason: "",
+        createdBy: "owner-1",
+        createdAt: "2026-04-03T00:00:00.000Z",
+        updatedAt: "2026-04-03T00:00:00.000Z",
+      },
+      inviteURL: "ovumcy://backup-sync?invite_token=invite-token-1",
+    });
+
+    const reconciled = await reconcileManagedPartnerShareKeys(
+      partnerShareSecretStore,
+      {
+        owned: {
+          invites: [],
+          grants: [],
+        },
+        sharedWithMe: [],
+      },
+    );
+
+    expect(reconciled.pendingInviteKeysByInviteID["invite-1"]).toBeUndefined();
+  });
+
   it("uploads and decrypts a managed partner projection with the derived grant key", async () => {
     const syncSecretStore = createSyncSecretStoreMock();
     await syncSecretStore.writeSyncSecrets({

@@ -46,6 +46,7 @@ export type ManagedCloudPremiumFeatures = {
 };
 
 export type ManagedCloudBillingSnapshot = {
+  hasActivePlan: boolean;
   premiumFeatures: ManagedCloudPremiumFeatures;
 };
 
@@ -291,6 +292,7 @@ type RawManagedCloudSessionView = {
 };
 
 type RawManagedCloudBillingSnapshot = {
+  has_active_plan?: boolean;
   premium_features?: {
     advanced_fertility?: boolean;
     advanced_insights?: boolean;
@@ -848,6 +850,13 @@ function isRawManagedCloudBillingSnapshot(
     return false;
   }
 
+  if (
+    typeof value.has_active_plan !== "boolean" &&
+    typeof value.has_active_plan !== "undefined"
+  ) {
+    return false;
+  }
+
   const features = value.premium_features;
   if (typeof features === "undefined") {
     return true;
@@ -1075,6 +1084,7 @@ function mapBillingSnapshot(
   const features = isObject(raw.premium_features) ? raw.premium_features : {};
 
   return {
+    hasActivePlan: raw.has_active_plan === true,
     premiumFeatures: {
       advancedFertility: features.advanced_fertility === true,
       advancedInsights: features.advanced_insights === true,

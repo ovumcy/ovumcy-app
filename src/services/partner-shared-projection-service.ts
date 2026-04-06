@@ -4,15 +4,35 @@ import type {
   PartnerSharedProjectionPayload,
   PartnerSharedReadState,
 } from "../models/partner-share";
+import { getBuiltinSymptomLabel } from "../i18n/symptom-copy";
 import {
   PARTNER_SHARE_SCHEMA_VERSION,
 } from "../models/partner-share";
 import type { ProfileRecord } from "../models/profile";
 import { createDefaultProfileRecord } from "../models/profile";
-import type { SymptomRecord } from "../models/symptom";
+import type { BuiltinSymptomID, SymptomRecord } from "../models/symptom";
 import { buildCycleHistorySummary, buildCurrentCycleProjection } from "./cycle-history-service";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { buildExportCSVRows } from "./export-service";
+import { getSymptomDisplayLabel } from "./symptom-presentation-service";
+
+const exportFlagToBuiltinSymptomID = {
+  cramps: "cramps",
+  headache: "headache",
+  acne: "acne",
+  mood: "mood_swings",
+  bloating: "bloating",
+  fatigue: "fatigue",
+  breastTenderness: "breast_tenderness",
+  backPain: "back_pain",
+  nausea: "nausea",
+  spotting: "spotting",
+  irritability: "irritability",
+  insomnia: "insomnia",
+  foodCravings: "food_cravings",
+  diarrhea: "diarrhea",
+  constipation: "constipation",
+} as const satisfies Record<string, BuiltinSymptomID>;
 
 export function buildPartnerSharedProjectionPayload(input: {
   accessLevel: PartnerShareAccessLevel;
@@ -80,7 +100,7 @@ export function buildPartnerSharedReadState(
             cervicalMucus: row.cervicalMucus,
             lhTest: row.lhTest,
             cycleFactors: row.cycleFactors,
-            symptomSummary: summarizeExportSymptoms(row),
+            symptomSummary: summarizeExportSymptoms(row, locale),
             notes: row.notes,
           }))
       : [];
@@ -111,7 +131,7 @@ export function buildPartnerSharedReadState(
         history.completedCycles.map((cycle) => cycle.periodLength),
       ),
       totalLoggedDays: payload.dayLogs.length,
-      topSymptoms: buildTopSymptomLabels(payload.dayLogs, payload.symptomRecords),
+      topSymptoms: buildTopSymptomLabels(payload.dayLogs, payload.symptomRecords, locale),
     },
     recentRows,
   };
@@ -182,6 +202,7 @@ function buildProjectionProfile(
 function buildTopSymptomLabels(
   dayLogs: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
+  locale = "en",
 ): string[] {
   if (symptomRecords.length === 0) {
     return [];
@@ -194,7 +215,9 @@ function buildTopSymptomLabels(
     }
   }
 
-  const labelByID = new Map(symptomRecords.map((record) => [record.id, record.label]));
+  const labelByID = new Map(
+    symptomRecords.map((record) => [record.id, getSymptomDisplayLabel(record, locale)]),
+  );
   return [...counts.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .slice(0, 3)
@@ -203,23 +226,16 @@ function buildTopSymptomLabels(
 
 function summarizeExportSymptoms(
   row: ReturnType<typeof buildExportCSVRows>[number],
+  locale = "en",
 ): string {
   const labels: string[] = [];
-  if (row.symptoms.cramps) labels.push("cramps");
-  if (row.symptoms.headache) labels.push("headache");
-  if (row.symptoms.acne) labels.push("acne");
-  if (row.symptoms.mood) labels.push("mood");
-  if (row.symptoms.bloating) labels.push("bloating");
-  if (row.symptoms.fatigue) labels.push("fatigue");
-  if (row.symptoms.breastTenderness) labels.push("breast tenderness");
-  if (row.symptoms.backPain) labels.push("back pain");
-  if (row.symptoms.nausea) labels.push("nausea");
-  if (row.symptoms.spotting) labels.push("spotting");
-  if (row.symptoms.irritability) labels.push("irritability");
-  if (row.symptoms.insomnia) labels.push("insomnia");
-  if (row.symptoms.foodCravings) labels.push("food cravings");
-  if (row.symptoms.diarrhea) labels.push("diarrhea");
-  if (row.symptoms.constipation) labels.push("constipation");
+
+  for (const [flagKey, symptomID] of Object.entries(exportFlagToBuiltinSymptomID)) {
+    if (row.symptoms[flagKey as keyof typeof row.symptoms]) {
+      labels.push(getBuiltinSymptomLabel(locale, symptomID));
+    }
+  }
+
   labels.push(...row.otherSymptoms);
   return labels.join(", ");
 }

@@ -71,6 +71,25 @@ export async function reconcileManagedPartnerShareKeys(
     didChange = true;
   }
 
+  const activePendingInviteIDs = new Set(
+    overview.owned.invites
+      .filter(
+        (invite) =>
+          invite.acceptedAt === null &&
+          invite.revokedAt === null &&
+          invite.status === "pending",
+      )
+      .map((invite) => invite.id),
+  );
+  for (const inviteID of Object.keys(nextState.pendingInviteKeysByInviteID)) {
+    if (activePendingInviteIDs.has(inviteID)) {
+      continue;
+    }
+
+    delete nextState.pendingInviteKeysByInviteID[inviteID];
+    didChange = true;
+  }
+
   if (didChange) {
     await partnerShareSecretStore.writePartnerShareSecrets(nextState);
   }

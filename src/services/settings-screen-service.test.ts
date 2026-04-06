@@ -122,6 +122,7 @@ describe("settings services", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            has_active_plan: false,
             premium_features: {
               doctor_pdf: false,
               advanced_insights: false,
@@ -141,12 +142,102 @@ describe("settings services", () => {
       expect.objectContaining({
         hasSyncSession: true,
         managedPremiumAccess: {
+          planStatus: "inactive",
           doctorPDF: false,
           reminders: false,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
           premiumActive: false,
+        }),
+      }),
+    );
+  });
+
+  it("keeps managed plan status billing-owned when sync entitlement stays enabled without premium billing", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "manual_admin",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "support temporarily enabled sync",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            has_active_plan: false,
+            premium_features: {
+              doctor_pdf: false,
+              advanced_insights: false,
+              reminders: false,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    await expect(
+      loadSettingsScreenState(storage, secretStore, new Date(2026, 2, 18)),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        hasSyncSession: true,
+        managedPremiumAccess: {
+          planStatus: "inactive",
+          doctorPDF: false,
+          reminders: false,
+        },
+        syncCapabilities: expect.objectContaining({
+          mode: "managed",
+          premiumActive: true,
         }),
       }),
     );
@@ -209,6 +300,7 @@ describe("settings services", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            has_active_plan: true,
             premium_features: {
               doctor_pdf: true,
               advanced_insights: true,
@@ -232,6 +324,7 @@ describe("settings services", () => {
           setupStatus: "local_ready",
         }),
         managedPremiumAccess: {
+          planStatus: "active",
           doctorPDF: true,
           reminders: true,
         },
@@ -811,6 +904,7 @@ describe("settings services", () => {
         maxBlobBytes: 1024,
       },
       {
+        planStatus: "active",
         doctorPDF: true,
         reminders: false,
       },

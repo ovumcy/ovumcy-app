@@ -148,4 +148,38 @@ describe("partner-shared-projection-service", () => {
     expect(readState.cycleStatus.nextPeriodWindowStartDate).toBe("2026-04-29");
     expect(readState.recentRows[0]?.date).toBe("2026-04-02");
   });
+
+  it("localizes builtin symptom labels in shared summaries and history", () => {
+    const profile = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-04-01",
+    };
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-04-02"),
+        isPeriod: true,
+        flow: "spotting" as const,
+        symptomIDs: ["cramps", "headache"],
+      },
+    ];
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: records,
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: createDefaultSymptomRecords(),
+    });
+
+    const readState = buildPartnerSharedReadState(
+      projection,
+      new Date("2026-04-05T10:00:00.000Z"),
+      "ru",
+    );
+
+    expect(readState.summaryMetrics.topSymptoms).toEqual(["Спазмы", "Головная боль"]);
+    expect(readState.recentRows[0]?.symptomSummary).toBe("Спазмы, Головная боль");
+  });
 });

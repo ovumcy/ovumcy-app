@@ -328,7 +328,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Показывать только ваши записи.",
         ageGroup: "Ваш возраст",
         ageGroupHint:
-          "Необязательно. Сейчас это добавляет только возрастной контекст в Insights и не меняет расчёт цикла.",
+          "Необязательно. Сейчас это добавляет только возрастной контекст в разделе «Инсайты» и не меняет расчёт цикла.",
         usageGoal: "Зачем вы используете Ovumcy?",
         usageGoalHint:
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм предсказания.",
@@ -414,7 +414,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Mostrar solo tus registros.",
         ageGroup: "Tu edad",
         ageGroupHint:
-          "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Insights. No cambia los cálculos del ciclo.",
+          "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Análisis. No cambia los cálculos del ciclo.",
         usageGoal: "¿Por qué usas Ovumcy?",
         usageGoalHint:
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",

@@ -378,6 +378,7 @@ export type SettingsViewData = {
 };
 
 export type SettingsManagedPremiumAccess = {
+  planStatus: "unknown" | "inactive" | "active";
   doctorPDF: boolean;
   reminders: boolean;
 };
@@ -852,6 +853,7 @@ export function createLoadedSettingsState(
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
   syncCapabilities: SyncCapabilityDocument | null = null,
   managedPremiumAccess: SettingsManagedPremiumAccess = {
+    planStatus: "unknown",
     doctorPDF: false,
     reminders: false,
   },
@@ -1066,7 +1068,11 @@ export function revertLoadedSettingsDraftValues(
 export function buildSettingsSyncSummary(
   state: Pick<
     LoadedSettingsState,
-    "hasStoredSyncSecrets" | "hasSyncSession" | "syncCapabilities" | "syncPreferences"
+    | "hasStoredSyncSecrets"
+    | "hasSyncSession"
+    | "managedPremiumAccess"
+    | "syncCapabilities"
+    | "syncPreferences"
   >,
   viewData: SettingsViewData["account"],
   notSetLabel: string,
@@ -1089,9 +1095,9 @@ export function buildSettingsSyncSummary(
 
     if (state.hasSyncSession) {
       if (isManaged) {
-        if (!state.syncCapabilities) {
+        if (state.managedPremiumAccess.planStatus === "unknown") {
           statusMessage = viewData.planCheckFailed;
-        } else if (state.syncCapabilities.premiumActive) {
+        } else if (state.managedPremiumAccess.planStatus === "active") {
           statusMessage = viewData.planActive;
           statusTone = "success";
         } else {

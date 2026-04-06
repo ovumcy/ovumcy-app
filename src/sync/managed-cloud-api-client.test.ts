@@ -48,6 +48,7 @@ describe("managed-cloud-api-client", () => {
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            has_active_plan: true,
             premium_features: {
               advanced_fertility: true,
               doctor_pdf: true,
@@ -112,6 +113,7 @@ describe("managed-cloud-api-client", () => {
     await expect(client.getBillingSnapshot("managed-session-1")).resolves.toEqual({
       ok: true,
       billing: {
+        hasActivePlan: true,
         premiumFeatures: {
           advancedFertility: true,
           advancedInsights: true,

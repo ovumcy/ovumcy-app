@@ -125,6 +125,67 @@ describe("backup sync view service", () => {
         maxDevices: 5,
         maxBlobBytes: 1024,
       },
+      {
+        planStatus: "inactive",
+        doctorPDF: false,
+        reminders: false,
+      },
+    );
+
+    expect(
+      resolveBackupSyncConnectedStatusMessage(state, viewData.account),
+    ).toBe(viewData.account.status.connectedNoPlan);
+  });
+
+  it("keeps the no-plan managed status when sync entitlement is true but billing plan is inactive", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const preferences = createDefaultSyncPreferencesRecord();
+    const state = createLoadedSettingsState(
+      createDefaultProfileRecord(),
+      preferences,
+      true,
+      true,
+      createDefaultSymptomRecords(),
+      {
+        values: {
+          preset: "all",
+          fromDate: "",
+          toDate: "",
+        },
+        availableSummary: {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        },
+        summary: {
+          totalEntries: 0,
+          hasData: false,
+          dateFrom: null,
+          dateTo: null,
+        },
+        bounds: {
+          minDate: null,
+          maxDate: null,
+        },
+      },
+      preferences,
+      {
+        mode: "managed",
+        syncEnabled: true,
+        premiumActive: true,
+        recoverySupported: true,
+        pushSupported: false,
+        portalSupported: false,
+        advancedCloudInsights: false,
+        maxDevices: 5,
+        maxBlobBytes: 1024,
+      },
+      {
+        planStatus: "inactive",
+        doctorPDF: false,
+        reminders: false,
+      },
     );
 
     expect(
@@ -143,6 +204,7 @@ describe("backup sync view service", () => {
       isRestoring: false,
       isSyncing: false,
       locale: "en",
+      managedPlanStatus: "unknown",
       notSetLabel: "Not set",
       preferences: {
         ...createDefaultSyncPreferencesRecord(),

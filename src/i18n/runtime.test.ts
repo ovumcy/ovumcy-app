@@ -1,4 +1,5 @@
 import { getOnboardingCopy } from "./app-copy";
+import { getPartnerCopy } from "./partner-copy";
 import { getShellCopy } from "./shell-copy";
 import { getStatsCopy } from "./stats-copy";
 import { getSettingsCopy } from "./settings-copy";
@@ -32,5 +33,17 @@ describe("runtime i18n helpers", () => {
     expect(getSettingsCopy("fr").title).toBe("Réglages");
     expect(getShellCopy("de").tabs.stats).toBe("Einblicke");
     expect(getStatsCopy("fr").title).toBe("Analyses");
+    expect(getStatsCopy("es").title).toBe("Análisis");
+    expect(getShellCopy("es").tabs.stats).toBe("Análisis");
+    expect(getSettingsCopy("ru").reminders.emailDeliveryStateOn).toBe(
+      "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
+    );
+    expect(getSettingsCopy("en").account.restoreAccept).toBe("Restore backup copy");
+    expect(getPartnerCopy("ru").sharedViewLoadingSubtitle).toBe(
+      "Общие данные партнёра расшифровываются прямо на этом устройстве.",
+    );
+    expect(getPartnerCopy("es").sharedViewSubtitle).toBe(
+      "Esta vista de solo lectura solo está disponible mediante el acceso de pareja de Ovumcy Cloud.",
+    );
   });
 });

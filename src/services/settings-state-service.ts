@@ -6,10 +6,11 @@ import {
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadLocalExportState } from "./export-service";
-import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
+import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
 import {
   createLoadedSettingsState,
   type LoadedSettingsState,
+  type SettingsManagedPremiumAccess,
 } from "./settings-view-service";
 
 export async function loadSettingsScreenState(
@@ -27,7 +28,8 @@ export async function loadSettingsScreenState(
   let syncCapabilities = null;
   let syncPreferences = syncState.preferences;
   let hasSyncSession = syncState.hasAuthSession;
-  let managedPremiumAccess = {
+  let managedPremiumAccess: SettingsManagedPremiumAccess = {
+    planStatus: "unknown",
     doctorPDF: false,
     reminders: false,
   };
@@ -42,14 +44,17 @@ export async function loadSettingsScreenState(
     );
     if (capabilitiesResult.ok) {
       syncCapabilities = capabilitiesResult.capabilities;
-      const premiumFeatures = await loadManagedPremiumFeatures(
+      const billingSnapshot = await loadManagedBillingSnapshot(
         secretStore,
         syncState.preferences.mode,
       );
-      managedPremiumAccess = {
-        doctorPDF: premiumFeatures.doctorPDF,
-        reminders: premiumFeatures.reminders,
-      };
+      if (billingSnapshot) {
+        managedPremiumAccess = {
+          planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
+          doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
+          reminders: billingSnapshot.premiumFeatures.reminders,
+        };
+      }
     } else if (capabilitiesResult.errorCode === "unauthorized") {
       syncPreferences = await clearLocalSyncSession(
         storage,

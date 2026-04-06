@@ -84,6 +84,7 @@ export function buildBackupSyncSetupPresentation({
   isRestoring,
   isSyncing,
   locale,
+  managedPlanStatus,
   notSetLabel,
   preferences,
   syncCapabilities,
@@ -97,6 +98,7 @@ export function buildBackupSyncSetupPresentation({
   isRestoring: boolean;
   isSyncing: boolean;
   locale?: string;
+  managedPlanStatus: "unknown" | "inactive" | "active";
   notSetLabel: string;
   preferences: SyncPreferencesRecord;
   syncCapabilities: SyncCapabilityDocument | null;
@@ -104,7 +106,7 @@ export function buildBackupSyncSetupPresentation({
 }): BackupSyncSetupPresentation {
   const isManaged = preferences.mode === "managed";
   const supportsInlineAccountAuth = supportsInlineSyncAccountAuth(preferences.mode);
-  const hasManagedPlan = isManaged && syncCapabilities?.premiumActive === true;
+  const hasManagedPlan = isManaged && managedPlanStatus === "active";
   const syncEnabled = syncCapabilities?.syncEnabled !== false;
   const accountActionsDisabled =
     isPreparing || isAuthenticating || isRecovering || isRestoring || isSyncing;
@@ -123,9 +125,9 @@ export function buildBackupSyncSetupPresentation({
 
   let planMessage = viewData.planSignInFirst;
   if (isManaged && hasSyncSession) {
-    if (!syncCapabilities) {
+    if (managedPlanStatus === "unknown") {
       planMessage = viewData.planCheckFailed;
-    } else if (syncCapabilities.premiumActive) {
+    } else if (managedPlanStatus === "active") {
       planMessage = viewData.planActive;
     } else {
       planMessage = viewData.planInactive;
@@ -240,8 +242,7 @@ export function resolveBackupSyncConnectedStatusMessage(
   viewData: SettingsViewData["account"],
 ): string {
   return state.syncPreferences.mode === "managed" &&
-    state.syncCapabilities &&
-    !state.syncCapabilities.premiumActive
+    state.managedPremiumAccess.planStatus === "inactive"
     ? viewData.status.connectedNoPlan
     : viewData.status.connected;
 }

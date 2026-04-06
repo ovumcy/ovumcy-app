@@ -116,8 +116,9 @@ const settingsCopyEn = {
       "Used for daily logging and for the next scheduled cycle reminders on this device.",
     emailDelivery: "Also send reminder emails",
     emailDeliveryHint:
-      "Uses managed email delivery with privacy-safe prompts based on your enabled reminder types.",
-    emailDeliveryStateOn: "Managed reminder emails will be synced when available.",
+      "Uses Ovumcy Cloud email delivery with privacy-safe prompts based on your enabled reminder types.",
+    emailDeliveryStateOn:
+      "Ovumcy Cloud reminder emails will be synced when available.",
     emailDeliveryStateOff: "Reminder emails are turned off.",
     dailyLog: "Remind me to log today",
     dailyLogHint:
@@ -138,11 +139,11 @@ const settingsCopyEn = {
     fertileWindowStateOff: "No fertile-window reminder is scheduled.",
     saved: "Reminder settings updated for this device.",
     savedWithEmail:
-      "Reminder settings updated. Managed reminder emails now use privacy-safe prompts.",
+      "Reminder settings updated. Ovumcy Cloud reminder emails now use privacy-safe prompts.",
     emailUnavailable:
-      "Reminder settings were saved, but managed reminder emails are unavailable right now.",
+      "Reminder settings were saved, but Ovumcy Cloud reminder emails are unavailable right now.",
     emailSyncFailed:
-      "Reminder settings were saved, but managed reminder emails could not be updated right now.",
+      "Reminder settings were saved, but Ovumcy Cloud reminder emails could not be updated right now.",
     permissionDenied:
       "Allow notifications in device settings to receive reminders on this device.",
     unavailable: "This device cannot schedule local reminders right now.",
@@ -262,8 +263,8 @@ const settingsCopyEn = {
     restoreLabel: "Restore from server",
     disconnectLabel: "Disconnect",
     restorePrompt:
-      "Restore the encrypted snapshot from the server and replace the current local data on this device?",
-    restoreAccept: "Restore snapshot",
+      "Restore the encrypted backup copy from the server and replace the current local data on this device?",
+    restoreAccept: "Restore backup copy",
     restoreDeviceAuthPrompt:
       "Confirm with device security to restore encrypted data from the sync server.",
     disconnectPrompt:
@@ -292,8 +293,8 @@ const settingsCopyEn = {
     connectedNoPlan:
       "Cloud account connected. Sync will turn on when this account has an active cloud plan.",
     recovered: "Sync access restored on this device.",
-    uploaded: "Encrypted snapshot uploaded to the sync server.",
-    restored: "Encrypted snapshot restored from the sync server.",
+    uploaded: "Encrypted backup copy uploaded to the sync server.",
+    restored: "Encrypted backup copy restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
     errors: {
       loginRequired: "Login is required.",
@@ -315,8 +316,9 @@ const settingsCopyEn = {
       tooManyDevices: "This account has reached the current device limit.",
       syncNotPrepared: "Prepare encrypted sync on this device first.",
       notConnected: "Connect this device to a sync server first.",
-      blobNotFound: "No encrypted snapshot exists on this server yet.",
-      invalidPayload: "The encrypted snapshot from the server could not be read.",
+      blobNotFound: "No encrypted backup copy exists on this server yet.",
+      invalidPayload:
+        "The encrypted backup copy from the server could not be read.",
       networkFailed: "Unable to reach the sync server right now.",
       recoveryExportUnavailable:
         "This device cannot export the recovery phrase right now.",
@@ -327,9 +329,10 @@ const settingsCopyEn = {
       deviceAuthFailed:
         "Unable to confirm device security right now. Please try again.",
       saveFailed: "Unable to prepare encrypted sync right now. Please try again.",
-      syncFailed: "Unable to upload the encrypted snapshot right now. Please try again.",
+      syncFailed:
+        "Unable to upload the encrypted backup copy right now. Please try again.",
       restoreFailed:
-        "Unable to restore the encrypted snapshot right now. Please try again.",
+        "Unable to restore the encrypted backup copy right now. Please try again.",
     },
   },
   symptoms: {
@@ -563,9 +566,9 @@ const settingsCopyDe: SettingsCopy = {
       "Wird für tägliche Log-Erinnerungen und für die nächsten geplanten Zyklus-Erinnerungen auf diesem Gerät verwendet.",
     emailDelivery: "Auch Erinnerungs-E-Mails senden",
     emailDeliveryHint:
-      "Verwendet verwaltete E-Mail-Zustellung mit datensparsamen Hinweisen basierend auf deinen aktivierten Erinnerungstypen.",
+      "Verwendet die E-Mail-Zustellung von Ovumcy Cloud mit datensparsamen Hinweisen basierend auf deinen aktivierten Erinnerungstypen.",
     emailDeliveryStateOn:
-      "Verwaltete Erinnerungs-E-Mails werden synchronisiert, wenn sie verfügbar sind.",
+      "Erinnerungs-E-Mails von Ovumcy Cloud werden synchronisiert, wenn sie verfügbar sind.",
     emailDeliveryStateOff: "Erinnerungs-E-Mails sind ausgeschaltet.",
     dailyLog: "Mich an den heutigen Eintrag erinnern",
     dailyLogHint:
@@ -588,11 +591,11 @@ const settingsCopyDe: SettingsCopy = {
       "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
     saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
     savedWithEmail:
-      "Erinnerungseinstellungen wurden aktualisiert. Verwaltete Erinnerungs-E-Mails nutzen jetzt datensparsame Hinweise.",
+      "Erinnerungseinstellungen wurden aktualisiert. Erinnerungs-E-Mails von Ovumcy Cloud nutzen jetzt datensparsame Hinweise.",
     emailUnavailable:
-      "Die Erinnerungseinstellungen wurden gespeichert, aber verwaltete Erinnerungs-E-Mails sind gerade nicht verfügbar.",
+      "Die Erinnerungseinstellungen wurden gespeichert, aber Erinnerungs-E-Mails von Ovumcy Cloud sind gerade nicht verfügbar.",
     emailSyncFailed:
-      "Die Erinnerungseinstellungen wurden gespeichert, aber verwaltete Erinnerungs-E-Mails konnten gerade nicht aktualisiert werden.",
+      "Die Erinnerungseinstellungen wurden gespeichert, aber Erinnerungs-E-Mails von Ovumcy Cloud konnten gerade nicht aktualisiert werden.",
     permissionDenied:
       "Erlaube Benachrichtigungen in den Geräteeinstellungen, um Erinnerungen auf diesem Gerät zu erhalten.",
     unavailable:
@@ -720,8 +723,8 @@ const settingsCopyDe: SettingsCopy = {
     restoreLabel: "Vom Server wiederherstellen",
     disconnectLabel: "Trennen",
     restorePrompt:
-      "Den verschlüsselten Snapshot vom Server wiederherstellen und die aktuellen lokalen Daten auf diesem Gerät ersetzen?",
-    restoreAccept: "Snapshot wiederherstellen",
+      "Die verschlüsselte Sicherungskopie vom Server wiederherstellen und die aktuellen lokalen Daten auf diesem Gerät ersetzen?",
+    restoreAccept: "Sicherung wiederherstellen",
     restoreDeviceAuthPrompt:
       "Bestätige mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
     disconnectPrompt:
@@ -750,8 +753,10 @@ const settingsCopyDe: SettingsCopy = {
     connectedNoPlan:
       "Cloud-Konto verbunden. Sync wird aktiviert, wenn dieses Konto einen aktiven Cloud-Tarif hat.",
     recovered: "Der Sync-Zugriff wurde auf diesem Gerät wiederhergestellt.",
-    uploaded: "Verschlüsselter Snapshot auf den Sync-Server hochgeladen.",
-    restored: "Verschlüsselter Snapshot vom Sync-Server wiederhergestellt.",
+    uploaded:
+      "Verschlüsselte Sicherungskopie auf den Sync-Server hochgeladen.",
+    restored:
+      "Verschlüsselte Sicherungskopie vom Sync-Server wiederhergestellt.",
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -783,9 +788,9 @@ const settingsCopyDe: SettingsCopy = {
       notConnected:
         "Verbinde dieses Gerät zuerst mit einem Sync-Server.",
       blobNotFound:
-        "Auf diesem Server gibt es noch keinen verschlüsselten Snapshot.",
+        "Auf diesem Server gibt es noch keine verschlüsselte Sicherungskopie.",
       invalidPayload:
-        "Der verschlüsselte Snapshot vom Server konnte nicht gelesen werden.",
+        "Die verschlüsselte Sicherungskopie vom Server konnte nicht gelesen werden.",
       networkFailed:
         "Der Sync-Server ist gerade nicht erreichbar.",
       recoveryExportUnavailable:
@@ -799,9 +804,9 @@ const settingsCopyDe: SettingsCopy = {
       saveFailed:
         "Der verschlüsselte Sync konnte gerade nicht vorbereitet werden. Bitte versuche es erneut.",
       syncFailed:
-        "Der verschlüsselte Snapshot konnte gerade nicht hochgeladen werden. Bitte versuche es erneut.",
+        "Die verschlüsselte Sicherungskopie konnte gerade nicht hochgeladen werden. Bitte versuche es erneut.",
       restoreFailed:
-        "Der verschlüsselte Snapshot konnte gerade nicht wiederhergestellt werden. Bitte versuche es erneut.",
+        "Die verschlüsselte Sicherungskopie konnte gerade nicht wiederhergestellt werden. Bitte versuche es erneut.",
     },
   },
   symptoms: {
@@ -1052,9 +1057,9 @@ const settingsCopyFr: SettingsCopy = {
       "Utilisée pour le rappel quotidien et pour les prochains rappels de cycle planifiés sur cet appareil.",
     emailDelivery: "Envoyer aussi des e-mails de rappel",
     emailDeliveryHint:
-      "Utilise la livraison e-mail gérée avec des messages prudents basés sur les types de rappels activés.",
+      "Utilise l’envoi d’e-mails d’Ovumcy Cloud avec des messages prudents basés sur les types de rappels activés.",
     emailDeliveryStateOn:
-      "Les e-mails de rappel gérés seront synchronisés lorsqu’ils sont disponibles.",
+      "Les e-mails de rappel Ovumcy Cloud seront synchronisés lorsqu’ils sont disponibles.",
     emailDeliveryStateOff: "Les e-mails de rappel sont désactivés.",
     dailyLog: "Me rappeler de noter aujourd’hui",
     dailyLogHint:
@@ -1078,11 +1083,11 @@ const settingsCopyFr: SettingsCopy = {
       "Aucun rappel avant la fenêtre fertile n’est planifié.",
     saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
     savedWithEmail:
-      "Les réglages de rappel ont été mis à jour. Les e-mails gérés utilisent maintenant des messages prudents.",
+      "Les réglages de rappel ont été mis à jour. Les e-mails de rappel Ovumcy Cloud utilisent maintenant des messages prudents.",
     emailUnavailable:
-      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel gérés sont indisponibles pour le moment.",
+      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel Ovumcy Cloud sont indisponibles pour le moment.",
     emailSyncFailed:
-      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel gérés n’ont pas pu être mis à jour pour le moment.",
+      "Les réglages de rappel ont été enregistrés, mais les e-mails de rappel Ovumcy Cloud n’ont pas pu être mis à jour pour le moment.",
     permissionDenied:
       "Autorise les notifications dans les réglages de l’appareil pour recevoir les rappels sur cet appareil.",
     unavailable:
@@ -1212,8 +1217,8 @@ const settingsCopyFr: SettingsCopy = {
     restoreLabel: "Restaurer depuis le serveur",
     disconnectLabel: "Déconnecter",
     restorePrompt:
-      "Restaurer l'instantané chiffré depuis le serveur et remplacer les données locales actuelles de cet appareil ?",
-    restoreAccept: "Restaurer l'instantané",
+      "Restaurer la copie de sauvegarde chiffrée depuis le serveur et remplacer les données locales actuelles de cet appareil ?",
+    restoreAccept: "Restaurer la sauvegarde",
     restoreDeviceAuthPrompt:
       "Confirme avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
     disconnectPrompt:
@@ -1243,8 +1248,10 @@ const settingsCopyFr: SettingsCopy = {
     connectedNoPlan:
       "Compte cloud connecté. Le sync s'activera quand ce compte aura un plan cloud actif.",
     recovered: "L'accès au sync a été restauré sur cet appareil.",
-    uploaded: "Instantané chiffré téléversé vers le serveur de sync.",
-    restored: "Instantané chiffré restauré depuis le serveur de sync.",
+    uploaded:
+      "Copie de sauvegarde chiffrée téléversée vers le serveur de sync.",
+    restored:
+      "Copie de sauvegarde chiffrée restaurée depuis le serveur de sync.",
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
     errors: {
       ...settingsCopyEn.account.errors,
@@ -1277,9 +1284,9 @@ const settingsCopyFr: SettingsCopy = {
       notConnected:
         "Connecte d'abord cet appareil à un serveur de sync.",
       blobNotFound:
-        "Aucun instantané chiffré n'existe encore sur ce serveur.",
+        "Aucune copie de sauvegarde chiffrée n'existe encore sur ce serveur.",
       invalidPayload:
-        "L'instantané chiffré provenant du serveur n'a pas pu être lu.",
+        "La copie de sauvegarde chiffrée provenant du serveur n'a pas pu être lue.",
       networkFailed:
         "Impossible d'atteindre le serveur de sync pour le moment.",
       recoveryExportUnavailable:
@@ -1293,9 +1300,9 @@ const settingsCopyFr: SettingsCopy = {
       saveFailed:
         "Impossible de préparer le sync chiffré pour le moment. Réessaie.",
       syncFailed:
-        "Impossible de téléverser l'instantané chiffré pour le moment. Réessaie.",
+        "Impossible de téléverser la copie de sauvegarde chiffrée pour le moment. Réessaie.",
       restoreFailed:
-        "Impossible de restaurer l'instantané chiffré pour le moment. Réessaie.",
+        "Impossible de restaurer la copie de sauvegarde chiffrée pour le moment. Réessaie.",
     },
   },
   symptoms: {
@@ -1482,7 +1489,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Возрастная группа",
-      hint: "Необязательно. Сейчас это добавляет только возрастной контекст в Insights и не меняет расчёт цикла.",
+      hint: "Необязательно. Сейчас это добавляет только возрастной контекст в разделе «Инсайты» и не меняет расчёт цикла.",
       under20: "Младше 20",
       age20to35: "20-35",
       age35plus: "35+",
@@ -1545,9 +1552,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
       emailDelivery: "Также отправлять email-напоминания",
       emailDeliveryHint:
-        "Использует managed email-доставку с privacy-safe текстом на основе включённых типов напоминаний.",
+        "Использует email-доставку Ovumcy Cloud с privacy-safe текстом на основе включённых типов напоминаний.",
       emailDeliveryStateOn:
-        "Managed email-напоминания будут синхронизироваться, когда это доступно.",
+        "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
       emailDeliveryStateOff: "Email-напоминания выключены.",
       dailyLog: "Напоминать заполнить запись за сегодня",
       dailyLogHint:
@@ -1572,11 +1579,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Напоминание перед фертильным окном не запланировано.",
       saved: "Настройки напоминаний обновлены для этого устройства.",
       savedWithEmail:
-        "Настройки напоминаний обновлены. Managed email-напоминания теперь используют privacy-safe подсказки.",
+        "Настройки напоминаний обновлены. Email-напоминания Ovumcy Cloud теперь используют privacy-safe подсказки.",
       emailUnavailable:
-        "Настройки напоминаний сохранены, но managed email-напоминания сейчас недоступны.",
+        "Настройки напоминаний сохранены, но email-напоминания Ovumcy Cloud сейчас недоступны.",
       emailSyncFailed:
-        "Настройки напоминаний сохранены, но managed email-напоминания сейчас не удалось обновить.",
+        "Настройки напоминаний сохранены, но email-напоминания Ovumcy Cloud сейчас не удалось обновить.",
       permissionDenied:
         "Разрешите уведомления в настройках устройства, чтобы получать напоминания на этом устройстве.",
       unavailable:
@@ -1700,8 +1707,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreLabel: "Восстановить с сервера",
       disconnectLabel: "Отключить",
       restorePrompt:
-        "Восстановить зашифрованный слепок с сервера и заменить текущие локальные данные на этом устройстве?",
-      restoreAccept: "Восстановить слепок",
+        "Восстановить зашифрованную резервную копию с сервера и заменить текущие локальные данные на этом устройстве?",
+      restoreAccept: "Восстановить копию",
       restoreDeviceAuthPrompt:
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
       disconnectPrompt:
@@ -1730,8 +1737,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       connectedNoPlan:
         "Cloud-аккаунт подключён. Sync включится, когда у аккаунта появится активный cloud-план.",
       recovered: "Доступ к sync восстановлен на этом устройстве.",
-      uploaded: "Зашифрованный слепок отправлен на sync-сервер.",
-      restored: "Зашифрованный слепок восстановлен с sync-сервера.",
+      uploaded: "Зашифрованная резервная копия отправлена на sync-сервер.",
+      restored: "Зашифрованная резервная копия восстановлена с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
       errors: {
         loginRequired: "Логин обязателен.",
@@ -1756,9 +1763,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
         syncNotPrepared: "Сначала подготовьте зашифрованный sync на этом устройстве.",
         notConnected: "Сначала подключите это устройство к sync-серверу.",
-        blobNotFound: "На этом сервере ещё нет зашифрованного слепка.",
+        blobNotFound:
+          "На этом сервере ещё нет зашифрованной резервной копии.",
         invalidPayload:
-          "Не удалось прочитать зашифрованный слепок, полученный с сервера.",
+          "Не удалось прочитать зашифрованную резервную копию, полученную с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
         recoveryExportUnavailable:
           "Сейчас это устройство не может экспортировать recovery phrase.",
@@ -1771,9 +1779,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         saveFailed:
           "Сейчас не удалось подготовить зашифрованный sync. Попробуйте ещё раз.",
         syncFailed:
-          "Сейчас не удалось отправить зашифрованный слепок. Попробуйте ещё раз.",
+          "Сейчас не удалось отправить зашифрованную резервную копию. Попробуйте ещё раз.",
         restoreFailed:
-          "Сейчас не удалось восстановить зашифрованный слепок. Попробуйте ещё раз.",
+          "Сейчас не удалось восстановить зашифрованную резервную копию. Попробуйте ещё раз.",
       },
     },
     symptoms: {
@@ -1940,7 +1948,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Grupo de edad",
-      hint: "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Insights. No cambia los cálculos del ciclo.",
+      hint: "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Análisis. No cambia los cálculos del ciclo.",
       under20: "Menos de 20",
       age20to35: "20-35",
       age35plus: "35+",
@@ -2003,9 +2011,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Se usa para el recordatorio diario y para los próximos recordatorios del ciclo programados en este dispositivo.",
       emailDelivery: "Enviar también correos de recordatorio",
       emailDeliveryHint:
-        "Usa entrega gestionada por correo con avisos respetuosos con la privacidad según los tipos de recordatorio activados.",
+        "Usa el envío por correo de Ovumcy Cloud con avisos respetuosos con la privacidad según los tipos de recordatorio activados.",
       emailDeliveryStateOn:
-        "Los correos gestionados de recordatorio se sincronizarán cuando estén disponibles.",
+        "Los correos de recordatorio de Ovumcy Cloud se sincronizarán cuando estén disponibles.",
       emailDeliveryStateOff: "Los correos de recordatorio están desactivados.",
       dailyLog: "Recuérdame registrar hoy",
       dailyLogHint:
@@ -2030,11 +2038,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "No hay recordatorio antes de la ventana fértil programado.",
       saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
       savedWithEmail:
-        "Los ajustes de recordatorios se actualizaron. Los correos gestionados ahora usan avisos respetuosos con la privacidad.",
+        "Los ajustes de recordatorios se actualizaron. Los correos de Ovumcy Cloud ahora usan avisos respetuosos con la privacidad.",
       emailUnavailable:
-        "Los ajustes de recordatorios se guardaron, pero los correos gestionados no están disponibles ahora mismo.",
+        "Los ajustes de recordatorios se guardaron, pero los correos de Ovumcy Cloud no están disponibles ahora mismo.",
       emailSyncFailed:
-        "Los ajustes de recordatorios se guardaron, pero no se pudieron actualizar los correos gestionados ahora mismo.",
+        "Los ajustes de recordatorios se guardaron, pero no se pudieron actualizar los correos de Ovumcy Cloud ahora mismo.",
       permissionDenied:
         "Permite las notificaciones en los ajustes del dispositivo para recibir recordatorios en este dispositivo.",
       unavailable:
@@ -2188,8 +2196,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       connectedNoPlan:
         "La cuenta cloud quedó conectada. El sync se activará cuando esta cuenta tenga un plan cloud activo.",
       recovered: "El acceso de sync quedó restaurado en este dispositivo.",
-      uploaded: "La instantánea cifrada se subió al servidor de sync.",
-      restored: "La instantánea cifrada se restauró desde el servidor de sync.",
+      uploaded:
+        "La copia de respaldo cifrada se subió al servidor de sync.",
+      restored:
+        "La copia de respaldo cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
       errors: {
         loginRequired: "El login es obligatorio.",
@@ -2218,9 +2228,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         notConnected:
           "Primero conecta este dispositivo a un servidor de sync.",
         blobNotFound:
-          "Todavía no existe una instantánea cifrada en este servidor.",
+          "Todavía no existe una copia de respaldo cifrada en este servidor.",
         invalidPayload:
-          "No se pudo leer la instantánea cifrada recibida del servidor.",
+          "No se pudo leer la copia de respaldo cifrada recibida del servidor.",
         networkFailed:
           "No se puede alcanzar el servidor de sync ahora mismo.",
         recoveryExportUnavailable:
@@ -2234,9 +2244,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         saveFailed:
           "No se pudo preparar el sync cifrado ahora. Inténtalo de nuevo.",
         syncFailed:
-          "No se pudo subir la instantánea cifrada ahora. Inténtalo de nuevo.",
+          "No se pudo subir la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
         restoreFailed:
-          "No se pudo restaurar la instantánea cifrada ahora. Inténtalo de nuevo.",
+          "No se pudo restaurar la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
       },
     },
     symptoms: {

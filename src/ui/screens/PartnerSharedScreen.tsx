@@ -2,7 +2,9 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+import { getDayLogCopy } from "../../i18n/day-log-copy";
 import { getPartnerCopy } from "../../i18n/partner-copy";
+import { getSettingsCopy } from "../../i18n/settings-copy";
 import { loadManagedPartnerAccess } from "../../services/managed-partner-access-service";
 import { loadManagedPartnerProjection } from "../../services/managed-partner-share-service";
 import { buildPartnerSharedReadState } from "../../services/partner-shared-projection-service";
@@ -35,6 +37,8 @@ export function PartnerSharedScreen({
   const { language, colors } = useAppPreferences();
   const styles = useThemedStyles(createStyles);
   const copy = getPartnerCopy(language);
+  const dayLogCopy = getDayLogCopy(language);
+  const settingsCopy = getSettingsCopy(language);
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -184,15 +188,24 @@ export function PartnerSharedScreen({
               />
               <MetricItem
                 label={copy.sharedViewLastCycleLabel}
-                value={formatMetricDays(readState.summaryMetrics.lastCycleLength)}
+                value={formatMetricDays(
+                  readState.summaryMetrics.lastCycleLength,
+                  settingsCopy.common.daysShort,
+                )}
               />
               <MetricItem
                 label={copy.sharedViewAverageCycleLabel}
-                value={formatMetricDays(readState.summaryMetrics.averageCycleLength)}
+                value={formatMetricDays(
+                  readState.summaryMetrics.averageCycleLength,
+                  settingsCopy.common.daysShort,
+                )}
               />
               <MetricItem
                 label={copy.sharedViewAveragePeriodLabel}
-                value={formatMetricDays(readState.summaryMetrics.averagePeriodLength)}
+                value={formatMetricDays(
+                  readState.summaryMetrics.averagePeriodLength,
+                  settingsCopy.common.daysShort,
+                )}
               />
               <MetricItem
                 label={copy.sharedViewLoggedDaysLabel}
@@ -226,39 +239,33 @@ export function PartnerSharedScreen({
               <Text style={styles.helperText}>{copy.sharedViewHistoryEmpty}</Text>
             ) : (
               <View style={styles.historyStack}>
-                {readState.recentRows.map((row) => (
-                  <View
-                    key={row.date}
-                    style={styles.historyItem}
-                    testID={`partner-shared-row-${row.date}`}
-                  >
-                    <Text style={styles.itemTitle}>{row.date}</Text>
-                    <Text style={styles.helperText}>
-                      {[
-                        row.period ? "period" : "",
-                        row.flow ? `flow: ${row.flow}` : "",
-                        row.moodRating > 0 ? `mood: ${row.moodRating}` : "",
-                        row.sexActivity ? `sex: ${row.sexActivity}` : "",
-                        row.bbt > 0 ? `BBT: ${row.bbt}` : "",
-                        row.cervicalMucus
-                          ? `mucus: ${row.cervicalMucus}`
-                          : "",
-                        row.lhTest ? `LH: ${row.lhTest}` : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </Text>
-                    {row.symptomSummary ? (
-                      <Text style={styles.helperText}>{row.symptomSummary}</Text>
-                    ) : null}
-                    {row.cycleFactors.length > 0 ? (
-                      <Text style={styles.helperText}>
-                        {row.cycleFactors.join(", ")}
-                      </Text>
-                    ) : null}
-                    {row.notes ? <Text style={styles.notes}>{row.notes}</Text> : null}
-                  </View>
-                ))}
+                {readState.recentRows.map((row) => {
+                  const historyDetailText = buildHistoryDetailText(row, language);
+
+                  return (
+                    <View
+                      key={row.date}
+                      style={styles.historyItem}
+                      testID={`partner-shared-row-${row.date}`}
+                    >
+                      <Text style={styles.itemTitle}>{formatHistoryDate(row.date, language)}</Text>
+                      {historyDetailText.length > 0 ? (
+                        <Text style={styles.helperText}>{historyDetailText}</Text>
+                      ) : null}
+                      {row.symptomSummary ? (
+                        <Text style={styles.helperText}>{row.symptomSummary}</Text>
+                      ) : null}
+                      {row.cycleFactors.length > 0 ? (
+                        <Text style={styles.helperText}>
+                          {row.cycleFactors
+                            .map((factor) => resolveCycleFactorLabel(dayLogCopy, factor))
+                            .join(", ")}
+                        </Text>
+                      ) : null}
+                      {row.notes ? <Text style={styles.notes}>{row.notes}</Text> : null}
+                    </View>
+                  );
+                })}
               </View>
             )}
           </FeatureCard>
@@ -291,8 +298,76 @@ function MetricItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatMetricDays(value: number): string {
-  return value > 0 ? `${value}d` : "—";
+function formatMetricDays(value: number, daysShort: string): string {
+  return value > 0 ? `${value} ${daysShort}` : "—";
+}
+
+function formatHistoryDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+    new Date(`${value}T00:00:00`),
+  );
+}
+
+function buildHistoryDetailText(
+  row: ReturnType<typeof buildPartnerSharedReadState>["recentRows"][number],
+  locale: string,
+): string {
+  const dayLogCopy = getDayLogCopy(locale);
+  const flowLabel =
+    row.flow.length > 0
+      ? `${dayLogCopy.flow}: ${resolveDayLogOptionLabel(dayLogCopy.options.flow, row.flow)}`
+      : "";
+  const moodLabel =
+    row.moodRating > 0 ? `${dayLogCopy.mood}: ${row.moodRating}/5` : "";
+  const sexLabel =
+    row.sexActivity.length > 0
+      ? `${dayLogCopy.intimacy}: ${resolveDayLogOptionLabel(
+          dayLogCopy.options.sexActivity,
+          row.sexActivity,
+        )}`
+      : "";
+  const bbtLabel = row.bbt > 0 ? `${dayLogCopy.bbt}: ${row.bbt}` : "";
+  const cervicalMucusLabel =
+    row.cervicalMucus.length > 0
+      ? `${dayLogCopy.cervicalMucus}: ${resolveDayLogOptionLabel(
+          dayLogCopy.options.cervicalMucus,
+          row.cervicalMucus,
+        )}`
+      : "";
+  const lhTestLabel =
+    row.lhTest.length > 0
+      ? `${dayLogCopy.lhTest}: ${resolveDayLogOptionLabel(dayLogCopy.options.lhTest, row.lhTest)}`
+      : "";
+
+  return [
+    row.period ? dayLogCopy.periodDay : "",
+    flowLabel,
+    moodLabel,
+    sexLabel,
+    bbtLabel,
+    cervicalMucusLabel,
+    lhTestLabel,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function resolveDayLogOptionLabel<
+  TValue extends string | number,
+  TOption extends { value: TValue; label: string },
+>(options: readonly TOption[], value: string): string {
+  return options.find((option) => String(option.value) === value)?.label ?? value;
+}
+
+function resolveCycleFactorLabel(
+  dayLogCopy: ReturnType<typeof getDayLogCopy>,
+  factor: string,
+): string {
+  const cycleFactorCatalog = dayLogCopy.options.cycleFactors as Record<
+    string,
+    { label: string }
+  >;
+  return cycleFactorCatalog[factor]?.label ?? factor;
 }
 
 function formatDateRange(

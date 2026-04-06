@@ -1,4 +1,4 @@
-import * as Notifications from "expo-notifications";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 
 import type { LocalReminderPlan } from "./local-reminder-plan-service";
@@ -13,18 +13,24 @@ const OVUMCY_REMINDER_KINDS = new Set<string>([
   "fertile_window",
 ] as const);
 const OVUMCY_REMINDER_CHANNEL_ID = "ovumcy-reminders";
+type ExpoNotificationsModule = typeof import("expo-notifications");
 
 function createNativeReminderScheduler(): LocalReminderScheduler {
   return {
     async sync(plans: readonly LocalReminderPlan[]) {
-      const granted = await ensureNotificationPermission();
+      if (isExpoGoStoreClient()) {
+        return "unavailable" satisfies LocalReminderSchedulerSyncResult;
+      }
+
+      const Notifications = loadExpoNotificationsModule();
+      const granted = await ensureNotificationPermission(Notifications);
       if (!granted) {
-        await cancelManagedReminderSchedules();
+        await cancelManagedReminderSchedules(Notifications);
         return "permission_denied" satisfies LocalReminderSchedulerSyncResult;
       }
 
-      await cancelManagedReminderSchedules();
-      await ensureReminderChannel();
+      await cancelManagedReminderSchedules(Notifications);
+      await ensureReminderChannel(Notifications);
 
       for (const plan of plans) {
         await Notifications.scheduleNotificationAsync({
@@ -55,7 +61,17 @@ function createNativeReminderScheduler(): LocalReminderScheduler {
   };
 }
 
-async function ensureReminderChannel() {
+function isExpoGoStoreClient() {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
+
+function loadExpoNotificationsModule(): ExpoNotificationsModule {
+  // load expo-notifications only outside Expo Go so startup stays quiet there
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require("expo-notifications") as ExpoNotificationsModule;
+}
+
+async function ensureReminderChannel(Notifications: ExpoNotificationsModule) {
   if (Platform.OS !== "android") {
     return;
   }
@@ -67,7 +83,9 @@ async function ensureReminderChannel() {
   });
 }
 
-async function ensureNotificationPermission() {
+async function ensureNotificationPermission(
+  Notifications: ExpoNotificationsModule,
+) {
   const existing = await Notifications.getPermissionsAsync();
   if (existing.granted || existing.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
     return true;
@@ -80,7 +98,9 @@ async function ensureNotificationPermission() {
   );
 }
 
-async function cancelManagedReminderSchedules() {
+async function cancelManagedReminderSchedules(
+  Notifications: ExpoNotificationsModule,
+) {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   for (const request of scheduled) {
     const kind = request.content.data?.ovumcyReminderKind;

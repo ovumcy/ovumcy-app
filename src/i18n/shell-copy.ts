@@ -101,7 +101,7 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
     tabs: {
       dashboard: "Hoy",
       calendar: "Calendario",
-      stats: "Insights",
+      stats: "Análisis",
       settings: "Ajustes",
     },
     loading: {
@@ -111,7 +111,7 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
       dashboardDescription: "Preparando tu contexto local del ciclo.",
       calendarTitle: "Cargando calendario",
       calendarDescription: "Preparando tu vista mensual local.",
-      statsTitle: "Cargando insights",
+      statsTitle: "Cargando análisis",
       statsDescription: "Preparando el resumen de tu historial local.",
       settingsTitle: "Cargando ajustes",
       settingsDescription: "Preparando tus ajustes locales del ciclo.",

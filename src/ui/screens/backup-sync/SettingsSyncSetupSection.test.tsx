@@ -49,6 +49,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
       isRestoring: false,
       isSyncing: false,
       locale: "en",
+      managedPlanStatus: "unknown",
       notSetLabel: "Not set",
       preferences: {
         ...createDefaultSyncPreferencesRecord(),
@@ -141,6 +142,7 @@ describe("SettingsSyncSetupSection", () => {
             isRestoring: false,
             isSyncing: false,
             locale: "en",
+            managedPlanStatus: "unknown",
             notSetLabel: "Not set",
             preferences: {
               ...props.preferences,
@@ -201,6 +203,7 @@ describe("SettingsSyncSetupSection", () => {
             isRestoring: false,
             isSyncing: false,
             locale: "en",
+            managedPlanStatus: "unknown",
             notSetLabel: "Not set",
             preferences: {
               ...props.preferences,
@@ -237,6 +240,7 @@ describe("SettingsSyncSetupSection", () => {
             isRestoring: false,
             isSyncing: false,
             locale: "en",
+            managedPlanStatus: "unknown",
             notSetLabel: "Not set",
             preferences: props.preferences,
             syncCapabilities: null,

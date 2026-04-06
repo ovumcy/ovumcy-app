@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react-native";
-import { Text, View } from "react-native";
+import { act, render, screen, waitFor } from "@testing-library/react-native";
+import { AppState, Text, View } from "react-native";
 
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { ProtectedTabsLayout } from "./ProtectedTabsLayout";
@@ -58,6 +58,10 @@ function createStorageMock(hasCompletedOnboarding: boolean) {
 }
 
 describe("ProtectedTabsLayout", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("redirects to onboarding while local setup is incomplete", async () => {
     render(<ProtectedTabsLayout storage={createStorageMock(false)} />);
 
@@ -76,5 +80,35 @@ describe("ProtectedTabsLayout", () => {
     expect(screen.getByTestId("protected-tab-calendar")).toBeTruthy();
     expect(screen.getByTestId("protected-tab-stats")).toBeTruthy();
     expect(screen.getByTestId("protected-tab-settings")).toBeTruthy();
+  });
+
+  it("refreshes managed partner projections on mount and app foreground", async () => {
+    const refresh = jest.fn().mockResolvedValue({
+      skipped: true,
+      syncedCount: 0,
+    });
+    let appStateChangeHandler: ((state: string) => void) | null = null;
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_, handler) => {
+      appStateChangeHandler = handler as (state: string) => void;
+      return {
+        remove: jest.fn(),
+      } as ReturnType<typeof AppState.addEventListener>;
+    });
+
+    render(
+      <ProtectedTabsLayout
+        storage={createStorageMock(true)}
+        managedPartnerShareRefresh={refresh}
+        now={new Date("2026-04-06T10:00:00.000Z")}
+      />,
+    );
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      appStateChangeHandler?.("active");
+    });
+
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
   });
 });
