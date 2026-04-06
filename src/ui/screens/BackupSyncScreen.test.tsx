@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { Platform } from "react-native";
 
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
+import { clearManagedPartnerInviteToken } from "../../security/managed-partner-invite-token-buffer";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import * as backupSyncScreenService from "../../services/backup-sync-screen-service";
 import { formatBackupSyncLastSeen } from "../../services/backup-sync-view-service";
@@ -78,6 +79,7 @@ function createJSONResponse(payload: unknown, status = 200): Response {
 
 describe("BackupSyncScreen", () => {
   beforeEach(() => {
+    clearManagedPartnerInviteToken();
     if (!global.requestAnimationFrame) {
       global.requestAnimationFrame = ((callback: FrameRequestCallback) => {
         callback(0);
@@ -738,6 +740,10 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-partner-accept-card");
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
+    );
+    mockReplace.mockClear();
     fireEvent.press(screen.getByTestId("settings-partner-accept-button"));
 
     await waitFor(() =>

@@ -48,6 +48,11 @@ import {
   type LoadedSettingsState,
 } from "../../../services/settings-view-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
+import {
+  clearManagedPartnerInviteToken,
+  readManagedPartnerInviteToken,
+  stashManagedPartnerInviteToken,
+} from "../../../security/managed-partner-invite-token-buffer";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
@@ -113,7 +118,9 @@ export function useBackupSyncScreenController({
   const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
   const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
   const [partnerInviteLink, setPartnerInviteLink] = useState("");
-  const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState("");
+  const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState(() =>
+    readManagedPartnerInviteToken(),
+  );
   const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
   const shellCopy = getShellCopy(language);
@@ -131,8 +138,15 @@ export function useBackupSyncScreenController({
     const nextInviteToken = Array.isArray(rawInviteToken)
       ? rawInviteToken[0] ?? ""
       : rawInviteToken ?? "";
-    setPendingPartnerInviteToken(String(nextInviteToken).trim());
-  }, [searchParams.invite_token]);
+    const trimmedInviteToken = String(nextInviteToken).trim();
+    if (trimmedInviteToken.length === 0) {
+      return;
+    }
+
+    stashManagedPartnerInviteToken(trimmedInviteToken);
+    setPendingPartnerInviteToken(trimmedInviteToken);
+    router.replace("/backup-sync");
+  }, [router, searchParams.invite_token]);
 
   const resetPartnerFeedback = useCallback(() => {
     setPartnerErrorMessage("");
@@ -338,6 +352,7 @@ export function useBackupSyncScreenController({
     }
 
     setPartnerStatusMessage(partnerCopy.statusInviteAccepted);
+    clearManagedPartnerInviteToken();
     setPendingPartnerInviteToken("");
     router.replace("/backup-sync");
     await reloadPartnerAccess(state);
