@@ -801,3 +801,114 @@ function createManagedClientMock(
     ...overrides,
   } as ManagedCloudAPIClient;
 }
+
+describe("connectSyncAccount recovery code surfacing", () => {
+  it("surfaces the recovery code returned by managed register", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "default_register",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "Trial active.",
+            },
+            recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+          },
+        }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+      },
+      {
+        login: "alice@example.com",
+        password: "correct horse battery staple",
+      },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.recoveryCode).toBe(
+        "abcd1234abcd1234abcd1234abcd1234",
+      );
+    }
+  });
+
+  it("does not surface a recovery code on managed login", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "default_register",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "Trial active.",
+            },
+          },
+        }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+      },
+      {
+        login: "alice@example.com",
+        password: "correct horse battery staple",
+      },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.recoveryCode).toBeUndefined();
+    }
+  });
+});
