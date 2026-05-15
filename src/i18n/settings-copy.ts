@@ -276,6 +276,9 @@ const settingsCopyEn = {
       "This screen shows the recovery phrase only when you prepare or recreate local sync keys.",
     recoveryShownOnce: "Shown only once after generation.",
     recoveryExportLabel: "Export as text",
+    recoveryCodeTitle: "Account recovery code",
+    recoveryCodeHint:
+      "Save this code somewhere safe. It is shown only once and lets you reset your sync account password if you forget it.",
     prepareLabel: "Create recovery phrase",
     regenerateLabel: "Create a new recovery phrase",
     regeneratePrompt:
@@ -736,6 +739,9 @@ const settingsCopyDe: SettingsCopy = {
       "Dieser Bildschirm zeigt die Recovery Phrase nur, wenn du lokale Sync-Schlüssel vorbereitest oder neu erstellst.",
     recoveryShownOnce: "Wird nach der Erstellung nur einmal angezeigt.",
     recoveryExportLabel: "Als Text exportieren",
+    recoveryCodeTitle: "Konto-Wiederherstellungscode",
+    recoveryCodeHint:
+      "Speichere diesen Code sicher. Er wird nur einmal angezeigt und erlaubt dir, das Passwort deines Sync-Kontos zurückzusetzen, falls du es vergisst.",
     prepareLabel: "Recovery Phrase erstellen",
     regenerateLabel: "Neue Recovery Phrase erstellen",
     regeneratePrompt:
@@ -1226,6 +1232,9 @@ const settingsCopyFr: SettingsCopy = {
     recoveryTitle: "Recovery phrase pour cet appareil",
     recoveryHint:
       "Note exactement les 12 mots et garde-les hors ligne. Si tu perds tous les appareils et cette phrase, les données synchronisées ne pourront pas être récupérées.",
+    recoveryCodeTitle: "Code de récupération du compte",
+    recoveryCodeHint:
+      "Conserve ce code en lieu sûr. Il s'affiche une seule fois et permet de réinitialiser le mot de passe de ton compte de sync si tu l'oublies.",
     recoveryNotice:
       "Cet écran affiche la recovery phrase seulement quand tu prépares ou recrées les clés locales de sync.",
     recoveryShownOnce: "Affichée une seule fois après la génération.",
@@ -1719,6 +1728,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryNotice:
         "Этот экран показывает recovery phrase только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
+      recoveryCodeTitle: "Код восстановления аккаунта",
+      recoveryCodeHint:
+        "Сохраните этот код в надёжном месте. Он показывается только один раз и позволяет сбросить пароль вашего sync-аккаунта, если вы его забудете.",
       recoveryExportLabel: "Экспортировать как текст",
       prepareLabel: "Создать recovery phrase",
       regenerateLabel: "Создать новую recovery phrase",
@@ -2179,6 +2191,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Esta pantalla muestra la frase de recuperación solo cuando preparas o recreas las claves locales de sync.",
       recoveryShownOnce: "Se muestra solo una vez después de generarse.",
       recoveryExportLabel: "Exportar como texto",
+      recoveryCodeTitle: "Código de recuperación de la cuenta",
+      recoveryCodeHint:
+        "Guarda este código en un lugar seguro. Se muestra solo una vez y te permite restablecer la contraseña de tu cuenta de sync si la olvidas.",
       prepareLabel: "Crear recovery phrase",
       regenerateLabel: "Crear una nueva recovery phrase",
       regeneratePrompt:

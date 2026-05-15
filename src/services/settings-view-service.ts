@@ -250,6 +250,8 @@ export type SettingsViewData = {
     recoveryNotice: string;
     recoveryShownOnce: string;
     recoveryExportLabel: string;
+    recoveryCodeTitle: string;
+    recoveryCodeHint: string;
     prepareLabel: string;
     regenerateLabel: string;
     regeneratePrompt: string;
@@ -704,6 +706,8 @@ export function buildSettingsViewData(
       recoveryNotice: settingsCopy.account.recoveryNotice,
       recoveryShownOnce: settingsCopy.account.recoveryShownOnce,
       recoveryExportLabel: settingsCopy.account.recoveryExportLabel,
+      recoveryCodeTitle: settingsCopy.account.recoveryCodeTitle,
+      recoveryCodeHint: settingsCopy.account.recoveryCodeHint,
       prepareLabel: settingsCopy.account.prepareLabel,
       regenerateLabel: settingsCopy.account.regenerateLabel,
       regeneratePrompt: settingsCopy.account.regeneratePrompt,

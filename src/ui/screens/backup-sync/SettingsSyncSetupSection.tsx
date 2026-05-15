@@ -32,11 +32,13 @@ type SettingsSyncSetupSectionProps = {
   authPasswordValue: string;
   confirmActionLabel: string;
   errorPresentation: BackupSyncErrorPresentation;
+  generatedRecoveryCode: string;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
   isExportingRecoveryPhrase: boolean;
   isPreparing: boolean;
+  onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -64,11 +66,13 @@ export function SettingsSyncSetupSection({
   authPasswordValue,
   confirmActionLabel,
   errorPresentation,
+  generatedRecoveryCode,
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
   isExportingRecoveryPhrase,
   isPreparing,
+  onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -96,10 +100,16 @@ export function SettingsSyncSetupSection({
   );
   const [isRecoveryPhraseModalVisible, setIsRecoveryPhraseModalVisible] =
     useState(false);
+  const [isRecoveryCodeModalVisible, setIsRecoveryCodeModalVisible] =
+    useState(false);
 
   useEffect(() => {
     setIsRecoveryPhraseModalVisible(generatedRecoveryPhrase.length > 0);
   }, [generatedRecoveryPhrase]);
+
+  useEffect(() => {
+    setIsRecoveryCodeModalVisible(generatedRecoveryCode.length > 0);
+  }, [generatedRecoveryCode]);
 
   useEffect(() => {
     if (hasStoredSyncSecrets && activeAccountPane === "restore") {
@@ -586,6 +596,43 @@ export function SettingsSyncSetupSection({
                     setIsRecoveryPhraseModalVisible(false);
                   }}
                   testID="settings-sync-recovery-modal-confirm-button"
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          animationType="fade"
+          onRequestClose={onAcknowledgeRecoveryCode}
+          transparent
+          visible={isRecoveryCodeModalVisible}
+        >
+          <View style={styles.modalBackdrop}>
+            <View
+              style={styles.modalCard}
+              testID="settings-sync-recovery-code-modal"
+            >
+              <Text style={styles.modalTitle}>
+                {viewData.recoveryCodeTitle}
+              </Text>
+              <Text style={styles.helperText}>
+                {viewData.recoveryCodeHint}
+              </Text>
+              <View style={styles.modalPhraseCard}>
+                <Text
+                  selectable
+                  style={styles.modalPhrase}
+                  testID="settings-sync-recovery-code-value"
+                >
+                  {generatedRecoveryCode}
+                </Text>
+              </View>
+              <View style={styles.actionsStack}>
+                <AppButton
+                  label={confirmActionLabel}
+                  onPress={onAcknowledgeRecoveryCode}
+                  testID="settings-sync-recovery-code-confirm-button"
                 />
               </View>
             </View>
