@@ -1,10 +1,15 @@
+import { useRouter } from "expo-router";
+
+import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type {
   BackupSyncErrorPresentation,
   BackupSyncSetupPresentation,
 } from "../../services/backup-sync-view-service";
+import { AppButton } from "../components/AppButton";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
+import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
@@ -119,6 +124,9 @@ export function BackupSyncFlowScreen({
   onBack,
   showStandaloneHeader = true,
 }: BackupSyncFlowScreenProps) {
+  const router = useRouter();
+  const { language } = useAppPreferences();
+  const accountSecurityCopy = selectAccountSecurityCopy(language);
   return (
     <ScreenScaffold
       description={viewData.subtitle}
@@ -165,6 +173,12 @@ export function BackupSyncFlowScreen({
         showCardHeader={!showStandaloneHeader}
         statusMessage={statusMessage}
         viewData={viewData}
+      />
+      <AppButton
+        label={accountSecurityCopy.title}
+        onPress={() => router.push("/sync-account-security")}
+        testID="backup-sync-account-security-link"
+        variant="secondary"
       />
       {showPartnerSection ? (
         <SettingsPartnerAccessSection
