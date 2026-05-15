@@ -3,6 +3,9 @@ import type {
   SyncBlobRecord,
   SyncCapabilityDocument,
   SyncDeviceRecord,
+  SyncForgotPasswordResult,
+  SyncPasswordResetResult,
+  SyncRegenerateRecoveryCodeResult,
   WrappedSyncKeyMetadata,
 } from "./sync-contract";
 
@@ -10,6 +13,12 @@ export type SyncAPIErrorCode =
   | "invalid_registration_input"
   | "registration_failed"
   | "invalid_credentials"
+  | "invalid_current_password"
+  | "new_password_must_differ"
+  | "weak_new_password"
+  | "invalid_recovery_credentials"
+  | "invalid_reset_token"
+  | "rate_limited"
   | "unauthorized"
   | "invalid_device"
   | "too_many_devices"
@@ -83,6 +92,29 @@ export type SyncAPIClient = {
     | { ok: true; auth: SyncAuthResult }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  changePassword(
+    sessionToken: string,
+    input: { currentPassword: string; newPassword: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+  forgotPassword(
+    input: { login: string; recoveryCode: string },
+  ): Promise<
+    | { ok: true; result: SyncForgotPasswordResult }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  resetPassword(
+    input: { resetToken: string; newPassword: string },
+  ): Promise<
+    | { ok: true; result: SyncPasswordResetResult }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  regenerateRecoveryCode(
+    sessionToken: string,
+    input: { currentPassword: string },
+  ): Promise<
+    | { ok: true; result: SyncRegenerateRecoveryCodeResult }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
 };
 
 type FetchLike = typeof fetch;
@@ -95,6 +127,20 @@ type RawSyncAuthResult = {
   account_id: string;
   session_token: string;
   session_expires_at: string;
+  recovery_code?: string;
+};
+
+type RawSyncForgotPasswordResult = {
+  reset_token: string;
+  reset_token_expires_at: string;
+};
+
+type RawSyncRecoveryCodePayload = {
+  recovery_code: string;
+};
+
+type RawSyncChangePasswordResult = {
+  status: string;
 };
 
 type RawSyncCapabilityDocument = {
@@ -155,6 +201,103 @@ export function createSyncAPIClient(
         method: "DELETE",
         sessionToken,
       });
+    },
+
+    async changePassword(sessionToken, input) {
+      return requestJSON<RawSyncChangePasswordResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/change-password",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+            new_password: input.newPassword,
+          },
+        },
+        isRawSyncChangePasswordResult,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? { ok: true }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async forgotPassword(input) {
+      return requestJSON<RawSyncForgotPasswordResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/forgot-password",
+        {
+          method: "POST",
+          body: {
+            login: input.login,
+            recovery_code: input.recoveryCode,
+          },
+        },
+        isRawSyncForgotPasswordResult,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: {
+                resetToken: result.payload.reset_token,
+                resetTokenExpiresAt: result.payload.reset_token_expires_at,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async resetPassword(input) {
+      return requestJSON<RawSyncRecoveryCodePayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/reset-password",
+        {
+          method: "POST",
+          body: {
+            reset_token: input.resetToken,
+            new_password: input.newPassword,
+          },
+        },
+        isRawSyncRecoveryCodePayload,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: { recoveryCode: result.payload.recovery_code },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async regenerateRecoveryCode(sessionToken, input) {
+      return requestJSON<RawSyncRecoveryCodePayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/recovery-code/regenerate",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+          },
+        },
+        isRawSyncRecoveryCodePayload,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: { recoveryCode: result.payload.recovery_code },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
     },
 
     async getCapabilities(sessionToken) {
@@ -417,6 +560,12 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "invalid_registration_input":
       case "registration_failed":
       case "invalid_credentials":
+      case "invalid_current_password":
+      case "new_password_must_differ":
+      case "weak_new_password":
+      case "invalid_recovery_credentials":
+      case "invalid_reset_token":
+      case "rate_limited":
       case "unauthorized":
       case "invalid_device":
       case "too_many_devices":
@@ -444,8 +593,32 @@ function isRawSyncAuthResult(value: unknown): value is RawSyncAuthResult {
     isObject(value) &&
     typeof value.account_id === "string" &&
     typeof value.session_token === "string" &&
-    typeof value.session_expires_at === "string"
+    typeof value.session_expires_at === "string" &&
+    (typeof value.recovery_code === "string" ||
+      typeof value.recovery_code === "undefined")
   );
+}
+
+function isRawSyncForgotPasswordResult(
+  value: unknown,
+): value is RawSyncForgotPasswordResult {
+  return (
+    isObject(value) &&
+    typeof value.reset_token === "string" &&
+    typeof value.reset_token_expires_at === "string"
+  );
+}
+
+function isRawSyncRecoveryCodePayload(
+  value: unknown,
+): value is RawSyncRecoveryCodePayload {
+  return isObject(value) && typeof value.recovery_code === "string";
+}
+
+function isRawSyncChangePasswordResult(
+  value: unknown,
+): value is RawSyncChangePasswordResult {
+  return isObject(value) && typeof value.status === "string";
 }
 
 function isRawSyncCapabilities(value: unknown): value is RawSyncCapabilityDocument {
@@ -499,11 +672,15 @@ function isRawRecoveryKeyPackage(value: unknown): value is RawRecoveryKeyPackage
 }
 
 function mapSyncAuthResult(raw: RawSyncAuthResult): SyncAuthResult {
-  return {
+  const result: SyncAuthResult = {
     accountID: raw.account_id,
     sessionToken: raw.session_token,
     sessionExpiresAt: raw.session_expires_at,
   };
+  if (typeof raw.recovery_code === "string" && raw.recovery_code.length > 0) {
+    result.recoveryCode = raw.recovery_code;
+  }
+  return result;
 }
 
 function mapSyncCapabilities(

@@ -72,6 +72,23 @@ export type SyncAuthResult = {
   accountID: string;
   sessionToken: string;
   sessionExpiresAt: string;
+  // recoveryCode is the plaintext account-level recovery code. It is set only
+  // on register responses; login and managed-bridge sessions never carry it.
+  // The app surfaces it exactly once at sync setup and then forgets it.
+  recoveryCode?: string;
+};
+
+export type SyncForgotPasswordResult = {
+  resetToken: string;
+  resetTokenExpiresAt: string;
+};
+
+export type SyncPasswordResetResult = {
+  recoveryCode: string;
+};
+
+export type SyncRegenerateRecoveryCodeResult = {
+  recoveryCode: string;
 };
 
 export type SyncCapabilityDocument = {
