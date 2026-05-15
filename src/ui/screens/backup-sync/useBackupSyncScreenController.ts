@@ -103,6 +103,7 @@ export function useBackupSyncScreenController({
   } | null>(null);
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
+  const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState("");
   const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
   const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
@@ -234,6 +235,7 @@ export function useBackupSyncScreenController({
 
         setState(loadedState);
         setGeneratedRecoveryPhrase("");
+        setGeneratedRecoveryCode("");
         setRecoveryPhraseInputValue("");
         resetPartnerFeedback();
         const partnerState = await loadPartnerState(loadedState);
@@ -487,6 +489,7 @@ export function useBackupSyncScreenController({
 
     if (!syncResult.state.hasStoredSyncSecrets) {
       setGeneratedRecoveryPhrase("");
+      setGeneratedRecoveryCode("");
     }
     setState(syncResult.state);
     return syncResult.state;
@@ -592,6 +595,9 @@ export function useBackupSyncScreenController({
 
     setErrorState(null);
     setState(result.state);
+    if (result.recoveryCode) {
+      setGeneratedRecoveryCode(result.recoveryCode);
+    }
     await reloadPartnerAccess(result.state);
     setAccountPasswordValue("");
     setAccountStatusMessage(
@@ -778,6 +784,10 @@ export function useBackupSyncScreenController({
     setAccountStatusMessage(viewData.account.status.disconnected);
   }
 
+  function handleAcknowledgeRecoveryCode() {
+    setGeneratedRecoveryCode("");
+  }
+
   async function handleExportRecoveryPhrase() {
     if (!generatedRecoveryPhrase) {
       return;
@@ -846,6 +856,7 @@ export function useBackupSyncScreenController({
       backLabel: viewData.account.backToSettingsLabel,
       confirmActionLabel: viewData.common.confirmAction,
       errorPresentation,
+      generatedRecoveryCode,
       generatedRecoveryPhrase,
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,
       hasSyncSession: state.hasSyncSession,
@@ -894,6 +905,7 @@ export function useBackupSyncScreenController({
             : current,
         );
       },
+      onAcknowledgeRecoveryCode: handleAcknowledgeRecoveryCode,
       onExportRecoveryPhrase: () => {
         void handleExportRecoveryPhrase();
       },

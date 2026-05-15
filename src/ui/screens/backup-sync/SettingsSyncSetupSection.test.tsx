@@ -21,11 +21,13 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
       recoveryPhraseMessage: "",
       syncMessage: "",
     },
+    generatedRecoveryCode: "",
     generatedRecoveryPhrase: "",
     hasStoredSyncSecrets: false,
     hasSyncSession: false,
     isExportingRecoveryPhrase: false,
     isPreparing: false,
+    onAcknowledgeRecoveryCode: () => {},
     onAuthLoginChange: () => {},
     onAuthPasswordChange: () => {},
     onDisconnect: () => {},
@@ -273,5 +275,46 @@ describe("SettingsSyncSetupSection", () => {
     fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
 
     expect(onRecoverAccess).toHaveBeenCalledTimes(1);
+  });
+
+  it("reveals the account recovery code once and acknowledges it via the confirm action", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const onAcknowledgeRecoveryCode = jest.fn();
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryCode="abcd1234abcd1234abcd1234abcd1234"
+          onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const valueNode = await screen.findByTestId("settings-sync-recovery-code-value");
+    expect(valueNode.props.children).toBe("abcd1234abcd1234abcd1234abcd1234");
+    expect(valueNode.props.selectable).toBe(true);
+    expect(await screen.findByText(viewData.recoveryCodeTitle)).toBeTruthy();
+    expect(await screen.findByText(viewData.recoveryCodeHint)).toBeTruthy();
+
+    fireEvent.press(
+      screen.getByTestId("settings-sync-recovery-code-confirm-button"),
+    );
+
+    expect(onAcknowledgeRecoveryCode).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the recovery code modal closed when no code is set", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("settings-sync-recovery-code-modal")).toBeNull();
   });
 });

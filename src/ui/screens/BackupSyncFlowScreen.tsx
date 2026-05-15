@@ -19,12 +19,14 @@ export type BackupSyncFlowScreenProps = {
   authPasswordValue: string;
   confirmActionLabel: string;
   errorPresentation: BackupSyncErrorPresentation;
+  generatedRecoveryCode: string;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
   isExportingRecoveryPhrase: boolean;
   isPartnerBusy: boolean;
   isPreparing: boolean;
+  onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -70,12 +72,14 @@ export function BackupSyncFlowScreen({
   authPasswordValue,
   confirmActionLabel,
   errorPresentation,
+  generatedRecoveryCode,
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
   isExportingRecoveryPhrase,
   isPartnerBusy,
   isPreparing,
+  onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -134,11 +138,13 @@ export function BackupSyncFlowScreen({
         authPasswordValue={authPasswordValue}
         confirmActionLabel={confirmActionLabel}
         errorPresentation={errorPresentation}
+        generatedRecoveryCode={generatedRecoveryCode}
         generatedRecoveryPhrase={generatedRecoveryPhrase}
         hasSyncSession={hasSyncSession}
         hasStoredSyncSecrets={hasStoredSyncSecrets}
         isExportingRecoveryPhrase={isExportingRecoveryPhrase}
         isPreparing={isPreparing}
+        onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
         onAuthLoginChange={onAuthLoginChange}
         onAuthPasswordChange={onAuthPasswordChange}
         onDisconnect={onDisconnect}
