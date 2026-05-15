@@ -278,4 +278,282 @@ describe("sync-api-client", () => {
       }),
     );
   });
+
+  it("surfaces the recovery code that comes back on register", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          session_token: "session-1",
+          session_expires_at: "2026-03-21T10:00:00.000Z",
+          recovery_code: "abcd1234abcd1234abcd1234abcd1234",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.register({
+      login: "owner@example.com",
+      password: "correct horse battery staple",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      auth: {
+        accountID: "account-1",
+        sessionToken: "session-1",
+        sessionExpiresAt: "2026-03-21T10:00:00.000Z",
+        recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+      },
+    });
+  });
+
+  it("omits recoveryCode from login auth result", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          session_token: "session-1",
+          session_expires_at: "2026-03-21T10:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.login({
+      login: "owner@example.com",
+      password: "correct horse battery staple",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.auth).not.toHaveProperty("recoveryCode");
+    }
+  });
+
+  it("changes password and forwards bearer token", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "password_changed" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.changePassword("session-1", {
+      currentPassword: "old password 12345",
+      newPassword: "new password 12345",
+    });
+
+    expect(result).toEqual({ ok: true });
+    const call = typedFetchMock.mock.calls[0];
+    expect(call?.[0]).toBe("http://127.0.0.1:8080/auth/change-password");
+    const headers = call?.[1]?.headers as Headers;
+    expect(headers.get("Authorization")).toBe("Bearer session-1");
+    expect(call?.[1]?.body).toBe(
+      JSON.stringify({
+        current_password: "old password 12345",
+        new_password: "new password 12345",
+      }),
+    );
+  });
+
+  it("maps change-password error keys", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_current_password" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "weak_new_password" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "new_password_must_differ" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const a = await client.changePassword("session-1", {
+      currentPassword: "wrong",
+      newPassword: "new password 12345",
+    });
+    const b = await client.changePassword("session-1", {
+      currentPassword: "old password 12345",
+      newPassword: "short",
+    });
+    const c = await client.changePassword("session-1", {
+      currentPassword: "same password",
+      newPassword: "same password",
+    });
+
+    expect(a).toEqual({ ok: false, errorCode: "invalid_current_password" });
+    expect(b).toEqual({ ok: false, errorCode: "weak_new_password" });
+    expect(c).toEqual({ ok: false, errorCode: "new_password_must_differ" });
+  });
+
+  it("forgot-password returns reset token on success", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          reset_token: "reset-token-1",
+          reset_token_expires_at: "2026-03-21T11:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.forgotPassword({
+      login: "owner@example.com",
+      recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      result: {
+        resetToken: "reset-token-1",
+        resetTokenExpiresAt: "2026-03-21T11:00:00.000Z",
+      },
+    });
+    expect(typedFetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({
+        login: "owner@example.com",
+        recovery_code: "abcd1234abcd1234abcd1234abcd1234",
+      }),
+    );
+  });
+
+  it("forgot-password maps generic invalid recovery credentials", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "invalid_recovery_credentials" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.forgotPassword({
+      login: "ghost@example.com",
+      recoveryCode: "00000000000000000000000000000000",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "invalid_recovery_credentials",
+    });
+  });
+
+  it("reset-password returns the rotated recovery code", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ recovery_code: "rotated1234rotated1234rotated123" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.resetPassword({
+      resetToken: "reset-token-1",
+      newPassword: "new password 12345",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      result: { recoveryCode: "rotated1234rotated1234rotated123" },
+    });
+  });
+
+  it("reset-password maps invalid_reset_token and weak_new_password", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_reset_token" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "weak_new_password" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const a = await client.resetPassword({
+      resetToken: "bad-token",
+      newPassword: "new password 12345",
+    });
+    const b = await client.resetPassword({
+      resetToken: "reset-token-1",
+      newPassword: "short",
+    });
+
+    expect(a).toEqual({ ok: false, errorCode: "invalid_reset_token" });
+    expect(b).toEqual({ ok: false, errorCode: "weak_new_password" });
+  });
+
+  it("regenerate-recovery-code returns the new code", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ recovery_code: "fresh1234fresh1234fresh1234fresh" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.regenerateRecoveryCode("session-1", {
+      currentPassword: "correct password 12345",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      result: { recoveryCode: "fresh1234fresh1234fresh1234fresh" },
+    });
+    const call = typedFetchMock.mock.calls[0];
+    expect(call?.[0]).toBe(
+      "http://127.0.0.1:8080/auth/recovery-code/regenerate",
+    );
+    const headers = call?.[1]?.headers as Headers;
+    expect(headers.get("Authorization")).toBe("Bearer session-1");
+  });
+
+  it("regenerate-recovery-code maps invalid_current_password", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "invalid_current_password" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.regenerateRecoveryCode("session-1", {
+      currentPassword: "wrong",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "invalid_current_password",
+    });
+  });
 });

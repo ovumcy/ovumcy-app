@@ -4,6 +4,12 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
   | "registration_failed"
   | "invalid_credentials"
+  | "invalid_current_password"
+  | "new_password_must_differ"
+  | "weak_new_password"
+  | "invalid_recovery_credentials"
+  | "invalid_reset_token"
+  | "rate_limited"
   | "invalid_reminder_schedule"
   | "invalid_partner_invite"
   | "invalid_partner_projection"
@@ -136,6 +142,22 @@ export type ManagedCloudAuthResult = {
   sessionToken: string;
   sessionExpiresAt: string;
   entitlement: ManagedCloudEntitlement;
+  // recoveryCode is the plaintext account-level recovery code surfaced only on
+  // register responses. Login and managed-bridge sessions leave it unset.
+  recoveryCode?: string;
+};
+
+export type ManagedCloudForgotPasswordResult = {
+  resetToken: string;
+  resetTokenExpiresAt: string;
+};
+
+export type ManagedCloudPasswordResetResult = {
+  recoveryCode: string;
+};
+
+export type ManagedCloudRegenerateRecoveryCodeResult = {
+  recoveryCode: string;
 };
 
 export type ManagedCloudAPIClient = {
@@ -217,6 +239,29 @@ export type ManagedCloudAPIClient = {
     | { ok: true; auth: ManagedCloudAuthResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  changePassword(
+    sessionToken: string,
+    input: { currentPassword: string; newPassword: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  forgotPassword(
+    input: { email: string; recoveryCode: string },
+  ): Promise<
+    | { ok: true; result: ManagedCloudForgotPasswordResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  resetPassword(
+    input: { resetToken: string; newPassword: string },
+  ): Promise<
+    | { ok: true; result: ManagedCloudPasswordResetResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  regenerateRecoveryCode(
+    sessionToken: string,
+    input: { currentPassword: string },
+  ): Promise<
+    | { ok: true; result: ManagedCloudRegenerateRecoveryCodeResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   acceptPartnerInvite(
     sessionToken: string,
     inviteToken: string,
@@ -282,6 +327,20 @@ type RawManagedCloudEntitlement = {
 type RawManagedCloudAuthResult = RawSyncAuthResult & {
   email: string;
   sync_entitlement: RawManagedCloudEntitlement;
+  recovery_code?: string;
+};
+
+type RawManagedCloudForgotPasswordResult = {
+  reset_token: string;
+  reset_token_expires_at: string;
+};
+
+type RawManagedCloudRecoveryCodePayload = {
+  recovery_code: string;
+};
+
+type RawManagedCloudChangePasswordResult = {
+  status: string;
 };
 
 type RawManagedCloudSessionView = {
@@ -403,6 +462,99 @@ export function createManagedCloudAPIClient(
         method: "DELETE",
         sessionToken,
       });
+    },
+
+    async changePassword(sessionToken, input) {
+      return requestJSON<RawManagedCloudChangePasswordResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/change-password",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+            new_password: input.newPassword,
+          },
+        },
+        isRawManagedCloudChangePasswordResult,
+      ).then((result) =>
+        result.ok
+          ? { ok: true }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async forgotPassword(input) {
+      return requestJSON<RawManagedCloudForgotPasswordResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/forgot-password",
+        {
+          method: "POST",
+          body: {
+            email: input.email,
+            recovery_code: input.recoveryCode,
+          },
+        },
+        isRawManagedCloudForgotPasswordResult,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: {
+                resetToken: result.payload.reset_token,
+                resetTokenExpiresAt: result.payload.reset_token_expires_at,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async resetPassword(input) {
+      return requestJSON<RawManagedCloudRecoveryCodePayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/reset-password",
+        {
+          method: "POST",
+          body: {
+            reset_token: input.resetToken,
+            new_password: input.newPassword,
+          },
+        },
+        isRawManagedCloudRecoveryCodePayload,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: { recoveryCode: result.payload.recovery_code },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async regenerateRecoveryCode(sessionToken, input) {
+      return requestJSON<RawManagedCloudRecoveryCodePayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/recovery-code/regenerate",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+          },
+        },
+        isRawManagedCloudRecoveryCodePayload,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: { recoveryCode: result.payload.recovery_code },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
     },
 
     async getSession(sessionToken) {
@@ -781,6 +933,12 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "invalid_registration_input":
       case "registration_failed":
       case "invalid_credentials":
+      case "invalid_current_password":
+      case "new_password_must_differ":
+      case "weak_new_password":
+      case "invalid_recovery_credentials":
+      case "invalid_reset_token":
+      case "rate_limited":
       case "invalid_reminder_schedule":
       case "invalid_partner_invite":
       case "partner_access_not_found":
@@ -827,8 +985,32 @@ function isRawManagedCloudAuthResult(
     typeof value.email === "string" &&
     typeof value.session_token === "string" &&
     typeof value.session_expires_at === "string" &&
-    isRawManagedCloudEntitlement(value.sync_entitlement)
+    isRawManagedCloudEntitlement(value.sync_entitlement) &&
+    (typeof value.recovery_code === "string" ||
+      typeof value.recovery_code === "undefined")
   );
+}
+
+function isRawManagedCloudForgotPasswordResult(
+  value: unknown,
+): value is RawManagedCloudForgotPasswordResult {
+  return (
+    isObject(value) &&
+    typeof value.reset_token === "string" &&
+    typeof value.reset_token_expires_at === "string"
+  );
+}
+
+function isRawManagedCloudRecoveryCodePayload(
+  value: unknown,
+): value is RawManagedCloudRecoveryCodePayload {
+  return isObject(value) && typeof value.recovery_code === "string";
+}
+
+function isRawManagedCloudChangePasswordResult(
+  value: unknown,
+): value is RawManagedCloudChangePasswordResult {
+  return isObject(value) && typeof value.status === "string";
 }
 
 function isRawManagedCloudSessionView(
@@ -1060,13 +1242,17 @@ function mapEntitlement(
 }
 
 function mapAuthResult(raw: RawManagedCloudAuthResult): ManagedCloudAuthResult {
-  return {
+  const result: ManagedCloudAuthResult = {
     accountID: raw.account_id,
     email: raw.email,
     sessionToken: raw.session_token,
     sessionExpiresAt: raw.session_expires_at,
     entitlement: mapEntitlement(raw.sync_entitlement),
   };
+  if (typeof raw.recovery_code === "string" && raw.recovery_code.length > 0) {
+    result.recoveryCode = raw.recovery_code;
+  }
+  return result;
 }
 
 function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionView {
