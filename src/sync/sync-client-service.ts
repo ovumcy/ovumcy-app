@@ -102,6 +102,11 @@ export async function connectSyncAccount(
       ok: true;
       capabilities: SyncCapabilityDocument;
       preferences: SyncPreferencesRecord;
+      // recoveryCode is the plaintext account-level recovery code returned by
+      // the server exactly once at register. It is undefined on login (the
+      // server never reissues an existing recovery code). The caller is
+      // expected to surface it once to the owner and then forget it.
+      recoveryCode?: string;
     }
   | {
       ok: false;
@@ -161,13 +166,22 @@ export async function connectSyncAccount(
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
-    return {
+    const success: {
+      ok: true;
+      capabilities: SyncCapabilityDocument;
+      preferences: SyncPreferencesRecord;
+      recoveryCode?: string;
+    } = {
       ok: true,
       capabilities: buildManagedCapabilitiesDocument(
         authResult.auth.entitlement.syncAllowed,
       ),
       preferences: nextPreferences,
     };
+    if (authResult.auth.recoveryCode) {
+      success.recoveryCode = authResult.auth.recoveryCode;
+    }
+    return success;
   }
 
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
@@ -226,11 +240,20 @@ export async function connectSyncAccount(
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
-  return {
+  const success: {
+    ok: true;
+    capabilities: SyncCapabilityDocument;
+    preferences: SyncPreferencesRecord;
+    recoveryCode?: string;
+  } = {
     ok: true,
     capabilities: capabilitiesResult.capabilities,
     preferences: nextPreferences,
   };
+  if (authResult.auth.recoveryCode) {
+    success.recoveryCode = authResult.auth.recoveryCode;
+  }
+  return success;
 }
 
 export async function loadConnectedSyncCapabilities(

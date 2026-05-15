@@ -126,6 +126,10 @@ export async function connectBackupSyncAccount(
       ok: true;
       state: LoadedSettingsState;
       connected: boolean;
+      // recoveryCode is the plaintext account-level recovery code returned
+      // exactly once at register. Undefined on login. Callers must surface it
+      // immediately to the owner — the server never reissues the same code.
+      recoveryCode?: string;
     }
   | {
       ok: false;
@@ -144,7 +148,12 @@ export async function connectBackupSyncAccount(
     return result;
   }
 
-  return {
+  const success: {
+    ok: true;
+    state: LoadedSettingsState;
+    connected: boolean;
+    recoveryCode?: string;
+  } = {
     ok: true,
     connected: true,
     state: createLoadedSettingsState(
@@ -159,6 +168,10 @@ export async function connectBackupSyncAccount(
       currentState.managedPremiumAccess,
     ),
   };
+  if (result.recoveryCode) {
+    success.recoveryCode = result.recoveryCode;
+  }
+  return success;
 }
 
 export async function recoverBackupSyncAccess(
