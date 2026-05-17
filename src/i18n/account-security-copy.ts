@@ -84,7 +84,7 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     submitLabel: "Request password reset",
     stageTwoTitle: "Set a new password",
     stageTwoHint:
-      "Reset will sign you out everywhere and issue a new recovery code.",
+      "Reset will sign you out everywhere, disable two-factor authentication if it was on, and issue a new recovery code.",
     newPasswordLabel: "New password",
     submitResetLabel: "Reset password",
     cancelLabel: "Cancel",
@@ -148,7 +148,7 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     submitLabel: "Zurücksetzung anfordern",
     stageTwoTitle: "Neues Passwort setzen",
     stageTwoHint:
-      "Das Zurücksetzen meldet dich überall ab und gibt einen neuen Wiederherstellungscode aus.",
+      "Das Zurücksetzen meldet dich überall ab, deaktiviert die Zwei-Faktor-Authentifizierung (falls aktiv) und gibt einen neuen Wiederherstellungscode aus.",
     newPasswordLabel: "Neues Passwort",
     submitResetLabel: "Passwort zurücksetzen",
     cancelLabel: "Abbrechen",
@@ -216,7 +216,7 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     submitLabel: "Demander la réinitialisation",
     stageTwoTitle: "Définir un nouveau mot de passe",
     stageTwoHint:
-      "La réinitialisation te déconnecte partout et émet un nouveau code de récupération.",
+      "La réinitialisation te déconnecte partout, désactive l'authentification à deux facteurs si elle était active, et émet un nouveau code de récupération.",
     newPasswordLabel: "Nouveau mot de passe",
     submitResetLabel: "Réinitialiser le mot de passe",
     cancelLabel: "Annuler",
@@ -283,7 +283,7 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     submitLabel: "Запросить сброс пароля",
     stageTwoTitle: "Задать новый пароль",
     stageTwoHint:
-      "Сброс выйдет из всех устройств и выдаст новый код восстановления.",
+      "Сброс выйдет из всех устройств, выключит двухфакторку (если была включена) и выдаст новый код восстановления.",
     newPasswordLabel: "Новый пароль",
     submitResetLabel: "Сбросить пароль",
     cancelLabel: "Отмена",
@@ -351,7 +351,7 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     submitLabel: "Solicitar restablecimiento",
     stageTwoTitle: "Establecer una nueva contraseña",
     stageTwoHint:
-      "El restablecimiento te desconecta en todas partes y emite un nuevo código de recuperación.",
+      "El restablecimiento te desconecta en todas partes, desactiva la verificación en dos pasos si estaba activada y emite un nuevo código de recuperación.",
     newPasswordLabel: "Nueva contraseña",
     submitResetLabel: "Restablecer contraseña",
     cancelLabel: "Cancelar",
