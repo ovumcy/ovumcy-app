@@ -1,4 +1,8 @@
-import type { SyncAuthResult } from "./sync-contract";
+import type {
+  SyncAuthResult,
+  SyncTOTPChallengeHandoff,
+  SyncTOTPEnrollmentStart,
+} from "./sync-contract";
 
 export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
@@ -23,6 +27,12 @@ export type ManagedCloudAPIErrorCode =
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
   | "origin_not_allowed"
+  | "totp_not_configured"
+  | "totp_already_enabled"
+  | "totp_invalid_code"
+  | "totp_replayed"
+  | "totp_challenge_invalid"
+  | "totp_secret_failed"
   | "network_failed"
   | "invalid_response"
   | "generic";
@@ -145,6 +155,11 @@ export type ManagedCloudAuthResult = {
   // recoveryCode is the plaintext account-level recovery code surfaced only on
   // register responses. Login and managed-bridge sessions leave it unset.
   recoveryCode?: string;
+  // totpChallenge is set ONLY on login responses when the account has TOTP
+  // enabled on the server. When present, sessionToken is empty and the caller
+  // must complete the challenge through `completeTOTPChallenge` before any
+  // session can be used. Register responses never set this field.
+  totpChallenge?: SyncTOTPChallengeHandoff;
 };
 
 export type ManagedCloudForgotPasswordResult = {
@@ -262,6 +277,27 @@ export type ManagedCloudAPIClient = {
     | { ok: true; result: ManagedCloudRegenerateRecoveryCodeResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  startTOTPEnrollment(
+    sessionToken: string,
+    input: { currentPassword: string },
+  ): Promise<
+    | { ok: true; enrollment: SyncTOTPEnrollmentStart }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  verifyTOTPEnrollment(
+    sessionToken: string,
+    input: { code: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  disableTOTP(
+    sessionToken: string,
+    input: { currentPassword: string; code: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  completeTOTPChallenge(
+    input: { challengeID: string; code: string },
+  ): Promise<
+    | { ok: true; auth: ManagedCloudAuthResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   acceptPartnerInvite(
     sessionToken: string,
     inviteToken: string,
@@ -316,6 +352,11 @@ type RawSyncAuthResult = {
   session_expires_at: string;
 };
 
+type RawManagedCloudTOTPChallenge = {
+  challenge_id: string;
+  challenge_expires_at: string;
+};
+
 type RawManagedCloudEntitlement = {
   sync_allowed: boolean;
   source: string;
@@ -328,6 +369,16 @@ type RawManagedCloudAuthResult = RawSyncAuthResult & {
   email: string;
   sync_entitlement: RawManagedCloudEntitlement;
   recovery_code?: string;
+  totp_challenge?: RawManagedCloudTOTPChallenge;
+};
+
+type RawManagedCloudTOTPEnrollmentStart = {
+  secret_base32: string;
+  provisioning_uri: string;
+};
+
+type RawManagedCloudStatusPayload = {
+  status: string;
 };
 
 type RawManagedCloudForgotPasswordResult = {
@@ -553,6 +604,89 @@ export function createManagedCloudAPIClient(
               ok: true,
               result: { recoveryCode: result.payload.recovery_code },
             }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async startTOTPEnrollment(sessionToken, input) {
+      return requestJSON<RawManagedCloudTOTPEnrollmentStart>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/enroll",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+          },
+        },
+        isRawManagedCloudTOTPEnrollmentStart,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              enrollment: {
+                secretBase32: result.payload.secret_base32,
+                provisioningURI: result.payload.provisioning_uri,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async verifyTOTPEnrollment(sessionToken, input) {
+      return requestJSON<RawManagedCloudStatusPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/verify",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            code: input.code,
+          },
+        },
+        isRawManagedCloudStatusPayload,
+      ).then((result) =>
+        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async disableTOTP(sessionToken, input) {
+      return requestJSON<RawManagedCloudStatusPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/disable",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+            code: input.code,
+          },
+        },
+        isRawManagedCloudStatusPayload,
+      ).then((result) =>
+        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async completeTOTPChallenge(input) {
+      return requestJSON<RawManagedCloudAuthResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/challenge",
+        {
+          method: "POST",
+          body: {
+            challenge_id: input.challengeID,
+            code: input.code,
+          },
+        },
+        isRawManagedCloudAuthResult,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, auth: mapAuthResult(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -950,6 +1084,12 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
       case "origin_not_allowed":
+      case "totp_not_configured":
+      case "totp_already_enabled":
+      case "totp_invalid_code":
+      case "totp_replayed":
+      case "totp_challenge_invalid":
+      case "totp_secret_failed":
         return payload.error;
       default:
         return "generic";
@@ -976,6 +1116,16 @@ function isRawManagedCloudEntitlement(
   );
 }
 
+function isRawManagedCloudTOTPChallenge(
+  value: unknown,
+): value is RawManagedCloudTOTPChallenge {
+  return (
+    isObject(value) &&
+    typeof value.challenge_id === "string" &&
+    typeof value.challenge_expires_at === "string"
+  );
+}
+
 function isRawManagedCloudAuthResult(
   value: unknown,
 ): value is RawManagedCloudAuthResult {
@@ -987,8 +1137,26 @@ function isRawManagedCloudAuthResult(
     typeof value.session_expires_at === "string" &&
     isRawManagedCloudEntitlement(value.sync_entitlement) &&
     (typeof value.recovery_code === "string" ||
-      typeof value.recovery_code === "undefined")
+      typeof value.recovery_code === "undefined") &&
+    (typeof value.totp_challenge === "undefined" ||
+      isRawManagedCloudTOTPChallenge(value.totp_challenge))
   );
+}
+
+function isRawManagedCloudTOTPEnrollmentStart(
+  value: unknown,
+): value is RawManagedCloudTOTPEnrollmentStart {
+  return (
+    isObject(value) &&
+    typeof value.secret_base32 === "string" &&
+    typeof value.provisioning_uri === "string"
+  );
+}
+
+function isRawManagedCloudStatusPayload(
+  value: unknown,
+): value is RawManagedCloudStatusPayload {
+  return isObject(value) && typeof value.status === "string";
 }
 
 function isRawManagedCloudForgotPasswordResult(
@@ -1251,6 +1419,12 @@ function mapAuthResult(raw: RawManagedCloudAuthResult): ManagedCloudAuthResult {
   };
   if (typeof raw.recovery_code === "string" && raw.recovery_code.length > 0) {
     result.recoveryCode = raw.recovery_code;
+  }
+  if (raw.totp_challenge !== undefined) {
+    result.totpChallenge = {
+      challengeID: raw.totp_challenge.challenge_id,
+      challengeExpiresAt: raw.totp_challenge.challenge_expires_at,
+    };
   }
   return result;
 }

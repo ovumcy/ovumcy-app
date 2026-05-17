@@ -88,16 +88,7 @@ export type SyncRunErrorCode =
 type SyncAPIClientFactory = (baseURL: string) => SyncAPIClient;
 type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
 
-export async function connectSyncAccount(
-  storage: LocalAppStorage,
-  secretStore: SyncSecretStore,
-  preferences: SyncPreferencesRecord,
-  credentials: { login: string; password: string },
-  mode: "register" | "login",
-  now: Date,
-  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
-  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
-): Promise<
+export type ConnectSyncAccountResult =
   | {
       ok: true;
       capabilities: SyncCapabilityDocument;
@@ -109,10 +100,33 @@ export async function connectSyncAccount(
       recoveryCode?: string;
     }
   | {
+      // totpChallengeRequired indicates the password verified but the account
+      // has TOTP enabled. The connection is NOT established yet. The caller
+      // owns the challenge id (memory-only) and must drive the user through
+      // `completeTOTPChallenge` then call `finalizeSyncTOTPLogin` with the
+      // resulting session token to finish setup.
+      ok: true;
+      totpChallengeRequired: true;
+      challengeID: string;
+      challengeExpiresAt: string;
+      preferences: SyncPreferencesRecord;
+      accountID: string;
+    }
+  | {
       ok: false;
       errorCode: SyncConnectErrorCode;
-    }
-> {
+    };
+
+export async function connectSyncAccount(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  credentials: { login: string; password: string },
+  mode: "register" | "login",
+  now: Date,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<ConnectSyncAccountResult> {
   const login = credentials.login.trim();
   if (login.length === 0) {
     return { ok: false, errorCode: "login_required" };
@@ -150,6 +164,21 @@ export async function connectSyncAccount(
       return {
         ok: false,
         errorCode: mapManagedConnectAPIError(authResult.errorCode),
+      };
+    }
+
+    // Login may legitimately succeed at the password layer and then defer the
+    // session until the TOTP second factor is satisfied. The server returns an
+    // empty session_token + a totp_challenge handoff. We must NOT persist the
+    // empty token; the caller drives the challenge UI and finalises later.
+    if (authResult.auth.totpChallenge) {
+      return {
+        ok: true,
+        totpChallengeRequired: true,
+        challengeID: authResult.auth.totpChallenge.challengeID,
+        challengeExpiresAt: authResult.auth.totpChallenge.challengeExpiresAt,
+        accountID: authResult.auth.accountID,
+        preferences,
       };
     }
 
@@ -193,6 +222,20 @@ export async function connectSyncAccount(
     return {
       ok: false,
       errorCode: mapConnectAPIError(authResult.errorCode),
+    };
+  }
+
+  // See managed branch above for the rationale: TOTP-enabled login defers the
+  // real session until the caller completes the challenge, so we bail out
+  // before any device/blob/recovery-key handshake runs against an empty token.
+  if (authResult.auth.totpChallenge) {
+    return {
+      ok: true,
+      totpChallengeRequired: true,
+      challengeID: authResult.auth.totpChallenge.challengeID,
+      challengeExpiresAt: authResult.auth.totpChallenge.challengeExpiresAt,
+      accountID: authResult.auth.accountID,
+      preferences,
     };
   }
 

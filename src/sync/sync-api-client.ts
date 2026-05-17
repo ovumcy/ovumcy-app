@@ -6,6 +6,8 @@ import type {
   SyncForgotPasswordResult,
   SyncPasswordResetResult,
   SyncRegenerateRecoveryCodeResult,
+  SyncTOTPChallengeHandoff,
+  SyncTOTPEnrollmentStart,
   WrappedSyncKeyMetadata,
 } from "./sync-contract";
 
@@ -28,6 +30,12 @@ export type SyncAPIErrorCode =
   | "blob_not_found"
   | "recovery_package_not_found"
   | "origin_not_allowed"
+  | "totp_not_configured"
+  | "totp_already_enabled"
+  | "totp_invalid_code"
+  | "totp_replayed"
+  | "totp_challenge_invalid"
+  | "totp_secret_failed"
   | "network_failed"
   | "invalid_response"
   | "generic";
@@ -115,6 +123,27 @@ export type SyncAPIClient = {
     | { ok: true; result: SyncRegenerateRecoveryCodeResult }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  startTOTPEnrollment(
+    sessionToken: string,
+    input: { currentPassword: string },
+  ): Promise<
+    | { ok: true; enrollment: SyncTOTPEnrollmentStart }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  verifyTOTPEnrollment(
+    sessionToken: string,
+    input: { code: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+  disableTOTP(
+    sessionToken: string,
+    input: { currentPassword: string; code: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+  completeTOTPChallenge(
+    input: { challengeID: string; code: string },
+  ): Promise<
+    | { ok: true; auth: SyncAuthResult }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
 };
 
 type FetchLike = typeof fetch;
@@ -123,11 +152,26 @@ type ErrorPayload = {
   error?: string;
 };
 
+type RawSyncTOTPChallenge = {
+  challenge_id: string;
+  challenge_expires_at: string;
+};
+
 type RawSyncAuthResult = {
   account_id: string;
   session_token: string;
   session_expires_at: string;
   recovery_code?: string;
+  totp_challenge?: RawSyncTOTPChallenge;
+};
+
+type RawSyncTOTPEnrollmentStart = {
+  secret_base32: string;
+  provisioning_uri: string;
+};
+
+type RawSyncStatusPayload = {
+  status: string;
 };
 
 type RawSyncForgotPasswordResult = {
@@ -296,6 +340,93 @@ export function createSyncAPIClient(
               ok: true,
               result: { recoveryCode: result.payload.recovery_code },
             }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async startTOTPEnrollment(sessionToken, input) {
+      return requestJSON<RawSyncTOTPEnrollmentStart>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/enroll",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+          },
+        },
+        isRawSyncTOTPEnrollmentStart,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              enrollment: {
+                secretBase32: result.payload.secret_base32,
+                provisioningURI: result.payload.provisioning_uri,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async verifyTOTPEnrollment(sessionToken, input) {
+      return requestJSON<RawSyncStatusPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/verify",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            code: input.code,
+          },
+        },
+        isRawSyncStatusPayload,
+        "invalid_response",
+      ).then((result) =>
+        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async disableTOTP(sessionToken, input) {
+      return requestJSON<RawSyncStatusPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/disable",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            current_password: input.currentPassword,
+            code: input.code,
+          },
+        },
+        isRawSyncStatusPayload,
+        "invalid_response",
+      ).then((result) =>
+        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async completeTOTPChallenge(input) {
+      return requestJSON<RawSyncAuthResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/totp/challenge",
+        {
+          method: "POST",
+          body: {
+            challenge_id: input.challengeID,
+            code: input.code,
+          },
+        },
+        isRawSyncAuthResult,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? { ok: true, auth: mapSyncAuthResult(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -575,6 +706,12 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "blob_not_found":
       case "recovery_package_not_found":
       case "origin_not_allowed":
+      case "totp_not_configured":
+      case "totp_already_enabled":
+      case "totp_invalid_code":
+      case "totp_replayed":
+      case "totp_challenge_invalid":
+      case "totp_secret_failed":
         return payload.error;
       default:
         return "generic";
@@ -588,6 +725,14 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isRawSyncTOTPChallenge(value: unknown): value is RawSyncTOTPChallenge {
+  return (
+    isObject(value) &&
+    typeof value.challenge_id === "string" &&
+    typeof value.challenge_expires_at === "string"
+  );
+}
+
 function isRawSyncAuthResult(value: unknown): value is RawSyncAuthResult {
   return (
     isObject(value) &&
@@ -595,8 +740,24 @@ function isRawSyncAuthResult(value: unknown): value is RawSyncAuthResult {
     typeof value.session_token === "string" &&
     typeof value.session_expires_at === "string" &&
     (typeof value.recovery_code === "string" ||
-      typeof value.recovery_code === "undefined")
+      typeof value.recovery_code === "undefined") &&
+    (typeof value.totp_challenge === "undefined" ||
+      isRawSyncTOTPChallenge(value.totp_challenge))
   );
+}
+
+function isRawSyncTOTPEnrollmentStart(
+  value: unknown,
+): value is RawSyncTOTPEnrollmentStart {
+  return (
+    isObject(value) &&
+    typeof value.secret_base32 === "string" &&
+    typeof value.provisioning_uri === "string"
+  );
+}
+
+function isRawSyncStatusPayload(value: unknown): value is RawSyncStatusPayload {
+  return isObject(value) && typeof value.status === "string";
 }
 
 function isRawSyncForgotPasswordResult(
@@ -679,6 +840,12 @@ function mapSyncAuthResult(raw: RawSyncAuthResult): SyncAuthResult {
   };
   if (typeof raw.recovery_code === "string" && raw.recovery_code.length > 0) {
     result.recoveryCode = raw.recovery_code;
+  }
+  if (raw.totp_challenge !== undefined) {
+    result.totpChallenge = {
+      challengeID: raw.totp_challenge.challenge_id,
+      challengeExpiresAt: raw.totp_challenge.challenge_expires_at,
+    };
   }
   return result;
 }

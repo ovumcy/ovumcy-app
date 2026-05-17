@@ -122,7 +122,7 @@ describeIfLive("sync-client-service managed live transport", () => {
       managedClientFactory,
     );
     expect(connectResult.ok).toBe(true);
-    if (!connectResult.ok) {
+    if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
       return;
     }
     expect(connectResult.capabilities.syncEnabled).toBe(false);

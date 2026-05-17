@@ -556,4 +556,140 @@ describe("sync-api-client", () => {
       errorCode: "invalid_current_password",
     });
   });
+
+  it("maps a login response that defers to the TOTP challenge", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          session_token: "",
+          session_expires_at: "0001-01-01T00:00:00Z",
+          totp_challenge: {
+            challenge_id: "challenge-1",
+            challenge_expires_at: "2026-05-17T10:05:00.000Z",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.login({
+      login: "alice@example.com",
+      password: "correct horse battery staple",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      auth: {
+        accountID: "account-1",
+        sessionToken: "",
+        sessionExpiresAt: "0001-01-01T00:00:00Z",
+        totpChallenge: {
+          challengeID: "challenge-1",
+          challengeExpiresAt: "2026-05-17T10:05:00.000Z",
+        },
+      },
+    });
+  });
+
+  it("starts a TOTP enrollment and surfaces the secret + provisioning URI", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          secret_base32: "JBSWY3DPEHPK3PXP",
+          provisioning_uri:
+            "otpauth://totp/ovumcy-sync-community:owner@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ovumcy-sync-community",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.startTOTPEnrollment("session-1", {
+      currentPassword: "correct horse battery staple",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      enrollment: {
+        secretBase32: "JBSWY3DPEHPK3PXP",
+        provisioningURI:
+          "otpauth://totp/ovumcy-sync-community:owner@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ovumcy-sync-community",
+      },
+    });
+    expect(typedFetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/auth/totp/enroll",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("maps totp verify status responses", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "totp_enabled" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.verifyTOTPEnrollment("session-1", {
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("propagates totp_invalid_code on verify failures", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "totp_invalid_code" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.verifyTOTPEnrollment("session-1", {
+      code: "000000",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+  });
+
+  it("completes a TOTP challenge and returns a real session", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          session_token: "session-after-totp",
+          session_expires_at: "2026-05-18T10:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.completeTOTPChallenge({
+      challengeID: "challenge-1",
+      code: "123456",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      auth: {
+        accountID: "account-1",
+        sessionToken: "session-after-totp",
+        sessionExpiresAt: "2026-05-18T10:00:00.000Z",
+      },
+    });
+    expect(typedFetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/auth/totp/challenge",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
 });
