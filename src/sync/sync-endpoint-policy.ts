@@ -111,22 +111,47 @@ function isLocalNetworkHost(host: string): boolean {
     return false;
   }
 
-  if (host === "localhost" || host === "::1" || host.endsWith(".local")) {
+  if (host === "localhost" || host === "::1") {
     return true;
   }
 
-  if (/^127\./.test(host)) {
+  // `.local` is the mDNS suffix. Match only labels that end with `.local` exactly,
+  // not arbitrary FQDNs whose last label happens to start with "local".
+  if (/\.local$/i.test(host) && !/\.local\./i.test(host)) {
     return true;
   }
 
-  if (/^10\./.test(host)) {
-    return true;
+  // Anything else has to parse as a literal IPv4 address. A prefix regex over
+  // the hostname string would match attacker-controlled FQDNs like
+  // `192.168.1.1.attacker.com`, which a remote DNS owner can register and point
+  // at a public IP — that would let the policy approve plaintext HTTP against
+  // a non-local host. Require an exact dotted-quad and bucket by parsed octets.
+  return isPrivateIPv4(host);
+}
+
+function isPrivateIPv4(host: string): boolean {
+  const match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
   }
 
-  if (/^192\.168\./.test(host)) {
-    return true;
+  const octets = match.slice(1, 5).map((value) => Number.parseInt(value, 10));
+  if (octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
+    return false;
   }
 
-  const private172 = /^172\.(1[6-9]|2\d|3[0-1])\./;
-  return private172.test(host);
+  const [first, second] = octets;
+  if (first === 127) {
+    return true;
+  }
+  if (first === 10) {
+    return true;
+  }
+  if (first === 192 && second === 168) {
+    return true;
+  }
+  if (first === 172 && second >= 16 && second <= 31) {
+    return true;
+  }
+  return false;
 }

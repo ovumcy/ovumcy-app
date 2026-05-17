@@ -67,4 +67,55 @@ describe("sync-endpoint-policy", () => {
       }),
     });
   });
+
+  // Regression: hostname classification must not approve plaintext HTTP for
+  // FQDNs whose label structure starts with private-IP octets but resolve to
+  // attacker-controlled DNS. A prefix regex over the hostname string used to
+  // match these and let the policy fall through to http://.
+  it.each([
+    "192.168.1.1.attacker.com",
+    "10.0.0.1.attacker.com",
+    "127.0.0.1.attacker.com",
+    "172.16.0.1.attacker.com",
+    "localhost.attacker.com",
+    "192.168.1.1.local.attacker.com",
+  ])("rejects bare http on private-octet-prefixed FQDN %s", (host) => {
+    const result = normalizeSyncEndpoint("self_hosted", host);
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        baseURL: `https://${host}`,
+        host,
+        isLocalNetwork: false,
+        isSecure: true,
+      }),
+    });
+  });
+
+  it("rejects explicit http on a private-octet-prefixed FQDN", () => {
+    const result = normalizeSyncEndpoint(
+      "self_hosted",
+      "http://192.168.1.1.attacker.com",
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "insecure_public_http",
+    });
+  });
+
+  it("accepts a literal .local mDNS host over http", () => {
+    const result = normalizeSyncEndpoint("self_hosted", "ovumcy.local:8080");
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        baseURL: "http://ovumcy.local:8080",
+        host: "ovumcy.local",
+        isLocalNetwork: true,
+        isSecure: false,
+      }),
+    });
+  });
 });
