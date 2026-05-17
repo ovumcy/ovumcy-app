@@ -1208,4 +1208,289 @@ describe("BackupSyncScreen", () => {
       "Pixel 7",
     );
   });
+
+  it("drives a managed login through the TOTP challenge and finalises the connection", async () => {
+    const preparedPreferences = {
+      mode: "managed" as const,
+      endpointInput: "",
+      normalizedEndpoint: "https://sync.ovumcy.cloud",
+      deviceLabel: "Pixel 7",
+      setupStatus: "local_ready" as const,
+      preparedAt: "2026-05-17T08:00:00.000Z",
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+    };
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(preparedPreferences),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-05-17T08:00:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: null,
+    });
+
+    // `connectBackupSyncAccount` is the controller's entry point for the
+    // password step. Returning the totp-challenge branch tells the screen to
+    // swap the setup section for the dedicated 6-digit prompt instead of
+    // persisting a (non-existent) session token.
+    const connectSpy = jest
+      .spyOn(backupSyncScreenService, "connectBackupSyncAccount")
+      .mockResolvedValue({
+        ok: true,
+        totpChallengeRequired: true,
+        challengeID: "challenge-123",
+        challengeExpiresAt: "2026-05-17T08:05:00.000Z",
+        accountID: "managed-account-1",
+        preferences: preparedPreferences,
+      });
+
+    const connectedPreferences = {
+      ...preparedPreferences,
+      setupStatus: "connected" as const,
+    };
+    const completeSpy = jest
+      .spyOn(backupSyncScreenService, "completeBackupSyncTOTPChallenge")
+      .mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: createLoadedSettingsState(
+          {
+            lastPeriodStart: "2026-05-01",
+            cycleLength: 28,
+            periodLength: 5,
+            autoPeriodFill: true,
+            irregularCycle: false,
+            unpredictableCycle: false,
+            ageGroup: "",
+            usageGoal: "health",
+            trackBBT: false,
+            temperatureUnit: "c",
+            trackCervicalMucus: false,
+            hideSexChip: false,
+            hideNotes: false,
+            languageOverride: "en",
+            themeOverride: "light",
+            screenCaptureProtectionEnabled: true,
+          },
+          connectedPreferences,
+          true,
+          true,
+          [],
+          {
+            values: {
+              preset: "all",
+              fromDate: "2026-05-01",
+              toDate: "2026-05-17",
+            },
+            availableSummary: {
+              totalEntries: 1,
+              hasData: true,
+              dateFrom: "2026-05-01",
+              dateTo: "2026-05-17",
+            },
+            summary: {
+              totalEntries: 1,
+              hasData: true,
+              dateFrom: "2026-05-01",
+              dateTo: "2026-05-17",
+            },
+            bounds: {
+              minDate: "2026-05-01",
+              maxDate: "2026-05-17",
+            },
+          },
+          connectedPreferences,
+          {
+            mode: "managed",
+            syncEnabled: true,
+            premiumActive: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+          {
+            planStatus: "active",
+            doctorPDF: false,
+            reminders: false,
+          },
+        ),
+      });
+
+    try {
+      render(
+        <BackupSyncScreen
+          now={new Date("2026-05-17T08:00:00.000Z")}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+
+      await screen.findByTestId("settings-sync-section");
+
+      fireEvent.changeText(
+        screen.getByTestId("settings-sync-login-input"),
+        "owner@example.com",
+      );
+      fireEvent.changeText(
+        screen.getByTestId("settings-sync-password-input"),
+        "correct horse battery staple",
+      );
+      fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+
+      // The challenge prompt is rendered once connect returns the deferred
+      // result. Until the user submits the code there must be no session
+      // token written to the secret store.
+      await screen.findByTestId("backup-sync-totp-challenge-submit");
+      expect(connectSpy).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId("settings-sync-upload-button")).toBeNull();
+
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-totp-challenge-code"),
+        "123456",
+      );
+      fireEvent.press(
+        screen.getByTestId("backup-sync-totp-challenge-submit"),
+      );
+
+      await waitFor(() => expect(completeSpy).toHaveBeenCalledTimes(1));
+      expect(completeSpy.mock.calls[0]?.[3]).toEqual(preparedPreferences);
+      expect(completeSpy.mock.calls[0]?.[4]).toEqual({
+        challengeID: "challenge-123",
+        code: "123456",
+      });
+
+      // After a successful challenge the prompt is gone and the screen
+      // transitions to the connected layout.
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("backup-sync-totp-challenge-submit"),
+        ).toBeNull(),
+      );
+      expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy();
+    } finally {
+      connectSpy.mockRestore();
+      completeSpy.mockRestore();
+    }
+  });
+
+  it("clears a TOTP challenge when the server reports it expired and surfaces the localized banner", async () => {
+    const preparedPreferences = {
+      mode: "managed" as const,
+      endpointInput: "",
+      normalizedEndpoint: "https://sync.ovumcy.cloud",
+      deviceLabel: "Pixel 7",
+      setupStatus: "local_ready" as const,
+      preparedAt: "2026-05-17T08:00:00.000Z",
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+    };
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(preparedPreferences),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-05-17T08:00:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: null,
+    });
+    const connectSpy = jest
+      .spyOn(backupSyncScreenService, "connectBackupSyncAccount")
+      .mockResolvedValue({
+        ok: true,
+        totpChallengeRequired: true,
+        challengeID: "challenge-stale",
+        challengeExpiresAt: "2026-05-17T08:05:00.000Z",
+        accountID: "managed-account-1",
+        preferences: preparedPreferences,
+      });
+    const completeSpy = jest
+      .spyOn(backupSyncScreenService, "completeBackupSyncTOTPChallenge")
+      .mockResolvedValue({
+        ok: false,
+        errorCode: "totp_challenge_invalid",
+      });
+
+    try {
+      render(
+        <BackupSyncScreen
+          now={new Date("2026-05-17T08:00:00.000Z")}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+
+      await screen.findByTestId("settings-sync-section");
+      fireEvent.changeText(
+        screen.getByTestId("settings-sync-login-input"),
+        "owner@example.com",
+      );
+      fireEvent.changeText(
+        screen.getByTestId("settings-sync-password-input"),
+        "correct horse battery staple",
+      );
+      fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+
+      await screen.findByTestId("backup-sync-totp-challenge-submit");
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-totp-challenge-code"),
+        "000000",
+      );
+      fireEvent.press(
+        screen.getByTestId("backup-sync-totp-challenge-submit"),
+      );
+
+      await waitFor(() => expect(completeSpy).toHaveBeenCalledTimes(1));
+
+      // Expired/invalid challenge must drop the prompt and route the owner
+      // back to the login form so they re-enter their password.
+      await waitFor(
+        () =>
+          expect(
+            screen.queryByTestId("backup-sync-totp-challenge-submit"),
+          ).toBeNull(),
+        { timeout: 5000 },
+      );
+      expect(connectSpy).toHaveBeenCalled();
+      expect(screen.getByTestId("settings-sync-login-button")).toBeTruthy();
+    } finally {
+      connectSpy.mockRestore();
+      completeSpy.mockRestore();
+    }
+  });
 });
