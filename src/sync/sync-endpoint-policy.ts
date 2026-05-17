@@ -135,12 +135,17 @@ function isPrivateIPv4(host: string): boolean {
     return false;
   }
 
-  const octets = match.slice(1, 5).map((value) => Number.parseInt(value, 10));
-  if (octets.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
-    return false;
+  const first = Number.parseInt(match[1] ?? "", 10);
+  const second = Number.parseInt(match[2] ?? "", 10);
+  const third = Number.parseInt(match[3] ?? "", 10);
+  const fourth = Number.parseInt(match[4] ?? "", 10);
+
+  for (const octet of [first, second, third, fourth]) {
+    if (Number.isNaN(octet) || octet < 0 || octet > 255) {
+      return false;
+    }
   }
 
-  const [first, second] = octets;
   if (first === 127) {
     return true;
   }
