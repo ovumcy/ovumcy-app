@@ -8,12 +8,19 @@ import {
 import type {
   AccountSecurityCopy,
 } from "../../../i18n/account-security-copy";
+import type { TOTPCopy } from "../../../i18n/totp-copy";
 import type {
   ChangeSyncPasswordErrorCode,
   RegenerateSyncRecoveryCodeErrorCode,
   RequestSyncPasswordResetErrorCode,
   ResetSyncPasswordErrorCode,
 } from "../../../sync/sync-account-recovery-service";
+import type { SyncTOTPEnrollmentStart } from "../../../sync/sync-contract";
+import type {
+  DisableTOTPErrorCode,
+  StartTOTPEnrollmentErrorCode,
+  VerifyTOTPEnrollmentErrorCode,
+} from "../../../sync/sync-totp-service";
 import { AppButton } from "../../components/AppButton";
 import { AppTextInput } from "../../components/AppTextInput";
 import { FeatureCard } from "../../components/FeatureCard";
@@ -24,6 +31,8 @@ import { useThemedStyles } from "../../theme/useThemedStyles";
 import type {
   SyncAccountSecurityForgotStage,
   SyncAccountSecurityStatus,
+  SyncAccountSecurityTOTPMode,
+  SyncAccountSecurityTOTPStage,
 } from "./useSyncAccountSecurityController";
 
 type AnyErrorCode =
@@ -31,6 +40,11 @@ type AnyErrorCode =
   | RegenerateSyncRecoveryCodeErrorCode
   | RequestSyncPasswordResetErrorCode
   | ResetSyncPasswordErrorCode;
+
+type TOTPErrorCode =
+  | StartTOTPEnrollmentErrorCode
+  | VerifyTOTPEnrollmentErrorCode
+  | DisableTOTPErrorCode;
 
 export type SyncAccountSecuritySectionProps = {
   copy: AccountSecurityCopy;
@@ -68,6 +82,26 @@ export type SyncAccountSecuritySectionProps = {
 
   revealedRecoveryCode: string;
   onAcknowledgeRecoveryCode: () => void;
+
+  totpCopy: TOTPCopy;
+  totpMode: SyncAccountSecurityTOTPMode;
+  onTOTPModeChange: (mode: SyncAccountSecurityTOTPMode) => void;
+  totpStage: SyncAccountSecurityTOTPStage;
+  totpEnrollPassword: string;
+  onTOTPEnrollPasswordChange: (value: string) => void;
+  totpEnrollment: SyncTOTPEnrollmentStart | null;
+  totpVerifyCode: string;
+  onTOTPVerifyCodeChange: (value: string) => void;
+  totpDisablePassword: string;
+  onTOTPDisablePasswordChange: (value: string) => void;
+  totpDisableCode: string;
+  onTOTPDisableCodeChange: (value: string) => void;
+  totpStatus: SyncAccountSecurityStatus;
+  totpErrorCode: TOTPErrorCode | null;
+  onStartTOTPEnrollment: () => void | Promise<void>;
+  onVerifyTOTPEnrollment: () => void | Promise<void>;
+  onDisableTOTP: () => void | Promise<void>;
+  onCancelTOTPEnrollment: () => void;
 };
 
 export function SyncAccountSecuritySection({
@@ -99,6 +133,25 @@ export function SyncAccountSecuritySection({
   onRegenerate,
   revealedRecoveryCode,
   onAcknowledgeRecoveryCode,
+  totpCopy,
+  totpMode,
+  onTOTPModeChange,
+  totpStage,
+  totpEnrollPassword,
+  onTOTPEnrollPasswordChange,
+  totpEnrollment,
+  totpVerifyCode,
+  onTOTPVerifyCodeChange,
+  totpDisablePassword,
+  onTOTPDisablePasswordChange,
+  totpDisableCode,
+  onTOTPDisableCodeChange,
+  totpStatus,
+  totpErrorCode,
+  onStartTOTPEnrollment,
+  onVerifyTOTPEnrollment,
+  onDisableTOTP,
+  onCancelTOTPEnrollment,
 }: SyncAccountSecuritySectionProps) {
   const styles = useThemedStyles(createStyles);
   const isRevealVisible = revealedRecoveryCode.length > 0;
@@ -277,6 +330,166 @@ export function SyncAccountSecuritySection({
         />
       </FeatureCard>
 
+      <FeatureCard title={totpCopy.section.title}>
+        <Text style={styles.helperText}>{totpCopy.section.hint}</Text>
+        <View style={styles.totpTabs} testID="account-security-totp-tabs">
+          <AppButton
+            label={totpCopy.section.enableTab}
+            onPress={() => onTOTPModeChange("enable")}
+            testID="account-security-totp-tab-enable"
+            variant={totpMode === "enable" ? "primary" : "secondary"}
+          />
+          <AppButton
+            label={totpCopy.section.disableTab}
+            onPress={() => onTOTPModeChange("disable")}
+            testID="account-security-totp-tab-disable"
+            variant={totpMode === "disable" ? "primary" : "secondary"}
+          />
+        </View>
+
+        {totpMode === "enable" ? (
+          totpStage === "idle" ? (
+            <>
+              <Text style={styles.fieldLabel}>
+                {totpCopy.enroll.currentPasswordLabel}
+              </Text>
+              <AppTextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={onTOTPEnrollPasswordChange}
+                secureTextEntry
+                style={styles.input}
+                testID="account-security-totp-enroll-password"
+                value={totpEnrollPassword}
+              />
+              {totpErrorCode ? (
+                <StatusBanner
+                  message={resolveTOTPErrorMessage(totpCopy, totpErrorCode)}
+                  testID="account-security-totp-error-banner"
+                  tone="error"
+                />
+              ) : null}
+              <AppButton
+                disabled={totpStatus === "submitting"}
+                label={totpCopy.enroll.startLabel}
+                onPress={onStartTOTPEnrollment}
+                testID="account-security-totp-enroll-submit"
+              />
+            </>
+          ) : totpStage === "enrolling" && totpEnrollment ? (
+            <>
+              <Text style={styles.subheading}>
+                {totpCopy.enroll.secretTitle}
+              </Text>
+              <Text style={styles.helperText}>{totpCopy.enroll.secretHint}</Text>
+              <Text style={styles.fieldLabel}>
+                {totpCopy.enroll.secretManualLabel}
+              </Text>
+              <View style={styles.codeCard}>
+                <Text
+                  selectable
+                  style={styles.codeText}
+                  testID="account-security-totp-secret-value"
+                >
+                  {totpEnrollment.secretBase32}
+                </Text>
+              </View>
+              <Text style={styles.fieldLabel}>
+                {totpCopy.enroll.provisioningUriLabel}
+              </Text>
+              <View style={styles.codeCard}>
+                <Text
+                  selectable
+                  style={styles.uriText}
+                  testID="account-security-totp-provisioning-uri"
+                >
+                  {totpEnrollment.provisioningURI}
+                </Text>
+              </View>
+              <Text style={styles.fieldLabel}>{totpCopy.enroll.codeLabel}</Text>
+              <AppTextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="number-pad"
+                onChangeText={onTOTPVerifyCodeChange}
+                style={styles.input}
+                testID="account-security-totp-verify-code"
+                value={totpVerifyCode}
+              />
+              {totpErrorCode ? (
+                <StatusBanner
+                  message={resolveTOTPErrorMessage(totpCopy, totpErrorCode)}
+                  testID="account-security-totp-error-banner"
+                  tone="error"
+                />
+              ) : null}
+              <AppButton
+                disabled={totpStatus === "submitting"}
+                label={totpCopy.enroll.verifyLabel}
+                onPress={onVerifyTOTPEnrollment}
+                testID="account-security-totp-verify-submit"
+              />
+              <AppButton
+                label={totpCopy.enroll.cancelLabel}
+                onPress={onCancelTOTPEnrollment}
+                testID="account-security-totp-cancel"
+                variant="secondary"
+              />
+            </>
+          ) : (
+            <StatusBanner
+              message={totpCopy.enroll.successMessage}
+              testID="account-security-totp-success-banner"
+              tone="success"
+            />
+          )
+        ) : totpStage === "completed" ? (
+          <StatusBanner
+            message={totpCopy.disable.successMessage}
+            testID="account-security-totp-success-banner"
+            tone="success"
+          />
+        ) : (
+          <>
+            <Text style={styles.fieldLabel}>
+              {totpCopy.disable.currentPasswordLabel}
+            </Text>
+            <AppTextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={onTOTPDisablePasswordChange}
+              secureTextEntry
+              style={styles.input}
+              testID="account-security-totp-disable-password"
+              value={totpDisablePassword}
+            />
+            <Text style={styles.fieldLabel}>{totpCopy.disable.codeLabel}</Text>
+            <AppTextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="number-pad"
+              onChangeText={onTOTPDisableCodeChange}
+              style={styles.input}
+              testID="account-security-totp-disable-code"
+              value={totpDisableCode}
+            />
+            {totpErrorCode ? (
+              <StatusBanner
+                message={resolveTOTPErrorMessage(totpCopy, totpErrorCode)}
+                testID="account-security-totp-error-banner"
+                tone="error"
+              />
+            ) : null}
+            <AppButton
+              disabled={totpStatus === "submitting"}
+              label={totpCopy.disable.submitLabel}
+              onPress={onDisableTOTP}
+              testID="account-security-totp-disable-submit"
+            />
+          </>
+        )}
+      </FeatureCard>
+
       <Modal
         animationType="fade"
         onRequestClose={onAcknowledgeRecoveryCode}
@@ -309,6 +522,40 @@ export function SyncAccountSecuritySection({
       </Modal>
     </View>
   );
+}
+
+function resolveTOTPErrorMessage(
+  copy: TOTPCopy,
+  code: TOTPErrorCode,
+): string {
+  switch (code) {
+    case "current_password_required":
+      return copy.errors.currentPasswordRequired;
+    case "code_required":
+      return copy.errors.codeRequired;
+    case "invalid_current_password":
+      return copy.errors.invalidCurrentPassword;
+    case "totp_not_configured":
+      return copy.errors.totpNotConfigured;
+    case "totp_already_enabled":
+      return copy.errors.totpAlreadyEnabled;
+    case "totp_invalid_code":
+      return copy.errors.totpInvalidCode;
+    case "totp_replayed":
+      return copy.errors.totpReplayed;
+    case "totp_secret_failed":
+      return copy.errors.totpSecretFailed;
+    case "not_connected":
+      return copy.errors.notConnected;
+    case "rate_limited":
+      return copy.errors.rateLimited;
+    case "network_failed":
+      return copy.errors.networkFailed;
+    case "unauthorized":
+      return copy.errors.unauthorized;
+    default:
+      return copy.errors.generic;
+  }
 }
 
 function resolveErrorMessage(
@@ -408,6 +655,15 @@ function createStyles(colors: AppThemeColors) {
       fontFamily: "monospace",
       fontSize: 16,
       letterSpacing: 1,
+    },
+    uriText: {
+      color: colors.text,
+      fontFamily: "monospace",
+      fontSize: 12,
+    },
+    totpTabs: {
+      flexDirection: "row",
+      gap: spacing.sm,
     },
   });
 }

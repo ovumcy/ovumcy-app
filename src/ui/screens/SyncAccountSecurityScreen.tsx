@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
+import { selectTOTPCopy } from "../../i18n/totp-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
@@ -24,6 +25,7 @@ export function SyncAccountSecurityScreen({
   const router = useRouter();
   const { language, colors } = useAppPreferences();
   const copy = selectAccountSecurityCopy(language);
+  const totpCopy = selectTOTPCopy(language);
 
   const controller = useSyncAccountSecurityController({
     storage,
@@ -89,6 +91,25 @@ export function SyncAccountSecurityScreen({
         onRegenerate={controller.handleRegenerate}
         revealedRecoveryCode={controller.revealedRecoveryCode}
         onAcknowledgeRecoveryCode={controller.handleAcknowledgeRecoveryCode}
+        totpCopy={totpCopy}
+        totpMode={controller.totpMode}
+        onTOTPModeChange={controller.handleTOTPModeChange}
+        totpStage={controller.totpStage}
+        totpEnrollPassword={controller.totpEnrollPassword}
+        onTOTPEnrollPasswordChange={controller.setTotpEnrollPassword}
+        totpEnrollment={controller.totpEnrollment}
+        totpVerifyCode={controller.totpVerifyCode}
+        onTOTPVerifyCodeChange={controller.setTotpVerifyCode}
+        totpDisablePassword={controller.totpDisablePassword}
+        onTOTPDisablePasswordChange={controller.setTotpDisablePassword}
+        totpDisableCode={controller.totpDisableCode}
+        onTOTPDisableCodeChange={controller.setTotpDisableCode}
+        totpStatus={controller.totpStatus}
+        totpErrorCode={controller.totpErrorCode}
+        onStartTOTPEnrollment={controller.handleStartTOTPEnrollment}
+        onVerifyTOTPEnrollment={controller.handleVerifyTOTPEnrollment}
+        onDisableTOTP={controller.handleDisableTOTP}
+        onCancelTOTPEnrollment={controller.handleCancelTOTPEnrollment}
       />
     </ScreenScaffold>
   );
