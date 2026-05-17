@@ -16,6 +16,7 @@ import {
 import {
   connectSyncAccount,
   disconnectSyncAccount,
+  finalizeSyncSessionAfterTOTP,
   loadConnectedSyncCapabilities,
   recoverSyncAccess,
   runSyncRestore,
@@ -910,5 +911,144 @@ describe("connectSyncAccount recovery code surfacing", () => {
     if (result.ok && !("totpChallengeRequired" in result)) {
       expect(result.recoveryCode).toBeUndefined();
     }
+  });
+});
+
+describe("finalizeSyncSessionAfterTOTP", () => {
+  it("persists the managed session and applies the entitlement from getSession", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const getSession = jest.fn().mockResolvedValue({
+      ok: true,
+      session: {
+        accountID: "managed-account-1",
+        email: "alice@example.com",
+        sessionExpiresAt: "2026-05-18T08:00:00.000Z",
+        entitlement: {
+          syncAllowed: true,
+          source: "default_register",
+          updatedAt: "2026-05-17T08:00:00.000Z",
+          effectiveAt: "2026-05-17T08:00:00.000Z",
+          explanation: "Trial active.",
+        },
+      },
+    });
+    const managedClientFactory = jest
+      .fn()
+      .mockReturnValue(createManagedClientMock({ getSession }));
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+      },
+      { sessionToken: "managed-session-after-totp" },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.capabilities.mode).toBe("managed");
+      expect(result.capabilities.syncEnabled).toBe(true);
+      expect(result.preferences.setupStatus).toBe("connected");
+    }
+    expect(getSession).toHaveBeenCalledWith("managed-session-after-totp");
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets?.managedAuthSessionToken).toBe(
+      "managed-session-after-totp",
+    );
+  });
+
+  it("runs the community handshake (capabilities + attachDevice + recovery-key) for self-hosted mode", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClient = createAPIClientMock({
+      getCapabilities: jest.fn().mockResolvedValue({
+        ok: true,
+        capabilities: {
+          mode: "self_hosted",
+          syncEnabled: true,
+          premiumActive: false,
+          recoverySupported: false,
+          pushSupported: false,
+          portalSupported: false,
+          advancedCloudInsights: false,
+          maxDevices: 5,
+          maxBlobBytes: 1024,
+        },
+      }),
+      attachDevice: jest.fn().mockResolvedValue({
+        ok: true,
+        device: {
+          deviceID: preparedSecrets.record.device.deviceID,
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-05-17T08:00:00.000Z",
+          lastSeenAt: "2026-05-17T08:00:00.000Z",
+        },
+      }),
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(apiClient);
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+      },
+      { sessionToken: "community-session-after-totp" },
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.capabilities.mode).toBe("self_hosted");
+    }
+    expect(apiClient.attachDevice).toHaveBeenCalledWith(
+      "community-session-after-totp",
+      expect.objectContaining({ deviceLabel: "Pixel 7" }),
+    );
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets?.authSessionToken).toBe("community-session-after-totp");
+  });
+
+  it("rejects empty session tokens", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+      },
+      { sessionToken: "" },
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
   });
 });

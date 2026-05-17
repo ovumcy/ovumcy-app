@@ -4,6 +4,7 @@ import {
   clearLocalSyncSession,
   connectSyncAccount,
   disconnectSyncAccount,
+  finalizeSyncSessionAfterTOTP,
   recoverSyncAccess,
   runSyncRestore,
   runSyncUpload,
@@ -12,6 +13,10 @@ import {
   type SyncRunErrorCode,
 } from "../sync/sync-client-service";
 import type { SyncPreferencesRecord } from "../sync/sync-contract";
+import {
+  completeTOTPChallenge,
+  type CompleteTOTPChallengeErrorCode,
+} from "../sync/sync-totp-service";
 import {
   prepareSyncSetup,
   saveSyncPreferencesDraft,
@@ -196,6 +201,67 @@ export async function connectBackupSyncAccount(
     success.recoveryCode = result.recoveryCode;
   }
   return success;
+}
+
+/**
+ * completeBackupSyncTOTPChallenge consumes the pending TOTP challenge issued
+ * by `connectBackupSyncAccount` and finalises the sync setup with the freshly
+ * issued session token. The challenge id travels via screen state only — it
+ * is never persisted.
+ *
+ * The error surface keeps the TOTP-specific distinctions
+ * (`totp_invalid_code` is retryable in place; `totp_challenge_invalid` means
+ * the caller must restart from `connectBackupSyncAccount`) but collapses any
+ * finalisation failure into the broader `SyncConnectScreenErrorCode` so the
+ * UI can reuse the existing connect-error strings.
+ */
+export async function completeBackupSyncTOTPChallenge(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  preferences: SyncPreferencesRecord,
+  input: { challengeID: string; code: string },
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      connected: boolean;
+    }
+  | {
+      ok: false;
+      errorCode: CompleteTOTPChallengeErrorCode | SyncConnectScreenErrorCode;
+    }
+> {
+  const challengeResult = await completeTOTPChallenge(preferences, input);
+  if (!challengeResult.ok) {
+    return { ok: false, errorCode: challengeResult.errorCode };
+  }
+
+  const finalizeResult = await finalizeSyncSessionAfterTOTP(
+    storage,
+    secretStore,
+    preferences,
+    { sessionToken: challengeResult.auth.sessionToken },
+  );
+  if (!finalizeResult.ok) {
+    return { ok: false, errorCode: finalizeResult.errorCode };
+  }
+
+  return {
+    ok: true,
+    connected: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      finalizeResult.preferences,
+      currentState.hasStoredSyncSecrets,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+      finalizeResult.preferences,
+      finalizeResult.capabilities,
+      currentState.managedPremiumAccess,
+    ),
+  };
 }
 
 export async function recoverBackupSyncAccess(

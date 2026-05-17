@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
+import { selectTOTPCopy } from "../../i18n/totp-copy";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type {
   BackupSyncErrorPresentation,
@@ -12,6 +13,7 @@ import { InlineBackButton } from "../components/InlineBackButton";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
+import { BackupSyncTOTPChallengeSection } from "./backup-sync/BackupSyncTOTPChallengeSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { PartnerCopy } from "../../i18n/partner-copy";
 import type {
@@ -66,6 +68,17 @@ export type BackupSyncFlowScreenProps = {
   showPartnerSection: boolean;
   partnerStatusMessage: string;
   statusMessage: string;
+  // Pending TOTP challenge from login; non-null only between password
+  // verification and code completion. The flow swaps the setup section for a
+  // dedicated challenge form while it is present.
+  pendingTOTPChallenge: {
+    challengeID: string;
+    challengeExpiresAt: string;
+  } | null;
+  totpChallengeCode: string;
+  onTOTPChallengeCodeChange: (value: string) => void;
+  onSubmitTOTPChallenge: () => void | Promise<void>;
+  onCancelTOTPChallenge: () => void;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -119,6 +132,11 @@ export function BackupSyncFlowScreen({
   showPartnerSection,
   partnerStatusMessage,
   statusMessage,
+  pendingTOTPChallenge,
+  totpChallengeCode,
+  onTOTPChallengeCodeChange,
+  onSubmitTOTPChallenge,
+  onCancelTOTPChallenge,
   viewData,
   backLabel,
   onBack,
@@ -127,6 +145,7 @@ export function BackupSyncFlowScreen({
   const router = useRouter();
   const { language } = useAppPreferences();
   const accountSecurityCopy = selectAccountSecurityCopy(language);
+  const totpCopy = selectTOTPCopy(language);
   return (
     <ScreenScaffold
       description={viewData.subtitle}
@@ -141,6 +160,17 @@ export function BackupSyncFlowScreen({
       }
       title={viewData.title}
     >
+      {pendingTOTPChallenge ? (
+        <BackupSyncTOTPChallengeSection
+          challengeExpiresAt={pendingTOTPChallenge.challengeExpiresAt}
+          code={totpChallengeCode}
+          copy={totpCopy}
+          errorMessage={errorPresentation.accountMessage}
+          onCancel={onCancelTOTPChallenge}
+          onCodeChange={onTOTPChallengeCodeChange}
+          onSubmit={onSubmitTOTPChallenge}
+        />
+      ) : null}
       <SettingsSyncSetupSection
         authLoginValue={authLoginValue}
         authPasswordValue={authPasswordValue}

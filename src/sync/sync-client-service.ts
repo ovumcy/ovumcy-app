@@ -299,6 +299,143 @@ export async function connectSyncAccount(
   return success;
 }
 
+/**
+ * finalizeSyncSessionAfterTOTP completes a sync setup whose initial login was
+ * deferred by a TOTP challenge. After the UI runs
+ * `completeTOTPChallenge` (from sync-totp-service) and obtains a real
+ * session token, this helper takes over the rest of the connect handshake:
+ *
+ * - for managed: pulls the latest session/entitlement, persists the managed
+ *   session token, and writes connected preferences;
+ * - for self-hosted: getCapabilities + attachDevice + recovery-key sync,
+ *   then persists the session token and connected preferences.
+ *
+ * The function deliberately mirrors the post-auth tail of `connectSyncAccount`
+ * so both entry points (password-only login and post-TOTP login) leave the
+ * local state in the same shape.
+ */
+export async function finalizeSyncSessionAfterTOTP(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  input: { sessionToken: string },
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<
+  | {
+      ok: true;
+      capabilities: SyncCapabilityDocument;
+      preferences: SyncPreferencesRecord;
+    }
+  | {
+      ok: false;
+      errorCode: SyncConnectErrorCode;
+    }
+> {
+  if (input.sessionToken.length === 0) {
+    return { ok: false, errorCode: "unauthorized" };
+  }
+
+  const normalizedEndpoint = normalizeSyncEndpoint(
+    preferences.mode,
+    preferences.endpointInput,
+  );
+  if (!normalizedEndpoint.ok) {
+    return normalizedEndpoint;
+  }
+
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
+
+  if (preferences.mode === "managed") {
+    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+    // The completeTOTPChallenge response collapsed entitlement to satisfy the
+    // unified SyncAuthResult shape. Re-read the session here so we persist the
+    // managed capabilities document with the right syncAllowed flag.
+    const sessionResult = await managedClient.getSession(input.sessionToken);
+    if (!sessionResult.ok) {
+      return {
+        ok: false,
+        errorCode: mapManagedConnectAPIError(sessionResult.errorCode),
+      };
+    }
+
+    await secretStore.writeSyncSecrets({
+      ...secrets,
+      authSessionToken: null,
+      managedAuthSessionToken: input.sessionToken,
+    });
+
+    const nextPreferences: SyncPreferencesRecord = {
+      ...preferences,
+      normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
+      setupStatus: "connected",
+    };
+    await storage.writeSyncPreferencesRecord(nextPreferences);
+
+    return {
+      ok: true,
+      capabilities: buildManagedCapabilitiesDocument(
+        sessionResult.session.entitlement.syncAllowed,
+      ),
+      preferences: nextPreferences,
+    };
+  }
+
+  const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
+  const capabilitiesResult = await client.getCapabilities(input.sessionToken);
+  if (!capabilitiesResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapConnectAPIError(capabilitiesResult.errorCode),
+    };
+  }
+
+  const attachDeviceResult = await client.attachDevice(input.sessionToken, {
+    deviceID: secrets.device.deviceID,
+    deviceLabel: secrets.device.deviceLabel,
+  });
+  if (!attachDeviceResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapConnectAPIError(attachDeviceResult.errorCode),
+    };
+  }
+
+  const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
+    client,
+    input.sessionToken,
+    capabilitiesResult.capabilities,
+    secrets.wrappedKey,
+  );
+  if (!syncedRecoveryKey.ok) {
+    return {
+      ok: false,
+      errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
+    };
+  }
+
+  await secretStore.writeSyncSecrets({
+    ...secrets,
+    authSessionToken: input.sessionToken,
+  });
+
+  const nextPreferences: SyncPreferencesRecord = {
+    ...preferences,
+    normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
+    setupStatus: "connected",
+  };
+  await storage.writeSyncPreferencesRecord(nextPreferences);
+
+  return {
+    ok: true,
+    capabilities: capabilitiesResult.capabilities,
+    preferences: nextPreferences,
+  };
+}
+
 export async function loadConnectedSyncCapabilities(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,

@@ -11,7 +11,18 @@ import {
   type RequestSyncPasswordResetErrorCode,
   type ResetSyncPasswordErrorCode,
 } from "../../../sync/sync-account-recovery-service";
-import type { SyncPreferencesRecord } from "../../../sync/sync-contract";
+import type {
+  SyncPreferencesRecord,
+  SyncTOTPEnrollmentStart,
+} from "../../../sync/sync-contract";
+import {
+  disableTOTP,
+  startTOTPEnrollment,
+  verifyTOTPEnrollment,
+  type DisableTOTPErrorCode,
+  type StartTOTPEnrollmentErrorCode,
+  type VerifyTOTPEnrollmentErrorCode,
+} from "../../../sync/sync-totp-service";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { appStorage } from "../../../services/app-bootstrap-service";
@@ -21,6 +32,14 @@ export type SyncAccountSecurityStatus = "idle" | "submitting" | "success";
 export type SyncAccountSecurityForgotStage =
   | "credentials"
   | "new_password"
+  | "completed";
+
+export type SyncAccountSecurityTOTPMode = "enable" | "disable";
+
+export type SyncAccountSecurityTOTPStage =
+  | "idle"
+  | "enrolling" // captured password, waiting for user to add secret + enter code
+  | "verifying" // submitting code
   | "completed";
 
 export type SyncAccountSecurityControllerOptions = {
@@ -69,6 +88,26 @@ export function useSyncAccountSecurityController({
 
   // Shared reveal modal (used by reset-password and regenerate flows)
   const [revealedRecoveryCode, setRevealedRecoveryCode] = useState("");
+
+  // Two-factor authentication (TOTP)
+  const [totpMode, setTotpMode] =
+    useState<SyncAccountSecurityTOTPMode>("enable");
+  const [totpStage, setTotpStage] =
+    useState<SyncAccountSecurityTOTPStage>("idle");
+  const [totpEnrollPassword, setTotpEnrollPassword] = useState("");
+  const [totpEnrollment, setTotpEnrollment] =
+    useState<SyncTOTPEnrollmentStart | null>(null);
+  const [totpVerifyCode, setTotpVerifyCode] = useState("");
+  const [totpDisablePassword, setTotpDisablePassword] = useState("");
+  const [totpDisableCode, setTotpDisableCode] = useState("");
+  const [totpStatus, setTotpStatus] =
+    useState<SyncAccountSecurityStatus>("idle");
+  const [totpErrorCode, setTotpErrorCode] = useState<
+    | StartTOTPEnrollmentErrorCode
+    | VerifyTOTPEnrollmentErrorCode
+    | DisableTOTPErrorCode
+    | null
+  >(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +229,87 @@ export function useSyncAccountSecurityController({
     }
   }
 
+  function handleTOTPModeChange(nextMode: SyncAccountSecurityTOTPMode) {
+    setTotpMode(nextMode);
+    setTotpErrorCode(null);
+    setTotpStatus("idle");
+    setTotpStage("idle");
+    setTotpEnrollment(null);
+    setTotpEnrollPassword("");
+    setTotpVerifyCode("");
+    setTotpDisablePassword("");
+    setTotpDisableCode("");
+  }
+
+  async function handleStartTOTPEnrollment() {
+    if (!preferences) {
+      return;
+    }
+    setTotpErrorCode(null);
+    setTotpStatus("submitting");
+    const result = await startTOTPEnrollment(syncSecretStore, preferences, {
+      currentPassword: totpEnrollPassword,
+    });
+    if (!result.ok) {
+      setTotpErrorCode(result.errorCode);
+      setTotpStatus("idle");
+      return;
+    }
+    setTotpEnrollment(result.enrollment);
+    setTotpStage("enrolling");
+    setTotpStatus("idle");
+    setTotpEnrollPassword("");
+  }
+
+  async function handleVerifyTOTPEnrollment() {
+    if (!preferences) {
+      return;
+    }
+    setTotpErrorCode(null);
+    setTotpStatus("submitting");
+    const result = await verifyTOTPEnrollment(syncSecretStore, preferences, {
+      code: totpVerifyCode,
+    });
+    if (!result.ok) {
+      setTotpErrorCode(result.errorCode);
+      setTotpStatus("idle");
+      return;
+    }
+    setTotpStage("completed");
+    setTotpStatus("success");
+    setTotpVerifyCode("");
+    setTotpEnrollment(null);
+  }
+
+  async function handleDisableTOTP() {
+    if (!preferences) {
+      return;
+    }
+    setTotpErrorCode(null);
+    setTotpStatus("submitting");
+    const result = await disableTOTP(syncSecretStore, preferences, {
+      currentPassword: totpDisablePassword,
+      code: totpDisableCode,
+    });
+    if (!result.ok) {
+      setTotpErrorCode(result.errorCode);
+      setTotpStatus("idle");
+      return;
+    }
+    setTotpStage("completed");
+    setTotpStatus("success");
+    setTotpDisablePassword("");
+    setTotpDisableCode("");
+  }
+
+  function handleCancelTOTPEnrollment() {
+    setTotpStage("idle");
+    setTotpEnrollment(null);
+    setTotpVerifyCode("");
+    setTotpErrorCode(null);
+    setTotpStatus("idle");
+  }
+
   function handleAcknowledgeRecoveryCode() {
     setRevealedRecoveryCode("");
     // After acknowledging a regenerate-issued code, the success flag stays
@@ -238,5 +358,25 @@ export function useSyncAccountSecurityController({
     // reveal
     revealedRecoveryCode,
     handleAcknowledgeRecoveryCode,
+
+    // two-factor
+    totpMode,
+    handleTOTPModeChange,
+    totpStage,
+    totpEnrollPassword,
+    setTotpEnrollPassword,
+    totpEnrollment,
+    totpVerifyCode,
+    setTotpVerifyCode,
+    totpDisablePassword,
+    setTotpDisablePassword,
+    totpDisableCode,
+    setTotpDisableCode,
+    totpStatus,
+    totpErrorCode,
+    handleStartTOTPEnrollment,
+    handleVerifyTOTPEnrollment,
+    handleDisableTOTP,
+    handleCancelTOTPEnrollment,
   };
 }

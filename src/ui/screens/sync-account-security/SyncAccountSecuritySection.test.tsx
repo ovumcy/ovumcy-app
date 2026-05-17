@@ -1,10 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { selectAccountSecurityCopy } from "../../../i18n/account-security-copy";
+import { selectTOTPCopy } from "../../../i18n/totp-copy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { SyncAccountSecuritySection } from "./SyncAccountSecuritySection";
 
 const copy = selectAccountSecurityCopy("en");
+const totpCopy = selectTOTPCopy("en");
 
 function noop() {}
 
@@ -42,6 +44,26 @@ function baseProps() {
 
     revealedRecoveryCode: "",
     onAcknowledgeRecoveryCode: noop,
+
+    totpCopy,
+    totpMode: "enable" as const,
+    onTOTPModeChange: noop,
+    totpStage: "idle" as const,
+    totpEnrollPassword: "",
+    onTOTPEnrollPasswordChange: noop,
+    totpEnrollment: null,
+    totpVerifyCode: "",
+    onTOTPVerifyCodeChange: noop,
+    totpDisablePassword: "",
+    onTOTPDisablePasswordChange: noop,
+    totpDisableCode: "",
+    onTOTPDisableCodeChange: noop,
+    totpStatus: "idle" as const,
+    totpErrorCode: null,
+    onStartTOTPEnrollment: noop,
+    onVerifyTOTPEnrollment: noop,
+    onDisableTOTP: noop,
+    onCancelTOTPEnrollment: noop,
   };
 }
 
@@ -192,5 +214,91 @@ describe("SyncAccountSecuritySection", () => {
     expect(
       screen.getAllByText(copy.errors.invalidCurrentPassword).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("renders the TOTP enable form by default and dispatches start enrollment", () => {
+    const onStartTOTPEnrollment = jest.fn();
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          onStartTOTPEnrollment={onStartTOTPEnrollment}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("account-security-totp-tab-enable")).toBeTruthy();
+    expect(screen.getByTestId("account-security-totp-enroll-password")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("account-security-totp-enroll-submit"));
+    expect(onStartTOTPEnrollment).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces the freshly generated TOTP secret in the enrolling stage", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpStage="enrolling"
+          totpEnrollment={{
+            secretBase32: "JBSWY3DPEHPK3PXP",
+            provisioningURI:
+              "otpauth://totp/Ovumcy:owner@example.com?secret=JBSWY3DPEHPK3PXP",
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-totp-secret-value").props.children,
+    ).toBe("JBSWY3DPEHPK3PXP");
+    expect(
+      screen.getByTestId("account-security-totp-provisioning-uri").props
+        .children,
+    ).toBe("otpauth://totp/Ovumcy:owner@example.com?secret=JBSWY3DPEHPK3PXP");
+    expect(screen.getByTestId("account-security-totp-verify-submit")).toBeTruthy();
+  });
+
+  it("renders the disable form when the disable tab is active", () => {
+    const onDisableTOTP = jest.fn();
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpMode="disable"
+          onDisableTOTP={onDisableTOTP}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-totp-disable-password"),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("account-security-totp-disable-code"),
+    ).toBeTruthy();
+    fireEvent.press(
+      screen.getByTestId("account-security-totp-disable-submit"),
+    );
+    expect(onDisableTOTP).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps totp_invalid_code to the localized banner copy", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpStage="enrolling"
+          totpEnrollment={{
+            secretBase32: "JBSWY3DPEHPK3PXP",
+            provisioningURI: "otpauth://totp/Ovumcy:o@e.com?secret=JBSWY3DPEHPK3PXP",
+          }}
+          totpErrorCode="totp_invalid_code"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByText(totpCopy.errors.totpInvalidCode),
+    ).toBeTruthy();
   });
 });

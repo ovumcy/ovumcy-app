@@ -29,6 +29,7 @@ import { syncManagedPartnerSharedProjections } from "../../../services/managed-p
 import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
 import {
   clearUnauthorizedBackupSyncSession,
+  completeBackupSyncTOTPChallenge,
   connectBackupSyncAccount,
   disconnectBackupSyncAccount,
   prepareBackupSyncSetup,
@@ -106,6 +107,15 @@ export function useBackupSyncScreenController({
   const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState("");
   const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
+  // Pending TOTP challenge from login. Lives in memory only — the challenge id
+  // is single-use and short-lived (~5 min); persisting it would defeat the
+  // purpose of the second factor.
+  const [pendingTOTPChallenge, setPendingTOTPChallenge] = useState<{
+    challengeID: string;
+    challengeExpiresAt: string;
+    preferences: import("../../../sync/sync-contract").SyncPreferencesRecord;
+  } | null>(null);
+  const [totpChallengeCode, setTotpChallengeCode] = useState("");
   const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
   const [isPreparingSync, setIsPreparingSync] = useState(false);
   const [isRecoveringSync, setIsRecoveringSync] = useState(false);
@@ -594,14 +604,17 @@ export function useBackupSyncScreenController({
     }
 
     if ("totpChallengeRequired" in result) {
-      // TODO: surface a dedicated TOTP challenge screen and complete the
-      // pending challenge via `completeTOTPChallenge`. The challenge id and
-      // expires_at live on `result.challengeID` / `result.challengeExpiresAt`
-      // and must travel via component state only — never persisted.
-      setErrorState({
-        code: "generic",
-        scope: "account",
+      // Keep the password we just verified out of state but DO remember the
+      // challenge handoff so the user can type the 6-digit code on the next
+      // screen. The challenge id is single-use and short-lived; if the user
+      // cancels we drop it without persisting anywhere.
+      setPendingTOTPChallenge({
+        challengeID: result.challengeID,
+        challengeExpiresAt: result.challengeExpiresAt,
+        preferences: result.preferences,
       });
+      setAccountPasswordValue("");
+      setErrorState(null);
       setIsAuthenticatingSync(false);
       return;
     }
@@ -617,6 +630,58 @@ export function useBackupSyncScreenController({
       resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
     );
     setIsAuthenticatingSync(false);
+  }
+
+  async function handleSubmitTOTPChallenge() {
+    if (!state || !pendingTOTPChallenge) {
+      return;
+    }
+
+    resetFeedbackMessages();
+    setIsAuthenticatingSync(true);
+
+    const result = await completeBackupSyncTOTPChallenge(
+      storage,
+      syncSecretStore,
+      state,
+      pendingTOTPChallenge.preferences,
+      {
+        challengeID: pendingTOTPChallenge.challengeID,
+        code: totpChallengeCode,
+      },
+    );
+    if (!result.ok) {
+      setErrorState({
+        code: result.errorCode,
+        scope: "account",
+      });
+      // A `totp_challenge_invalid` (expired or replayed) is unrecoverable in
+      // place — drop the pending handoff so the user goes back to the login
+      // form. Any other error (wrong code, rate-limited, network) is
+      // retryable, so we keep the challenge id alive.
+      if (result.errorCode === "totp_challenge_invalid") {
+        setPendingTOTPChallenge(null);
+        setTotpChallengeCode("");
+      }
+      setIsAuthenticatingSync(false);
+      return;
+    }
+
+    setErrorState(null);
+    setState(result.state);
+    setPendingTOTPChallenge(null);
+    setTotpChallengeCode("");
+    await reloadPartnerAccess(result.state);
+    setAccountStatusMessage(
+      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
+    );
+    setIsAuthenticatingSync(false);
+  }
+
+  function handleCancelTOTPChallenge() {
+    setPendingTOTPChallenge(null);
+    setTotpChallengeCode("");
+    setErrorState(null);
   }
 
   async function handleSyncNow() {
@@ -997,6 +1062,13 @@ export function useBackupSyncScreenController({
       showPartnerOwnerControls,
       showPartnerSection,
       statusMessage: accountStatusMessage,
+      pendingTOTPChallenge,
+      totpChallengeCode,
+      onTOTPChallengeCodeChange: setTotpChallengeCode,
+      onSubmitTOTPChallenge: () => {
+        void handleSubmitTOTPChallenge();
+      },
+      onCancelTOTPChallenge: handleCancelTOTPChallenge,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,
