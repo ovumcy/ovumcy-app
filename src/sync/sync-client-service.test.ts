@@ -852,7 +852,7 @@ describe("connectSyncAccount recovery code surfacing", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (result.ok) {
+    if (result.ok && !("totpChallengeRequired" in result)) {
       expect(result.recoveryCode).toBe(
         "abcd1234abcd1234abcd1234abcd1234",
       );
@@ -907,7 +907,7 @@ describe("connectSyncAccount recovery code surfacing", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (result.ok) {
+    if (result.ok && !("totpChallengeRequired" in result)) {
       expect(result.recoveryCode).toBeUndefined();
     }
   });

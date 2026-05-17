@@ -11,6 +11,7 @@ import {
   type SyncRecoverErrorCode,
   type SyncRunErrorCode,
 } from "../sync/sync-client-service";
+import type { SyncPreferencesRecord } from "../sync/sync-contract";
 import {
   prepareSyncSetup,
   saveSyncPreferencesDraft,
@@ -132,6 +133,18 @@ export async function connectBackupSyncAccount(
       recoveryCode?: string;
     }
   | {
+      // The password verified but the account has TOTP enabled. No session
+      // is held yet. The caller must drive the challenge UI, call
+      // `completeTOTPChallenge`, and then finalise the connection with the
+      // returned session token. Until that happens, no secrets are persisted.
+      ok: true;
+      totpChallengeRequired: true;
+      challengeID: string;
+      challengeExpiresAt: string;
+      preferences: SyncPreferencesRecord;
+      accountID: string;
+    }
+  | {
       ok: false;
       errorCode: SyncConnectScreenErrorCode;
     }
@@ -146,6 +159,17 @@ export async function connectBackupSyncAccount(
   );
   if (!result.ok) {
     return result;
+  }
+
+  if ("totpChallengeRequired" in result) {
+    return {
+      ok: true,
+      totpChallengeRequired: true,
+      challengeID: result.challengeID,
+      challengeExpiresAt: result.challengeExpiresAt,
+      preferences: result.preferences,
+      accountID: result.accountID,
+    };
   }
 
   const success: {

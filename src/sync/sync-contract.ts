@@ -76,6 +76,28 @@ export type SyncAuthResult = {
   // on register responses; login and managed-bridge sessions never carry it.
   // The app surfaces it exactly once at sync setup and then forgets it.
   recoveryCode?: string;
+  // totpChallenge is set ONLY on login responses when the account has TOTP
+  // enabled on the server. When present, sessionToken is empty and the caller
+  // must complete the challenge through `completeTOTPChallenge` before any
+  // session can be used. Register responses never set this field.
+  totpChallenge?: SyncTOTPChallengeHandoff;
+};
+
+// SyncTOTPChallengeHandoff is the wire shape of a pending TOTP login second
+// factor. The challenge id is single-use, short-lived, and must travel via
+// memory only — it never gets persisted alongside the password.
+export type SyncTOTPChallengeHandoff = {
+  challengeID: string;
+  challengeExpiresAt: string;
+};
+
+// SyncTOTPEnrollmentStart carries the freshly generated TOTP secret to the
+// caller. The plaintext base32 secret is surfaced exactly once (for manual
+// entry); the provisioning URI embeds the same secret in an `otpauth://` URL
+// that authenticator apps can ingest from a QR code.
+export type SyncTOTPEnrollmentStart = {
+  secretBase32: string;
+  provisioningURI: string;
 };
 
 export type SyncForgotPasswordResult = {

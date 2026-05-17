@@ -867,4 +867,162 @@ describe("managed-cloud-api-client", () => {
       }),
     ).toEqual({ ok: false, errorCode: "invalid_current_password" });
   });
+
+  it("maps a managed login response that defers to the TOTP challenge", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          email: "owner@example.com",
+          session_token: "",
+          session_expires_at: "0001-01-01T00:00:00Z",
+          sync_entitlement: {
+            sync_allowed: false,
+            source: "",
+            updated_at: "0001-01-01T00:00:00Z",
+            effective_at: "0001-01-01T00:00:00Z",
+            explanation: "",
+          },
+          totp_challenge: {
+            challenge_id: "challenge-1",
+            challenge_expires_at: "2026-05-17T10:05:00.000Z",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.login({
+      email: "owner@example.com",
+      password: "very secure password",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.auth.sessionToken).toBe("");
+      expect(result.auth.totpChallenge).toEqual({
+        challengeID: "challenge-1",
+        challengeExpiresAt: "2026-05-17T10:05:00.000Z",
+      });
+    }
+  });
+
+  it("starts a managed TOTP enrollment and surfaces the secret + provisioning URI", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          secret_base32: "JBSWY3DPEHPK3PXP",
+          provisioning_uri:
+            "otpauth://totp/ovumcy-managed:owner@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ovumcy-managed",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.startTOTPEnrollment("managed-session-1", {
+      currentPassword: "very secure password",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      enrollment: {
+        secretBase32: "JBSWY3DPEHPK3PXP",
+        provisioningURI:
+          "otpauth://totp/ovumcy-managed:owner@example.com?secret=JBSWY3DPEHPK3PXP&issuer=ovumcy-managed",
+      },
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://managed.example/auth/totp/enroll",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("disables managed TOTP", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "totp_disabled" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.disableTOTP("managed-session-1", {
+      currentPassword: "very secure password",
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: true });
+    expect(fetch).toHaveBeenCalledWith(
+      "https://managed.example/auth/totp/disable",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("propagates totp_challenge_invalid on managed challenge completion failures", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "totp_challenge_invalid" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.completeTOTPChallenge({
+      challengeID: "challenge-1",
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "totp_challenge_invalid" });
+  });
+
+  it("completes a managed TOTP challenge and returns a real session", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          email: "owner@example.com",
+          session_token: "managed-session-after-totp",
+          session_expires_at: "2026-05-18T10:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "default_register",
+            updated_at: "2026-05-17T10:00:00.000Z",
+            effective_at: "2026-05-17T10:00:00.000Z",
+            explanation: "Trial active.",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.completeTOTPChallenge({
+      challengeID: "challenge-1",
+      code: "123456",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.auth.sessionToken).toBe("managed-session-after-totp");
+      expect(result.auth.email).toBe("owner@example.com");
+      expect(result.auth.entitlement.syncAllowed).toBe(true);
+    }
+  });
 });

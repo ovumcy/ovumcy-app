@@ -593,6 +593,19 @@ export function useBackupSyncScreenController({
       return;
     }
 
+    if ("totpChallengeRequired" in result) {
+      // TODO: surface a dedicated TOTP challenge screen and complete the
+      // pending challenge via `completeTOTPChallenge`. The challenge id and
+      // expires_at live on `result.challengeID` / `result.challengeExpiresAt`
+      // and must travel via component state only — never persisted.
+      setErrorState({
+        code: "generic",
+        scope: "account",
+      });
+      setIsAuthenticatingSync(false);
+      return;
+    }
+
     setErrorState(null);
     setState(result.state);
     if (result.recoveryCode) {
