@@ -234,6 +234,8 @@ describe("dashboard-view-service", () => {
         title: "Day",
         value: "8",
         detail: "Approximate cycle",
+        caption:
+          "Next period: around Apr 8 · 3 cycles are needed for a reliable range",
       }),
     );
     expect(viewData.predictionExplanation).toBe(
