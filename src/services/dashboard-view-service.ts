@@ -157,7 +157,7 @@ export function buildDashboardViewData(
       : null;
 
   return {
-    cycleHero: buildDashboardCycleHero(profile, projectedCycle, locale),
+    cycleHero: buildDashboardCycleHero(profile, projectedCycle, history, locale),
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
     ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
@@ -180,6 +180,7 @@ export function buildDashboardViewData(
 function buildDashboardCycleHero(
   profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
+  history: ReturnType<typeof buildCycleHistorySummary>,
   locale: string,
 ): DashboardCycleHeroViewData {
   const dashboardCopy = getDashboardCopy(locale);
@@ -244,7 +245,7 @@ function buildDashboardCycleHero(
     detail: profile.irregularCycle
       ? dashboardCopy.cycleHeroApproximate
       : dashboardCopy.cycleHeroRegular(projection.predictionCycleLength),
-    caption: buildDashboardCycleHeroCaption(profile, projection, locale),
+    caption: buildDashboardCycleHeroCaption(profile, projection, history, locale),
     progressPercent: resolveDashboardCycleHeroProgressPercent(projection),
     currentTone,
     phaseSegments: cyclePhases.map((phase) => ({
@@ -266,6 +267,7 @@ function buildDashboardCycleHero(
 function buildDashboardCycleHeroCaption(
   profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
+  history: ReturnType<typeof buildCycleHistorySummary>,
   locale: string,
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
@@ -286,7 +288,12 @@ function buildDashboardCycleHeroCaption(
       )}`
     : formatDisplayDate(projection.nextPeriodDate, locale);
 
-  return `${dashboardCopy.nextPeriod}: ${nextPeriodValue}`;
+  const suffix =
+    profile.irregularCycle && !history.hasReliableTrend
+      ? ` · ${dashboardCopy.nextPeriodNeedsMoreCycles}`
+      : "";
+
+  return `${dashboardCopy.nextPeriod}: ${nextPeriodValue}${suffix}`;
 }
 
 function buildDashboardCycleHeroDateRange(
