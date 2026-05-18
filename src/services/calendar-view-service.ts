@@ -12,6 +12,7 @@ import {
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
 import { predictCycleWindow } from "./cycle-prediction-policy";
+import { inferBBTOvulationDate } from "./observed-ovulation-service";
 import {
   buildDayLogEditorViewData,
   type DayLogEditorViewData,
@@ -246,6 +247,8 @@ export function buildCalendarViewData(
     profile,
     history,
     projection,
+    records,
+    today,
     monthStart,
   );
   const recordsByDay = buildCalendarRecordsByDay(profile, records);
@@ -618,6 +621,8 @@ function buildCalendarPredictionMaps(
   profile: ProfileRecord,
   history: ReturnType<typeof buildCycleHistorySummary>,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
+  records: readonly DayLogRecord[],
+  today: Date,
   monthStart: Date,
 ): {
   predictedPeriod: Set<string>;
@@ -658,6 +663,7 @@ function buildCalendarPredictionMaps(
       projection.cycleAnchorDate,
       projection.predictionCycleLength,
       predictedPeriodLength,
+      projection.lutealPhase,
     );
   }
 
@@ -689,9 +695,19 @@ function buildCalendarPredictionMaps(
       projection.nextPeriodDate,
       projection.predictionCycleLength,
       predictedPeriodLength,
+      projection.lutealPhase,
       gridEnd,
     );
   }
+
+  applyCurrentCycleBBTSignal(
+    profile,
+    projection,
+    records,
+    today,
+    ovulation,
+    tentativeOvulation,
+  );
 
   return {
     predictedPeriod,
@@ -701,6 +717,44 @@ function buildCalendarPredictionMaps(
     ovulation,
     tentativeOvulation,
   };
+}
+
+function applyCurrentCycleBBTSignal(
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  records: readonly DayLogRecord[],
+  today: Date,
+  ovulation: Set<string>,
+  tentativeOvulation: Set<string>,
+) {
+  if (
+    !profile.trackBBT ||
+    !projection.cycleAnchorDate ||
+    !projection.ovulationDate ||
+    !projection.nextPeriodDate
+  ) {
+    return;
+  }
+
+  const todayValue = formatLocalDate(today);
+  if (projection.cycleAnchorDate > todayValue) {
+    return;
+  }
+
+  const recordsUpToToday = records.filter((record) => record.date <= todayValue);
+  const bbtSignal = inferBBTOvulationDate(
+    recordsUpToToday,
+    projection.cycleAnchorDate,
+    projection.nextPeriodDate,
+    profile.temperatureUnit,
+  );
+
+  if (bbtSignal) {
+    return;
+  }
+
+  ovulation.delete(projection.ovulationDate);
+  tentativeOvulation.add(projection.ovulationDate);
 }
 
 function appendImmediateStalePeriod(
@@ -734,6 +788,7 @@ function appendPredictedCycles(
   nextPeriodDate: string,
   predictionCycleLength: number,
   predictedPeriodLength: number,
+  lutealPhase: number,
   gridEnd: Date,
 ) {
   const cycleStart = parseLocalDate(nextPeriodDate);
@@ -760,6 +815,7 @@ function appendPredictedCycles(
       currentCycleStartValue,
       predictionCycleLength,
       predictedPeriodLength,
+      lutealPhase,
     );
   }
 }
@@ -816,8 +872,13 @@ function appendPredictedWindow(
   cycleStartDate: string,
   cycleLength: number,
   periodLength: number,
+  lutealPhase: number,
 ) {
-  const predictedWindow = predictCycleWindow(cycleStartDate, cycleLength);
+  const predictedWindow = predictCycleWindow(
+    cycleStartDate,
+    cycleLength,
+    lutealPhase,
+  );
   if (
     !predictedWindow.calculable ||
     !predictedWindow.ovulationDate ||

@@ -106,6 +106,7 @@ export function buildLocalReminderPlans(
     const window = predictCycleWindow(
       projection.cycleAnchorDate,
       projection.predictionCycleLength,
+      projection.lutealPhase,
     );
     const triggerAt = resolveUpcomingTriggerDate(
       window.fertilityStart,

@@ -262,6 +262,21 @@ describe("dashboard-view-service", () => {
     };
     const historyRecords: DayLogRecord[] = [
       {
+        date: "2025-12-20",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
         date: "2026-01-17",
         isPeriod: true,
         cycleStart: true,
@@ -320,6 +335,102 @@ describe("dashboard-view-service", () => {
       expect.objectContaining({
         state: "approximate",
         caption: "Next period: Apr 13 - Apr 15",
+      }),
+    );
+  });
+
+  it("widens the next-period window by one day on each side for the 35+ age group", () => {
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-16",
+      cycleLength: 29,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "age_35_plus",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2025-12-20",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-01-17",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-02-14",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-03-16",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 26));
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      history,
+      new Date(2026, 2, 26),
+    );
+
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "approximate",
+        caption: "Next period: Apr 12 - Apr 16",
       }),
     );
   });
@@ -426,7 +537,7 @@ describe("dashboard-view-service", () => {
         title: "Day",
         value: "2",
         detail: "Cycle 28 days",
-        caption: "Next period: Apr 22",
+        caption: "Next period: Apr 18 - Apr 26",
         currentTone: "period",
         phaseCards: [
           expect.objectContaining({ key: "period", rangeLabel: "Days 1-5", active: true }),
