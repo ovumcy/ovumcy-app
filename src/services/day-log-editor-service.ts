@@ -222,12 +222,17 @@ export function buildDayLogEditorViewData(
   selectedSymptomIDs: readonly DaySymptomID[] = [],
   locale = "en",
   premiumOptions: DayLogEditorPremiumOptions = {},
+  personalizationOptions: {
+    historyRecords?: readonly DayLogRecord[];
+    now?: Date;
+  } = {},
 ): DayLogEditorViewData {
   const dayLogCopy = getDayLogCopy(locale);
   const pickerSymptoms = buildLocalizedEntryPickerSymptoms(
     symptomRecords,
     selectedSymptomIDs,
     locale,
+    personalizationOptions,
   );
 
   return {

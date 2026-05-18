@@ -123,6 +123,10 @@ export async function loadDashboardScreenState(
       filteredTodayEntry.symptomIDs,
       locale,
       editorPremiumOptions,
+      {
+        historyRecords,
+        now,
+      },
     ),
   };
 }

@@ -180,6 +180,10 @@ export async function loadCalendarScreenState(
     effectiveSelectedRecord.symptomIDs,
     locale,
     editorPremiumOptions,
+    {
+      historyRecords: logs,
+      now: today,
+    },
   );
   const viewData = buildCalendarViewData(
     profile,
