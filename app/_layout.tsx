@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAppScreenProtection } from "../src/security/app-screen-protection";
+import { ConfirmDialogProvider } from "../src/ui/confirm/ConfirmDialogProvider";
 import {
   AppPreferencesProvider,
   useAppPreferences,
@@ -23,21 +24,23 @@ function RootNavigator() {
     <GestureHandlerRootView
       style={{ backgroundColor: colors.background, flex: 1 }}
     >
-      <View style={{ flex: 1 }}>
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: "transparent" },
-            headerShown: false,
-          }}
-        >
-          <Stack.Screen name="index" />
-          <Stack.Screen name="onboarding" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="backup-sync" />
-          <Stack.Screen name="sync-account-security" />
-          <Stack.Screen name="partner-shared" />
-        </Stack>
-      </View>
+      <ConfirmDialogProvider>
+        <View style={{ flex: 1 }}>
+          <Stack
+            screenOptions={{
+              contentStyle: { backgroundColor: "transparent" },
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="index" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="backup-sync" />
+            <Stack.Screen name="sync-account-security" />
+            <Stack.Screen name="partner-shared" />
+          </Stack>
+        </View>
+      </ConfirmDialogProvider>
     </GestureHandlerRootView>
   );
 }
