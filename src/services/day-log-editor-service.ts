@@ -21,6 +21,7 @@ import {
 } from "./day-log-policy";
 import {
   appendAutoFilledPeriodDays,
+  collectAutoFilledPeriodDaysToClear,
   shouldAutoFillPeriodWindowFromSave,
 } from "./period-auto-fill-service";
 import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
@@ -154,6 +155,20 @@ export async function saveDayLogEditorRecord(
 
   if (shouldAutoFillPeriodWindowFromSave(profile, relevantRecords, normalized)) {
     appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile);
+  } else if (shouldClearAutoFilledNeighbors(profile, relevantRecords, normalized)) {
+    for (const dayToClear of collectAutoFilledPeriodDaysToClear(
+      relevantRecords,
+      normalized.date,
+      profile.periodLength,
+    )) {
+      recordsToWrite.set(
+        dayToClear.date,
+        sanitizeDayLogRecord({
+          ...dayToClear,
+          isPeriod: false,
+        }),
+      );
+    }
   }
 
   try {
@@ -330,4 +345,32 @@ async function loadAutoFillRelevantRecords(
     formatLocalDate(addDays(parsedDate, -1)),
     formatLocalDate(addDays(parsedDate, Math.max(profile.periodLength - 1, 0))),
   );
+}
+
+function shouldClearAutoFilledNeighbors(
+  profile: ProfileRecord,
+  existingRecords: readonly DayLogRecord[],
+  nextRecord: DayLogRecord,
+): boolean {
+  if (!profile.autoPeriodFill || nextRecord.isPeriod) {
+    return false;
+  }
+
+  const existingRecord = existingRecords.find(
+    (record) => record.date === nextRecord.date,
+  );
+  if (!existingRecord?.isPeriod) {
+    return false;
+  }
+
+  const parsedDate = parseLocalDate(nextRecord.date);
+  if (!parsedDate) {
+    return false;
+  }
+
+  const previousDate = formatLocalDate(addDays(parsedDate, -1));
+  const previousRecord = existingRecords.find(
+    (record) => record.date === previousDate,
+  );
+  return !previousRecord?.isPeriod;
 }

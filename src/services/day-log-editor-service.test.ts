@@ -125,6 +125,74 @@ describe("day-log-editor-service", () => {
     );
   });
 
+  it("clears bare auto-filled neighbors when toggling the anchor period day off", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-03-16") },
+        { ...createEmptyDayLogRecord("2026-03-17"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-18"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-19"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-20"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-21"), isPeriod: true },
+      ]),
+    });
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      isPeriod: false,
+    });
+
+    await saveDayLogEditorRecord(storage, record);
+
+    const writes = (storage.writeDayLogRecord as jest.Mock).mock.calls.map(
+      ([written]) => ({ date: written.date, isPeriod: written.isPeriod }),
+    );
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        { date: "2026-03-17", isPeriod: false },
+        { date: "2026-03-18", isPeriod: false },
+        { date: "2026-03-19", isPeriod: false },
+        { date: "2026-03-20", isPeriod: false },
+        { date: "2026-03-21", isPeriod: false },
+      ]),
+    );
+  });
+
+  it("preserves manual entries when clearing the anchor period day", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-03-16") },
+        { ...createEmptyDayLogRecord("2026-03-17"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-18"), isPeriod: true },
+        {
+          ...createEmptyDayLogRecord("2026-03-19"),
+          isPeriod: true,
+          flow: "heavy",
+        },
+        { ...createEmptyDayLogRecord("2026-03-20"), isPeriod: true },
+      ]),
+    });
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      isPeriod: false,
+    });
+
+    await saveDayLogEditorRecord(storage, record);
+
+    const writes = (storage.writeDayLogRecord as jest.Mock).mock.calls.map(
+      ([written]) => ({ date: written.date, isPeriod: written.isPeriod }),
+    );
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        { date: "2026-03-17", isPeriod: false },
+        { date: "2026-03-18", isPeriod: false },
+      ]),
+    );
+    expect(writes).not.toEqual(
+      expect.arrayContaining([{ date: "2026-03-19", isPeriod: false }]),
+    );
+    expect(writes).not.toEqual(
+      expect.arrayContaining([{ date: "2026-03-20", isPeriod: false }]),
+    );
+  });
+
   it("shows custom symptoms for new entries and keeps selected archived symptoms available", async () => {
     const customSymptom: SymptomRecord = {
       id: "custom_jaw_pain",

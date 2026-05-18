@@ -3,6 +3,48 @@ import type { ProfileRecord } from "../models/profile";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
+export function isAutoFilledPeriodCandidate(record: DayLogRecord): boolean {
+  return (
+    record.isPeriod &&
+    !record.cycleStart &&
+    !record.isUncertain &&
+    record.flow === "none" &&
+    record.mood === 0 &&
+    record.sexActivity === "none" &&
+    record.bbt === 0 &&
+    record.cervicalMucus === "none" &&
+    record.lhTest === "none" &&
+    record.cycleFactorKeys.length === 0 &&
+    record.symptomIDs.length === 0 &&
+    record.notes.trim().length === 0
+  );
+}
+
+export function collectAutoFilledPeriodDaysToClear(
+  records: readonly DayLogRecord[],
+  anchorDate: DayLogRecord["date"],
+  periodLength: number,
+): DayLogRecord[] {
+  const anchor = parseLocalDate(anchorDate);
+  if (!anchor) {
+    return [];
+  }
+
+  const recordsByDate = new Map(records.map((record) => [record.date, record]));
+  const cleared: DayLogRecord[] = [];
+
+  for (let offset = 1; offset < periodLength; offset += 1) {
+    const date = formatLocalDate(addDays(anchor, offset));
+    const record = recordsByDate.get(date);
+    if (!record || !isAutoFilledPeriodCandidate(record)) {
+      break;
+    }
+    cleared.push(record);
+  }
+
+  return cleared;
+}
+
 export function appendAutoFilledPeriodDays(
   recordsToWrite: Map<string, DayLogRecord>,
   records: readonly DayLogRecord[],
