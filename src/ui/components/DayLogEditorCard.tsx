@@ -72,7 +72,6 @@ export function DayLogEditorCard({
 }: DayLogEditorCardProps) {
   const styles = useThemedStyles(createStyles);
   const showsCalendarOrder = variant === "calendar";
-  const [isNotesOpen, setIsNotesOpen] = useState(record.notes.trim().length > 0);
   const [showsAllSymptoms, setShowsAllSymptoms] = useState(false);
   const headerDescription = [viewData.subtitle, viewData.dateLabel]
     .filter((value) => value.trim().length > 0)
@@ -88,18 +87,6 @@ export function DayLogEditorCard({
   const symptomOptions = showsAllSymptoms
     ? viewData.options.symptoms
     : collapsedSymptomsState.options;
-  const notesToggleLabel =
-    record.notes.trim().length > 0
-      ? isNotesOpen
-        ? viewData.labels.hideNote
-        : viewData.labels.editNote
-      : viewData.labels.addNote;
-
-  useEffect(() => {
-    if (record.notes.trim().length > 0) {
-      setIsNotesOpen(true);
-    }
-  }, [record.notes]);
 
   useEffect(() => {
     if (collapsedSymptomsState.hiddenCount === 0 && showsAllSymptoms) {
@@ -369,32 +356,17 @@ export function DayLogEditorCard({
           onLayout={handleSectionLayout("notes")}
           style={resolveSectionStyle("notes", styles.section)}
         >
-          <Pressable
-            accessibilityLabel={notesToggleLabel}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: isNotesOpen }}
-            onPress={() => setIsNotesOpen((current) => !current)}
-            style={styles.notesToggle}
-            testID="day-log-notes-toggle"
-          >
-            <Text style={styles.notesToggleText}>
-              {notesToggleLabel}
-            </Text>
-          </Pressable>
-
-          {isNotesOpen ? (
-            <View style={styles.notesSection}>
-              <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
-              <AppTextInput
-                multiline
-                onChangeText={(value) => onPatch({ notes: value })}
-                placeholder={viewData.labels.notesPlaceholder}
-                style={[styles.input, styles.notesInput]}
-                testID="day-log-notes-input"
-                value={record.notes}
-              />
-            </View>
-          ) : null}
+          <View style={styles.notesSection}>
+            <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
+            <AppTextInput
+              multiline
+              onChangeText={(value) => onPatch({ notes: value })}
+              placeholder={viewData.labels.notesPlaceholder}
+              style={[styles.input, styles.notesInput]}
+              testID="day-log-notes-input"
+              value={record.notes}
+            />
+          </View>
         </View>
       ) : null}
 
@@ -480,14 +452,6 @@ const createStyles = (colors: AppThemeColors) =>
     },
     actions: {
       gap: spacing.sm,
-    },
-    notesToggle: {
-      alignSelf: "flex-start",
-    },
-    notesToggleText: {
-      color: colors.accentStrong,
-      fontSize: 13,
-      fontWeight: "700",
     },
     moreSymptomsButton: {
       alignSelf: "flex-start",

@@ -53,9 +53,6 @@ export type DayLogEditorViewData = {
     bbt: string;
     bbtHint: string;
     notes: string;
-    addNote: string;
-    editNote: string;
-    hideNote: string;
     showMoreSymptoms: string;
     showFewerSymptoms: string;
     notesPlaceholder: string;
@@ -253,9 +250,6 @@ export function buildDayLogEditorViewData(
       bbt: dayLogCopy.bbt,
       bbtHint: `${dayLogCopy.bbtHint} ${profile.temperatureUnit === "f" ? "°F" : "°C"}.`,
       notes: dayLogCopy.notes,
-      addNote: dayLogCopy.addNote,
-      editNote: dayLogCopy.editNote,
-      hideNote: dayLogCopy.hideNote,
       showMoreSymptoms: dayLogCopy.showMoreSymptoms,
       showFewerSymptoms: dayLogCopy.showFewerSymptoms,
       notesPlaceholder: dayLogCopy.notesPlaceholder,

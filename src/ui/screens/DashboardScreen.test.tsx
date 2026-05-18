@@ -231,13 +231,10 @@ describe("DashboardScreen", () => {
       expect(screen.queryByText("Intimacy")).toBeNull();
       expect(screen.getByTestId("day-log-bbt-input")).toBeTruthy();
       expect(screen.getByTestId("day-log-cervical-none")).toBeTruthy();
-      expect(screen.getByTestId("day-log-notes-toggle")).toBeTruthy();
-      expect(screen.getByTestId("day-log-notes-toggle").props.accessibilityRole).toBe(
-        "button",
+      expect(screen.getByTestId("day-log-notes-input")).toBeTruthy();
+      expect(screen.getByTestId("day-log-notes-input").props.placeholder).toBe(
+        "Anything you want to remember about today.",
       );
-      expect(
-        screen.getByTestId("day-log-notes-toggle").props.accessibilityState,
-      ).toEqual(expect.objectContaining({ expanded: false }));
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
       expect(
         screen.getByLabelText(
@@ -281,7 +278,6 @@ describe("DashboardScreen", () => {
 
     await screen.findByTestId("day-log-period-toggle");
 
-    expect(screen.queryByTestId("day-log-notes-toggle")).toBeNull();
     expect(screen.queryByTestId("day-log-notes-input")).toBeNull();
   });
 
