@@ -4,7 +4,11 @@ import {
   type DayLogRecord,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
-import { predictCycleWindow } from "./cycle-prediction-policy";
+import {
+  predictCycleWindow,
+  resolveLutealPhase,
+} from "./cycle-prediction-policy";
+import { inferObservedOvulationDate } from "./observed-ovulation-service";
 import {
   IRREGULAR_CYCLE_SPREAD_DAYS,
   STATS_CYCLE_COMPARISON_DELTA,
@@ -147,6 +151,9 @@ export function buildCurrentCycleProjection(
   const today = atLocalDay(now);
   const todayValue = formatLocalDate(today);
   const cycleAnchorDate = resolveCurrentCycleAnchorDate(profile, records, todayValue);
+  const lutealPhase = resolveLutealPhase(
+    inferUserLutealPhase(profile, records, todayValue) ?? 0,
+  );
 
   if (!cycleAnchorDate) {
     return {
@@ -154,6 +161,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: "unknown",
       isPredictionStale: false,
+      lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -169,6 +177,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: "unknown",
       isPredictionStale: false,
+      lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -183,9 +192,14 @@ export function buildCurrentCycleProjection(
   const nextPeriodWindow = resolveNextPeriodWindow(
     cycleAnchor,
     history,
+    profile,
     predictionCycleLength,
   );
-  const predictedWindow = predictCycleWindow(cycleAnchorDate, predictionCycleLength);
+  const predictedWindow = predictCycleWindow(
+    cycleAnchorDate,
+    predictionCycleLength,
+    lutealPhase,
+  );
 
   if (profile.unpredictableCycle) {
     return {
@@ -193,9 +207,10 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      lutealPhase,
       nextPeriodDate,
-      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
-      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
+      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -207,9 +222,10 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      lutealPhase,
       nextPeriodDate,
-      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
-      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
+      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -222,9 +238,10 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      lutealPhase,
       nextPeriodDate,
-      nextPeriodWindowStartDate: nextPeriodWindow.startDate,
-      nextPeriodWindowEndDate: nextPeriodWindow.endDate,
+      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -237,6 +254,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: true,
+      lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -250,34 +268,130 @@ export function buildCurrentCycleProjection(
     currentCycleDay,
     currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
     isPredictionStale: false,
+    lutealPhase,
     nextPeriodDate,
-    nextPeriodWindowStartDate: nextPeriodWindow.startDate,
-    nextPeriodWindowEndDate: nextPeriodWindow.endDate,
+    nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+    nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
     ovulationDate: predictedWindow.ovulationDate,
     predictionCycleLength,
   };
 }
 
+const MIN_OBSERVED_LUTEAL_DAYS = 10;
+const MAX_OBSERVED_LUTEAL_DAYS = 20;
+const MIN_OBSERVED_LUTEAL_SAMPLES = 2;
+const MIN_CYCLES_FOR_LUTEAL_INFERENCE = 3;
+
+export function inferUserLutealPhase(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+): number | null {
+  const starts = collectCycleStartDates(profile, records, todayValue);
+  if (starts.length < MIN_CYCLES_FOR_LUTEAL_INFERENCE) {
+    return null;
+  }
+
+  const lutealLengths: number[] = [];
+  for (let index = 0; index + 1 < starts.length; index += 1) {
+    const cycleStartDate = starts[index];
+    const nextStartDate = starts[index + 1];
+    if (!cycleStartDate || !nextStartDate) {
+      continue;
+    }
+
+    const ovulationDate = inferObservedOvulationDate(
+      records,
+      cycleStartDate,
+      nextStartDate,
+      profile.temperatureUnit,
+    );
+    if (!ovulationDate) {
+      continue;
+    }
+
+    const ovulation = parseLocalDate(ovulationDate);
+    const nextStart = parseLocalDate(nextStartDate);
+    if (!ovulation || !nextStart) {
+      continue;
+    }
+
+    const lutealLength = diffLocalDays(ovulation, nextStart);
+    if (
+      lutealLength < MIN_OBSERVED_LUTEAL_DAYS ||
+      lutealLength > MAX_OBSERVED_LUTEAL_DAYS
+    ) {
+      continue;
+    }
+    lutealLengths.push(lutealLength);
+  }
+
+  if (lutealLengths.length < MIN_OBSERVED_LUTEAL_SAMPLES) {
+    return null;
+  }
+
+  const average =
+    lutealLengths.reduce((sum, value) => sum + value, 0) / lutealLengths.length;
+  return Math.round(average);
+}
+
 function resolveNextPeriodWindow(
   cycleAnchor: Date,
   history: StatsCycleHistorySummary,
+  profile: ProfileRecord,
   predictionCycleLength: number,
-): {
-  endDate: string;
-  startDate: string;
-} {
-  const recentLengths =
-    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
-    history.recentCycleLengths.length > 0
-      ? history.recentCycleLengths
-      : [predictionCycleLength];
-  const windowStartLength = Math.max(Math.min(...recentLengths), 1);
-  const windowEndLength = Math.max(Math.max(...recentLengths), windowStartLength);
+): { endDate: string; startDate: string } | null {
+  const extraSpanDays = profile.ageGroup === "age_35_plus" ? 1 : 0;
 
+  if (profile.irregularCycle && !history.hasReliableTrend) {
+    return null;
+  }
+
+  if (
+    profile.irregularCycle &&
+    history.hasReliableTrend &&
+    history.recentCycleLengths.length > 0
+  ) {
+    const minLen = Math.max(Math.min(...history.recentCycleLengths), 1);
+    const maxLen = Math.max(Math.max(...history.recentCycleLengths), minLen);
+    return {
+      startDate: formatLocalDate(
+        addDays(cycleAnchor, Math.max(minLen - extraSpanDays, 1)),
+      ),
+      endDate: formatLocalDate(addDays(cycleAnchor, maxLen + extraSpanDays)),
+    };
+  }
+
+  const spanDays = resolvePredictionSpanDays(history) + extraSpanDays;
   return {
-    startDate: formatLocalDate(addDays(cycleAnchor, windowStartLength)),
-    endDate: formatLocalDate(addDays(cycleAnchor, windowEndLength)),
+    startDate: formatLocalDate(
+      addDays(cycleAnchor, Math.max(predictionCycleLength - spanDays, 1)),
+    ),
+    endDate: formatLocalDate(
+      addDays(cycleAnchor, predictionCycleLength + spanDays),
+    ),
   };
+}
+
+function resolvePredictionSpanDays(history: StatsCycleHistorySummary): number {
+  if (history.completedCycleCount < STATS_RELIABLE_TREND_CYCLES) {
+    return 4;
+  }
+  if (history.completedCycleCount < STATS_CYCLE_PREDICTION_WINDOW) {
+    return 3;
+  }
+  const stdDev = computeCycleLengthStdDev(history.recentCycleLengths);
+  return Math.max(Math.round(stdDev), 1);
+}
+
+function computeCycleLengthStdDev(values: readonly number[]): number {
+  if (values.length === 0) {
+    return 0;
+  }
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
 }
 
 export function shouldShowIrregularityNotice(

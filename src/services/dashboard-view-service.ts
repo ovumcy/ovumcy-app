@@ -342,7 +342,10 @@ function buildDashboardCycleHeroPhases(
 }[] {
   const dashboardCopy = getDashboardCopy(locale);
   const cycleLength = projection.predictionCycleLength;
-  const { day: ovulationDay } = calcOvulationDay(cycleLength);
+  const { day: ovulationDay } = calcOvulationDay(
+    cycleLength,
+    projection.lutealPhase,
+  );
   if (!ovulationDay) {
     return [];
   }

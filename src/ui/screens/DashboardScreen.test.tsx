@@ -240,7 +240,9 @@ describe("DashboardScreen", () => {
       ).toEqual(expect.objectContaining({ expanded: false }));
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
       expect(
-        screen.getByLabelText("Day 8. Follicular. Cycle 28 days. Next period: Apr 7"),
+        screen.getByLabelText(
+          "Day 8. Follicular. Cycle 28 days. Next period: Apr 3 - Apr 11",
+        ),
       ).toBeTruthy();
       expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe("Day");
       expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe(

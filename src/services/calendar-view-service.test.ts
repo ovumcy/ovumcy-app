@@ -267,6 +267,110 @@ describe("calendar-view-service", () => {
     ).toEqual(["2026-04-06"]);
   });
 
+  it("marks the predicted ovulation day as tentative when BBT shows no thermal shift", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: true,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    } as const;
+    const flatBBTRecords = Array.from({ length: 14 }, (_, offset) => ({
+      ...createEmptyDayLogRecord(
+        `2026-03-${String(10 + offset).padStart(2, "0")}`,
+      ),
+      bbt: 36.4,
+    }));
+    const records = [
+      { ...flatBBTRecords[0]!, isPeriod: true, cycleStart: true, flow: "medium" as const },
+      ...flatBBTRecords.slice(1),
+    ];
+
+    const viewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 25),
+      new Date(2026, 2, 1),
+      "2026-03-25",
+    );
+
+    const ovulationDay = viewData.days.find(
+      (day) => day.date === "2026-03-23",
+    );
+    expect(ovulationDay).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation_tentative",
+        hasTentativeOvulationMarker: true,
+        hasOvulationMarker: false,
+      }),
+    );
+  });
+
+  it("keeps the predicted ovulation day confirmed when BBT shows a sustained thermal shift", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: true,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    } as const;
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-10"),
+        isPeriod: true,
+        cycleStart: true,
+        flow: "medium" as const,
+        bbt: 36.4,
+      },
+      { ...createEmptyDayLogRecord("2026-03-11"), bbt: 36.4 },
+      { ...createEmptyDayLogRecord("2026-03-12"), bbt: 36.4 },
+      { ...createEmptyDayLogRecord("2026-03-13"), bbt: 36.4 },
+      { ...createEmptyDayLogRecord("2026-03-14"), bbt: 36.4 },
+      { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-16"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-17"), bbt: 36.7 },
+    ];
+
+    const viewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 18),
+      new Date(2026, 2, 1),
+      "2026-03-18",
+    );
+
+    const ovulationDay = viewData.days.find(
+      (day) => day.date === "2026-03-23",
+    );
+    expect(ovulationDay).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+        hasOvulationMarker: true,
+        hasTentativeOvulationMarker: false,
+      }),
+    );
+  });
+
   it("adds an approximate prediction notice when irregular cycle mode is enabled", () => {
     const viewData = buildCalendarViewData(
       {
