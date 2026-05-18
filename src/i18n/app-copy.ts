@@ -62,7 +62,7 @@ const appCopyEn = {
       predictionModeFactsOnlyHint: "Show your records only.",
       ageGroup: "Your age",
       ageGroupHint:
-        "Optional. Right now this adds age-related context in Insights only. It does not change cycle calculations.",
+        "Optional. This helps widen the prediction range when cycle variability is naturally higher.",
       usageGoal: "Why are you using Ovumcy?",
       usageGoalHint:
         "Optional. This changes UI emphasis only, not the prediction algorithm.",
@@ -150,7 +150,7 @@ const appCopyDe: AppCopy = {
       predictionModeFactsOnlyHint: "Nur deine Einträge anzeigen.",
       ageGroup: "Dein Alter",
       ageGroupHint:
-        "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Einblicken. Die Zyklusberechnung ändert sich dadurch nicht.",
+        "Optional. Das hilft dabei, den Vorhersagebereich zu erweitern, wenn die Zyklusvariabilität natürlicherweise höher ist.",
       usageGoal: "Wofür nutzt du Ovumcy?",
       usageGoalHint:
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
@@ -238,7 +238,7 @@ const appCopyFr: AppCopy = {
       predictionModeFactsOnlyHint: "Afficher seulement tes enregistrements.",
       ageGroup: "Ton âge",
       ageGroupHint:
-        "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les analyses. Cela ne change pas les calculs du cycle.",
+        "Optionnel. Cela permet d'élargir la plage de prédiction lorsque la variabilité du cycle est naturellement plus élevée.",
       usageGoal: "Pourquoi utilises-tu Ovumcy ?",
       usageGoalHint:
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
@@ -328,7 +328,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Показывать только ваши записи.",
         ageGroup: "Ваш возраст",
         ageGroupHint:
-          "Необязательно. Сейчас это добавляет только возрастной контекст в разделе «Инсайты» и не меняет расчёт цикла.",
+          "Необязательно. Это помогает расширить диапазон прогноза, когда вариабельность цикла выше естественным образом.",
         usageGoal: "Зачем вы используете Ovumcy?",
         usageGoalHint:
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм предсказания.",
@@ -414,7 +414,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Mostrar solo tus registros.",
         ageGroup: "Tu edad",
         ageGroupHint:
-          "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Análisis. No cambia los cálculos del ciclo.",
+          "Opcional. Esto ayuda a ampliar el rango cuando la variabilidad del ciclo es naturalmente mayor.",
         usageGoal: "¿Por qué usas Ovumcy?",
         usageGoalHint:
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",

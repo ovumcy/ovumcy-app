@@ -53,7 +53,7 @@ const settingsCopyEn = {
   },
   ageGroup: {
     title: "Age group",
-    hint: "Optional. Right now this adds age-related context in Insights only. It does not change cycle calculations.",
+    hint: "Optional. If you are 35+, Ovumcy widens the prediction range by one extra day.",
     under20: "Under 20",
     age20to35: "20-35",
     age35plus: "35+",
@@ -504,7 +504,7 @@ const settingsCopyDe: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Altersgruppe",
-    hint: "Optional. Momentan ergänzt das nur altersbezogenen Kontext in den Einblicken. Die Zyklusberechnung ändert sich dadurch nicht.",
+    hint: "Optional. Wenn Sie 35+ sind, erweitert Ovumcy den Vorhersagebereich um einen zusätzlichen Tag.",
     under20: "Unter 20",
   },
   goal: {
@@ -998,7 +998,7 @@ const settingsCopyFr: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Tranche d'âge",
-    hint: "Optionnel. Pour l'instant, cela ajoute seulement un contexte lié à l'âge dans les analyses. Cela ne change pas les calculs du cycle.",
+    hint: "Optionnel. Si vous avez 35 ans ou plus, Ovumcy élargit la plage de prédiction d'un jour supplémentaire.",
     under20: "Moins de 20 ans",
   },
   goal: {
@@ -1498,7 +1498,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Возрастная группа",
-      hint: "Необязательно. Сейчас это добавляет только возрастной контекст в разделе «Инсайты» и не меняет расчёт цикла.",
+      hint: "Необязательно. Если вам 35+, Ovumcy расширяет диапазон прогноза ещё на один день.",
       under20: "Младше 20",
       age20to35: "20-35",
       age35plus: "35+",
@@ -1960,7 +1960,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Grupo de edad",
-      hint: "Opcional. Por ahora esto solo añade contexto relacionado con la edad en Análisis. No cambia los cálculos del ciclo.",
+      hint: "Opcional. Si tienes 35+, Ovumcy amplía el rango previsto un día más.",
       under20: "Menos de 20",
       age20to35: "20-35",
       age35plus: "35+",
