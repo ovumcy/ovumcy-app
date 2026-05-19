@@ -26,6 +26,7 @@ import {
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
 import { sanitizeDayLogRecord } from "../../services/day-log-policy";
+import { normalizeAgeGroup } from "../../services/profile-settings-policy";
 import type {
   LocalAppStorage,
   LocalBootstrapState,
@@ -232,6 +233,7 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     lastPeriodStart:
       typeof record.lastPeriodStart === "string" ? record.lastPeriodStart : null,
     temperatureUnit: record.temperatureUnit === "f" ? "f" : defaults.temperatureUnit,
+    ageGroup: normalizeAgeGroup(record.ageGroup ?? ""),
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
     dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(

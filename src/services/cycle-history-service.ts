@@ -341,8 +341,6 @@ function resolveNextPeriodWindow(
   profile: ProfileRecord,
   predictionCycleLength: number,
 ): { endDate: string; startDate: string } | null {
-  const extraSpanDays = profile.ageGroup === "age_35_plus" ? 1 : 0;
-
   if (profile.irregularCycle && !history.hasReliableTrend) {
     return null;
   }
@@ -355,14 +353,16 @@ function resolveNextPeriodWindow(
     const minLen = Math.max(Math.min(...history.recentCycleLengths), 1);
     const maxLen = Math.max(Math.max(...history.recentCycleLengths), minLen);
     return {
-      startDate: formatLocalDate(
-        addDays(cycleAnchor, Math.max(minLen - extraSpanDays, 1)),
-      ),
-      endDate: formatLocalDate(addDays(cycleAnchor, maxLen + extraSpanDays)),
+      startDate: formatLocalDate(addDays(cycleAnchor, Math.max(minLen, 1))),
+      endDate: formatLocalDate(addDays(cycleAnchor, maxLen)),
     };
   }
 
-  const spanDays = resolvePredictionSpanDays(history) + extraSpanDays;
+  const spanDays = resolvePredictionSpanDays(history);
+  if (spanDays === null) {
+    return null;
+  }
+
   return {
     startDate: formatLocalDate(
       addDays(cycleAnchor, Math.max(predictionCycleLength - spanDays, 1)),
@@ -373,15 +373,32 @@ function resolveNextPeriodWindow(
   };
 }
 
-function resolvePredictionSpanDays(history: StatsCycleHistorySummary): number {
+export const DATA_DRIVEN_PREDICTION_SPAN_MAX_DAYS = 5;
+
+function resolvePredictionSpanDays(
+  history: StatsCycleHistorySummary,
+): number | null {
   if (history.completedCycleCount < STATS_RELIABLE_TREND_CYCLES) {
-    return 4;
-  }
-  if (history.completedCycleCount < STATS_CYCLE_PREDICTION_WINDOW) {
-    return 3;
+    return null;
   }
   const stdDev = computeCycleLengthStdDev(history.recentCycleLengths);
-  return Math.max(Math.round(stdDev), 1);
+  if (!Number.isFinite(stdDev) || stdDev <= 0) {
+    return null;
+  }
+  return Math.min(
+    Math.max(Math.round(stdDev), 1),
+    DATA_DRIVEN_PREDICTION_SPAN_MAX_DAYS,
+  );
+}
+
+export function hasDataDrivenPredictionSpan(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+): boolean {
+  if (profile.unpredictableCycle || profile.irregularCycle) {
+    return false;
+  }
+  return resolvePredictionSpanDays(history) !== null;
 }
 
 function computeCycleLengthStdDev(values: readonly number[]): number {
@@ -414,7 +431,7 @@ export function shouldShowIrregularModeRecommendation(
 }
 
 export function shouldShowAgeVariabilityHint(profile: ProfileRecord): boolean {
-  return profile.ageGroup === "age_35_plus";
+  return profile.ageGroup === "age_45_plus";
 }
 
 function buildCompletedCycleSummaries(

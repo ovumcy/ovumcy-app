@@ -238,7 +238,7 @@ describe("DashboardScreen", () => {
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
       expect(
         screen.getByLabelText(
-          "Day 8. Follicular. Cycle 28 days. Next period: Apr 3 - Apr 11",
+          "Day 8. Follicular. Cycle 28 days. Next period: Apr 7",
         ),
       ).toBeTruthy();
       expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe("Day");

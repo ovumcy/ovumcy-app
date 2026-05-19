@@ -2,6 +2,7 @@ import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
 import { getSettingsCopy } from "../i18n/settings-copy";
 import type { LoadedExportState } from "../models/export";
 import type {
+  AgeGroup,
   AgeGroupOption,
   CycleSettingsValues,
   InterfaceLanguage,
@@ -30,8 +31,8 @@ import {
   buildCycleGuidanceState,
   formatLocalDate,
   getSettingsCycleStartDateBounds,
+  normalizeAgeGroup,
   parseLocalDate,
-  resolveDisplayedAgeGroup,
 } from "./profile-settings-policy";
 import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
@@ -499,9 +500,9 @@ export function buildSettingsViewData(
       label: settingsCopy.ageGroup.title,
       hint: settingsCopy.ageGroup.hint,
       options: [
-        { value: "under_20", label: settingsCopy.ageGroup.under20 },
-        { value: "age_20_35", label: settingsCopy.ageGroup.age20to35 },
-        { value: "age_35_plus", label: settingsCopy.ageGroup.age35plus },
+        { value: "under_40", label: settingsCopy.ageGroup.under40 },
+        { value: "age_40_45", label: settingsCopy.ageGroup.age40to45 },
+        { value: "age_45_plus", label: settingsCopy.ageGroup.age45plus },
       ],
     },
     usageGoal: {
@@ -871,7 +872,7 @@ export function createLoadedSettingsState(
       autoPeriodFill: profile.autoPeriodFill,
       irregularCycle: profile.irregularCycle,
       unpredictableCycle: profile.unpredictableCycle,
-      ageGroup: resolveDisplayedAgeGroup(profile.ageGroup),
+      ageGroup: normalizeAgeGroup(profile.ageGroup),
       usageGoal: profile.usageGoal,
     },
     interfaceValues: {
@@ -923,7 +924,7 @@ export function extractPersistedCycleValues(
     autoPeriodFill: profile.autoPeriodFill,
     irregularCycle: profile.irregularCycle,
     unpredictableCycle: profile.unpredictableCycle,
-    ageGroup: resolveDisplayedAgeGroup(profile.ageGroup),
+    ageGroup: normalizeAgeGroup(profile.ageGroup),
     usageGoal: profile.usageGoal,
   };
 }
@@ -1129,8 +1130,8 @@ export function buildSettingsSyncSummary(
 
 export function resolveSettingsAgeGroupSelection(
   cycleValues: CycleSettingsValues,
-): AgeGroupOption {
-  return resolveDisplayedAgeGroup(cycleValues.ageGroup);
+): AgeGroup {
+  return normalizeAgeGroup(cycleValues.ageGroup);
 }
 
 export function resolveSettingsPredictionMode(

@@ -80,8 +80,13 @@ describe("onboarding-policy", () => {
   });
 
   it("normalizes preference inputs and onboarding step selection", () => {
-    expect(normalizeAgeGroup("  AGE_35_PLUS  ")).toBe("age_35_plus");
+    expect(normalizeAgeGroup("  AGE_45_PLUS  ")).toBe("age_45_plus");
+    expect(normalizeAgeGroup("  age_40_45  ")).toBe("age_40_45");
+    expect(normalizeAgeGroup("  under_40  ")).toBe("under_40");
     expect(normalizeAgeGroup("oops")).toBe("");
+    expect(normalizeAgeGroup("under_20")).toBe("");
+    expect(normalizeAgeGroup("age_20_35")).toBe("");
+    expect(normalizeAgeGroup("age_35_plus")).toBe("");
     expect(normalizeUsageGoal(" TRYING_TO_CONCEIVE ")).toBe(
       "trying_to_conceive",
     );
@@ -144,7 +149,7 @@ describe("onboarding-policy", () => {
         periodLength: 5,
         autoPeriodFill: true,
         predictionMode: "irregular",
-        ageGroup: "age_20_35",
+        ageGroup: "under_40",
         usageGoal: "health",
       }),
     ).toEqual(

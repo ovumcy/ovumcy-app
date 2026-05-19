@@ -17,7 +17,7 @@ describe("volatile-web-app-storage", () => {
       autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: false,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
     await storage.writeDayLogRecord({
@@ -47,7 +47,7 @@ describe("volatile-web-app-storage", () => {
       cycleLength: 30,
       periodLength: 6,
       irregularCycle: true,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
     await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual({
@@ -162,6 +162,36 @@ describe("volatile-web-app-storage", () => {
           id: "custom_jaw_pain",
         }),
       ]),
+    );
+  });
+
+  it("normalizes legacy ageGroup values to unspecified on profile read", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    // Simulate a profile stored with the pre-medical-audit bucket values.
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      ageGroup: "age_35_plus" as unknown as "",
+    });
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
+    );
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      ageGroup: "age_20_35" as unknown as "",
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
+    );
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      ageGroup: "under_20" as unknown as "",
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
     );
   });
 

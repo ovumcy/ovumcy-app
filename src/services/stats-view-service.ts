@@ -15,6 +15,7 @@ import {
   buildCurrentCycleProjection,
   buildStatsFactorContext,
   buildStatsReliability,
+  hasDataDrivenPredictionSpan,
   shouldShowAgeVariabilityHint,
   shouldShowIrregularityNotice,
   shouldShowIrregularModeRecommendation,
@@ -294,7 +295,9 @@ export function buildStatsViewData(
       title: statsCopy.title,
       description: statsCopy.subtitle,
       hasInsights: false,
-      notices: [],
+      notices: shouldShowAgeVariabilityHint(profile)
+        ? [statsCopy.ageVariabilityHint]
+        : [],
       topCards: [],
       emptyState: {
         title: statsCopy.emptyTitle,
@@ -1069,6 +1072,9 @@ function buildStatsNotices(
   }
   if (shouldShowIrregularModeRecommendation(profile, history)) {
     notices.push(statsCopy.irregularRecommendation);
+  }
+  if (hasDataDrivenPredictionSpan(profile, history)) {
+    notices.push(statsCopy.dataDrivenRangeHint);
   }
   if (shouldShowAgeVariabilityHint(profile)) {
     notices.push(statsCopy.ageVariabilityHint);

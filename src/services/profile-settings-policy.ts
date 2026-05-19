@@ -41,12 +41,12 @@ export type SettingsDateBounds = {
 
 export function normalizeAgeGroup(value: string): AgeGroup {
   switch (value.trim().toLowerCase()) {
-    case "under_20":
-      return "under_20";
-    case "age_20_35":
-      return "age_20_35";
-    case "age_35_plus":
-      return "age_35_plus";
+    case "under_40":
+      return "under_40";
+    case "age_40_45":
+      return "age_40_45";
+    case "age_45_plus":
+      return "age_45_plus";
     default:
       return "";
   }
@@ -68,7 +68,7 @@ export function normalizeTemperatureUnit(value: string): TemperatureUnit {
 }
 
 export function resolveDisplayedAgeGroup(ageGroup: AgeGroup): AgeGroupOption {
-  return normalizeAgeGroup(ageGroup) || "age_20_35";
+  return normalizeAgeGroup(ageGroup) || "under_40";
 }
 
 export function clampCycleLength(value: number): number {

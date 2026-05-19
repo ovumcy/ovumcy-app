@@ -112,7 +112,7 @@ describeIfLive("sync-client-service live transport", () => {
       autoPeriodFill: false,
       irregularCycle: true,
       unpredictableCycle: true,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
       trackBBT: true,
       temperatureUnit: "f",

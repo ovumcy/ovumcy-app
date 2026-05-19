@@ -339,7 +339,7 @@ describe("dashboard-view-service", () => {
     );
   });
 
-  it("widens the next-period window by one day on each side for the 35+ age group", () => {
+  it("does not widen the next-period window for the 45+ age group (medical correctness)", () => {
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-03-16",
       cycleLength: 29,
@@ -347,7 +347,7 @@ describe("dashboard-view-service", () => {
       autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: false,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "health",
       trackBBT: false,
       temperatureUnit: "c",
@@ -430,7 +430,7 @@ describe("dashboard-view-service", () => {
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "approximate",
-        caption: "Next period: Apr 12 - Apr 16",
+        caption: "Next period: Apr 13 - Apr 15",
       }),
     );
   });
@@ -537,7 +537,9 @@ describe("dashboard-view-service", () => {
         title: "Day",
         value: "2",
         detail: "Cycle 28 days",
-        caption: "Next period: Apr 18 - Apr 26",
+        // With <3 completed cycles the data-driven range is no longer emitted —
+        // dashboard falls back to a single date.
+        caption: "Next period: Apr 22",
         currentTone: "period",
         phaseCards: [
           expect.objectContaining({ key: "period", rangeLabel: "Days 1-5", active: true }),

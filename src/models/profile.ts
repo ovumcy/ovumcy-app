@@ -12,7 +12,7 @@ export const MIN_CYCLE_RESERVE_DAYS = 10;
 
 export type LocalDateISO = string;
 
-export type AgeGroup = "" | "under_20" | "age_20_35" | "age_35_plus";
+export type AgeGroup = "" | "under_40" | "age_40_45" | "age_45_plus";
 export type AgeGroupOption = Exclude<AgeGroup, "">;
 
 export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";

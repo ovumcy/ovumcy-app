@@ -53,10 +53,10 @@ const settingsCopyEn = {
   },
   ageGroup: {
     title: "Age group",
-    hint: "Optional. If you are 35+, Ovumcy widens the prediction range by one extra day.",
-    under20: "Under 20",
-    age20to35: "20-35",
-    age35plus: "35+",
+    hint: "Optional. Stored with your profile; predictions use only your own cycle history.",
+    under40: "Under 40",
+    age40to45: "40-45",
+    age45plus: "45+",
   },
   goal: {
     title: "Usage goal",
@@ -504,8 +504,8 @@ const settingsCopyDe: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Altersgruppe",
-    hint: "Optional. Wenn Sie 35+ sind, erweitert Ovumcy den Vorhersagebereich um einen zusätzlichen Tag.",
-    under20: "Unter 20",
+    hint: "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
+    under40: "Unter 40",
   },
   goal: {
     ...settingsCopyEn.goal,
@@ -998,8 +998,8 @@ const settingsCopyFr: SettingsCopy = {
   ageGroup: {
     ...settingsCopyEn.ageGroup,
     title: "Tranche d'âge",
-    hint: "Optionnel. Si vous avez 35 ans ou plus, Ovumcy élargit la plage de prédiction d'un jour supplémentaire.",
-    under20: "Moins de 20 ans",
+    hint: "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
+    under40: "Moins de 40 ans",
   },
   goal: {
     ...settingsCopyEn.goal,
@@ -1498,10 +1498,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Возрастная группа",
-      hint: "Необязательно. Если вам 35+, Ovumcy расширяет диапазон прогноза ещё на один день.",
-      under20: "Младше 20",
-      age20to35: "20-35",
-      age35plus: "35+",
+      hint: "Необязательно. Сохраняется в профиле; прогнозы строятся только по вашей истории циклов.",
+      under40: "Младше 40",
+      age40to45: "40-45",
+      age45plus: "45+",
     },
     goal: {
       title: "Цель использования",
@@ -1960,10 +1960,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     ageGroup: {
       title: "Grupo de edad",
-      hint: "Opcional. Si tienes 35+, Ovumcy amplía el rango previsto un día más.",
-      under20: "Menos de 20",
-      age20to35: "20-35",
-      age35plus: "35+",
+      hint: "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
+      under40: "Menos de 40",
+      age40to45: "40-45",
+      age45plus: "45+",
     },
     goal: {
       title: "Objetivo de uso",

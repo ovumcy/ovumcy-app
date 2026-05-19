@@ -33,7 +33,7 @@ function createLoadedState(
       periodLength: record.periodLength,
       autoPeriodFill: record.autoPeriodFill,
       predictionMode: "regular",
-      ageGroup: "age_20_35",
+      ageGroup: "under_40",
       usageGoal: record.usageGoal,
     },
     ...overrides,

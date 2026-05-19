@@ -39,7 +39,10 @@ import {
   profileToOnboardingRecord,
 } from "../../services/onboarding-policy";
 import { sanitizeDayLogRecord } from "../../services/day-log-policy";
-import { normalizeTemperatureUnit } from "../../services/profile-settings-policy";
+import {
+  normalizeAgeGroup,
+  normalizeTemperatureUnit,
+} from "../../services/profile-settings-policy";
 import {
   clearAsyncStorageLocalAppData,
   hasAsyncStorageLocalAppData,
@@ -1652,7 +1655,7 @@ function mapProfileSettingsRow(
         dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
           record.dismissedOnboardingHelperNoticeKey,
         ) ?? null,
-        ageGroup: record.ageGroup ?? "",
+        ageGroup: normalizeAgeGroup(record.ageGroup ?? ""),
         usageGoal: record.usageGoal ?? "health",
       };
   }
@@ -1671,7 +1674,7 @@ function mapLegacyProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
     autoPeriodFill: row.auto_period_fill === 1,
     irregularCycle: row.irregular_cycle === 1,
     unpredictableCycle: row.unpredictable_cycle === 1,
-    ageGroup: row.age_group as ProfileRecord["ageGroup"],
+    ageGroup: normalizeAgeGroup(row.age_group),
     usageGoal: row.usage_goal as ProfileRecord["usageGoal"],
     trackBBT: row.track_bbt === 1,
     temperatureUnit: normalizeTemperatureUnit(row.temperature_unit),

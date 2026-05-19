@@ -174,6 +174,81 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
 });
 
+test("stats surfaces the perimenopause hint for a 45+ user even in the empty state", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -14));
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+
+  await expect(page.getByTestId("onboarding-age-group-age_45_plus")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-age_45_plus").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.locator(tabLink("/stats")).click();
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(page.getByTestId("stats-empty-hero")).toBeVisible();
+  await expect(
+    page
+      .getByText(/After 45/)
+      .filter({ hasText: /perimenopause/ }),
+  ).toBeVisible();
+});
+
+test("stats shows the data-driven range explainer after three completed cycles with variability", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -7));
+  const olderCycleStarts = [
+    addDays(today, -35),
+    addDays(today, -64),
+    addDays(today, -92),
+  ];
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+
+  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-under_40").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+
+  for (const target of olderCycleStarts) {
+    const targetStr = formatLocalDate(target);
+    const monthsBack =
+      (today.getFullYear() - target.getFullYear()) * 12 +
+      (today.getMonth() - target.getMonth());
+
+    for (let step = 0; step < monthsBack; step += 1) {
+      await page.getByTestId("calendar-prev-button").click();
+    }
+
+    await page.getByTestId(`calendar-day-${targetStr}`).click();
+    await page.getByTestId("day-log-period-toggle").last().click();
+    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-today-button").click();
+  }
+
+  await page.locator(tabLink("/stats")).click();
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(
+    page.getByText(
+      "Your prediction shows a range that reflects how much your cycle length varies.",
+    ),
+  ).toBeVisible();
+});
+
 test("web shell publishes the canonical favicon", async ({ page }) => {
   await page.goto("/");
 

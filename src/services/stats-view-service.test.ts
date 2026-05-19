@@ -222,11 +222,11 @@ describe("buildStatsViewData", () => {
     ).toBeUndefined();
   });
 
-  it("shows factor context when irregular mode and factor logs are present", () => {
+  it("shows factor context and the perimenopause hint for 45+ irregular users", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({
         irregularCycle: true,
-        ageGroup: "age_35_plus",
+        ageGroup: "age_45_plus",
       }),
       [
         createPeriodRecord("2026-02-08", {
@@ -250,8 +250,47 @@ describe("buildStatsViewData", () => {
         expect.objectContaining({ key: "travel" }),
       ]),
     );
+    expect(
+      viewData.notices.some((notice) =>
+        notice.includes("After 45") && notice.includes("perimenopause"),
+      ),
+    ).toBe(true);
+  });
+
+  it("surfaces the perimenopause hint even before insights unlock for 45+ users", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord({
+        ageGroup: "age_45_plus",
+      }),
+      [],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData.hasInsights).toBe(false);
+    expect(
+      viewData.notices.some((notice) =>
+        notice.includes("After 45") && notice.includes("perimenopause"),
+      ),
+    ).toBe(true);
+  });
+
+  it("adds the data-driven range explainer when prediction span is computed from history", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord(),
+      [
+        createPeriodRecord("2026-01-01"),
+        createPeriodRecord("2026-01-30"),
+        createPeriodRecord("2026-02-25"),
+        createPeriodRecord("2026-03-26"),
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 28),
+    );
+
+    expect(viewData.hasInsights).toBe(true);
     expect(viewData.notices).toContain(
-      "After 35, cycle variability naturally increases.",
+      "Your prediction shows a range that reflects how much your cycle length varies.",
     );
   });
 

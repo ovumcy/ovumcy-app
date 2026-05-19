@@ -145,7 +145,9 @@ describe("partner-shared-projection-service", () => {
     expect(readState.summaryMetrics.totalLoggedDays).toBe(3);
     expect(readState.summaryMetrics.topSymptoms).toContain("Cramps");
     expect(readState.cycleStatus.state).toBe("regular");
-    expect(readState.cycleStatus.nextPeriodWindowStartDate).toBe("2026-04-25");
+    // With only 1 completed cycle the prediction span is no longer surfaced as a
+    // range (medical-correctness rewrite of resolvePredictionSpanDays).
+    expect(readState.cycleStatus.nextPeriodWindowStartDate).toBeNull();
     expect(readState.recentRows[0]?.date).toBe("2026-04-02");
   });
 

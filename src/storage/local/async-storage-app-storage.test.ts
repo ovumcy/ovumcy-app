@@ -69,7 +69,7 @@ describe("async-storage-app-storage", () => {
       autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: false,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
 
@@ -84,7 +84,7 @@ describe("async-storage-app-storage", () => {
       cycleLength: 30,
       periodLength: 6,
       irregularCycle: true,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
     await expect(storage.readOnboardingRecord()).resolves.toEqual({
@@ -94,7 +94,7 @@ describe("async-storage-app-storage", () => {
       autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: false,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
   });
@@ -178,6 +178,43 @@ describe("async-storage-app-storage", () => {
     );
   });
 
+  it("normalizes legacy ageGroup values to unspecified on profile read", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await AsyncStorage.setItem(
+      "ovumcy/profile-record",
+      JSON.stringify({
+        ...createDefaultProfileRecord(),
+        ageGroup: "age_35_plus",
+      }),
+    );
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
+    );
+
+    await AsyncStorage.setItem(
+      "ovumcy/profile-record",
+      JSON.stringify({
+        ...createDefaultProfileRecord(),
+        ageGroup: "age_20_35",
+      }),
+    );
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
+    );
+
+    await AsyncStorage.setItem(
+      "ovumcy/profile-record",
+      JSON.stringify({
+        ...createDefaultProfileRecord(),
+        ageGroup: "under_20",
+      }),
+    );
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ ageGroup: "" }),
+    );
+  });
+
   it("clears local async-storage data and falls back to defaults", async () => {
     const storage = createAsyncStorageAppStorage();
 
@@ -193,7 +230,7 @@ describe("async-storage-app-storage", () => {
       autoPeriodFill: true,
       irregularCycle: true,
       unpredictableCycle: false,
-      ageGroup: "age_35_plus",
+      ageGroup: "age_45_plus",
       usageGoal: "trying_to_conceive",
     });
     await storage.writeDayLogRecord({

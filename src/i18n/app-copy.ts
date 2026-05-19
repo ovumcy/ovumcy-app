@@ -62,15 +62,15 @@ const appCopyEn = {
       predictionModeFactsOnlyHint: "Show your records only.",
       ageGroup: "Your age",
       ageGroupHint:
-        "Optional. This helps widen the prediction range when cycle variability is naturally higher.",
+        "Optional. Stored with your profile; predictions use only your own cycle history.",
       usageGoal: "Why are you using Ovumcy?",
       usageGoalHint:
         "Optional. This changes UI emphasis only, not the prediction algorithm.",
     },
     ageGroup: {
-      under20: "Under 20",
-      age20to35: "20-35",
-      age35plus: "35+",
+      under40: "Under 40",
+      age40to45: "40-45",
+      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Avoid pregnancy",
@@ -150,15 +150,15 @@ const appCopyDe: AppCopy = {
       predictionModeFactsOnlyHint: "Nur deine Einträge anzeigen.",
       ageGroup: "Dein Alter",
       ageGroupHint:
-        "Optional. Das hilft dabei, den Vorhersagebereich zu erweitern, wenn die Zyklusvariabilität natürlicherweise höher ist.",
+        "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
       usageGoal: "Wofür nutzt du Ovumcy?",
       usageGoalHint:
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
     },
     ageGroup: {
-      under20: "Unter 20",
-      age20to35: "20-35",
-      age35plus: "35+",
+      under40: "Unter 40",
+      age40to45: "40-45",
+      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Schwangerschaft vermeiden",
@@ -238,15 +238,15 @@ const appCopyFr: AppCopy = {
       predictionModeFactsOnlyHint: "Afficher seulement tes enregistrements.",
       ageGroup: "Ton âge",
       ageGroupHint:
-        "Optionnel. Cela permet d'élargir la plage de prédiction lorsque la variabilité du cycle est naturellement plus élevée.",
+        "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
       usageGoal: "Pourquoi utilises-tu Ovumcy ?",
       usageGoalHint:
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
     },
     ageGroup: {
-      under20: "Moins de 20 ans",
-      age20to35: "20-35",
-      age35plus: "35+",
+      under40: "Moins de 40 ans",
+      age40to45: "40-45",
+      age45plus: "45+",
     },
     usageGoal: {
       avoidPregnancy: "Éviter une grossesse",
@@ -328,15 +328,15 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Показывать только ваши записи.",
         ageGroup: "Ваш возраст",
         ageGroupHint:
-          "Необязательно. Это помогает расширить диапазон прогноза, когда вариабельность цикла выше естественным образом.",
+          "Необязательно. Сохраняется в профиле; прогнозы строятся только по вашей истории циклов.",
         usageGoal: "Зачем вы используете Ovumcy?",
         usageGoalHint:
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм предсказания.",
       },
       ageGroup: {
-        under20: "Младше 20",
-        age20to35: "20-35",
-        age35plus: "35+",
+        under40: "Младше 40",
+        age40to45: "40-45",
+        age45plus: "45+",
       },
       usageGoal: {
         avoidPregnancy: "Избежать беременности",
@@ -414,15 +414,15 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         predictionModeFactsOnlyHint: "Mostrar solo tus registros.",
         ageGroup: "Tu edad",
         ageGroupHint:
-          "Opcional. Esto ayuda a ampliar el rango cuando la variabilidad del ciclo es naturalmente mayor.",
+          "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
         usageGoal: "¿Por qué usas Ovumcy?",
         usageGoalHint:
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",
       },
       ageGroup: {
-        under20: "Menos de 20",
-        age20to35: "20-35",
-        age35plus: "35+",
+        under40: "Menos de 40",
+        age40to45: "40-45",
+        age45plus: "45+",
       },
       usageGoal: {
         avoidPregnancy: "Evitar embarazo",

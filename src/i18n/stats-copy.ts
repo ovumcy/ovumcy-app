@@ -18,7 +18,10 @@ const statsCopyEn = {
   irregularNotice: (minDays: number, maxDays: number) =>
     `Your cycles vary from ${minDays} to ${maxDays} days. This is an irregular rhythm. Predictions are approximate.`,
   irregularRecommendation: "Consider enabling irregular cycle mode in settings.",
-  ageVariabilityHint: "After 35, cycle variability naturally increases.",
+  ageVariabilityHint:
+    "After 45, cycles often become less predictable. If you notice persistent differences of 7 or more days between consecutive cycles, that can be an early sign of perimenopause — consider speaking with a healthcare professional.",
+  dataDrivenRangeHint:
+    "Your prediction shows a range that reflects how much your cycle length varies.",
   lastCycleLength: "Last cycle length",
   lastPeriodLength: "Period length",
   currentPhase: "Current phase",
@@ -289,7 +292,9 @@ const statsCopyDe: StatsCopy = {
   irregularRecommendation:
     "Erwäge, den Modus für unregelmäßige Zyklen in den Einstellungen zu aktivieren.",
   ageVariabilityHint:
-    "Nach 35 nimmt die Zyklusvariabilität auf natürliche Weise zu.",
+    "Nach 45 werden Zyklen oft weniger vorhersehbar. Wenn Sie wiederkehrende Unterschiede von 7 oder mehr Tagen zwischen aufeinanderfolgenden Zyklen bemerken, kann das ein frühes Anzeichen für die Perimenopause sein — sprechen Sie es mit einer medizinischen Fachperson an.",
+  dataDrivenRangeHint:
+    "Ihre Vorhersage wird als Bereich angezeigt, der widerspiegelt, wie stark Ihre Zykluslänge schwankt.",
   lastCycleLength: "Länge des letzten Zyklus",
   lastPeriodLength: "Periodendauer",
   currentPhase: "Aktuelle Phase",
@@ -559,7 +564,9 @@ const statsCopyFr: StatsCopy = {
   irregularRecommendation:
     "Pense à activer le mode cycle irrégulier dans les réglages.",
   ageVariabilityHint:
-    "Après 35 ans, la variabilité du cycle augmente naturellement.",
+    "Après 45 ans, les cycles deviennent souvent moins prévisibles. Si vous remarquez des écarts persistants de 7 jours ou plus entre cycles consécutifs, cela peut être un signe précoce de périménopause — pensez à en parler à un·e professionnel·le de santé.",
+  dataDrivenRangeHint:
+    "Votre prédiction s'affiche en plage pour refléter la variabilité naturelle de la durée de votre cycle.",
   lastCycleLength: "Durée du dernier cycle",
   lastPeriodLength: "Durée des règles",
   currentPhase: "Phase actuelle",
@@ -829,7 +836,10 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     irregularNotice: (minDays: number, maxDays: number) =>
       `Ваши циклы варьируются от ${minDays} до ${maxDays} дней. Это нерегулярный ритм. Предсказания приблизительны.`,
     irregularRecommendation: "Подумайте о включении режима нерегулярного цикла в настройках.",
-    ageVariabilityHint: "После 35 естественная вариативность цикла увеличивается.",
+    ageVariabilityHint:
+      "После 45 лет циклы часто становятся менее предсказуемыми. Если вы замечаете устойчивые разницы в 7 и более дней между соседними циклами, это может быть ранним признаком перименопаузы — стоит обсудить это с врачом.",
+    dataDrivenRangeHint:
+      "Прогноз показан диапазоном, который отражает вариативность длины вашего цикла.",
     lastCycleLength: "Длина последнего цикла",
     lastPeriodLength: "Длительность менструации",
     currentPhase: "Текущая фаза",
@@ -1085,7 +1095,10 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     irregularNotice: (minDays: number, maxDays: number) =>
       `Tus ciclos varían entre ${minDays} y ${maxDays} días. Es un ritmo irregular. Las predicciones son aproximadas.`,
     irregularRecommendation: "Considera activar el modo de ciclo irregular en ajustes.",
-    ageVariabilityHint: "Después de los 35, la variabilidad del ciclo aumenta de forma natural.",
+    ageVariabilityHint:
+      "Después de los 45, los ciclos suelen volverse menos predecibles. Si observas diferencias persistentes de 7 o más días entre ciclos consecutivos, puede ser un signo temprano de perimenopausia — conviene comentarlo con un profesional de la salud.",
+    dataDrivenRangeHint:
+      "La predicción se muestra como un rango que refleja cuánto varía la duración de tu ciclo.",
     lastCycleLength: "Duración del último ciclo",
     lastPeriodLength: "Duración del período",
     currentPhase: "Fase actual",
