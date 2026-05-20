@@ -40,6 +40,9 @@ Run on an Android emulator or physical device.
 23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
 24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the Android system navigation buttons.
 25. No account, sync, or cloud requirement is shown for core local use.
+26. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
+27. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
+28. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
 
 ## iOS
 
@@ -73,6 +76,9 @@ Run on an iOS simulator or physical device.
 23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
 24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the iOS home indicator or system navigation area.
 25. No account, sync, or cloud requirement is shown for core local use.
+26. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
+27. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
+28. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
 
 ## Web Smoke
 
@@ -93,6 +99,8 @@ Run when web support, branding, or app-shell navigation is touched.
    - settings reminders section renders without runtime errors, stays device-local, and shows a locked state until a managed premium entitlement is present
    - settings export summary reflects the current logged range, CSV/JSON downloads succeed with local file downloads instead of opening sensitive data in the URL, and PDF stays disabled until an active managed cloud plan is present
    - if managed `Partner access` is unlocked, the owner can create a link-only invite without entering partner email, copy the canonical invite URL, and still revoke pending or accepted access
+   - the day editor includes a pregnancy test field with `None`, `Negative`, `Positive` choices; logging `Positive` from the dashboard quick action surfaces the localized predictions-paused banner on dashboard reload and removes predicted period and fertility cells from the calendar grid for the upcoming weeks
+   - without an Ovumcy Cloud plan, stats premium sections render as unified `PREMIUM` lock cards with an `Open Ovumcy Cloud` CTA that routes to `Backup & sync`, instead of silently disappearing
    - danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the browser shell to onboarding
    - reloading the web preview resets the app to onboarding instead of retaining health data as durable browser storage
    - settings saves local profile and dashboard visibility changes follow the saved toggles

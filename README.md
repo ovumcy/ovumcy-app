@@ -24,7 +24,9 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - native encrypted-at-rest storage for privacy-sensitive health data
 - dashboard, calendar, insights, settings, exports, and optional backup flows
 - custom symptom catalog and journal-style day logging
+- pregnancy test field with automatic prediction pause on a positive result
 - optional encrypted backup and sync instead of cloud-first dependence
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and email reminders
 
 ## Screens
 
@@ -42,7 +44,20 @@ Current light-theme mobile-view screenshots below reflect the latest dashboard, 
 
 - [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) is the canonical self-hosted web product.
 - [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) is the optional self-hosted encrypted sync backend for the app.
+- [`ovumcy-managed`](https://github.com/ovumcy/ovumcy-managed) is the managed-cloud backend behind Ovumcy Cloud (auth, billing, partner sharing).
 - `ovumcy-app` is the mobile client that keeps the core experience usable even when sync is turned off.
+
+## Tiers
+
+Ovumcy is layered so each level adds capability without taking anything away from the one below.
+
+| Tier | Backend | Cost | What you get |
+| --- | --- | --- | --- |
+| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export, on-device push reminders |
+| **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
+| **Ovumcy Cloud** | managed `ovumcy-managed` | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (email + push) |
+
+Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
 ## Current Status
 
@@ -51,15 +66,20 @@ The app is still an early public alpha, but the main local-first slices already 
 
 ## How Ovumcy App Differs
 
-| Capability | Ovumcy App | Ovumcy Web |
-| --- | --- | --- |
-| Works without an account | :white_check_mark: | :white_check_mark: |
-| Local-first device storage | :white_check_mark: | :x: |
-| Local encrypted sync setup | :white_check_mark: | Not applicable |
-| Real self-hosted or managed sync transport | :white_check_mark: Alpha | Server-side product |
-| iOS and Android client | :white_check_mark: | Browser only |
-| Server required for core onboarding and tracking | :x: | :white_check_mark: |
-| Optional sync architecture | :white_check_mark: | Not applicable |
+| Capability | Free | Community Sync | Ovumcy Cloud |
+| --- | --- | --- | --- |
+| Works without an account | :white_check_mark: | :x: (server account) | :x: (cloud account) |
+| Local-first device storage | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Cycle tracking + predictions | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Pregnancy test + auto-pause | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| CSV / JSON export | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Encrypted backup between devices | :x: | :white_check_mark: | :white_check_mark: |
+| Advanced fertility signals (LH, BBT shift, ovulation confirmation) | :x: | :x: | :white_check_mark: |
+| Premium cycle insights (weighted average, drift, anomalies, seasonal, short luteal warning) | :x: | :x: | :white_check_mark: |
+| Extended cycle reports | :x: | :x: | :white_check_mark: |
+| Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
+| Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |
+| Premium reminders (email + push) | :x: | :x: | :white_check_mark: |
 
 ## Short FAQ
 
@@ -83,6 +103,14 @@ The sync transport is designed so the server stores ciphertext, not readable hea
 
 No. The app is being built with no telemetry by default.
 
+### Is there a free trial of Ovumcy Cloud?
+
+Yes. Signing up for Ovumcy Cloud starts a 30-day trial that unlocks all premium features. The trial runs for roughly one cycle so the doctor PDF, advanced insights, and partner sharing can be evaluated on real data before any billing.
+
+### How does partner sharing work?
+
+Partner sharing is owner-paid only — the partner never pays and never tracks their own cycle through the share. The owner picks an access level (summary or full) in backup-and-sync settings and generates a single-use invite link, which can also be displayed as a QR code. The partner installs the app, opens the link or scans the QR, and lands straight into a read-only shared view — no subscription, no card, no setup, no separate account to manage. They see exactly what was shared, nothing more, and the cloud only stores ciphertext plus grant metadata.
+
 ### Is Ovumcy App a medical product?
 
 No. Ovumcy provides tracking and estimates based on recorded data. It is not a medical device and should not be treated as diagnostic or treatment advice.
@@ -95,6 +123,10 @@ The current `main` branch provides:
 - a local-first onboarding flow with web-parity structure and copy;
 - native SQLite-backed bootstrap, profile, symptom-catalog, and day-log persistence;
 - local-first dashboard, calendar, settings, stats, custom symptom management, and export flows backed by the same canonical repositories;
+- pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
+- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and premium reminders;
+- doctor-friendly PDF export with colored monthly calendar, advanced fertility signals, cycle comparison, and short luteal phase warning;
+- five-locale interface coverage (English, Russian, German, French, Spanish) for paywall, day-log, calendar, dashboard, and PDF surfaces;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
 - baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
 
@@ -167,6 +199,9 @@ The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-t
 - React Native
 - Expo Router
 - TypeScript
+- pdf-lib for client-side doctor PDF generation
+- expo-sqlite for native local persistence
+- @noble/ciphers (XChaCha20-Poly1305) for sync envelope encryption
 - React Native Testing Library
 - Playwright for temporary web-shell smoke
 
@@ -191,6 +226,30 @@ Run the app:
 npm run android
 npm run ios
 npm run web
+```
+
+### Optional: local Ovumcy Cloud stack for premium testing
+
+To exercise managed cloud sync and premium gates against real backends, bring up the dev stack from the sibling `ovumcy-managed` repository, then rebuild the app with the local backends pinned:
+
+```powershell
+cd ../ovumcy-managed
+docker compose -f docker-compose.dev.yml run --rm ovumcy-sync-community migrate
+docker compose -f docker-compose.dev.yml -f docker-compose.dev.browser.yml up -d
+
+cd ../ovumcy-app
+$env:EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL = "http://localhost:8080"
+$env:EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL = "http://localhost:8090"
+npm run export:web
+```
+
+Live sync integration tests opt into the same stack through environment variables:
+
+```powershell
+$env:OVUMCY_SYNC_LIVE_BASE_URL = "http://localhost:8080"
+$env:OVUMCY_MANAGED_LIVE_BASE_URL = "http://localhost:8090"
+$env:OVUMCY_MANAGED_LIVE_ADMIN_TOKEN = "dev-admin-token"
+npx jest sync-client-service.live sync-client-service.managed.live
 ```
 
 ## Testing and Quality
@@ -233,18 +292,28 @@ Recommended working model:
 
 ## Roadmap
 
-Near-term work focuses on:
+Done on `main`:
 
-- adding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
-- growing local data models beyond cycle baseline, day logs, and symptom catalog;
-- adding repeatable Android and iOS smoke discipline;
-- integrating managed cloud billing and entitlement sources without changing the zero-knowledge sync contract;
-- continuing self-hosted and managed sync hardening without making sync mandatory.
+- Ovumcy Cloud premium tier wired client-side with paywall UX and six gated feature surfaces;
+- pregnancy test logging with prediction pause across dashboard, calendar, and stats;
+- doctor PDF with colored calendar and premium analytic sections (advanced fertility, cycle comparison, short luteal warning);
+- partner sharing with summary and full access levels and 48-hour invite token TTL;
+- community and managed sync transports validated end-to-end with the new fields.
+
+Near-term:
+
+- App Store and Google Play in-app purchase integration so a real subscription drives the managed billing snapshot;
+- finishing the no-account guest acceptance flow so a partner can install the app and redeem an invite link straight into the read-only shared view without an Ovumcy Cloud sign-in step;
+- TestFlight and Google Play internal-testing readiness so end-to-end premium can be validated on real devices with sandbox purchases;
+- expanding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
+- repeatable Android and iOS manual smoke discipline per release candidate;
+- growing local data models beyond cycle baseline, day logs, and symptom catalog without changing the zero-knowledge sync contract.
 
 ## Related Repositories
 
 - [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) — the self-hosted web and server product
 - [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) — the self-hosted encrypted sync backend for Ovumcy app
+- [`ovumcy-managed`](https://github.com/ovumcy/ovumcy-managed) — the managed cloud (auth, billing, partner sharing) behind Ovumcy Cloud
 
 ## License
 

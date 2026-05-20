@@ -337,3 +337,13 @@ before and after UI changes.
 1. Account-backed sync transport and multi-device restore
 2. Delete-account semantics beyond local clear-data
 3. A future non-mobile nav model if the app ever stops using native tabs
+
+## App-Only Extensions Beyond Web Parity
+
+The following surfaces are intentionally richer in the app than on the canonical web product. They are app-domain extensions, not parity targets.
+
+- Pregnancy test day-log field with automatic prediction pause across dashboard, calendar, and stats.
+- Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, settings reminders, settings PDF export, and the backup-sync partner area.
+- Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
+- Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation dashed border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
+- Five-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish).

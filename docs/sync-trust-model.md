@@ -75,3 +75,24 @@ Recovery phrases are shown only when the app prepares or recreates local sync ke
 If an owner loses every device and also loses the recovery phrase, encrypted sync data cannot be recovered.
 
 This is a privacy tradeoff, not a support bug: the server is not supposed to know enough to recover the health payload by itself.
+
+## Premium Entitlement and the Sync Plane
+
+Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, premium reminders) read from the managed billing snapshot, not from the sync transport.
+
+What this means in practice:
+
+- premium feature flags arrive over an authenticated managed cloud channel and are never persisted to broad key/value storage on the device;
+- the encrypted snapshot envelope on the sync transport is opaque to the server; new payload fields like `pregnancyTest` ride inside the same ciphertext and require no server schema awareness;
+- legacy snapshots that predate a field continue to decode; the storage layer defaults missing values when restoring on a newer client;
+- the doctor PDF is generated entirely on-device from canonical local repositories — the server never sees the PDF, only the encrypted day-log records that feed it.
+
+## Partner Sharing Trust Boundary
+
+Partner sharing is an Ovumcy Cloud feature. The trust model for the partner shared view:
+
+- the owner builds a partner projection from canonical local profile, day-log, and symptom records, applying the chosen access level (summary or full) before encryption;
+- the projection is encrypted on the owner device and uploaded to managed as an opaque ciphertext blob tied to a specific grant;
+- the partner device decrypts the projection only after the grant is accepted; managed never holds the plaintext share;
+- the partner experience stays read-only and free — the partner is a guest of the owner's subscription, not a separate billing subject;
+- community sync may keep history continuity for the owner, but it must not become a transport or authority path for partner shared access.
