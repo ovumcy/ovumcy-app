@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
@@ -11,20 +11,34 @@ import {
 } from "./confirmation-bridge";
 
 type ConfirmDialogProviderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) {
   const styles = useThemedStyles(createStyles);
   const [request, setRequest] = useState<ConfirmationRequest | null>(null);
+  const pendingRequestRef = useRef<ConfirmationRequest | null>(null);
 
-  useEffect(() => registerConfirmationListener(setRequest), []);
+  useEffect(
+    () =>
+      registerConfirmationListener((next) => {
+        const previous = pendingRequestRef.current;
+        if (previous && previous !== next) {
+          previous.resolve(false);
+        }
+        pendingRequestRef.current = next;
+        setRequest(next);
+      }),
+    [],
+  );
 
   const resolveWith = (value: boolean) => {
-    if (!request) {
+    const current = pendingRequestRef.current;
+    if (!current) {
       return;
     }
-    request.resolve(value);
+    pendingRequestRef.current = null;
+    current.resolve(value);
     setRequest(null);
   };
 
