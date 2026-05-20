@@ -306,6 +306,229 @@ test("stats shows premium lock placeholders when entitlements are missing and th
   await expect(page).toHaveURL(/\/backup-sync$/);
 });
 
+test("visual verify pregnancy test field and paused predictions banner", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -7));
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-under_40").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.getByTestId("dashboard-quick-action-period").click();
+  await expect(page.getByTestId("day-log-pregnancy-none").first()).toBeVisible();
+  await page
+    .getByTestId("day-log-pregnancy-none")
+    .first()
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "e2e/screenshots/visual-pregnancy-field.png",
+  });
+
+  await page.getByTestId("day-log-pregnancy-positive").first().click();
+  await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+
+  // Reload Dashboard so the projection re-runs with the positive test
+  await page.locator('a[href="/calendar"]').click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await page.locator('a[href="/dashboard"]').click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(
+    page.getByText(/Cycle predictions are paused after a positive pregnancy/),
+  ).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page
+    .getByText(/Cycle predictions are paused after a positive pregnancy/)
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "e2e/screenshots/visual-pregnancy-paused-dashboard.png",
+    fullPage: false,
+  });
+});
+
+test("render the sample doctor PDF first page for visual inspection", async ({
+  page,
+}) => {
+  // Requires e2e/screenshots/sample-doctor.pdf to be generated first:
+  // OVUMCY_PDF_SAMPLE=1 npx jest export-pdf-service.sample
+  const { existsSync, copyFileSync, writeFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const pdfSrc = join(process.cwd(), "e2e", "screenshots", "sample-doctor.pdf");
+  const pdfDest = join(process.cwd(), "dist", "sample-doctor.pdf");
+  test.skip(!existsSync(pdfSrc), "Sample PDF not generated yet");
+  copyFileSync(pdfSrc, pdfDest);
+
+  // Wrap the PDF in a PDF.js viewer so we can rasterize each page.
+  for (const pageIndex of [1, 2]) {
+    const viewerHtml = `
+      <!doctype html>
+      <html><head><meta charset="utf-8"/><title>PDF viewer</title>
+        <style>html,body{margin:0;padding:0;background:#fff;}</style>
+      </head>
+      <body>
+        <canvas id="page"></canvas>
+        <script type="module">
+          import * as pdfjs from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs";
+          pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs";
+          try {
+            const pdf = await pdfjs.getDocument("/sample-doctor.pdf").promise;
+            window.__pdfPageCount = pdf.numPages;
+            if (pdf.numPages >= ${pageIndex}) {
+              const page = await pdf.getPage(${pageIndex});
+              const viewport = page.getViewport({ scale: 1.4 });
+              const canvas = document.getElementById("page");
+              canvas.width = viewport.width;
+              canvas.height = viewport.height;
+              await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+            }
+          } finally {
+            window.__pdfDone = true;
+          }
+        </script>
+      </body></html>
+    `;
+    writeFileSync(join(process.cwd(), "dist", "pdf-viewer.html"), viewerHtml);
+
+    await page.goto(`http://127.0.0.1:4173/pdf-viewer.html`);
+    await page.waitForFunction(() => (window as unknown as { __pdfDone?: boolean }).__pdfDone === true, undefined, { timeout: 15000 });
+    await page.waitForTimeout(500);
+    await page.screenshot({
+      path: `e2e/screenshots/visual-pdf-page${pageIndex}.png`,
+      fullPage: true,
+    });
+  }
+});
+
+test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
+  page,
+}) => {
+  test.setTimeout(120000);
+
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -7));
+  const olderCycleStarts = [addDays(today, -35), addDays(today, -64)];
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-under_40").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  // Need at least 2 completed cycles to render Stats premium lock cards
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  for (const target of olderCycleStarts) {
+    const targetStr = formatLocalDate(target);
+    const monthsBack =
+      (today.getFullYear() - target.getFullYear()) * 12 +
+      (today.getMonth() - target.getMonth());
+    for (let step = 0; step < monthsBack; step += 1) {
+      await page.getByTestId("calendar-prev-button").click();
+    }
+    await page.getByTestId(`calendar-day-${targetStr}`).click();
+    await page.getByTestId("day-log-period-toggle").last().click();
+    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-today-button").click();
+  }
+
+  for (const locale of ["ru", "de"] as const) {
+    await page.locator(tabLink("/settings")).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await page.getByTestId(`settings-interface-language-${locale}`).click();
+    await page.getByTestId("settings-save-all-button").click();
+    await expect(
+      page.getByTestId("settings-interface-status-banner"),
+    ).toBeVisible();
+
+    // Reminders lock card in this locale
+    await page.getByTestId("settings-reminders-lock").scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `e2e/screenshots/visual-locale-${locale}-reminders-lock.png`,
+    });
+
+    // Stats paywall cards
+    await page.locator(tabLink("/stats")).click();
+    await expect(page).toHaveURL(/\/stats$/);
+    await page
+      .getByTestId("stats-advanced-fertility-lock")
+      .scrollIntoViewIfNeeded();
+    await page.screenshot({
+      path: `e2e/screenshots/visual-locale-${locale}-stats-paywall.png`,
+    });
+
+    // Pregnancy banner on dashboard — only render once we log positive
+    await page.locator(tabLink("/dashboard")).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await page.getByTestId("dashboard-quick-action-period").click();
+    await page
+      .getByTestId("day-log-pregnancy-positive")
+      .first()
+      .scrollIntoViewIfNeeded();
+    await page.getByTestId("day-log-pregnancy-positive").first().click();
+    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    // Bounce off and back so projection re-runs
+    await page.locator(tabLink("/calendar")).click();
+    await page.locator(tabLink("/dashboard")).click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({
+      path: `e2e/screenshots/visual-locale-${locale}-pregnancy-banner.png`,
+    });
+
+    // Reset for next locale: log a fresh period as the cycle start
+    await page.getByTestId("dashboard-quick-action-period").click();
+    await page
+      .getByTestId("day-log-pregnancy-none")
+      .first()
+      .scrollIntoViewIfNeeded();
+    await page.getByTestId("day-log-pregnancy-none").first().click();
+    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+  }
+});
+
+test("visual verify calendar screen with positive pregnancy test", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -7));
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-under_40").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  // Log positive pregnancy test on today
+  await page.getByTestId("dashboard-quick-action-period").click();
+  await page
+    .getByTestId("day-log-pregnancy-positive")
+    .first()
+    .scrollIntoViewIfNeeded();
+  await page.getByTestId("day-log-pregnancy-positive").first().click();
+  await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+
+  // Go to Calendar
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page.getByTestId("calendar-day-panel")).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: "e2e/screenshots/visual-calendar-pregnancy.png",
+    fullPage: false,
+  });
+});
+
 test("web shell publishes the canonical favicon", async ({ page }) => {
   await page.goto("/");
 

@@ -643,7 +643,7 @@ function buildCalendarPredictionMaps(
   const ovulation = new Set<string>();
   const tentativeOvulation = new Set<string>();
 
-  if (profile.unpredictableCycle) {
+  if (profile.unpredictableCycle || projection.isPregnancyPaused) {
     return {
       predictedPeriod,
       preFertile,

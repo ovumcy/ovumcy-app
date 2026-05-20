@@ -608,4 +608,50 @@ describe("calendar-view-service", () => {
       value: "Logged entry · Intimacy logged",
     });
   });
+
+  it("hides predicted period and fertility cells when pregnancy predictions are paused", () => {
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-01",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+      },
+      [
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          isPeriod: true,
+          cycleStart: true,
+          flow: "medium",
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-05"),
+          pregnancyTest: "positive",
+        },
+      ],
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+    );
+
+    const predictedPeriodDay = viewData.days.find(
+      (day) => day.isPredictedPeriod === true,
+    );
+    const fertileDay = viewData.days.find(
+      (day) => day.fertilityKind !== "none" && day.fertilityKind !== undefined,
+    );
+    expect(predictedPeriodDay).toBeUndefined();
+    expect(fertileDay).toBeUndefined();
+  });
 });
