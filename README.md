@@ -109,7 +109,9 @@ Yes. Signing up for Ovumcy Cloud starts a 30-day trial that unlocks all premium 
 
 ### How does partner sharing work?
 
-Partner sharing is owner-paid only — the partner never pays and never tracks their own cycle through the share. The owner picks an access level (summary or full) in backup-and-sync settings and generates a single-use invite link, which can also be displayed as a QR code. The partner installs the app, opens the link or scans the QR, and lands straight into a read-only shared view — no subscription, no card, no setup, no separate account to manage. They see exactly what was shared, nothing more, and the cloud only stores ciphertext plus grant metadata.
+Partner sharing is owner-paid only — the partner never pays and never tracks their own cycle through the share. The owner picks an access level (summary or full) in backup-and-sync settings and generates a single-use invite link, which can also be displayed as a QR code. The partner installs the app, opens the link or scans the QR, and lands in a read-only shared view shaped by the chosen access level — they see exactly what was shared, nothing more, and the cloud only stores ciphertext plus grant metadata.
+
+Today the partner still completes one free Ovumcy Cloud sign-in step on first use so the cloud can route the right ciphertext to the right device; no card and no subscription are involved for that step. Removing even that sign-in step in favour of a pure-guest landing is a tracked roadmap item.
 
 ### Is Ovumcy App a medical product?
 
@@ -138,13 +140,16 @@ What is already true on `main`:
 
 - core local use does not require an account, sync, or managed hosting;
 - the main owner flows already exist as working local-first slices instead of shells;
+- Ovumcy Cloud premium gates are wired client-side with unified paywall placeholders, and the underlying premium analytics and doctor PDF sections render correctly when the managed billing snapshot reports premium features active;
+- community sync and managed cloud sync round-trips have been validated end-to-end including the new pregnancy test field;
 - CI, browser smoke, and security automation baselines aligned with the current GitHub hosting mode are in place;
 - web preview is available for fast review, but it is not the durable storage path for sensitive health data.
 
 What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
-- App Store or Google Play billing integration for managed cloud sync;
+- App Store or Google Play in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot (premium UI is wired, the purchase path is not);
+- a no-account guest landing for partner sharing — today the partner still needs an Ovumcy Cloud sign-in step before the read-only shared view opens;
 - release-store readiness for broad end-user distribution;
 - a standalone sync server in this repository.
 
