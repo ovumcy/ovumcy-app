@@ -12,7 +12,9 @@ import { buildExportPDFContent } from "./export-pdf-service";
 describe("export-pdf-service sample PDF", () => {
   const shouldEmit = process.env.OVUMCY_PDF_SAMPLE === "1";
 
-  it("renders a sample doctor PDF showing the new colored calendar and premium sections", async () => {
+  it.each(["en", "ru", "de", "fr", "es"] as const)(
+    "renders a sample doctor PDF in %s",
+    async (locale) => {
     if (!shouldEmit) {
       return;
     }
@@ -71,6 +73,7 @@ describe("export-pdf-service sample PDF", () => {
       trackBBT: true,
       trackCervicalMucus: true,
       lastPeriodStart: "2026-04-20",
+      languageOverride: locale,
     };
 
     const [regularFont, boldFont] = await Promise.all([
@@ -93,8 +96,9 @@ describe("export-pdf-service sample PDF", () => {
 
     const outDir = join(process.cwd(), "e2e", "screenshots");
     mkdirSync(outDir, { recursive: true });
-    const outPath = join(outDir, "sample-doctor.pdf");
+    const outPath = join(outDir, `sample-doctor-${locale}.pdf`);
     writeFileSync(outPath, pdfBytes);
     expect(pdfBytes.length).toBeGreaterThan(1000);
-  });
+    },
+  );
 });
