@@ -84,6 +84,8 @@ const partnerCopyEn = {
     networkFailed: "Unable to reach Ovumcy Cloud right now.",
     generic: "Unable to update partner access right now. Please try again.",
   },
+  premiumEyebrowLabel: "Premium",
+  premiumLockTitle: "Partner invitations",
 } as const;
 
 const partnerCopyDe = {
@@ -169,6 +171,8 @@ const partnerCopyDe = {
     networkFailed: "Ovumcy Cloud ist gerade nicht erreichbar.",
     generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuche es erneut.",
   },
+  premiumEyebrowLabel: "Premium",
+  premiumLockTitle: "Partner-Einladungen",
 } as const;
 
 const partnerCopyFr = {
@@ -254,6 +258,8 @@ const partnerCopyFr = {
     networkFailed: "Impossible de joindre Ovumcy Cloud pour le moment.",
     generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessaie.",
   },
+  premiumEyebrowLabel: "Premium",
+  premiumLockTitle: "Invitations partenaires",
 } as const;
 
 const partnerCopyRu = {
@@ -339,6 +345,8 @@ const partnerCopyRu = {
     networkFailed: "Сейчас не удаётся связаться с Ovumcy Cloud.",
     generic: "Сейчас не удалось обновить доступ партнёра. Попробуй ещё раз.",
   },
+  premiumEyebrowLabel: "Премиум",
+  premiumLockTitle: "Приглашения партнёра",
 } as const;
 
 const partnerCopyEs = {
@@ -424,6 +432,8 @@ const partnerCopyEs = {
     networkFailed: "No se puede contactar con Ovumcy Cloud ahora mismo.",
     generic: "No se pudo actualizar el acceso de pareja ahora mismo. Inténtalo otra vez.",
   },
+  premiumEyebrowLabel: "Premium",
+  premiumLockTitle: "Invitaciones de pareja",
 } as const;
 
 const catalogs = {

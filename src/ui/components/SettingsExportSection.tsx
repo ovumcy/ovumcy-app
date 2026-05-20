@@ -9,6 +9,7 @@ import { AppButton } from "./AppButton";
 import { AppTextInput } from "./AppTextInput";
 import { ChoiceGroup } from "./ChoiceGroup";
 import { FeatureCard } from "./FeatureCard";
+import { PremiumLockCard } from "./PremiumLockCard";
 import { StatusBanner } from "./StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
 import { spacing } from "../theme/tokens";
@@ -23,9 +24,11 @@ type SettingsExportSectionProps = {
   onFromDateChange: (value: string) => void;
   onJSONExport: () => void | Promise<void>;
   onPDFExport: () => void | Promise<void>;
+  onPremiumCTAPress?: (() => void) | undefined;
   onPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onToDatePress: () => void;
   onToDateChange: (value: string) => void;
+  premiumLockCopy: SettingsViewData["premiumLock"];
   presentationState: SettingsExportSectionPresentationState;
   statusMessage: string;
   viewData: SettingsViewData["export"];
@@ -40,9 +43,11 @@ export function SettingsExportSection({
   onFromDateChange,
   onJSONExport,
   onPDFExport,
+  onPremiumCTAPress,
   onPresetSelect,
   onToDatePress,
   onToDateChange,
+  premiumLockCopy,
   presentationState,
   statusMessage,
   viewData,
@@ -167,9 +172,13 @@ export function SettingsExportSection({
             />
           ) : null}
           {presentationState.pdfHint ? (
-            <StatusBanner
-              message={presentationState.pdfHint}
-              testID="settings-export-pdf-hint-banner"
+            <PremiumLockCard
+              ctaLabel={premiumLockCopy.ctaLabel}
+              description={presentationState.pdfHint}
+              eyebrowLabel={premiumLockCopy.eyebrowLabel}
+              onPress={onPremiumCTAPress}
+              testID="settings-export-pdf-lock"
+              title={premiumLockCopy.pdfExportTitle}
             />
           ) : null}
 

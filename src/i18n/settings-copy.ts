@@ -448,6 +448,12 @@ const settingsCopyEn = {
       "Please enter a valid last period start date that is not in the future.",
     saveFailed: "Unable to save your settings. Please try again.",
   },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Open Ovumcy Cloud",
+    remindersTitle: "Premium reminders",
+    pdfExportTitle: "Doctor-friendly PDF",
+  },
 } as const;
 
 type SettingsCopy = WidenLiteral<typeof settingsCopyEn>;
@@ -943,6 +949,12 @@ const settingsCopyDe: SettingsCopy = {
       "Bitte gib ein gültiges Startdatum der letzten Periode ein, das nicht in der Zukunft liegt.",
     saveFailed:
       "Deine Einstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
+  },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Ovumcy Cloud öffnen",
+    remindersTitle: "Premium-Erinnerungen",
+    pdfExportTitle: "Arztgerechtes PDF",
   },
 };
 
@@ -1443,6 +1455,12 @@ const settingsCopyFr: SettingsCopy = {
     saveFailed:
       "Impossible d'enregistrer tes réglages. Réessaie.",
   },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Ouvrir Ovumcy Cloud",
+    remindersTitle: "Rappels Premium",
+    pdfExportTitle: "PDF pour ton médecin",
+  },
 };
 
 const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
@@ -1907,6 +1925,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       invalidLastPeriodStart:
         "Введите корректную дату начала последней менструации, не в будущем.",
       saveFailed: "Не удалось сохранить настройки. Попробуйте ещё раз.",
+    },
+    premiumLock: {
+      eyebrowLabel: "Премиум",
+      ctaLabel: "Открыть Ovumcy Cloud",
+      remindersTitle: "Премиум-напоминания",
+      pdfExportTitle: "PDF для врача",
     },
   },
   es: {
@@ -2376,6 +2400,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       invalidLastPeriodStart:
         "Introduce una fecha válida del último período que no esté en el futuro.",
       saveFailed: "No se pudieron guardar los ajustes. Inténtalo de nuevo.",
+    },
+    premiumLock: {
+      eyebrowLabel: "Premium",
+      ctaLabel: "Abrir Ovumcy Cloud",
+      remindersTitle: "Recordatorios Premium",
+      pdfExportTitle: "PDF para tu médica/o",
     },
   },
   de: settingsCopyDe,

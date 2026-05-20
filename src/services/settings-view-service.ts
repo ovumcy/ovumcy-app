@@ -378,6 +378,7 @@ export type SettingsViewData = {
     };
   };
   status: SettingsCopy["status"];
+  premiumLock: SettingsCopy["premiumLock"];
 };
 
 export type SettingsManagedPremiumAccess = {
@@ -845,6 +846,7 @@ export function buildSettingsViewData(
       },
     },
     status: settingsCopy.status,
+    premiumLock: settingsCopy.premiumLock,
   };
 }
 

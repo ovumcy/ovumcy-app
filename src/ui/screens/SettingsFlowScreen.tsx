@@ -290,6 +290,9 @@ export function SettingsFlowScreen({
             onDailyLogReminderChange={onDailyLogReminderChange}
             onFertileWindowReminderChange={onFertileWindowReminderChange}
             onManagedReminderEmailsChange={onManagedReminderEmailsChange}
+            onPremiumCTAPress={() => {
+              void onOpenBackupSync();
+            }}
             onReminderTimeChange={onReminderTimeChange}
             onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}
             reminderStatusMessage={reminderStatusMessage}
@@ -335,9 +338,13 @@ export function SettingsFlowScreen({
             onFromDatePress={onExportFromDatePress}
             onJSONExport={onExportJSON}
             onPDFExport={onExportPDF}
+            onPremiumCTAPress={() => {
+              void onOpenBackupSync();
+            }}
             onPresetSelect={onExportPresetSelect}
             onToDateChange={onExportToDateChange}
             onToDatePress={onExportToDatePress}
+            premiumLockCopy={viewData.premiumLock}
             presentationState={flowState.exportSection}
             statusMessage={exportStatusMessage}
             viewData={viewData.export}

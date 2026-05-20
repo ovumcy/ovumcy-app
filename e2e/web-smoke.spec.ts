@@ -62,7 +62,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByTestId("settings-interface-section")).toBeVisible();
   await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
-  await expect(page.getByTestId("settings-reminders-locked-banner")).toBeVisible();
+  await expect(page.getByTestId("settings-reminders-lock")).toBeVisible();
   await expect(page.getByTestId("settings-sync-summary-card")).toBeVisible();
   await page.getByTestId("settings-open-backup-sync-button").click();
   await expect(page).toHaveURL(/\/backup-sync$/);
@@ -148,7 +148,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(jsonDownload.suggestedFilename()).toContain("ovumcy-export-");
   await expect(jsonDownload.suggestedFilename()).toContain(".json");
 
-  await expect(page.getByTestId("settings-export-pdf-hint-banner")).toBeVisible();
+  await expect(page.getByTestId("settings-export-pdf-lock")).toBeVisible();
   await expect(page.getByTestId("settings-export-pdf-button")).toHaveAttribute(
     "aria-disabled",
     "true",

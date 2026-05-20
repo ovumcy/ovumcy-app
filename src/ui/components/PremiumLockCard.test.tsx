@@ -48,4 +48,22 @@ describe("PremiumLockCard", () => {
     fireEvent.press(screen.getByTestId("lock"));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it("renders without a CTA when neither ctaLabel nor onPress are passed", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <PremiumLockCard
+          description="Info only."
+          eyebrowLabel="Premium"
+          testID="lock"
+          title="Owner controls"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("lock-cta")).toBeNull();
+    expect(screen.getByTestId("lock-title").props.children).toBe(
+      "Owner controls",
+    );
+  });
 });

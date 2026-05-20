@@ -11,6 +11,7 @@ import type {
 import { AppButton } from "../../components/AppButton";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
+import { PremiumLockCard } from "../../components/PremiumLockCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
 import { spacing } from "../../theme/tokens";
@@ -139,10 +140,11 @@ export function SettingsPartnerAccessSection({
                 />
               </>
             ) : (
-              <StatusBanner
-                message={copy.planLocked}
-                testID="settings-partner-plan-banner"
-                tone="info"
+              <PremiumLockCard
+                description={copy.planLocked}
+                eyebrowLabel={copy.premiumEyebrowLabel}
+                testID="settings-partner-plan-lock"
+                title={copy.premiumLockTitle}
               />
             )}
 

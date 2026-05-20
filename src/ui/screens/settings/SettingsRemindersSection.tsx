@@ -7,6 +7,7 @@ import type {
 import { AppTextInput } from "../../components/AppTextInput";
 import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { FeatureCard } from "../../components/FeatureCard";
+import { PremiumLockCard } from "../../components/PremiumLockCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
@@ -14,6 +15,7 @@ type SettingsRemindersSectionProps = {
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
   onManagedReminderEmailsChange: (value: boolean) => void;
+  onPremiumCTAPress?: (() => void) | undefined;
   onReminderTimeChange: (value: string) => void;
   onUpcomingPeriodReminderChange: (value: boolean) => void;
   reminderStatusMessage: string;
@@ -27,6 +29,7 @@ export function SettingsRemindersSection({
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
   onManagedReminderEmailsChange,
+  onPremiumCTAPress,
   onReminderTimeChange,
   onUpcomingPeriodReminderChange,
   reminderStatusMessage,
@@ -36,6 +39,7 @@ export function SettingsRemindersSection({
   viewData,
 }: SettingsRemindersSectionProps) {
   const reminderView = viewData.reminders;
+  const premiumLockCopy = viewData.premiumLock;
 
   return (
     <FeatureCard
@@ -47,10 +51,13 @@ export function SettingsRemindersSection({
       <Text style={styles.helperText}>{reminderView.emailHint}</Text>
 
       {!state.managedPremiumAccess.reminders ? (
-        <StatusBanner
-          message={reminderView.lockedHint}
-          testID="settings-reminders-locked-banner"
-          tone="info"
+        <PremiumLockCard
+          ctaLabel={premiumLockCopy.ctaLabel}
+          description={reminderView.lockedHint}
+          eyebrowLabel={premiumLockCopy.eyebrowLabel}
+          onPress={onPremiumCTAPress}
+          testID="settings-reminders-lock"
+          title={premiumLockCopy.remindersTitle}
         />
       ) : null}
 

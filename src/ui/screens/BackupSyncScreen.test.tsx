@@ -603,7 +603,7 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-partner-section");
-    expect(screen.queryByTestId("settings-partner-plan-banner")).toBeNull();
+    expect(screen.queryByTestId("settings-partner-plan-lock")).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
     fireEvent.press(screen.getByTestId("settings-partner-issue-button"));

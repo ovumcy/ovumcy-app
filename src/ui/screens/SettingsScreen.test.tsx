@@ -385,7 +385,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
     expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
     expect(screen.getByTestId("settings-reminders-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-reminders-locked-banner")).toBeTruthy();
+    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
     expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
@@ -396,7 +396,7 @@ describe("SettingsScreen", () => {
     expect(screen.queryByTestId("settings-save-tracking-button")).toBeNull();
     expect(screen.queryByTestId("settings-save-interface-button")).toBeNull();
     expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
-    expect(screen.getByTestId("settings-export-pdf-hint-banner")).toBeTruthy();
+    expect(screen.getByTestId("settings-export-pdf-lock")).toBeTruthy();
   });
 
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
@@ -503,7 +503,7 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-cycle-section");
-    expect(screen.queryByTestId("settings-export-pdf-hint-banner")).toBeNull();
+    expect(screen.queryByTestId("settings-export-pdf-lock")).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-export-pdf-button"));
 
@@ -617,7 +617,7 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-reminders-section");
-    expect(screen.queryByTestId("settings-reminders-locked-banner")).toBeNull();
+    expect(screen.queryByTestId("settings-reminders-lock")).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
     fireEvent.changeText(screen.getByTestId("settings-reminder-time-input"), "21:30");
