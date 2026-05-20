@@ -103,4 +103,88 @@ describe("sync-snapshot-service", () => {
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
     expect(storage.writeSymptomRecord).toHaveBeenCalledTimes(symptomRecords.length);
   });
+
+  it("preserves the pregnancyTest field through an encode/decode roundtrip", () => {
+    const dayLog = {
+      ...createEmptyDayLogRecord("2026-04-05"),
+      pregnancyTest: "positive" as const,
+    };
+    const snapshot = {
+      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      createdAt: "2026-04-05T08:00:00.000Z",
+      bootstrapState: createDefaultBootstrapState(),
+      profile: {
+        lastPeriodStart: "2026-03-01",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health" as const,
+        trackBBT: false,
+        temperatureUnit: "c" as const,
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+        dismissedOnboardingHelperNoticeKey: null,
+      },
+      symptomRecords: createDefaultSymptomRecords(),
+      dayLogs: [dayLog],
+    };
+    const decoded = decodeSyncSnapshot(encodeSyncSnapshot(snapshot));
+    expect(decoded.dayLogs[0]?.pregnancyTest).toBe("positive");
+  });
+
+  it("decodes a legacy snapshot without pregnancyTest and defaults the field on restore", async () => {
+    const legacyPayload = JSON.stringify({
+      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      createdAt: "2026-04-05T08:00:00.000Z",
+      bootstrapState: createDefaultBootstrapState(),
+      profile: {
+        lastPeriodStart: "2026-03-01",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+      },
+      symptomRecords: createDefaultSymptomRecords(),
+      dayLogs: [
+        {
+          date: "2026-03-15",
+          isPeriod: true,
+          cycleStart: true,
+          isUncertain: false,
+          flow: "medium",
+          mood: 3,
+          sexActivity: "none",
+          bbt: 0,
+          cervicalMucus: "none",
+          lhTest: "none",
+          // pregnancyTest intentionally omitted (pre-v12 client snapshot)
+          cycleFactorKeys: [],
+          symptomIDs: [],
+          notes: "legacy roundtrip",
+        },
+      ],
+    });
+    const decoded = decodeSyncSnapshot(new TextEncoder().encode(legacyPayload));
+    expect(decoded.dayLogs[0]?.date).toBe("2026-03-15");
+    // The decoder does not transform records — sanitize happens at the storage
+    // boundary when restore calls writeDayLogRecord.
+    expect(
+      (decoded.dayLogs[0] as { pregnancyTest?: string }).pregnancyTest,
+    ).toBeUndefined();
+  });
 });

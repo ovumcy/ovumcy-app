@@ -233,6 +233,145 @@ describeIfLive("sync-client-service managed live transport", () => {
     );
     expect(disconnectResult.preferences.setupStatus).toBe("local_ready");
   });
+
+  it("round-trips a positive pregnancy test through managed cloud sync", async () => {
+    const now = new Date("2026-04-05T09:00:00.000Z");
+    const storage = createVolatileWebAppStorage();
+    const secretStore = createSyncSecretStoreMock();
+
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-04-05",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 0,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      lhTest: "none",
+      pregnancyTest: "positive",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "pregnancy round-trip",
+    });
+
+    let preferences: SyncPreferencesRecord = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed",
+      deviceLabel: "Pregnancy Round-Trip Device",
+    };
+    const prepareResult = await prepareSyncSetup(storage, secretStore, preferences, now);
+    expect(prepareResult.ok).toBe(true);
+    if (!prepareResult.ok) {
+      return;
+    }
+    preferences = prepareResult.preferences;
+
+    const uniqueEmail = `managed-pregnancy-${Date.now()}@ovumcy.test`;
+    let managedAccountID = "";
+    const managedClientFactory = () => {
+      const client = createManagedCloudAPIClient(managedBaseURL);
+      return {
+        ...client,
+        async register(input: { email: string; password: string }) {
+          const result = await client.register(input);
+          if (result.ok) {
+            managedAccountID = result.auth.accountID;
+          }
+          return result;
+        },
+        async login(input: { email: string; password: string }) {
+          const result = await client.login(input);
+          if (result.ok) {
+            managedAccountID = result.auth.accountID;
+          }
+          return result;
+        },
+      };
+    };
+    const syncClientFactory = () => createSyncAPIClient(syncBaseURL);
+
+    const connectResult = await connectSyncAccount(
+      storage,
+      secretStore,
+      preferences,
+      { login: uniqueEmail, password: "CorrectHorseBattery42!" },
+      "register",
+      now,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(connectResult.ok).toBe(true);
+    if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
+      return;
+    }
+    preferences = connectResult.preferences;
+    expect(managedAccountID).toBeTruthy();
+
+    // Ensure entitlement (no-op if dev server auto-grants).
+    await grantManagedSyncEntitlement(managedAccountID);
+
+    const uploadResult = await runSyncUpload(
+      storage,
+      secretStore,
+      preferences,
+      now,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(uploadResult.ok).toBe(true);
+    if (!uploadResult.ok) {
+      return;
+    }
+    preferences = uploadResult.preferences;
+
+    // Clear local pregnancy data, restore from cloud, verify it came back.
+    await storage.deleteDayLogRecord("2026-04-05");
+    await expect(storage.readDayLogRecord("2026-04-05")).resolves.toEqual(
+      expect.objectContaining({ pregnancyTest: "none" }),
+    );
+
+    const restoreResult = await runSyncRestore(
+      storage,
+      secretStore,
+      preferences,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(restoreResult.ok).toBe(true);
+    if (!restoreResult.ok) {
+      return;
+    }
+
+    await expect(storage.readDayLogRecord("2026-04-05")).resolves.toEqual(
+      expect.objectContaining({
+        pregnancyTest: "positive",
+        notes: "pregnancy round-trip",
+      }),
+    );
+  });
 });
 
 async function grantManagedSyncEntitlement(accountID: string): Promise<void> {
