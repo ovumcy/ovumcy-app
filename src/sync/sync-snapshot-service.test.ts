@@ -9,6 +9,7 @@ import {
   encodeSyncSnapshot,
   restoreSyncSnapshot,
   SYNC_SNAPSHOT_SCHEMA_VERSION,
+  type SyncSnapshotV1,
 } from "./sync-snapshot-service";
 
 describe("sync-snapshot-service", () => {
@@ -109,7 +110,7 @@ describe("sync-snapshot-service", () => {
       ...createEmptyDayLogRecord("2026-04-05"),
       pregnancyTest: "positive" as const,
     };
-    const snapshot = {
+    const snapshot: SyncSnapshotV1 = {
       schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
       createdAt: "2026-04-05T08:00:00.000Z",
       bootstrapState: createDefaultBootstrapState(),
@@ -121,9 +122,9 @@ describe("sync-snapshot-service", () => {
         irregularCycle: false,
         unpredictableCycle: false,
         ageGroup: "",
-        usageGoal: "health" as const,
+        usageGoal: "health",
         trackBBT: false,
-        temperatureUnit: "c" as const,
+        temperatureUnit: "c",
         trackCervicalMucus: false,
         hideSexChip: false,
         languageOverride: null,
