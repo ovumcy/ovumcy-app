@@ -150,6 +150,7 @@ function redactDayLogForPartner(
       bbt: 0,
       cervicalMucus: "none",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: [],
       symptomIDs: [],
       notes: "",

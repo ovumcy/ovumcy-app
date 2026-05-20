@@ -4,6 +4,7 @@ import {
   DAY_CYCLE_FACTOR_KEYS,
   DAY_FLOW_VALUES,
   DAY_LH_TEST_VALUES,
+  DAY_PREGNANCY_TEST_VALUES,
   DAY_SEX_ACTIVITY_VALUES,
   MAX_DAY_NOTES_LENGTH,
   type DayCervicalMucus,
@@ -11,6 +12,7 @@ import {
   type DayFlow,
   type DayLHTest,
   type DayLogRecord,
+  type DayPregnancyTest,
   type DaySexActivity,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
@@ -60,6 +62,7 @@ export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
     bbt: normalizeDayBBT(record.bbt),
     cervicalMucus: normalizeDayCervicalMucus(record.cervicalMucus),
     lhTest: normalizeDayLHTest(record.lhTest),
+    pregnancyTest: normalizeDayPregnancyTest(record.pregnancyTest),
     cycleFactorKeys: normalizeDayCycleFactorKeys(record.cycleFactorKeys),
     symptomIDs: normalizeDayLogSymptomIDs(record.symptomIDs),
     notes: normalizedNotes,
@@ -85,6 +88,12 @@ export function normalizeDayCervicalMucus(value: string): DayCervicalMucus {
 export function normalizeDayLHTest(value: string): DayLHTest {
   return DAY_LH_TEST_VALUES.includes(value as DayLHTest)
     ? (value as DayLHTest)
+    : "none";
+}
+
+export function normalizeDayPregnancyTest(value: string): DayPregnancyTest {
+  return DAY_PREGNANCY_TEST_VALUES.includes(value as DayPregnancyTest)
+    ? (value as DayPregnancyTest)
     : "none";
 }
 

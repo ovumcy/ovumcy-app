@@ -138,6 +138,7 @@ async function createAdvancedFertilityStorage() {
       bbt: 36.32,
       cervicalMucus: "eggwhite" as const,
       lhTest: "peak" as const,
+      pregnancyTest: "none" as const,
     },
     {
       ...createEmptyDayLogRecord("2026-03-31"),

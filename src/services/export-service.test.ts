@@ -74,6 +74,7 @@ describe("export-service", () => {
             date: "2026-03-18",
             notes: "Jaw pain",
             lhTest: "peak",
+            pregnancyTest: "none",
           }),
         ]),
       }),
@@ -162,6 +163,7 @@ function createStorageMock() {
     {
       ...createEmptyDayLogRecord("2026-03-18"),
       lhTest: "peak",
+      pregnancyTest: "none",
       notes: "Jaw pain",
       symptomIDs: ["custom_jaw_pain", "fatigue"],
     },

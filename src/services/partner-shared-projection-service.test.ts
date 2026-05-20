@@ -25,6 +25,7 @@ describe("partner-shared-projection-service", () => {
       bbt: 36.7,
       cervicalMucus: "eggwhite" as const,
       lhTest: "peak" as const,
+      pregnancyTest: "none" as const,
       symptomIDs: ["cramps"],
       notes: "private note",
     };
@@ -48,6 +49,7 @@ describe("partner-shared-projection-service", () => {
         bbt: 0,
         cervicalMucus: "none",
         lhTest: "none",
+        pregnancyTest: "none",
         symptomIDs: [],
         notes: "",
       }),
@@ -72,6 +74,7 @@ describe("partner-shared-projection-service", () => {
       bbt: 36.7,
       cervicalMucus: "eggwhite" as const,
       lhTest: "peak" as const,
+      pregnancyTest: "none" as const,
       symptomIDs: ["cramps"],
       notes: "private note",
     };
@@ -93,6 +96,7 @@ describe("partner-shared-projection-service", () => {
         bbt: 0,
         cervicalMucus: "none",
         lhTest: "peak",
+        pregnancyTest: "none",
         notes: "",
       }),
     );

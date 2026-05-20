@@ -19,6 +19,9 @@ const dayLogCopyEn = {
     "Cervical mucus means vaginal discharge. Egg-white mucus often appears near peak fertility.",
   lhTest: "LH test",
   lhTestHint: "Optional ovulation strip result for today.",
+  pregnancyTest: "Pregnancy test",
+  pregnancyTestHint:
+    "Optional home pregnancy test result. A positive result pauses cycle predictions.",
   bbt: "BBT",
   bbtHint: "Enter a basal body temperature reading for today.",
   notes: "Notes",
@@ -71,6 +74,11 @@ const dayLogCopyEn = {
       { value: "high", label: "High" },
       { value: "peak", label: "Peak" },
     ],
+    pregnancyTest: [
+      { value: "none", label: "None" },
+      { value: "negative", label: "Negative" },
+      { value: "positive", label: "Positive" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Illness", icon: "🤒" },
@@ -100,6 +108,9 @@ const dayLogCopyDe: DayLogCopy = {
     "Zervixschleim bedeutet vaginalen Ausfluss. Eiweißartiger Schleim erscheint oft nahe dem Fruchtbarkeitshöhepunkt.",
   lhTest: "LH-Test",
   lhTestHint: "Optionales Ergebnis eines Ovulationstests für heute.",
+  pregnancyTest: "Schwangerschaftstest",
+  pregnancyTestHint:
+    "Optionales Ergebnis eines Heimtests. Bei positivem Ergebnis pausieren die Zyklusvorhersagen.",
   bbt: "BBT",
   bbtHint: "Trage für heute einen Basaltemperaturwert ein.",
   notes: "Notizen",
@@ -153,6 +164,11 @@ const dayLogCopyDe: DayLogCopy = {
       { value: "high", label: "Hoch" },
       { value: "peak", label: "Peak" },
     ],
+    pregnancyTest: [
+      { value: "none", label: "Kein Test" },
+      { value: "negative", label: "Negativ" },
+      { value: "positive", label: "Positiv" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Krankheit", icon: "🤒" },
@@ -180,6 +196,9 @@ const dayLogCopyFr: DayLogCopy = {
     "La glaire cervicale correspond aux pertes vaginales. Une glaire type blanc d'œuf apparaît souvent près du pic de fertilité.",
   lhTest: "Test LH",
   lhTestHint: "Résultat optionnel de test d'ovulation pour aujourd'hui.",
+  pregnancyTest: "Test de grossesse",
+  pregnancyTestHint:
+    "Résultat optionnel d'un test à domicile. Un résultat positif met en pause les prédictions de cycle.",
   bbt: "TBC",
   bbtHint: "Saisis une température basale pour aujourd'hui.",
   notes: "Notes",
@@ -233,6 +252,11 @@ const dayLogCopyFr: DayLogCopy = {
       { value: "high", label: "Élevé" },
       { value: "peak", label: "Pic" },
     ],
+    pregnancyTest: [
+      { value: "none", label: "Pas de test" },
+      { value: "negative", label: "Négatif" },
+      { value: "positive", label: "Positif" },
+    ],
     cycleFactors: {
       stress: { label: "Stress", icon: "⚡" },
       illness: { label: "Maladie", icon: "🤒" },
@@ -262,6 +286,9 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       "Цервикальная слизь означает вагинальные выделения. Выделения как яичный белок часто появляются ближе к пику фертильности.",
     lhTest: "LH-тест",
     lhTestHint: "Необязательный результат овуляционного теста за сегодня.",
+    pregnancyTest: "Тест на беременность",
+    pregnancyTestHint:
+      "Необязательный результат домашнего теста. При положительном результате прогнозы цикла приостанавливаются.",
     bbt: "БТТ",
     bbtHint: "Введите сегодняшнее значение базальной температуры тела.",
     notes: "Заметки",
@@ -315,6 +342,11 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
         { value: "high", label: "Высокий" },
         { value: "peak", label: "Пик" },
       ],
+      pregnancyTest: [
+        { value: "none", label: "Нет теста" },
+        { value: "negative", label: "Отрицательный" },
+        { value: "positive", label: "Положительный" },
+      ],
       cycleFactors: {
         stress: { label: "Стресс", icon: "⚡" },
         illness: { label: "Болезнь", icon: "🤒" },
@@ -341,6 +373,9 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       "El moco cervical es el flujo vaginal. El moco tipo clara de huevo suele aparecer cerca del pico fértil.",
     lhTest: "Test LH",
     lhTestHint: "Resultado opcional del test de ovulación para hoy.",
+    pregnancyTest: "Test de embarazo",
+    pregnancyTestHint:
+      "Resultado opcional de un test casero. Un resultado positivo pausa las predicciones del ciclo.",
     bbt: "TCB",
     bbtHint: "Introduce una lectura de temperatura basal para hoy.",
     notes: "Notas",
@@ -393,6 +428,11 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
         { value: "negative", label: "Negativo" },
         { value: "high", label: "Alto" },
         { value: "peak", label: "Pico" },
+      ],
+      pregnancyTest: [
+        { value: "none", label: "Sin test" },
+        { value: "negative", label: "Negativo" },
+        { value: "positive", label: "Positivo" },
       ],
       cycleFactors: {
         stress: { label: "Estrés", icon: "⚡" },

@@ -51,6 +51,7 @@ export type DayLogEditorSectionKey =
   | "bbt"
   | "cervicalMucus"
   | "lhTest"
+  | "pregnancyTest"
   | "notes";
 
 export function DayLogEditorCard({
@@ -287,6 +288,25 @@ export function DayLogEditorCard({
               />
             </View>
           ) : null}
+
+          <View
+            onLayout={handleSectionLayout("pregnancyTest")}
+            style={resolveSectionStyle("pregnancyTest", styles.section)}
+          >
+            <Text style={styles.sectionLabel}>
+              {viewData.labels.pregnancyTest}
+            </Text>
+            <Text style={styles.sectionHint}>
+              {viewData.labels.pregnancyTestHint}
+            </Text>
+            <ChoiceGroup
+              compact
+              onSelect={(value) => onPatch({ pregnancyTest: value })}
+              options={viewData.options.pregnancyTest}
+              selectedValue={record.pregnancyTest}
+              testIDPrefix="day-log-pregnancy"
+            />
+          </View>
         </>
       ) : (
         <>
@@ -325,6 +345,25 @@ export function DayLogEditorCard({
               />
             </View>
           ) : null}
+
+          <View
+            onLayout={handleSectionLayout("pregnancyTest")}
+            style={resolveSectionStyle("pregnancyTest", styles.section)}
+          >
+            <Text style={styles.sectionLabel}>
+              {viewData.labels.pregnancyTest}
+            </Text>
+            <Text style={styles.sectionHint}>
+              {viewData.labels.pregnancyTestHint}
+            </Text>
+            <ChoiceGroup
+              compact
+              onSelect={(value) => onPatch({ pregnancyTest: value })}
+              options={viewData.options.pregnancyTest}
+              selectedValue={record.pregnancyTest}
+              testIDPrefix="day-log-pregnancy"
+            />
+          </View>
 
           {viewData.visibility.showBBT ? (
             <View

@@ -41,6 +41,7 @@ type FakeDatabaseState = {
     bbt: number;
     cervical_mucus: string;
     lh_test?: string;
+    pregnancy_test?: string;
     cycle_factor_keys: string;
     symptom_ids: string;
     notes: string;
@@ -447,10 +448,11 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           bbt: Number(params[7]),
           cervical_mucus: String(params[8]),
           lh_test: String(params[9]),
-          cycle_factor_keys: String(params[10]),
-          symptom_ids: String(params[11]),
-          notes: String(params[12]),
-          encrypted_payload: (params[13] as string | null) ?? null,
+          pregnancy_test: String(params[10]),
+          cycle_factor_keys: String(params[11]),
+          symptom_ids: String(params[12]),
+          notes: String(params[13]),
+          encrypted_payload: (params[14] as string | null) ?? null,
         };
         databaseState.dayLogRows = databaseState.dayLogRows.filter(
           (row) => row.day !== nextRow.day,
@@ -800,6 +802,7 @@ describe("sqlite-app-storage", () => {
       bbt: 36.55,
       cervicalMucus: "creamy",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
@@ -816,6 +819,7 @@ describe("sqlite-app-storage", () => {
       bbt: 36.55,
       cervicalMucus: "creamy",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
@@ -850,6 +854,7 @@ describe("sqlite-app-storage", () => {
       bbt: 0,
       cervicalMucus: "none",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: [],
       symptomIDs: [],
       notes: "",
@@ -910,6 +915,7 @@ describe("sqlite-app-storage", () => {
       bbt: 36.7,
       cervicalMucus: "eggwhite",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Reset me",
@@ -1402,6 +1408,7 @@ describe("sqlite-app-storage", () => {
       bbt: 36.7,
       cervicalMucus: "eggwhite",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Reset me",

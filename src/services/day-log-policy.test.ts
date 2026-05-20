@@ -17,6 +17,7 @@ describe("day-log-policy", () => {
         bbt: 47,
         cervicalMucus: "wet" as unknown as "none",
         lhTest: "surge" as unknown as "none",
+        pregnancyTest: "definite" as unknown as "none",
         cycleFactorKeys: [
           "travel",
           "travel",
@@ -40,6 +41,7 @@ describe("day-log-policy", () => {
       bbt: 0,
       cervicalMucus: "none",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["travel"],
       symptomIDs: ["cramps", "unknown", "bloating"],
       notes: "a".repeat(2000),

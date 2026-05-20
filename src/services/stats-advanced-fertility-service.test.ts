@@ -128,6 +128,7 @@ describe("buildStatsAdvancedFertility", () => {
         ...createEmptyDayLogRecord("2026-03-30"),
         bbt: 36.32,
         lhTest: "peak" as const,
+        pregnancyTest: "none" as const,
       },
       {
         ...createEmptyDayLogRecord("2026-03-31"),

@@ -7,6 +7,7 @@ import {
   type DayFlow,
   type DayLHTest,
   type DayLogRecord,
+  type DayPregnancyTest,
   type DaySexActivity,
   type DaySymptomID,
 } from "../models/day-log";
@@ -51,6 +52,8 @@ export type DayLogEditorViewData = {
     cervicalMucusExplainer: string;
     lhTest: string;
     lhTestHint: string;
+    pregnancyTest: string;
+    pregnancyTestHint: string;
     bbt: string;
     bbtHint: string;
     notes: string;
@@ -78,6 +81,11 @@ export type DayLogEditorViewData = {
     cervicalMucus: readonly { value: DayCervicalMucus; label: string }[];
     lhTest: readonly {
       value: DayLHTest;
+      label: string;
+      secondaryLabel?: string;
+    }[];
+    pregnancyTest: readonly {
+      value: DayPregnancyTest;
       label: string;
       secondaryLabel?: string;
     }[];
@@ -267,6 +275,8 @@ export function buildDayLogEditorViewData(
       cervicalMucusExplainer: dayLogCopy.cervicalMucusExplainer,
       lhTest: dayLogCopy.lhTest,
       lhTestHint: dayLogCopy.lhTestHint,
+      pregnancyTest: dayLogCopy.pregnancyTest,
+      pregnancyTestHint: dayLogCopy.pregnancyTestHint,
       bbt: dayLogCopy.bbt,
       bbtHint: `${dayLogCopy.bbtHint} ${profile.temperatureUnit === "f" ? "°F" : "°C"}.`,
       notes: dayLogCopy.notes,
@@ -293,6 +303,7 @@ export function buildDayLogEditorViewData(
       sexActivity: [...dayLogCopy.options.sexActivity],
       cervicalMucus: [...dayLogCopy.options.cervicalMucus],
       lhTest: [...dayLogCopy.options.lhTest],
+      pregnancyTest: [...dayLogCopy.options.pregnancyTest],
       cycleFactors: DAY_CYCLE_FACTOR_KEYS.map((value) => ({
         value,
         label: dayLogCopy.options.cycleFactors[value].label,

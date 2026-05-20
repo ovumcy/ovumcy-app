@@ -150,10 +150,28 @@ export function buildCurrentCycleProjection(
 ): StatsCycleProjection {
   const today = atLocalDay(now);
   const todayValue = formatLocalDate(today);
+  const pregnancyPause = resolvePregnancyPause(records);
   const cycleAnchorDate = resolveCurrentCycleAnchorDate(profile, records, todayValue);
   const lutealPhase = resolveLutealPhase(
     inferUserLutealPhase(profile, records, todayValue) ?? 0,
   );
+
+  if (pregnancyPause) {
+    return {
+      cycleAnchorDate,
+      currentCycleDay: null,
+      currentPhase: "unknown",
+      isPredictionStale: false,
+      isPregnancyPaused: true,
+      pregnancyTestDate: pregnancyPause,
+      lutealPhase,
+      nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
+      ovulationDate: null,
+      predictionCycleLength: profile.cycleLength,
+    };
+  }
 
   if (!cycleAnchorDate) {
     return {
@@ -161,6 +179,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: "unknown",
       isPredictionStale: false,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
@@ -177,6 +197,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: "unknown",
       isPredictionStale: false,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
@@ -207,6 +229,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate,
       nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
@@ -222,6 +246,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate,
       nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
@@ -238,6 +264,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate,
       nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
@@ -254,6 +282,8 @@ export function buildCurrentCycleProjection(
       currentCycleDay: null,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: true,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
       lutealPhase,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
@@ -268,6 +298,8 @@ export function buildCurrentCycleProjection(
     currentCycleDay,
     currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
     isPredictionStale: false,
+    isPregnancyPaused: false,
+    pregnancyTestDate: null,
     lutealPhase,
     nextPeriodDate,
     nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
@@ -825,6 +857,32 @@ function diffLocalDays(start: Date, end: Date): number {
 
 function sameLocalDay(left: Date, right: Date): boolean {
   return formatLocalDate(left) === formatLocalDate(right);
+}
+
+function resolvePregnancyPause(records: readonly DayLogRecord[]): string | null {
+  let latestPositive: string | null = null;
+  let latestPeriodStart: string | null = null;
+  for (const record of records) {
+    if (record.pregnancyTest === "positive") {
+      if (!latestPositive || record.date > latestPositive) {
+        latestPositive = record.date;
+      }
+    }
+    if (record.isPeriod && record.cycleStart) {
+      if (!latestPeriodStart || record.date > latestPeriodStart) {
+        latestPeriodStart = record.date;
+      }
+    }
+  }
+
+  if (!latestPositive) {
+    return null;
+  }
+  if (latestPeriodStart && latestPeriodStart > latestPositive) {
+    return null;
+  }
+
+  return latestPositive;
 }
 
 function atLocalDay(value: Date): Date {

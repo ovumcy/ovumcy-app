@@ -238,4 +238,99 @@ describe("cycle-history-service", () => {
       expect(shouldShowAgeVariabilityHint(createProfileRecord({ ageGroup: "" }))).toBe(false);
     });
   });
+
+  describe("buildCurrentCycleProjection pregnancy auto-stop", () => {
+    it("pauses predictions after a positive pregnancy test with no later period", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-05"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-10"),
+          pregnancyTest: "positive" as const,
+        },
+      ];
+      const history = buildCycleHistorySummary(
+        profile,
+        records,
+        new Date(2026, 1, 12),
+      );
+      const projection = buildCurrentCycleProjection(
+        profile,
+        history,
+        records,
+        new Date(2026, 1, 12),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.pregnancyTestDate).toBe("2026-02-10");
+      expect(projection.nextPeriodDate).toBeNull();
+      expect(projection.ovulationDate).toBeNull();
+    });
+
+    it("resumes predictions when a new period is logged after the positive test", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-05"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-10"),
+          pregnancyTest: "positive" as const,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+      ];
+      const history = buildCycleHistorySummary(
+        profile,
+        records,
+        new Date(2026, 2, 5),
+      );
+      const projection = buildCurrentCycleProjection(
+        profile,
+        history,
+        records,
+        new Date(2026, 2, 5),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(false);
+      expect(projection.pregnancyTestDate).toBeNull();
+    });
+
+    it("ignores a negative pregnancy test", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-05"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-01"),
+          pregnancyTest: "negative" as const,
+        },
+      ];
+      const history = buildCycleHistorySummary(
+        profile,
+        records,
+        new Date(2026, 1, 12),
+      );
+      const projection = buildCurrentCycleProjection(
+        profile,
+        history,
+        records,
+        new Date(2026, 1, 12),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(false);
+    });
+  });
 });

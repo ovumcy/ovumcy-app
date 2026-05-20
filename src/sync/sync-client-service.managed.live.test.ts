@@ -61,6 +61,7 @@ describeIfLive("sync-client-service managed live transport", () => {
       bbt: 0,
       cervicalMucus: "none",
       lhTest: "none",
+      pregnancyTest: "none",
       cycleFactorKeys: ["stress"],
       symptomIDs: [],
       notes: "managed live sync smoke",

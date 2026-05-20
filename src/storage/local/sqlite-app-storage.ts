@@ -61,7 +61,7 @@ import {
 } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 11;
+const DATABASE_VERSION = 12;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -106,6 +106,7 @@ const CREATE_DAY_LOGS_TABLE = `
     bbt REAL NOT NULL DEFAULT 0,
     cervical_mucus TEXT NOT NULL DEFAULT 'none',
     lh_test TEXT NOT NULL DEFAULT 'none',
+    pregnancy_test TEXT NOT NULL DEFAULT 'none',
     cycle_factor_keys TEXT NOT NULL DEFAULT '[]',
     symptom_ids TEXT NOT NULL DEFAULT '[]',
     notes TEXT NOT NULL DEFAULT '',
@@ -183,6 +184,10 @@ const ADD_DAY_LOG_LH_TEST_COLUMN = `
   ALTER TABLE day_logs ADD COLUMN lh_test TEXT NOT NULL DEFAULT 'none';
 `;
 
+const ADD_DAY_LOG_PREGNANCY_TEST_COLUMN = `
+  ALTER TABLE day_logs ADD COLUMN pregnancy_test TEXT NOT NULL DEFAULT 'none';
+`;
+
 type BootstrapStateRow = {
   has_completed_onboarding: number;
   profile_version: number;
@@ -235,6 +240,7 @@ type DayLogRow = {
   bbt: number;
   cervical_mucus: string;
   lh_test: string;
+  pregnancy_test: string;
   cycle_factor_keys: string;
   symptom_ids: string;
   notes: string;
@@ -570,6 +576,7 @@ export function createSQLiteAppStorage(
         bbt,
         cervical_mucus,
         lh_test,
+        pregnancy_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -616,6 +623,7 @@ export function createSQLiteAppStorage(
         bbt,
         cervical_mucus,
         lh_test,
+        pregnancy_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -647,6 +655,7 @@ export function createSQLiteAppStorage(
         bbt,
         cervical_mucus,
         lh_test,
+        pregnancy_test,
         cycle_factor_keys,
         symptom_ids,
         notes,
@@ -993,6 +1002,15 @@ async function migrateV11DayLogLHTest(
   await execIgnoringDuplicateColumn(database, ADD_DAY_LOG_LH_TEST_COLUMN);
 }
 
+async function migrateV12DayLogPregnancyTest(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await execIgnoringDuplicateColumn(
+    database,
+    ADD_DAY_LOG_PREGNANCY_TEST_COLUMN,
+  );
+}
+
 async function reconcileBootstrapStateSchema(
   database: LocalAppDatabase,
 ): Promise<void> {
@@ -1028,6 +1046,7 @@ async function reconcileDayLogsSchema(
   await runSchemaStatement(database, CREATE_DAY_LOGS_TABLE);
   await migrateV7EncryptedLocalData(database);
   await migrateV11DayLogLHTest(database);
+  await migrateV12DayLogPregnancyTest(database);
 }
 
 async function reconcileSyncPreferencesSchema(
@@ -1518,12 +1537,13 @@ async function upsertDayLogRecord(
        bbt,
        cervical_mucus,
        lh_test,
+       pregnancy_test,
        cycle_factor_keys,
        symptom_ids,
        notes,
        encrypted_payload
      )
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(day) DO UPDATE SET
        is_period = excluded.is_period,
        cycle_start = excluded.cycle_start,
@@ -1534,6 +1554,7 @@ async function upsertDayLogRecord(
        bbt = excluded.bbt,
        cervical_mucus = excluded.cervical_mucus,
        lh_test = excluded.lh_test,
+       pregnancy_test = excluded.pregnancy_test,
        cycle_factor_keys = excluded.cycle_factor_keys,
        symptom_ids = excluded.symptom_ids,
        notes = excluded.notes,
@@ -1548,6 +1569,7 @@ async function upsertDayLogRecord(
     defaults.bbt,
     defaults.cervicalMucus,
     defaults.lhTest,
+    defaults.pregnancyTest,
     JSON.stringify(defaults.cycleFactorKeys),
     JSON.stringify(defaults.symptomIDs),
     defaults.notes,
@@ -1756,6 +1778,7 @@ function mapLegacyDayLogRow(row: DayLogRow): DayLogRecord {
     bbt: row.bbt,
     cervicalMucus: row.cervical_mucus as DayLogRecord["cervicalMucus"],
     lhTest: row.lh_test as DayLogRecord["lhTest"],
+    pregnancyTest: (row.pregnancy_test ?? "none") as DayLogRecord["pregnancyTest"],
     cycleFactorKeys: cycleFactorKeys as DayLogRecord["cycleFactorKeys"],
     symptomIDs: symptomIDs as DayLogRecord["symptomIDs"],
     notes: row.notes,

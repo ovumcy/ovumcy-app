@@ -9,6 +9,10 @@ export function buildPredictionExplanation(
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
 
+  if (projection.isPregnancyPaused) {
+    return dashboardCopy.pregnancyPausedHint;
+  }
+
   if (profile.unpredictableCycle) {
     return dashboardCopy.factsOnlyHint;
   }

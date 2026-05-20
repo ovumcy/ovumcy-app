@@ -353,6 +353,7 @@ describe("buildStatsViewData", () => {
           bbt: 36.32,
           cervicalMucus: "eggwhite",
           lhTest: "peak",
+          pregnancyTest: "none",
         },
         {
           ...createEmptyDayLogRecord("2026-03-31"),

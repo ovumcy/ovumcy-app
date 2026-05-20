@@ -16,6 +16,8 @@ const dashboardCopyEn = {
     "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
   factsOnlyHint:
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
+  pregnancyPausedHint:
+    "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
   cycleHeroDayLabel: "Day",
   cycleHeroRegular: (days: number) => `Cycle ${days} days`,
   cycleHeroApproximate: "Approximate cycle",
@@ -89,6 +91,8 @@ const dashboardCopyDe: DashboardCopy = {
     "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
   factsOnlyHint:
     "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
+  pregnancyPausedHint:
+    "Nach einem positiven Schwangerschaftstest pausieren die Zyklusvorhersagen. Erfasse eine neue Periode, um sie fortzusetzen.",
   cycleHeroDayLabel: "Tag",
   cycleHeroRegular: (days: number) => `Zyklus ${days} Tage`,
   cycleHeroApproximate: "Ungefähren Zyklus",
@@ -162,6 +166,8 @@ const dashboardCopyFr: DashboardCopy = {
     "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   factsOnlyHint:
     "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
+  pregnancyPausedHint:
+    "Les prédictions de cycle sont en pause après un test de grossesse positif. Enregistre de nouvelles règles pour les reprendre.",
   cycleHeroDayLabel: "Jour",
   cycleHeroRegular: (days: number) => `Cycle de ${days} jours`,
   cycleHeroApproximate: "Cycle approximatif",
@@ -236,6 +242,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "В режиме нерегулярного цикла предсказания остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
     factsOnlyHint:
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
+    pregnancyPausedHint:
+      "Прогнозы цикла приостановлены после положительного теста на беременность. Отметьте новую менструацию, чтобы возобновить их.",
     cycleHeroDayLabel: "День",
     cycleHeroRegular: (days: number) => `Цикл ${days} дней`,
     cycleHeroApproximate: "Примерный цикл",
@@ -307,6 +315,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "El modo de ciclo irregular mantiene visibles las predicciones, pero deben leerse como una guía aproximada y no como fechas exactas.",
     factsOnlyHint:
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
+    pregnancyPausedHint:
+      "Las predicciones del ciclo están en pausa tras un test de embarazo positivo. Registra una nueva regla para reanudarlas.",
     cycleHeroDayLabel: "Día",
     cycleHeroRegular: (days: number) => `Ciclo de ${days} días`,
     cycleHeroApproximate: "Ciclo aproximado",

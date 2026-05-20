@@ -91,6 +91,8 @@ export type StatsCycleProjection = {
   currentCycleDay: number | null;
   currentPhase: StatsPhase;
   isPredictionStale: boolean;
+  isPregnancyPaused: boolean;
+  pregnancyTestDate: LocalDateISO | null;
   lutealPhase: number;
   nextPeriodDate: LocalDateISO | null;
   nextPeriodWindowStartDate: LocalDateISO | null;
