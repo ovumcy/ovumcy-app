@@ -24,11 +24,13 @@ import { createStatsOverviewStyles } from "./stats/stats-overview-styles";
 
 type StatsOverviewScreenProps = {
   onEmptyStateAction?: ((action: StatsEmptyActionKind) => void) | undefined;
+  onPremiumCTAPress?: (() => void) | undefined;
   viewData: StatsViewData;
 };
 
 export function StatsOverviewScreen({
   onEmptyStateAction,
+  onPremiumCTAPress,
   viewData,
 }: StatsOverviewScreenProps) {
   const styles = useThemedStyles(createStatsOverviewStyles);
@@ -101,10 +103,12 @@ export function StatsOverviewScreen({
                 viewData={viewData}
               />
               <StatsOverviewPremiumSections
+                onPremiumCTAPress={onPremiumCTAPress}
                 styles={styles}
                 viewData={viewData}
               />
               <StatsOverviewExtendedReportsSection
+                onPremiumCTAPress={onPremiumCTAPress}
                 styles={styles}
                 viewData={viewData}
               />

@@ -457,5 +457,37 @@ describe("buildStatsViewData", () => {
         }),
       ]),
     );
+    expect(viewData.premiumLocks).toBeUndefined();
+  });
+
+  it("returns premium lock placeholders when entitlements are missing", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord(),
+      [
+        createPeriodRecord("2025-12-01"),
+        createPeriodRecord("2025-12-29"),
+        createPeriodRecord("2026-01-26"),
+        createPeriodRecord("2026-02-23"),
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.advancedInsights).toBeUndefined();
+    expect(viewData.advancedFertility).toBeUndefined();
+    expect(viewData.extendedReports).toBeUndefined();
+    expect(viewData.premiumLocks?.advancedInsights?.title).toBe(
+      "Advanced insights",
+    );
+    expect(viewData.premiumLocks?.advancedInsights?.ctaLabel).toBe(
+      "Open Ovumcy Cloud",
+    );
+    expect(viewData.premiumLocks?.advancedFertility?.title).toBe(
+      "Advanced fertility",
+    );
+    expect(viewData.premiumLocks?.extendedReports?.title).toBe(
+      "Extended reports",
+    );
   });
 });

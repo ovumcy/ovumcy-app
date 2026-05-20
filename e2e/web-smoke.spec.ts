@@ -249,6 +249,63 @@ test("stats shows the data-driven range explainer after three completed cycles w
   ).toBeVisible();
 });
 
+test("stats shows premium lock placeholders when entitlements are missing and the lock routes to backup-sync", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -7));
+  const olderCycleStarts = [
+    addDays(today, -35),
+    addDays(today, -64),
+  ];
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+
+  await expect(page.getByTestId("onboarding-age-group-under_40")).toBeVisible();
+  await page.getByTestId("onboarding-age-group-under_40").click();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+
+  for (const target of olderCycleStarts) {
+    const targetStr = formatLocalDate(target);
+    const monthsBack =
+      (today.getFullYear() - target.getFullYear()) * 12 +
+      (today.getMonth() - target.getMonth());
+
+    for (let step = 0; step < monthsBack; step += 1) {
+      await page.getByTestId("calendar-prev-button").click();
+    }
+
+    await page.getByTestId(`calendar-day-${targetStr}`).click();
+    await page.getByTestId("day-log-period-toggle").last().click();
+    await expect(page.getByTestId("day-log-status-banner").last()).toBeVisible();
+    await page.getByTestId("calendar-today-button").click();
+  }
+
+  await page.locator(tabLink("/stats")).click();
+  await expect(page).toHaveURL(/\/stats$/);
+
+  await expect(page.getByTestId("stats-advanced-fertility-lock")).toBeVisible();
+  await expect(page.getByTestId("stats-advanced-insights-lock")).toBeVisible();
+  await expect(page.getByTestId("stats-extended-reports-lock")).toBeVisible();
+
+  await expect(
+    page.getByTestId("stats-advanced-fertility-lock-title"),
+  ).toHaveText("Advanced fertility");
+  await expect(
+    page.getByTestId("stats-advanced-fertility-lock-cta"),
+  ).toHaveText("Open Ovumcy Cloud");
+
+  await page.getByTestId("stats-advanced-fertility-lock").click();
+  await expect(page).toHaveURL(/\/backup-sync$/);
+});
+
 test("web shell publishes the canonical favicon", async ({ page }) => {
   await page.goto("/");
 

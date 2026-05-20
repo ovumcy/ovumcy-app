@@ -96,6 +96,9 @@ export function StatsScreen({
           router.push("/(tabs)/dashboard");
         }
       }}
+      onPremiumCTAPress={() => {
+        router.push("/backup-sync");
+      }}
       viewData={state.viewData}
     />
   );

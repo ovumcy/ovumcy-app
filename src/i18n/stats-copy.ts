@@ -238,6 +238,25 @@ const statsCopyEn = {
       variable: "Within a variable pattern",
     },
   },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Open Ovumcy Cloud",
+    advancedInsights: {
+      title: "Advanced insights",
+      description:
+        "Weighted averages, drift detection, anomalous cycle alerts, seasonal patterns and personal forecasts based on your cycle history.",
+    },
+    advancedFertility: {
+      title: "Advanced fertility",
+      description:
+        "Track LH tests, BBT thermal shifts, ovulation confirmation, luteal phase consistency and LH peak signals.",
+    },
+    extendedReports: {
+      title: "Extended reports",
+      description:
+        "Compare each recent completed cycle side by side with length, period and variation labels.",
+    },
+  },
   reliabilityLabels: {
     early: "Early estimate",
     building: "Building pattern",
@@ -518,6 +537,25 @@ const statsCopyDe: StatsCopy = {
       variable: "Innerhalb eines variablen Musters",
     },
   },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Ovumcy Cloud öffnen",
+    advancedInsights: {
+      title: "Erweiterte Einblicke",
+      description:
+        "Gewichtete Durchschnitte, Drift-Erkennung, Warnungen bei untypischen Zyklen, saisonale Muster und persönliche Prognosen aus deinem Verlauf.",
+    },
+    advancedFertility: {
+      title: "Erweiterte Fruchtbarkeit",
+      description:
+        "Erfasse LH-Tests, BBT-Temperaturanstiege, Eisprungbestätigung, Konsistenz der Lutealphase und LH-Peak-Signale.",
+    },
+    extendedReports: {
+      title: "Erweiterte Berichte",
+      description:
+        "Vergleiche abgeschlossene Zyklen Seite an Seite mit Länge, Periode und Variationskennzeichnung.",
+    },
+  },
   reliabilityLabels: {
     early: "Frühe Schätzung",
     building: "Muster entsteht",
@@ -793,6 +831,25 @@ const statsCopyFr: StatsCopy = {
       variable: "Dans un schéma variable",
     },
   },
+  premiumLock: {
+    eyebrowLabel: "Premium",
+    ctaLabel: "Ouvrir Ovumcy Cloud",
+    advancedInsights: {
+      title: "Analyses avancées",
+      description:
+        "Moyennes pondérées, détection de dérive, alertes de cycles atypiques, schémas saisonniers et prévisions personnelles selon ton historique.",
+    },
+    advancedFertility: {
+      title: "Fertilité avancée",
+      description:
+        "Suis les tests LH, les hausses thermiques de TBC, la confirmation d'ovulation, la régularité de la phase lutéale et les pics de LH.",
+    },
+    extendedReports: {
+      title: "Rapports étendus",
+      description:
+        "Compare côte à côte chaque cycle terminé : durée, règles et étiquettes de variation.",
+    },
+  },
   reliabilityLabels: {
     early: "Estimation précoce",
     building: "Schéma en cours",
@@ -1056,6 +1113,25 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         variable: "В пределах вариативного паттерна",
       },
     },
+    premiumLock: {
+      eyebrowLabel: "Премиум",
+      ctaLabel: "Открыть Ovumcy Cloud",
+      advancedInsights: {
+        title: "Расширенные инсайты",
+        description:
+          "Взвешенное среднее, выявление дрейфа, сигналы аномальных циклов, сезонные паттерны и персональные прогнозы по вашей истории.",
+      },
+      advancedFertility: {
+        title: "Расширенная фертильность",
+        description:
+          "Отслеживайте тесты ЛГ, тепловой сдвиг БТ, подтверждение овуляции, стабильность лютеиновой фазы и пики ЛГ.",
+      },
+      extendedReports: {
+        title: "Расширенные отчёты",
+        description:
+          "Сравнивайте завершённые циклы рядом — длина, длительность менструации и метки вариативности.",
+      },
+    },
     reliabilityLabels: {
       early: "Ранняя оценка",
       building: "Паттерн формируется",
@@ -1314,6 +1390,25 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         longer: "Más largo que tu patrón habitual",
         shorter: "Más corto que tu patrón habitual",
         variable: "Dentro de un patrón variable",
+      },
+    },
+    premiumLock: {
+      eyebrowLabel: "Premium",
+      ctaLabel: "Abrir Ovumcy Cloud",
+      advancedInsights: {
+        title: "Análisis avanzados",
+        description:
+          "Promedios ponderados, detección de deriva, alertas de ciclos atípicos, patrones estacionales y pronósticos personales según tu historial.",
+      },
+      advancedFertility: {
+        title: "Fertilidad avanzada",
+        description:
+          "Registra pruebas de LH, cambios térmicos de BBT, confirmación de la ovulación, consistencia de la fase lútea y picos de LH.",
+      },
+      extendedReports: {
+        title: "Informes ampliados",
+        description:
+          "Compara cada ciclo terminado lado a lado: duración, días de regla y etiquetas de variación.",
       },
     },
     reliabilityLabels: {

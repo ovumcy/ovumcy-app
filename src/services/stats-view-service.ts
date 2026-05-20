@@ -60,6 +60,13 @@ export type StatsPremiumSectionViewData = {
   }[];
 };
 
+export type StatsPremiumLockViewData = {
+  eyebrowLabel: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+};
+
 export type StatsViewData = {
   title: string;
   description: string;
@@ -80,6 +87,11 @@ export type StatsViewData = {
   advancedInsights?: StatsPremiumSectionViewData;
   advancedFertility?: StatsPremiumSectionViewData;
   personalForecasts?: StatsPremiumSectionViewData;
+  premiumLocks?: {
+    advancedInsights?: StatsPremiumLockViewData;
+    advancedFertility?: StatsPremiumLockViewData;
+    extendedReports?: StatsPremiumLockViewData;
+  };
   emptyState?: {
     title: string;
     body: string;
@@ -382,6 +394,7 @@ export function buildStatsViewData(
     ? buildStatsExtendedReports(history)
     : null;
   const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
+  const premiumLocks = buildStatsPremiumLocks(premiumFeatures, statsCopy);
 
   return {
     title: statsCopy.title,
@@ -429,6 +442,7 @@ export function buildStatsViewData(
           },
         }
       : {}),
+    ...(premiumLocks ? { premiumLocks } : {}),
     predictionExplanation: buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
@@ -943,6 +957,39 @@ function formatDaysValue(
     Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 
   return statsCopy.advancedInsights.daysValue(displayValue);
+}
+
+function buildStatsPremiumLocks(
+  premiumFeatures: ManagedCloudPremiumFeatures,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): StatsViewData["premiumLocks"] | null {
+  const locks: NonNullable<StatsViewData["premiumLocks"]> = {};
+  if (!premiumFeatures.advancedInsights) {
+    locks.advancedInsights = {
+      eyebrowLabel: statsCopy.premiumLock.eyebrowLabel,
+      title: statsCopy.premiumLock.advancedInsights.title,
+      description: statsCopy.premiumLock.advancedInsights.description,
+      ctaLabel: statsCopy.premiumLock.ctaLabel,
+    };
+  }
+  if (!premiumFeatures.advancedFertility) {
+    locks.advancedFertility = {
+      eyebrowLabel: statsCopy.premiumLock.eyebrowLabel,
+      title: statsCopy.premiumLock.advancedFertility.title,
+      description: statsCopy.premiumLock.advancedFertility.description,
+      ctaLabel: statsCopy.premiumLock.ctaLabel,
+    };
+  }
+  if (!premiumFeatures.extendedReports) {
+    locks.extendedReports = {
+      eyebrowLabel: statsCopy.premiumLock.eyebrowLabel,
+      title: statsCopy.premiumLock.extendedReports.title,
+      description: statsCopy.premiumLock.extendedReports.description,
+      ctaLabel: statsCopy.premiumLock.ctaLabel,
+    };
+  }
+
+  return Object.keys(locks).length > 0 ? locks : null;
 }
 
 function buildTopCards(

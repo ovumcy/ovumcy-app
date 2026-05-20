@@ -1,41 +1,59 @@
 import { Text, View } from "react-native";
 
-import type { StatsViewData } from "../../../services/stats-view-service";
+import type {
+  StatsPremiumLockViewData,
+  StatsPremiumSectionViewData,
+  StatsViewData,
+} from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
+import { PremiumLockCard } from "../../components/PremiumLockCard";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewPremiumSectionsProps = {
   styles: StatsOverviewStyles;
   viewData: StatsViewData;
+  onPremiumCTAPress?: (() => void) | undefined;
 };
 
 export function StatsOverviewPremiumSections({
   styles,
   viewData,
+  onPremiumCTAPress,
 }: StatsOverviewPremiumSectionsProps) {
-  const sections = [
-    {
-      section: viewData.personalForecasts,
-      testID: "stats-personal-forecasts",
-    },
-    {
-      section: viewData.advancedFertility,
-      testID: "stats-advanced-fertility",
-    },
-    {
-      section: viewData.advancedInsights,
-      testID: "stats-advanced-insights",
-    },
+  const sections: {
+    section: StatsPremiumSectionViewData;
+    testID: string;
+  }[] = [
+    { section: viewData.personalForecasts, testID: "stats-personal-forecasts" },
+    { section: viewData.advancedFertility, testID: "stats-advanced-fertility" },
+    { section: viewData.advancedInsights, testID: "stats-advanced-insights" },
   ].filter(
     (
       entry,
     ): entry is {
-      section: NonNullable<StatsViewData["advancedInsights"]>;
+      section: StatsPremiumSectionViewData;
       testID: string;
     } => Boolean(entry.section && entry.section.items.length > 0),
   );
 
-  if (sections.length === 0) {
+  const locks: {
+    lock: StatsPremiumLockViewData;
+    testID: string;
+  }[] = [
+    {
+      lock: viewData.premiumLocks?.advancedFertility,
+      testID: "stats-advanced-fertility-lock",
+    },
+    {
+      lock: viewData.premiumLocks?.advancedInsights,
+      testID: "stats-advanced-insights-lock",
+    },
+  ].filter(
+    (entry): entry is { lock: StatsPremiumLockViewData; testID: string } =>
+      Boolean(entry.lock),
+  );
+
+  if (sections.length === 0 && locks.length === 0) {
     return null;
   }
 
@@ -60,6 +78,17 @@ export function StatsOverviewPremiumSections({
             ))}
           </View>
         </FeatureCard>
+      ))}
+      {locks.map(({ lock, testID }) => (
+        <PremiumLockCard
+          ctaLabel={lock.ctaLabel}
+          description={lock.description}
+          eyebrowLabel={lock.eyebrowLabel}
+          key={testID}
+          onPress={onPremiumCTAPress ?? (() => {})}
+          testID={testID}
+          title={lock.title}
+        />
       ))}
     </>
   );

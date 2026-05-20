@@ -2,19 +2,36 @@ import { Text, View } from "react-native";
 
 import type { StatsViewData } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
+import { PremiumLockCard } from "../../components/PremiumLockCard";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewExtendedReportsSectionProps = {
   styles: StatsOverviewStyles;
   viewData: StatsViewData;
+  onPremiumCTAPress?: (() => void) | undefined;
 };
 
 export function StatsOverviewExtendedReportsSection({
   styles,
   viewData,
+  onPremiumCTAPress,
 }: StatsOverviewExtendedReportsSectionProps) {
   if (!viewData.extendedReports || viewData.extendedReports.rows.length === 0) {
-    return null;
+    const lock = viewData.premiumLocks?.extendedReports;
+    if (!lock) {
+      return null;
+    }
+
+    return (
+      <PremiumLockCard
+        ctaLabel={lock.ctaLabel}
+        description={lock.description}
+        eyebrowLabel={lock.eyebrowLabel}
+        onPress={onPremiumCTAPress ?? (() => {})}
+        testID="stats-extended-reports-lock"
+        title={lock.title}
+      />
+    );
   }
 
   return (
