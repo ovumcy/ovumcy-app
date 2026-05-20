@@ -59,6 +59,7 @@ describe("export-pdf-service", () => {
           mood: 4,
           sexActivity: "protected",
           lhTest: "peak",
+          pregnancyTest: "none",
           symptomIDs: ["jaw_pain"],
           notes: "Felt better",
         },
@@ -87,10 +88,10 @@ describe("export-pdf-service", () => {
       rangeEnd: "2026-02-03",
     });
     expect(report.calendarDays).toEqual([
-      { date: "2026-02-01", isPeriod: true, hasData: true },
-      { date: "2026-02-02", isPeriod: true, hasData: true },
-      { date: "2026-02-03", isPeriod: false, hasData: true },
-      { date: "2026-03-01", isPeriod: true, hasData: true },
+      expect.objectContaining({ date: "2026-02-01", isPeriod: true, hasData: true }),
+      expect.objectContaining({ date: "2026-02-02", isPeriod: true, hasData: true }),
+      expect.objectContaining({ date: "2026-02-03", isPeriod: false, hasData: true }),
+      expect.objectContaining({ date: "2026-03-01", isPeriod: true, hasData: true }),
     ]);
     expect(report.cycles).toEqual([
       {

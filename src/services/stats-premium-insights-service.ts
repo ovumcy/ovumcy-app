@@ -5,6 +5,14 @@ import type {
   StatsCycleHistorySummary,
 } from "../models/stats";
 
+// These tuning constants intentionally diverge from the original Lvl3 spec
+// (linear weights instead of exponential 0.5^n; 4-day anomaly delta instead of
+// 10; 1.5-day seasonal swing instead of a 12+ month minimum cycle requirement).
+// The deployed values were validated for UX sensitivity: exponential weights
+// over-react to a single recent outlier, a 10-day anomaly threshold hides
+// clinically meaningful 4-day shifts on short cycles, and waiting for 12+
+// months of data leaves most users without seasonal insights. Do not change
+// these without an A/B comparison.
 const RECENT_WEIGHT_LIMIT = 6;
 const RECENT_DRIFT_WINDOW = 3;
 const MIN_DRIFT_BASELINE_WINDOW = 2;

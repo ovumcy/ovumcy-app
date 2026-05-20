@@ -4,16 +4,23 @@ import { getDayLogCopy } from "../i18n/day-log-copy";
 import { getExportPDFCopy } from "../i18n/export-pdf-copy";
 import { resolveCopyLanguage } from "../i18n/runtime";
 import type {
+  ExportPDFAdvancedFertilityItem,
   ExportPDFCalendarDay,
   ExportPDFCycle,
   ExportPDFCycleDay,
+  ExportPDFExtendedReportRow,
   ExportPDFReport,
+  ExportPDFShortLutealWarning,
   ExportPDFSummary,
 } from "../models/export";
 import { hasDayLogData, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import { buildCycleHistorySummary } from "./cycle-history-service";
+import {
+  predictCycleWindow,
+  resolveLutealPhase,
+} from "./cycle-prediction-policy";
 import { loadExportPDFFontBytes, type ExportPDFFontBytes } from "./export-pdf-fonts";
 import {
   fontkitRuntime,
@@ -21,7 +28,11 @@ import {
   PDFDocumentRuntime,
   rgbRuntime,
 } from "./export-pdf-runtime";
+import { inferObservedOvulationDate } from "./observed-ovulation-service";
 import { parseLocalDate } from "./profile-settings-policy";
+import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
+import { buildStatsExtendedReports } from "./stats-extended-reports-service";
+import { buildShortLutealHint } from "./stats-premium-insights-service";
 
 const MAX_EXPORT_PDF_CYCLES = 6;
 const PAGE_WIDTH = PageSizesRuntime.A4[1];
@@ -48,6 +59,9 @@ const COLOR_BORDER = hexColor("#DCC8B5");
 const COLOR_SURFACE = hexColor("#FFFFFF");
 const COLOR_PERIOD = hexColor("#C7756D");
 const COLOR_LOGGED = hexColor("#E9D0B4");
+const COLOR_FERTILE = hexColor("#B8D4C1");
+const COLOR_OVULATION = hexColor("#F4D58D");
+const COLOR_TENTATIVE_BORDER = hexColor("#959595");
 const COLOR_HEADER_FILL = hexColor("#FAF4ED");
 
 export type ExportPDFBuildInput = {
@@ -148,6 +162,35 @@ export function buildExportPDFReport({
       ? sortedDayLogs.filter((record) => completedCycleEntries.has(record.date))
       : sortedDayLogs;
 
+  const calendarMarkers = buildCalendarMarkers(
+    completedCycles,
+    sortedDayLogs,
+    profile.temperatureUnit,
+  );
+  const pdfCopy = getExportPDFCopy(language);
+  const advancedFertilityItems = buildAdvancedFertilityItemsForPDF(
+    history,
+    sortedDayLogs,
+    profile,
+    pdfCopy,
+  );
+  const extendedReports = buildStatsExtendedReports(history);
+  const extendedReportRows: ExportPDFExtendedReportRow[] = (
+    extendedReports?.rows ?? []
+  ).map((row) => ({
+    startDate: row.startDate,
+    cycleLength: row.cycleLength,
+    periodLength: row.periodLength,
+    comparison: row.comparisonKind,
+  }));
+  const shortLutealHint = buildShortLutealHint(history, sortedDayLogs);
+  const shortLutealWarning: ExportPDFShortLutealWarning | null = shortLutealHint
+    ? {
+        averageDays: shortLutealHint.averageDays,
+        observationCount: shortLutealHint.observationCount,
+      }
+    : null;
+
   return {
     generatedAt: now.toISOString(),
     language,
@@ -156,10 +199,152 @@ export function buildExportPDFReport({
       date: record.date,
       isPeriod: record.isPeriod,
       hasData: hasDayLogData(record),
+      isFertile: calendarMarkers.fertileDates.has(record.date),
+      isOvulation: calendarMarkers.observedOvulationDates.has(record.date),
+      isTentativeOvulation:
+        calendarMarkers.tentativeOvulationDates.has(record.date),
     })),
     cycles,
     temperatureUnit: profile.temperatureUnit,
+    advancedFertility: advancedFertilityItems,
+    extendedReportRows,
+    shortLutealWarning,
   };
+}
+
+function buildAdvancedFertilityItemsForPDF(
+  history: ReturnType<typeof buildCycleHistorySummary>,
+  sortedDayLogs: readonly DayLogRecord[],
+  profile: ProfileRecord,
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+): ExportPDFAdvancedFertilityItem[] {
+  const summary = buildStatsAdvancedFertility(
+    history,
+    sortedDayLogs,
+    history.completedCycles[history.completedCycles.length - 1]?.startDate ?? null,
+    profile.temperatureUnit,
+  );
+  if (!summary) {
+    return [];
+  }
+
+  const items: ExportPDFAdvancedFertilityItem[] = [];
+  const unitLabel =
+    profile.temperatureUnit === "f"
+      ? pdfCopy.advancedFertilityUnitFahrenheit
+      : pdfCopy.advancedFertilityUnitCelsius;
+  if (summary.thermalShift) {
+    items.push({
+      key: "thermal-shift",
+      title: pdfCopy.advancedFertilityThermalShiftTitle,
+      value:
+        summary.thermalShift.kind === "confirmed"
+          ? pdfCopy.advancedFertilityThermalShiftConfirmedValue
+          : pdfCopy.advancedFertilityThermalShiftBuildingValue,
+      description: pdfCopy.advancedFertilityThermalShiftDescription(
+        summary.thermalShift.rise.toFixed(2),
+        unitLabel,
+        summary.thermalShift.sampleCount,
+      ),
+    });
+  }
+  if (summary.ovulationConfirmation) {
+    items.push({
+      key: "ovulation-confirmation",
+      title: pdfCopy.advancedFertilityOvulationTitle,
+      value:
+        summary.ovulationConfirmation.kind === "confirmed"
+          ? pdfCopy.advancedFertilityOvulationConfirmedValue
+          : pdfCopy.advancedFertilityOvulationBuildingValue,
+      description: pdfCopy.advancedFertilityOvulationDescription(
+        summary.ovulationConfirmation.mucusDate,
+        summary.ovulationConfirmation.gapDays,
+      ),
+    });
+  }
+  if (summary.lhPeakSignal) {
+    items.push({
+      key: "lh-peak",
+      title: pdfCopy.advancedFertilityLHPeakTitle,
+      value:
+        summary.lhPeakSignal.kind === "aligned"
+          ? pdfCopy.advancedFertilityLHPeakAlignedValue
+          : pdfCopy.advancedFertilityLHPeakLoggedValue,
+      description: pdfCopy.advancedFertilityLHPeakDescription(
+        summary.lhPeakSignal.date,
+      ),
+    });
+  }
+
+  return items;
+}
+
+type ExportPDFCalendarMarkers = {
+  fertileDates: Set<string>;
+  observedOvulationDates: Set<string>;
+  tentativeOvulationDates: Set<string>;
+};
+
+function buildCalendarMarkers(
+  completedCycles: ReturnType<typeof buildCycleHistorySummary>["completedCycles"],
+  sortedDayLogs: readonly DayLogRecord[],
+  temperatureUnit: ProfileRecord["temperatureUnit"],
+): ExportPDFCalendarMarkers {
+  const fertileDates = new Set<string>();
+  const observedOvulationDates = new Set<string>();
+  const tentativeOvulationDates = new Set<string>();
+
+  for (const cycle of completedCycles) {
+    const cycleRecords = sortedDayLogs.filter(
+      (record) =>
+        record.date >= cycle.startDate && record.date < cycle.nextStartDate,
+    );
+    const observed = inferObservedOvulationDate(
+      cycleRecords,
+      cycle.startDate,
+      cycle.nextStartDate,
+      temperatureUnit,
+    );
+
+    const predicted = predictCycleWindow(
+      cycle.startDate,
+      cycle.cycleLength,
+      resolveLutealPhase(0),
+    );
+
+    if (predicted.fertilityStart && predicted.fertilityEnd) {
+      const startDate = parseLocalDate(predicted.fertilityStart);
+      const endDate = parseLocalDate(predicted.fertilityEnd);
+      if (startDate && endDate) {
+        for (
+          let day = new Date(startDate);
+          day <= endDate;
+          day.setDate(day.getDate() + 1)
+        ) {
+          fertileDates.add(formatPDFDateISO(day));
+        }
+      }
+    }
+
+    if (observed) {
+      observedOvulationDates.add(observed);
+    } else if (predicted.ovulationDate) {
+      tentativeOvulationDates.add(predicted.ovulationDate);
+    }
+  }
+
+  return {
+    fertileDates,
+    observedOvulationDates,
+    tentativeOvulationDates,
+  };
+}
+
+function formatPDFDateISO(value: Date): string {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function buildExportPDFCycleDay(
@@ -208,6 +393,102 @@ function buildExportPDFSummary(
   };
 }
 
+function drawShortLutealWarningSection(
+  layout: ExportPDFLayoutContext,
+  warning: ExportPDFReport["shortLutealWarning"],
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+) {
+  if (!warning) {
+    return;
+  }
+  layout.cursorY = drawSectionHeading(layout, pdfCopy.shortLutealWarningTitle);
+  layout.cursorY = drawTextBlock(
+    layout,
+    pdfCopy.shortLutealWarningDescription(
+      warning.averageDays,
+      warning.observationCount,
+    ),
+    {
+      color: COLOR_TEXT,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    },
+  );
+  layout.cursorY -= SECTION_GAP - 4;
+}
+
+function drawAdvancedFertilitySection(
+  layout: ExportPDFLayoutContext,
+  items: readonly ExportPDFAdvancedFertilityItem[],
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+) {
+  layout.cursorY = drawSectionHeading(layout, pdfCopy.advancedFertilityTitle);
+  if (items.length === 0) {
+    layout.cursorY = drawTextBlock(layout, pdfCopy.advancedFertilityEmpty, {
+      color: COLOR_MUTED,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+    layout.cursorY -= SECTION_GAP - 4;
+    return;
+  }
+
+  for (const item of items) {
+    layout.cursorY = drawTextBlock(layout, `${item.title}: ${item.value}`, {
+      color: COLOR_TEXT,
+      font: layout.fonts.bold,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+    layout.cursorY = drawTextBlock(layout, item.description, {
+      color: COLOR_MUTED,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+  }
+  layout.cursorY -= SECTION_GAP - 4;
+}
+
+function drawExtendedReportsSection(
+  layout: ExportPDFLayoutContext,
+  rows: readonly ExportPDFExtendedReportRow[],
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+) {
+  layout.cursorY = drawSectionHeading(layout, pdfCopy.extendedReportsTitle);
+  if (rows.length === 0) {
+    layout.cursorY = drawTextBlock(layout, pdfCopy.extendedReportsEmpty, {
+      color: COLOR_MUTED,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+    layout.cursorY -= SECTION_GAP - 4;
+    return;
+  }
+
+  for (const row of rows) {
+    layout.cursorY = drawTextBlock(
+      layout,
+      pdfCopy.extendedReportsRow(
+        row.startDate,
+        row.cycleLength,
+        row.periodLength,
+        row.comparison,
+      ),
+      {
+        color: COLOR_TEXT,
+        font: layout.fonts.regular,
+        fontSize: BODY_FONT_SIZE,
+        lineHeight: LINE_HEIGHT,
+      },
+    );
+  }
+  layout.cursorY -= SECTION_GAP - 4;
+}
+
 async function renderExportPDFDocument(
   report: ExportPDFReport,
   fontBytesLoader: () => Promise<ExportPDFFontBytes>,
@@ -226,6 +507,9 @@ async function renderExportPDFDocument(
 
   drawDocumentHeader(layout, report, pdfCopy);
   drawSummarySection(layout, report.summary, pdfCopy);
+  drawShortLutealWarningSection(layout, report.shortLutealWarning, pdfCopy);
+  drawAdvancedFertilitySection(layout, report.advancedFertility, pdfCopy);
+  drawExtendedReportsSection(layout, report.extendedReportRows, pdfCopy);
   drawCalendarSection(layout, report.calendarDays, report.language, pdfCopy);
   drawCyclesSection(layout, report.cycles, report.temperatureUnit, pdfCopy);
 
@@ -365,11 +649,35 @@ function drawCalendarLegend(
   drawLegendItem(layout.page, {
     x: PAGE_MARGIN + 112,
     y: top,
+    color: COLOR_FERTILE,
+    label: pdfCopy.legendFertileWindow,
+    font: layout.fonts.regular,
+  });
+  drawLegendItem(layout.page, {
+    x: PAGE_MARGIN + 240,
+    y: top,
+    color: COLOR_OVULATION,
+    label: pdfCopy.legendOvulation,
+    font: layout.fonts.regular,
+  });
+
+  const bottomRow = top - 14;
+  drawLegendItem(layout.page, {
+    x: PAGE_MARGIN,
+    y: bottomRow,
     color: COLOR_LOGGED,
     label: pdfCopy.legendLoggedDay,
     font: layout.fonts.regular,
   });
-  layout.cursorY = top - 10;
+  drawLegendItem(layout.page, {
+    x: PAGE_MARGIN + 112,
+    y: bottomRow,
+    color: COLOR_SURFACE,
+    label: pdfCopy.legendTentativeOvulation,
+    font: layout.fonts.regular,
+    borderColor: COLOR_TENTATIVE_BORDER,
+  });
+  layout.cursorY = bottomRow - 10;
 }
 
 function drawCyclesSection(
@@ -483,9 +791,12 @@ function drawCalendarMonth(
       const entry = month.daysByDate.get(currentDate);
       const fillColor = entry?.isPeriod
         ? COLOR_PERIOD
-        : entry?.hasData
-          ? COLOR_LOGGED
-          : COLOR_SURFACE;
+        : entry?.isFertile
+          ? COLOR_FERTILE
+          : entry?.hasData
+            ? COLOR_LOGGED
+            : COLOR_SURFACE;
+      const isTentative = entry?.isTentativeOvulation === true;
       const textColor =
         entry?.isPeriod === true
           ? rgbRuntime(1, 1, 1)
@@ -498,10 +809,22 @@ function drawCalendarMonth(
         y: cellBottom,
         width: cellWidth,
         height: MONTH_DAY_HEIGHT - 2,
-        borderColor: COLOR_BORDER,
-        borderWidth: 0.75,
+        borderColor: isTentative ? COLOR_TENTATIVE_BORDER : COLOR_BORDER,
+        borderWidth: isTentative ? 1.2 : 0.75,
         color: fillColor,
       });
+
+      if (entry?.isOvulation === true) {
+        const radius = 2.2;
+        page.drawCircle({
+          x: cellX + cellWidth - radius - 1.5,
+          y: cellBottom + MONTH_DAY_HEIGHT - radius - 2,
+          size: radius,
+          color: COLOR_OVULATION,
+          borderColor: COLOR_OVULATION,
+          borderWidth: 0,
+        });
+      }
 
       drawSingleLineText(page, String(currentDay.getDate()), {
         x: cellX,
@@ -524,6 +847,7 @@ function drawLegendItem(
     label: string;
     x: number;
     y: number;
+    borderColor?: RGB;
   },
 ) {
   page.drawRectangle({
@@ -531,14 +855,14 @@ function drawLegendItem(
     y: input.y,
     width: 9,
     height: 9,
-    borderColor: input.color,
-    borderWidth: 1,
+    borderColor: input.borderColor ?? input.color,
+    borderWidth: input.borderColor ? 1.2 : 1,
     color: input.color,
   });
   drawSingleLineText(page, input.label, {
     x: input.x + 14,
     y: input.y + 1,
-    maxWidth: 80,
+    maxWidth: 110,
     color: COLOR_TEXT,
     font: input.font,
     fontSize: SMALL_FONT_SIZE,

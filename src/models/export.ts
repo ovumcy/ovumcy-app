@@ -107,6 +107,9 @@ export type ExportPDFCalendarDay = {
   date: LocalDateISO;
   isPeriod: boolean;
   hasData: boolean;
+  isFertile: boolean;
+  isOvulation: boolean;
+  isTentativeOvulation: boolean;
 };
 
 export type ExportPDFCycle = {
@@ -128,6 +131,25 @@ export type ExportPDFSummary = {
   rangeEnd: LocalDateISO | "";
 };
 
+export type ExportPDFAdvancedFertilityItem = {
+  key: string;
+  title: string;
+  value: string;
+  description: string;
+};
+
+export type ExportPDFExtendedReportRow = {
+  startDate: LocalDateISO;
+  cycleLength: number;
+  periodLength: number;
+  comparison: "longer" | "shorter" | "variable";
+};
+
+export type ExportPDFShortLutealWarning = {
+  averageDays: number;
+  observationCount: number;
+};
+
 export type ExportPDFReport = {
   generatedAt: string;
   language: InterfaceLanguage;
@@ -135,4 +157,7 @@ export type ExportPDFReport = {
   calendarDays: ExportPDFCalendarDay[];
   cycles: ExportPDFCycle[];
   temperatureUnit: TemperatureUnit;
+  advancedFertility: ExportPDFAdvancedFertilityItem[];
+  extendedReportRows: ExportPDFExtendedReportRow[];
+  shortLutealWarning: ExportPDFShortLutealWarning | null;
 };
