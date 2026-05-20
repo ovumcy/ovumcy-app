@@ -1,5 +1,9 @@
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
-import { buildStatsPremiumInsights } from "./stats-premium-insights-service";
+import {
+  buildShortLutealHint,
+  buildStatsPremiumInsights,
+} from "./stats-premium-insights-service";
 
 function createHistory(
   cycleLengths: readonly number[],
@@ -53,5 +57,76 @@ describe("buildStatsPremiumInsights", () => {
         shortestSeason: "autumn",
       }),
     );
+  });
+});
+
+function eggWhiteRecord(date: string): DayLogRecord {
+  return {
+    ...createEmptyDayLogRecord(date),
+    cervicalMucus: "eggwhite",
+  };
+}
+
+describe("buildShortLutealHint", () => {
+  it("returns null when fewer than 3 cycles have an observed luteal anchor", () => {
+    const history = createHistory(
+      [25, 25],
+      ["2025-12-01", "2025-12-26", "2026-01-20"],
+    );
+    const records: DayLogRecord[] = [
+      eggWhiteRecord("2025-12-20"),
+      eggWhiteRecord("2026-01-15"),
+    ];
+
+    expect(buildShortLutealHint(history, records)).toBeNull();
+  });
+
+  it("returns null when at least one observed luteal phase is 10 days or longer", () => {
+    const history = createHistory(
+      [25, 25, 30],
+      ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-19"],
+    );
+    const records: DayLogRecord[] = [
+      eggWhiteRecord("2025-12-20"),
+      eggWhiteRecord("2026-01-15"),
+      eggWhiteRecord("2026-02-05"),
+    ];
+
+    expect(buildShortLutealHint(history, records)).toBeNull();
+  });
+
+  it("returns the average and observation count when 3+ observed luteal phases are all under 10 days", () => {
+    const history = createHistory(
+      [25, 25, 25],
+      ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-14"],
+    );
+    const records: DayLogRecord[] = [
+      eggWhiteRecord("2025-12-20"),
+      eggWhiteRecord("2026-01-15"),
+      eggWhiteRecord("2026-02-09"),
+    ];
+
+    const result = buildShortLutealHint(history, records);
+    expect(result?.observationCount).toBe(3);
+    expect(result?.averageDays).toBeCloseTo(16 / 3, 5);
+  });
+
+  it("uses LH peak as an anchor when present, ignoring egg-white when the LH peak is later", () => {
+    const history = createHistory(
+      [25, 25, 25],
+      ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-14"],
+    );
+    const records: DayLogRecord[] = [
+      eggWhiteRecord("2025-12-15"),
+      { ...createEmptyDayLogRecord("2025-12-21"), lhTest: "peak" },
+      eggWhiteRecord("2026-01-10"),
+      { ...createEmptyDayLogRecord("2026-01-16"), lhTest: "peak" },
+      eggWhiteRecord("2026-02-04"),
+      { ...createEmptyDayLogRecord("2026-02-10"), lhTest: "peak" },
+    ];
+
+    const result = buildShortLutealHint(history, records);
+    expect(result?.observationCount).toBe(3);
+    expect(result?.averageDays).toBeCloseTo(13 / 3, 5);
   });
 });

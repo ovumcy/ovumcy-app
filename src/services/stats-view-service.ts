@@ -35,7 +35,11 @@ import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service"
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
 import { buildStatsPremiumPhaseInsights } from "./stats-premium-phase-insights-service";
-import { buildStatsPremiumInsights } from "./stats-premium-insights-service";
+import {
+  buildShortLutealHint,
+  buildStatsPremiumInsights,
+  type StatsShortLutealHint,
+} from "./stats-premium-insights-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
 
@@ -368,10 +372,14 @@ export function buildStatsViewData(
   const premiumPhaseInsights = premiumFeatures.advancedInsights
     ? buildStatsPremiumPhaseInsights(phaseMoodInsights, phaseSymptomInsights)
     : null;
+  const shortLutealHint = premiumFeatures.advancedInsights
+    ? buildShortLutealHint(history, records)
+    : null;
   const advancedInsightsSection = premiumInsights
     ? buildAdvancedInsightsSection(
         premiumInsights,
         premiumPhaseInsights,
+        shortLutealHint,
         statsCopy,
       )
     : null;
@@ -620,6 +628,7 @@ export function buildStatsViewData(
 function buildAdvancedInsightsSection(
   premiumInsights: ReturnType<typeof buildStatsPremiumInsights>,
   premiumPhaseInsights: ReturnType<typeof buildStatsPremiumPhaseInsights> | null,
+  shortLutealHint: StatsShortLutealHint | null,
   statsCopy: ReturnType<typeof getStatsCopy>,
 ): StatsPremiumSectionViewData | null {
   const items: StatsPremiumSectionViewData["items"] = [];
@@ -745,6 +754,20 @@ function buildAdvancedInsightsSection(
         insight.totalDays,
       ),
       tone: insight.percentage >= 50 ? "warning" : "info",
+    });
+  }
+
+  if (shortLutealHint) {
+    items.push({
+      key: "short-luteal-warning",
+      title: statsCopy.advancedInsights.shortLutealTitle,
+      value: statsCopy.advancedInsights.shortLutealValue(
+        shortLutealHint.averageDays,
+      ),
+      description: statsCopy.advancedInsights.shortLutealDescription(
+        shortLutealHint.observationCount,
+      ),
+      tone: "warning",
     });
   }
 

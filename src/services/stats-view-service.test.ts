@@ -490,4 +490,49 @@ describe("buildStatsViewData", () => {
       "Extended reports",
     );
   });
+
+  it("surfaces the short luteal phase warning in advanced insights when 3+ recent cycles show luteal <10 days", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord({ trackCervicalMucus: true }),
+      [
+        createPeriodRecord("2025-12-01"),
+        {
+          ...createEmptyDayLogRecord("2025-12-20"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2025-12-26"),
+        {
+          ...createEmptyDayLogRecord("2026-01-15"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2026-01-20"),
+        {
+          ...createEmptyDayLogRecord("2026-02-09"),
+          cervicalMucus: "eggwhite",
+        },
+        createPeriodRecord("2026-02-14"),
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 4),
+      "en",
+      {
+        advancedFertility: false,
+        advancedInsights: true,
+        doctorPDF: false,
+        extendedReports: false,
+        partnerAccess: false,
+        reminders: false,
+      },
+    );
+
+    expect(viewData.advancedInsights?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "short-luteal-warning",
+          title: "Short luteal phase",
+          tone: "warning",
+        }),
+      ]),
+    );
+  });
 });

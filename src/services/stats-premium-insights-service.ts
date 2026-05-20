@@ -1,3 +1,4 @@
+import type { DayLogRecord } from "../models/day-log";
 import type {
   CompletedCycleSummary,
   StatsComparisonKind,
@@ -9,6 +10,9 @@ const RECENT_DRIFT_WINDOW = 3;
 const MIN_DRIFT_BASELINE_WINDOW = 2;
 const ANOMALOUS_CYCLE_DELTA_DAYS = 4;
 const MIN_SEASONAL_PATTERN_DELTA_DAYS = 1.5;
+const SHORT_LUTEAL_RECENT_LIMIT = 6;
+const SHORT_LUTEAL_THRESHOLD_DAYS = 10;
+const MIN_SHORT_LUTEAL_OBSERVATIONS = 3;
 
 export type StatsSeasonKey = "winter" | "spring" | "summer" | "autumn";
 
@@ -219,4 +223,69 @@ function average(values: readonly number[]): number {
   }
 
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+export type StatsShortLutealHint = {
+  averageDays: number;
+  observationCount: number;
+};
+
+export function buildShortLutealHint(
+  history: StatsCycleHistorySummary,
+  records: readonly DayLogRecord[],
+): StatsShortLutealHint | null {
+  const recentCycles = history.completedCycles.slice(-SHORT_LUTEAL_RECENT_LIMIT);
+  const shortValues: number[] = [];
+  let totalObservations = 0;
+
+  for (const cycle of recentCycles) {
+    const cycleRecords = records
+      .filter(
+        (record) =>
+          record.date >= cycle.startDate && record.date < cycle.nextStartDate,
+      )
+      .sort((left, right) => left.date.localeCompare(right.date));
+    if (cycleRecords.length === 0) {
+      continue;
+    }
+
+    const lastLHPeak = [...cycleRecords]
+      .reverse()
+      .find((record) => record.lhTest === "peak");
+    const lastEggWhite = [...cycleRecords]
+      .reverse()
+      .find((record) => record.cervicalMucus === "eggwhite");
+    const anchor = lastLHPeak ?? lastEggWhite;
+    if (!anchor) {
+      continue;
+    }
+
+    const lutealDays = diffLocalDays(anchor.date, cycle.nextStartDate);
+    if (lutealDays <= 0) {
+      continue;
+    }
+
+    totalObservations += 1;
+    if (lutealDays < SHORT_LUTEAL_THRESHOLD_DAYS) {
+      shortValues.push(lutealDays);
+    }
+  }
+
+  if (
+    totalObservations < MIN_SHORT_LUTEAL_OBSERVATIONS ||
+    shortValues.length !== totalObservations
+  ) {
+    return null;
+  }
+
+  return {
+    averageDays: average(shortValues),
+    observationCount: shortValues.length,
+  };
+}
+
+function diffLocalDays(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
 }

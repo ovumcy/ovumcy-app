@@ -140,6 +140,11 @@ const statsCopyEn = {
       totalDays: number,
     ) =>
       `${symptom} appears most often in the ${phase} phase, on ${percentage.toFixed(0)}% of ${totalDays} tracked days.`,
+    shortLutealTitle: "Short luteal phase",
+    shortLutealValue: (averageDays: number) =>
+      `${averageDays.toFixed(1)} d average`,
+    shortLutealDescription: (count: number) =>
+      `Observed luteal phase under 10 days across ${count} recent cycles. Typical is 11-14 days. A short luteal phase can affect conception — consider discussing this with a doctor.`,
     seasonLabels: {
       winter: "Winter",
       spring: "Spring",
@@ -439,6 +444,11 @@ const statsCopyDe: StatsCopy = {
       totalDays: number,
     ) =>
       `${symptom} tritt in der ${phase}-Phase am häufigsten auf: an ${percentage.toFixed(0)}% von ${totalDays} erfassten Tagen.`,
+    shortLutealTitle: "Kurze Lutealphase",
+    shortLutealValue: (averageDays: number) =>
+      `Ø ${averageDays.toFixed(1)} T.`,
+    shortLutealDescription: (count: number) =>
+      `Beobachtete Lutealphase unter 10 Tagen in ${count} aktuellen Zyklen. Typisch sind 11-14 Tage. Eine kurze Lutealphase kann die Empfängnis beeinflussen — sprich das mit einer Fachperson ab.`,
     seasonLabels: {
       winter: "Winter",
       spring: "Frühling",
@@ -732,6 +742,11 @@ const statsCopyFr: StatsCopy = {
       totalDays: number,
     ) =>
       `${symptom} apparaît le plus souvent pendant la phase ${phase}, sur ${percentage.toFixed(0)}% de ${totalDays} jours suivis.`,
+    shortLutealTitle: "Phase lutéale courte",
+    shortLutealValue: (averageDays: number) =>
+      `Moy. ${averageDays.toFixed(1)} j`,
+    shortLutealDescription: (count: number) =>
+      `Phase lutéale observée inférieure à 10 jours sur ${count} cycles récents. La durée typique est de 11 à 14 jours. Une phase lutéale courte peut affecter la conception — pense à en parler à un·e professionnel·le de santé.`,
     seasonLabels: {
       winter: "hiver",
       spring: "printemps",
@@ -1015,6 +1030,11 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         totalDays: number,
       ) =>
         `${symptom} чаще всего встречается в фазе ${phase}: на ${percentage.toFixed(0)}% из ${totalDays} отмеченных дней.`,
+      shortLutealTitle: "Короткая лютеиновая фаза",
+      shortLutealValue: (averageDays: number) =>
+        `В среднем ${averageDays.toFixed(1)} д.`,
+      shortLutealDescription: (count: number) =>
+        `Наблюдаемая лютеиновая фаза короче 10 дней в ${count} последних циклах. Типично 11-14 дней. Короткая лютеиновая фаза может влиять на зачатие — стоит обсудить это с врачом.`,
       seasonLabels: {
         winter: "зима",
         spring: "весна",
@@ -1293,6 +1313,11 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         totalDays: number,
       ) =>
         `${symptom} aparece con mayor frecuencia en la fase ${phase}, en el ${percentage.toFixed(0)}% de ${totalDays} días registrados.`,
+      shortLutealTitle: "Fase lútea corta",
+      shortLutealValue: (averageDays: number) =>
+        `Prom. ${averageDays.toFixed(1)} d`,
+      shortLutealDescription: (count: number) =>
+        `Fase lútea observada inferior a 10 días en ${count} ciclos recientes. Lo típico son 11-14 días. Una fase lútea corta puede afectar la concepción — considera comentarlo con tu médica/o.`,
       seasonLabels: {
         winter: "invierno",
         spring: "primavera",
