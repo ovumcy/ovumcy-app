@@ -645,13 +645,21 @@ describe("calendar-view-service", () => {
       "2026-04-10",
     );
 
-    const predictedPeriodDay = viewData.days.find(
-      (day) => day.isPredictedPeriod === true,
+    const predictionStates: string[] = [
+      "predicted",
+      "pre_fertile",
+      "fertility_edge",
+      "fertility_peak",
+      "ovulation",
+      "ovulation_tentative",
+    ];
+    const predictedDay = viewData.days.find((day) =>
+      predictionStates.includes(day.stateKey),
     );
-    const fertileDay = viewData.days.find(
-      (day) => day.fertilityKind !== "none" && day.fertilityKind !== undefined,
+    const tentativeDay = viewData.days.find(
+      (day) => day.hasTentativeOvulationMarker === true,
     );
-    expect(predictedPeriodDay).toBeUndefined();
-    expect(fertileDay).toBeUndefined();
+    expect(predictedDay).toBeUndefined();
+    expect(tentativeDay).toBeUndefined();
   });
 });
