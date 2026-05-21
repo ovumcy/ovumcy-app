@@ -55,7 +55,7 @@ describe("managed-partner-share-service", () => {
         createdAt: "2026-04-03T00:00:00.000Z",
         updatedAt: "2026-04-03T00:00:00.000Z",
       },
-      inviteURL: "ovumcy://backup-sync?invite_token=invite-token-1",
+      inviteURL: "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
     });
 
     const overview: ManagedCloudPartnerAccessOverview = {
@@ -107,7 +107,7 @@ describe("managed-partner-share-service", () => {
         createdAt: "2026-04-03T00:00:00.000Z",
         updatedAt: "2026-04-03T00:00:00.000Z",
       },
-      inviteURL: "ovumcy://backup-sync?invite_token=invite-token-1",
+      inviteURL: "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
     });
 
     const reconciled = await reconcileManagedPartnerShareKeys(
@@ -149,7 +149,7 @@ describe("managed-partner-share-service", () => {
     await storeAcceptedManagedPartnerGrantKey(
       partnerShareSecretStore,
       "grant-1",
-      "invite-token-1",
+      "invite-token-1-fixture-padding",
     );
 
     let uploadedProjectionBody: Record<string, unknown> | null = null;

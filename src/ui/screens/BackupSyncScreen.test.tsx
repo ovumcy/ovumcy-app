@@ -556,7 +556,7 @@ describe("BackupSyncScreen", () => {
               created_at: "2026-04-03T00:00:00.000Z",
               updated_at: "2026-04-03T00:00:00.000Z",
             },
-            invite_url: "ovumcy://backup-sync?invite_token=invite-token-1",
+            invite_url: "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
           },
           201,
         ),
@@ -610,7 +610,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-partner-invite-link-card");
     expect(screen.getByTestId("settings-partner-invite-link").props.children).toBe(
-      "ovumcy://backup-sync?invite_token=invite-token-1",
+      "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
     expect(screen.getByText("Partner invite link created.")).toBeTruthy();
@@ -629,7 +629,7 @@ describe("BackupSyncScreen", () => {
   });
 
   it("accepts a managed partner invite from the route token and clears the pending card", async () => {
-    mockSearchParams = { invite_token: "invite-token-1" };
+    mockSearchParams = { invite_token: "invite-token-1-fixture-padding" };
 
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

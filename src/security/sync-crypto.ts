@@ -22,6 +22,8 @@ const XCHACHA_NONCE_BYTE_LENGTH = 24;
 
 const RECOVERY_WRAP_INFO = utf8ToBytes("ovumcy-sync-wrap");
 const RECOVERY_FINGERPRINT_INFO = utf8ToBytes("ovumcy-sync-fingerprint");
+const RECOVERY_WRAP_AAD_VERSION = "ovumcy-sync-wrap-v1";
+const SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v1";
 
 export function createRecoveryPhrase(): string {
   return entropyToMnemonic(
@@ -32,6 +34,16 @@ export function createRecoveryPhrase(): string {
 
 export function isValidRecoveryPhrase(value: string): boolean {
   return validateMnemonic(normalizeRecoveryPhrase(value), englishWordlist);
+}
+
+/**
+ * Builds the AAD for a sync snapshot envelope. Both upload and restore
+ * sides must construct the same string; the device identifier prevents
+ * an attacker who somehow possessed the master key from re-using a
+ * snapshot captured from a different device under the same account.
+ */
+export function buildSyncPayloadAad(deviceID: string): Uint8Array {
+  return utf8ToBytes(`${SYNC_PAYLOAD_AAD_VERSION}|${deviceID}`);
 }
 
 export function createSyncSecretsRecord(
@@ -91,7 +103,9 @@ export function wrapMasterKeyWithRecoveryPhrase(
 
   const wrappingKey = deriveRecoveryWrappingKey(normalizedPhrase);
   const wrapNonce = getRandomBytes(XCHACHA_NONCE_BYTE_LENGTH);
-  const wrappedMasterKey = xchacha20poly1305(wrappingKey, wrapNonce).encrypt(
+  const phraseFingerprintHex = buildRecoveryPhraseFingerprint(normalizedPhrase);
+  const aad = buildRecoveryWrapAad(phraseFingerprintHex, 12);
+  const wrappedMasterKey = xchacha20poly1305(wrappingKey, wrapNonce, aad).encrypt(
     hexToBytes(masterKeyHex),
   );
 
@@ -101,7 +115,7 @@ export function wrapMasterKeyWithRecoveryPhrase(
     mnemonicWordCount: 12,
     wrapNonceHex: bytesToHex(wrapNonce),
     wrappedMasterKeyHex: bytesToHex(wrappedMasterKey),
-    phraseFingerprintHex: buildRecoveryPhraseFingerprint(normalizedPhrase),
+    phraseFingerprintHex,
   };
 }
 
@@ -122,9 +136,14 @@ export function unwrapMasterKeyWithRecoveryPhrase(
   }
 
   const wrappingKey = deriveRecoveryWrappingKey(normalizedPhrase);
+  const aad = buildRecoveryWrapAad(
+    wrappedKey.phraseFingerprintHex,
+    wrappedKey.mnemonicWordCount,
+  );
   const masterKey = xchacha20poly1305(
     wrappingKey,
     hexToBytes(wrappedKey.wrapNonceHex),
+    aad,
   ).decrypt(hexToBytes(wrappedKey.wrappedMasterKeyHex));
 
   return bytesToHex(masterKey);
@@ -133,15 +152,17 @@ export function unwrapMasterKeyWithRecoveryPhrase(
 export function encryptSyncPayload(
   masterKeyHex: string,
   payload: Uint8Array,
+  aad: Uint8Array,
 ): EncryptedSyncEnvelope {
-  return encryptPayload(masterKeyHex, payload);
+  return encryptPayload(masterKeyHex, payload, aad);
 }
 
 export function decryptSyncPayload(
   masterKeyHex: string,
   envelope: EncryptedSyncEnvelope,
+  aad: Uint8Array,
 ): Uint8Array {
-  return decryptPayload(masterKeyHex, envelope);
+  return decryptPayload(masterKeyHex, envelope, aad);
 }
 
 function createDeviceIdentity(deviceLabel: string, now: Date): SyncDeviceIdentity {
@@ -171,6 +192,15 @@ function buildRecoveryPhraseFingerprint(recoveryPhrase: string): string {
       RECOVERY_FINGERPRINT_INFO,
       8,
     ),
+  );
+}
+
+function buildRecoveryWrapAad(
+  phraseFingerprintHex: string,
+  mnemonicWordCount: number,
+): Uint8Array {
+  return utf8ToBytes(
+    `${RECOVERY_WRAP_AAD_VERSION}|${phraseFingerprintHex}|${mnemonicWordCount}`,
   );
 }
 

@@ -1042,6 +1042,10 @@ async function performFetch(
     const requestInit: RequestInit = {
       method: options.method,
       headers,
+      // Same rationale as sync-api-client: refuse redirects so a malicious
+      // upstream cannot exfiltrate the managed bearer session token via a
+      // 307/308 Location to an attacker-controlled host.
+      redirect: "error",
     };
     if (options.body !== undefined) {
       requestInit.body = JSON.stringify(options.body);

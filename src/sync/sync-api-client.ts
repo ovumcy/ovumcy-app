@@ -664,6 +664,13 @@ async function performFetch(
     const requestInit: RequestInit = {
       method: options.method,
       headers,
+      // Refuse to follow redirects: this client only talks to the configured
+      // sync origin, and a malicious or misconfigured upstream returning a
+      // 3xx Location could otherwise cause fetch to re-send the bearer
+      // session token to an attacker-controlled host on 307/308 (which
+      // preserve method + headers per HTTP spec). Same-origin invariant
+      // makes any redirect here unambiguously suspicious.
+      redirect: "error",
     };
     if (options.body !== undefined) {
       requestInit.body = JSON.stringify(options.body);

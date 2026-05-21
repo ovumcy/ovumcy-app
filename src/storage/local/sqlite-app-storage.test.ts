@@ -3,8 +3,12 @@ import {
   type LocalAppDatabase,
 } from "./sqlite-app-storage";
 import type { LocalDataKeyStore } from "../../security/local-data-key-store";
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultProfileRecord } from "../../models/profile";
-import { encryptLocalDataRecord } from "../../security/local-data-crypto";
+import {
+  buildLocalDataAad,
+  encryptLocalDataRecord,
+} from "../../security/local-data-crypto";
 
 type FakeDatabaseState = {
   bootstrapRow: {
@@ -1093,6 +1097,7 @@ describe("sqlite-app-storage", () => {
         encrypted_payload: encryptLocalDataRecord(
           "a".repeat(64),
           createDefaultProfileRecord(),
+          buildLocalDataAad("profile_settings", "1"),
         ),
       },
       syncPreferencesRow: {
@@ -1319,6 +1324,7 @@ describe("sqlite-app-storage", () => {
         encrypted_payload: encryptLocalDataRecord(
           "a".repeat(64),
           createDefaultProfileRecord(),
+          buildLocalDataAad("profile_settings", "1"),
         ),
       },
       syncPreferencesRow: {
@@ -1823,5 +1829,93 @@ describe("sqlite-app-storage", () => {
       profileVersion: 2,
       incompleteOnboardingStep: null,
     });
+  });
+
+  it("rejects decryption of a day_log row whose encrypted_payload was copied from a different row", async () => {
+    // F1.a regression: AAD must bind each row's ciphertext to its lookup
+    // key, so an attacker with write access to the SQLite file cannot
+    // swap encrypted blobs between dates and have the app silently
+    // misattribute the data.
+    const inspected = createInspectableFakeDatabase();
+    const keyStore = createFakeLocalDataKeyStore("a".repeat(64));
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: keyStore,
+      openDatabase: async () => inspected.database,
+    });
+
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-04-01"),
+      notes: "morning entry",
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-04-02"),
+      notes: "evening entry",
+    });
+
+    const rowA = inspected.state.dayLogRows[0];
+    const rowB = inspected.state.dayLogRows[1];
+    if (!rowA || !rowB) {
+      throw new Error("expected two day_log rows persisted");
+    }
+    expect(rowA.day).not.toBe(rowB.day);
+    // Manually splice row A's ciphertext into row B's slot (same key,
+    // but the AAD-bound lookup key differs → AEAD tag must fail).
+    rowB.encrypted_payload = rowA.encrypted_payload ?? null;
+
+    await expect(storage.readDayLogRecord("2026-04-02")).rejects.toThrow();
+  });
+
+  it("wipes and reseeds the local database when SecureStore returns a key that no longer authenticates the on-disk data", async () => {
+    // F2 regression: per AGENTS.md, a wrong-key state must trigger a
+    // deterministic reset, not a crash.
+    const inspected = createInspectableFakeDatabase();
+    const storageWithRightKey = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => inspected.database,
+    });
+    await storageWithRightKey.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+    expect(inspected.state.bootstrapRow?.encrypted_payload).toBeTruthy();
+
+    // Re-mount the SAME DB with a different key (simulates Android Auto
+    // Backup restoring the SQLite file but SecureStore rotating the key,
+    // or a key truncation during a buggy migration).
+    const wrongKeyStore = createFakeLocalDataKeyStore("b".repeat(64));
+    const storageWithWrongKey = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: wrongKeyStore,
+      openDatabase: async () => inspected.database,
+    });
+
+    // Must succeed by returning seedRows defaults (post-wipe), NOT crash
+    // on auth-tag mismatch.
+    await expect(storageWithWrongKey.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 1,
+    });
+    // The store should now hold a freshly minted key (not "b"*64) since
+    // the canary failed and resolveLocalDataKey reseeded.
+    expect(wrongKeyStore.writeLocalDataKey).toHaveBeenCalled();
   });
 });

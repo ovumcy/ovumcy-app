@@ -2,6 +2,7 @@ import { fromByteArray, toByteArray } from "base64-js";
 
 import { createEmptyDayLogRecord } from "../models/day-log";
 import {
+  buildSyncPayloadAad,
   createSyncSecretsRecord,
   decryptSyncPayload,
   encryptSyncPayload,
@@ -234,7 +235,11 @@ describe("sync-client-service", () => {
         new TextDecoder().decode(toByteArray(input.ciphertextBase64)),
       ) as EncryptedSyncEnvelope;
       const snapshot = decodeSyncSnapshot(
-        decryptSyncPayload(preparedSecrets.record.masterKeyHex, encryptedEnvelope),
+        decryptSyncPayload(
+          preparedSecrets.record.masterKeyHex,
+          encryptedEnvelope,
+          buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+        ),
       );
 
       expect(snapshot.dayLogs).toEqual([dayLog]);
@@ -626,6 +631,7 @@ describe("sync-client-service", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       snapshotPayload,
+      buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
     );
     const ciphertextBytes = new TextEncoder().encode(
       JSON.stringify(encryptedEnvelope),

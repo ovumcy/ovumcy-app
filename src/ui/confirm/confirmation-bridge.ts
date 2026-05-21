@@ -8,6 +8,7 @@ export type ConfirmationRequest = {
 type ConfirmationListener = (request: ConfirmationRequest) => void;
 
 let listener: ConfirmationListener | null = null;
+let isPending = false;
 
 export function registerConfirmationListener(next: ConfirmationListener): () => void {
   listener = next;
@@ -28,10 +29,21 @@ export function requestConfirmation(
       resolve(false);
       return;
     }
-    listener({ message, acceptLabel, cancelLabel, resolve });
+    if (isPending) {
+      return;
+    }
+    isPending = true;
+    const wrappedResolve = (value: boolean) => {
+      isPending = false;
+      resolve(value);
+    };
+    listener({ message, acceptLabel, cancelLabel, resolve: wrappedResolve });
   });
 }
 
 export function __resetConfirmationListenerForTesting(): void {
-  listener = null;
+  if (__DEV__) {
+    listener = null;
+    isPending = false;
+  }
 }

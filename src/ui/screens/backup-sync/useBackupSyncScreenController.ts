@@ -776,6 +776,8 @@ export function useBackupSyncScreenController({
           syncSecretStore,
           state,
         );
+        clearManagedPartnerInviteToken();
+        setPendingPartnerInviteToken("");
         setState(clearedState);
         await reloadPartnerAccess(clearedState);
       }
@@ -856,6 +858,10 @@ export function useBackupSyncScreenController({
       syncSecretStore,
       state,
     );
+    // Drop any pending partner invite captured for the prior session so it
+    // can't be redeemed under a different managed account after re-login.
+    clearManagedPartnerInviteToken();
+    setPendingPartnerInviteToken("");
     setErrorState(null);
     setState(result.state);
     await reloadPartnerAccess(result.state);
@@ -999,6 +1005,11 @@ export function useBackupSyncScreenController({
         setPartnerInviteLink("");
         setPartnerOverview(null);
         setShowPartnerOwnerControls(false);
+        // A pending invite token is bound to the previously selected mode.
+        // Switching modes (managed ↔ local ↔ community) makes it unredeemable
+        // and risks cross-session leakage if retained.
+        clearManagedPartnerInviteToken();
+        setPendingPartnerInviteToken("");
         setState((current) =>
           current
             ? {

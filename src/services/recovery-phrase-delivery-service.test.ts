@@ -17,8 +17,25 @@ describe("recovery-phrase-delivery-service", () => {
       filename: "ovumcy-private-export-2026-03-26.txt",
       mimeType: "text/plain",
       content:
-        "Ovumcy recovery phrase\n\nalpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu\n",
+        "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu\n",
     });
+  });
+
+  it("does not include any app-name or 'recovery phrase' label in the body", async () => {
+    const deliveryClient = {
+      deliver: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    await deliverRecoveryPhraseArtifact(
+      deliveryClient,
+      "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu",
+      new Date(2026, 2, 26),
+    );
+
+    const call = deliveryClient.deliver.mock.calls[0][0];
+    expect(call.content).not.toMatch(/recovery/i);
+    expect(call.content).not.toMatch(/ovumcy/i);
+    expect(call.content).not.toMatch(/phrase/i);
   });
 
   it("rejects empty recovery phrase exports before delivery", async () => {

@@ -19,9 +19,14 @@ export async function deliverRecoveryPhraseArtifact(
     };
   }
 
+  // Body intentionally carries no header / app name / context label. A
+  // labeled "Ovumcy recovery phrase" string was preserved by OS share-sheet
+  // recents and receiving-app caches independently of our own cleanup,
+  // turning a misclick on the share dialog into a context-rich disclosure.
+  // The artifact is sensitive even unlabeled, but the label was a multiplier.
   return deliveryClient.deliver({
     filename: `${PRIVATE_EXPORT_FILENAME_PREFIX}-${formatLocalDate(now)}.txt`,
     mimeType: "text/plain",
-    content: `Ovumcy recovery phrase\n\n${normalizedRecoveryPhrase}\n`,
+    content: `${normalizedRecoveryPhrase}\n`,
   });
 }

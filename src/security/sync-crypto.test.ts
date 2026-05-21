@@ -1,4 +1,5 @@
 import {
+  buildSyncPayloadAad,
   createSyncSecretsRecord,
   decryptSyncPayload,
   encryptSyncPayload,
@@ -24,17 +25,40 @@ describe("sync-crypto", () => {
     expect(unwrapped).toBe(result.record.masterKeyHex);
   });
 
-  it("encrypts and decrypts payloads with the generated master key", () => {
+  it("encrypts and decrypts payloads with the generated master key and matching AAD", () => {
+    const { record } = createSyncSecretsRecord(
+      "Galaxy",
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+    const payload = new TextEncoder().encode("sensitive sync payload");
+    const aad = buildSyncPayloadAad(record.device.deviceID);
+
+    const envelope = encryptSyncPayload(record.masterKeyHex, payload, aad);
+    const decrypted = decryptSyncPayload(record.masterKeyHex, envelope, aad);
+
+    expect(new TextDecoder().decode(decrypted)).toBe("sensitive sync payload");
+  });
+
+  it("rejects sync payload decryption with a different device's AAD", () => {
     const { record } = createSyncSecretsRecord(
       "Galaxy",
       new Date("2026-03-19T08:15:00.000Z"),
     );
     const payload = new TextEncoder().encode("sensitive sync payload");
 
-    const envelope = encryptSyncPayload(record.masterKeyHex, payload);
-    const decrypted = decryptSyncPayload(record.masterKeyHex, envelope);
+    const envelope = encryptSyncPayload(
+      record.masterKeyHex,
+      payload,
+      buildSyncPayloadAad(record.device.deviceID),
+    );
 
-    expect(new TextDecoder().decode(decrypted)).toBe("sensitive sync payload");
+    expect(() =>
+      decryptSyncPayload(
+        record.masterKeyHex,
+        envelope,
+        buildSyncPayloadAad(`${record.device.deviceID}-attacker`),
+      ),
+    ).toThrow();
   });
 
   it("rewraps an existing master key with a fresh recovery phrase", () => {

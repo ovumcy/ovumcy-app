@@ -177,7 +177,7 @@ describe("managed-cloud-api-client", () => {
               created_at: "2026-04-04T00:00:00.000Z",
               updated_at: "2026-04-04T00:00:00.000Z",
             },
-            invite_url: "ovumcy://backup-sync?invite_token=invite-token-2",
+            invite_url: "ovumcy://backup-sync?invite_token=invite-token-2-fixture-padding",
           }),
           {
             status: 201,
@@ -285,7 +285,7 @@ describe("managed-cloud-api-client", () => {
     ).resolves.toEqual({
       ok: true,
       result: expect.objectContaining({
-        inviteURL: "ovumcy://backup-sync?invite_token=invite-token-2",
+        inviteURL: "ovumcy://backup-sync?invite_token=invite-token-2-fixture-padding",
         invite: expect.objectContaining({
           id: "invite-2",
           accessLevel: "full",
@@ -294,7 +294,7 @@ describe("managed-cloud-api-client", () => {
     });
 
     await expect(
-      client.acceptPartnerInvite("managed-session-1", "invite-token-2"),
+      client.acceptPartnerInvite("managed-session-1", "invite-token-2-fixture-padding"),
     ).resolves.toEqual({
       ok: true,
       invite: expect.objectContaining({

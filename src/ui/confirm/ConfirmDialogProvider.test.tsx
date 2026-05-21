@@ -106,29 +106,37 @@ describe("ConfirmDialogProvider", () => {
     expect(getModal().props.visible).toBe(false);
   });
 
-  it("resolves a still-pending request to false when a new one arrives", async () => {
+  it("ignores a concurrent request without disturbing the visible dialog or auto-resolving anything", async () => {
     renderProvider();
     let firstPromise!: Promise<boolean>;
     let secondPromise!: Promise<boolean>;
+    let secondSettled = false;
 
     act(() => {
       firstPromise = requestConfirmation("first?", "Yes", "No");
     });
     act(() => {
-      secondPromise = requestConfirmation("second?", "Yes", "No");
+      secondPromise = requestConfirmation("second?", "Yes2", "No2");
+    });
+    void secondPromise.then(() => {
+      secondSettled = true;
     });
 
-    await expect(firstPromise).resolves.toBe(false);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(secondSettled).toBe(false);
     expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
-      "second?",
+      "first?",
     );
     expect(getModal().props.visible).toBe(true);
 
     act(() => {
       fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
+    await expect(firstPromise).resolves.toBe(true);
 
-    await expect(secondPromise).resolves.toBe(true);
+    await Promise.resolve();
+    expect(secondSettled).toBe(false);
     expect(getModal().props.visible).toBe(false);
   });
 

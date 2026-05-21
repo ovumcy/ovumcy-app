@@ -8,6 +8,7 @@ import {
 } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
+  buildLocalDataAad,
   createLocalDataKeyHex,
   decryptLocalDataRecord,
   encryptLocalDataRecord,
@@ -1092,7 +1093,24 @@ async function resolveLocalDataKey(
 ): Promise<string> {
   const existingKey = await localDataKeyStore.readLocalDataKey();
   if (existingKey) {
-    return existingKey;
+    // Verify the stored key actually authenticates existing data.
+    // SecureStore can desynchronize from on-disk encrypted rows on
+    // Android Auto Backup restore (DB restored but key regenerated)
+    // or after a buggy key rotation. Per the AGENTS.md invariant
+    // "the storage layer must reset the local database deterministically
+    // rather than crashing", we attempt a canary decrypt on a singleton
+    // row first and fall through to wipe-and-reseed on auth-tag failure.
+    const canDecrypt = await withStorageOperationLabel(
+      "sqlite/localDataKey/canaryDecrypt",
+      () => canDecryptCanaryRow(database, existingKey),
+    );
+    if (canDecrypt) {
+      return existingKey;
+    }
+    await wipeLocalAppTables(database);
+    const replacementKey = createLocalDataKeyHex();
+    await localDataKeyStore.writeLocalDataKey(replacementKey);
+    return replacementKey;
   }
 
   if (
@@ -1106,6 +1124,46 @@ async function resolveLocalDataKey(
   const keyHex = createLocalDataKeyHex();
   await localDataKeyStore.writeLocalDataKey(keyHex);
   return keyHex;
+}
+
+async function canDecryptCanaryRow(
+  database: LocalAppDatabase,
+  keyHex: string,
+): Promise<boolean> {
+  // Try bootstrap_state first (always present once onboarding has touched
+  // the DB), then profile_settings. If neither has encrypted content,
+  // there's nothing to verify against → assume key is valid (fresh install).
+  const candidates: { table: string; sql: string }[] = [
+    {
+      table: "bootstrap_state",
+      sql: "SELECT encrypted_payload FROM bootstrap_state WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    },
+    {
+      table: "profile_settings",
+      sql: "SELECT encrypted_payload FROM profile_settings WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    },
+  ];
+
+  for (const candidate of candidates) {
+    const row = await database.getFirstAsync<{ encrypted_payload: string | null }>(
+      candidate.sql,
+    );
+    if (!row?.encrypted_payload) {
+      continue;
+    }
+    try {
+      decryptLocalDataRecord(
+        keyHex,
+        row.encrypted_payload,
+        buildLocalDataAad(candidate.table, "1"),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolean> {
@@ -1409,7 +1467,11 @@ async function upsertBootstrapState(
       defaults.incompleteOnboardingStep,
       defaults.hasCompletedOnboarding,
     ),
-    encryptLocalDataRecord(localDataKey, state),
+    encryptLocalDataRecord(
+      localDataKey,
+      state,
+      buildLocalDataAad("bootstrap_state", "1"),
+    ),
   );
 }
 
@@ -1470,7 +1532,11 @@ async function upsertProfileRecord(
     defaults.hideSexChip ? 1 : 0,
     normalizeInterfaceLanguage(defaults.languageOverride),
     normalizeThemePreference(defaults.themeOverride),
-    encryptLocalDataRecord(localDataKey, record),
+    encryptLocalDataRecord(
+      localDataKey,
+      record,
+      buildLocalDataAad("profile_settings", "1"),
+    ),
   );
 }
 
@@ -1512,7 +1578,11 @@ async function upsertSyncPreferencesRecord(
     defaults.preparedAt,
     defaults.lastRemoteGeneration,
     defaults.lastSyncedAt,
-    encryptLocalDataRecord(localDataKey, record),
+    encryptLocalDataRecord(
+      localDataKey,
+      record,
+      buildLocalDataAad("sync_preferences", "1"),
+    ),
   );
 }
 
@@ -1573,7 +1643,11 @@ async function upsertDayLogRecord(
     JSON.stringify(defaults.cycleFactorKeys),
     JSON.stringify(defaults.symptomIDs),
     defaults.notes,
-    encryptLocalDataRecord(localDataKey, normalized),
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("day_log", lookupKey),
+    ),
   );
 }
 
@@ -1613,7 +1687,11 @@ async function upsertSymptomRecord(
     0,
     0,
     0,
-    encryptLocalDataRecord(localDataKey, record),
+    encryptLocalDataRecord(
+      localDataKey,
+      record,
+      buildLocalDataAad("symptom", lookupKey),
+    ),
   );
 }
 
@@ -1625,6 +1703,7 @@ function mapBootstrapStateRow(
     return decryptLocalDataRecord<LocalBootstrapState>(
       localDataKey,
       row.encrypted_payload,
+      buildLocalDataAad("bootstrap_state", "1"),
     );
   }
 
@@ -1663,6 +1742,7 @@ function mapProfileSettingsRow(
     const record = decryptLocalDataRecord<ProfileRecord>(
       localDataKey,
       row.encrypted_payload,
+      buildLocalDataAad("profile_settings", "1"),
     );
 
     return {
@@ -1720,6 +1800,7 @@ function mapSyncPreferencesRow(
       decryptLocalDataRecord<SyncPreferencesRecord>(
         localDataKey,
         row.encrypted_payload,
+        buildLocalDataAad("sync_preferences", "1"),
       ),
     );
   }
@@ -1756,7 +1837,11 @@ function mapLegacySyncPreferencesRow(
 function mapDayLogRow(row: DayLogRow, localDataKey: string): DayLogRecord {
   if (row.encrypted_payload) {
     return sanitizeDayLogRecord(
-      decryptLocalDataRecord<DayLogRecord>(localDataKey, row.encrypted_payload),
+      decryptLocalDataRecord<DayLogRecord>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("day_log", row.day),
+      ),
     );
   }
 
@@ -1787,7 +1872,11 @@ function mapLegacyDayLogRow(row: DayLogRow): DayLogRecord {
 
 function mapSymptomRow(row: SymptomRow, localDataKey: string): SymptomRecord {
   if (row.encrypted_payload) {
-    return decryptLocalDataRecord<SymptomRecord>(localDataKey, row.encrypted_payload);
+    return decryptLocalDataRecord<SymptomRecord>(
+      localDataKey,
+      row.encrypted_payload,
+      buildLocalDataAad("symptom", row.id),
+    );
   }
 
   return mapLegacySymptomRow(row);

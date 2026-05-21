@@ -43,4 +43,58 @@ describe("confirmation-bridge", () => {
       requestConfirmation("anything", "OK", "Cancel"),
     ).resolves.toBe(false);
   });
+
+  it("does not deliver or auto-resolve a concurrent request while one is pending", async () => {
+    const delivered: string[] = [];
+    let firstRequest: ConfirmationRequestForTest | null = null;
+    registerConfirmationListener((request) => {
+      delivered.push(request.message);
+      if (firstRequest === null) {
+        firstRequest = request;
+      }
+    });
+
+    const first = requestConfirmation("first?", "OK", "Cancel");
+    const second = requestConfirmation("second?", "OK", "Cancel");
+
+    let secondSettled = false;
+    void second.then(() => {
+      secondSettled = true;
+    });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(delivered).toEqual(["first?"]);
+    expect(secondSettled).toBe(false);
+
+    firstRequest!.resolve(true);
+    await expect(first).resolves.toBe(true);
+
+    await Promise.resolve();
+    expect(secondSettled).toBe(false);
+  });
+
+  it("accepts a new request after the previous one is resolved", async () => {
+    const delivered: ConfirmationRequestForTest[] = [];
+    registerConfirmationListener((request) => {
+      delivered.push(request);
+    });
+
+    const first = requestConfirmation("first?", "OK", "Cancel");
+    delivered[0]!.resolve(true);
+    await expect(first).resolves.toBe(true);
+
+    const second = requestConfirmation("second?", "OK", "Cancel");
+    expect(delivered).toHaveLength(2);
+    expect(delivered[1]!.message).toBe("second?");
+    delivered[1]!.resolve(false);
+    await expect(second).resolves.toBe(false);
+  });
 });
+
+type ConfirmationRequestForTest = {
+  message: string;
+  acceptLabel: string;
+  cancelLabel: string;
+  resolve: (value: boolean) => void;
+};

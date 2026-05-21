@@ -3,6 +3,7 @@ import { bytesToHex } from "@noble/hashes/utils.js";
 import { fromByteArray, toByteArray } from "base64-js";
 
 import {
+  buildSyncPayloadAad,
   createRecoveredSyncSecretsRecord,
   decryptSyncPayload,
   encryptSyncPayload,
@@ -798,7 +799,11 @@ export async function runSyncUpload(
 
   const snapshot = await buildSyncSnapshot(storage, now);
   const payload = encodeSyncSnapshot(snapshot);
-  const encryptedEnvelope = encryptSyncPayload(prepared.secrets.masterKeyHex, payload);
+  const encryptedEnvelope = encryptSyncPayload(
+    prepared.secrets.masterKeyHex,
+    payload,
+    buildSyncPayloadAad(prepared.secrets.device.deviceID),
+  );
   const ciphertextBytes = encodeEncryptedEnvelope(encryptedEnvelope);
   const checksumSHA256 = bytesToHex(sha256(ciphertextBytes));
   const generation = nextRemoteGeneration(preferences, now);
@@ -881,6 +886,7 @@ export async function runSyncRestore(
     decryptedPayload = decryptSyncPayload(
       prepared.secrets.masterKeyHex,
       encryptedEnvelope,
+      buildSyncPayloadAad(prepared.secrets.device.deviceID),
     );
   } catch {
     return { ok: false, errorCode: "invalid_payload" };

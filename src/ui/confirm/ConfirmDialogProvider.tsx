@@ -22,10 +22,6 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
   useEffect(
     () =>
       registerConfirmationListener((next) => {
-        const previous = pendingRequestRef.current;
-        if (previous && previous !== next) {
-          previous.resolve(false);
-        }
         pendingRequestRef.current = next;
         setRequest(next);
       }),
