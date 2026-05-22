@@ -118,4 +118,97 @@ describe("sync-endpoint-policy", () => {
       }),
     });
   });
+
+  it("defaults the self-hosted pin set to null when no options are supplied", () => {
+    const result = normalizeSyncEndpoint("self_hosted", "sync.example.com");
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        pinnedSPKIFingerprints: null,
+      }),
+    });
+  });
+
+  it("threads a single supplied pin into a self-hosted endpoint", () => {
+    const fingerprint = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    const result = normalizeSyncEndpoint("self_hosted", "sync.example.com", {
+      pinnedSPKIFingerprints: [fingerprint],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        host: "sync.example.com",
+        pinnedSPKIFingerprints: [fingerprint],
+      }),
+    });
+  });
+
+  it("threads multiple supplied pins for self-hosted cert rotation overlap", () => {
+    const fingerprintA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    const fingerprintB = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=";
+    const result = normalizeSyncEndpoint("self_hosted", "sync.example.com", {
+      pinnedSPKIFingerprints: [fingerprintA, fingerprintB],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        pinnedSPKIFingerprints: [fingerprintA, fingerprintB],
+      }),
+    });
+  });
+
+  it("drops malformed and duplicate fingerprints from the self-hosted pin set", () => {
+    const fingerprintA = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    const result = normalizeSyncEndpoint("self_hosted", "sync.example.com", {
+      pinnedSPKIFingerprints: [
+        fingerprintA,
+        "malformed",
+        fingerprintA, // duplicate
+        "" as string,
+      ],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        pinnedSPKIFingerprints: [fingerprintA],
+      }),
+    });
+  });
+
+  it("collapses an all-malformed self-hosted pin set to null", () => {
+    const result = normalizeSyncEndpoint("self_hosted", "sync.example.com", {
+      pinnedSPKIFingerprints: ["malformed", ""],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        pinnedSPKIFingerprints: null,
+      }),
+    });
+  });
+
+  it("resolves the managed pin set from build-time constants regardless of caller options", () => {
+    // Managed pins are owned by the ovumcy team and shipped via app
+    // release, not supplied by callers. Any options passed for managed
+    // mode are ignored; the policy resolves the constant directly. While
+    // the constant is still empty (real fingerprints pending), the
+    // resolved set is null so the enforcement layer falls back to
+    // standard CA chain trust.
+    const result = normalizeSyncEndpoint("managed", "", {
+      pinnedSPKIFingerprints: ["AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        mode: "managed",
+        pinnedSPKIFingerprints: null,
+      }),
+    });
+  });
 });

@@ -10,9 +10,21 @@ export type NormalizeSyncEndpointErrorCode =
   | "unsupported_scheme"
   | "insecure_public_http";
 
+// NormalizeSyncEndpointOptions carries side-channel state that the policy
+// layer threads into the resulting `NormalizedSyncEndpoint` without itself
+// owning that state. For self-hosted, the pin set is read by the caller
+// from `cert-pin-store` (a SecureStore-backed map keyed by host). For
+// managed, the pin set comes from build-time constants — callers don't
+// need to supply it because the policy resolves it from `sync-contract`
+// constants on its own.
+export type NormalizeSyncEndpointOptions = {
+  pinnedSPKIFingerprints?: readonly string[] | null;
+};
+
 export function normalizeSyncEndpoint(
   mode: SyncMode,
   input: string,
+  options?: NormalizeSyncEndpointOptions,
 ): {
   ok: true;
   endpoint: NormalizedSyncEndpoint;
@@ -30,6 +42,12 @@ export function normalizeSyncEndpoint(
         host: managedURL.hostname,
         isLocalNetwork: false,
         isSecure: true,
+        // Managed pins come from the build-time constant, not from the
+        // caller. Callers passing options for managed are no-ops here:
+        // the trust set for ovumcy.cloud is controlled by the ovumcy team
+        // through `MANAGED_SYNC_PINNED_SPKI_FINGERPRINTS` and updated via
+        // app release coordinated with their cert rotation schedule.
+        pinnedSPKIFingerprints: resolveManagedPinSet(),
       },
     };
   }
@@ -80,8 +98,51 @@ export function normalizeSyncEndpoint(
       host,
       isLocalNetwork,
       isSecure,
+      pinnedSPKIFingerprints: normalizeFingerprintList(
+        options?.pinnedSPKIFingerprints,
+      ),
     },
   };
+}
+
+function normalizeFingerprintList(
+  value: readonly string[] | null | undefined,
+): readonly string[] | null {
+  if (!value || value.length === 0) {
+    return null;
+  }
+  const seen = new Set<string>();
+  const filtered: string[] = [];
+  for (const entry of value) {
+    if (typeof entry !== "string") {
+      continue;
+    }
+    if (!isWellFormedFingerprint(entry)) {
+      continue;
+    }
+    if (seen.has(entry)) {
+      continue;
+    }
+    seen.add(entry);
+    filtered.push(entry);
+  }
+  return filtered.length > 0 ? filtered : null;
+}
+
+function isWellFormedFingerprint(value: string): boolean {
+  // base64-encoded SHA-256 = 32 bytes = 44 chars with a single `=` pad.
+  // Matches the writer-side validation in `cert-pin-store`.
+  return /^[A-Za-z0-9+/]{43}=$/.test(value);
+}
+
+function resolveManagedPinSet(): readonly string[] | null {
+  // Placeholder: real fingerprints for sync.ovumcy.cloud and
+  // managed.ovumcy.cloud must be filled in by the ovumcy team before the
+  // managed-cloud enforcement layer goes live. Returning null here means
+  // managed endpoints currently fall back to standard CA chain trust until
+  // the constants are populated. See docs/f7-status.md for the rotation
+  // runbook this depends on.
+  return null;
 }
 
 function ensureEndpointScheme(input: string): string {

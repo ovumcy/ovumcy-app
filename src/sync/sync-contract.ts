@@ -55,6 +55,28 @@ export type NormalizedSyncEndpoint = {
   host: string;
   isLocalNetwork: boolean;
   isSecure: boolean;
+  // pinnedSPKIFingerprints is the set of base64-encoded SHA-256 hashes of
+  // leaf certificate Subject Public Key Info (SPKI) values that the connect
+  // path will accept for this host. Multiple entries support graceful cert
+  // rotation: include the current pin plus the next planned pin so a single
+  // rotation does not brick installs that haven't received the next app
+  // release.
+  //
+  // For `self_hosted` endpoints the array carries the owner-entered
+  // fingerprint(s) from `cert-pin-store`. Typically one entry; a second can
+  // be added by the operator's deployment runbook when they're about to
+  // rotate so the app accepts both old and new during the cutover window.
+  //
+  // For `managed` endpoints the array carries the static pin set baked
+  // into the app at build time (see `MANAGED_SYNC_PINNED_SPKI_FINGERPRINTS`
+  // / `MANAGED_CLOUD_AUTH_PINNED_SPKI_FINGERPRINTS`). The ovumcy team owns
+  // the rotation schedule: each release that touches managed pins must ship
+  // current + next so the rotation window spans at least one release cycle.
+  //
+  // Null (or absent) means the host is in the TOFU bootstrap window — no
+  // pin has been entered yet for self-hosted, or the managed constants are
+  // intentionally empty during local development against staging.
+  pinnedSPKIFingerprints?: readonly string[] | null;
 };
 
 export type SyncPreferencesRecord = {
