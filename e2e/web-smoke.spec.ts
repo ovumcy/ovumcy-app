@@ -707,6 +707,40 @@ test("visual verify premium screens by mocking the managed billing snapshot", as
   });
 });
 
+test("F9: partner invite_token is scrubbed from the URL by the time the SPA bundle has executed", async ({
+  page,
+}) => {
+  // On an SPA there is no point earlier than "JS bundle has run" at which
+  // we can mutate window.location — the navigation itself starts the URL
+  // bar. The F9 fix narrows the leak window from "after a React useEffect"
+  // (which runs after the first paint) to "during the module-level
+  // execution of app/_layout.tsx" (which runs as part of the initial
+  // bundle evaluation, before React commits anything). This test asserts
+  // the latter: as soon as the bundle has executed past the scrub call,
+  // the token is gone from window.location and from the address bar, so
+  // subsequent paints, devtools snapshots, and browser autocomplete
+  // cannot capture it.
+  const token = "test-token-f9-padding-1234567890";
+
+  await page.goto(`/backup-sync?invite_token=${token}`);
+  await page.waitForFunction(
+    () => !window.location.search.includes("invite_token"),
+    undefined,
+    { timeout: 30_000 },
+  );
+
+  expect(page.url()).not.toContain("invite_token");
+  expect(page.url()).not.toContain(token);
+
+  const locationSnapshot = await page.evaluate(() => ({
+    href: window.location.href,
+    search: window.location.search,
+  }));
+  expect(locationSnapshot.href).not.toContain("invite_token");
+  expect(locationSnapshot.href).not.toContain(token);
+  expect(locationSnapshot.search).not.toContain("invite_token");
+});
+
 test("web shell publishes the canonical favicon", async ({ page }) => {
   await page.goto("/");
 

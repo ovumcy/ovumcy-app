@@ -10,6 +10,11 @@ import {
   useAppPreferences,
 } from "../src/ui/providers/AppPreferencesProvider";
 
+// F9 note: the invite_token scrub for web targets is bootstrapped from
+// index.js (see src/security/web-invite-token-scrub-bootstrap.ts). By the
+// time expo-router lazy-loads this layout, window.location has already
+// been cleaned and the token (if any) is stashed in the in-memory buffer.
+
 export default function RootLayout() {
   useEffect(() => {
     // F10.b: any export artifact left over from a JS-process kill mid-share
