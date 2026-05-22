@@ -61,3 +61,6 @@ AI_CONTEXT.md
 .agents/context/ownership.md
 .codex/
 .claude/
+
+# Visual regression diagnostic screenshots (regenerated each run)
+e2e/screenshots/
