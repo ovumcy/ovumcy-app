@@ -151,7 +151,18 @@ What revoke cannot do: symmetric AEAD does not support post-hoc key revocation f
 
 ## Outbound Fetch Posture
 
-`sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token because HTTP preserves method + headers on those status codes. Self-hosted TLS pinning / TOFU is a planned follow-up.
+`sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token because HTTP preserves method + headers on those status codes.
+
+## TLS Pinning Posture
+
+Sync transport (community self-hosted and Ovumcy Cloud SaaS) does not currently pin server certificates. App relies on the platform CA chain plus the outbound-fetch posture above. The pure-TypeScript scaffolding for pinning lives in `src/security/cert-pin-store.ts`, `src/sync/cert-pin-policy.ts`, and `src/sync/sync-endpoint-policy.ts` but is wired into no runtime call site.
+
+Deliberate deferral, not an oversight. The reasons are operational, not technical:
+
+- **Ovumcy Cloud SaaS pinning** requires a release-coordination process: every cert rotation must be preceded by an app release that adds the next pin alongside the old, then followed by a release that drops the old pin after the rotation lands. With Let's Encrypt's 90-day default rotation cadence, the first missed coordination window bricks every install that has not updated. Public-alpha solo-maintainer operations cannot guarantee this dance reliably; standard CA + short-lived session tokens is the safer posture at this stage.
+- **Community self-hosted pinning** is operationally cheap on the project side (each owner manages their own server's pin through the app UI), but still needs the setup-form input field, the format validation, the mismatch warning screen, and localized copy across five locales. Not blocking and not urgent — the threat model for self-hosted is dominated by the owner's own infrastructure choices, which they already control.
+
+When to revisit: post-alpha, once cert rotation can be tied to a documented release runbook with an owner. Background context and resumption checklist live in `docs/f7-status.md`.
 
 ## Pending Partner Invite Buffer
 
