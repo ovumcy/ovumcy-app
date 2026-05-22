@@ -1,10 +1,12 @@
 import type {
+  PartnerShareGrantKeyRecord,
   PartnerShareSecretStore,
   PartnerShareSecretsRecord,
 } from "../security/partner-share-secret-store";
 import {
-  derivePartnerShareKeyHex,
   decryptPartnerSharedProjection,
+  deriveGrantSubkeyHex,
+  derivePartnerShareKeyHex,
   encryptPartnerSharedProjection,
 } from "../security/partner-share-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
@@ -30,47 +32,77 @@ export type ManagedPartnerShareResult<T> =
         | "invalid_partner_projection";
     };
 
+/**
+ * Subset of `ManagedCloudPartnerAccessGrant` required to derive K_grant. The
+ * three fields are server-emitted and immutable per grant; documented in
+ * `docs/sync-trust-model.md` (Partner-Share Key Rotation) so the managed
+ * cloud team treats them as key-binding context.
+ */
+export type ManagedPartnerGrantKeyContext = Pick<
+  ManagedCloudPartnerAccessGrant,
+  "id" | "ownerAccountID" | "sourceInviteID"
+>;
+
 export async function storeIssuedManagedPartnerInviteKey(
   partnerShareSecretStore: PartnerShareSecretStore,
   result: ManagedCloudPartnerInviteIssueResult,
 ): Promise<void> {
   const inviteToken = parseInviteTokenFromURL(result.inviteURL);
-  const nextState = await partnerShareSecretStore.readPartnerShareSecrets();
-  nextState.pendingInviteKeysByInviteID[result.invite.id] =
-    derivePartnerShareKeyHex(inviteToken);
-  await partnerShareSecretStore.writePartnerShareSecrets(nextState);
+  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken);
+  await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    record.pendingInviteKeysByInviteID[result.invite.id] = inviteKeyHex;
+  });
 }
 
+/**
+ * Partner-side handler for the accept flow. Derives K_invite from the raw
+ * invite token, then immediately rotates to K_grant via `deriveGrantSubkeyHex`
+ * — K_invite is never persisted on the partner device. A transient observer
+ * of the invite token therefore cannot decrypt any partner-share blob the
+ * owner uploads after accept.
+ *
+ * Throws `invalid_partner_grant_context` if the server returned a grant
+ * without `sourceInviteID`, which would happen only with a broken managed
+ * cloud — silently falling back to K_invite would defeat the whole point of
+ * rotation, so we refuse rather than store a degraded key.
+ */
 export async function storeAcceptedManagedPartnerGrantKey(
   partnerShareSecretStore: PartnerShareSecretStore,
-  grantID: string,
+  grant: ManagedPartnerGrantKeyContext,
   inviteToken: string,
+  now: Date,
 ): Promise<void> {
-  const nextState = await partnerShareSecretStore.readPartnerShareSecrets();
-  nextState.grantKeysByGrantID[grantID] = derivePartnerShareKeyHex(inviteToken);
-  await partnerShareSecretStore.writePartnerShareSecrets(nextState);
+  const sourceInviteID = grant.sourceInviteID?.trim() ?? "";
+  if (sourceInviteID.length === 0) {
+    throw new Error("invalid_partner_grant_context");
+  }
+
+  // Derive both keys outside the mutate critical section to keep the
+  // section short and to surface any derivation error before we touch
+  // the store at all.
+  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken);
+  const grantKeyHex = deriveGrantSubkeyHex(inviteKeyHex, {
+    grantID: grant.id,
+    ownerAccountID: grant.ownerAccountID,
+    sourceInviteID,
+  });
+  const rotatedAtISO = now.toISOString();
+
+  await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    record.grantKeysByGrantID[grant.id] = {
+      keyHex: grantKeyHex,
+      rotatedAtISO,
+      sourceInviteID,
+    };
+  });
 }
 
 export async function reconcileManagedPartnerShareKeys(
   partnerShareSecretStore: PartnerShareSecretStore,
   overview: ManagedCloudPartnerAccessOverview,
+  now: Date,
 ): Promise<PartnerShareSecretsRecord> {
-  const nextState = await partnerShareSecretStore.readPartnerShareSecrets();
-  let didChange = false;
-  for (const grant of overview.owned.grants) {
-    const inviteID = grant.sourceInviteID?.trim() || "";
-    if (!inviteID) {
-      continue;
-    }
-    const pendingKey = nextState.pendingInviteKeysByInviteID[inviteID];
-    if (!pendingKey || nextState.grantKeysByGrantID[grant.id]) {
-      continue;
-    }
-    nextState.grantKeysByGrantID[grant.id] = pendingKey;
-    delete nextState.pendingInviteKeysByInviteID[inviteID];
-    didChange = true;
-  }
-
+  const nowISO = now.toISOString();
   const activePendingInviteIDs = new Set(
     overview.owned.invites
       .filter(
@@ -81,19 +113,108 @@ export async function reconcileManagedPartnerShareKeys(
       )
       .map((invite) => invite.id),
   );
-  for (const inviteID of Object.keys(nextState.pendingInviteKeysByInviteID)) {
-    if (activePendingInviteIDs.has(inviteID)) {
-      continue;
+
+  return partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    for (const grant of overview.owned.grants) {
+      const inviteID = grant.sourceInviteID?.trim() || "";
+      if (!inviteID) {
+        continue;
+      }
+      // Idempotent: if K_grant for this grantID already exists we don't re-derive,
+      // even if the same overview is re-processed (e.g. on a focus refresh).
+      if (record.grantKeysByGrantID[grant.id]) {
+        continue;
+      }
+      // Anti-replay (F4): once an invite has been consumed for one grant, refuse
+      // to derive K_grant for any other grant from the same invite. This catches
+      // a malicious managed cloud that calls acceptPartnerInvite(T) twice for
+      // different partner accounts — only the first observed grant ever gets a
+      // usable key on the owner side; the second grant ends up with no key and
+      // upload silently fails with share_key_unavailable.
+      const consumed = record.consumedInviteIDs[inviteID];
+      if (consumed && consumed.grantID !== grant.id) {
+        continue;
+      }
+      const pendingKey = record.pendingInviteKeysByInviteID[inviteID];
+      if (!pendingKey) {
+        continue;
+      }
+      const grantKeyHex = deriveGrantSubkeyHex(pendingKey, {
+        grantID: grant.id,
+        ownerAccountID: grant.ownerAccountID,
+        sourceInviteID: inviteID,
+      });
+      record.grantKeysByGrantID[grant.id] = {
+        keyHex: grantKeyHex,
+        rotatedAtISO: nowISO,
+        sourceInviteID: inviteID,
+      };
+      record.consumedInviteIDs[inviteID] = {
+        grantID: grant.id,
+        consumedAtISO: nowISO,
+      };
+      delete record.pendingInviteKeysByInviteID[inviteID];
     }
 
-    delete nextState.pendingInviteKeysByInviteID[inviteID];
-    didChange = true;
-  }
+    // Drop pending invite keys whose invite is no longer active server-side
+    // (revoked / expired before accept, or already rotated in the loop above).
+    for (const inviteID of Object.keys(record.pendingInviteKeysByInviteID)) {
+      if (activePendingInviteIDs.has(inviteID)) {
+        continue;
+      }
+      delete record.pendingInviteKeysByInviteID[inviteID];
+    }
 
-  if (didChange) {
-    await partnerShareSecretStore.writePartnerShareSecrets(nextState);
+    return record;
+  });
+}
+
+/**
+ * Owner-side handler invoked after a successful server revoke. Drops the
+ * local copy of K_grant and the per-grant generation counter so subsequent
+ * uploads cannot re-encrypt under a stale key (and so the secret store
+ * does not accumulate dead rows). The anti-replay marker in
+ * `consumedInviteIDs[sourceInviteID]` is preserved on purpose — re-issuing
+ * the same invite token would otherwise become possible if the marker were
+ * cleared.
+ */
+export async function clearManagedPartnerGrantKey(
+  partnerShareSecretStore: PartnerShareSecretStore,
+  grantID: string,
+): Promise<void> {
+  const trimmed = grantID.trim();
+  if (trimmed.length === 0) {
+    return;
   }
-  return nextState;
+  await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    delete record.grantKeysByGrantID[trimmed];
+    delete record.ownerGenerationByGrantID[trimmed];
+  });
+}
+
+/**
+ * Reserves the next monotonic generation for the given grant. Reads the
+ * current owner counter from the partner-share secret store, increments by
+ * one, persists, and returns the reserved value. Callers MUST embed the
+ * returned generation inside the projection payload before encryption so the
+ * partner can enforce non-regression on decrypt (F5 replay defence).
+ *
+ * Commits the new counter BEFORE the upload runs: a failed upload leaves a
+ * gap in the sequence, which is intentional. Monotonic protection only
+ * requires that the counter never regress on a successful path; gaps are safe.
+ *
+ * Atomic under the store's `mutatePartnerShareSecrets` serialization, so
+ * concurrent reservations for the same grantID emit distinct values.
+ */
+export async function reserveNextManagedPartnerProjectionGeneration(
+  partnerShareSecretStore: PartnerShareSecretStore,
+  grantID: string,
+): Promise<number> {
+  return partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    const nextGeneration = (record.ownerGenerationByGrantID[grantID] ?? 0) + 1;
+    record.ownerGenerationByGrantID[grantID] = nextGeneration;
+    return nextGeneration;
+  });
 }
 
 export async function uploadManagedPartnerProjection(
@@ -158,14 +279,38 @@ export async function loadManagedPartnerProjection(
     return { ok: false, errorCode: result.errorCode };
   }
 
+  let decrypted: PartnerSharedProjectionPayload;
   try {
-    return {
-      ok: true,
-      value: decryptPartnerSharedProjection(shareKey, result.projection),
-    };
+    decrypted = decryptPartnerSharedProjection(shareKey, result.projection);
   } catch {
     return { ok: false, errorCode: "invalid_partner_projection" };
   }
+
+  // F5 anti-replay: a malicious managed cloud could retain and serve an
+  // older ciphertext (same grant key, same AAD-bound metadata, same
+  // checksum). The monotonic generation embedded inside the AEAD-protected
+  // payload lets us detect rollback. Equal generation is accepted without
+  // touching the store (it just means the same projection was re-read
+  // before a fresh upload). Strict regression is treated as tampering.
+  //
+  // Whole compare-and-advance runs inside `mutate` so that two concurrent
+  // loads cannot regress each other's marker.
+  return partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    const lastSeen = record.partnerLastSeenGenerationByGrantID[grant.id];
+    if (lastSeen !== undefined && decrypted.generation < lastSeen) {
+      return {
+        ok: false,
+        errorCode: "invalid_partner_projection",
+      } satisfies ManagedPartnerShareResult<PartnerSharedProjectionPayload>;
+    }
+    if (lastSeen === undefined || decrypted.generation > lastSeen) {
+      record.partnerLastSeenGenerationByGrantID[grant.id] = decrypted.generation;
+    }
+    return {
+      ok: true,
+      value: decrypted,
+    } satisfies ManagedPartnerShareResult<PartnerSharedProjectionPayload>;
+  });
 }
 
 async function readManagedSessionToken(
@@ -185,7 +330,9 @@ async function readGrantShareKey(
   grantID: string,
 ): Promise<string | null> {
   const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
-  return secrets.grantKeysByGrantID[grantID]?.trim() || null;
+  const record: PartnerShareGrantKeyRecord | undefined =
+    secrets.grantKeysByGrantID[grantID];
+  return record?.keyHex.trim() || null;
 }
 
 function parseInviteTokenFromURL(inviteURL: string): string {

@@ -4,6 +4,13 @@ import type { SymptomRecord } from "./symptom";
 
 export const PARTNER_SHARE_SCHEMA_VERSION = 1;
 
+// Lower bound of the per-grant monotonic generation counter the owner
+// reserves before every projection upload. The counter starts at 0 in the
+// secret store, so the first reserved value is INITIAL_GENERATION. The crypto
+// layer rejects any decrypted payload below this floor and the reserve
+// helper increments from it on first use.
+export const INITIAL_GENERATION = 1;
+
 export type PartnerShareAccessLevel = "summary" | "full";
 
 export type PartnerSharedProfileRecord = Pick<
@@ -25,6 +32,12 @@ export type PartnerSharedProfileRecord = Pick<
 export type PartnerSharedProjectionPayload = {
   schemaVersion: typeof PARTNER_SHARE_SCHEMA_VERSION;
   generatedAt: string;
+  // Monotonic per-grant counter the owner increments on every upload.
+  // Lives inside the AEAD-protected ciphertext (not the outer envelope),
+  // so a malicious managed cloud cannot rewrite it without invalidating
+  // the auth tag. Partner enforces non-regression on decrypt to reject
+  // rollback to a previously-observed stale ciphertext.
+  generation: number;
   accessLevel: PartnerShareAccessLevel;
   ownerAccountID: string;
   grantID: string;

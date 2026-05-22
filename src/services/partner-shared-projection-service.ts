@@ -38,6 +38,7 @@ export function buildPartnerSharedProjectionPayload(input: {
   accessLevel: PartnerShareAccessLevel;
   dayLogs: DayLogRecord[];
   generatedAt: string;
+  generation: number;
   grantID: string;
   ownerAccountID: string;
   profile: ProfileRecord;
@@ -54,6 +55,7 @@ export function buildPartnerSharedProjectionPayload(input: {
   return {
     schemaVersion: PARTNER_SHARE_SCHEMA_VERSION,
     generatedAt: input.generatedAt,
+    generation: input.generation,
     accessLevel: input.accessLevel,
     ownerAccountID: input.ownerAccountID,
     grantID: input.grantID,

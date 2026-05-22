@@ -43,6 +43,7 @@ function createProjectionPayload(): PartnerSharedProjectionPayload {
   return {
     schemaVersion: 1,
     generatedAt: "2026-04-05T08:00:00.000Z",
+    generation: 1,
     accessLevel: "full",
     ownerAccountID: "owner-1",
     grantID: "grant-1",

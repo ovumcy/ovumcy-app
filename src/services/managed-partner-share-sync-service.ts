@@ -5,6 +5,7 @@ import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
 import { loadManagedPartnerAccess } from "./managed-partner-access-service";
 import {
   reconcileManagedPartnerShareKeys,
+  reserveNextManagedPartnerProjectionGeneration,
   uploadManagedPartnerProjection,
 } from "./managed-partner-share-service";
 import { buildPartnerSharedProjectionPayload } from "./partner-shared-projection-service";
@@ -43,6 +44,7 @@ export async function syncManagedPartnerSharedProjections(
   await reconcileManagedPartnerShareKeys(
     partnerShareSecretStore,
     partnerAccessResult.value,
+    now,
   );
   const grants = partnerAccessResult.value.owned.grants.filter(
     (grant) => grant.revokedAt === null,
@@ -63,10 +65,21 @@ export async function syncManagedPartnerSharedProjections(
 
   let syncedCount = 0;
   for (const grant of grants) {
+    // Reserve the next monotonic generation BEFORE building the payload so
+    // the value lives inside the AEAD-protected ciphertext (partner-side F5
+    // anti-replay check rejects regressions below the last-seen marker). The
+    // counter is incremented and persisted even if the upload below fails:
+    // gaps in the sequence are intentional and safe — only regression is
+    // treated as tampering.
+    const generation = await reserveNextManagedPartnerProjectionGeneration(
+      partnerShareSecretStore,
+      grant.id,
+    );
     const projection = buildPartnerSharedProjectionPayload({
       accessLevel: grant.accessLevel,
       dayLogs,
       generatedAt: now.toISOString(),
+      generation,
       grantID: grant.id,
       ownerAccountID: grant.ownerAccountID,
       profile,

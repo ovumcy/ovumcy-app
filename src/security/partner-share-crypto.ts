@@ -4,6 +4,7 @@ import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { fromByteArray, toByteArray } from "base64-js";
 
 import {
+  INITIAL_GENERATION,
   PARTNER_SHARE_SCHEMA_VERSION,
   type PartnerSharedProjectionEnvelope,
   type PartnerSharedProjectionPayload,
@@ -17,6 +18,12 @@ import {
 const PARTNER_SHARE_INFO = utf8ToBytes("ovumcy-partner-share-v1");
 const PARTNER_SHARE_AAD_VERSION = "ovumcy-partner-share-v1";
 
+// Salt and info prefix for the per-grant rotation step (F4). The salt is a
+// fixed context tag (an HKDF salt of `undefined` is legal but loses the
+// explicit "this is the grant rotation step" domain separation); the info
+// encodes the per-grant context that must match between owner and partner.
+const PARTNER_SHARE_GRANT_SALT = utf8ToBytes("ovumcy-partner-share-grant-v1");
+
 // Minimum length floor on the invite token. Even though the managed cloud
 // is the party that mints the token, a compromised server could otherwise
 // hand the owner a weak token (e.g. "ab"), derive the same partner-share
@@ -24,6 +31,12 @@ const PARTNER_SHARE_AAD_VERSION = "ovumcy-partner-share-v1";
 // of base64 entropy; matches the random-token output the cloud is expected
 // to emit. Stricter than the previous "non-empty after trim" check.
 const PARTNER_SHARE_MIN_TOKEN_LENGTH = 22;
+
+// HKDF over a 32-byte key emits 32-byte hex (64 chars). `deriveGrantSubkeyHex`
+// accepts the invite-derived key as hex and validates it against this shape
+// so that a corrupted secret-store entry surfaces as a thrown error rather
+// than silently producing a different K_grant.
+const PARTNER_SHARE_KEY_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
 export function derivePartnerShareKeyHex(inviteToken: string): string {
   const normalizedToken = inviteToken.trim();
@@ -37,6 +50,56 @@ export function derivePartnerShareKeyHex(inviteToken: string): string {
       utf8ToBytes(normalizedToken),
       undefined,
       PARTNER_SHARE_INFO,
+      32,
+    ),
+  );
+}
+
+/**
+ * Per-grant subkey rotation step (F4). Both owner and partner discard the
+ * invite-derived key K_invite immediately after deriving K_grant; a transient
+ * observer of the invite token (clipboard, share-sheet, OS recents) therefore
+ * cannot decrypt partner-share blobs uploaded after accept.
+ *
+ * Determinism is the contract: same (K_invite, grantID, ownerAccountID,
+ * sourceInviteID) MUST produce the same K_grant on both sides. The three
+ * context fields are server-emitted and immutable per grant; documented in
+ * `docs/sync-trust-model.md` so the managed-cloud team treats them as
+ * key-binding (any future re-numbering breaks decryption loudly, not silently).
+ *
+ * Throws `invalid_partner_invite` if the invite key has the wrong shape, and
+ * `invalid_partner_grant_context` if any of the three context fields is
+ * empty after trim — never silently fall through to a derivation with a
+ * blank field, since that collapses distinct grants to the same K_grant.
+ */
+export function deriveGrantSubkeyHex(
+  inviteKeyHex: string,
+  context: {
+    grantID: string;
+    ownerAccountID: string;
+    sourceInviteID: string;
+  },
+): string {
+  if (!PARTNER_SHARE_KEY_HEX_PATTERN.test(inviteKeyHex)) {
+    throw new Error("invalid_partner_invite");
+  }
+  const grantID = context.grantID.trim();
+  const ownerAccountID = context.ownerAccountID.trim();
+  const sourceInviteID = context.sourceInviteID.trim();
+  if (
+    grantID.length === 0 ||
+    ownerAccountID.length === 0 ||
+    sourceInviteID.length === 0
+  ) {
+    throw new Error("invalid_partner_grant_context");
+  }
+
+  return bytesToHex(
+    hkdf(
+      sha256,
+      hexToBytes(inviteKeyHex),
+      PARTNER_SHARE_GRANT_SALT,
+      utf8ToBytes(`${grantID}|${ownerAccountID}|${sourceInviteID}`),
       32,
     ),
   );
@@ -119,6 +182,17 @@ export function decryptPartnerSharedProjection(
     new TextDecoder().decode(encodedPayload),
   ) as PartnerSharedProjectionPayload;
   if (payload.schemaVersion !== PARTNER_SHARE_SCHEMA_VERSION) {
+    throw new Error("invalid_partner_projection");
+  }
+  // F5 defense-in-depth: generation lives inside the AEAD-protected payload
+  // so a malicious cloud cannot rewrite it, but an owner-side bug could
+  // still emit a non-integer or sub-floor value. Reject at the crypto
+  // boundary so the service-layer freshness check never compares against
+  // garbage.
+  if (
+    !Number.isInteger(payload.generation) ||
+    payload.generation < INITIAL_GENERATION
+  ) {
     throw new Error("invalid_partner_projection");
   }
   // Inner payload must match the envelope on AAD-bound fields. AAD

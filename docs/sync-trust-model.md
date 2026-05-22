@@ -114,7 +114,40 @@ When SecureStore returns a key that no longer authenticates the on-disk cipherte
 
 ## Partner-Share Token Floor
 
-The managed cloud mints the partner-share invite token, and the owner derives the symmetric share key from it via HKDF. Without a client-side entropy floor, a compromised server could hand the owner a weak token (`"ab"`), derive the same key, and decrypt the supposedly opaque ciphertext. The client therefore enforces a minimum length (≥ 22 chars after trim) in `derivePartnerShareKeyHex` before accepting the token. Per-grant subkey rotation on accept and revoke is a planned follow-up.
+The managed cloud mints the partner-share invite token, and the owner derives the symmetric share key from it via HKDF. Without a client-side entropy floor, a compromised server could hand the owner a weak token (`"ab"`), derive the same key, and decrypt the supposedly opaque ciphertext. The client therefore enforces a minimum length (≥ 22 chars after trim) in `derivePartnerShareKeyHex` before accepting the token.
+
+## Partner-Share Key Rotation
+
+The invite-derived key `K_invite = HKDF(invite_token, info="ovumcy-partner-share-v1")` is *not* the key that actually encrypts uploaded projections. Both owner and partner rotate to a per-grant subkey immediately after accept:
+
+```
+K_grant = HKDF-SHA256(
+  IKM   = K_invite,
+  salt  = "ovumcy-partner-share-grant-v1",
+  info  = "<grant.id>|<grant.ownerAccountID>|<grant.sourceInviteID>",
+  L     = 32 bytes,
+)
+```
+
+`K_invite` is discarded immediately after `K_grant` is derived — on the partner side it never touches persistent storage at all, and on the owner side it is removed from `pendingInviteKeysByInviteID` during the next `reconcileManagedPartnerShareKeys` turn that observes the accepted grant. A transient observer of the invite token (clipboard, share-sheet, OS recents, screenshot) therefore cannot decrypt any partner-share blob that the owner uploads after accept.
+
+Three managed-cloud fields anchor the rotation context and MUST stay immutable per grant after first emission. The managed-cloud team treats them as key-binding:
+
+- `grant.id` — unique stable identifier.
+- `grant.ownerAccountID` — owner identity, never reassigned.
+- `grant.sourceInviteID` — pointer back to the originating invite.
+
+Mutating any of these for an existing grant breaks decryption on both sides — loudly, immediately, on the next upload or load. There is no silent path. This is intentional: the failure mode is "partner can't read the new projection, surfaces an error" rather than "different key silently produces garbage."
+
+### Anti-replay on the owner
+
+Once `K_grant` has been derived for an `inviteID → grantID` pair, the owner records `consumedInviteIDs[inviteID] = { grantID, consumedAtISO }`. A second `reconcileManagedPartnerShareKeys` turn that sees a different grant referencing the same `sourceInviteID` refuses to derive `K_grant` for it — only the first observed grant is ever keyed. This defends against a malicious managed cloud calling `acceptPartnerInvite(T)` twice for two partner accounts: the second grant ends up unkeyed locally, and any upload attempt fails with `share_key_unavailable`. The marker is kept for the lifetime of the partner-share secret store (cleared only by `clearPartnerShareSecrets`, which runs on disconnect / mode-switch / forced unauthorized clear); resetting it would re-enable the replay.
+
+### Revoke semantics and limits
+
+When the owner revokes a grant, the managed cloud stops accepting uploads and serving ciphertext, and the owner client drops `K_grant` plus `ownerGenerationByGrantID[grantID]` from local storage. Future uploads cannot re-encrypt under a stale key: the next upload sees no key and bails with `share_key_unavailable`.
+
+What revoke cannot do: symmetric AEAD does not support post-hoc key revocation for ciphertext the partner has already downloaded. If the partner cached a projection before revoke, that ciphertext stays decryptable on the partner device — there is no cryptographic way to retract it without rolling out a new key the partner does not have. This is documented as a trust-boundary limit, not a bug; the UI surfaces the revoke as "no new updates will be visible," not as "all data deleted from the partner device."
 
 ## Outbound Fetch Posture
 

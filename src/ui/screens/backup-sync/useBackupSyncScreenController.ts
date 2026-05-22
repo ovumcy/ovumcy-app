@@ -21,6 +21,7 @@ import {
   revokeManagedPartnerInvite,
 } from "../../../services/managed-partner-access-service";
 import {
+  clearManagedPartnerGrantKey,
   reconcileManagedPartnerShareKeys,
   storeAcceptedManagedPartnerGrantKey,
   storeIssuedManagedPartnerInviteKey,
@@ -200,6 +201,7 @@ export function useBackupSyncScreenController({
       await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
         partnerResult.value,
+        effectiveNow,
       );
       if (partnerResult.value.owned.grants.length > 0) {
         await syncManagedPartnerSharedProjections(
@@ -354,8 +356,9 @@ export function useBackupSyncScreenController({
     try {
       await storeAcceptedManagedPartnerGrantKey(
         partnerShareSecretStore,
-        result.value.grant.id,
+        result.value.grant,
         pendingPartnerInviteToken,
+        effectiveNow,
       );
     } catch {
       setPartnerErrorMessage(partnerCopy.errors.generic);
@@ -428,6 +431,19 @@ export function useBackupSyncScreenController({
       setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
       setIsPartnerBusy(false);
       return;
+    }
+
+    // Server confirmed revoke — drop the local K_grant and per-grant
+    // generation counter so subsequent uploads cannot re-encrypt under a
+    // stale key. The anti-replay marker in `consumedInviteIDs[sourceInviteID]`
+    // is intentionally preserved (re-issuing the same invite would otherwise
+    // become possible). A failure here is non-fatal for the user (server
+    // already accepted the revoke), but we surface the generic copy so the
+    // local-state divergence doesn't go silent.
+    try {
+      await clearManagedPartnerGrantKey(partnerShareSecretStore, grantID);
+    } catch {
+      setPartnerErrorMessage(partnerCopy.errors.generic);
     }
 
     setPartnerStatusMessage(partnerCopy.statusGrantRevoked);
