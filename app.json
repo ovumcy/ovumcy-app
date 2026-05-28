@@ -14,7 +14,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#f7f0e6"
     },
+    "version": "1.0.0",
     "android": {
+      "package": "cloud.ovumcy.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",
         "backgroundColor": "#f7f0e6"
