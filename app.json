@@ -27,6 +27,13 @@
       "favicon": "./assets/branding/ovumcy-icon-192.png"
     },
     "name": "Ovumcy",
-    "slug": "ovumcy-app"
+    "slug": "ovumcy-app",
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e556deae-3561-4bf7-a229-c8df0ad28d23"
+      }
+    },
+    "owner": "terraincognita07"
   }
 }
