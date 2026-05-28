@@ -6,7 +6,15 @@
       "@react-native-community/datetimepicker",
       "expo-notifications",
       "expo-sqlite",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
     "splash": {
