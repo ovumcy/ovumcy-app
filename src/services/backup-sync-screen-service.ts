@@ -24,14 +24,41 @@ import {
   type SaveSyncPreferencesDraftErrorCode,
 } from "../sync/sync-setup-service";
 import { loadLocalExportState } from "./export-service";
+import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
 import {
   createLoadedSettingsState,
   type LoadedSettingsState,
+  type SettingsManagedPremiumAccess,
 } from "./settings-view-service";
 
 type SyncConnectScreenErrorCode = SyncConnectErrorCode;
 type SyncRecoverScreenErrorCode = SyncRecoverErrorCode;
 type SyncRunScreenErrorCode = SyncRunErrorCode;
+
+// After a managed connect (register/login/TOTP finalisation) the cloud plan
+// status must be re-fetched from the billing snapshot. Reusing the pre-connect
+// managedPremiumAccess leaves planStatus stuck at "unknown", which renders the
+// cloud-plan step as "could not confirm" and keeps sync locked until the screen
+// is reopened. For self-hosted mode loadManagedBillingSnapshot returns null and
+// the prior access value is preserved.
+async function resolveManagedPremiumAccessAfterConnect(
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  fallback: SettingsManagedPremiumAccess,
+): Promise<SettingsManagedPremiumAccess> {
+  const billingSnapshot = await loadManagedBillingSnapshot(
+    secretStore,
+    preferences.mode,
+  );
+  if (!billingSnapshot) {
+    return fallback;
+  }
+  return {
+    planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
+    doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
+    reminders: billingSnapshot.premiumFeatures.reminders,
+  };
+}
 
 export async function prepareBackupSyncSetup(
   storage: LocalAppStorage,
@@ -177,6 +204,12 @@ export async function connectBackupSyncAccount(
     };
   }
 
+  const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
+    secretStore,
+    result.preferences,
+    currentState.managedPremiumAccess,
+  );
+
   const success: {
     ok: true;
     state: LoadedSettingsState;
@@ -194,7 +227,7 @@ export async function connectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       result.capabilities,
-      currentState.managedPremiumAccess,
+      managedPremiumAccess,
     ),
   };
   if (result.recoveryCode) {
@@ -247,6 +280,12 @@ export async function completeBackupSyncTOTPChallenge(
     return { ok: false, errorCode: finalizeResult.errorCode };
   }
 
+  const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
+    secretStore,
+    finalizeResult.preferences,
+    currentState.managedPremiumAccess,
+  );
+
   return {
     ok: true,
     connected: true,
@@ -259,7 +298,7 @@ export async function completeBackupSyncTOTPChallenge(
       currentState.exportState,
       finalizeResult.preferences,
       finalizeResult.capabilities,
-      currentState.managedPremiumAccess,
+      managedPremiumAccess,
     ),
   };
 }
