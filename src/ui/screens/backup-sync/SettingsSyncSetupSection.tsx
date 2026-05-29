@@ -49,6 +49,7 @@ type SettingsSyncSetupSectionProps = {
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
+  onRetryPlanCheck: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
@@ -83,6 +84,7 @@ export function SettingsSyncSetupSection({
   onModeSelect,
   onPrepare,
   onRecoverAccess,
+  onRetryPlanCheck,
   onRecoveryPhraseChange,
   onRegister,
   onRestore,
@@ -137,6 +139,17 @@ export function SettingsSyncSetupSection({
     void onLogin();
   }
 
+  const renderStepTitle = (title: string, done: boolean) => (
+    <View style={styles.stepTitleRow}>
+      <Text style={styles.stepTitle}>{title}</Text>
+      {done ? (
+        <Text style={styles.stepDoneBadge} testID="settings-sync-step-done">
+          ✓
+        </Text>
+      ) : null}
+    </View>
+  );
+
   return (
     <FeatureCard
       description={showCardHeader ? viewData.subtitle : undefined}
@@ -144,6 +157,12 @@ export function SettingsSyncSetupSection({
       title={showCardHeader ? viewData.title : undefined}
     >
       <View style={styles.stack}>
+        <StatusBanner
+          message={presentation.guidanceMessage}
+          testID="settings-sync-guidance-banner"
+          tone={presentation.guidanceComplete ? "success" : "info"}
+        />
+
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.modeLabel}</Text>
           <ChoiceGroup
@@ -209,49 +228,6 @@ export function SettingsSyncSetupSection({
           <Text style={styles.helperText}>{viewData.deviceHint}</Text>
         </View>
 
-        <View style={styles.summaryGrid}>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.stateLabel}</Text>
-            <Text style={styles.summaryValue}>
-              {hasStoredSyncSecrets ? viewData.stateReady : viewData.stateMissing}
-            </Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.connectionLabel}</Text>
-            <Text style={styles.summaryValue}>
-              {hasSyncSession
-                ? viewData.connectionReady
-                : viewData.connectionMissing}
-            </Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.modeRowLabel}</Text>
-            <Text style={styles.summaryValue}>
-              {presentation.selectedModeLabel}
-            </Text>
-          </View>
-          {presentation.shouldShowEndpointSummary ? (
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>{viewData.endpointRowLabel}</Text>
-              <Text style={styles.summaryValue}>
-                {presentation.endpointSummary}
-              </Text>
-            </View>
-          ) : null}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.encryptionRowLabel}</Text>
-            <Text style={styles.summaryValue}>
-              {hasStoredSyncSecrets
-                ? viewData.encryptionReady
-                : viewData.encryptionMissing}
-            </Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>{viewData.lastSyncLabel}</Text>
-            <Text style={styles.summaryValue}>{presentation.lastSyncValue}</Text>
-          </View>
-        </View>
-
         {statusMessage ? (
           <StatusBanner
             message={statusMessage}
@@ -262,7 +238,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-local-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{presentation.localStepTitle}</Text>
+            {renderStepTitle(presentation.localStepTitle, hasStoredSyncSecrets)}
             <Text style={styles.helperText}>{viewData.localStepHint}</Text>
           </View>
 
@@ -320,7 +296,7 @@ export function SettingsSyncSetupSection({
 
         <View style={styles.stepCard} testID="settings-sync-account-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{presentation.accountStepTitle}</Text>
+            {renderStepTitle(presentation.accountStepTitle, hasSyncSession)}
             <Text style={styles.helperText}>
               {presentation.isManaged
                 ? viewData.accountStepHintManaged
@@ -487,7 +463,7 @@ export function SettingsSyncSetupSection({
         {presentation.isManaged ? (
           <View style={styles.stepCard} testID="settings-sync-plan-step">
             <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>{presentation.planStepTitle}</Text>
+              {renderStepTitle(presentation.planStepTitle, presentation.hasManagedPlan)}
               <Text style={styles.helperText}>{viewData.planStepHint}</Text>
             </View>
             <StatusBanner
@@ -496,12 +472,21 @@ export function SettingsSyncSetupSection({
               tone={presentation.hasManagedPlan ? "success" : "info"}
             />
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
+            {hasSyncSession && !presentation.hasManagedPlan ? (
+              <AppButton
+                disabled={presentation.accountActionsDisabled}
+                label={viewData.checkPlanAgain}
+                onPress={onRetryPlanCheck}
+                testID="settings-sync-plan-retry-button"
+                variant="secondary"
+              />
+            ) : null}
           </View>
         ) : null}
 
         <View style={styles.stepCard} testID="settings-sync-actions-step">
           <View style={styles.stepHeader}>
-            <Text style={styles.stepTitle}>{presentation.syncStepTitle}</Text>
+            {renderStepTitle(presentation.syncStepTitle, presentation.canShowSyncActions)}
             <Text style={styles.helperText}>
               {presentation.isManaged
                 ? viewData.syncStepHintManaged
@@ -556,6 +541,11 @@ export function SettingsSyncSetupSection({
               variant="secondary"
             />
           ) : null}
+        </View>
+
+        <View style={styles.recapRow} testID="settings-sync-status-recap">
+          <Text style={styles.summaryLabel}>{viewData.lastSyncLabel}</Text>
+          <Text style={styles.summaryValue}>{presentation.lastSyncValue}</Text>
         </View>
 
         <Modal
@@ -737,6 +727,12 @@ const createStyles = (colors: AppThemeColors) =>
       fontSize: 13,
       lineHeight: 18,
     },
+    recapRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.xs,
+    },
     stepCard: {
       backgroundColor: colors.surface,
       borderColor: colors.lineSoft,
@@ -748,10 +744,26 @@ const createStyles = (colors: AppThemeColors) =>
     stepHeader: {
       gap: spacing.xs,
     },
+    stepTitleRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: spacing.sm,
+    },
     stepTitle: {
       color: colors.text,
+      flexShrink: 1,
       fontSize: 16,
       fontWeight: "700",
+    },
+    stepDoneBadge: {
+      backgroundColor: colors.statusSuccessBadgeBg,
+      borderRadius: 999,
+      color: colors.statusSuccessText,
+      fontSize: 13,
+      fontWeight: "700",
+      overflow: "hidden",
+      paddingHorizontal: 8,
+      paddingVertical: 2,
     },
     progressCard: {
       alignItems: "flex-start",

@@ -211,6 +211,8 @@ const settingsCopyEn = {
     planUnavailable:
       "Your Ovumcy Cloud account and billing stay separate from encrypted sync storage.",
     planActive: "Ovumcy Cloud is active for this account.",
+    checkPlanAgain: "Check plan again",
+    advancedSectionLabel: "Advanced",
     syncStepTitle: "4. Sync this backup",
     syncStepHintManaged:
       "Once this cloud account has an active plan, you can upload or restore the protected backup here.",
@@ -677,6 +679,8 @@ const settingsCopyDe: SettingsCopy = {
     planUnavailable:
       "Dein Ovumcy-Cloud-Konto und die Abrechnung bleiben vom verschlüsselten Sync-Speicher getrennt.",
     planActive: "Ovumcy Cloud ist für dieses Konto aktiv.",
+    checkPlanAgain: "Tarif erneut prüfen",
+    advancedSectionLabel: "Erweitert",
     syncStepTitle: "4. Dieses Backup synchronisieren",
     syncStepHintManaged:
       "Sobald dieses Cloud-Konto einen aktiven Tarif hat, kannst du hier das geschützte Backup hochladen oder wiederherstellen.",
@@ -1179,6 +1183,8 @@ const settingsCopyFr: SettingsCopy = {
     planUnavailable:
       "Ton compte Ovumcy Cloud et la facturation restent séparés du stockage de sync chiffré.",
     planActive: "Ovumcy Cloud est actif pour ce compte.",
+    checkPlanAgain: "Revérifier le plan",
+    advancedSectionLabel: "Avancé",
     syncStepTitle: "4. Synchroniser cette sauvegarde",
     syncStepHintManaged:
       "Une fois que ce compte cloud a un plan actif, tu peux téléverser ou restaurer la sauvegarde protégée ici.",
@@ -1682,6 +1688,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       planUnavailable:
         "Аккаунт Ovumcy Cloud и billing остаются отдельными от зашифрованного sync-хранилища.",
       planActive: "Для этого аккаунта Ovumcy Cloud уже активен.",
+      checkPlanAgain: "Проверить план ещё раз",
+      advancedSectionLabel: "Дополнительно",
       syncStepTitle: "4. Синхронизировать копию",
       syncStepHintManaged:
         "Когда у этого cloud-аккаунта будет активный план, здесь можно отправить или восстановить защищённую копию.",
@@ -2150,6 +2158,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       planUnavailable:
         "Tu cuenta de Ovumcy Cloud y la facturación permanecen separadas del almacenamiento de sync cifrado.",
       planActive: "Ovumcy Cloud está activo para esta cuenta.",
+      checkPlanAgain: "Comprobar el plan de nuevo",
+      advancedSectionLabel: "Avanzado",
       syncStepTitle: "4. Sincronizar esta copia",
       syncStepHintManaged:
         "Cuando esta cuenta cloud tenga un plan activo, aquí podrás subir o restaurar la copia protegida.",

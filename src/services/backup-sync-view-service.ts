@@ -29,6 +29,13 @@ export type BackupSyncSetupPresentation = {
   actionLabel: string;
   canShowSyncActions: boolean;
   endpointSummary: string;
+  // guidanceMessage names the single next action (or current blocker) the owner
+  // must resolve, so the screen never leaves them guessing why sync is locked.
+  // It is one of the already-localized account strings, picked from the same
+  // state inputs the steps use. guidanceComplete is true once backup is usable.
+  guidanceComplete: boolean;
+  guidanceMessage: string;
+  guidanceStepNumber: number;
   hasManagedPlan: boolean;
   isManaged: boolean;
   lastSyncValue: string;
@@ -134,7 +141,37 @@ export function buildBackupSyncSetupPresentation({
     }
   }
 
+  const syncStepNumber = isManaged ? 4 : 3;
+  let guidanceComplete = false;
+  let guidanceMessage: string;
+  let guidanceStepNumber: number;
+  if (!hasStoredSyncSecrets) {
+    guidanceStepNumber = 1;
+    guidanceMessage = viewData.errors.syncNotPrepared;
+  } else if (!hasSyncSession) {
+    guidanceStepNumber = 2;
+    guidanceMessage = isManaged
+      ? viewData.accountStepHintManaged
+      : viewData.accountStepHintSelfHosted;
+  } else if (isManaged && !hasManagedPlan) {
+    guidanceStepNumber = 3;
+    guidanceMessage =
+      managedPlanStatus === "unknown"
+        ? viewData.planCheckFailed
+        : viewData.syncBlockedNoPlan;
+  } else if (canShowSyncActions) {
+    guidanceStepNumber = syncStepNumber;
+    guidanceMessage = viewData.status.connected;
+    guidanceComplete = true;
+  } else {
+    guidanceStepNumber = syncStepNumber;
+    guidanceMessage = viewData.status.connected;
+  }
+
   return {
+    guidanceComplete,
+    guidanceMessage,
+    guidanceStepNumber,
     accountActionButtonsDisabled: accountActionsDisabled || !hasStoredSyncSecrets,
     accountActionsDisabled,
     accountStepTitle: renumberStepTitle(viewData.accountStepTitle, 2),

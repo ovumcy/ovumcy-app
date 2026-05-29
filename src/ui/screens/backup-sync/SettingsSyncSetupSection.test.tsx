@@ -38,6 +38,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
     onModeSelect: () => {},
     onPrepare: () => {},
     onRecoverAccess: () => {},
+    onRetryPlanCheck: () => {},
     onRecoveryPhraseChange: () => {},
     onRegister: () => {},
     onRestore: () => {},
@@ -91,6 +92,97 @@ describe("SettingsSyncSetupSection", () => {
     expect(await screen.findByText(viewData.preparingTitle)).toBeTruthy();
     expect(await screen.findByText(viewData.preparingHint)).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
+  });
+
+  it("guides the owner to the next action via the top guidance banner", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} />
+      </AppPreferencesTestProvider>,
+    );
+
+    const banner = await screen.findByTestId("settings-sync-guidance-banner");
+    expect(banner).toBeTruthy();
+    // Nothing prepared yet -> banner points at step 1 (prepare on this device).
+    expect(screen.getAllByText(viewData.errors.syncNotPrepared).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId("settings-sync-step-done")).toBeNull();
+  });
+
+  it("marks a completed step with a done badge", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: false,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: {
+              ...props.preferences,
+              mode: "managed",
+            },
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    // Step 1 (protect this device) is complete -> at least one done badge renders.
+    expect((await screen.findAllByTestId("settings-sync-step-done")).length).toBeGreaterThan(0);
+  });
+
+  it("offers a retry action on the cloud plan step when signed in without a confirmed plan", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onRetryPlanCheck = jest.fn();
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          hasSyncSession
+          onRetryPlanCheck={onRetryPlanCheck}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: {
+              ...props.preferences,
+              mode: "managed",
+            },
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const retry = await screen.findByTestId("settings-sync-plan-retry-button");
+    fireEvent.press(retry);
+    expect(onRetryPlanCheck).toHaveBeenCalledTimes(1);
   });
 
   it("shows the recovery phrase without enabling direct text selection", async () => {
@@ -168,7 +260,7 @@ describe("SettingsSyncSetupSection", () => {
     expect(screen.queryByTestId("settings-sync-plan-step")).toBeNull();
   });
 
-  it("uses clearer labels for account login and recovery summary states", async () => {
+  it("uses a clear account login label and a decluttered status recap", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
@@ -179,13 +271,13 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     expect(viewData.loginLabel).toBe("Email or login");
-    expect(viewData.stateLabel).toBe("Recovery phrase status");
-    expect(viewData.encryptionRowLabel).toBe("Device protection");
-    expect(viewData.stateLabel).not.toBe(viewData.encryptionRowLabel);
     expect(await screen.findByText(viewData.loginLabel)).toBeTruthy();
-    expect(screen.getByText(viewData.stateLabel)).toBeTruthy();
-    expect(screen.getByText(viewData.encryptionRowLabel)).toBeTruthy();
-    expect(screen.queryByText(viewData.endpointRowLabel)).toBeNull();
+    // The redundant per-step status cards (covered now by the guidance banner
+    // and per-step done badges) were removed; only the unique last-sync line
+    // remains in the recap.
+    expect(screen.queryByText(viewData.stateLabel)).toBeNull();
+    expect(screen.queryByText(viewData.encryptionRowLabel)).toBeNull();
+    expect(screen.getByText(viewData.lastSyncLabel)).toBeTruthy();
   });
 
   it("renders the preformatted last sync value from presentation state", async () => {

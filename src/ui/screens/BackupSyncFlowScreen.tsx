@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useRouter } from "expo-router";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
@@ -50,6 +51,7 @@ export type BackupSyncFlowScreenProps = {
   onPartnerOpenGrant: (grantID: string) => void | Promise<void>;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
+  onRetryPlanCheck: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
   onRestore: () => void | Promise<void>;
@@ -114,6 +116,7 @@ export function BackupSyncFlowScreen({
   onPartnerRevokeInvite,
   onPrepare,
   onRecoverAccess,
+  onRetryPlanCheck,
   onRecoveryPhraseChange,
   onRegister,
   onRestore,
@@ -145,6 +148,7 @@ export function BackupSyncFlowScreen({
   const router = useRouter();
   const { language } = useAppPreferences();
   const accountSecurityCopy = selectAccountSecurityCopy(language);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const totpCopy = selectTOTPCopy(language);
   return (
     <ScreenScaffold
@@ -193,6 +197,7 @@ export function BackupSyncFlowScreen({
         onModeSelect={onModeSelect}
         onPrepare={onPrepare}
         onRecoverAccess={onRecoverAccess}
+        onRetryPlanCheck={onRetryPlanCheck}
         onRecoveryPhraseChange={onRecoveryPhraseChange}
         onRegister={onRegister}
         onRestore={onRestore}
@@ -205,31 +210,41 @@ export function BackupSyncFlowScreen({
         viewData={viewData}
       />
       <AppButton
-        label={accountSecurityCopy.title}
-        onPress={() => router.push("/sync-account-security")}
-        testID="backup-sync-account-security-link"
+        label={`${viewData.advancedSectionLabel}  ${advancedOpen ? "▾" : "▸"}`}
+        onPress={() => setAdvancedOpen((open) => !open)}
+        testID="backup-sync-advanced-toggle"
         variant="secondary"
       />
-      {showPartnerSection ? (
-        <SettingsPartnerAccessSection
-          copy={partnerCopy}
-          errorMessage={partnerErrorMessage}
-          hasManagedSession={hasSyncSession && presentation.isManaged}
-          inviteAccessLevel={partnerInviteAccessLevel}
-          inviteLink={partnerInviteLink}
-          isBusy={isPartnerBusy}
-          locale={partnerLocale}
-          onAcceptInvite={onPartnerAcceptInvite}
-          onAccessLevelChange={onPartnerAccessLevelChange}
-          onIssueInvite={onIssuePartnerInvite}
-          onOpenGrant={onPartnerOpenGrant}
-          onRevokeGrant={onPartnerRevokeGrant}
-          onRevokeInvite={onPartnerRevokeInvite}
-          overview={partnerOverview}
-          pendingInviteToken={pendingPartnerInviteToken}
-          showOwnerControls={showPartnerOwnerControls}
-          statusMessage={partnerStatusMessage}
-        />
+      {advancedOpen ? (
+        <>
+          <AppButton
+            label={accountSecurityCopy.title}
+            onPress={() => router.push("/sync-account-security")}
+            testID="backup-sync-account-security-link"
+            variant="secondary"
+          />
+          {showPartnerSection ? (
+            <SettingsPartnerAccessSection
+              copy={partnerCopy}
+              errorMessage={partnerErrorMessage}
+              hasManagedSession={hasSyncSession && presentation.isManaged}
+              inviteAccessLevel={partnerInviteAccessLevel}
+              inviteLink={partnerInviteLink}
+              isBusy={isPartnerBusy}
+              locale={partnerLocale}
+              onAcceptInvite={onPartnerAcceptInvite}
+              onAccessLevelChange={onPartnerAccessLevelChange}
+              onIssueInvite={onIssuePartnerInvite}
+              onOpenGrant={onPartnerOpenGrant}
+              onRevokeGrant={onPartnerRevokeGrant}
+              onRevokeInvite={onPartnerRevokeInvite}
+              overview={partnerOverview}
+              pendingInviteToken={pendingPartnerInviteToken}
+              showOwnerControls={showPartnerOwnerControls}
+              statusMessage={partnerStatusMessage}
+            />
+          ) : null}
+        </>
       ) : null}
     </ScreenScaffold>
   );

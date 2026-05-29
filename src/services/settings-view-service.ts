@@ -200,6 +200,8 @@ export type SettingsViewData = {
     planCheckFailed: string;
     planUnavailable: string;
     planActive: string;
+    checkPlanAgain: string;
+    advancedSectionLabel: string;
     syncStepTitle: string;
     syncStepHintManaged: string;
     syncStepHintSelfHosted: string;
@@ -653,6 +655,8 @@ export function buildSettingsViewData(
       planCheckFailed: settingsCopy.account.planCheckFailed,
       planUnavailable: settingsCopy.account.planUnavailable,
       planActive: settingsCopy.account.planActive,
+      checkPlanAgain: settingsCopy.account.checkPlanAgain,
+      advancedSectionLabel: settingsCopy.account.advancedSectionLabel,
       syncStepTitle: settingsCopy.account.syncStepTitle,
       syncStepHintManaged: settingsCopy.account.syncStepHintManaged,
       syncStepHintSelfHosted: settingsCopy.account.syncStepHintSelfHosted,

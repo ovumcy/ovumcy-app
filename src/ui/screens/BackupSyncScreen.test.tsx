@@ -602,6 +602,7 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-section");
     expect(screen.queryByTestId("settings-partner-plan-lock")).toBeNull();
 
@@ -781,6 +782,7 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-accept-card");
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
@@ -896,6 +898,7 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-grant-grant-1");
     expect(
       screen.getAllByText(

@@ -295,6 +295,19 @@ export function useBackupSyncScreenController({
     setPartnerErrorMessage(partnerState.errorMessage);
   }
 
+  // Re-fetches the managed billing snapshot on demand so the owner can recover
+  // from a transient "could not confirm plan" state without leaving the screen.
+  async function handleRetryPlanCheck() {
+    resetFeedbackMessages();
+    const refreshed = await loadSettingsScreenState(
+      storage,
+      syncSecretStore,
+      effectiveNow,
+    );
+    setState(refreshed);
+    await reloadPartnerAccess(refreshed);
+  }
+
   async function handleIssuePartnerInvite() {
     if (!state) {
       return;
@@ -1061,6 +1074,9 @@ export function useBackupSyncScreenController({
       },
       onRecoverAccess: () => {
         void handleRecoverSync();
+      },
+      onRetryPlanCheck: () => {
+        void handleRetryPlanCheck();
       },
       onRecoveryPhraseChange: (value) => {
         resetFeedbackMessages();
