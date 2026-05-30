@@ -35,7 +35,7 @@ import type { PartnerShareSecretStore } from "../../../security/partner-share-se
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
-import { openConfirmation } from "../../confirm/open-confirmation";
+import { openLeaveConfirmation } from "../../confirm/open-confirmation";
 import { useRegisterTabLeaveGuard } from "../../navigation/TabLeaveGuardContext";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type { SettingsFlowScreenProps } from "../SettingsFlowScreen";
@@ -307,13 +307,18 @@ export function useSettingsScreenController({
       return true;
     }
 
-    const shouldSave = await openConfirmation(
+    const outcome = await openLeaveConfirmation(
       viewData.interface.unsavedPrompt,
       viewData.interface.saveBeforeLeaveLabel,
       viewData.interface.discardChangesLabel,
+      viewData.interface.keepEditingLabel,
     );
 
-    if (!shouldSave) {
+    if (outcome === "dismiss") {
+      return false;
+    }
+
+    if (outcome === "reject") {
       revertUnsavedSettings();
       return true;
     }
@@ -334,6 +339,7 @@ export function useSettingsScreenController({
     saveActionContext,
     state,
     viewData.interface.discardChangesLabel,
+    viewData.interface.keepEditingLabel,
     viewData.interface.saveBeforeLeaveLabel,
     viewData.interface.unsavedPrompt,
   ]);

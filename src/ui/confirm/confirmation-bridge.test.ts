@@ -1,5 +1,6 @@
 import {
   __resetConfirmationListenerForTesting,
+  type ConfirmationOutcome,
   registerConfirmationListener,
   requestConfirmation,
 } from "./confirmation-bridge";
@@ -23,7 +24,7 @@ describe("confirmation-bridge", () => {
         cancelLabel: request.cancelLabel,
         message: request.message,
       });
-      request.resolve(true);
+      request.resolve("accept");
     });
 
     await expect(
@@ -36,7 +37,7 @@ describe("confirmation-bridge", () => {
 
   it("falls back to false after the listener unregisters", async () => {
     const unregister = registerConfirmationListener((request) => {
-      request.resolve(true);
+      request.resolve("accept");
     });
     unregister();
     await expect(
@@ -67,7 +68,7 @@ describe("confirmation-bridge", () => {
     expect(delivered).toEqual(["first?"]);
     expect(secondSettled).toBe(false);
 
-    firstRequest!.resolve(true);
+    firstRequest!.resolve("accept");
     await expect(first).resolves.toBe(true);
 
     await Promise.resolve();
@@ -81,13 +82,13 @@ describe("confirmation-bridge", () => {
     });
 
     const first = requestConfirmation("first?", "OK", "Cancel");
-    delivered[0]!.resolve(true);
+    delivered[0]!.resolve("accept");
     await expect(first).resolves.toBe(true);
 
     const second = requestConfirmation("second?", "OK", "Cancel");
     expect(delivered).toHaveLength(2);
     expect(delivered[1]!.message).toBe("second?");
-    delivered[1]!.resolve(false);
+    delivered[1]!.resolve("reject");
     await expect(second).resolves.toBe(false);
   });
 });
@@ -96,5 +97,5 @@ type ConfirmationRequestForTest = {
   message: string;
   acceptLabel: string;
   cancelLabel: string;
-  resolve: (value: boolean) => void;
+  resolve: (outcome: ConfirmationOutcome) => void;
 };

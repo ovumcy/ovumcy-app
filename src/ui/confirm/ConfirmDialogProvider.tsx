@@ -6,6 +6,7 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { AppButton } from "../components/AppButton";
 import {
+  type ConfirmationOutcome,
   type ConfirmationRequest,
   registerConfirmationListener,
 } from "./confirmation-bridge";
@@ -28,13 +29,13 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
     [],
   );
 
-  const resolveWith = (value: boolean) => {
+  const resolveWith = (outcome: ConfirmationOutcome) => {
     const current = pendingRequestRef.current;
     if (!current) {
       return;
     }
     pendingRequestRef.current = null;
-    current.resolve(value);
+    current.resolve(outcome);
     setRequest(null);
   };
 
@@ -43,13 +44,13 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
       {children}
       <Modal
         animationType="fade"
-        onRequestClose={() => resolveWith(false)}
+        onRequestClose={() => resolveWith("dismiss")}
         transparent
         visible={request !== null}
       >
         <Pressable
           accessibilityLabel="dismiss-confirm-backdrop"
-          onPress={() => resolveWith(false)}
+          onPress={() => resolveWith("dismiss")}
           style={styles.backdrop}
           testID="confirm-dialog-backdrop"
         >
@@ -57,16 +58,29 @@ export function ConfirmDialogProvider({ children }: ConfirmDialogProviderProps) 
             <Text style={styles.message} testID="confirm-dialog-message">
               {request?.message ?? ""}
             </Text>
-            <View style={styles.actions}>
+            <View
+              style={[
+                styles.actions,
+                request?.neutralLabel ? styles.actionsStacked : null,
+              ]}
+            >
+              {request?.neutralLabel ? (
+                <AppButton
+                  label={request.neutralLabel}
+                  onPress={() => resolveWith("dismiss")}
+                  testID="confirm-dialog-neutral"
+                  variant="secondary"
+                />
+              ) : null}
               <AppButton
                 label={request?.cancelLabel ?? ""}
-                onPress={() => resolveWith(false)}
+                onPress={() => resolveWith("reject")}
                 testID="confirm-dialog-cancel"
                 variant="secondary"
               />
               <AppButton
                 label={request?.acceptLabel ?? ""}
-                onPress={() => resolveWith(true)}
+                onPress={() => resolveWith("accept")}
                 testID="confirm-dialog-accept"
               />
             </View>
@@ -109,5 +123,10 @@ const createStyles = (colors: AppThemeColors) =>
       flexDirection: "row",
       gap: spacing.sm,
       justifyContent: "flex-end",
+    },
+    actionsStacked: {
+      alignItems: "stretch",
+      flexDirection: "column-reverse",
+      justifyContent: "flex-start",
     },
   });

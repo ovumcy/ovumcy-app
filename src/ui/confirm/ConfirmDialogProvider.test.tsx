@@ -5,7 +5,9 @@ import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvide
 
 import {
   __resetConfirmationListenerForTesting,
+  type ConfirmationOutcome,
   requestConfirmation,
+  requestConfirmationOutcome,
 } from "./confirmation-bridge";
 import { ConfirmDialogProvider } from "./ConfirmDialogProvider";
 
@@ -138,6 +140,63 @@ describe("ConfirmDialogProvider", () => {
     await Promise.resolve();
     expect(secondSettled).toBe(false);
     expect(getModal().props.visible).toBe(false);
+  });
+
+  it("renders a neutral button and resolves dismiss for three-way prompts", async () => {
+    renderProvider();
+    let promise!: Promise<ConfirmationOutcome>;
+    act(() => {
+      promise = requestConfirmationOutcome(
+        "Leave with unsaved changes?",
+        "Save and leave",
+        "Discard changes",
+        "Keep editing",
+      );
+    });
+
+    expect(screen.getByText("Keep editing")).toBeTruthy();
+
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-neutral"));
+    });
+
+    await expect(promise).resolves.toBe("dismiss");
+    expect(getModal().props.visible).toBe(false);
+  });
+
+  it("resolves dismiss when a three-way prompt is dismissed via the backdrop", async () => {
+    renderProvider();
+    let promise!: Promise<ConfirmationOutcome>;
+    act(() => {
+      promise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
+    });
+
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-backdrop"));
+    });
+
+    await expect(promise).resolves.toBe("dismiss");
+  });
+
+  it("resolves accept and reject from the explicit buttons of a three-way prompt", async () => {
+    renderProvider();
+    let acceptPromise!: Promise<ConfirmationOutcome>;
+    act(() => {
+      acceptPromise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
+    });
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    });
+    await expect(acceptPromise).resolves.toBe("accept");
+
+    let rejectPromise!: Promise<ConfirmationOutcome>;
+    act(() => {
+      rejectPromise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
+    });
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
+    });
+    await expect(rejectPromise).resolves.toBe("reject");
   });
 
   it("ignores stray button presses after the request has already resolved", async () => {

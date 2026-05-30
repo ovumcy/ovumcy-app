@@ -14,7 +14,7 @@ describe("openConfirmation", () => {
     const seen: ConfirmationRequest[] = [];
     registerConfirmationListener((request) => {
       seen.push(request);
-      request.resolve(true);
+      request.resolve("accept");
     });
 
     await expect(openConfirmation("Delete entry?", "Delete")).resolves.toBe(true);
@@ -30,7 +30,7 @@ describe("openConfirmation", () => {
     const seen: ConfirmationRequest[] = [];
     registerConfirmationListener((request) => {
       seen.push(request);
-      request.resolve(false);
+      request.resolve("reject");
     });
 
     await expect(

@@ -172,6 +172,7 @@ export type SettingsViewData = {
     screenCaptureProtectionStateOff: string;
     discardChangesLabel: string;
     saveBeforeLeaveLabel: string;
+    keepEditingLabel: string;
     status: {
       saved: string;
       languageSaved: string;
@@ -262,6 +263,7 @@ export type SettingsViewData = {
     regenerateDeviceAuthPrompt: string;
     discardChangesLabel: string;
     saveBeforeLeaveLabel: string;
+    keepEditingLabel: string;
     unsavedPrompt: string;
     status: {
       prepared: string;
@@ -627,6 +629,7 @@ export function buildSettingsViewData(
         settingsCopy.interface.screenCaptureProtectionStateOff,
       discardChangesLabel: settingsCopy.interface.discardChanges,
       saveBeforeLeaveLabel: settingsCopy.interface.saveBeforeLeave,
+      keepEditingLabel: settingsCopy.interface.keepEditing,
       status: {
         saved: settingsCopy.interface.saved,
         languageSaved: settingsCopy.interface.languageSaved,
@@ -721,6 +724,7 @@ export function buildSettingsViewData(
       regenerateDeviceAuthPrompt: settingsCopy.account.regenerateDeviceAuthPrompt,
       discardChangesLabel: settingsCopy.account.discardChangesLabel,
       saveBeforeLeaveLabel: settingsCopy.account.saveBeforeLeaveLabel,
+      keepEditingLabel: settingsCopy.account.keepEditingLabel,
       unsavedPrompt: settingsCopy.account.unsavedPrompt,
       status: {
         prepared: settingsCopy.account.prepared,

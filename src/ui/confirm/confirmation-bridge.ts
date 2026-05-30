@@ -1,8 +1,11 @@
+export type ConfirmationOutcome = "accept" | "reject" | "dismiss";
+
 export type ConfirmationRequest = {
   acceptLabel: string;
   cancelLabel: string;
+  neutralLabel?: string | null;
   message: string;
-  resolve: (value: boolean) => void;
+  resolve: (outcome: ConfirmationOutcome) => void;
 };
 
 type ConfirmationListener = (request: ConfirmationRequest) => void;
@@ -19,26 +22,43 @@ export function registerConfirmationListener(next: ConfirmationListener): () => 
   };
 }
 
-export function requestConfirmation(
+export function requestConfirmationOutcome(
   message: string,
   acceptLabel: string,
   cancelLabel: string,
-): Promise<boolean> {
-  return new Promise<boolean>((resolve) => {
+  neutralLabel?: string | null,
+): Promise<ConfirmationOutcome> {
+  return new Promise<ConfirmationOutcome>((resolve) => {
     if (!listener) {
-      resolve(false);
+      resolve("dismiss");
       return;
     }
     if (isPending) {
       return;
     }
     isPending = true;
-    const wrappedResolve = (value: boolean) => {
+    const wrappedResolve = (outcome: ConfirmationOutcome) => {
       isPending = false;
-      resolve(value);
+      resolve(outcome);
     };
-    listener({ message, acceptLabel, cancelLabel, resolve: wrappedResolve });
+    listener({
+      message,
+      acceptLabel,
+      cancelLabel,
+      neutralLabel: neutralLabel ?? null,
+      resolve: wrappedResolve,
+    });
   });
+}
+
+export function requestConfirmation(
+  message: string,
+  acceptLabel: string,
+  cancelLabel: string,
+): Promise<boolean> {
+  return requestConfirmationOutcome(message, acceptLabel, cancelLabel).then(
+    (outcome) => outcome === "accept",
+  );
 }
 
 export function __resetConfirmationListenerForTesting(): void {

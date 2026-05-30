@@ -11,7 +11,7 @@ import { createLoadedSettingsState } from "../../services/settings-view-service"
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
-import { openConfirmation } from "../confirm/open-confirmation";
+import { openConfirmation, openLeaveConfirmation } from "../confirm/open-confirmation";
 import { BackupSyncScreen } from "./BackupSyncScreen";
 
 const mockUseEffect = React.useEffect;
@@ -54,6 +54,7 @@ jest.mock("@react-navigation/native", () => {
 jest.mock("../confirm/open-confirmation", () => {
   return {
     openConfirmation: jest.fn(),
+    openLeaveConfirmation: jest.fn(),
   };
 });
 
@@ -64,6 +65,7 @@ jest.mock("../../security/sensitive-action-auth", () => {
 });
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
+const mockOpenLeaveConfirmation = jest.mocked(openLeaveConfirmation);
 const mockRequestSensitiveActionChallenge = jest.mocked(
   requestSensitiveActionChallenge,
 );
@@ -91,6 +93,7 @@ describe("BackupSyncScreen", () => {
     mockDispatch.mockReset();
     mockBack.mockReset();
     mockOpenConfirmation.mockReset();
+    mockOpenLeaveConfirmation.mockReset();
     mockRequestSensitiveActionChallenge.mockReset();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
     mockReplace.mockReset();
@@ -1185,7 +1188,7 @@ describe("BackupSyncScreen", () => {
         lastSyncedAt: null,
       }),
     });
-    mockOpenConfirmation.mockResolvedValue(false);
+    mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
     render(<BackupSyncScreen now={new Date(2026, 2, 17)} storage={storage} />);
 

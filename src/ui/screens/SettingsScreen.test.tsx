@@ -12,7 +12,7 @@ import { requestSensitiveActionChallenge } from "../../security/sensitive-action
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
-import { openConfirmation } from "../confirm/open-confirmation";
+import { openConfirmation, openLeaveConfirmation } from "../confirm/open-confirmation";
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
@@ -108,6 +108,7 @@ jest.mock("@react-navigation/native", () => {
 jest.mock("../confirm/open-confirmation", () => {
   return {
     openConfirmation: jest.fn(),
+    openLeaveConfirmation: jest.fn(),
   };
 });
 
@@ -118,6 +119,7 @@ jest.mock("../../security/sensitive-action-auth", () => {
 });
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
+const mockOpenLeaveConfirmation = jest.mocked(openLeaveConfirmation);
 const mockRequestSensitiveActionChallenge = jest.mocked(
   requestSensitiveActionChallenge,
 );
@@ -137,6 +139,7 @@ describe("SettingsScreen", () => {
     mockDispatch.mockReset();
     mockParentNavigate.mockReset();
     mockOpenConfirmation.mockReset();
+    mockOpenLeaveConfirmation.mockReset();
     mockPush.mockReset();
     mockReplace.mockReset();
     mockRequestSensitiveActionChallenge.mockReset();
@@ -351,7 +354,7 @@ describe("SettingsScreen", () => {
 
   it("saves pending settings before opening backup and sync", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(true);
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -713,7 +716,7 @@ describe("SettingsScreen", () => {
 
   it("saves cycle changes before leaving settings when the general guard accepts saving", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(true);
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -747,7 +750,7 @@ describe("SettingsScreen", () => {
 
   it("saves interface changes before leaving settings when the guard accepts saving", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(true);
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -777,7 +780,7 @@ describe("SettingsScreen", () => {
 
   it("saves pending settings before switching tabs", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(true);
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -812,7 +815,7 @@ describe("SettingsScreen", () => {
 
   it("discards interface preview changes when leaving settings without saving", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(false);
+    mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -841,9 +844,33 @@ describe("SettingsScreen", () => {
     ).toEqual(expect.objectContaining({ checked: true }));
   });
 
+  it("stays in settings and keeps changes when the leave guard is dismissed", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "NAVIGATE" } } });
+    });
+
+    await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
+    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId("settings-interface-theme-dark").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+  });
+
   it("confirms unsaved changes before the Android hardware back exits settings", async () => {
     const storage = createSettingsStorageMock();
-    mockOpenConfirmation.mockResolvedValue(false);
+    mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
@@ -862,7 +889,8 @@ describe("SettingsScreen", () => {
     });
 
     await waitFor(() =>
-      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+      expect(mockOpenLeaveConfirmation).toHaveBeenCalledWith(
+        expect.any(String),
         expect.any(String),
         expect.any(String),
         expect.any(String),

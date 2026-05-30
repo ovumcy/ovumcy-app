@@ -60,7 +60,10 @@ import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
-import { openConfirmation } from "../../confirm/open-confirmation";
+import {
+  openConfirmation,
+  openLeaveConfirmation,
+} from "../../confirm/open-confirmation";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type { BackupSyncFlowScreenProps } from "../BackupSyncFlowScreen";
 import type {
@@ -483,13 +486,18 @@ export function useBackupSyncScreenController({
       !isSyncingNow,
     ({ data }) => {
       void (async () => {
-        const shouldSave = await openConfirmation(
+        const outcome = await openLeaveConfirmation(
           viewData.account.unsavedPrompt,
           viewData.account.saveBeforeLeaveLabel,
           viewData.account.discardChangesLabel,
+          viewData.account.keepEditingLabel,
         );
 
-        if (!shouldSave) {
+        if (outcome === "dismiss") {
+          return;
+        }
+
+        if (outcome === "reject") {
           revertUnsavedSync();
           requestAnimationFrame(() => {
             navigation.dispatch(data.action);
