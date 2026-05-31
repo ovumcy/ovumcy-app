@@ -167,6 +167,7 @@ export function ProtectedTabsLayout({
           name="dashboard"
           options={{
             title: shellCopy.tabs.dashboard,
+            tabBarAccessibilityLabel: shellCopy.tabs.dashboard,
             tabBarButton: renderTabBarButton("dashboard"),
             tabBarIcon: ({ color, size }) => (
               <Feather color={color} name="sun" size={size} />
@@ -177,6 +178,7 @@ export function ProtectedTabsLayout({
           name="calendar"
           options={{
             title: shellCopy.tabs.calendar,
+            tabBarAccessibilityLabel: shellCopy.tabs.calendar,
             tabBarButton: renderTabBarButton("calendar"),
             tabBarIcon: ({ color, size }) => (
               <Feather color={color} name="calendar" size={size} />
@@ -187,6 +189,7 @@ export function ProtectedTabsLayout({
           name="stats"
           options={{
             title: shellCopy.tabs.stats,
+            tabBarAccessibilityLabel: shellCopy.tabs.stats,
             tabBarButton: renderTabBarButton("stats"),
             tabBarIcon: ({ color, size }) => (
               <Feather color={color} name="bar-chart-2" size={size} />
@@ -197,6 +200,7 @@ export function ProtectedTabsLayout({
           name="settings"
           options={{
             title: shellCopy.tabs.settings,
+            tabBarAccessibilityLabel: shellCopy.tabs.settings,
             tabBarButton: renderTabBarButton("settings"),
             tabBarIcon: ({ color, size }) => (
               <Feather color={color} name="settings" size={size} />

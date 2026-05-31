@@ -23,11 +23,11 @@ Run on an Android emulator or physical device.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
 10. Empty days open directly in the editor, existing entries can still be edited from summary mode, and switching days or deleting an entry does not lose the last saved local state or leave the editor stuck half-open.
 11. Settings screen saves cycle parameters locally, the dashboard snapshot reflects the new values after returning, and the reminders section keeps device-only reminder choices local with clear locked or permission feedback.
-12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
+12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a three-way confirmation (`Save and leave`, `Discard changes`, `Keep editing`); `Save and leave` persists before leaving, `Discard changes` leaves without saving, and `Keep editing` — or dismissing the dialog via hardware Back, tap-outside, or Escape — keeps the unsaved edit and stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and recent-app previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
   - `Show intimacy section` keeps intimacy visible when on and hides it when off
-  - `Track BBT` shows the BBT section with the selected temperature unit
+  - `Track BBT` shows the BBT section with the selected temperature unit; a decimal reading (e.g. `36.50`) keeps the typed value instead of snapping to `0.00`, non-numeric characters are rejected, and switching the unit between °C and °F recalculates the shown value to the same temperature instead of relabelling the raw number
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
 16. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
@@ -59,11 +59,11 @@ Run on an iOS simulator or physical device.
 9. Selecting a marked day in the calendar opens the same saved day details instead of an empty editor.
 10. Empty days open directly in the editor, existing entries can still be edited from summary mode, and switching days or deleting an entry does not lose the last saved local state or leave the editor stuck half-open.
 11. Settings screen saves cycle parameters locally, the dashboard snapshot reflects the new values after returning, and the reminders section keeps device-only reminder choices local with clear locked or permission feedback.
-12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a save-or-discard confirmation; `Save` persists the change before leaving, `Discard` leaves without saving, and `Cancel` stays on the screen.
+12. Changing a settings value and then switching tabs, leaving the screen, or opening `Backup & sync` shows a three-way confirmation (`Save and leave`, `Discard changes`, `Keep editing`); `Save and leave` persists before leaving, `Discard changes` leaves without saving, and `Keep editing` — or dismissing the dialog via hardware Back, tap-outside, or Escape — keeps the unsaved edit and stays on the screen.
 13. Interface settings can toggle screenshot protection; enabling it blocks screenshots and app-switcher previews on supported release builds, while disabling it allows captures again after saving.
 14. Tracking toggles in settings update dashboard visibility correctly:
   - `Show intimacy section` keeps intimacy visible when on and hides it when off
-  - `Track BBT` shows the BBT section with the selected temperature unit
+  - `Track BBT` shows the BBT section with the selected temperature unit; a decimal reading (e.g. `36.50`) keeps the typed value instead of snapping to `0.00`, non-numeric characters are rejected, and switching the unit between °C and °F recalculates the shown value to the same temperature instead of relabelling the raw number
   - `Track cervical mucus` shows the cervical-mucus section
 15. Enabling `Unpredictable cycle` switches dashboard copy to facts-only mode instead of showing fake predictions.
 16. After two completed cycles exist in local history, the `Insights` tab stops showing the empty state and renders reliability plus cycle-length cards.
@@ -90,10 +90,11 @@ Run when web support, branding, or app-shell navigation is touched.
    - onboarding finish leads to dashboard
    - dashboard renders cycle snapshot with a distinct ovulation marker, uniform phase cards, and the today-journal editor section
    - editing a day entry on the dashboard autosaves and updates local state without a page error
+   - enabling `Track BBT` shows the BBT field; a decimal reading is accepted and preserved, and switching the BBT unit between °C and °F recalculates the displayed value to the same temperature
    - calendar shows markers for the saved entry and opens the same day details when that day is selected
    - after two completed cycles exist, insights render reliability and cycle-length cards instead of the empty unlock state
    - settings can create a custom symptom and that symptom appears in dashboard and calendar day editors for new entries
-   - changing a settings value and then switching tabs or opening `Backup & sync` shows a save-or-discard confirmation with working `Save`, `Discard`, and `Cancel` outcomes
+   - changing a settings value and then switching tabs or opening `Backup & sync` shows a three-way confirmation with working `Save and leave`, `Discard changes`, and `Keep editing` outcomes, where dismissing the dialog keeps editing
    - interface settings can save and re-open a screenshot-protection toggle without throwing runtime errors in the browser shell
    - settings shows explicit `Interface` controls plus a `Backup & sync` summary card, and the dedicated `Backup & sync` screen supports local encrypted sync preparation with a one-time recovery phrase while keeping `Managed` cloud auth separate from the sync endpoint
    - settings reminders section renders without runtime errors, stays device-local, and shows a locked state until a managed premium entitlement is present

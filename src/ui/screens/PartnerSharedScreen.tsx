@@ -8,6 +8,10 @@ import { getSettingsCopy } from "../../i18n/settings-copy";
 import { loadManagedPartnerAccess } from "../../services/managed-partner-access-service";
 import { loadManagedPartnerProjection } from "../../services/managed-partner-share-service";
 import { buildPartnerSharedReadState } from "../../services/partner-shared-projection-service";
+import {
+  formatTemperatureValue,
+  type TemperatureUnit,
+} from "../../services/temperature-policy";
 import type { PartnerShareSecretStore } from "../../security/partner-share-secret-store";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
@@ -240,7 +244,11 @@ export function PartnerSharedScreen({
             ) : (
               <View style={styles.historyStack}>
                 {readState.recentRows.map((row) => {
-                  const historyDetailText = buildHistoryDetailText(row, language);
+                  const historyDetailText = buildHistoryDetailText(
+                    row,
+                    language,
+                    readState.temperatureUnit,
+                  );
 
                   return (
                     <View
@@ -311,6 +319,7 @@ function formatHistoryDate(value: string, locale: string): string {
 function buildHistoryDetailText(
   row: ReturnType<typeof buildPartnerSharedReadState>["recentRows"][number],
   locale: string,
+  temperatureUnit: TemperatureUnit,
 ): string {
   const dayLogCopy = getDayLogCopy(locale);
   const flowLabel =
@@ -326,7 +335,12 @@ function buildHistoryDetailText(
           row.sexActivity,
         )}`
       : "";
-  const bbtLabel = row.bbt > 0 ? `${dayLogCopy.bbt}: ${row.bbt}` : "";
+  const bbtLabel =
+    row.bbt > 0
+      ? `${dayLogCopy.bbt}: ${formatTemperatureValue(row.bbt, temperatureUnit)} ${
+          temperatureUnit === "f" ? "°F" : "°C"
+        }`
+      : "";
   const cervicalMucusLabel =
     row.cervicalMucus.length > 0
       ? `${dayLogCopy.cervicalMucus}: ${resolveDayLogOptionLabel(

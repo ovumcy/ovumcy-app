@@ -1,5 +1,4 @@
 import type { DayLogRecord } from "../models/day-log";
-import type { TemperatureUnit } from "../models/profile";
 import type { StatsCycleHistorySummary } from "../models/stats";
 import { parseLocalDate } from "./profile-settings-policy";
 
@@ -9,7 +8,6 @@ const MIN_OBSERVED_LUTEAL_DAYS = 8;
 const MIN_SHIFT_SAMPLE_COUNT = 4;
 const MAX_OVULATION_CONFIRMATION_GAP_DAYS = 4;
 const CONFIRMED_SHIFT_THRESHOLD_CELSIUS = 0.2;
-const CONFIRMED_SHIFT_THRESHOLD_FAHRENHEIT = 0.35;
 
 export type StatsThermalShiftSummary = {
   kind: "building" | "confirmed";
@@ -52,7 +50,6 @@ export function buildStatsAdvancedFertility(
   history: StatsCycleHistorySummary,
   records: readonly DayLogRecord[],
   currentCycleAnchorDate: string | null,
-  temperatureUnit: TemperatureUnit,
 ): StatsAdvancedFertilitySummary | null {
   const recentCycles = history.completedCycles.slice(-ADVANCED_FERTILITY_CYCLE_LIMIT);
   const observedLutealValues: number[] = [];
@@ -87,7 +84,7 @@ export function buildStatsAdvancedFertility(
       }
     }
 
-    const thermalShift = detectThermalShift(cycleRecords, temperatureUnit);
+    const thermalShift = detectThermalShift(cycleRecords);
     if (lastEggWhiteSignal || lastLHPeakSignal || thermalShift) {
       signalCoverageCount += 1;
     }
@@ -99,7 +96,7 @@ export function buildStatsAdvancedFertility(
         .sort((left, right) => left.date.localeCompare(right.date))
     : [];
   const thermalShift = currentCycleRecords.length
-    ? detectThermalShift(currentCycleRecords, temperatureUnit)
+    ? detectThermalShift(currentCycleRecords)
     : null;
   const lhPeakSignal = buildLHPeakSignal(currentCycleRecords, thermalShift);
   const ovulationConfirmation = buildOvulationConfirmation(
@@ -163,7 +160,6 @@ function buildObservedLutealConsistency(
 
 function detectThermalShift(
   records: readonly DayLogRecord[],
-  temperatureUnit: TemperatureUnit,
 ): StatsThermalShiftSummary | null {
   const bbtValues = records
     .filter((record) => record.bbt > 0)
@@ -176,10 +172,7 @@ function detectThermalShift(
   const baseline = bbtValues.slice(-(windowSize * 2), -windowSize);
   const recent = bbtValues.slice(-windowSize);
   const rise = average(recent) - average(baseline);
-  const confirmedThreshold =
-    temperatureUnit === "f"
-      ? CONFIRMED_SHIFT_THRESHOLD_FAHRENHEIT
-      : CONFIRMED_SHIFT_THRESHOLD_CELSIUS;
+  const confirmedThreshold = CONFIRMED_SHIFT_THRESHOLD_CELSIUS;
   const buildingThreshold = confirmedThreshold / 2;
 
   if (rise >= confirmedThreshold) {

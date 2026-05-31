@@ -40,6 +40,7 @@ export type DayLogEditorViewData = {
   subtitle: string;
   dateLabel: string;
   visibility: ReturnType<typeof buildDayLogVisibility>;
+  temperatureUnit: ProfileRecord["temperatureUnit"];
   labels: {
     periodDay: string;
     symptoms: string;
@@ -145,6 +146,7 @@ export async function loadDayLogEditorState(
 export async function saveDayLogEditorRecord(
   storage: LocalAppStorage,
   record: DayLogRecord,
+  now: Date = new Date(),
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
   const [profile, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),
@@ -162,7 +164,7 @@ export async function saveDayLogEditorRecord(
   const recordsToWrite = new Map<string, DayLogRecord>([[normalized.date, normalized]]);
 
   if (shouldAutoFillPeriodWindowFromSave(profile, relevantRecords, normalized)) {
-    appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile);
+    appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile, now);
   } else if (shouldClearAutoFilledNeighbors(profile, relevantRecords, normalized)) {
     for (const dayToClear of collectAutoFilledPeriodDaysToClear(
       relevantRecords,
@@ -263,6 +265,7 @@ export function buildDayLogEditorViewData(
     subtitle: dayLogCopy.subtitle,
     dateLabel: formatDayLogDateLabel(date, locale),
     visibility: buildDayLogVisibility(profile, premiumOptions),
+    temperatureUnit: profile.temperatureUnit,
     labels: {
       periodDay: dayLogCopy.periodDay,
       symptoms: dayLogCopy.symptoms,

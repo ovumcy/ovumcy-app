@@ -3,6 +3,7 @@ import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
+import { celsiusToUnit, roundTemperature } from "./temperature-policy";
 import {
   STATS_FACTOR_CONTEXT_WINDOW_DAYS,
   type StatsComparisonKind,
@@ -388,7 +389,6 @@ export function buildStatsViewData(
         history,
         records,
         projection.cycleAnchorDate,
-        profile.temperatureUnit,
       )
     : null;
   const advancedFertilitySection = premiumFertility
@@ -549,7 +549,9 @@ export function buildStatsViewData(
             points: bbtSeries.map((point) => ({
               key: point.key,
               label: point.label,
-              value: point.value,
+              value: roundTemperature(
+                celsiusToUnit(point.value, profile.temperatureUnit),
+              ),
             })),
           },
         }

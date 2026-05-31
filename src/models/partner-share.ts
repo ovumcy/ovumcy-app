@@ -67,6 +67,7 @@ export type PartnerSharedSummaryMetrics = {
 export type PartnerSharedReadState = {
   accessLevel: PartnerShareAccessLevel;
   generatedAt: string;
+  temperatureUnit: ProfileRecord["temperatureUnit"];
   cycleStatus: {
     currentCycleDay: number | null;
     nextPeriodDate: LocalDateISO | null;

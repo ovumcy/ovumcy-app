@@ -196,6 +196,37 @@ describe("manual-cycle-start-service", () => {
     );
   });
 
+  it("does not auto-fill period days after today", async () => {
+    const profile = createProfileRecord({
+      autoPeriodFill: true,
+      lastPeriodStart: null,
+      periodLength: 5,
+    });
+    const storage = createLocalAppStorageMock();
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-05-31"),
+      isPeriod: true,
+    };
+
+    await applyManualCycleStart(
+      storage,
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 4, 31),
+      "en",
+      {
+        markUncertain: false,
+        replaceExisting: false,
+      },
+    );
+
+    const writtenDates = (storage.writeDayLogRecord as jest.Mock).mock.calls.map(
+      ([written]) => written.date,
+    );
+    expect(writtenDates).toEqual(["2026-05-31"]);
+  });
+
   it("localizes the manual cycle start button label with the active locale", () => {
     const profile = createProfileRecord();
     const draftRecord = {

@@ -110,6 +110,7 @@ export function buildPartnerSharedReadState(
   return {
     accessLevel: payload.accessLevel,
     generatedAt: payload.generatedAt,
+    temperatureUnit: payload.profile.temperatureUnit,
     cycleStatus: {
       currentCycleDay: projection.currentCycleDay,
       nextPeriodDate: projection.nextPeriodDate,

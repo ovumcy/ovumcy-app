@@ -7,6 +7,7 @@ import {
   type StatsAdvancedFertilitySummary,
 } from "./stats-advanced-fertility-service";
 import { parseLocalDate } from "./profile-settings-policy";
+import { celsiusDeltaToUnit } from "./temperature-policy";
 
 export type CurrentCycleAdvancedFertilitySummaryViewData = {
   key: "ovulation-confirmation" | "lh-peak" | "thermal-shift";
@@ -40,7 +41,6 @@ export function buildCurrentCycleAdvancedFertilitySummary(
     history,
     records,
     currentCycleAnchorDate,
-    temperatureUnit,
   );
   if (!summary) {
     return null;
@@ -122,12 +122,12 @@ function buildSummaryViewData(
       detail:
         summary.thermalShift.kind === "confirmed"
           ? statsCopy.advancedFertility.thermalShiftConfirmedDescription(
-              summary.thermalShift.rise.toFixed(2),
+              celsiusDeltaToUnit(summary.thermalShift.rise, temperatureUnit).toFixed(2),
               unitLabel,
               summary.thermalShift.sampleCount,
             )
           : statsCopy.advancedFertility.thermalShiftBuildingDescription(
-              summary.thermalShift.rise.toFixed(2),
+              celsiusDeltaToUnit(summary.thermalShift.rise, temperatureUnit).toFixed(2),
               unitLabel,
               summary.thermalShift.sampleCount,
             ),

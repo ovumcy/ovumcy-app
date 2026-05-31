@@ -24,6 +24,7 @@ import {
 } from "./export-policy";
 import { formatLocalDate } from "./profile-settings-policy";
 import { normalizeSymptomLabelKey } from "./symptom-policy";
+import { celsiusToUnit, roundTemperature } from "./temperature-policy";
 
 export type ExportArtifact = {
   filename: string;
@@ -273,7 +274,7 @@ function buildCSVArtifact(
   values: ExportRangeValues,
   now: Date,
 ): ExportArtifact {
-  const rows = buildExportCSVRows(dayLogs, symptomRecords);
+  const rows = buildExportCSVRows(dayLogs, symptomRecords, profile.temperatureUnit);
   const headerLabels: string[] = [...EXPORT_CSV_HEADERS];
   if (profile.temperatureUnit === "f") {
     headerLabels[5] = "BBT (F)";
@@ -319,6 +320,7 @@ async function defaultBuildPDFContent(
 export function buildExportCSVRows(
   dayLogs: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
+  temperatureUnit: ProfileRecord["temperatureUnit"] = "c",
 ): ExportCSVRow[] {
   const symptomLookup = new Map(symptomRecords.map((record) => [record.id, record]));
 
@@ -334,7 +336,7 @@ export function buildExportCSVRows(
       flow: normalizeExportFlow(record.flow),
       moodRating: normalizeExportMood(record.mood),
       sexActivity: normalizeExportSexActivity(record.sexActivity),
-      bbt: normalizeExportBBT(record.bbt),
+      bbt: normalizeExportBBT(record.bbt, temperatureUnit),
       cervicalMucus: normalizeExportCervicalMucus(record.cervicalMucus),
       lhTest: normalizeExportLHTest(record.lhTest),
       cycleFactors: [...record.cycleFactorKeys],
@@ -468,8 +470,13 @@ function normalizeExportSexActivity(value: DayLogRecord["sexActivity"]): string 
   return value === "none" ? "" : value;
 }
 
-function normalizeExportBBT(value: DayLogRecord["bbt"]): number {
-  return Number.isFinite(value) && value > 0 ? value : 0;
+function normalizeExportBBT(
+  value: DayLogRecord["bbt"],
+  temperatureUnit: ProfileRecord["temperatureUnit"],
+): number {
+  return Number.isFinite(value) && value > 0
+    ? roundTemperature(celsiusToUnit(value, temperatureUnit))
+    : 0;
 }
 
 function normalizeExportCervicalMucus(

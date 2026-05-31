@@ -1,5 +1,7 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import { createDefaultProfileRecord } from "../models/profile";
 import {
+  appendAutoFilledPeriodDays,
   collectAutoFilledPeriodDaysToClear,
   isAutoFilledPeriodCandidate,
 } from "./period-auto-fill-service";
@@ -79,5 +81,42 @@ describe("collectAutoFilledPeriodDaysToClear", () => {
     expect(
       collectAutoFilledPeriodDaysToClear([periodDay("2026-05-06")], "not-a-date", 5),
     ).toEqual([]);
+  });
+});
+
+describe("appendAutoFilledPeriodDays", () => {
+  it("does not write period days after today", () => {
+    const recordsToWrite = new Map<string, DayLogRecord>();
+
+    appendAutoFilledPeriodDays(
+      recordsToWrite,
+      [],
+      periodDay("2026-05-31"),
+      { ...createDefaultProfileRecord(), periodLength: 5 },
+      new Date(2026, 4, 31),
+    );
+
+    expect([...recordsToWrite.keys()]).toEqual([]);
+  });
+
+  it("still writes period days up to and including today", () => {
+    const recordsToWrite = new Map<string, DayLogRecord>();
+
+    appendAutoFilledPeriodDays(
+      recordsToWrite,
+      [],
+      periodDay("2026-05-28"),
+      { ...createDefaultProfileRecord(), periodLength: 5 },
+      new Date(2026, 4, 31),
+    );
+
+    expect([...recordsToWrite.keys()].sort()).toEqual([
+      "2026-05-29",
+      "2026-05-30",
+      "2026-05-31",
+    ]);
+    for (const record of recordsToWrite.values()) {
+      expect(record.isPeriod).toBe(true);
+    }
   });
 });

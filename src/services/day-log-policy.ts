@@ -119,6 +119,7 @@ export function normalizeDayBBT(value: number): number {
   }
 
   const rounded = Math.round(value * 100) / 100;
+  // BBT is stored canonically in Celsius; the UI converts to/from the user's unit.
   if (rounded < MIN_DAY_BBT_CELSIUS || rounded > MAX_DAY_BBT_CELSIUS) {
     return 0;
   }

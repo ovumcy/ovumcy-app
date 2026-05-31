@@ -1,5 +1,6 @@
 import {
   buildDayLogVisibility,
+  normalizeDayBBT,
   sanitizeDayLogRecord,
 } from "./day-log-policy";
 
@@ -74,5 +75,21 @@ describe("day-log-policy", () => {
       showLHTest: false,
       showNotes: false,
     });
+  });
+});
+
+describe("normalizeDayBBT", () => {
+  it("accepts canonical Celsius temperatures", () => {
+    expect(normalizeDayBBT(36.5)).toBe(36.5);
+    expect(normalizeDayBBT(34)).toBe(34);
+    expect(normalizeDayBBT(43)).toBe(43);
+  });
+
+  it("rejects values outside the Celsius range (BBT is stored canonically in °C)", () => {
+    expect(normalizeDayBBT(33.99)).toBe(0);
+    expect(normalizeDayBBT(43.01)).toBe(0);
+    expect(normalizeDayBBT(97.7)).toBe(0);
+    expect(normalizeDayBBT(0)).toBe(0);
+    expect(normalizeDayBBT(Number.NaN)).toBe(0);
   });
 });

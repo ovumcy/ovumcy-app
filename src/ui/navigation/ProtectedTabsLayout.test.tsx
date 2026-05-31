@@ -31,11 +31,14 @@ jest.mock("expo-router", () => {
     options,
   }: {
     name: string;
-    options?: { title?: string };
+    options?: { title?: string; tabBarAccessibilityLabel?: string };
   }) {
     return mockReact.createElement(
       mockText,
-      { testID: `protected-tab-${name}` },
+      {
+        testID: `protected-tab-${name}`,
+        accessibilityLabel: options?.tabBarAccessibilityLabel,
+      },
       options?.title ?? name,
     );
   };
@@ -80,6 +83,18 @@ describe("ProtectedTabsLayout", () => {
     expect(screen.getByTestId("protected-tab-calendar")).toBeTruthy();
     expect(screen.getByTestId("protected-tab-stats")).toBeTruthy();
     expect(screen.getByTestId("protected-tab-settings")).toBeTruthy();
+  });
+
+  it("labels each tab with its title for screen readers (no leading separator)", async () => {
+    render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+
+    await waitFor(() => expect(screen.getByTestId("protected-tabs")).toBeTruthy());
+
+    for (const name of ["dashboard", "calendar", "stats", "settings"]) {
+      const tab = screen.getByTestId(`protected-tab-${name}`);
+      expect(tab.props.accessibilityLabel).toBeTruthy();
+      expect(tab.props.accessibilityLabel).toBe(tab.props.children);
+    }
   });
 
   it("refreshes managed partner projections on mount and app foreground", async () => {

@@ -9,6 +9,11 @@ import {
 
 import type { DayLogRecord } from "../../models/day-log";
 import type { DayLogEditorViewData } from "../../services/day-log-editor-service";
+import {
+  formatTemperatureValue,
+  roundTemperature,
+  unitToCelsius,
+} from "../../services/temperature-policy";
 import { AppButton } from "./AppButton";
 import { AppTextInput } from "./AppTextInput";
 import { BinaryToggleCard } from "./BinaryToggleCard";
@@ -94,6 +99,31 @@ export function DayLogEditorCard({
       setShowsAllSymptoms(false);
     }
   }, [collapsedSymptomsState.hiddenCount, showsAllSymptoms]);
+
+  const temperatureUnit = viewData.temperatureUnit;
+  const [bbtKey, setBbtKey] = useState(`${record.date}:${temperatureUnit}`);
+  const [bbtText, setBbtText] = useState(() =>
+    formatTemperatureValue(record.bbt, temperatureUnit),
+  );
+  const nextBbtKey = `${record.date}:${temperatureUnit}`;
+  if (nextBbtKey !== bbtKey) {
+    // Reset the editable text when the day or the unit changes, without
+    // reformatting live keystrokes within the same day (React's "adjust state
+    // during render" pattern — no effect needed).
+    setBbtKey(nextBbtKey);
+    setBbtText(formatTemperatureValue(record.bbt, temperatureUnit));
+  }
+
+  function handleBbtChange(value: string) {
+    const sanitized = sanitizeBbtInput(value);
+    setBbtText(sanitized);
+    const displayValue = Number(sanitized);
+    const celsius =
+      Number.isFinite(displayValue) && displayValue > 0
+        ? roundTemperature(unitToCelsius(displayValue, temperatureUnit))
+        : 0;
+    onPatch({ bbt: celsius });
+  }
 
   function handleSectionLayout(key: DayLogEditorSectionKey) {
     return (event: LayoutChangeEvent) => {
@@ -239,16 +269,13 @@ export function DayLogEditorCard({
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
               <AppTextInput
                 inputMode="decimal"
-                onChangeText={(value) => {
-                  const normalized = value.replace(",", ".").trim();
-                  onPatch({
-                    bbt: normalized === "" ? 0 : Number(normalized),
-                  });
-                }}
+                maxLength={6}
+                onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
+                onChangeText={handleBbtChange}
                 placeholder="0.00"
                 style={styles.input}
                 testID="day-log-bbt-input"
-                value={record.bbt > 0 ? record.bbt.toFixed(2) : ""}
+                value={bbtText}
               />
             </View>
           ) : null}
@@ -374,16 +401,13 @@ export function DayLogEditorCard({
               <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
               <AppTextInput
                 inputMode="decimal"
-                onChangeText={(value) => {
-                  const normalized = value.replace(",", ".").trim();
-                  onPatch({
-                    bbt: normalized === "" ? 0 : Number(normalized),
-                  });
-                }}
+                maxLength={6}
+                onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
+                onChangeText={handleBbtChange}
                 placeholder="0.00"
                 style={styles.input}
                 testID="day-log-bbt-input"
-                value={record.bbt > 0 ? record.bbt.toFixed(2) : ""}
+                value={bbtText}
               />
             </View>
           ) : null}
@@ -519,6 +543,20 @@ const createStyles = (colors: AppThemeColors) =>
       alignSelf: "flex-start",
     },
   });
+
+function sanitizeBbtInput(raw: string): string {
+  // Monkey-proofing: keep only digits and a single decimal separator, shaped
+  // like a temperature (max 3 integer + 2 fractional digits). Anything else the
+  // user types (letters, extra dots, overlong values) is dropped before state.
+  const cleaned = raw.replace(",", ".").replace(/[^\d.]/g, "");
+  const dotIndex = cleaned.indexOf(".");
+  if (dotIndex === -1) {
+    return cleaned.slice(0, 3);
+  }
+  const intPart = cleaned.slice(0, dotIndex).slice(0, 3);
+  const fracPart = cleaned.slice(dotIndex + 1).replace(/\./g, "").slice(0, 2);
+  return `${intPart}.${fracPart}`;
+}
 
 function buildCollapsedSymptomOptions(
   options: DayLogEditorViewData["options"]["symptoms"],

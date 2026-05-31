@@ -50,16 +50,22 @@ export function appendAutoFilledPeriodDays(
   records: readonly DayLogRecord[],
   periodStartRecord: DayLogRecord,
   profile: ProfileRecord,
+  now: Date,
 ) {
   const periodStartDate = parseLocalDate(periodStartRecord.date);
   if (!periodStartDate) {
     return;
   }
 
+  const today = formatLocalDate(now);
   const recordsByDate = new Map(records.map((record) => [record.date, record]));
 
   for (let offset = 1; offset < profile.periodLength; offset += 1) {
     const currentDate = formatLocalDate(addDays(periodStartDate, offset));
+    if (currentDate > today) {
+      // Only auto-fill observed days; future period days remain predictions.
+      break;
+    }
     const existingRecord =
       recordsToWrite.get(currentDate) ??
       recordsByDate.get(currentDate) ??

@@ -63,7 +63,7 @@ describe("buildStatsAdvancedFertility", () => {
     ];
 
     expect(
-      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29", "c"),
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
     ).toEqual(
       expect.objectContaining({
         observedLutealConsistency: expect.objectContaining({
@@ -106,7 +106,7 @@ describe("buildStatsAdvancedFertility", () => {
     ];
 
     expect(
-      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29", "c"),
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
     ).toEqual(
       expect.objectContaining({
         ovulationConfirmation: {
@@ -149,7 +149,7 @@ describe("buildStatsAdvancedFertility", () => {
     ];
 
     expect(
-      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29", "c"),
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
     ).toEqual(
       expect.objectContaining({
         lhPeakSignal: {

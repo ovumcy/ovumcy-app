@@ -159,7 +159,7 @@ export async function applyManualCycleStart(
   recordsToWrite.set(nextSelectedRecord.date, nextSelectedRecord);
 
   if (profile.autoPeriodFill && !nextSelectedRecord.isUncertain) {
-    appendAutoFilledPeriodDays(recordsToWrite, records, nextSelectedRecord, profile);
+    appendAutoFilledPeriodDays(recordsToWrite, records, nextSelectedRecord, profile, now);
   }
 
   for (const currentRecord of records) {

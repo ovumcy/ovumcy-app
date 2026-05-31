@@ -14,6 +14,7 @@ import type {
   ExportPDFSummary,
 } from "../models/export";
 import { hasDayLogData, type DayLogRecord } from "../models/day-log";
+import { celsiusDeltaToUnit, celsiusToUnit } from "./temperature-policy";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import { buildCycleHistorySummary } from "./cycle-history-service";
@@ -222,7 +223,6 @@ function buildAdvancedFertilityItemsForPDF(
     history,
     sortedDayLogs,
     history.completedCycles[history.completedCycles.length - 1]?.startDate ?? null,
-    profile.temperatureUnit,
   );
   if (!summary) {
     return [];
@@ -242,7 +242,7 @@ function buildAdvancedFertilityItemsForPDF(
           ? pdfCopy.advancedFertilityThermalShiftConfirmedValue
           : pdfCopy.advancedFertilityThermalShiftBuildingValue,
       description: pdfCopy.advancedFertilityThermalShiftDescription(
-        summary.thermalShift.rise.toFixed(2),
+        celsiusDeltaToUnit(summary.thermalShift.rise, profile.temperatureUnit).toFixed(2),
         unitLabel,
         summary.thermalShift.sampleCount,
       ),
@@ -984,7 +984,9 @@ function resolveCycleTableValue(
     case "sex":
       return entry.sexActivity;
     case "bbt":
-      return entry.bbt > 0 ? `${entry.bbt.toFixed(2)} ${temperatureUnit.toUpperCase()}` : "";
+      return entry.bbt > 0
+        ? `${celsiusToUnit(entry.bbt, temperatureUnit).toFixed(2)} ${temperatureUnit.toUpperCase()}`
+        : "";
     case "cervical":
       return entry.cervicalMucus;
     case "lh":
