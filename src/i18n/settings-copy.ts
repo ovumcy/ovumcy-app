@@ -129,13 +129,13 @@ const settingsCopyEn = {
     upcomingPeriodHint:
       "Schedules a local reminder ahead of the next predicted period window when predictions are available.",
     upcomingPeriodStateOn:
-      "A local upcoming-period reminder can be scheduled.",
+      "An upcoming-period reminder is enabled.",
     upcomingPeriodStateOff: "No upcoming-period reminder is scheduled.",
     fertileWindow: "Remind me before the fertile window",
     fertileWindowHint:
       "Schedules a local reminder ahead of the next predicted fertile window when predictions are available.",
     fertileWindowStateOn:
-      "A local fertile-window reminder can be scheduled.",
+      "A fertile-window reminder is enabled.",
     fertileWindowStateOff: "No fertile-window reminder is scheduled.",
     saved: "Reminder settings updated for this device.",
     savedWithEmail:
@@ -592,14 +592,14 @@ const settingsCopyDe: SettingsCopy = {
     upcomingPeriodHint:
       "Plant eine lokale Erinnerung vor dem nächsten vorhergesagten Periodenfenster, wenn Vorhersagen verfügbar sind.",
     upcomingPeriodStateOn:
-      "Eine lokale Erinnerung vor der nächsten Periode kann geplant werden.",
+      "Eine Erinnerung vor der nächsten Periode ist aktiviert.",
     upcomingPeriodStateOff:
       "Es ist keine Erinnerung vor der nächsten Periode geplant.",
     fertileWindow: "Vor dem fruchtbaren Fenster erinnern",
     fertileWindowHint:
       "Plant eine lokale Erinnerung vor dem nächsten vorhergesagten fruchtbaren Fenster, wenn Vorhersagen verfügbar sind.",
     fertileWindowStateOn:
-      "Eine lokale Erinnerung vor dem fruchtbaren Fenster kann geplant werden.",
+      "Eine Erinnerung vor dem fruchtbaren Fenster ist aktiviert.",
     fertileWindowStateOff:
       "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
     saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
@@ -655,15 +655,15 @@ const settingsCopyDe: SettingsCopy = {
     subtitle:
       "Schütze zuerst dieses Gerät und verbinde dann entweder Ovumcy Cloud oder deinen eigenen Sync-Server.",
     hubSubtitle:
-      "Öffne Recovery Phrase, Kontoverbindung, Cloud-Tarif und Sync-Aktionen auf einem separaten Bildschirm.",
+      "Öffne Wiederherstellungsphrase, Kontoverbindung, Cloud-Tarif und Sync-Aktionen auf einem separaten Bildschirm.",
     openHubLabel: "Backup & Sync öffnen",
     backToSettingsLabel: "Zurück zu den Einstellungen",
     localStepTitle: "1. Dieses Gerät schützen",
     localStepHint:
-      "Erstelle auf diesem Gerät eine Recovery Phrase. Bewahre sie offline auf, falls du deine Daten jemals wiederherstellen musst.",
+      "Erstelle auf diesem Gerät eine Wiederherstellungsphrase. Bewahre sie offline auf, falls du deine Daten jemals wiederherstellen musst.",
     preparingTitle: "Dein geschütztes Backup wird vorbereitet...",
     preparingHint:
-      "Ovumcy erzeugt gerade auf diesem Gerät eine Recovery Phrase.",
+      "Ovumcy erzeugt gerade auf diesem Gerät eine Wiederherstellungsphrase.",
     accountStepTitle: "2. Konto verbinden",
     accountStepHintManaged:
       "Melde dich hier mit deinem Ovumcy-Cloud-Konto an. Deine Gesundheitsdaten werden weiterhin separat als verschlüsseltes Backup synchronisiert.",
@@ -705,9 +705,9 @@ const settingsCopyDe: SettingsCopy = {
     deviceHint:
       "Wird später in verbundenen Gerätelisten und in verschlüsselten Wiederherstellungsabläufen angezeigt.",
     devicePlaceholder: "Gerätenamen eingeben",
-    stateLabel: "Status der Recovery Phrase",
-    stateReady: "Dieses Gerät hat bereits eine Recovery Phrase.",
-    stateMissing: "Dieses Gerät hat noch keine Recovery Phrase.",
+    stateLabel: "Status der Wiederherstellungsphrase",
+    stateReady: "Dieses Gerät hat bereits eine Wiederherstellungsphrase.",
+    stateMissing: "Dieses Gerät hat noch keine Wiederherstellungsphrase.",
     connectionLabel: "Kontositzung",
     connectionReady: "Dieses Gerät ist bei einem Sync-Konto angemeldet.",
     connectionMissing:
@@ -720,15 +720,15 @@ const settingsCopyDe: SettingsCopy = {
     encryptionReady:
       "Die Wiederherstellungsdaten werden nur auf diesem Gerät gespeichert.",
     encryptionMissing:
-      "Auf diesem Gerät wurde noch keine Recovery Phrase erstellt.",
+      "Auf diesem Gerät wurde noch keine Wiederherstellungsphrase erstellt.",
     loginLabel: "E-Mail oder Login",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Passwort",
     passwordPlaceholder: "Passwort eingeben",
-    recoveryImportTitle: "Zugriff mit Recovery Phrase wiederherstellen",
+    recoveryImportTitle: "Zugriff mit Wiederherstellungsphrase wiederherstellen",
     recoveryImportHint:
-      "Nutze das, wenn dieses Gerät keine lokalen Sync-Schlüssel mehr hat, du aber noch Kontopasswort und 12-Wort-Recovery-Phrase besitzt.",
-    recoveryPhraseInputLabel: "Recovery Phrase",
+      "Nutze das, wenn dieses Gerät keine lokalen Sync-Schlüssel mehr hat, du aber noch Kontopasswort und 12-Wort-Wiederherstellungsphrase besitzt.",
+    recoveryPhraseInputLabel: "Wiederherstellungsphrase",
     recoveryPhraseInputPlaceholder: "zwölf Wörter mit Leerzeichen getrennt",
     recoveryPhraseInputHint:
       "Gib exakt die 12 Wörter ein, mit denen dein Sync-Master-Key geschützt ist.",
@@ -745,30 +745,30 @@ const settingsCopyDe: SettingsCopy = {
       "Bestätige mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
     disconnectPrompt:
       "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
-    recoveryTitle: "Recovery Phrase für dieses Gerät",
+    recoveryTitle: "Wiederherstellungsphrase für dieses Gerät",
     recoveryHint:
       "Schreibe die 12 Wörter exakt auf und bewahre sie offline auf. Wenn du alle Geräte und diese Phrase verlierst, können synchronisierte Daten nicht wiederhergestellt werden.",
     recoveryNotice:
-      "Dieser Bildschirm zeigt die Recovery Phrase nur, wenn du lokale Sync-Schlüssel vorbereitest oder neu erstellst.",
+      "Dieser Bildschirm zeigt die Wiederherstellungsphrase nur, wenn du lokale Sync-Schlüssel vorbereitest oder neu erstellst.",
     recoveryShownOnce: "Wird nach der Erstellung nur einmal angezeigt.",
     recoveryExportLabel: "Als Text exportieren",
     recoveryCodeTitle: "Konto-Wiederherstellungscode",
     recoveryCodeHint:
       "Speichere diesen Code sicher. Er wird nur einmal angezeigt und erlaubt dir, das Passwort deines Sync-Kontos zurückzusetzen, falls du es vergisst.",
-    prepareLabel: "Recovery Phrase erstellen",
-    regenerateLabel: "Neue Recovery Phrase erstellen",
+    prepareLabel: "Wiederherstellungsphrase erstellen",
+    regenerateLabel: "Neue Wiederherstellungsphrase erstellen",
     regeneratePrompt:
-      "Das Neuerstellen lokaler Sync-Schlüssel macht ältere verschlüsselte Sync-Backups ungültig, bis du die neue Recovery Phrase verwendest. Fortfahren?",
+      "Das Neuerstellen lokaler Sync-Schlüssel macht ältere verschlüsselte Sync-Backups ungültig, bis du die neue Wiederherstellungsphrase verwendest. Fortfahren?",
     regenerateAccept: "Neue Phrase erstellen",
     regenerateDeviceAuthPrompt:
-      "Bestätige mit Geräteschutz, um eine neue Recovery Phrase für dieses Gerät zu erstellen.",
+      "Bestätige mit Geräteschutz, um eine neue Wiederherstellungsphrase für dieses Gerät zu erstellen.",
     discardChangesLabel: "Änderungen verwerfen",
     saveBeforeLeaveLabel: "Speichern und verlassen",
     keepEditingLabel: "Weiter bearbeiten",
     unsavedPrompt:
       "Du hast ungespeicherte Änderungen für Backup und Sync. Vor dem Verlassen speichern?",
-    prepared: "Die Recovery Phrase wurde für dieses Gerät erstellt.",
-    regenerated: "Für dieses Gerät wurde eine neue Recovery Phrase erstellt.",
+    prepared: "Die Wiederherstellungsphrase wurde für dieses Gerät erstellt.",
+    regenerated: "Für dieses Gerät wurde eine neue Wiederherstellungsphrase erstellt.",
     connected: "Dieses Gerät ist mit dem Sync-Server verbunden.",
     connectedNoPlan:
       "Cloud-Konto verbunden. Sync wird aktiviert, wenn dieses Konto einen aktiven Cloud-Tarif hat.",
@@ -794,11 +794,11 @@ const settingsCopyDe: SettingsCopy = {
       registrationFailed:
         "Mit diesen Angaben konnte kein Sync-Konto erstellt werden.",
       invalidCredentials: "Ungültiger Login oder ungültiges Passwort.",
-      recoveryPhraseRequired: "Die Recovery Phrase ist erforderlich.",
+      recoveryPhraseRequired: "Die Wiederherstellungsphrase ist erforderlich.",
       invalidRecoveryPhrase:
-        "Gib die exakte Recovery Phrase mit 12 Wörtern ein.",
+        "Gib die exakte Wiederherstellungsphrase mit 12 Wörtern ein.",
       recoveryNotAvailable:
-        "Dieser Sync-Server unterstützt keinen Import per Recovery Phrase.",
+        "Dieser Sync-Server unterstützt keinen Import per Wiederherstellungsphrase.",
       recoveryPackageNotFound:
         "Für dieses Konto ist noch kein Recovery-Paket gespeichert.",
       tooManyDevices:
@@ -814,9 +814,9 @@ const settingsCopyDe: SettingsCopy = {
       networkFailed:
         "Der Sync-Server ist gerade nicht erreichbar.",
       recoveryExportUnavailable:
-        "Dieses Gerät kann die Recovery Phrase gerade nicht exportieren.",
+        "Dieses Gerät kann die Wiederherstellungsphrase gerade nicht exportieren.",
       recoveryExportFailed:
-        "Die Recovery Phrase konnte gerade nicht exportiert werden. Bitte versuche es erneut.",
+        "Die Wiederherstellungsphrase konnte gerade nicht exportiert werden. Bitte versuche es erneut.",
       deviceAuthUnavailable:
         "Richte auf diesem Gerät zuerst einen Code oder Biometrie ein, bevor du lokale Sync-Schlüssel neu erstellst.",
       deviceAuthFailed:
@@ -1097,14 +1097,14 @@ const settingsCopyFr: SettingsCopy = {
     upcomingPeriodHint:
       "Planifie un rappel local avant la prochaine fenêtre de règles prédite lorsque les prédictions sont disponibles.",
     upcomingPeriodStateOn:
-      "Un rappel local avant les prochaines règles peut être planifié.",
+      "Un rappel avant les prochaines règles est activé.",
     upcomingPeriodStateOff:
       "Aucun rappel avant les prochaines règles n’est planifié.",
     fertileWindow: "Me rappeler avant la fenêtre fertile",
     fertileWindowHint:
       "Planifie un rappel local avant la prochaine fenêtre fertile prédite lorsque les prédictions sont disponibles.",
     fertileWindowStateOn:
-      "Un rappel local avant la fenêtre fertile peut être planifié.",
+      "Un rappel avant la fenêtre fertile est activé.",
     fertileWindowStateOff:
       "Aucun rappel avant la fenêtre fertile n’est planifié.",
     saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
@@ -1160,15 +1160,15 @@ const settingsCopyFr: SettingsCopy = {
     subtitle:
       "Protège d'abord cet appareil, puis connecte Ovumcy Cloud ou ton propre serveur de sync.",
     hubSubtitle:
-      "Ouvre un écran séparé pour la recovery phrase, la connexion du compte, le plan cloud et les actions de sync.",
+      "Ouvre un écran séparé pour la phrase de récupération, la connexion du compte, le plan cloud et les actions de sync.",
     openHubLabel: "Ouvrir sauvegarde et sync",
     backToSettingsLabel: "Retour aux réglages",
     localStepTitle: "1. Protéger cet appareil",
     localStepHint:
-      "Crée une recovery phrase sur cet appareil. Garde-la hors ligne au cas où tu aurais besoin de restaurer tes données.",
+      "Crée une phrase de récupération sur cet appareil. Garde-la hors ligne au cas où tu aurais besoin de restaurer tes données.",
     preparingTitle: "Préparation de ta sauvegarde protégée...",
     preparingHint:
-      "Ovumcy génère une recovery phrase sur cet appareil en ce moment.",
+      "Ovumcy génère une phrase de récupération sur cet appareil en ce moment.",
     accountStepTitle: "2. Connecter un compte",
     accountStepHintManaged:
       "Connecte-toi ici à ton compte Ovumcy Cloud. Tes données de santé restent synchronisées séparément sous forme de sauvegarde chiffrée.",
@@ -1211,9 +1211,9 @@ const settingsCopyFr: SettingsCopy = {
     deviceHint:
       "Sera affiché plus tard dans les listes d'appareils connectés et les flux de récupération chiffrée.",
     devicePlaceholder: "Entrer un nom d'appareil",
-    stateLabel: "Statut de la recovery phrase",
-    stateReady: "Cet appareil a déjà une recovery phrase.",
-    stateMissing: "Cet appareil n'a pas encore de recovery phrase.",
+    stateLabel: "Statut de la phrase de récupération",
+    stateReady: "Cet appareil a déjà une phrase de récupération.",
+    stateMissing: "Cet appareil n'a pas encore de phrase de récupération.",
     connectionLabel: "Session du compte",
     connectionReady: "Cet appareil est connecté à un compte de sync.",
     connectionMissing:
@@ -1226,16 +1226,16 @@ const settingsCopyFr: SettingsCopy = {
     encryptionReady:
       "Les éléments de récupération sont stockés uniquement sur cet appareil.",
     encryptionMissing:
-      "Aucune recovery phrase n'a encore été créée sur cet appareil.",
+      "Aucune phrase de récupération n'a encore été créée sur cet appareil.",
     loginLabel: "E-mail ou identifiant",
     loginPlaceholder: "owner@example.com",
     passwordLabel: "Mot de passe",
     passwordPlaceholder: "Saisir le mot de passe",
     recoveryImportTitle:
-      "Restaurer l'accès avec une recovery phrase",
+      "Restaurer l'accès avec une phrase de récupération",
     recoveryImportHint:
-      "Utilise cette option quand cet appareil n'a plus de clés locales de sync, mais que tu as encore le mot de passe du compte et la recovery phrase de 12 mots.",
-    recoveryPhraseInputLabel: "Recovery phrase",
+      "Utilise cette option quand cet appareil n'a plus de clés locales de sync, mais que tu as encore le mot de passe du compte et la phrase de récupération de 12 mots.",
+    recoveryPhraseInputLabel: "Phrase de récupération",
     recoveryPhraseInputPlaceholder: "douze mots séparés par des espaces",
     recoveryPhraseInputHint:
       "Saisis exactement les 12 mots qui protègent ta clé maître de sync.",
@@ -1252,31 +1252,31 @@ const settingsCopyFr: SettingsCopy = {
       "Confirme avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
     disconnectPrompt:
       "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
-    recoveryTitle: "Recovery phrase pour cet appareil",
+    recoveryTitle: "Phrase de récupération pour cet appareil",
     recoveryHint:
       "Note exactement les 12 mots et garde-les hors ligne. Si tu perds tous les appareils et cette phrase, les données synchronisées ne pourront pas être récupérées.",
     recoveryCodeTitle: "Code de récupération du compte",
     recoveryCodeHint:
       "Conserve ce code en lieu sûr. Il s'affiche une seule fois et permet de réinitialiser le mot de passe de ton compte de sync si tu l'oublies.",
     recoveryNotice:
-      "Cet écran affiche la recovery phrase seulement quand tu prépares ou recrées les clés locales de sync.",
+      "Cet écran affiche la phrase de récupération seulement quand tu prépares ou recrées les clés locales de sync.",
     recoveryShownOnce: "Affichée une seule fois après la génération.",
     recoveryExportLabel: "Exporter en texte",
-    prepareLabel: "Créer la recovery phrase",
-    regenerateLabel: "Créer une nouvelle recovery phrase",
+    prepareLabel: "Créer la phrase de récupération",
+    regenerateLabel: "Créer une nouvelle phrase de récupération",
     regeneratePrompt:
-      "Recréer les clés locales de sync invalide les anciennes sauvegardes chiffrées tant que tu n'utilises pas la nouvelle recovery phrase. Continuer ?",
+      "Recréer les clés locales de sync invalide les anciennes sauvegardes chiffrées tant que tu n'utilises pas la nouvelle phrase de récupération. Continuer ?",
     regenerateAccept: "Créer une nouvelle phrase",
     regenerateDeviceAuthPrompt:
-      "Confirme avec la sécurité de l'appareil pour créer une nouvelle recovery phrase pour cet appareil.",
+      "Confirme avec la sécurité de l'appareil pour créer une nouvelle phrase de récupération pour cet appareil.",
     discardChangesLabel: "Annuler les modifications",
     saveBeforeLeaveLabel: "Enregistrer et quitter",
     keepEditingLabel: "Continuer la modification",
     unsavedPrompt:
       "Tu as des modifications de sauvegarde et de sync non enregistrées. Les enregistrer avant de quitter cet écran ?",
-    prepared: "La recovery phrase a été créée pour cet appareil.",
+    prepared: "La phrase de récupération a été créée pour cet appareil.",
     regenerated:
-      "Une nouvelle recovery phrase a été créée pour cet appareil.",
+      "Une nouvelle phrase de récupération a été créée pour cet appareil.",
     connected: "Cet appareil est connecté au serveur de sync.",
     connectedNoPlan:
       "Compte cloud connecté. Le sync s'activera quand ce compte aura un plan cloud actif.",
@@ -1303,11 +1303,11 @@ const settingsCopyFr: SettingsCopy = {
       registrationFailed:
         "Impossible de créer un compte de sync avec ces informations.",
       invalidCredentials: "Identifiant ou mot de passe invalide.",
-      recoveryPhraseRequired: "La recovery phrase est obligatoire.",
+      recoveryPhraseRequired: "La phrase de récupération est obligatoire.",
       invalidRecoveryPhrase:
-        "Saisis exactement la recovery phrase de 12 mots.",
+        "Saisis exactement la phrase de récupération de 12 mots.",
       recoveryNotAvailable:
-        "Ce serveur de sync ne prend pas en charge l'import par recovery phrase.",
+        "Ce serveur de sync ne prend pas en charge l'import par phrase de récupération.",
       recoveryPackageNotFound:
         "Aucun paquet de récupération n'est encore stocké pour ce compte.",
       tooManyDevices:
@@ -1323,9 +1323,9 @@ const settingsCopyFr: SettingsCopy = {
       networkFailed:
         "Impossible d'atteindre le serveur de sync pour le moment.",
       recoveryExportUnavailable:
-        "Cet appareil ne peut pas exporter la recovery phrase pour le moment.",
+        "Cet appareil ne peut pas exporter la phrase de récupération pour le moment.",
       recoveryExportFailed:
-        "La recovery phrase n'a pas pu être exportée pour le moment. Réessaie.",
+        "La phrase de récupération n'a pas pu être exportée pour le moment. Réessaie.",
       deviceAuthUnavailable:
         "Configure un code ou la biométrie sur cet appareil avant de recréer les clés locales de sync.",
       deviceAuthFailed:
@@ -1606,14 +1606,14 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       upcomingPeriodHint:
         "Планирует локальное напоминание перед следующим прогнозируемым окном месячных, когда прогноз доступен.",
       upcomingPeriodStateOn:
-        "Локальное напоминание перед следующим окном месячных может быть запланировано.",
+        "Напоминание перед следующим окном месячных включено.",
       upcomingPeriodStateOff:
         "Напоминание перед следующим окном месячных не запланировано.",
       fertileWindow: "Напоминать перед фертильным окном",
       fertileWindowHint:
         "Планирует локальное напоминание перед следующим прогнозируемым фертильным окном, когда прогноз доступен.",
       fertileWindowStateOn:
-        "Локальное напоминание перед фертильным окном может быть запланировано.",
+        "Напоминание перед фертильным окном включено.",
       fertileWindowStateOff:
         "Напоминание перед фертильным окном не запланировано.",
       saved: "Настройки напоминаний обновлены для этого устройства.",
@@ -1667,15 +1667,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle:
         "Сначала защитите данные на этом устройстве, затем подключите Ovumcy Cloud или свой sync-сервер.",
       hubSubtitle:
-        "Откройте отдельный экран, чтобы увидеть recovery phrase, подключение аккаунта, cloud-план и действия sync.",
+        "Откройте отдельный экран, чтобы увидеть фраза восстановления, подключение аккаунта, cloud-план и действия sync.",
       openHubLabel: "Открыть резервную копию и sync",
       backToSettingsLabel: "Назад в настройки",
       localStepTitle: "1. Защитить это устройство",
       localStepHint:
-        "Создайте recovery phrase на этом устройстве. Храните её офлайн на случай восстановления данных.",
+        "Создайте фраза восстановления на этом устройстве. Храните её офлайн на случай восстановления данных.",
       preparingTitle: "Подготавливаем защищённую копию...",
       preparingHint:
-        "Ovumcy сейчас создаёт recovery phrase на этом устройстве.",
+        "Ovumcy сейчас создаёт фраза восстановления на этом устройстве.",
       accountStepTitle: "2. Подключить аккаунт",
       accountStepHintManaged:
         "Войдите здесь в аккаунт Ovumcy Cloud. Данные здоровья всё равно синхронизируются отдельно как зашифрованная копия.",
@@ -1718,9 +1718,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
       devicePlaceholder: "Введите название устройства",
-      stateLabel: "Статус recovery phrase",
-      stateReady: "На этом устройстве уже есть recovery phrase.",
-      stateMissing: "На этом устройстве ещё нет recovery phrase.",
+      stateLabel: "Статус фраза восстановления",
+      stateReady: "На этом устройстве уже есть фраза восстановления.",
+      stateMissing: "На этом устройстве ещё нет фраза восстановления.",
       connectionLabel: "Сессия аккаунта",
       connectionReady: "Это устройство уже вошло в sync-аккаунт.",
       connectionMissing: "Это устройство ещё не вошло в sync-аккаунт.",
@@ -1730,15 +1730,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       endpointRowLabel: "Сервер",
       encryptionRowLabel: "Защита устройства",
       encryptionReady: "Recovery-материалы хранятся только на этом устройстве.",
-      encryptionMissing: "Recovery phrase на этом устройстве ещё не создана.",
+      encryptionMissing: "Фраза восстановления на этом устройстве ещё не создана.",
       loginLabel: "Email или логин",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
-      recoveryImportTitle: "Восстановить доступ по recovery phrase",
+      recoveryImportTitle: "Восстановить доступ по фраза восстановления",
       recoveryImportHint:
-        "Используйте это, если на устройстве больше нет локальных sync keys, но у вас остались пароль аккаунта и recovery phrase из 12 слов.",
-      recoveryPhraseInputLabel: "Recovery phrase",
+        "Используйте это, если на устройстве больше нет локальных sync keys, но у вас остались пароль аккаунта и фраза восстановления из 12 слов.",
+      recoveryPhraseInputLabel: "Фраза восстановления",
       recoveryPhraseInputPlaceholder: "двенадцать слов через пробел",
       recoveryPhraseInputHint:
         "Введите все 12 слов точно так, как они защищают ваш sync master key.",
@@ -1755,30 +1755,30 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
       disconnectPrompt:
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
-      recoveryTitle: "Recovery phrase для этого устройства",
+      recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
         "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
       recoveryNotice:
-        "Этот экран показывает recovery phrase только когда вы подготавливаете или пересоздаёте локальные sync keys.",
+        "Этот экран показывает фраза восстановления только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
       recoveryCodeTitle: "Код восстановления аккаунта",
       recoveryCodeHint:
         "Сохраните этот код в надёжном месте. Он показывается только один раз и позволяет сбросить пароль вашего sync-аккаунта, если вы его забудете.",
       recoveryExportLabel: "Экспортировать как текст",
-      prepareLabel: "Создать recovery phrase",
-      regenerateLabel: "Создать новую recovery phrase",
+      prepareLabel: "Создать фраза восстановления",
+      regenerateLabel: "Создать новую фраза восстановления",
       regeneratePrompt:
-        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую recovery phrase. Продолжить?",
+        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую фраза восстановления. Продолжить?",
       regenerateAccept: "Создать новую phrase",
       regenerateDeviceAuthPrompt:
-        "Подтвердите защитой устройства создание новой recovery phrase для этого устройства.",
+        "Подтвердите защитой устройства создание новой фраза восстановления для этого устройства.",
       discardChangesLabel: "Не сохранять",
       saveBeforeLeaveLabel: "Сохранить и выйти",
       keepEditingLabel: "Продолжить редактирование",
       unsavedPrompt:
         "Есть несохранённые изменения в резервной копии и sync. Сохранить их перед выходом с экрана?",
-      prepared: "Recovery phrase создана для этого устройства.",
-      regenerated: "Для этого устройства создана новая recovery phrase.",
+      prepared: "Фраза восстановления создана для этого устройства.",
+      regenerated: "Для этого устройства создана новая фраза восстановления.",
       connected: "Это устройство подключено к sync-серверу.",
       connectedNoPlan:
         "Cloud-аккаунт подключён. Sync включится, когда у аккаунта появится активный cloud-план.",
@@ -1799,11 +1799,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Используйте корректный логин и более надёжный пароль.",
         registrationFailed: "Не удалось создать sync-аккаунт с этими данными.",
         invalidCredentials: "Неверный логин или пароль.",
-        recoveryPhraseRequired: "Recovery phrase обязательна.",
+        recoveryPhraseRequired: "Фраза восстановления обязательна.",
         invalidRecoveryPhrase:
-          "Введите точную recovery phrase из 12 слов.",
+          "Введите точную фраза восстановления из 12 слов.",
         recoveryNotAvailable:
-          "Этот sync-сервер не поддерживает импорт по recovery phrase.",
+          "Этот sync-сервер не поддерживает импорт по фраза восстановления.",
         recoveryPackageNotFound:
           "Для этого аккаунта ещё не сохранён recovery package.",
         tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
@@ -1815,9 +1815,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Не удалось прочитать зашифрованную резервную копию, полученную с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
         recoveryExportUnavailable:
-          "Сейчас это устройство не может экспортировать recovery phrase.",
+          "Сейчас это устройство не может экспортировать фраза восстановления.",
         recoveryExportFailed:
-          "Сейчас не удалось экспортировать recovery phrase. Попробуйте ещё раз.",
+          "Сейчас не удалось экспортировать фраза восстановления. Попробуйте ещё раз.",
         deviceAuthUnavailable:
           "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
         deviceAuthFailed:
@@ -2078,14 +2078,14 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       upcomingPeriodHint:
         "Programa un recordatorio local antes de la próxima ventana de período prevista cuando haya predicciones disponibles.",
       upcomingPeriodStateOn:
-        "Se puede programar un recordatorio local antes del próximo período.",
+        "Un recordatorio antes del próximo período está activado.",
       upcomingPeriodStateOff:
         "No hay recordatorio antes del próximo período programado.",
       fertileWindow: "Recuérdame antes de la ventana fértil",
       fertileWindowHint:
         "Programa un recordatorio local antes de la próxima ventana fértil prevista cuando haya predicciones disponibles.",
       fertileWindowStateOn:
-        "Se puede programar un recordatorio local antes de la ventana fértil.",
+        "Un recordatorio antes de la ventana fértil está activado.",
       fertileWindowStateOff:
         "No hay recordatorio antes de la ventana fértil programado.",
       saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
@@ -2139,15 +2139,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle:
         "Primero protege este dispositivo y luego conecta Ovumcy Cloud o tu propio servidor de sync.",
       hubSubtitle:
-        "Abre una pantalla separada para ver la recovery phrase, la conexión de la cuenta, el plan cloud y las acciones de sync.",
+        "Abre una pantalla separada para ver la frase de recuperación, la conexión de la cuenta, el plan cloud y las acciones de sync.",
       openHubLabel: "Abrir copia y sync",
       backToSettingsLabel: "Volver a ajustes",
       localStepTitle: "1. Proteger este dispositivo",
       localStepHint:
-        "Crea una recovery phrase en este dispositivo. Guárdala fuera de línea por si alguna vez necesitas restaurar tus datos.",
+        "Crea una frase de recuperación en este dispositivo. Guárdala fuera de línea por si alguna vez necesitas restaurar tus datos.",
       preparingTitle: "Preparando tu copia protegida...",
       preparingHint:
-        "Ovumcy está creando una recovery phrase en este dispositivo.",
+        "Ovumcy está creando una frase de recuperación en este dispositivo.",
       accountStepTitle: "2. Conectar una cuenta",
       accountStepHintManaged:
         "Inicia sesión aquí con tu cuenta de Ovumcy Cloud. Tus datos de salud siguen sincronizándose aparte como copia cifrada.",
@@ -2190,9 +2190,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Más tarde aparecerá en las listas de dispositivos conectados y en los flujos de recuperación cifrada.",
       devicePlaceholder: "Introduce el nombre del dispositivo",
-      stateLabel: "Estado de la recovery phrase",
-      stateReady: "Este dispositivo ya tiene una recovery phrase.",
-      stateMissing: "Este dispositivo todavía no tiene una recovery phrase.",
+      stateLabel: "Estado de la frase de recuperación",
+      stateReady: "Este dispositivo ya tiene una frase de recuperación.",
+      stateMissing: "Este dispositivo todavía no tiene una frase de recuperación.",
       connectionLabel: "Sesión de la cuenta",
       connectionReady: "Este dispositivo ya inició sesión en una cuenta de sync.",
       connectionMissing: "Este dispositivo todavía no ha iniciado sesión en una cuenta de sync.",
@@ -2202,15 +2202,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       endpointRowLabel: "Servidor",
       encryptionRowLabel: "Protección del dispositivo",
       encryptionReady: "Los materiales de recuperación se guardan solo en este dispositivo.",
-      encryptionMissing: "Todavía no se ha creado una recovery phrase en este dispositivo.",
+      encryptionMissing: "Todavía no se ha creado una frase de recuperación en este dispositivo.",
       loginLabel: "Correo o usuario",
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Contraseña",
       passwordPlaceholder: "Introduce la contraseña",
-      recoveryImportTitle: "Restaurar acceso con una recovery phrase",
+      recoveryImportTitle: "Restaurar acceso con una frase de recuperación",
       recoveryImportHint:
-        "Úsalo cuando este dispositivo ya no tenga claves locales de sync, pero todavía conserves la contraseña de la cuenta y la recovery phrase de 12 palabras.",
-      recoveryPhraseInputLabel: "Recovery phrase",
+        "Úsalo cuando este dispositivo ya no tenga claves locales de sync, pero todavía conserves la contraseña de la cuenta y la frase de recuperación de 12 palabras.",
+      recoveryPhraseInputLabel: "Frase de recuperación",
       recoveryPhraseInputPlaceholder: "doce palabras separadas por espacios",
       recoveryPhraseInputHint:
         "Introduce exactamente las 12 palabras que protegen tu clave maestra de sync.",
@@ -2227,7 +2227,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
       disconnectPrompt:
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
-      recoveryTitle: "Recovery phrase de este dispositivo",
+      recoveryTitle: "Frase de recuperación de este dispositivo",
       recoveryHint:
         "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
       recoveryNotice:
@@ -2237,20 +2237,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       recoveryCodeTitle: "Código de recuperación de la cuenta",
       recoveryCodeHint:
         "Guarda este código en un lugar seguro. Se muestra solo una vez y te permite restablecer la contraseña de tu cuenta de sync si la olvidas.",
-      prepareLabel: "Crear recovery phrase",
-      regenerateLabel: "Crear una nueva recovery phrase",
+      prepareLabel: "Crear frase de recuperación",
+      regenerateLabel: "Crear una nueva frase de recuperación",
       regeneratePrompt:
-        "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva recovery phrase. ¿Continuar?",
+        "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva frase de recuperación. ¿Continuar?",
       regenerateAccept: "Crear nueva phrase",
       regenerateDeviceAuthPrompt:
-        "Confirma con la seguridad del dispositivo para crear una nueva recovery phrase para este dispositivo.",
+        "Confirma con la seguridad del dispositivo para crear una nueva frase de recuperación para este dispositivo.",
       discardChangesLabel: "Descartar cambios",
       saveBeforeLeaveLabel: "Guardar y salir",
       keepEditingLabel: "Seguir editando",
       unsavedPrompt:
         "Hay cambios de copia y sync sin guardar. ¿Quieres guardarlos antes de salir de esta pantalla?",
-      prepared: "La recovery phrase quedó creada para este dispositivo.",
-      regenerated: "Se creó una nueva recovery phrase para este dispositivo.",
+      prepared: "La frase de recuperación quedó creada para este dispositivo.",
+      regenerated: "Se creó una nueva frase de recuperación para este dispositivo.",
       connected: "Este dispositivo quedó conectado al servidor de sync.",
       connectedNoPlan:
         "La cuenta cloud quedó conectada. El sync se activará cuando esta cuenta tenga un plan cloud activo.",
@@ -2274,11 +2274,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         registrationFailed:
           "No se pudo crear una cuenta de sync con estos datos.",
         invalidCredentials: "Login o contraseña no válidos.",
-        recoveryPhraseRequired: "La recovery phrase es obligatoria.",
+        recoveryPhraseRequired: "La frase de recuperación es obligatoria.",
         invalidRecoveryPhrase:
-          "Introduce la recovery phrase exacta de 12 palabras.",
+          "Introduce la frase de recuperación exacta de 12 palabras.",
         recoveryNotAvailable:
-          "Este servidor de sync no admite importar con recovery phrase.",
+          "Este servidor de sync no admite importar con frase de recuperación.",
         recoveryPackageNotFound:
           "Todavía no hay ningún paquete de recuperación guardado para esta cuenta.",
         tooManyDevices: "Esta cuenta ya alcanzó el límite actual de dispositivos.",
@@ -2293,9 +2293,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         networkFailed:
           "No se puede alcanzar el servidor de sync ahora mismo.",
         recoveryExportUnavailable:
-          "Este dispositivo no puede exportar la recovery phrase ahora mismo.",
+          "Este dispositivo no puede exportar la frase de recuperación ahora mismo.",
         recoveryExportFailed:
-          "No se pudo exportar la recovery phrase ahora mismo. Inténtalo de nuevo.",
+          "No se pudo exportar la frase de recuperación ahora mismo. Inténtalo de nuevo.",
         deviceAuthUnavailable:
           "Configura un código o biometría en este dispositivo antes de recrear las claves locales de sync.",
         deviceAuthFailed:

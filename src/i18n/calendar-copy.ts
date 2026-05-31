@@ -19,7 +19,7 @@ const calendarCopyEn = {
   predictionModeIrregular:
     "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
   predictionModeUnpredictable:
-    "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+    "Facts-only mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
   calendarMeaning: "What this day means",
   calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
@@ -46,7 +46,7 @@ const calendarCopyEn = {
   legend: {
     meaningTitle: "Day styles",
     markersTitle: "Your markers",
-    showLegend: "How to read this calendar",
+    showLegend: "Show calendar key",
     hideLegend: "Hide calendar key",
     recordedPeriod: "Logged period",
     predictedPeriod: "Predicted period",
@@ -80,7 +80,7 @@ const calendarCopyDe: CalendarCopy = {
   predictionModeIrregular:
     "Der Modus für unregelmäßige Zyklen ist aktiv. Ovumcy zeigt hier weiterhin Vorhersagen an, aber sie sollten als ungefähre Orientierung und nicht als exakte Daten gelesen werden.",
   predictionModeUnpredictable:
-    "Der unvorhersagbare Zyklusmodus ist aktiv. Kalender-Vorhersagen sind ausgeschaltet, daher zeigt dieser Bildschirm nur erfasste Fakten und gespeicherte Marker.",
+    "Der Modus „Nur Fakten“ ist aktiv. Kalender-Vorhersagen sind ausgeschaltet, daher zeigt dieser Bildschirm nur erfasste Fakten und gespeicherte Marker.",
   calendarMeaning: "Was dieser Tag bedeutet",
   calendarMarkers: "Zusätzliche Marker",
   periodDayYes: "Ja",
@@ -140,7 +140,7 @@ const calendarCopyFr: CalendarCopy = {
   predictionModeIrregular:
     "Le mode cycle irrégulier est activé. Ovumcy affiche encore des prédictions ici, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   predictionModeUnpredictable:
-    "Le mode cycle imprévisible est activé. Les prédictions du calendrier sont désactivées, donc cet écran n'affiche que les faits enregistrés et les marqueurs sauvegardés.",
+    "Le mode « Seulement les faits » est activé. Les prédictions du calendrier sont désactivées, donc cet écran n'affiche que les faits enregistrés et les marqueurs sauvegardés.",
   calendarMeaning: "Ce que signifie ce jour",
   calendarMarkers: "Marqueurs supplémentaires",
   periodDayYes: "Oui",
@@ -171,7 +171,7 @@ const calendarCopyFr: CalendarCopy = {
     meaningTitle: "Styles de jour",
     markersTitle: "Tes marqueurs",
     showLegend: "Afficher l'aide du calendrier",
-    hideLegend: "Masquer la légende",
+    hideLegend: "Masquer l'aide du calendrier",
     recordedPeriod: "Règles enregistrées",
     predictedPeriod: "Règles prévues",
     lowProbability: "La fertilité peut commencer",
@@ -204,7 +204,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     predictionModeIrregular:
       "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
     predictionModeUnpredictable:
-      "Включён непредсказуемый режим цикла. Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
+      "Включён режим «Только факты». Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
     calendarMeaning: "Что означает этот день",
     calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
@@ -231,7 +231,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     legend: {
       meaningTitle: "Стили дней",
       markersTitle: "Ваши отметки",
-      showLegend: "Как читать календарь",
+      showLegend: "Показать подсказку",
       hideLegend: "Скрыть подсказку",
       recordedPeriod: "Отмеченная менструация",
       predictedPeriod: "Предсказанная менструация",
@@ -262,7 +262,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     predictionModeIrregular:
       "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",
     predictionModeUnpredictable:
-      "El modo de ciclo impredecible está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
+      "El modo «Solo hechos» está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
     calendarMeaning: "Qué significa este día",
     calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",
@@ -290,7 +290,7 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
     legend: {
       meaningTitle: "Estilos de día",
       markersTitle: "Tus marcadores",
-      showLegend: "Cómo leer este calendario",
+      showLegend: "Mostrar la leyenda",
       hideLegend: "Ocultar la leyenda",
       recordedPeriod: "Período registrado",
       predictedPeriod: "Período previsto",

@@ -436,7 +436,7 @@ describe("calendar-view-service", () => {
       dismissLabel: "Dismiss notice",
       key: "calendar_unpredictable_prediction_notice_v1",
       message:
-        "Unpredictable cycle mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+        "Facts-only mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
     });
   });
 
