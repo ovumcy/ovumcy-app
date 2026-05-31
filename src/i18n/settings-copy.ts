@@ -1667,15 +1667,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle:
         "Сначала защитите данные на этом устройстве, затем подключите Ovumcy Cloud или свой sync-сервер.",
       hubSubtitle:
-        "Откройте отдельный экран, чтобы увидеть фраза восстановления, подключение аккаунта, cloud-план и действия sync.",
+        "Откройте отдельный экран, чтобы увидеть фразу восстановления, подключение аккаунта, cloud-план и действия sync.",
       openHubLabel: "Открыть резервную копию и sync",
       backToSettingsLabel: "Назад в настройки",
       localStepTitle: "1. Защитить это устройство",
       localStepHint:
-        "Создайте фраза восстановления на этом устройстве. Храните её офлайн на случай восстановления данных.",
+        "Создайте фразу восстановления на этом устройстве. Храните её офлайн на случай восстановления данных.",
       preparingTitle: "Подготавливаем защищённую копию...",
       preparingHint:
-        "Ovumcy сейчас создаёт фраза восстановления на этом устройстве.",
+        "Ovumcy сейчас создаёт фразу восстановления на этом устройстве.",
       accountStepTitle: "2. Подключить аккаунт",
       accountStepHintManaged:
         "Войдите здесь в аккаунт Ovumcy Cloud. Данные здоровья всё равно синхронизируются отдельно как зашифрованная копия.",
@@ -1718,9 +1718,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
       devicePlaceholder: "Введите название устройства",
-      stateLabel: "Статус фраза восстановления",
+      stateLabel: "Статус фразы восстановления",
       stateReady: "На этом устройстве уже есть фраза восстановления.",
-      stateMissing: "На этом устройстве ещё нет фраза восстановления.",
+      stateMissing: "На этом устройстве ещё нет фразы восстановления.",
       connectionLabel: "Сессия аккаунта",
       connectionReady: "Это устройство уже вошло в sync-аккаунт.",
       connectionMissing: "Это устройство ещё не вошло в sync-аккаунт.",
@@ -1735,7 +1735,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
-      recoveryImportTitle: "Восстановить доступ по фраза восстановления",
+      recoveryImportTitle: "Восстановить доступ по фразе восстановления",
       recoveryImportHint:
         "Используйте это, если на устройстве больше нет локальных sync keys, но у вас остались пароль аккаунта и фраза восстановления из 12 слов.",
       recoveryPhraseInputLabel: "Фраза восстановления",
@@ -1757,21 +1757,21 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
       recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
-        "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
+        "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту фразу, synced data восстановить нельзя.",
       recoveryNotice:
-        "Этот экран показывает фраза восстановления только когда вы подготавливаете или пересоздаёте локальные sync keys.",
+        "Этот экран показывает фразу восстановления только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
       recoveryCodeTitle: "Код восстановления аккаунта",
       recoveryCodeHint:
         "Сохраните этот код в надёжном месте. Он показывается только один раз и позволяет сбросить пароль вашего sync-аккаунта, если вы его забудете.",
       recoveryExportLabel: "Экспортировать как текст",
-      prepareLabel: "Создать фраза восстановления",
-      regenerateLabel: "Создать новую фраза восстановления",
+      prepareLabel: "Создать фразу восстановления",
+      regenerateLabel: "Создать новую фразу восстановления",
       regeneratePrompt:
-        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую фраза восстановления. Продолжить?",
-      regenerateAccept: "Создать новую phrase",
+        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую фразу восстановления. Продолжить?",
+      regenerateAccept: "Создать новую фразу",
       regenerateDeviceAuthPrompt:
-        "Подтвердите защитой устройства создание новой фраза восстановления для этого устройства.",
+        "Подтвердите защитой устройства создание новой фразы восстановления для этого устройства.",
       discardChangesLabel: "Не сохранять",
       saveBeforeLeaveLabel: "Сохранить и выйти",
       keepEditingLabel: "Продолжить редактирование",
@@ -1801,9 +1801,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         invalidCredentials: "Неверный логин или пароль.",
         recoveryPhraseRequired: "Фраза восстановления обязательна.",
         invalidRecoveryPhrase:
-          "Введите точную фраза восстановления из 12 слов.",
+          "Введите точную фразу восстановления из 12 слов.",
         recoveryNotAvailable:
-          "Этот sync-сервер не поддерживает импорт по фраза восстановления.",
+          "Этот sync-сервер не поддерживает импорт по фразе восстановления.",
         recoveryPackageNotFound:
           "Для этого аккаунта ещё не сохранён recovery package.",
         tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
@@ -1815,9 +1815,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Не удалось прочитать зашифрованную резервную копию, полученную с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
         recoveryExportUnavailable:
-          "Сейчас это устройство не может экспортировать фраза восстановления.",
+          "Сейчас это устройство не может экспортировать фразу восстановления.",
         recoveryExportFailed:
-          "Сейчас не удалось экспортировать фраза восстановления. Попробуйте ещё раз.",
+          "Сейчас не удалось экспортировать фразу восстановления. Попробуйте ещё раз.",
         deviceAuthUnavailable:
           "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
         deviceAuthFailed:
@@ -2241,7 +2241,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regenerateLabel: "Crear una nueva frase de recuperación",
       regeneratePrompt:
         "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva frase de recuperación. ¿Continuar?",
-      regenerateAccept: "Crear nueva phrase",
+      regenerateAccept: "Crear nueva frase",
       regenerateDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para crear una nueva frase de recuperación para este dispositivo.",
       discardChangesLabel: "Descartar cambios",
