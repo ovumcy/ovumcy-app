@@ -29,7 +29,7 @@ import {
   type StatsRecentCycleSummary,
   type StatsReliabilityState,
 } from "../models/stats";
-import { addDays, atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { addDays, atLocalDay, diffCalendarDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 export function buildCycleHistorySummary(
   profile: ProfileRecord,
@@ -209,7 +209,7 @@ export function buildCurrentCycleProjection(
   }
 
   const predictionCycleLength = resolvePredictionCycleLength(profile, history);
-  const currentCycleDay = diffLocalDays(cycleAnchor, today) + 1;
+  const currentCycleDay = diffCalendarDays(cycleAnchor, today) + 1;
   const nextPeriodDate = formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
   const nextPeriodWindow = resolveNextPeriodWindow(
     cycleAnchor,
@@ -347,7 +347,7 @@ export function inferUserLutealPhase(
       continue;
     }
 
-    const lutealLength = diffLocalDays(ovulation, nextStart);
+    const lutealLength = diffCalendarDays(ovulation, nextStart);
     if (
       lutealLength < MIN_OBSERVED_LUTEAL_DAYS ||
       lutealLength > MAX_OBSERVED_LUTEAL_DAYS
@@ -492,7 +492,7 @@ function buildCompletedCycleSummaries(
       continue;
     }
 
-    const cycleLength = diffLocalDays(start, nextStart);
+    const cycleLength = diffCalendarDays(start, nextStart);
     if (cycleLength <= 0) {
       continue;
     }
@@ -842,11 +842,6 @@ function medianInt(values: number[]): number {
   return Math.round((left + right) / 2);
 }
 
-function diffLocalDays(start: Date, end: Date): number {
-  return Math.round(
-    (atLocalDay(end).getTime() - atLocalDay(start).getTime()) / 86400000,
-  );
-}
 
 function sameLocalDay(left: Date, right: Date): boolean {
   return formatLocalDate(left) === formatLocalDate(right);
@@ -937,7 +932,7 @@ function buildObservedPeriodClusters(
       continue;
     }
 
-    const gapDays = diffLocalDays(clusterEnd, currentDay) - 1;
+    const gapDays = diffCalendarDays(clusterEnd, currentDay) - 1;
     if (gapDays >= 5) {
       clusters.push(createObservedPeriodCluster(record));
       continue;

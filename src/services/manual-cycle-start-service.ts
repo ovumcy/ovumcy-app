@@ -11,7 +11,7 @@ import {
 import { resolveLutealPhase } from "./cycle-prediction-policy";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
-import { addDays, atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { addDays, atLocalDay, diffCalendarDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 const MANUAL_CYCLE_START_FUTURE_DAYS = 2;
 const MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS = 15;
@@ -238,7 +238,7 @@ function resolveManualCycleStartPolicy(
     formatLocalDate(addDays(targetDate, -1)),
   );
   const shortGapDays = previousAnchorValue
-    ? diffLocalDays(parseLocalDate(previousAnchorValue), targetDate)
+    ? diffCalendarDays(parseLocalDate(previousAnchorValue), targetDate)
     : 0;
   const [implantationGapDays, potentialImplantation] = resolvePotentialImplantationGapDays(
     profile,
@@ -303,7 +303,7 @@ function resolvePotentialImplantationGapDays(
     previousStart,
     Math.max(predictionCycleLength - lutealPhase, 1),
   );
-  const gapDays = diffLocalDays(ovulationDate, targetDate);
+  const gapDays = diffCalendarDays(ovulationDate, targetDate);
 
   return [gapDays, gapDays >= 6 && gapDays <= 12];
 }
@@ -337,7 +337,7 @@ function shouldSuggestManualCycleStart(
   }
 
   return (
-    diffLocalDays(previousAnchorDate, targetDate) >=
+    diffCalendarDays(previousAnchorDate, targetDate) >=
     MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS
   );
 }
@@ -475,14 +475,7 @@ function isAdjacentDate(
     return false;
   }
 
-  return diffLocalDays(leftDate, rightDate) === expectedDays;
+  return diffCalendarDays(leftDate, rightDate) === expectedDays;
 }
 
-function diffLocalDays(left: Date | null, right: Date): number {
-  if (!left) {
-    return 0;
-  }
-
-  return Math.round((atLocalDay(right).getTime() - atLocalDay(left).getTime()) / 86400000);
-}
 

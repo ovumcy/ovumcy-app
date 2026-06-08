@@ -1445,6 +1445,8 @@ async function upsertBootstrapState(
   state: LocalBootstrapState,
   localDataKey: string,
 ): Promise<void> {
+  // Plaintext columns hold factory defaults by design; the real state lives in
+  // the encrypted payload below and is what reads use (see mapBootstrapStateRow).
   const defaults = createDefaultBootstrapState();
 
   await database.runAsync(
@@ -1480,6 +1482,10 @@ async function upsertProfileRecord(
   record: ProfileRecord,
   localDataKey: string,
 ): Promise<void> {
+  // The plaintext shadow columns are intentionally written with factory
+  // defaults, not this record's values — the real values live only in the
+  // encrypted payload below. Reads prefer encrypted_payload, so this is safe;
+  // populate these columns from `record` only if a path ever reads them directly.
   const defaults = createDefaultProfileRecord();
 
   await database.runAsync(

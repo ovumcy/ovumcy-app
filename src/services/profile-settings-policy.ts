@@ -299,3 +299,12 @@ export function diffLocalDays(startDate: string, endDate: string): number {
   }
   return Math.round((end.getTime() - start.getTime()) / 86400000);
 }
+
+export function diffCalendarDays(left: Date | null, right: Date): number {
+  if (!left) {
+    return 0;
+  }
+  return Math.round(
+    (atLocalDay(right).getTime() - atLocalDay(left).getTime()) / 86400000,
+  );
+}
