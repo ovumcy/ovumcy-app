@@ -16,7 +16,10 @@ export async function refreshManagedPartnerSharedProjectionsOnAppActive(
   syncedCount: number;
 }> {
   const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
-  if (Object.keys(secrets.pendingInviteKeysByInviteID).length === 0) {
+  const hasPendingInvites =
+    Object.keys(secrets.pendingInviteKeysByInviteID).length > 0;
+  const hasGrants = Object.keys(secrets.grantKeysByGrantID).length > 0;
+  if (!hasPendingInvites && !hasGrants) {
     return { skipped: true, syncedCount: 0 };
   }
 
