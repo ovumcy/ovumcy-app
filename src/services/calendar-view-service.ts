@@ -6,6 +6,7 @@ import {
   type DayLogRecord,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { STATS_CYCLE_PREDICTION_WINDOW } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildCycleHistorySummary,
@@ -938,9 +939,12 @@ function resolvePredictedPeriodLength(
     return profile.periodLength;
   }
 
+  const recentCycles = history.completedCycles.slice(
+    -STATS_CYCLE_PREDICTION_WINDOW,
+  );
   const average =
-    history.completedCycles.reduce((sum, cycle) => sum + cycle.periodLength, 0) /
-    history.completedCycles.length;
+    recentCycles.reduce((sum, cycle) => sum + cycle.periodLength, 0) /
+    recentCycles.length;
 
   return Math.max(1, Math.round(average));
 }
