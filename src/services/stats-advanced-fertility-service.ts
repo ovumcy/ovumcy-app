@@ -1,6 +1,6 @@
 import type { DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
-import { parseLocalDate } from "./profile-settings-policy";
+import { diffLocalDays } from "./profile-settings-policy";
 
 const ADVANCED_FERTILITY_CYCLE_LIMIT = 4;
 const MAX_OBSERVED_LUTEAL_DAYS = 20;
@@ -255,17 +255,6 @@ function buildLHPeakSignal(
     date: lastLHPeakSignal.date,
     gapDays,
   };
-}
-
-function diffLocalDays(startDate: string, endDate: string): number {
-  const start = parseLocalDate(startDate);
-  const end = parseLocalDate(endDate);
-  if (!start || !end) {
-    return 0;
-  }
-
-  const milliseconds = end.getTime() - start.getTime();
-  return Math.round(milliseconds / (1000 * 60 * 60 * 24));
 }
 
 function average(values: readonly number[]): number {

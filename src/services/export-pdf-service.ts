@@ -30,7 +30,7 @@ import {
   rgbRuntime,
 } from "./export-pdf-runtime";
 import { inferObservedOvulationDate } from "./observed-ovulation-service";
-import { parseLocalDate } from "./profile-settings-policy";
+import { diffLocalDays, parseLocalDate } from "./profile-settings-policy";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildShortLutealHint } from "./stats-premium-insights-service";
@@ -1476,15 +1476,6 @@ function buildInclusiveCycleEndDate(nextStartDate: string): string {
   }
 
   return formatDateISO(addDays(nextStart, -1));
-}
-
-function diffLocalDays(startDate: string, endDate: string): number {
-  const start = parseLocalDate(startDate);
-  const end = parseLocalDate(endDate);
-  if (!start || !end) {
-    return 0;
-  }
-  return Math.round((end.getTime() - start.getTime()) / 86400000);
 }
 
 function startOfCalendarGrid(monthStart: Date): Date {

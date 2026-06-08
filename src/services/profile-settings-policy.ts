@@ -290,3 +290,12 @@ function clampInteger(
 export function atLocalDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
+
+export function diffLocalDays(startDate: string, endDate: string): number {
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  if (!start || !end) {
+    return 0;
+  }
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
