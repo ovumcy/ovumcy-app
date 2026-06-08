@@ -111,6 +111,7 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
       planStatus: "active",
       doctorPDF: true,
       reminders: true,
+      activeSubscription: null,
     });
   });
 });

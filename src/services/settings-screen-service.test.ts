@@ -145,6 +145,7 @@ describe("settings services", () => {
           planStatus: "inactive",
           doctorPDF: false,
           reminders: false,
+          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -234,6 +235,7 @@ describe("settings services", () => {
           planStatus: "inactive",
           doctorPDF: false,
           reminders: false,
+          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -327,6 +329,7 @@ describe("settings services", () => {
           planStatus: "active",
           doctorPDF: true,
           reminders: true,
+          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -907,6 +910,7 @@ describe("settings services", () => {
         planStatus: "active",
         doctorPDF: true,
         reminders: false,
+        activeSubscription: null,
       },
     );
 

@@ -137,6 +137,8 @@ const settingsCopyEn = {
     fertileWindowStateOn:
       "A fertile-window reminder is enabled.",
     fertileWindowStateOff: "No fertile-window reminder is scheduled.",
+    statusOn: "On",
+    statusOff: "Off",
     saved: "Reminder settings updated for this device.",
     savedWithEmail:
       "Reminder settings updated. Ovumcy Cloud reminder emails now use privacy-safe prompts.",
@@ -602,6 +604,8 @@ const settingsCopyDe: SettingsCopy = {
       "Eine Erinnerung vor dem fruchtbaren Fenster ist aktiviert.",
     fertileWindowStateOff:
       "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
+    statusOn: "An",
+    statusOff: "Aus",
     saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
     savedWithEmail:
       "Erinnerungseinstellungen wurden aktualisiert. Erinnerungs-E-Mails von Ovumcy Cloud nutzen jetzt datensparsame Hinweise.",
@@ -1107,6 +1111,8 @@ const settingsCopyFr: SettingsCopy = {
       "Un rappel avant la fenêtre fertile est activé.",
     fertileWindowStateOff:
       "Aucun rappel avant la fenêtre fertile n’est planifié.",
+    statusOn: "Activé",
+    statusOff: "Désactivé",
     saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
     savedWithEmail:
       "Les réglages de rappel ont été mis à jour. Les e-mails de rappel Ovumcy Cloud utilisent maintenant des messages prudents.",
@@ -1579,19 +1585,19 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     reminders: {
       title: "Напоминания",
       subtitle:
-        "Оставляйте уведомления устройства приватными на этом устройстве и используйте privacy-safe email-подсказки, когда premium-доставка включена.",
+        "Уведомления на устройстве остаются приватными, а при включённой премиум-доставке email-подсказки не содержат конфиденциальных данных.",
       localOnlyHint:
         "Напоминания устройства остаются только на этом устройстве. Данные о здоровье не отправляются на сервер.",
       emailHint:
-        "Premium email-напоминания отправляют только общие подсказки. В них никогда не попадают симптомы, заметки или фертильные детали.",
+        "Премиум email-напоминания содержат только общие подсказки. В них никогда не попадают симптомы, заметки или данные о фертильности.",
       lockedHint:
-        "Premium-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются локально.",
+        "Премиум-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются на устройстве.",
       timeLabel: "Время напоминания",
       timeHint:
         "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
       emailDelivery: "Также отправлять email-напоминания",
       emailDeliveryHint:
-        "Использует email-доставку Ovumcy Cloud с privacy-safe текстом на основе включённых типов напоминаний.",
+        "Отправляет email через Ovumcy Cloud с текстом без конфиденциальных данных, исходя из включённых типов напоминаний.",
       emailDeliveryStateOn:
         "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
       emailDeliveryStateOff: "Email-напоминания выключены.",
@@ -1616,9 +1622,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Напоминание перед фертильным окном включено.",
       fertileWindowStateOff:
         "Напоминание перед фертильным окном не запланировано.",
+      statusOn: "Вкл",
+      statusOff: "Выкл",
       saved: "Настройки напоминаний обновлены для этого устройства.",
       savedWithEmail:
-        "Настройки напоминаний обновлены. Email-напоминания Ovumcy Cloud теперь используют privacy-safe подсказки.",
+        "Настройки напоминаний обновлены. Email-напоминания Ovumcy Cloud теперь используют подсказки без конфиденциальных данных.",
       emailUnavailable:
         "Настройки напоминаний сохранены, но email-напоминания Ovumcy Cloud сейчас недоступны.",
       emailSyncFailed:
@@ -2088,6 +2096,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Un recordatorio antes de la ventana fértil está activado.",
       fertileWindowStateOff:
         "No hay recordatorio antes de la ventana fértil programado.",
+      statusOn: "Activado",
+      statusOff: "Desactivado",
       saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
       savedWithEmail:
         "Los ajustes de recordatorios se actualizaron. Los correos de Ovumcy Cloud ahora usan avisos respetuosos con la privacidad.",

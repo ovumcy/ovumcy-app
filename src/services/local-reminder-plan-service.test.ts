@@ -79,4 +79,41 @@ describe("local-reminder-plan-service", () => {
       }),
     ]);
   });
+
+  it("suppresses period and fertile reminders after a positive pregnancy test", () => {
+    const profile = {
+      ...createDefaultProfileRecord(),
+      dailyLogReminderEnabled: true,
+      upcomingPeriodReminderEnabled: true,
+      fertileWindowReminderEnabled: true,
+      cycleLength: 28,
+      reminderTime: "20:00",
+    };
+    const now = new Date(2026, 2, 12, 10, 0, 0, 0);
+    const baseRecords = [
+      {
+        ...createEmptyDayLogRecord("2026-03-05"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+
+    // Baseline: this cycle does produce a fertile-window reminder, so the
+    // suppression below is meaningful and this test fails if the pause breaks.
+    const baseline = buildLocalReminderPlans(profile, baseRecords, now, "en");
+    expect(baseline.some((plan) => plan.kind === "fertile_window")).toBe(true);
+
+    // A positive pregnancy test with no later period pauses predictions, so only
+    // the (pregnancy-agnostic) daily logging reminder may remain.
+    const pregnantRecords = [
+      ...baseRecords,
+      {
+        ...createEmptyDayLogRecord("2026-03-10"),
+        pregnancyTest: "positive" as const,
+      },
+    ];
+    const plans = buildLocalReminderPlans(profile, pregnantRecords, now, "en");
+
+    expect(plans.map((plan) => plan.kind)).toEqual(["daily_log"]);
+  });
 });

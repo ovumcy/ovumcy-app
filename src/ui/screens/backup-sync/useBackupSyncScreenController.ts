@@ -4,6 +4,7 @@ import { useNavigation, usePreventRemove } from "@react-navigation/native";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
 import { getPartnerCopy } from "../../../i18n/partner-copy";
+import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
 import { appStorage, readHasCompletedOnboarding } from "../../../services/app-bootstrap-service";
 import {
   buildBackupSyncDirtyState,
@@ -28,6 +29,10 @@ import {
 } from "../../../services/managed-partner-share-service";
 import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
+import {
+  describeSubscriptionCountdown,
+  formatSubscriptionCountdownMessage,
+} from "../../../services/subscription-countdown-service";
 import {
   clearUnauthorizedBackupSyncSession,
   completeBackupSyncTOTPChallenge,
@@ -945,6 +950,13 @@ export function useBackupSyncScreenController({
     };
   }
 
+  const subscriptionCountdownMessage = formatSubscriptionCountdownMessage(
+    describeSubscriptionCountdown(
+      state.managedPremiumAccess.activeSubscription,
+      new Date().toISOString(),
+    ),
+    getSubscriptionCopy(language),
+  );
   const presentation = buildBackupSyncSetupPresentation({
     hasStoredSyncSecrets: state.hasStoredSyncSecrets,
     hasSyncSession: state.hasSyncSession,
@@ -957,6 +969,7 @@ export function useBackupSyncScreenController({
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
     preferences: state.syncPreferences,
+    subscriptionCountdownMessage,
     syncCapabilities: state.syncCapabilities,
     viewData: viewData.account,
   });

@@ -51,8 +51,8 @@ const MONTH_PADDING = 8;
 const MONTH_WEEKDAY_HEIGHT = 10;
 const MONTH_DAY_HEIGHT = 13;
 const TABLE_ROW_HEIGHT = 16;
-const TABLE_HEADER_HEIGHT = 18;
-const TABLE_COLUMN_WIDTHS = [52, 38, 34, 42, 34, 40, 42, 56, 42, 112, 92] as const;
+const TABLE_HEADER_HEIGHT = 26;
+const TABLE_COLUMN_WIDTHS = [70, 46, 42, 56, 56, 58, 60, 84, 50, 156, 108] as const;
 
 const COLOR_TEXT = hexColor("#4B3D31");
 const COLOR_MUTED = hexColor("#7F6A57");
@@ -64,6 +64,18 @@ const COLOR_FERTILE = hexColor("#B8D4C1");
 const COLOR_OVULATION = hexColor("#F4D58D");
 const COLOR_TENTATIVE_BORDER = hexColor("#959595");
 const COLOR_HEADER_FILL = hexColor("#FAF4ED");
+const COLOR_BRAND = hexColor("#C0726A");
+const COLOR_BRAND_DEEP = hexColor("#9A554E");
+const COLOR_ON_BRAND = rgbRuntime(1, 1, 1);
+const COLOR_ON_BRAND_MUTED = hexColor("#F4DBD6");
+const COLOR_CARD_FILL = hexColor("#FBF6F0");
+const COLOR_CALLOUT_FILL = hexColor("#FBEEE9");
+
+const HEADER_BAND_HEIGHT = 72;
+const FOOTER_RESERVE = 26;
+const CONTENT_BOTTOM = PAGE_MARGIN + FOOTER_RESERVE;
+const STAT_CARD_HEIGHT = 54;
+const STAT_CARD_GAP = 10;
 
 export type ExportPDFBuildInput = {
   now: Date;
@@ -401,21 +413,64 @@ function drawShortLutealWarningSection(
   if (!warning) {
     return;
   }
-  layout.cursorY = drawSectionHeading(layout, pdfCopy.shortLutealWarningTitle);
-  layout.cursorY = drawTextBlock(
-    layout,
-    pdfCopy.shortLutealWarningDescription(
-      warning.averageDays,
-      warning.observationCount,
-    ),
-    {
+  const description = pdfCopy.shortLutealWarningDescription(
+    warning.averageDays,
+    warning.observationCount,
+  );
+  const innerLeft = 16;
+  const innerRight = 12;
+  const textWidth = layout.contentWidth - innerLeft - innerRight;
+  const descLines = wrapText(
+    description,
+    layout.fonts.regular,
+    BODY_FONT_SIZE,
+    textWidth,
+  );
+  const boxHeight = 16 + 6 + descLines.length * LINE_HEIGHT + 10;
+  ensurePageSpace(layout, boxHeight + 6);
+
+  const top = layout.cursorY;
+  const bottom = top - boxHeight;
+  layout.page.drawRectangle({
+    x: PAGE_MARGIN,
+    y: bottom,
+    width: layout.contentWidth,
+    height: boxHeight,
+    borderColor: COLOR_BRAND,
+    borderWidth: 1,
+    color: COLOR_CALLOUT_FILL,
+  });
+  layout.page.drawRectangle({
+    x: PAGE_MARGIN,
+    y: bottom,
+    width: 4,
+    height: boxHeight,
+    color: COLOR_BRAND,
+  });
+
+  drawSingleLineText(layout.page, pdfCopy.shortLutealWarningTitle, {
+    x: PAGE_MARGIN + innerLeft,
+    y: top - 16,
+    maxWidth: textWidth,
+    color: COLOR_BRAND_DEEP,
+    font: layout.fonts.bold,
+    fontSize: BODY_FONT_SIZE + 1,
+  });
+
+  let textY = top - 16 - 6 - BODY_FONT_SIZE;
+  for (const line of descLines) {
+    drawSingleLineText(layout.page, line, {
+      x: PAGE_MARGIN + innerLeft,
+      y: textY,
+      maxWidth: textWidth,
       color: COLOR_TEXT,
       font: layout.fonts.regular,
       fontSize: BODY_FONT_SIZE,
-      lineHeight: LINE_HEIGHT,
-    },
-  );
-  layout.cursorY -= SECTION_GAP - 4;
+    });
+    textY -= LINE_HEIGHT;
+  }
+
+  layout.cursorY = bottom - SECTION_GAP + 2;
 }
 
 function drawAdvancedFertilitySection(
@@ -513,7 +568,45 @@ async function renderExportPDFDocument(
   drawCalendarSection(layout, report.calendarDays, report.language, pdfCopy);
   drawCyclesSection(layout, report.cycles, report.temperatureUnit, pdfCopy);
 
+  drawDocumentFooters(doc, regularFont, pdfCopy);
   return doc.save();
+}
+
+function drawDocumentFooters(
+  doc: PDFDocument,
+  font: PDFFont,
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+) {
+  const pages = doc.getPages();
+  const total = pages.length;
+  const brand = pdfCopy.documentTitle;
+  pages.forEach((page, index) => {
+    page.drawRectangle({
+      x: PAGE_MARGIN,
+      y: PAGE_MARGIN + 4,
+      width: PAGE_WIDTH - PAGE_MARGIN * 2,
+      height: 0.75,
+      color: COLOR_BORDER,
+    });
+    drawSingleLineText(page, brand, {
+      x: PAGE_MARGIN,
+      y: PAGE_MARGIN - 8,
+      maxWidth: PAGE_WIDTH - PAGE_MARGIN * 2 - 80,
+      color: COLOR_MUTED,
+      font,
+      fontSize: SMALL_FONT_SIZE - 0.5,
+    });
+    const pageLabel = `${index + 1} / ${total}`;
+    const labelWidth = font.widthOfTextAtSize(pageLabel, SMALL_FONT_SIZE - 0.5);
+    drawSingleLineText(page, pageLabel, {
+      x: PAGE_WIDTH - PAGE_MARGIN - labelWidth,
+      y: PAGE_MARGIN - 8,
+      maxWidth: labelWidth + 2,
+      color: COLOR_MUTED,
+      font,
+      fontSize: SMALL_FONT_SIZE - 0.5,
+    });
+  });
 }
 
 function createLayoutContext(
@@ -540,22 +633,58 @@ function drawDocumentHeader(
   report: ExportPDFReport,
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
 ) {
-  layout.cursorY = drawTextBlock(layout, pdfCopy.documentTitle, {
-    font: layout.fonts.bold,
-    fontSize: 18,
-    lineHeight: 22,
+  const page = layout.page;
+  const bandBottom = PAGE_HEIGHT - HEADER_BAND_HEIGHT;
+  page.drawRectangle({
+    x: 0,
+    y: bandBottom,
+    width: PAGE_WIDTH,
+    height: HEADER_BAND_HEIGHT,
+    color: COLOR_BRAND,
   });
-  layout.cursorY = drawTextBlock(
-    layout,
+  page.drawRectangle({
+    x: 0,
+    y: bandBottom,
+    width: PAGE_WIDTH,
+    height: 3,
+    color: COLOR_BRAND_DEEP,
+  });
+
+  drawSingleLineText(page, pdfCopy.documentTitle, {
+    x: PAGE_MARGIN,
+    y: bandBottom + HEADER_BAND_HEIGHT - 36,
+    maxWidth: PAGE_WIDTH - PAGE_MARGIN * 2 - 170,
+    color: COLOR_ON_BRAND,
+    font: layout.fonts.bold,
+    fontSize: 20,
+  });
+  drawSingleLineText(
+    page,
     `${pdfCopy.generatedAtLabel}: ${formatGeneratedAt(report.generatedAt, report.language)}`,
     {
-      color: COLOR_MUTED,
+      x: PAGE_MARGIN,
+      y: bandBottom + 16,
+      maxWidth: PAGE_WIDTH - PAGE_MARGIN * 2 - 170,
+      color: COLOR_ON_BRAND_MUTED,
       font: layout.fonts.regular,
       fontSize: SMALL_FONT_SIZE,
-      lineHeight: 12,
     },
   );
-  layout.cursorY -= SECTION_GAP - 6;
+
+  if (report.summary.rangeStart && report.summary.rangeEnd) {
+    const rangeText = `${report.summary.rangeStart}  –  ${report.summary.rangeEnd}`;
+    const rangeWidth = layout.fonts.regular.widthOfTextAtSize(rangeText, 11);
+    drawSingleLineText(page, rangeText, {
+      x: PAGE_WIDTH - PAGE_MARGIN - rangeWidth,
+      y: bandBottom + HEADER_BAND_HEIGHT - 30,
+      maxWidth: rangeWidth + 2,
+      color: COLOR_ON_BRAND,
+      font: layout.fonts.regular,
+      fontSize: 11,
+    });
+  }
+
+  layout.cursorY = bandBottom - SECTION_GAP;
 }
 
 function drawSummarySection(
@@ -564,33 +693,108 @@ function drawSummarySection(
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
 ) {
   layout.cursorY = drawSectionHeading(layout, pdfCopy.summaryTitle);
+  layout.cursorY -= 2;
 
-  const lines = [
-    `${pdfCopy.summaryLoggedDaysLabel}: ${summary.loggedDays}`,
-    `${pdfCopy.summaryCompletedCyclesLabel}: ${summary.completedCycles}`,
+  const cards: { value: string; label: string }[] = [
+    { value: String(summary.loggedDays), label: pdfCopy.summaryLoggedDaysLabel },
+    {
+      value: String(summary.completedCycles),
+      label: pdfCopy.summaryCompletedCyclesLabel,
+    },
     ...(summary.averageCycleLength > 0
-      ? [`${pdfCopy.summaryAverageCycleLengthLabel}: ${summary.averageCycleLength.toFixed(1)}`]
+      ? [
+          {
+            value: summary.averageCycleLength.toFixed(1),
+            label: pdfCopy.summaryAverageCycleLengthLabel,
+          },
+        ]
       : []),
     ...(summary.averagePeriodLength > 0
-      ? [`${pdfCopy.summaryAveragePeriodLengthLabel}: ${summary.averagePeriodLength.toFixed(1)}`]
+      ? [
+          {
+            value: summary.averagePeriodLength.toFixed(1),
+            label: pdfCopy.summaryAveragePeriodLengthLabel,
+          },
+        ]
       : []),
     ...(summary.hasAverageMood
-      ? [`${pdfCopy.summaryAverageMoodLabel}: ${summary.averageMood.toFixed(1)} / 5`]
-      : []),
-    ...(summary.rangeStart && summary.rangeEnd
-      ? [`${pdfCopy.summaryRangeLabel}: ${summary.rangeStart} - ${summary.rangeEnd}`]
+      ? [
+          {
+            value: `${summary.averageMood.toFixed(1)} / 5`,
+            label: pdfCopy.summaryAverageMoodLabel,
+          },
+        ]
       : []),
   ];
 
-  for (const line of lines) {
-    layout.cursorY = drawTextBlock(layout, line, {
-      color: COLOR_TEXT,
-      font: layout.fonts.regular,
-      fontSize: BODY_FONT_SIZE,
-      lineHeight: LINE_HEIGHT,
-    });
+  drawStatCards(layout, cards);
+  layout.cursorY -= SECTION_GAP - 2;
+}
+
+function drawStatCards(
+  layout: ExportPDFLayoutContext,
+  cards: readonly { value: string; label: string }[],
+) {
+  if (cards.length === 0) {
+    return;
   }
-  layout.cursorY -= SECTION_GAP - 4;
+  ensurePageSpace(layout, STAT_CARD_HEIGHT + 6);
+  const count = cards.length;
+  const cardWidth =
+    (layout.contentWidth - STAT_CARD_GAP * (count - 1)) / count;
+  const top = layout.cursorY;
+  const bottom = top - STAT_CARD_HEIGHT;
+
+  cards.forEach((card, index) => {
+    const x = PAGE_MARGIN + index * (cardWidth + STAT_CARD_GAP);
+    layout.page.drawRectangle({
+      x,
+      y: bottom,
+      width: cardWidth,
+      height: STAT_CARD_HEIGHT,
+      borderColor: COLOR_BORDER,
+      borderWidth: 1,
+      color: COLOR_CARD_FILL,
+    });
+    layout.page.drawRectangle({
+      x,
+      y: top - 3,
+      width: cardWidth,
+      height: 3,
+      color: COLOR_BRAND,
+    });
+    drawSingleLineText(layout.page, card.value, {
+      x: x + 8,
+      y: top - 28,
+      maxWidth: cardWidth - 16,
+      align: "center",
+      color: COLOR_TEXT,
+      font: layout.fonts.bold,
+      fontSize: 19,
+    });
+
+    const labelLines = wrapText(
+      card.label,
+      layout.fonts.regular,
+      SMALL_FONT_SIZE,
+      cardWidth - 12,
+    ).slice(0, 2);
+    let labelY = labelLines.length > 1 ? bottom + 14 : bottom + 11;
+    for (const line of labelLines) {
+      drawSingleLineText(layout.page, line, {
+        x: x + 6,
+        y: labelY,
+        maxWidth: cardWidth - 12,
+        align: "center",
+        color: COLOR_MUTED,
+        font: layout.fonts.regular,
+        fontSize: SMALL_FONT_SIZE,
+      });
+      labelY -= 9;
+    }
+  });
+
+  layout.cursorY = bottom - 6;
 }
 
 function drawCalendarSection(
@@ -599,10 +803,9 @@ function drawCalendarSection(
   language: ExportPDFReport["language"],
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
 ) {
-  layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
-  drawCalendarLegend(layout, pdfCopy);
-
   if (calendarDays.length === 0) {
+    layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
+    drawCalendarLegend(layout, pdfCopy);
     layout.cursorY = drawTextBlock(layout, pdfCopy.calendarEmpty, {
       color: COLOR_MUTED,
       font: layout.fonts.regular,
@@ -615,9 +818,14 @@ function drawCalendarSection(
 
   const monthContexts = buildCalendarMonths(calendarDays);
   const rows = Math.ceil(monthContexts.length / MONTH_COLUMNS);
-  const neededHeight =
-    rows * MONTH_HEIGHT + Math.max(0, rows - 1) * MONTH_GAP + SECTION_GAP;
-  ensurePageSpace(layout, neededHeight);
+  const monthsHeight =
+    rows * MONTH_HEIGHT + Math.max(0, rows - 1) * MONTH_GAP;
+  // Keep the heading, legend and the whole month grid together on one page so
+  // the legend never strands at the bottom of a page above an empty gap.
+  ensurePageSpace(layout, 24 + 46 + monthsHeight + SECTION_GAP);
+
+  layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
+  drawCalendarLegend(layout, pdfCopy);
 
   const monthWidth =
     (layout.contentWidth - MONTH_GAP * (MONTH_COLUMNS - 1)) / MONTH_COLUMNS;
@@ -715,9 +923,9 @@ function drawCyclesSection(
     );
     drawCycleTableHeader(layout, pdfCopy);
 
-    for (const entry of cycle.entries) {
+    for (const [rowIndex, entry] of cycle.entries.entries()) {
       ensurePageSpace(layout, TABLE_ROW_HEIGHT + 8);
-      if (layout.cursorY - TABLE_ROW_HEIGHT < PAGE_MARGIN) {
+      if (layout.cursorY - TABLE_ROW_HEIGHT < CONTENT_BOTTOM) {
         createNextPage(layout);
         layout.cursorY = drawSectionHeading(
           layout,
@@ -729,7 +937,7 @@ function drawCyclesSection(
         );
         drawCycleTableHeader(layout, pdfCopy);
       }
-      drawCycleTableRow(layout, entry, temperatureUnit, pdfCopy);
+      drawCycleTableRow(layout, entry, rowIndex, temperatureUnit, pdfCopy);
     }
 
     layout.cursorY -= SECTION_GAP - 6;
@@ -914,15 +1122,27 @@ function drawCycleTableHeader(
       borderWidth: 1,
       color: COLOR_HEADER_FILL,
     });
-    drawSingleLineText(layout.page, pdfCopy.tableColumns[column.key], {
-      x: x + 4,
-      y: topY - TABLE_HEADER_HEIGHT + 5,
-      maxWidth: column.width - 8,
-      align: column.align ?? "left",
-      color: COLOR_TEXT,
-      font: layout.fonts.bold,
-      fontSize: TABLE_FONT_SIZE,
-    });
+    const headerLines = wrapText(
+      pdfCopy.tableColumns[column.key],
+      layout.fonts.bold,
+      TABLE_FONT_SIZE,
+      column.width - 8,
+    ).slice(0, 2);
+    const blockHeight = headerLines.length * 9;
+    let lineY =
+      topY - (TABLE_HEADER_HEIGHT - blockHeight) / 2 - TABLE_FONT_SIZE + 1;
+    for (const line of headerLines) {
+      drawSingleLineText(layout.page, line, {
+        x: x + 4,
+        y: lineY,
+        maxWidth: column.width - 8,
+        align: column.align ?? "left",
+        color: COLOR_TEXT,
+        font: layout.fonts.bold,
+        fontSize: TABLE_FONT_SIZE,
+      });
+      lineY -= 9;
+    }
     x += column.width;
   }
   layout.cursorY = topY - TABLE_HEADER_HEIGHT;
@@ -931,10 +1151,12 @@ function drawCycleTableHeader(
 function drawCycleTableRow(
   layout: ExportPDFLayoutContext,
   entry: ExportPDFCycleDay,
+  rowIndex: number,
   temperatureUnit: ExportPDFReport["temperatureUnit"],
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
 ) {
   const topY = layout.cursorY;
+  const rowFill = rowIndex % 2 === 1 ? COLOR_CARD_FILL : COLOR_SURFACE;
   let x = PAGE_MARGIN;
   for (const column of TABLE_COLUMNS) {
     layout.page.drawRectangle({
@@ -944,7 +1166,7 @@ function drawCycleTableRow(
       height: TABLE_ROW_HEIGHT,
       borderColor: COLOR_BORDER,
       borderWidth: 0.75,
-      color: COLOR_SURFACE,
+      color: rowFill,
     });
     drawSingleLineText(
       layout.page,
@@ -1010,11 +1232,27 @@ function drawSectionHeading(
   layout: ExportPDFLayoutContext,
   text: string,
 ): number {
-  return drawTextBlock(layout, text, {
+  const afterY = drawTextBlock(layout, text, {
     font: layout.fonts.bold,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
   });
+  const ruleY = afterY - 3;
+  layout.page.drawRectangle({
+    x: PAGE_MARGIN,
+    y: ruleY,
+    width: 30,
+    height: 2,
+    color: COLOR_BRAND,
+  });
+  layout.page.drawRectangle({
+    x: PAGE_MARGIN + 30,
+    y: ruleY + 0.5,
+    width: layout.contentWidth - 30,
+    height: 1,
+    color: COLOR_BORDER,
+  });
+  return afterY - 8;
 }
 
 function drawTextBlock(
@@ -1082,7 +1320,7 @@ function drawSingleLineText(
 }
 
 function ensurePageSpace(layout: ExportPDFLayoutContext, neededHeight: number) {
-  if (layout.cursorY - neededHeight >= PAGE_MARGIN) {
+  if (layout.cursorY - neededHeight >= CONTENT_BOTTOM) {
     return;
   }
 

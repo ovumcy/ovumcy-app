@@ -471,6 +471,14 @@ export function SettingsSyncSetupSection({
               testID="settings-sync-plan-banner"
               tone={presentation.hasManagedPlan ? "success" : "info"}
             />
+            {presentation.planCountdownMessage ? (
+              <Text
+                style={styles.helperText}
+                testID="settings-sync-plan-countdown"
+              >
+                {presentation.planCountdownMessage}
+              </Text>
+            ) : null}
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
             {hasSyncSession && !presentation.hasManagedPlan ? (
               <AppButton
