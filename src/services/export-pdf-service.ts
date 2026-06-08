@@ -315,7 +315,6 @@ function buildCalendarMarkers(
       cycleRecords,
       cycle.startDate,
       cycle.nextStartDate,
-      temperatureUnit,
     );
 
     const predicted = predictCycleWindow(

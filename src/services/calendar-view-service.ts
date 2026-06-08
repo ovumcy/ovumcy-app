@@ -750,7 +750,6 @@ function applyCurrentCycleBBTSignal(
     recordsUpToToday,
     projection.cycleAnchorDate,
     projection.nextPeriodDate,
-    profile.temperatureUnit,
   );
 
   if (bbtSignal) {

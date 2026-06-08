@@ -336,7 +336,6 @@ export function inferUserLutealPhase(
       records,
       cycleStartDate,
       nextStartDate,
-      profile.temperatureUnit,
     );
     if (!ovulationDate) {
       continue;
