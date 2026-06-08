@@ -16,6 +16,7 @@ function createHistory(
         startDates[index + 1] ?? `2026-02-${String(index + 1).padStart(2, "0")}`,
       cycleLength,
       periodLength: 5,
+      observedPeriodLength: 5,
       factorKeys: [],
       comparisonKind: "variable",
     })),

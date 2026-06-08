@@ -137,6 +137,8 @@ const settingsCopyEn = {
     fertileWindowStateOn:
       "A fertile-window reminder is enabled.",
     fertileWindowStateOff: "No fertile-window reminder is scheduled.",
+    statusOn: "On",
+    statusOff: "Off",
     saved: "Reminder settings updated for this device.",
     savedWithEmail:
       "Reminder settings updated. Ovumcy Cloud reminder emails now use privacy-safe prompts.",
@@ -602,6 +604,8 @@ const settingsCopyDe: SettingsCopy = {
       "Eine Erinnerung vor dem fruchtbaren Fenster ist aktiviert.",
     fertileWindowStateOff:
       "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
+    statusOn: "An",
+    statusOff: "Aus",
     saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
     savedWithEmail:
       "Erinnerungseinstellungen wurden aktualisiert. Erinnerungs-E-Mails von Ovumcy Cloud nutzen jetzt datensparsame Hinweise.",
@@ -1107,6 +1111,8 @@ const settingsCopyFr: SettingsCopy = {
       "Un rappel avant la fenêtre fertile est activé.",
     fertileWindowStateOff:
       "Aucun rappel avant la fenêtre fertile n’est planifié.",
+    statusOn: "Activé",
+    statusOff: "Désactivé",
     saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
     savedWithEmail:
       "Les réglages de rappel ont été mis à jour. Les e-mails de rappel Ovumcy Cloud utilisent maintenant des messages prudents.",
@@ -1579,19 +1585,19 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     reminders: {
       title: "Напоминания",
       subtitle:
-        "Оставляйте уведомления устройства приватными на этом устройстве и используйте privacy-safe email-подсказки, когда premium-доставка включена.",
+        "Уведомления на устройстве остаются приватными, а при включённой премиум-доставке email-подсказки не содержат конфиденциальных данных.",
       localOnlyHint:
         "Напоминания устройства остаются только на этом устройстве. Данные о здоровье не отправляются на сервер.",
       emailHint:
-        "Premium email-напоминания отправляют только общие подсказки. В них никогда не попадают симптомы, заметки или фертильные детали.",
+        "Премиум email-напоминания содержат только общие подсказки. В них никогда не попадают симптомы, заметки или данные о фертильности.",
       lockedHint:
-        "Premium-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются локально.",
+        "Премиум-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются на устройстве.",
       timeLabel: "Время напоминания",
       timeHint:
         "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
       emailDelivery: "Также отправлять email-напоминания",
       emailDeliveryHint:
-        "Использует email-доставку Ovumcy Cloud с privacy-safe текстом на основе включённых типов напоминаний.",
+        "Отправляет email через Ovumcy Cloud с текстом без конфиденциальных данных, исходя из включённых типов напоминаний.",
       emailDeliveryStateOn:
         "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
       emailDeliveryStateOff: "Email-напоминания выключены.",
@@ -1616,9 +1622,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Напоминание перед фертильным окном включено.",
       fertileWindowStateOff:
         "Напоминание перед фертильным окном не запланировано.",
+      statusOn: "Вкл",
+      statusOff: "Выкл",
       saved: "Настройки напоминаний обновлены для этого устройства.",
       savedWithEmail:
-        "Настройки напоминаний обновлены. Email-напоминания Ovumcy Cloud теперь используют privacy-safe подсказки.",
+        "Настройки напоминаний обновлены. Email-напоминания Ovumcy Cloud теперь используют подсказки без конфиденциальных данных.",
       emailUnavailable:
         "Настройки напоминаний сохранены, но email-напоминания Ovumcy Cloud сейчас недоступны.",
       emailSyncFailed:
@@ -1667,15 +1675,15 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       subtitle:
         "Сначала защитите данные на этом устройстве, затем подключите Ovumcy Cloud или свой sync-сервер.",
       hubSubtitle:
-        "Откройте отдельный экран, чтобы увидеть фраза восстановления, подключение аккаунта, cloud-план и действия sync.",
+        "Откройте отдельный экран, чтобы увидеть фразу восстановления, подключение аккаунта, cloud-план и действия sync.",
       openHubLabel: "Открыть резервную копию и sync",
       backToSettingsLabel: "Назад в настройки",
       localStepTitle: "1. Защитить это устройство",
       localStepHint:
-        "Создайте фраза восстановления на этом устройстве. Храните её офлайн на случай восстановления данных.",
+        "Создайте фразу восстановления на этом устройстве. Храните её офлайн на случай восстановления данных.",
       preparingTitle: "Подготавливаем защищённую копию...",
       preparingHint:
-        "Ovumcy сейчас создаёт фраза восстановления на этом устройстве.",
+        "Ovumcy сейчас создаёт фразу восстановления на этом устройстве.",
       accountStepTitle: "2. Подключить аккаунт",
       accountStepHintManaged:
         "Войдите здесь в аккаунт Ovumcy Cloud. Данные здоровья всё равно синхронизируются отдельно как зашифрованная копия.",
@@ -1718,9 +1726,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deviceHint:
         "Позже будет видно в списках устройств и в зашифрованных recovery-flow.",
       devicePlaceholder: "Введите название устройства",
-      stateLabel: "Статус фраза восстановления",
+      stateLabel: "Статус фразы восстановления",
       stateReady: "На этом устройстве уже есть фраза восстановления.",
-      stateMissing: "На этом устройстве ещё нет фраза восстановления.",
+      stateMissing: "На этом устройстве ещё нет фразы восстановления.",
       connectionLabel: "Сессия аккаунта",
       connectionReady: "Это устройство уже вошло в sync-аккаунт.",
       connectionMissing: "Это устройство ещё не вошло в sync-аккаунт.",
@@ -1735,7 +1743,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       loginPlaceholder: "owner@example.com",
       passwordLabel: "Пароль",
       passwordPlaceholder: "Введите пароль",
-      recoveryImportTitle: "Восстановить доступ по фраза восстановления",
+      recoveryImportTitle: "Восстановить доступ по фразе восстановления",
       recoveryImportHint:
         "Используйте это, если на устройстве больше нет локальных sync keys, но у вас остались пароль аккаунта и фраза восстановления из 12 слов.",
       recoveryPhraseInputLabel: "Фраза восстановления",
@@ -1757,21 +1765,21 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
       recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
-        "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту phrase, synced data восстановить нельзя.",
+        "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту фразу, synced data восстановить нельзя.",
       recoveryNotice:
-        "Этот экран показывает фраза восстановления только когда вы подготавливаете или пересоздаёте локальные sync keys.",
+        "Этот экран показывает фразу восстановления только когда вы подготавливаете или пересоздаёте локальные sync keys.",
       recoveryShownOnce: "Показывается только один раз после генерации.",
       recoveryCodeTitle: "Код восстановления аккаунта",
       recoveryCodeHint:
         "Сохраните этот код в надёжном месте. Он показывается только один раз и позволяет сбросить пароль вашего sync-аккаунта, если вы его забудете.",
       recoveryExportLabel: "Экспортировать как текст",
-      prepareLabel: "Создать фраза восстановления",
-      regenerateLabel: "Создать новую фраза восстановления",
+      prepareLabel: "Создать фразу восстановления",
+      regenerateLabel: "Создать новую фразу восстановления",
       regeneratePrompt:
-        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую фраза восстановления. Продолжить?",
-      regenerateAccept: "Создать новую phrase",
+        "Пересоздание локальных sync keys делает старые зашифрованные sync backup'ы недоступными, пока вы не используете новую фразу восстановления. Продолжить?",
+      regenerateAccept: "Создать новую фразу",
       regenerateDeviceAuthPrompt:
-        "Подтвердите защитой устройства создание новой фраза восстановления для этого устройства.",
+        "Подтвердите защитой устройства создание новой фразы восстановления для этого устройства.",
       discardChangesLabel: "Не сохранять",
       saveBeforeLeaveLabel: "Сохранить и выйти",
       keepEditingLabel: "Продолжить редактирование",
@@ -1801,9 +1809,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         invalidCredentials: "Неверный логин или пароль.",
         recoveryPhraseRequired: "Фраза восстановления обязательна.",
         invalidRecoveryPhrase:
-          "Введите точную фраза восстановления из 12 слов.",
+          "Введите точную фразу восстановления из 12 слов.",
         recoveryNotAvailable:
-          "Этот sync-сервер не поддерживает импорт по фраза восстановления.",
+          "Этот sync-сервер не поддерживает импорт по фразе восстановления.",
         recoveryPackageNotFound:
           "Для этого аккаунта ещё не сохранён recovery package.",
         tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
@@ -1815,9 +1823,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Не удалось прочитать зашифрованную резервную копию, полученную с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
         recoveryExportUnavailable:
-          "Сейчас это устройство не может экспортировать фраза восстановления.",
+          "Сейчас это устройство не может экспортировать фразу восстановления.",
         recoveryExportFailed:
-          "Сейчас не удалось экспортировать фраза восстановления. Попробуйте ещё раз.",
+          "Сейчас не удалось экспортировать фразу восстановления. Попробуйте ещё раз.",
         deviceAuthUnavailable:
           "Перед пересозданием локальных sync keys настройте код-пароль или биометрию на устройстве.",
         deviceAuthFailed:
@@ -2088,6 +2096,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Un recordatorio antes de la ventana fértil está activado.",
       fertileWindowStateOff:
         "No hay recordatorio antes de la ventana fértil programado.",
+      statusOn: "Activado",
+      statusOff: "Desactivado",
       saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
       savedWithEmail:
         "Los ajustes de recordatorios se actualizaron. Los correos de Ovumcy Cloud ahora usan avisos respetuosos con la privacidad.",
@@ -2241,7 +2251,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       regenerateLabel: "Crear una nueva frase de recuperación",
       regeneratePrompt:
         "Recrear las claves locales de sync invalida las copias cifradas antiguas hasta que uses la nueva frase de recuperación. ¿Continuar?",
-      regenerateAccept: "Crear nueva phrase",
+      regenerateAccept: "Crear nueva frase",
       regenerateDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para crear una nueva frase de recuperación para este dispositivo.",
       discardChangesLabel: "Descartar cambios",

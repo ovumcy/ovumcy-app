@@ -32,6 +32,7 @@ export async function loadSettingsScreenState(
     planStatus: "unknown",
     doctorPDF: false,
     reminders: false,
+    activeSubscription: null,
   };
   if (
     syncState.hasAuthSession &&
@@ -53,6 +54,7 @@ export async function loadSettingsScreenState(
           planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
           doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
           reminders: billingSnapshot.premiumFeatures.reminders,
+          activeSubscription: billingSnapshot.activeSubscription,
         };
       }
     } else if (capabilitiesResult.errorCode === "unauthorized") {

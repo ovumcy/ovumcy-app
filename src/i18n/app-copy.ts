@@ -260,7 +260,7 @@ const appCopyFr: AppCopy = {
         "Veuillez sélectionner une date valide de début des dernières règles.",
       lastPeriodRange: "Choisissez une date dans les 60 derniers jours.",
       generic:
-        "Impossible d'enregistrer les données d'onboarding. Réessaie.",
+        "Impossible d'enregistrer les données de configuration. Réessaie.",
     },
     loading: "Chargement de ta configuration locale…",
   },
@@ -349,7 +349,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         invalidLastPeriodStart:
           "Пожалуйста, выберите корректную дату начала последней менструации.",
         lastPeriodRange: "Выберите дату в пределах последних 60 дней.",
-        generic: "Не удалось сохранить onboarding-данные. Попробуйте ещё раз.",
+        generic: "Не удалось сохранить введённые данные. Попробуйте ещё раз.",
       },
       loading: "Загружаем локальную настройку…",
     },

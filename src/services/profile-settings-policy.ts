@@ -81,7 +81,7 @@ export function clampPeriodLength(value: number): number {
 
 export function maxPeriodLengthForCycle(cycleLength: number): number {
   const safeCycleLength = clampCycleLength(cycleLength);
-  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS - 1;
+  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS;
 
   if (maxAllowed < MIN_PERIOD_LENGTH) {
     return MIN_PERIOD_LENGTH;
@@ -287,6 +287,24 @@ function clampInteger(
   return Math.max(minValue, Math.min(maxValue, numeric));
 }
 
-function atLocalDay(value: Date): Date {
+export function atLocalDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+export function diffLocalDays(startDate: string, endDate: string): number {
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+  if (!start || !end) {
+    return 0;
+  }
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+}
+
+export function diffCalendarDays(left: Date | null, right: Date): number {
+  if (!left) {
+    return 0;
+  }
+  return Math.round(
+    (atLocalDay(right).getTime() - atLocalDay(left).getTime()) / 86400000,
+  );
 }

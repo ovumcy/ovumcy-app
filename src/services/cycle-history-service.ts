@@ -29,7 +29,7 @@ import {
   type StatsRecentCycleSummary,
   type StatsReliabilityState,
 } from "../models/stats";
-import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { addDays, atLocalDay, diffCalendarDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 export function buildCycleHistorySummary(
   profile: ProfileRecord,
@@ -209,7 +209,7 @@ export function buildCurrentCycleProjection(
   }
 
   const predictionCycleLength = resolvePredictionCycleLength(profile, history);
-  const currentCycleDay = diffLocalDays(cycleAnchor, today) + 1;
+  const currentCycleDay = diffCalendarDays(cycleAnchor, today) + 1;
   const nextPeriodDate = formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
   const nextPeriodWindow = resolveNextPeriodWindow(
     cycleAnchor,
@@ -336,7 +336,6 @@ export function inferUserLutealPhase(
       records,
       cycleStartDate,
       nextStartDate,
-      profile.temperatureUnit,
     );
     if (!ovulationDate) {
       continue;
@@ -348,7 +347,7 @@ export function inferUserLutealPhase(
       continue;
     }
 
-    const lutealLength = diffLocalDays(ovulation, nextStart);
+    const lutealLength = diffCalendarDays(ovulation, nextStart);
     if (
       lutealLength < MIN_OBSERVED_LUTEAL_DAYS ||
       lutealLength > MAX_OBSERVED_LUTEAL_DAYS
@@ -493,20 +492,19 @@ function buildCompletedCycleSummaries(
       continue;
     }
 
-    const cycleLength = diffLocalDays(start, nextStart);
+    const cycleLength = diffCalendarDays(start, nextStart);
     if (cycleLength <= 0) {
       continue;
     }
 
+    const loggedPeriodLength = countLoggedPeriodLength(recordsByDate, startDate);
     cycles.push({
       startDate,
       nextStartDate,
       cycleLength,
-      periodLength: resolveObservedPeriodLength(
-        recordsByDate,
-        startDate,
-        profile.periodLength,
-      ),
+      periodLength:
+        loggedPeriodLength > 0 ? loggedPeriodLength : profile.periodLength,
+      observedPeriodLength: loggedPeriodLength > 0 ? loggedPeriodLength : null,
       factorKeys: collectFactorKeysForCycle(records, startDate, nextStartDate),
       comparisonKind: "variable",
     });
@@ -539,14 +537,13 @@ export function collectCycleStartDates(
   return [...new Set(starts)].sort((left, right) => left.localeCompare(right));
 }
 
-function resolveObservedPeriodLength(
+function countLoggedPeriodLength(
   recordsByDate: Map<string, DayLogRecord>,
   startDate: string,
-  fallback: number,
 ): number {
   const start = parseLocalDate(startDate);
   if (!start) {
-    return fallback;
+    return 0;
   }
 
   let periodLength = 0;
@@ -558,7 +555,7 @@ function resolveObservedPeriodLength(
     periodLength += 1;
   }
 
-  return periodLength > 0 ? periodLength : fallback;
+  return periodLength;
 }
 
 function collectFactorKeysForCycle(
@@ -762,12 +759,8 @@ function detectCurrentPhase(
     return "menstrual";
   }
 
-  const fertileWindowStart = addDays(ovulationDate, -5);
   if (sameLocalDay(today, ovulationDate)) {
     return "ovulation";
-  }
-  if (today >= fertileWindowStart && today <= ovulationDate) {
-    return "fertile";
   }
   if (today < ovulationDate) {
     return "follicular";
@@ -849,11 +842,6 @@ function medianInt(values: number[]): number {
   return Math.round((left + right) / 2);
 }
 
-function diffLocalDays(start: Date, end: Date): number {
-  return Math.round(
-    (atLocalDay(end).getTime() - atLocalDay(start).getTime()) / 86400000,
-  );
-}
 
 function sameLocalDay(left: Date, right: Date): boolean {
   return formatLocalDate(left) === formatLocalDate(right);
@@ -885,9 +873,6 @@ function resolvePregnancyPause(records: readonly DayLogRecord[]): string | null 
   return latestPositive;
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
 
 type ObservedPeriodCluster = {
   end: string;
@@ -947,7 +932,7 @@ function buildObservedPeriodClusters(
       continue;
     }
 
-    const gapDays = diffLocalDays(clusterEnd, currentDay) - 1;
+    const gapDays = diffCalendarDays(clusterEnd, currentDay) - 1;
     if (gapDays >= 5) {
       clusters.push(createObservedPeriodCluster(record));
       continue;

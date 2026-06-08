@@ -24,7 +24,7 @@ function createPartnerShareSecretStoreMock() {
 }
 
 describe("managed-partner-share-refresh-service", () => {
-  it("skips refresh when there are no pending invite keys", async () => {
+  it("skips refresh when there are no pending invites or grants", async () => {
     const partnerShareSecretStore = createPartnerShareSecretStoreMock();
     const storage = createLocalAppStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
@@ -84,5 +84,45 @@ describe("managed-partner-share-refresh-service", () => {
       partnerShareSecretStore,
       new Date("2026-04-06T10:00:00.000Z"),
     );
+  });
+
+  it("syncs projections when an accepted grant exists without pending invites", async () => {
+    const partnerShareSecretStore = createPartnerShareSecretStoreMock();
+    const storage = createLocalAppStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const syncPartnerProjections = jest.fn().mockResolvedValue({
+      skipped: false,
+      syncedCount: 1,
+    });
+
+    await partnerShareSecretStore.writePartnerShareSecrets({
+      grantKeysByGrantID: {
+        "grant-1": {
+          keyHex:
+            "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
+          rotatedAtISO: "2026-04-01T00:00:00.000Z",
+          sourceInviteID: "invite-1",
+        },
+      },
+      pendingInviteKeysByInviteID: {},
+      consumedInviteIDs: {},
+      ownerGenerationByGrantID: {},
+      partnerLastSeenGenerationByGrantID: {},
+    });
+
+    await expect(
+      refreshManagedPartnerSharedProjectionsOnAppActive(
+        storage,
+        syncSecretStore,
+        partnerShareSecretStore,
+        new Date("2026-04-06T10:00:00.000Z"),
+        syncPartnerProjections,
+      ),
+    ).resolves.toEqual({
+      skipped: false,
+      syncedCount: 1,
+    });
+
+    expect(syncPartnerProjections).toHaveBeenCalled();
   });
 });

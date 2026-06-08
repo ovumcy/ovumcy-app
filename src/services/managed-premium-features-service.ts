@@ -20,6 +20,12 @@ export const EMPTY_MANAGED_PREMIUM_FEATURES: ManagedCloudPremiumFeatures = {
 export const EMPTY_MANAGED_BILLING_SNAPSHOT: ManagedCloudBillingSnapshot = {
   hasActivePlan: false,
   premiumFeatures: EMPTY_MANAGED_PREMIUM_FEATURES,
+  activeSubscription: null,
+  billingManagement: {
+    canManageRenewal: false,
+    canCancelAtPeriodEnd: false,
+    canResumeRenewal: false,
+  },
 };
 
 export async function loadManagedBillingSnapshot(

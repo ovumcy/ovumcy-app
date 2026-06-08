@@ -1010,7 +1010,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         shortestAverage: number,
         deltaDays: number,
       ) =>
-        `Циклы выглядят самыми длинными в сезон ${longestSeason} (${longestAverage.toFixed(1)} д.) и самыми короткими в ${shortestSeason} (${shortestAverage.toFixed(1)} д.), разница ${deltaDays.toFixed(1)} д.`,
+        `Циклы выглядят самыми длинными в сезоне «${longestSeason}» (${longestAverage.toFixed(1)} д.) и самыми короткими в сезоне «${shortestSeason}» (${shortestAverage.toFixed(1)} д.), разница ${deltaDays.toFixed(1)} д.`,
       phaseMoodContrastTitle: "Контраст настроения по фазам",
       phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
         `${bestPhase} vs ${worstPhase}`,
@@ -1021,7 +1021,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         worstAverageMood: number,
         deltaMood: number,
       ) =>
-        `Среднее настроение самое высокое в фазе ${bestPhase} (${bestAverageMood.toFixed(1)}/5) и самое низкое в фазе ${worstPhase} (${worstAverageMood.toFixed(1)}/5), разница ${deltaMood.toFixed(1)} балла.`,
+        `Среднее настроение самое высокое в фазе «${bestPhase}» (${bestAverageMood.toFixed(1)}/5) и самое низкое в фазе «${worstPhase}» (${worstAverageMood.toFixed(1)}/5), разница ${deltaMood.toFixed(1)} балла.`,
       phaseSymptomPeakTitle: "Пик симптома по фазе",
       phaseSymptomPeakDescription: (
         phase: string,
@@ -1029,7 +1029,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         percentage: number,
         totalDays: number,
       ) =>
-        `${symptom} чаще всего встречается в фазе ${phase}: на ${percentage.toFixed(0)}% из ${totalDays} отмеченных дней.`,
+        `${symptom} чаще всего встречается в фазе «${phase}»: на ${percentage.toFixed(0)}% из ${totalDays} отмеченных дней.`,
       shortLutealTitle: "Короткая лютеиновая фаза",
       shortLutealValue: (averageDays: number) =>
         `В среднем ${averageDays.toFixed(1)} д.`,

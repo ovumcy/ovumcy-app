@@ -14,6 +14,8 @@ const dashboardCopyEn = {
   predictionsOff: "Predictions off",
   predictionsApproximateHint:
     "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
+  predictionVariableRangesHint:
+    "Your cycle length varies, so the next period is shown as a range rather than a single day.",
   factsOnlyHint:
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
   pregnancyPausedHint:
@@ -89,6 +91,8 @@ const dashboardCopyDe: DashboardCopy = {
   predictionsOff: "Vorhersagen aus",
   predictionsApproximateHint:
     "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
+  predictionVariableRangesHint:
+    "Deine Zykluslänge schwankt, daher wird die nächste Periode als Zeitraum statt als einzelner Tag angezeigt.",
   factsOnlyHint:
     "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
   pregnancyPausedHint:
@@ -164,6 +168,8 @@ const dashboardCopyFr: DashboardCopy = {
   predictionsOff: "Prédictions désactivées",
   predictionsApproximateHint:
     "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
+  predictionVariableRangesHint:
+    "La longueur de ton cycle varie, donc tes prochaines règles sont affichées sous forme de plage plutôt qu'une date unique.",
   factsOnlyHint:
     "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
   pregnancyPausedHint:
@@ -240,6 +246,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     predictionsOff: "Предсказания выключены",
     predictionsApproximateHint:
       "В режиме нерегулярного цикла предсказания остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
+    predictionVariableRangesHint:
+      "Длина цикла колеблется, поэтому следующая менструация показана диапазоном, а не одним днём.",
     factsOnlyHint:
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
     pregnancyPausedHint:
@@ -313,6 +321,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     predictionsOff: "Predicciones desactivadas",
     predictionsApproximateHint:
       "El modo de ciclo irregular mantiene visibles las predicciones, pero deben leerse como una guía aproximada y no como fechas exactas.",
+    predictionVariableRangesHint:
+      "La duración de tu ciclo varía, así que tu próxima regla se muestra como un rango en lugar de un solo día.",
     factsOnlyHint:
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
     pregnancyPausedHint:

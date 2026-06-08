@@ -6,6 +6,7 @@ import type { SymptomRecord } from "../models/symptom";
 import { celsiusToUnit, roundTemperature } from "./temperature-policy";
 import {
   STATS_FACTOR_CONTEXT_WINDOW_DAYS,
+  STATS_MINIMUM_PHASE_INSIGHTS_CYCLES,
   type StatsComparisonKind,
   type StatsCycleProjection,
   type StatsPhase,
@@ -41,7 +42,7 @@ import {
   buildStatsPremiumInsights,
   type StatsShortLutealHint,
 } from "./stats-premium-insights-service";
-import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
 
 export type StatsTopCardViewData = {
@@ -353,17 +354,17 @@ export function buildStatsViewData(
     records,
     localizedSymptomRecords,
   );
-  const symptomPatterns = buildStatsSymptomPatterns(
-    history,
-    records,
-    localizedSymptomRecords,
-  );
-  const phaseMoodInsights = buildStatsPhaseMoodInsights(history, records);
-  const phaseSymptomInsights = buildStatsPhaseSymptomInsights(
-    history,
-    records,
-    localizedSymptomRecords,
-  );
+  const phaseInsightsUnlocked =
+    history.completedCycleCount >= STATS_MINIMUM_PHASE_INSIGHTS_CYCLES;
+  const symptomPatterns = phaseInsightsUnlocked
+    ? buildStatsSymptomPatterns(history, records, localizedSymptomRecords)
+    : [];
+  const phaseMoodInsights = phaseInsightsUnlocked
+    ? buildStatsPhaseMoodInsights(history, records)
+    : [];
+  const phaseSymptomInsights = phaseInsightsUnlocked
+    ? buildStatsPhaseSymptomInsights(history, records, localizedSymptomRecords)
+    : [];
   const personalForecasts = premiumFeatures.advancedInsights
     ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
     : [];
@@ -1174,6 +1175,3 @@ function formatDisplayDate(value: string, locale: string): string {
   }).format(parsed);
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}

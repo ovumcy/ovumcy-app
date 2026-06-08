@@ -6,6 +6,7 @@ import {
   type DayLogRecord,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
+import { STATS_CYCLE_PREDICTION_WINDOW } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildCycleHistorySummary,
@@ -19,6 +20,7 @@ import {
 } from "./day-log-editor-service";
 import {
   addDays,
+  atLocalDay,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -750,7 +752,6 @@ function applyCurrentCycleBBTSignal(
     recordsUpToToday,
     projection.cycleAnchorDate,
     projection.nextPeriodDate,
-    profile.temperatureUnit,
   );
 
   if (bbtSignal) {
@@ -939,9 +940,17 @@ function resolvePredictedPeriodLength(
     return profile.periodLength;
   }
 
+  const observed = history.completedCycles
+    .slice(-STATS_CYCLE_PREDICTION_WINDOW)
+    .map((cycle) => cycle.observedPeriodLength)
+    .filter((value): value is number => value !== null);
+
+  if (observed.length === 0) {
+    return profile.periodLength;
+  }
+
   const average =
-    history.completedCycles.reduce((sum, cycle) => sum + cycle.periodLength, 0) /
-    history.completedCycles.length;
+    observed.reduce((sum, value) => sum + value, 0) / observed.length;
 
   return Math.max(1, Math.round(average));
 }
@@ -1011,9 +1020,6 @@ function addMonth(value: Date, amount: number): Date {
   return new Date(value.getFullYear(), value.getMonth() + amount, 1);
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
 
 function buildWeekdayLabels(locale: string): string[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });

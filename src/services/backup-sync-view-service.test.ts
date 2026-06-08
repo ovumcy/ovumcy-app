@@ -129,6 +129,7 @@ describe("backup sync view service", () => {
         planStatus: "inactive",
         doctorPDF: false,
         reminders: false,
+        activeSubscription: null,
       },
     );
 
@@ -185,6 +186,7 @@ describe("backup sync view service", () => {
         planStatus: "inactive",
         doctorPDF: false,
         reminders: false,
+        activeSubscription: null,
       },
     );
 

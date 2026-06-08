@@ -82,6 +82,16 @@ export function buildLocalReminderPlans(
   const history = buildCycleHistorySummary(profile, mutableRecords, now);
   const projection = buildCurrentCycleProjection(profile, history, mutableRecords, now);
 
+  // After a positive pregnancy test (with no later period), cycle predictions
+  // are paused — the calendar already hides predicted period/fertile cells, so
+  // the matching reminders must stay silent too. The upcoming-period reminder
+  // is suppressed implicitly (null next-period dates), but the fertile-window
+  // reminder recomputes its window from the still-set cycle anchor, so it would
+  // otherwise fire at a pregnant user. Suppress both here.
+  if (projection.isPregnancyPaused) {
+    return plans;
+  }
+
   if (profile.upcomingPeriodReminderEnabled === true) {
     const targetDate =
       projection.nextPeriodWindowStartDate ?? projection.nextPeriodDate;

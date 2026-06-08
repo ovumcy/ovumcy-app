@@ -61,9 +61,35 @@ export type ManagedCloudPremiumFeatures = {
   reminders: boolean;
 };
 
+export type ManagedCloudActiveSubscription = {
+  planCode: string;
+  planName: string;
+  billingInterval: string;
+  source: string;
+  status: string;
+  currency: string;
+  amountMinor: number;
+  displayAmount: string;
+  currentPeriodStartsAt: string;
+  currentPeriodEndsAt: string;
+  cancelAtPeriodEnd: boolean;
+};
+
+export type ManagedCloudBillingManagement = {
+  canManageRenewal: boolean;
+  canCancelAtPeriodEnd: boolean;
+  canResumeRenewal: boolean;
+};
+
 export type ManagedCloudBillingSnapshot = {
   hasActivePlan: boolean;
   premiumFeatures: ManagedCloudPremiumFeatures;
+  // activeSubscription carries the current plan/trial details for display
+  // (status, period end, price). Null when no subscription row exists.
+  activeSubscription: ManagedCloudActiveSubscription | null;
+  // billingManagement reports which self-service renewal actions the backend
+  // currently allows for this account (drives cancel/resume affordances).
+  billingManagement: ManagedCloudBillingManagement;
 };
 
 export type ManagedCloudReminderEmailScheduleKind =
@@ -401,6 +427,26 @@ type RawManagedCloudSessionView = {
   sync_entitlement: RawManagedCloudEntitlement;
 };
 
+type RawManagedCloudActiveSubscription = {
+  plan_code?: string;
+  plan_name?: string;
+  billing_interval?: string;
+  source?: string;
+  status?: string;
+  currency?: string;
+  amount_minor?: number;
+  display_amount?: string;
+  current_period_starts_at?: string;
+  current_period_ends_at?: string;
+  cancel_at_period_end?: boolean;
+};
+
+type RawManagedCloudBillingManagement = {
+  can_manage_renewal?: boolean;
+  can_cancel_at_period_end?: boolean;
+  can_resume_renewal?: boolean;
+};
+
 type RawManagedCloudBillingSnapshot = {
   has_active_plan?: boolean;
   premium_features?: {
@@ -411,6 +457,8 @@ type RawManagedCloudBillingSnapshot = {
     partner_access?: boolean;
     reminders?: boolean;
   };
+  active_subscription?: RawManagedCloudActiveSubscription | null;
+  billing_management?: RawManagedCloudBillingManagement;
 };
 
 type RawManagedCloudReminderEmailSchedule = {
@@ -1083,6 +1131,8 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_access_unavailable":
       case "partner_invite_expired":
       case "partner_invite_not_found":
+      case "invalid_partner_projection":
+      case "partner_projection_not_found":
       case "reminder_schedule_unavailable":
       case "unauthorized":
       case "sync_not_allowed":
@@ -1442,10 +1492,48 @@ function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionVie
   };
 }
 
+function mapActiveSubscription(
+  raw: RawManagedCloudActiveSubscription | null | undefined,
+): ManagedCloudActiveSubscription | null {
+  if (!isObject(raw)) {
+    return null;
+  }
+  // Require the two fields the trial/plan UI actually reads. Without a status
+  // and a period end there is nothing useful to display, so treat as absent
+  // rather than rendering a half-empty card.
+  if (
+    typeof raw.status !== "string" ||
+    typeof raw.current_period_ends_at !== "string"
+  ) {
+    return null;
+  }
+  return {
+    planCode: typeof raw.plan_code === "string" ? raw.plan_code : "",
+    planName: typeof raw.plan_name === "string" ? raw.plan_name : "",
+    billingInterval:
+      typeof raw.billing_interval === "string" ? raw.billing_interval : "",
+    source: typeof raw.source === "string" ? raw.source : "",
+    status: raw.status,
+    currency: typeof raw.currency === "string" ? raw.currency : "",
+    amountMinor: typeof raw.amount_minor === "number" ? raw.amount_minor : 0,
+    displayAmount:
+      typeof raw.display_amount === "string" ? raw.display_amount : "",
+    currentPeriodStartsAt:
+      typeof raw.current_period_starts_at === "string"
+        ? raw.current_period_starts_at
+        : "",
+    currentPeriodEndsAt: raw.current_period_ends_at,
+    cancelAtPeriodEnd: raw.cancel_at_period_end === true,
+  };
+}
+
 function mapBillingSnapshot(
   raw: RawManagedCloudBillingSnapshot,
 ): ManagedCloudBillingSnapshot {
   const features = isObject(raw.premium_features) ? raw.premium_features : {};
+  const management = isObject(raw.billing_management)
+    ? raw.billing_management
+    : {};
 
   return {
     hasActivePlan: raw.has_active_plan === true,
@@ -1456,6 +1544,12 @@ function mapBillingSnapshot(
       extendedReports: features.extended_reports === true,
       partnerAccess: features.partner_access === true,
       reminders: features.reminders === true,
+    },
+    activeSubscription: mapActiveSubscription(raw.active_subscription),
+    billingManagement: {
+      canManageRenewal: management.can_manage_renewal === true,
+      canCancelAtPeriodEnd: management.can_cancel_at_period_end === true,
+      canResumeRenewal: management.can_resume_renewal === true,
     },
   };
 }

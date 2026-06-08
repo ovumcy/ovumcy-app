@@ -41,6 +41,9 @@ export type BackupSyncSetupPresentation = {
   lastSyncValue: string;
   localStepTitle: string;
   planMessage: string;
+  // planCountdownMessage is the trial/subscription day countdown shown under the
+  // plan banner, or "" when there is no managed subscription to count down.
+  planCountdownMessage: string;
   planStepTitle: string;
   selectedModeLabel: string;
   shouldShowDisconnectOnly: boolean;
@@ -94,6 +97,7 @@ export function buildBackupSyncSetupPresentation({
   managedPlanStatus,
   notSetLabel,
   preferences,
+  subscriptionCountdownMessage = "",
   syncCapabilities,
   viewData,
 }: {
@@ -108,6 +112,7 @@ export function buildBackupSyncSetupPresentation({
   managedPlanStatus: "unknown" | "inactive" | "active";
   notSetLabel: string;
   preferences: SyncPreferencesRecord;
+  subscriptionCountdownMessage?: string;
   syncCapabilities: SyncCapabilityDocument | null;
   viewData: SettingsViewData["account"];
 }): BackupSyncSetupPresentation {
@@ -187,6 +192,7 @@ export function buildBackupSyncSetupPresentation({
       : viewData.lastSyncNever,
     localStepTitle: renumberStepTitle(viewData.localStepTitle, 1),
     planMessage,
+    planCountdownMessage: subscriptionCountdownMessage,
     planStepTitle: renumberStepTitle(viewData.planStepTitle, 3),
     selectedModeLabel,
     shouldShowDisconnectOnly:
