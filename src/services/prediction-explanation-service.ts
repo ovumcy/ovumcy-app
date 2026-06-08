@@ -29,6 +29,14 @@ export function buildPredictionExplanation(
     return dashboardCopy.predictionsApproximateHint;
   }
 
+  if (
+    projection.nextPeriodWindowStartDate &&
+    projection.nextPeriodWindowEndDate &&
+    projection.nextPeriodWindowStartDate !== projection.nextPeriodWindowEndDate
+  ) {
+    return dashboardCopy.predictionVariableRangesHint;
+  }
+
   if (!projection.ovulationDate) {
     return "";
   }
