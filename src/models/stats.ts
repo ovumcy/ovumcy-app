@@ -34,6 +34,7 @@ export type CompletedCycleSummary = {
   nextStartDate: LocalDateISO;
   cycleLength: number;
   periodLength: number;
+  observedPeriodLength: number | null;
   factorKeys: DayCycleFactorKey[];
   comparisonKind: StatsComparisonKind;
 };

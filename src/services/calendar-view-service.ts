@@ -939,12 +939,17 @@ function resolvePredictedPeriodLength(
     return profile.periodLength;
   }
 
-  const recentCycles = history.completedCycles.slice(
-    -STATS_CYCLE_PREDICTION_WINDOW,
-  );
+  const observed = history.completedCycles
+    .slice(-STATS_CYCLE_PREDICTION_WINDOW)
+    .map((cycle) => cycle.observedPeriodLength)
+    .filter((value): value is number => value !== null);
+
+  if (observed.length === 0) {
+    return profile.periodLength;
+  }
+
   const average =
-    recentCycles.reduce((sum, cycle) => sum + cycle.periodLength, 0) /
-    recentCycles.length;
+    observed.reduce((sum, value) => sum + value, 0) / observed.length;
 
   return Math.max(1, Math.round(average));
 }

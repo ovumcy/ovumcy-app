@@ -497,15 +497,14 @@ function buildCompletedCycleSummaries(
       continue;
     }
 
+    const loggedPeriodLength = countLoggedPeriodLength(recordsByDate, startDate);
     cycles.push({
       startDate,
       nextStartDate,
       cycleLength,
-      periodLength: resolveObservedPeriodLength(
-        recordsByDate,
-        startDate,
-        profile.periodLength,
-      ),
+      periodLength:
+        loggedPeriodLength > 0 ? loggedPeriodLength : profile.periodLength,
+      observedPeriodLength: loggedPeriodLength > 0 ? loggedPeriodLength : null,
       factorKeys: collectFactorKeysForCycle(records, startDate, nextStartDate),
       comparisonKind: "variable",
     });
@@ -538,14 +537,13 @@ export function collectCycleStartDates(
   return [...new Set(starts)].sort((left, right) => left.localeCompare(right));
 }
 
-function resolveObservedPeriodLength(
+function countLoggedPeriodLength(
   recordsByDate: Map<string, DayLogRecord>,
   startDate: string,
-  fallback: number,
 ): number {
   const start = parseLocalDate(startDate);
   if (!start) {
-    return fallback;
+    return 0;
   }
 
   let periodLength = 0;
@@ -557,7 +555,7 @@ function resolveObservedPeriodLength(
     periodLength += 1;
   }
 
-  return periodLength > 0 ? periodLength : fallback;
+  return periodLength;
 }
 
 function collectFactorKeysForCycle(
