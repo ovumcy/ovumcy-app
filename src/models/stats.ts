@@ -3,6 +3,7 @@ import type { LocalDateISO } from "./profile";
 import type { SymptomID } from "./symptom";
 
 export const STATS_MINIMUM_INSIGHTS_CYCLES = 2;
+export const STATS_MINIMUM_PHASE_INSIGHTS_CYCLES = 3;
 export const STATS_RELIABLE_TREND_CYCLES = 3;
 export const STATS_CYCLE_PREDICTION_WINDOW = 6;
 export const STATS_FACTOR_CONTEXT_WINDOW_DAYS = 90;
@@ -13,8 +14,8 @@ export const STATS_CYCLE_COMPARISON_DELTA = 2;
 export const IRREGULAR_CYCLE_SPREAD_DAYS = 7;
 export const STATS_TREND_POINT_LIMIT = 6;
 export const STATS_SYMPTOM_FREQUENCY_LIMIT = 6;
-export const STATS_LAST_CYCLE_SYMPTOMS_LIMIT = 5;
-export const STATS_SYMPTOM_PATTERN_LIMIT = 4;
+export const STATS_LAST_CYCLE_SYMPTOMS_LIMIT = 3;
+export const STATS_SYMPTOM_PATTERN_LIMIT = 2;
 export const STATS_PHASE_SYMPTOM_LIMIT = 3;
 export const STATS_BBT_POINT_LIMIT = 12;
 
@@ -22,7 +23,6 @@ export type StatsPhase =
   | "unknown"
   | "menstrual"
   | "follicular"
-  | "fertile"
   | "ovulation"
   | "luteal";
 
@@ -34,6 +34,7 @@ export type CompletedCycleSummary = {
   nextStartDate: LocalDateISO;
   cycleLength: number;
   periodLength: number;
+  observedPeriodLength: number | null;
   factorKeys: DayCycleFactorKey[];
   comparisonKind: StatsComparisonKind;
 };

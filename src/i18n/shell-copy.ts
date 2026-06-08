@@ -60,7 +60,7 @@ const shellCopyFr: ShellCopy = {
   loading: {
     appShellTitle: "Chargement de ta configuration locale…",
     appShellDescription: "Préparation de l'environnement local de l'app.",
-    dashboardTitle: "Chargement du dashboard",
+    dashboardTitle: "Chargement du tableau de bord",
     dashboardDescription: "Préparation de ton contexte local de cycle.",
     calendarTitle: "Chargement du calendrier",
     calendarDescription: "Préparation de ta vue mensuelle locale.",
@@ -85,7 +85,7 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
     loading: {
       appShellTitle: "Загружаем локальную настройку…",
       appShellDescription: "Подготавливаем local-first оболочку приложения.",
-      dashboardTitle: "Загружаем dashboard",
+      dashboardTitle: "Загружаем панель",
       dashboardDescription: "Подготавливаем локальный контекст цикла.",
       calendarTitle: "Загружаем календарь",
       calendarDescription: "Подготавливаем локальный вид месяца.",
@@ -107,7 +107,7 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
     loading: {
       appShellTitle: "Cargando tu configuración local…",
       appShellDescription: "Preparando la shell local-first de la app.",
-      dashboardTitle: "Cargando dashboard",
+      dashboardTitle: "Cargando panel",
       dashboardDescription: "Preparando tu contexto local del ciclo.",
       calendarTitle: "Cargando calendario",
       calendarDescription: "Preparando tu vista mensual local.",

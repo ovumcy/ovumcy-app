@@ -4,6 +4,7 @@ import type {
   StatsComparisonKind,
   StatsCycleHistorySummary,
 } from "../models/stats";
+import { diffLocalDays } from "./profile-settings-policy";
 
 // These tuning constants intentionally diverge from the original Lvl3 spec
 // (linear weights instead of exponential 0.5^n; 4-day anomaly delta instead of
@@ -292,8 +293,3 @@ export function buildShortLutealHint(
   };
 }
 
-function diffLocalDays(startDate: string, endDate: string): number {
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  return Math.round((end.getTime() - start.getTime()) / 86400000);
-}

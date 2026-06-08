@@ -13,7 +13,12 @@ let fontBytesPromise: Promise<ExportPDFFontBytes> | null = null;
 
 export async function loadExportPDFFontBytes(): Promise<ExportPDFFontBytes> {
   if (!fontBytesPromise) {
-    fontBytesPromise = loadFontBytes();
+    fontBytesPromise = loadFontBytes().catch((error) => {
+      // Drop the cached rejection so a later export can retry instead of
+      // staying broken for the rest of the session.
+      fontBytesPromise = null;
+      throw error;
+    });
   }
 
   return fontBytesPromise;
@@ -33,21 +38,27 @@ async function loadFontBytes(): Promise<ExportPDFFontBytes> {
 
 async function loadFontAssetBytes(moduleID: number): Promise<Uint8Array> {
   const asset = Asset.fromModule(moduleID);
-  let assetURI = asset.localUri ?? asset.uri;
-  if (!assetURI) {
-    const resolved = await asset.downloadAsync();
-    assetURI = resolved.localUri ?? resolved.uri;
+  // Always resolve the asset to a local file first. In a Metro dev build
+  // `asset.uri` is an http(s) URL, and reading binary fonts through RN's
+  // `fetch().arrayBuffer()` corrupts the bytes (the body is decoded as text),
+  // so fontkit then rejects the TTF and the whole PDF export fails. Calling
+  // `downloadAsync()` copies the bundled/served asset into the cache as a
+  // `file://` path we can read verbatim, and it is a no-op once cached.
+  if (!asset.localUri) {
+    await asset.downloadAsync();
   }
+
+  const assetURI = asset.localUri ?? asset.uri;
   if (!assetURI) {
     throw new Error("Unable to resolve bundled font asset");
   }
 
   if (assetURI.startsWith("file:")) {
-    const file = new File(assetURI);
-    const bytes = await file.arrayBuffer();
+    const bytes = await new File(assetURI).bytes();
     return new Uint8Array(bytes);
   }
 
+  // Web (and any other non-file URI): browser `fetch` decodes binary correctly.
   const response = await fetch(assetURI);
   if (!response.ok) {
     throw new Error(`Unable to download bundled font asset: ${response.status}`);

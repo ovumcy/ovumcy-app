@@ -57,6 +57,7 @@ async function resolveManagedPremiumAccessAfterConnect(
     planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
     doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
     reminders: billingSnapshot.premiumFeatures.reminders,
+    activeSubscription: billingSnapshot.activeSubscription,
   };
 }
 
@@ -462,6 +463,7 @@ export async function disconnectBackupSyncAccount(
         planStatus: "unknown",
         doctorPDF: false,
         reminders: false,
+        activeSubscription: null,
       },
     ),
   };
@@ -491,6 +493,7 @@ export async function clearUnauthorizedBackupSyncSession(
       planStatus: "unknown",
       doctorPDF: false,
       reminders: false,
+      activeSubscription: null,
     },
   );
 }

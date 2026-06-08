@@ -1,17 +1,15 @@
 import type { DayLogRecord } from "../models/day-log";
-import type { LocalDateISO, TemperatureUnit } from "../models/profile";
+import type { LocalDateISO } from "../models/profile";
 
 const MIN_BBT_POINTS_FOR_OVULATION = 5;
 const BBT_BASELINE_WINDOW = 5;
 const BBT_SHIFT_STREAK_LENGTH = 3;
 const BBT_SHIFT_THRESHOLD_CELSIUS = 0.2;
-const BBT_SHIFT_THRESHOLD_FAHRENHEIT = 0.35;
 
 export function inferBBTOvulationDate(
   records: readonly DayLogRecord[],
   cycleStartDate: LocalDateISO,
   cycleEndDate: LocalDateISO,
-  temperatureUnit: TemperatureUnit,
 ): LocalDateISO | null {
   const points = records
     .filter(
@@ -30,11 +28,7 @@ export function inferBBTOvulationDate(
     .slice(0, BBT_BASELINE_WINDOW)
     .reduce((sum, point) => sum + point.bbt, 0);
   const baseline = baselineTotal / BBT_BASELINE_WINDOW;
-  const threshold =
-    baseline +
-    (temperatureUnit === "f"
-      ? BBT_SHIFT_THRESHOLD_FAHRENHEIT
-      : BBT_SHIFT_THRESHOLD_CELSIUS);
+  const threshold = baseline + BBT_SHIFT_THRESHOLD_CELSIUS;
 
   let streak = 0;
   for (let index = BBT_BASELINE_WINDOW; index < points.length; index += 1) {
@@ -76,14 +70,8 @@ export function inferObservedOvulationDate(
   records: readonly DayLogRecord[],
   cycleStartDate: LocalDateISO,
   cycleEndDate: LocalDateISO,
-  temperatureUnit: TemperatureUnit,
 ): LocalDateISO | null {
-  const bbtDate = inferBBTOvulationDate(
-    records,
-    cycleStartDate,
-    cycleEndDate,
-    temperatureUnit,
-  );
+  const bbtDate = inferBBTOvulationDate(records, cycleStartDate, cycleEndDate);
   if (bbtDate) {
     return bbtDate;
   }

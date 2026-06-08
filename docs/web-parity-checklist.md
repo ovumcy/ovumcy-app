@@ -12,13 +12,13 @@ before and after UI changes.
 ## Canonical Sources
 
 - Shared visual tokens and component geometry:
-  - `D:\ovumcy\ovumcy-project\web\src\css\input.css`
+  - `D:\ovumcy\ovumcy-web\web\src\css\input.css`
 - Core web templates:
-  - `D:\ovumcy\ovumcy-project\internal\templates\onboarding.html`
-  - `D:\ovumcy\ovumcy-project\internal\templates\dashboard.html`
-  - `D:\ovumcy\ovumcy-project\internal\templates\calendar.html`
-  - `D:\ovumcy\ovumcy-project\internal\templates\stats.html`
-  - `D:\ovumcy\ovumcy-project\internal\templates\settings.html`
+  - `D:\ovumcy\ovumcy-web\internal\templates\onboarding.html`
+  - `D:\ovumcy\ovumcy-web\internal\templates\dashboard.html`
+  - `D:\ovumcy\ovumcy-web\internal\templates\calendar.html`
+  - `D:\ovumcy\ovumcy-web\internal\templates\stats.html`
+  - `D:\ovumcy\ovumcy-web\internal\templates\settings.html`
 
 ## Shared Visual Contract
 

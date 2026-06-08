@@ -122,6 +122,12 @@ describe("managed-cloud-api-client", () => {
           partnerAccess: true,
           reminders: true,
         },
+        activeSubscription: null,
+        billingManagement: {
+          canManageRenewal: false,
+          canCancelAtPeriodEnd: false,
+          canResumeRenewal: false,
+        },
       },
     });
 

@@ -260,7 +260,7 @@ const totpCopyRu: TOTPCopy = {
     codeLabel: "Шестизначный код",
     submitLabel: "Проверить",
     cancelLabel: "Отмена",
-    expiredHint: "Срок challenge-а истёк. Войди заново.",
+    expiredHint: "Срок запроса истёк. Войди заново.",
   },
   errors: {
     currentPasswordRequired: "Введи текущий пароль.",
@@ -271,9 +271,9 @@ const totpCopyRu: TOTPCopy = {
       "Двухфакторка уже включена. Сначала выключи её.",
     totpInvalidCode: "Код неверный. Попробуй последний код из приложения.",
     totpReplayed: "Этот код уже использовался. Подожди следующий.",
-    totpChallengeInvalid: "Срок challenge-а входа истёк. Войди заново.",
+    totpChallengeInvalid: "Срок запроса на вход истёк. Войди заново.",
     totpSecretFailed: "Что-то с секретом пошло не так. Повтори попытку.",
-    challengeIDRequired: "Challenge отсутствует. Войди заново.",
+    challengeIDRequired: "Запрос отсутствует. Войди заново.",
     notConnected:
       "Сначала подключи аккаунт синхронизации, чтобы менять двухфакторку.",
     rateLimited: "Слишком много попыток. Повтори позже.",

@@ -1,5 +1,6 @@
 import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
 import { getSettingsCopy } from "../i18n/settings-copy";
+import type { ManagedCloudActiveSubscription } from "../sync/managed-cloud-api-client";
 import type { LoadedExportState } from "../models/export";
 import type {
   AgeGroup,
@@ -389,6 +390,10 @@ export type SettingsManagedPremiumAccess = {
   planStatus: "unknown" | "inactive" | "active";
   doctorPDF: boolean;
   reminders: boolean;
+  // activeSubscription drives the plan/trial countdown on Backup & Sync. Null
+  // when there is no managed subscription row (self-hosted, signed out, or a
+  // plan-less managed account).
+  activeSubscription: ManagedCloudActiveSubscription | null;
 };
 
 export type LoadedSettingsState = {
@@ -566,26 +571,26 @@ export function buildSettingsViewData(
       emailDelivery: {
         label: settingsCopy.reminders.emailDelivery,
         hint: settingsCopy.reminders.emailDeliveryHint,
-        stateOn: settingsCopy.reminders.emailDeliveryStateOn,
-        stateOff: settingsCopy.reminders.emailDeliveryStateOff,
+        stateOn: settingsCopy.reminders.statusOn,
+        stateOff: settingsCopy.reminders.statusOff,
       },
       dailyLog: {
         label: settingsCopy.reminders.dailyLog,
         hint: settingsCopy.reminders.dailyLogHint,
-        stateOn: settingsCopy.reminders.dailyLogStateOn,
-        stateOff: settingsCopy.reminders.dailyLogStateOff,
+        stateOn: settingsCopy.reminders.statusOn,
+        stateOff: settingsCopy.reminders.statusOff,
       },
       upcomingPeriod: {
         label: settingsCopy.reminders.upcomingPeriod,
         hint: settingsCopy.reminders.upcomingPeriodHint,
-        stateOn: settingsCopy.reminders.upcomingPeriodStateOn,
-        stateOff: settingsCopy.reminders.upcomingPeriodStateOff,
+        stateOn: settingsCopy.reminders.statusOn,
+        stateOff: settingsCopy.reminders.statusOff,
       },
       fertileWindow: {
         label: settingsCopy.reminders.fertileWindow,
         hint: settingsCopy.reminders.fertileWindowHint,
-        stateOn: settingsCopy.reminders.fertileWindowStateOn,
-        stateOff: settingsCopy.reminders.fertileWindowStateOff,
+        stateOn: settingsCopy.reminders.statusOn,
+        stateOff: settingsCopy.reminders.statusOff,
       },
       status: {
         saved: settingsCopy.reminders.saved,
@@ -871,6 +876,7 @@ export function createLoadedSettingsState(
     planStatus: "unknown",
     doctorPDF: false,
     reminders: false,
+    activeSubscription: null,
   },
 ): LoadedSettingsState {
   return {

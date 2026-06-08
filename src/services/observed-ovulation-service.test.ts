@@ -23,7 +23,7 @@ describe("observed-ovulation-service", () => {
         buildBBTRecord("2026-03-13", 36.5),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBeNull();
     });
 
@@ -39,7 +39,7 @@ describe("observed-ovulation-service", () => {
         buildBBTRecord("2026-03-17", 36.8),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBe("2026-03-15");
     });
 
@@ -55,24 +55,8 @@ describe("observed-ovulation-service", () => {
         buildBBTRecord("2026-03-17", 36.5),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBeNull();
-    });
-
-    it("uses a fahrenheit threshold of 0.35 when temperatureUnit is f", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 97.4),
-        buildBBTRecord("2026-03-11", 97.4),
-        buildBBTRecord("2026-03-12", 97.5),
-        buildBBTRecord("2026-03-13", 97.4),
-        buildBBTRecord("2026-03-14", 97.4),
-        buildBBTRecord("2026-03-15", 97.8),
-        buildBBTRecord("2026-03-16", 97.85),
-        buildBBTRecord("2026-03-17", 97.9),
-      ];
-      expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07", "f"),
-      ).toBe("2026-03-15");
     });
 
     it("ignores BBT records outside the cycle range", () => {
@@ -89,7 +73,7 @@ describe("observed-ovulation-service", () => {
         buildBBTRecord("2026-04-10", 36.4),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBe("2026-03-15");
     });
   });
@@ -141,7 +125,7 @@ describe("observed-ovulation-service", () => {
         buildEggWhiteRecord("2026-03-13"),
       ];
       expect(
-        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBe("2026-03-15");
     });
 
@@ -152,7 +136,7 @@ describe("observed-ovulation-service", () => {
         buildEggWhiteRecord("2026-03-14"),
       ];
       expect(
-        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBe("2026-03-14");
     });
 
@@ -161,7 +145,7 @@ describe("observed-ovulation-service", () => {
         { ...createEmptyDayLogRecord("2026-03-13"), mood: 4 },
       ];
       expect(
-        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07", "c"),
+        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBeNull();
     });
   });

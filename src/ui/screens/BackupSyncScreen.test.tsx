@@ -247,6 +247,7 @@ describe("BackupSyncScreen", () => {
               planStatus: "unknown",
               doctorPDF: false,
               reminders: false,
+              activeSubscription: null,
             },
           ),
         });
@@ -1338,6 +1339,7 @@ describe("BackupSyncScreen", () => {
             planStatus: "active",
             doctorPDF: false,
             reminders: false,
+            activeSubscription: null,
           },
         ),
       });
