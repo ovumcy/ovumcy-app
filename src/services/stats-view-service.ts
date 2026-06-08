@@ -42,7 +42,7 @@ import {
   buildStatsPremiumInsights,
   type StatsShortLutealHint,
 } from "./stats-premium-insights-service";
-import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
 
 export type StatsTopCardViewData = {
@@ -1175,6 +1175,3 @@ function formatDisplayDate(value: string, locale: string): string {
   }).format(parsed);
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}

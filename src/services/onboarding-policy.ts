@@ -19,6 +19,7 @@ import {
   clampPeriodLength,
   formatLocalDate,
   normalizeUsageGoal,
+  atLocalDay,
   parseLocalDate,
   resolveCycleAndPeriodDefaults as resolveSharedCycleAndPeriodDefaults,
   resolveDisplayedAgeGroup,
@@ -292,6 +293,3 @@ function localizedRelativeDayFallback(dayOffset: number, locale: string): string
   return "";
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}

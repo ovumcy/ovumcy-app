@@ -20,6 +20,7 @@ import {
 } from "./day-log-editor-service";
 import {
   addDays,
+  atLocalDay,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -1019,9 +1020,6 @@ function addMonth(value: Date, amount: number): Date {
   return new Date(value.getFullYear(), value.getMonth() + amount, 1);
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
 
 function buildWeekdayLabels(locale: string): string[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });

@@ -11,7 +11,7 @@ import {
 import { resolveLutealPhase } from "./cycle-prediction-policy";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
-import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { addDays, atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 const MANUAL_CYCLE_START_FUTURE_DAYS = 2;
 const MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS = 15;
@@ -486,6 +486,3 @@ function diffLocalDays(left: Date | null, right: Date): number {
   return Math.round((atLocalDay(right).getTime() - atLocalDay(left).getTime()) / 86400000);
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}

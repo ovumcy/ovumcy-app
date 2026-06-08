@@ -287,6 +287,6 @@ function clampInteger(
   return Math.max(minValue, Math.min(maxValue, numeric));
 }
 
-function atLocalDay(value: Date): Date {
+export function atLocalDay(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }

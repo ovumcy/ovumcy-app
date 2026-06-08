@@ -29,7 +29,7 @@ import {
   type StatsRecentCycleSummary,
   type StatsReliabilityState,
 } from "../models/stats";
-import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { addDays, atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 export function buildCycleHistorySummary(
   profile: ProfileRecord,
@@ -878,9 +878,6 @@ function resolvePregnancyPause(records: readonly DayLogRecord[]): string | null 
   return latestPositive;
 }
 
-function atLocalDay(value: Date): Date {
-  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-}
 
 type ObservedPeriodCluster = {
   end: string;
