@@ -61,6 +61,13 @@ describe("buildStatsViewData", () => {
         trackBBT: true,
       }),
       [
+        createPeriodRecord("2025-12-20"),
+        {
+          ...createEmptyDayLogRecord("2025-12-21"),
+          flow: "medium",
+          mood: 3,
+          symptomIDs: ["cramps"],
+        },
         createPeriodRecord("2026-01-17"),
         {
           ...createEmptyDayLogRecord("2026-01-18"),
@@ -95,12 +102,12 @@ describe("buildStatsViewData", () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: "Prediction reliability",
-          value: "Early estimate",
+          value: "Building pattern",
         }),
       ]),
     );
     expect(viewData.trendChart?.title).toBe("Cycle trend");
-    expect(viewData.trendChart?.points).toHaveLength(2);
+    expect(viewData.trendChart?.points).toHaveLength(3);
     expect(viewData.symptomFrequency?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: "cramps" }),

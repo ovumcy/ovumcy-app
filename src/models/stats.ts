@@ -3,6 +3,7 @@ import type { LocalDateISO } from "./profile";
 import type { SymptomID } from "./symptom";
 
 export const STATS_MINIMUM_INSIGHTS_CYCLES = 2;
+export const STATS_MINIMUM_PHASE_INSIGHTS_CYCLES = 3;
 export const STATS_RELIABLE_TREND_CYCLES = 3;
 export const STATS_CYCLE_PREDICTION_WINDOW = 6;
 export const STATS_FACTOR_CONTEXT_WINDOW_DAYS = 90;
@@ -22,7 +23,6 @@ export type StatsPhase =
   | "unknown"
   | "menstrual"
   | "follicular"
-  | "fertile"
   | "ovulation"
   | "luteal";
 

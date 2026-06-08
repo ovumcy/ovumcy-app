@@ -122,6 +122,15 @@ describe("StatsScreen", () => {
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
         {
+          ...createEmptyDayLogRecord("2025-12-20"),
+          isPeriod: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2025-12-21"),
+          symptomIDs: ["cramps"],
+          mood: 3,
+        },
+        {
           ...createEmptyDayLogRecord("2026-01-17"),
           isPeriod: true,
         },
@@ -170,7 +179,7 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-bbt-trend")).toBeTruthy();
     expect(screen.getByTestId("stats-factor-context")).toBeTruthy();
     expect(screen.getByLabelText(/Cycle trend/)).toBeTruthy();
-    expect(screen.getByLabelText(/Prediction reliability\. Early estimate\./)).toBeTruthy();
+    expect(screen.getByLabelText(/Prediction reliability\. Variable pattern\./)).toBeTruthy();
   });
 
   it("renders the advanced premium insights block when managed premium is active", async () => {

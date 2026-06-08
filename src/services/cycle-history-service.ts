@@ -761,12 +761,8 @@ function detectCurrentPhase(
     return "menstrual";
   }
 
-  const fertileWindowStart = addDays(ovulationDate, -5);
   if (sameLocalDay(today, ovulationDate)) {
     return "ovulation";
-  }
-  if (today >= fertileWindowStart && today <= ovulationDate) {
-    return "fertile";
   }
   if (today < ovulationDate) {
     return "follicular";

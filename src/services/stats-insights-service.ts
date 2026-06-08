@@ -28,7 +28,6 @@ type CompletedCycleBucket = {
 const PHASE_ORDER: StatsPhase[] = [
   "menstrual",
   "follicular",
-  "fertile",
   "ovulation",
   "luteal",
 ];
@@ -343,21 +342,17 @@ function resolveRecordPhase(
   summary: CompletedCycleSummary,
   record: DayLogRecord,
 ): StatsPhase {
-  if (record.isPeriod) {
-    return "menstrual";
-  }
-
   const cycleDay = resolveCycleDay(summary.startDate, record.date);
   if (cycleDay <= 0) {
     return "unknown";
+  }
+  if (cycleDay <= summary.periodLength) {
+    return "menstrual";
   }
 
   const ovulationDay = Math.max(summary.cycleLength - 14, 1);
   if (cycleDay === ovulationDay) {
     return "ovulation";
-  }
-  if (cycleDay >= Math.max(ovulationDay - 5, 1) && cycleDay < ovulationDay) {
-    return "fertile";
   }
   if (cycleDay < ovulationDay) {
     return "follicular";
