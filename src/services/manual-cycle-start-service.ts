@@ -5,8 +5,10 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
 import {
   buildCycleHistorySummary,
+  inferUserLutealPhase,
   resolveLatestCycleStartAnchorBeforeOrOn,
 } from "./cycle-history-service";
+import { resolveLutealPhase } from "./cycle-prediction-policy";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
@@ -290,7 +292,17 @@ function resolvePotentialImplantationGapDays(
       : history.medianCycleLength > 0
         ? history.medianCycleLength
         : profile.cycleLength;
-  const ovulationDate = addDays(previousStart, Math.max(predictionCycleLength - 14, 1));
+  const lutealPhase = resolveLutealPhase(
+    inferUserLutealPhase(
+      profile,
+      [...filteredRecords],
+      formatLocalDate(addDays(targetDate, -1)),
+    ) ?? 0,
+  );
+  const ovulationDate = addDays(
+    previousStart,
+    Math.max(predictionCycleLength - lutealPhase, 1),
+  );
   const gapDays = diffLocalDays(ovulationDate, targetDate);
 
   return [gapDays, gapDays >= 6 && gapDays <= 12];
