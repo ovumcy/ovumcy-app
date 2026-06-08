@@ -1131,6 +1131,8 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_access_unavailable":
       case "partner_invite_expired":
       case "partner_invite_not_found":
+      case "invalid_partner_projection":
+      case "partner_projection_not_found":
       case "reminder_schedule_unavailable":
       case "unauthorized":
       case "sync_not_allowed":
