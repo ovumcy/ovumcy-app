@@ -81,7 +81,7 @@ export function clampPeriodLength(value: number): number {
 
 export function maxPeriodLengthForCycle(cycleLength: number): number {
   const safeCycleLength = clampCycleLength(cycleLength);
-  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS - 1;
+  const maxAllowed = safeCycleLength - MIN_CYCLE_RESERVE_DAYS;
 
   if (maxAllowed < MIN_PERIOD_LENGTH) {
     return MIN_PERIOD_LENGTH;

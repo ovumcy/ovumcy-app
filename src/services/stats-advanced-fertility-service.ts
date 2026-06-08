@@ -3,8 +3,8 @@ import type { StatsCycleHistorySummary } from "../models/stats";
 import { parseLocalDate } from "./profile-settings-policy";
 
 const ADVANCED_FERTILITY_CYCLE_LIMIT = 4;
-const MAX_OBSERVED_LUTEAL_DAYS = 18;
-const MIN_OBSERVED_LUTEAL_DAYS = 8;
+const MAX_OBSERVED_LUTEAL_DAYS = 20;
+const MIN_OBSERVED_LUTEAL_DAYS = 10;
 const MIN_SHIFT_SAMPLE_COUNT = 4;
 const MAX_OVULATION_CONFIRMATION_GAP_DAYS = 4;
 const CONFIRMED_SHIFT_THRESHOLD_CELSIUS = 0.2;

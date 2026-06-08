@@ -11,7 +11,7 @@ import { sanitizeDayLogRecord } from "./day-log-policy";
 import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
-const MANUAL_CYCLE_START_FUTURE_DAYS = 0;
+const MANUAL_CYCLE_START_FUTURE_DAYS = 2;
 const MANUAL_CYCLE_START_SUGGESTION_GAP_DAYS = 15;
 
 export type ManualCycleStartPrompt = {
