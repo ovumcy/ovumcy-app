@@ -282,7 +282,7 @@ Current automated baseline:
 
 Deployment tooling:
 
-- `npm run deploy` now uses the pinned local `eas-cli` version from the lockfile, not `@latest`.
+- `npm run deploy` pins `eas-cli` to an explicit version via npx (`eas-cli@18.4.0`), not `@latest`. (eas-cli is not a project dependency, so it is not in the lockfile.)
 
 Manual acceptance guidance lives in [docs/manual-smoke.md](docs/manual-smoke.md).
 
