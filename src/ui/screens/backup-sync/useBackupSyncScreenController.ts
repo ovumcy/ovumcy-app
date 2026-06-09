@@ -753,6 +753,8 @@ export function useBackupSyncScreenController({
           syncSecretStore,
           syncReadyState,
         );
+        clearManagedPartnerInviteToken();
+        setPendingPartnerInviteToken("");
         setState(clearedState);
         await reloadPartnerAccess(clearedState);
       }
