@@ -1,5 +1,5 @@
 import { bytesToHex } from "@noble/hashes/utils.js";
-import fc from "fast-check";
+import * as fc from "fast-check";
 
 import { decryptPayload, encryptPayload } from "./payload-crypto";
 
