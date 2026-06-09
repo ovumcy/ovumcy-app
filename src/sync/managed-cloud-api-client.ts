@@ -510,10 +510,10 @@ type RawManagedCloudPartnerAccessGrant = {
 
 type RawManagedCloudPartnerAccessOverview = {
   owned: {
-    invites: RawManagedCloudPartnerInvite[];
-    grants: RawManagedCloudPartnerAccessGrant[];
+    invites: RawManagedCloudPartnerInvite[] | null;
+    grants: RawManagedCloudPartnerAccessGrant[] | null;
   };
-  shared_with_me: RawManagedCloudPartnerAccessGrant[];
+  shared_with_me: RawManagedCloudPartnerAccessGrant[] | null;
 };
 
 type RawManagedCloudPartnerInviteIssueResult = {
@@ -1157,6 +1157,20 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isNullableArrayOf(
+  value: unknown,
+  itemGuard: (item: unknown) => boolean,
+): boolean {
+  // The managed API serializes an empty list field as JSON `null` (a Go nil
+  // slice), so treat null/undefined as an empty array instead of rejecting the
+  // whole payload.
+  return (
+    value === null ||
+    value === undefined ||
+    (Array.isArray(value) && value.every(itemGuard))
+  );
+}
+
 function isRawManagedCloudEntitlement(
   value: unknown,
 ): value is RawManagedCloudEntitlement {
@@ -1413,12 +1427,9 @@ function isRawManagedCloudPartnerAccessOverview(
   return (
     isObject(value) &&
     isObject(value.owned) &&
-    Array.isArray(value.owned.invites) &&
-    value.owned.invites.every(isRawManagedCloudPartnerInvite) &&
-    Array.isArray(value.owned.grants) &&
-    value.owned.grants.every(isRawManagedCloudPartnerAccessGrant) &&
-    Array.isArray(value.shared_with_me) &&
-    value.shared_with_me.every(isRawManagedCloudPartnerAccessGrant)
+    isNullableArrayOf(value.owned.invites, isRawManagedCloudPartnerInvite) &&
+    isNullableArrayOf(value.owned.grants, isRawManagedCloudPartnerAccessGrant) &&
+    isNullableArrayOf(value.shared_with_me, isRawManagedCloudPartnerAccessGrant)
   );
 }
 
@@ -1637,10 +1648,10 @@ function mapPartnerAccessOverview(
 ): ManagedCloudPartnerAccessOverview {
   return {
     owned: {
-      invites: raw.owned.invites.map(mapPartnerInvite),
-      grants: raw.owned.grants.map(mapPartnerAccessGrant),
+      invites: (raw.owned.invites ?? []).map(mapPartnerInvite),
+      grants: (raw.owned.grants ?? []).map(mapPartnerAccessGrant),
     },
-    sharedWithMe: raw.shared_with_me.map(mapPartnerAccessGrant),
+    sharedWithMe: (raw.shared_with_me ?? []).map(mapPartnerAccessGrant),
   };
 }
 

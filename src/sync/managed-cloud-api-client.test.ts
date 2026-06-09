@@ -141,6 +141,36 @@ describe("managed-cloud-api-client", () => {
     });
   });
 
+  it("treats null partner overview lists as empty arrays", async () => {
+    // The managed server serializes empty list fields as JSON `null` (a Go nil
+    // slice). The overview must still parse, mapping each null list to [].
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          owned: { invites: null, grants: null },
+          shared_with_me: null,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(client.getPartnerAccess("managed-session-1")).resolves.toEqual({
+      ok: true,
+      overview: {
+        owned: { invites: [], grants: [] },
+        sharedWithMe: [],
+      },
+    });
+  });
+
   it("maps partner access lifecycle responses", async () => {
     const fetch = jest
       .fn()
