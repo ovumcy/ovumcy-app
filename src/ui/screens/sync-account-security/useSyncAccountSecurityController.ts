@@ -23,6 +23,7 @@ import {
   type StartTOTPEnrollmentErrorCode,
   type VerifyTOTPEnrollmentErrorCode,
 } from "../../../sync/sync-totp-service";
+import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { appStorage } from "../../../services/app-bootstrap-service";
@@ -55,6 +56,11 @@ export function useSyncAccountSecurityController({
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
+  // Live "is 2FA currently on" for this account: null = unknown (not connected
+  // or the server could not be reached), true/false = the server's answer.
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(
+    null,
+  );
 
   // Change password
   const [changeCurrentPassword, setChangeCurrentPassword] = useState("");
@@ -113,15 +119,25 @@ export function useSyncAccountSecurityController({
     let cancelled = false;
     void (async () => {
       const loaded = await storage.readSyncPreferencesRecord();
-      if (!cancelled) {
-        setPreferences(loaded);
-        setIsLoading(false);
+      if (cancelled) {
+        return;
+      }
+      setPreferences(loaded);
+      setIsLoading(false);
+      if (loaded) {
+        const status = await describeSyncAccountTwoFactor(
+          syncSecretStore,
+          loaded,
+        );
+        if (!cancelled) {
+          setTwoFactorEnabled(status ? status.twoFactorEnabled : null);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [storage]);
+  }, [storage, syncSecretStore]);
 
   async function handleChangePassword() {
     if (!preferences) {
@@ -279,6 +295,7 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpVerifyCode("");
     setTotpEnrollment(null);
+    setTwoFactorEnabled(true);
   }
 
   async function handleDisableTOTP() {
@@ -300,6 +317,7 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpDisablePassword("");
     setTotpDisableCode("");
+    setTwoFactorEnabled(false);
   }
 
   function handleCancelTOTPEnrollment() {
@@ -360,6 +378,7 @@ export function useSyncAccountSecurityController({
     handleAcknowledgeRecoveryCode,
 
     // two-factor
+    twoFactorEnabled,
     totpMode,
     handleTOTPModeChange,
     totpStage,

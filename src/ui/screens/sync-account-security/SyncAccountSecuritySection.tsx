@@ -96,6 +96,7 @@ export type SyncAccountSecuritySectionProps = {
   onTOTPDisablePasswordChange: (value: string) => void;
   totpDisableCode: string;
   onTOTPDisableCodeChange: (value: string) => void;
+  twoFactorEnabled: boolean | null;
   totpStatus: SyncAccountSecurityStatus;
   totpErrorCode: TOTPErrorCode | null;
   onStartTOTPEnrollment: () => void | Promise<void>;
@@ -146,6 +147,7 @@ export function SyncAccountSecuritySection({
   onTOTPDisablePasswordChange,
   totpDisableCode,
   onTOTPDisableCodeChange,
+  twoFactorEnabled,
   totpStatus,
   totpErrorCode,
   onStartTOTPEnrollment,
@@ -332,6 +334,17 @@ export function SyncAccountSecuritySection({
 
       <FeatureCard title={totpCopy.section.title}>
         <Text style={styles.helperText}>{totpCopy.section.hint}</Text>
+        {twoFactorEnabled !== null ? (
+          <StatusBanner
+            message={
+              twoFactorEnabled
+                ? totpCopy.section.statusEnabled
+                : totpCopy.section.statusDisabled
+            }
+            testID="account-security-totp-current-status"
+            tone={twoFactorEnabled ? "success" : "info"}
+          />
+        ) : null}
         <View style={styles.totpTabs} testID="account-security-totp-tabs">
           <AppButton
             label={totpCopy.section.enableTab}

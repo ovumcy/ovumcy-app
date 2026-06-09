@@ -40,6 +40,10 @@ export type SyncAPIErrorCode =
   | "invalid_response"
   | "generic";
 
+export type SyncAccountSessionView = {
+  twoFactorEnabled: boolean;
+};
+
 export type SyncAPIClient = {
   attachDevice(
     sessionToken: string,
@@ -64,6 +68,12 @@ export type SyncAPIClient = {
     sessionToken: string,
   ): Promise<
     | { ok: true; recoveryKey: WrappedSyncKeyMetadata }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  getSession(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; session: SyncAccountSessionView }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
   login(
@@ -449,6 +459,29 @@ export function createSyncAPIClient(
       );
     },
 
+    async getSession(sessionToken) {
+      return requestJSON<RawSyncAccountSession>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/session",
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawSyncAccountSession,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              session: {
+                twoFactorEnabled: result.payload.totp_enabled ?? false,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
     async attachDevice(sessionToken, input) {
       return requestJSON<RawSyncDeviceRecord>(
         fetchImpl,
@@ -787,6 +820,22 @@ function isRawSyncChangePasswordResult(
   value: unknown,
 ): value is RawSyncChangePasswordResult {
   return isObject(value) && typeof value.status === "string";
+}
+
+type RawSyncAccountSession = {
+  // Optional so an older server that does not send it still validates; a
+  // missing value maps to `false`.
+  totp_enabled?: boolean;
+};
+
+function isRawSyncAccountSession(
+  value: unknown,
+): value is RawSyncAccountSession {
+  return (
+    isObject(value) &&
+    (value.totp_enabled === undefined ||
+      typeof value.totp_enabled === "boolean")
+  );
 }
 
 function isRawSyncCapabilities(value: unknown): value is RawSyncCapabilityDocument {

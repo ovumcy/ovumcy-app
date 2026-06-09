@@ -46,6 +46,7 @@ function baseProps() {
     onAcknowledgeRecoveryCode: noop,
 
     totpCopy,
+    twoFactorEnabled: null,
     totpMode: "enable" as const,
     onTOTPModeChange: noop,
     totpStage: "idle" as const,
@@ -334,5 +335,40 @@ describe("SyncAccountSecuritySection", () => {
     expect(
       screen.getByText(totpCopy.errors.totpInvalidCode),
     ).toBeTruthy();
+  });
+
+  it("shows the enabled 2FA status banner", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={true} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-totp-current-status"),
+    ).toBeTruthy();
+    expect(screen.getByText(totpCopy.section.statusEnabled)).toBeTruthy();
+  });
+
+  it("shows the disabled 2FA status banner", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={false} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(totpCopy.section.statusDisabled)).toBeTruthy();
+  });
+
+  it("hides the 2FA status banner when the state is unknown", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={null} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.queryByTestId("account-security-totp-current-status"),
+    ).toBeNull();
   });
 });
