@@ -274,6 +274,8 @@ const settingsCopyEn = {
       "Confirm with device security to restore encrypted data from the sync server.",
     disconnectPrompt:
       "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
+    disconnectDeviceAuthPrompt:
+      "Confirm with device security to disconnect this device from the sync server.",
     recoveryTitle: "Recovery phrase for this device",
     recoveryHint:
       "Write down the 12 words exactly and keep them offline. If you lose every device and this phrase, synced data cannot be recovered.",
@@ -749,6 +751,8 @@ const settingsCopyDe: SettingsCopy = {
       "Bestätige mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
     disconnectPrompt:
       "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
+    disconnectDeviceAuthPrompt:
+      "Bestätige mit Geräteschutz, um dieses Gerät vom Sync-Server zu trennen.",
     recoveryTitle: "Wiederherstellungsphrase für dieses Gerät",
     recoveryHint:
       "Schreibe die 12 Wörter exakt auf und bewahre sie offline auf. Wenn du alle Geräte und diese Phrase verlierst, können synchronisierte Daten nicht wiederhergestellt werden.",
@@ -1258,6 +1262,8 @@ const settingsCopyFr: SettingsCopy = {
       "Confirme avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
     disconnectPrompt:
       "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
+    disconnectDeviceAuthPrompt:
+      "Confirme avec la sécurité de l'appareil pour déconnecter cet appareil du serveur de sync.",
     recoveryTitle: "Phrase de récupération pour cet appareil",
     recoveryHint:
       "Note exactement les 12 mots et garde-les hors ligne. Si tu perds tous les appareils et cette phrase, les données synchronisées ne pourront pas être récupérées.",
@@ -1763,6 +1769,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
       disconnectPrompt:
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
+      disconnectDeviceAuthPrompt:
+        "Подтвердите защитой устройства отключение этого устройства от sync-сервера.",
       recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
         "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту фразу, synced data восстановить нельзя.",
@@ -2237,6 +2245,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
       disconnectPrompt:
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
+      disconnectDeviceAuthPrompt:
+        "Confirma con la seguridad del dispositivo para desconectar este dispositivo del servidor de sync.",
       recoveryTitle: "Frase de recuperación de este dispositivo",
       recoveryHint:
         "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
