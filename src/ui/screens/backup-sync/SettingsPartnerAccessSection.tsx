@@ -58,7 +58,19 @@ export function SettingsPartnerAccessSection({
 }: SettingsPartnerAccessSectionProps) {
   const styles = useThemedStyles(createStyles);
   const ownedInvites = overview?.owned.invites ?? [];
+  // "Pending invites" should list only invites still awaiting a response: an
+  // accepted invite already shows up as an active grant below, and a revoked
+  // one is gone, so keeping either here makes the list lie about what is
+  // actionable.
+  const pendingOwnedInvites = ownedInvites.filter(
+    (invite) => !invite.acceptedAt && !invite.revokedAt,
+  );
   const ownedGrants = overview?.owned.grants ?? [];
+  // "Active partner access" must list only live grants. A revoked grant stays in
+  // owned.grants, but showing it here leaves the owner unsure whether a revoke
+  // worked; filtering it out makes the success banner and the now-empty list
+  // agree that access is gone.
+  const activeOwnedGrants = ownedGrants.filter((grant) => !grant.revokedAt);
   const sharedWithMeGrants = overview?.sharedWithMe ?? [];
   const hasOwnerHistory = ownedInvites.length > 0 || ownedGrants.length > 0;
   const hasSharedAccess = sharedWithMeGrants.length > 0;
@@ -160,13 +172,13 @@ export function SettingsPartnerAccessSection({
 
             <PartnerInviteList
               copy={copy}
-              invites={ownedInvites}
+              invites={pendingOwnedInvites}
               onRevokeInvite={onRevokeInvite}
               styles={styles}
             />
             <PartnerGrantList
               copy={copy}
-              grants={ownedGrants}
+              grants={activeOwnedGrants}
               locale={locale}
               onOpenGrant={onOpenGrant}
               onRevokeGrant={onRevokeGrant}
