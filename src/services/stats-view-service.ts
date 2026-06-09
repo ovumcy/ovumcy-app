@@ -3,7 +3,11 @@ import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
-import { celsiusToUnit, roundTemperature } from "./temperature-policy";
+import {
+  celsiusDeltaToUnit,
+  celsiusToUnit,
+  roundTemperature,
+} from "./temperature-policy";
 import {
   STATS_FACTOR_CONTEXT_WINDOW_DAYS,
   STATS_MINIMUM_PHASE_INSIGHTS_CYCLES,
@@ -874,12 +878,18 @@ function buildAdvancedFertilitySection(
       description:
         premiumFertility.thermalShift.kind === "confirmed"
           ? statsCopy.advancedFertility.thermalShiftConfirmedDescription(
-              premiumFertility.thermalShift.rise.toFixed(2),
+              celsiusDeltaToUnit(
+                premiumFertility.thermalShift.rise,
+                profile.temperatureUnit,
+              ).toFixed(2),
               unitLabel,
               premiumFertility.thermalShift.sampleCount,
             )
           : statsCopy.advancedFertility.thermalShiftBuildingDescription(
-              premiumFertility.thermalShift.rise.toFixed(2),
+              celsiusDeltaToUnit(
+                premiumFertility.thermalShift.rise,
+                profile.temperatureUnit,
+              ).toFixed(2),
               unitLabel,
               premiumFertility.thermalShift.sampleCount,
             ),
