@@ -135,6 +135,85 @@ export function DayLogEditorCard({
     return [baseStyle ?? null, highlightedSection === key ? styles.sectionHighlighted : null];
   }
 
+  // These four sections render in both layouts; only their order differs
+  // (calendar puts BBT first, dashboard puts it last). Define each once.
+  const bbtSection = viewData.visibility.showBBT ? (
+    <View
+      onLayout={handleSectionLayout("bbt")}
+      style={resolveSectionStyle("bbt", styles.section)}
+    >
+      <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
+      <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
+      <AppTextInput
+        inputMode="decimal"
+        maxLength={6}
+        onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
+        onChangeText={handleBbtChange}
+        placeholder="0.00"
+        style={styles.input}
+        testID="day-log-bbt-input"
+        value={bbtText}
+      />
+    </View>
+  ) : null;
+
+  const cervicalMucusSection = viewData.visibility.showCervicalMucus ? (
+    <View
+      onLayout={handleSectionLayout("cervicalMucus")}
+      style={resolveSectionStyle("cervicalMucus", styles.section)}
+    >
+      <Text style={styles.sectionLabel}>{viewData.labels.cervicalMucus}</Text>
+      <Text style={styles.sectionHint}>
+        {viewData.labels.cervicalMucusExplainer}
+      </Text>
+      <ChoiceGroup
+        compact
+        onSelect={(value) => onPatch({ cervicalMucus: value })}
+        options={viewData.options.cervicalMucus}
+        selectedValue={record.cervicalMucus}
+        testIDPrefix="day-log-cervical"
+      />
+    </View>
+  ) : null;
+
+  const lhTestSection = viewData.visibility.showLHTest ? (
+    <View
+      onLayout={handleSectionLayout("lhTest")}
+      style={resolveSectionStyle("lhTest", styles.section)}
+    >
+      <Text style={styles.sectionLabel}>{viewData.labels.lhTest}</Text>
+      <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
+      <ChoiceGroup
+        compact
+        onSelect={(value) => onPatch({ lhTest: value })}
+        options={viewData.options.lhTest}
+        selectedValue={record.lhTest}
+        testIDPrefix="day-log-lh"
+      />
+    </View>
+  ) : null;
+
+  const pregnancyTestSection = (
+    <View
+      onLayout={handleSectionLayout("pregnancyTest")}
+      style={resolveSectionStyle("pregnancyTest", styles.section)}
+    >
+      <Text style={styles.sectionLabel}>
+        {viewData.labels.pregnancyTest}
+      </Text>
+      <Text style={styles.sectionHint}>
+        {viewData.labels.pregnancyTestHint}
+      </Text>
+      <ChoiceGroup
+        compact
+        onSelect={(value) => onPatch({ pregnancyTest: value })}
+        options={viewData.options.pregnancyTest}
+        selectedValue={record.pregnancyTest}
+        testIDPrefix="day-log-pregnancy"
+      />
+    </View>
+  );
+
   return (
     <FeatureCard
       title={viewData.title}
@@ -260,157 +339,17 @@ export function DayLogEditorCard({
 
       {showsCalendarOrder ? (
         <>
-          {viewData.visibility.showBBT ? (
-            <View
-              onLayout={handleSectionLayout("bbt")}
-              style={resolveSectionStyle("bbt", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
-              <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
-              <AppTextInput
-                inputMode="decimal"
-                maxLength={6}
-                onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
-                onChangeText={handleBbtChange}
-                placeholder="0.00"
-                style={styles.input}
-                testID="day-log-bbt-input"
-                value={bbtText}
-              />
-            </View>
-          ) : null}
-
-          {viewData.visibility.showCervicalMucus ? (
-            <View
-              onLayout={handleSectionLayout("cervicalMucus")}
-              style={resolveSectionStyle("cervicalMucus", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.cervicalMucus}</Text>
-              <Text style={styles.sectionHint}>
-                {viewData.labels.cervicalMucusExplainer}
-              </Text>
-              <ChoiceGroup
-                compact
-                onSelect={(value) => onPatch({ cervicalMucus: value })}
-                options={viewData.options.cervicalMucus}
-                selectedValue={record.cervicalMucus}
-                testIDPrefix="day-log-cervical"
-              />
-            </View>
-          ) : null}
-
-          {viewData.visibility.showLHTest ? (
-            <View
-              onLayout={handleSectionLayout("lhTest")}
-              style={resolveSectionStyle("lhTest", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.lhTest}</Text>
-              <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
-              <ChoiceGroup
-                compact
-                onSelect={(value) => onPatch({ lhTest: value })}
-                options={viewData.options.lhTest}
-                selectedValue={record.lhTest}
-                testIDPrefix="day-log-lh"
-              />
-            </View>
-          ) : null}
-
-          <View
-            onLayout={handleSectionLayout("pregnancyTest")}
-            style={resolveSectionStyle("pregnancyTest", styles.section)}
-          >
-            <Text style={styles.sectionLabel}>
-              {viewData.labels.pregnancyTest}
-            </Text>
-            <Text style={styles.sectionHint}>
-              {viewData.labels.pregnancyTestHint}
-            </Text>
-            <ChoiceGroup
-              compact
-              onSelect={(value) => onPatch({ pregnancyTest: value })}
-              options={viewData.options.pregnancyTest}
-              selectedValue={record.pregnancyTest}
-              testIDPrefix="day-log-pregnancy"
-            />
-          </View>
+          {bbtSection}
+          {cervicalMucusSection}
+          {lhTestSection}
+          {pregnancyTestSection}
         </>
       ) : (
         <>
-          {viewData.visibility.showCervicalMucus ? (
-            <View
-              onLayout={handleSectionLayout("cervicalMucus")}
-              style={resolveSectionStyle("cervicalMucus", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.cervicalMucus}</Text>
-              <Text style={styles.sectionHint}>
-                {viewData.labels.cervicalMucusExplainer}
-              </Text>
-              <ChoiceGroup
-                compact
-                onSelect={(value) => onPatch({ cervicalMucus: value })}
-                options={viewData.options.cervicalMucus}
-                selectedValue={record.cervicalMucus}
-                testIDPrefix="day-log-cervical"
-              />
-            </View>
-          ) : null}
-
-          {viewData.visibility.showLHTest ? (
-            <View
-              onLayout={handleSectionLayout("lhTest")}
-              style={resolveSectionStyle("lhTest", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.lhTest}</Text>
-              <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
-              <ChoiceGroup
-                compact
-                onSelect={(value) => onPatch({ lhTest: value })}
-                options={viewData.options.lhTest}
-                selectedValue={record.lhTest}
-                testIDPrefix="day-log-lh"
-              />
-            </View>
-          ) : null}
-
-          <View
-            onLayout={handleSectionLayout("pregnancyTest")}
-            style={resolveSectionStyle("pregnancyTest", styles.section)}
-          >
-            <Text style={styles.sectionLabel}>
-              {viewData.labels.pregnancyTest}
-            </Text>
-            <Text style={styles.sectionHint}>
-              {viewData.labels.pregnancyTestHint}
-            </Text>
-            <ChoiceGroup
-              compact
-              onSelect={(value) => onPatch({ pregnancyTest: value })}
-              options={viewData.options.pregnancyTest}
-              selectedValue={record.pregnancyTest}
-              testIDPrefix="day-log-pregnancy"
-            />
-          </View>
-
-          {viewData.visibility.showBBT ? (
-            <View
-              onLayout={handleSectionLayout("bbt")}
-              style={resolveSectionStyle("bbt", styles.section)}
-            >
-              <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
-              <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
-              <AppTextInput
-                inputMode="decimal"
-                maxLength={6}
-                onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
-                onChangeText={handleBbtChange}
-                placeholder="0.00"
-                style={styles.input}
-                testID="day-log-bbt-input"
-                value={bbtText}
-              />
-            </View>
-          ) : null}
+          {cervicalMucusSection}
+          {lhTestSection}
+          {pregnancyTestSection}
+          {bbtSection}
         </>
       )}
 

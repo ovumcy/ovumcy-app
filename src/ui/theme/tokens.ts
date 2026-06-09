@@ -60,6 +60,11 @@ export const lightColors = {
   calendarDataMarkerBg: "rgba(186, 131, 80, 0.92)",
   calendarOvulationMarkerBg: "#f4d58d",
   calendarOvulationDashBg: "rgba(149, 149, 149, 0.88)",
+  dangerCardBg: "#fff7f7",
+  dangerCardBorder: "rgba(220, 38, 38, 0.22)",
+  dangerTitle: "#b91c1c",
+  dangerPanelBg: "rgba(255, 244, 244, 0.92)",
+  dangerPanelBorder: "rgba(185, 28, 28, 0.12)",
 };
 
 export const darkColors = {
@@ -124,6 +129,11 @@ export const darkColors = {
   calendarDataMarkerBg: "rgba(240, 181, 127, 0.92)",
   calendarOvulationMarkerBg: "#efcb8b",
   calendarOvulationDashBg: "rgba(209, 209, 209, 0.88)",
+  dangerCardBg: "rgba(72, 27, 35, 0.9)",
+  dangerCardBorder: "rgba(248, 113, 113, 0.28)",
+  dangerTitle: "#fca5a5",
+  dangerPanelBg: "rgba(49, 23, 31, 0.92)",
+  dangerPanelBorder: "rgba(248, 113, 113, 0.18)",
 };
 
 export type AppThemeColors = typeof lightColors;
