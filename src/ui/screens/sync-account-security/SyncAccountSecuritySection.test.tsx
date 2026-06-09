@@ -127,6 +127,40 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
+  it("shows the success banner once TOTP enrollment completes", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpMode="enable"
+          totpStage="completed"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-totp-success-banner"),
+    ).toBeTruthy();
+    expect(screen.getByText(totpCopy.enroll.successMessage)).toBeTruthy();
+  });
+
+  it("shows the success banner once TOTP is disabled", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpMode="disable"
+          totpStage="completed"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-totp-success-banner"),
+    ).toBeTruthy();
+    expect(screen.getByText(totpCopy.disable.successMessage)).toBeTruthy();
+  });
+
   it("transitions the forgot-password section to the new-password stage", () => {
     render(
       <AppPreferencesTestProvider>
