@@ -54,13 +54,5 @@ coverage/
 
 app-example
 
-# local governance and agent context
-AGENTS.md
-AI_CONTEXT.md
-.agents/
-.agents/context/ownership.md
-.codex/
-.claude/
-
 # Visual regression diagnostic screenshots (regenerated each run)
 e2e/screenshots/
