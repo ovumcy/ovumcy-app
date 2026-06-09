@@ -162,7 +162,7 @@ Deliberate deferral, not an oversight. The reasons are operational, not technica
 - **Ovumcy Cloud SaaS pinning** requires a release-coordination process: every cert rotation must be preceded by an app release that adds the next pin alongside the old, then followed by a release that drops the old pin after the rotation lands. With Let's Encrypt's 90-day default rotation cadence, the first missed coordination window bricks every install that has not updated. Public-alpha solo-maintainer operations cannot guarantee this dance reliably; standard CA + short-lived session tokens is the safer posture at this stage.
 - **Community self-hosted pinning** is operationally cheap on the project side (each owner manages their own server's pin through the app UI), but still needs the setup-form input field, the format validation, the mismatch warning screen, and localized copy across five locales. Not blocking and not urgent — the threat model for self-hosted is dominated by the owner's own infrastructure choices, which they already control.
 
-When to revisit: post-alpha, once cert rotation can be tied to a documented release runbook with an owner. Background context and resumption checklist live in `docs/f7-status.md`.
+When to revisit: post-alpha, once cert rotation can be tied to a documented release runbook with an owner.
 
 ## Pending Partner Invite Buffer
 
@@ -174,4 +174,4 @@ Recovery-phrase, cycle CSV/JSON, and doctor-PDF exports write a temporary file u
 
 ## Confirm-Dialog as Destructive Gate
 
-The in-app `ConfirmDialogProvider` is the only UI barrier before destructive privacy actions (delete day-log, revoke partner grant, disconnect sync, restore from cloud, regenerate sync keys, discard unsaved drafts). When a confirmation is already pending, a concurrent `requestConfirmation` must NOT auto-resolve the first to `false`: the unsaved-changes callers treat `false` as "discard", and auto-resolution on race silently destroys user state. The bridge keeps the second caller's promise pending until the visible dialog resolves.
+The in-app `ConfirmDialogProvider` is the only UI barrier before destructive privacy actions (delete day-log, revoke partner grant, disconnect sync, restore from cloud, regenerate sync keys, discard unsaved drafts). When a confirmation is already pending, a concurrent `requestConfirmation` must NOT auto-resolve the first to `false`: the unsaved-changes callers treat `false` as "discard", and auto-resolution on race silently destroys user state. Instead the second concurrent caller is dropped: its promise never resolves and no second dialog is queued, leaving the first (visible) dialog to resolve normally.

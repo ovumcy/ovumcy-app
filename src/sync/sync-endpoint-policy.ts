@@ -140,8 +140,8 @@ function resolveManagedPinSet(): readonly string[] | null {
   // managed.ovumcy.cloud must be filled in by the ovumcy team before the
   // managed-cloud enforcement layer goes live. Returning null here means
   // managed endpoints currently fall back to standard CA chain trust until
-  // the constants are populated. See docs/f7-status.md for the rotation
-  // runbook this depends on.
+  // the constants are populated. See the TLS Pinning Posture section in
+  // docs/sync-trust-model.md for why this is deferred.
   return null;
 }
 
