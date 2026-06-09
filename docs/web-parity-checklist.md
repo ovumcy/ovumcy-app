@@ -11,14 +11,17 @@ before and after UI changes.
 
 ## Canonical Sources
 
+All paths are relative to the `ovumcy-web` repository root (the sibling repo
+that owns the canonical web UX).
+
 - Shared visual tokens and component geometry:
-  - `D:\ovumcy\ovumcy-web\web\src\css\input.css`
+  - `ovumcy-web/web/src/css/input.css`
 - Core web templates:
-  - `D:\ovumcy\ovumcy-web\internal\templates\onboarding.html`
-  - `D:\ovumcy\ovumcy-web\internal\templates\dashboard.html`
-  - `D:\ovumcy\ovumcy-web\internal\templates\calendar.html`
-  - `D:\ovumcy\ovumcy-web\internal\templates\stats.html`
-  - `D:\ovumcy\ovumcy-web\internal\templates\settings.html`
+  - `ovumcy-web/internal/templates/onboarding.html`
+  - `ovumcy-web/internal/templates/dashboard.html`
+  - `ovumcy-web/internal/templates/calendar.html`
+  - `ovumcy-web/internal/templates/stats.html`
+  - `ovumcy-web/internal/templates/settings.html`
 
 ## Shared Visual Contract
 
@@ -345,5 +348,5 @@ The following surfaces are intentionally richer in the app than on the canonical
 - Pregnancy test day-log field with automatic prediction pause across dashboard, calendar, and stats.
 - Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, settings reminders, settings PDF export, and the backup-sync partner area.
 - Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
-- Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation dashed border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
+- Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation solid gray border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
 - Five-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish).

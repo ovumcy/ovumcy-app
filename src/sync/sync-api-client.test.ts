@@ -1,6 +1,29 @@
 import { createSyncAPIClient } from "./sync-api-client";
 
 describe("sync-api-client", () => {
+  it('sets redirect: "error" on every request so a 3xx cannot leak the bearer session token', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+
+    const client = createSyncAPIClient(
+      "https://sync.ovumcy.cloud",
+      typedFetchMock,
+    );
+    await client.login({ login: "alice@example.com", password: "pw" });
+    await client.logout("session-1");
+    await client.getCapabilities("session-1");
+
+    expect(fetchMock).toHaveBeenCalled();
+    for (const call of fetchMock.mock.calls) {
+      expect((call[1] as RequestInit).redirect).toBe("error");
+    }
+  });
+
   it("maps auth and capability responses from the community sync server contract", async () => {
     const fetchMock = jest
       .fn()

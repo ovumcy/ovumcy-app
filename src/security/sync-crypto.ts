@@ -18,6 +18,7 @@ const DEVICE_ID_BYTE_LENGTH = 16;
 const DEVICE_SECRET_BYTE_LENGTH = 32;
 const MASTER_KEY_BYTE_LENGTH = 32;
 const RECOVERY_ENTROPY_BYTE_LENGTH = 16;
+const RECOVERY_MNEMONIC_WORD_COUNT = 12;
 const XCHACHA_NONCE_BYTE_LENGTH = 24;
 
 const RECOVERY_WRAP_INFO = utf8ToBytes("ovumcy-sync-wrap");
@@ -104,7 +105,10 @@ export function wrapMasterKeyWithRecoveryPhrase(
   const wrappingKey = deriveRecoveryWrappingKey(normalizedPhrase);
   const wrapNonce = getRandomBytes(XCHACHA_NONCE_BYTE_LENGTH);
   const phraseFingerprintHex = buildRecoveryPhraseFingerprint(normalizedPhrase);
-  const aad = buildRecoveryWrapAad(phraseFingerprintHex, 12);
+  const aad = buildRecoveryWrapAad(
+    phraseFingerprintHex,
+    RECOVERY_MNEMONIC_WORD_COUNT,
+  );
   const wrappedMasterKey = xchacha20poly1305(wrappingKey, wrapNonce, aad).encrypt(
     hexToBytes(masterKeyHex),
   );
@@ -112,7 +116,7 @@ export function wrapMasterKeyWithRecoveryPhrase(
   return {
     algorithm: "xchacha20poly1305",
     kdf: "bip39_seed_hkdf_sha256",
-    mnemonicWordCount: 12,
+    mnemonicWordCount: RECOVERY_MNEMONIC_WORD_COUNT,
     wrapNonceHex: bytesToHex(wrapNonce),
     wrappedMasterKeyHex: bytesToHex(wrappedMasterKey),
     phraseFingerprintHex,
@@ -210,7 +214,7 @@ function validateWrappedSyncKeyMetadata(
   if (
     wrappedKey.algorithm !== "xchacha20poly1305" ||
     wrappedKey.kdf !== "bip39_seed_hkdf_sha256" ||
-    wrappedKey.mnemonicWordCount !== 12
+    wrappedKey.mnemonicWordCount !== RECOVERY_MNEMONIC_WORD_COUNT
   ) {
     throw new Error("invalid_wrapped_key_metadata");
   }

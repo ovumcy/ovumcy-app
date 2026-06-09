@@ -442,7 +442,7 @@ const catalogs = {
   fr: partnerCopyFr,
   ru: partnerCopyRu,
   es: partnerCopyEs,
-} as const;
+} as const satisfies Record<InterfaceLanguage, unknown>;
 
 export function getPartnerCopy(locale?: string) {
   return catalogs[resolveCopyLanguage(locale) as InterfaceLanguage] ?? partnerCopyEn;

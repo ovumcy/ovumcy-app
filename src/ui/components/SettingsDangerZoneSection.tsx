@@ -86,12 +86,8 @@ export function SettingsDangerZoneSection({
 const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     card: {
-      backgroundColor:
-        colors.background === "#fff9f0" ? "#fff7f7" : "rgba(72, 27, 35, 0.9)",
-      borderColor:
-        colors.background === "#fff9f0"
-          ? "rgba(220, 38, 38, 0.22)"
-          : "rgba(248, 113, 113, 0.28)",
+      backgroundColor: colors.dangerCardBg,
+      borderColor: colors.dangerCardBorder,
       borderRadius: 16,
       borderWidth: 1,
       gap: spacing.md,
@@ -101,7 +97,7 @@ const createStyles = (colors: AppThemeColors) =>
       gap: 4,
     },
     title: {
-      color: colors.background === "#fff9f0" ? "#b91c1c" : "#fca5a5",
+      color: colors.dangerTitle,
       fontSize: 17,
       fontWeight: "700",
     },
@@ -111,14 +107,8 @@ const createStyles = (colors: AppThemeColors) =>
       lineHeight: 20,
     },
     panel: {
-      backgroundColor:
-        colors.background === "#fff9f0"
-          ? "rgba(255, 244, 244, 0.92)"
-          : "rgba(49, 23, 31, 0.92)",
-      borderColor:
-        colors.background === "#fff9f0"
-          ? "rgba(185, 28, 28, 0.12)"
-          : "rgba(248, 113, 113, 0.18)",
+      backgroundColor: colors.dangerPanelBg,
+      borderColor: colors.dangerPanelBorder,
       borderRadius: 14,
       borderWidth: 1,
       gap: spacing.sm,

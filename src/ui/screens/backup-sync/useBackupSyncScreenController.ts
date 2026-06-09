@@ -753,6 +753,8 @@ export function useBackupSyncScreenController({
           syncSecretStore,
           syncReadyState,
         );
+        clearManagedPartnerInviteToken();
+        setPendingPartnerInviteToken("");
         setState(clearedState);
         await reloadPartnerAccess(clearedState);
       }
@@ -887,6 +889,23 @@ export function useBackupSyncScreenController({
     }
 
     resetFeedbackMessages();
+    const challengeResult = await requestSensitiveActionChallenge(
+      viewData.account.disconnectDeviceAuthPrompt,
+    );
+    if (!challengeResult.ok) {
+      if (challengeResult.reason === "unavailable") {
+        setErrorState({
+          code: "deviceAuthUnavailable",
+          scope: "sync",
+        });
+      } else if (challengeResult.reason === "failed") {
+        setErrorState({
+          code: "deviceAuthFailed",
+          scope: "sync",
+        });
+      }
+      return;
+    }
     const confirmed = await openConfirmation(
       viewData.account.disconnectPrompt,
       viewData.account.disconnectLabel,

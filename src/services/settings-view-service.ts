@@ -250,6 +250,7 @@ export type SettingsViewData = {
     restoreAccept: string;
     restoreDeviceAuthPrompt: string;
     disconnectPrompt: string;
+    disconnectDeviceAuthPrompt: string;
     recoveryTitle: string;
     recoveryHint: string;
     recoveryNotice: string;
@@ -715,6 +716,7 @@ export function buildSettingsViewData(
       restoreAccept: settingsCopy.account.restoreAccept,
       restoreDeviceAuthPrompt: settingsCopy.account.restoreDeviceAuthPrompt,
       disconnectPrompt: settingsCopy.account.disconnectPrompt,
+      disconnectDeviceAuthPrompt: settingsCopy.account.disconnectDeviceAuthPrompt,
       recoveryTitle: settingsCopy.account.recoveryTitle,
       recoveryHint: settingsCopy.account.recoveryHint,
       recoveryNotice: settingsCopy.account.recoveryNotice,

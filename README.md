@@ -164,6 +164,7 @@ What this repository still does **not** claim yet:
 - Recovery phrases are shown only during explicit local setup or rekey flows and are exported through an explicit local artifact flow instead of clipboard copy.
 - Self-hosted and managed sync transports are designed so health payloads are encrypted before upload. Sync servers should store ciphertext, device metadata, and auth/session metadata, not decrypted health content.
 - Managed cloud auth and billing are a separate plane from sync transport. The sync endpoint should not become the place where email/password billing identity is handled.
+- Cloud accounts (managed and self-hosted) support optional TOTP two-factor authentication for login; enrollment, recovery, and the login challenge are described in [docs/two-factor.md](docs/two-factor.md).
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
 - Auth tokens, recovery secrets, and future sync credentials must not be stored in plain AsyncStorage or other broadly readable key/value stores.
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
@@ -195,6 +196,8 @@ Local Sync Setup -> Account/Auth Transport -> Self-hosted or managed sync servic
 - `src/ui/`: shared design tokens and visual primitives.
 - `src/ui/screens/`: screen-level presentation and feature-local screen sections.
 - `src/sync/`: optional sync contracts, endpoint policy, and setup orchestration.
+- `src/security/`: device, secure-storage, and crypto policy for local-data, sync, and partner-share envelopes.
+- `src/i18n/`: localized copy catalogs and the language runtime (en, ru, de, fr, es).
 
 The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-trust-model.md).
 
