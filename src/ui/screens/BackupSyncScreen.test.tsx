@@ -1176,6 +1176,84 @@ describe("BackupSyncScreen", () => {
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
+  it("blocks sync disconnect until the device security challenge passes", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: 123,
+        lastSyncedAt: "2026-03-20T08:10:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: "session-1",
+      managedAuthSessionToken: null,
+    });
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          mode: "self_hosted",
+          sync_enabled: true,
+          premium_active: false,
+          recovery_supported: true,
+          push_supported: false,
+          portal_supported: false,
+          advanced_cloud_insights: false,
+          max_devices: 5,
+          max_blob_bytes: 1024,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    ) as typeof fetch;
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockRequestSensitiveActionChallenge.mockResolvedValue({
+      ok: false,
+      reason: "unavailable",
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    fireEvent.press(screen.getByTestId("settings-sync-disconnect-button"));
+
+    await waitFor(() =>
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
+    );
+    // Device-auth runs first: a failed challenge stops the flow before the
+    // confirmation dialog and before the sync session is torn down.
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+  });
+
   it("discards unsaved sync draft changes before leaving the screen", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
