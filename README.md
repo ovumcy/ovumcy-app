@@ -1,6 +1,7 @@
 [![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml)
 [![Security](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml)
 [![CodeQL](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml)
+[![Tested](https://img.shields.io/badge/tested-property%20%C2%B7%20e2e-2ea44f)](https://github.com/ovumcy/ovumcy-app#testing-and-quality)
 [![Status](https://img.shields.io/badge/Status-alpha-c7756d)](https://github.com/ovumcy/ovumcy-app)
 [![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020?logo=expo)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
@@ -277,6 +278,8 @@ Current automated baseline:
 - `lint`
 - `typecheck`
 - `jest` screen, service, and storage tests
+- `fast-check` property tests for the payload and partner-share crypto (`src/security/*.property.test.ts`)
+- live sync E2E round-trips (`src/sync/*.live.test.ts`) against the managed and self-hosted servers
 - `expo-doctor`
 - Playwright web smoke for onboarding and app shell
 - production dependency audit
