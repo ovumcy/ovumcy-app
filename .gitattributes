@@ -1,0 +1,3 @@
+# Normalize line endings: store LF in the repo and check out LF everywhere,
+# so editors/IDEs on Windows stop producing CRLF-only diffs.
+* text=auto eol=lf
