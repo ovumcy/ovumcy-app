@@ -50,6 +50,7 @@ export type ManagedCloudSessionView = {
   email: string;
   sessionExpiresAt: string;
   entitlement: ManagedCloudEntitlement;
+  twoFactorEnabled: boolean;
 };
 
 export type ManagedCloudPremiumFeatures = {
@@ -425,6 +426,9 @@ type RawManagedCloudSessionView = {
   email: string;
   session_expires_at: string;
   sync_entitlement: RawManagedCloudEntitlement;
+  // Optional so an older server that does not yet send it still validates;
+  // a missing value maps to `false`.
+  totp_enabled?: boolean;
 };
 
 type RawManagedCloudActiveSubscription = {
@@ -1257,7 +1261,9 @@ function isRawManagedCloudSessionView(
     typeof value.account_id === "string" &&
     typeof value.email === "string" &&
     typeof value.session_expires_at === "string" &&
-    isRawManagedCloudEntitlement(value.sync_entitlement)
+    isRawManagedCloudEntitlement(value.sync_entitlement) &&
+    (value.totp_enabled === undefined ||
+      typeof value.totp_enabled === "boolean")
   );
 }
 
@@ -1500,6 +1506,7 @@ function mapSessionView(raw: RawManagedCloudSessionView): ManagedCloudSessionVie
     email: raw.email,
     sessionExpiresAt: raw.session_expires_at,
     entitlement: mapEntitlement(raw.sync_entitlement),
+    twoFactorEnabled: raw.totp_enabled ?? false,
   };
 }
 

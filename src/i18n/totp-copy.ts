@@ -6,6 +6,8 @@ export type TOTPCopy = {
     hint: string;
     enableTab: string;
     disableTab: string;
+    statusEnabled: string;
+    statusDisabled: string;
   };
 
   enroll: {
@@ -62,6 +64,8 @@ const totpCopyEn: TOTPCopy = {
     hint: "Add a 6-digit code from an authenticator app on top of your password.",
     enableTab: "Enable",
     disableTab: "Disable",
+    statusEnabled: "Two-factor authentication is on.",
+    statusDisabled: "Two-factor authentication is off.",
   },
   enroll: {
     currentPasswordLabel: "Current password",
@@ -116,6 +120,8 @@ const totpCopyDe: TOTPCopy = {
     hint: "Ergänze dein Passwort um einen 6-stelligen Code aus einer Authenticator-App.",
     enableTab: "Aktivieren",
     disableTab: "Deaktivieren",
+    statusEnabled: "Die Zwei-Faktor-Authentifizierung ist aktiviert.",
+    statusDisabled: "Die Zwei-Faktor-Authentifizierung ist deaktiviert.",
   },
   enroll: {
     currentPasswordLabel: "Aktuelles Passwort",
@@ -174,6 +180,8 @@ const totpCopyFr: TOTPCopy = {
     hint: "Ajoute un code à 6 chiffres depuis une appli d'authentification en plus de ton mot de passe.",
     enableTab: "Activer",
     disableTab: "Désactiver",
+    statusEnabled: "L'authentification à deux facteurs est activée.",
+    statusDisabled: "L'authentification à deux facteurs est désactivée.",
   },
   enroll: {
     currentPasswordLabel: "Mot de passe actuel",
@@ -233,6 +241,8 @@ const totpCopyRu: TOTPCopy = {
     hint: "Дополни пароль шестизначным кодом из приложения-аутентификатора.",
     enableTab: "Включить",
     disableTab: "Выключить",
+    statusEnabled: "Двухфакторная аутентификация включена.",
+    statusDisabled: "Двухфакторная аутентификация выключена.",
   },
   enroll: {
     currentPasswordLabel: "Текущий пароль",
@@ -289,6 +299,8 @@ const totpCopyEs: TOTPCopy = {
     hint: "Añade un código de 6 dígitos de una app de autenticación además de tu contraseña.",
     enableTab: "Activar",
     disableTab: "Desactivar",
+    statusEnabled: "La autenticación de dos factores está activada.",
+    statusDisabled: "La autenticación de dos factores está desactivada.",
   },
   enroll: {
     currentPasswordLabel: "Contraseña actual",

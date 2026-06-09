@@ -715,4 +715,37 @@ describe("sync-api-client", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("getSession reports the current two-factor state", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ account_id: "a1", login: "u", totp_enabled: true }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        // Legacy server that omits the field: defaults to disabled.
+        new Response(JSON.stringify({ account_id: "a1", login: "u" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await expect(client.getSession("session-1")).resolves.toEqual({
+      ok: true,
+      session: { twoFactorEnabled: true },
+    });
+    await expect(client.getSession("session-1")).resolves.toEqual({
+      ok: true,
+      session: { twoFactorEnabled: false },
+    });
+    expect(typedFetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/auth/session",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
 });
