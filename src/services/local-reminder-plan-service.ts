@@ -22,6 +22,10 @@ export type LocalReminderPlan =
       kind: LocalReminderKind;
       title: string;
       body: string;
+      // Resolved IANA time zone the reminder's local day is anchored to. Both
+      // the device push trigger and the managed email schedule must read this
+      // single value so the two channels never resolve to different local days.
+      timeZone?: string;
       trigger: {
         type: "daily";
         hour: number;
@@ -32,6 +36,7 @@ export type LocalReminderPlan =
       kind: LocalReminderKind;
       title: string;
       body: string;
+      timeZone?: string;
       trigger: {
         type: "once";
         at: Date;
@@ -43,7 +48,12 @@ export function buildLocalReminderPlans(
   records: readonly DayLogRecord[],
   now: Date,
   locale = "en",
+  timeZone?: string,
 ): LocalReminderPlan[] {
+  // One resolved zone, stamped on every plan and used to turn calendar days
+  // into concrete instants. Defaults to the device zone so the non-managed
+  // (push-only) path keeps its previous device-local behavior unchanged.
+  const resolvedTimeZone = resolveReminderTimeZone(timeZone);
   const reminderTime = normalizeReminderTime(
     profile.reminderTime ?? DEFAULT_REMINDER_TIME,
   );
@@ -66,6 +76,7 @@ export function buildLocalReminderPlans(
       kind: "daily_log",
       title: copy.notificationTitle,
       body: copy.dailyLogBody,
+      timeZone: resolvedTimeZone,
       trigger: {
         type: "daily",
         hour,
@@ -95,12 +106,20 @@ export function buildLocalReminderPlans(
   if (profile.upcomingPeriodReminderEnabled === true) {
     const targetDate =
       projection.nextPeriodWindowStartDate ?? projection.nextPeriodDate;
-    const triggerAt = resolveUpcomingTriggerDate(targetDate, 3, now, hour, minute);
+    const triggerAt = resolveUpcomingTriggerDate(
+      targetDate,
+      3,
+      now,
+      hour,
+      minute,
+      resolvedTimeZone,
+    );
     if (triggerAt) {
       plans.push({
         kind: "upcoming_period",
         title: copy.notificationTitle,
         body: copy.cycleBody,
+        timeZone: resolvedTimeZone,
         trigger: {
           type: "once",
           at: triggerAt,
@@ -124,12 +143,14 @@ export function buildLocalReminderPlans(
       now,
       hour,
       minute,
+      resolvedTimeZone,
     );
     if (window.calculable && triggerAt) {
       plans.push({
         kind: "fertile_window",
         title: copy.notificationTitle,
         body: copy.cycleBody,
+        timeZone: resolvedTimeZone,
         trigger: {
           type: "once",
           at: triggerAt,
@@ -147,6 +168,7 @@ function resolveUpcomingTriggerDate(
   now: Date,
   hour: number,
   minute: number,
+  timeZone: string,
 ): Date | null {
   if (!targetDateValue) {
     return null;
@@ -157,26 +179,117 @@ function resolveUpcomingTriggerDate(
     return null;
   }
 
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // "Today" is the calendar day in the reminder's resolved zone — not the
+  // device zone — so the lead-day floor matches the day the email channel
+  // delivers on when the two zones differ.
+  const today = zonedCalendarDay(now, timeZone);
   const candidateDate = addDays(targetDate, -leadDays);
   const baseDate = candidateDate < today ? today : candidateDate;
-  let triggerAt = atLocalTime(baseDate, hour, minute);
+  let triggerAt = atZonedTime(baseDate, hour, minute, timeZone);
   if (triggerAt <= now) {
-    triggerAt = atLocalTime(addDays(baseDate, 1), hour, minute);
+    triggerAt = atZonedTime(addDays(baseDate, 1), hour, minute, timeZone);
   }
 
-  const lastAllowed = atLocalTime(targetDate, 23, 59);
+  const lastAllowed = atZonedTime(targetDate, 23, 59, timeZone);
   return triggerAt <= lastAllowed ? triggerAt : null;
 }
 
-function atLocalTime(value: Date, hour: number, minute: number): Date {
-  return new Date(
+// Resolve the requested zone, falling back to the device zone and finally UTC.
+// Kept identical in spirit to the email service's resolver so a plan built
+// without an explicit zone lands on the same value the email path would pick.
+export function resolveReminderTimeZone(timeZone: string | undefined): string {
+  const normalized = String(timeZone ?? "").trim();
+  if (normalized.length > 0) {
+    return normalized;
+  }
+
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return resolved?.trim() ? resolved : "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+// The calendar day (as a device-local Date carrying y/m/d) that `instant`
+// falls on when viewed in `timeZone`.
+function zonedCalendarDay(instant: Date, timeZone: string): Date {
+  const parts = zonedParts(instant, timeZone);
+  return new Date(parts.year, parts.month - 1, parts.day);
+}
+
+// Turn a (calendar day, wall-clock hour:minute) in `timeZone` into the UTC
+// instant it denotes. When `timeZone` equals the device zone this returns the
+// same instant as `new Date(y, m, d, hour, minute)`, preserving prior behavior.
+function atZonedTime(
+  value: Date,
+  hour: number,
+  minute: number,
+  timeZone: string,
+): Date {
+  return zonedWallTimeToUTC(
+    timeZone,
     value.getFullYear(),
-    value.getMonth(),
+    value.getMonth() + 1,
     value.getDate(),
     hour,
     minute,
-    0,
+  );
+}
+
+export function zonedWallTimeToUTC(
+  timeZone: string,
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+): Date {
+  const approximate = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+  const zoned = zonedParts(approximate, timeZone);
+  const zonedAsUTC = Date.UTC(
+    zoned.year,
+    zoned.month - 1,
+    zoned.day,
+    zoned.hour,
+    zoned.minute,
+    zoned.second,
     0,
   );
+  const targetAsUTC = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  return new Date(approximate.getTime() - (zonedAsUTC - targetAsUTC));
+}
+
+function zonedParts(
+  instant: Date,
+  timeZone: string,
+): {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const pick = (type: string, fallback: number) =>
+    Number(parts.find((part) => part.type === type)?.value ?? fallback);
+  return {
+    year: pick("year", 0),
+    month: pick("month", 1),
+    day: pick("day", 1),
+    // Intl renders midnight as "24" in some zones/runtimes; normalize to 0.
+    hour: pick("hour", 0) % 24,
+    minute: pick("minute", 0),
+    second: pick("second", 0),
+  };
 }
