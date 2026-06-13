@@ -224,17 +224,21 @@ export function buildCurrentCycleProjection(
   );
 
   if (profile.unpredictableCycle) {
+    // Unpredictable (facts-only) mode mirrors web DashboardPredictionDisabled:
+    // no projected next-period date or window is surfaced — only the recorded
+    // current cycle day. Forward-roll must not resurrect a next-period date here.
     return {
       cycleAnchorDate,
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale: false,
+      cycleDayLooksLong: false,
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
-      nextPeriodDate,
-      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
-      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
+      nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
       ovulationDate: null,
       predictionCycleLength,
     };
@@ -275,36 +279,64 @@ export function buildCurrentCycleProjection(
     };
   }
 
-  const predictedNextPeriod = parseLocalDate(nextPeriodDate);
-  if (predictedNextPeriod && today > predictedNextPeriod) {
-    return {
-      cycleAnchorDate,
-      currentCycleDay: null,
-      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
-      isPredictionStale: true,
-      isPregnancyPaused: false,
-      pregnancyTestDate: null,
-      lutealPhase,
-      nextPeriodDate: null,
-      nextPeriodWindowStartDate: null,
-      nextPeriodWindowEndDate: null,
-      ovulationDate: null,
-      predictionCycleLength,
-    };
-  }
+  // Forward-roll (web ProjectCycleStart + DashboardUpcomingPredictions): once
+  // today passes the predicted next-period start we do NOT blank predictions.
+  // We roll the anchor forward by whole cycle lengths so
+  // rolledStart <= today < rolledStart + cycleLength, then recompute the
+  // next-period date, ovulation/fertile window, and current cycle day from the
+  // rolled anchor. The original logged anchor (cycleAnchorDate) is preserved so
+  // history-bounded consumers (stats, calendar baseline period, reminders) keep
+  // anchoring on the real logged cycle, exactly as web keeps stats.LastPeriodStart.
+  const rawCycleDay = diffCalendarDays(cycleAnchor, today) + 1;
+  const referenceLength = predictionCycleLength;
+  const isPredictionStale = dashboardCycleDataLooksStale(
+    rawCycleDay,
+    referenceLength,
+  );
+  const cycleDayLooksLong = dashboardCycleDayLooksLong(rawCycleDay, referenceLength);
+
+  const rolledStart = projectCycleStartForward(
+    cycleAnchor,
+    predictionCycleLength,
+    today,
+  );
+  const rolledStartValue = formatLocalDate(rolledStart);
+  const rolledCycleDay = diffCalendarDays(rolledStart, today) + 1;
+  const rolledNextPeriodDate = formatLocalDate(
+    addDays(rolledStart, predictionCycleLength),
+  );
+  const rolledWindow = predictCycleWindow(
+    rolledStartValue,
+    predictionCycleLength,
+    lutealPhase,
+  );
+  const rolledNextPeriodWindow = resolveNextPeriodWindow(
+    rolledStart,
+    history,
+    profile,
+    predictionCycleLength,
+  );
 
   return {
     cycleAnchorDate,
-    currentCycleDay,
-    currentPhase: detectCurrentPhase(records, todayValue, today, ovulationDate),
-    isPredictionStale: false,
+    currentCycleDay: rolledCycleDay,
+    currentPhase: detectCurrentPhase(
+      records,
+      todayValue,
+      today,
+      rolledWindow.ovulationDate
+        ? (parseLocalDate(rolledWindow.ovulationDate) ?? ovulationDate)
+        : ovulationDate,
+    ),
+    isPredictionStale,
+    cycleDayLooksLong,
     isPregnancyPaused: false,
     pregnancyTestDate: null,
     lutealPhase,
-    nextPeriodDate,
-    nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
-    nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
-    ovulationDate: predictedWindow.ovulationDate,
+    nextPeriodDate: rolledNextPeriodDate,
+    nextPeriodWindowStartDate: rolledNextPeriodWindow?.startDate ?? null,
+    nextPeriodWindowEndDate: rolledNextPeriodWindow?.endDate ?? null,
+    ovulationDate: rolledWindow.ovulationDate,
     predictionCycleLength,
   };
 }
@@ -364,6 +396,62 @@ export function inferUserLutealPhase(
   const average =
     lutealLengths.reduce((sum, value) => sum + value, 0) / lutealLengths.length;
   return Math.round(average);
+}
+
+/**
+ * App analog of web's services.ProjectCycleStart (cycle_baseline.go:165-178).
+ * Rolls the logged anchor forward by whole cycle lengths so that
+ * `result <= today < result + cycleLength`. When today is on/before the anchor
+ * the anchor is returned unchanged, so the regular (non-stale) path degenerates
+ * to the original anchor and predictions are unaffected.
+ */
+function projectCycleStartForward(
+  cycleAnchor: Date,
+  cycleLength: number,
+  today: Date,
+): Date {
+  if (cycleLength <= 0) {
+    return cycleAnchor;
+  }
+  const elapsedDays = diffCalendarDays(cycleAnchor, today);
+  if (elapsedDays <= 0) {
+    return cycleAnchor;
+  }
+  const cyclesElapsed = Math.floor(elapsedDays / cycleLength);
+  return addDays(cycleAnchor, cyclesElapsed * cycleLength);
+}
+
+/**
+ * App analog of web's services.DashboardCycleDataLooksStale
+ * (dashboard_cycle.go:75-81): the raw cycle day measured from the ORIGINAL
+ * logged anchor exceeds the reference length. A soft signal that the logged
+ * period is overdue ("log your period"), not a reason to blank predictions.
+ */
+function dashboardCycleDataLooksStale(
+  rawCycleDay: number,
+  referenceLength: number,
+): boolean {
+  if (rawCycleDay <= 0 || referenceLength <= 0) {
+    return false;
+  }
+  return rawCycleDay > referenceLength;
+}
+
+/**
+ * App analog of web's services.DashboardCycleDayLooksLong
+ * (dashboard_cycle.go:68-73): the raw cycle day from the ORIGINAL anchor
+ * exceeds reference length + 7. Like web, this is computed from the raw day, so
+ * it always implies `isPredictionStale` (ref < ref+7) — a stricter "running
+ * long" qualifier on top of the stale signal.
+ */
+function dashboardCycleDayLooksLong(
+  rawCycleDay: number,
+  referenceLength: number,
+): boolean {
+  if (rawCycleDay <= 0 || referenceLength <= 0) {
+    return false;
+  }
+  return rawCycleDay > referenceLength + 7;
 }
 
 function resolveNextPeriodWindow(
@@ -463,6 +551,62 @@ export function shouldShowIrregularModeRecommendation(
 
 export function shouldShowAgeVariabilityHint(profile: ProfileRecord): boolean {
   return profile.ageGroup === "age_45_plus";
+}
+
+// STATS_SHORT_CYCLE_NOTICE_THRESHOLD_DAYS mirrors the app's existing "less
+// common" cycle-length boundary (the settings/onboarding info_cycle_short
+// advisory fires below the same value, CYCLE_LENGTH_SHORT_WARNING_THRESHOLD in
+// profile-settings-policy.ts), so the logged-cycle notice and the cycle-length
+// setting stay consistent. Web parity: shortCycleNoticeThresholdDays.
+export const STATS_SHORT_CYCLE_NOTICE_THRESHOLD_DAYS = 24;
+
+// STATS_LONG_CYCLE_NOTICE_THRESHOLD_DAYS is deliberately high (above the
+// clinical oligomenorrhea boundary of ~35 days) so the pattern-gated notice is
+// conservative: a single missed log that merges two cycles into a 60-90 day
+// span is common, so only a repeated genuinely-long pattern surfaces the note.
+// Mirrors the >45 cycle-length setting boundary. Web parity:
+// longCycleNoticeThresholdDays.
+export const STATS_LONG_CYCLE_NOTICE_THRESHOLD_DAYS = 45;
+
+// STATS_CYCLE_NOTICE_MIN_OCCURRENCES requires a repeated pattern before either
+// notice shows, so a one-off short/long cycle (or a missed-log artifact) never
+// surfaces the conservative wording. Web parity:
+// shortCycleNoticeMinimumOccurrences.
+export const STATS_CYCLE_NOTICE_MIN_OCCURRENCES = 3;
+
+/**
+ * App analog of web's shouldShowStatsShortCycleNotice
+ * (stats_page_view_service.go): a soft "several recent cycles are short" notice
+ * once at least STATS_CYCLE_NOTICE_MIN_OCCURRENCES completed cycles are below
+ * STATS_SHORT_CYCLE_NOTICE_THRESHOLD_DAYS. Pattern-gated on purpose — a single
+ * short or merged-log cycle must not trigger the note. The owner-only gate web
+ * applies (IsOwnerUser) is implicit here: stats are an owner-device surface.
+ */
+export function shouldShowShortCycleNotice(
+  history: StatsCycleHistorySummary,
+): boolean {
+  const short = history.completedCycles.filter(
+    (cycle) =>
+      cycle.cycleLength > 0 &&
+      cycle.cycleLength < STATS_SHORT_CYCLE_NOTICE_THRESHOLD_DAYS,
+  ).length;
+  return short >= STATS_CYCLE_NOTICE_MIN_OCCURRENCES;
+}
+
+/**
+ * App analog of web's shouldShowStatsLongCycleNotice: mirrors
+ * shouldShowShortCycleNotice for the long end — a soft note once at least
+ * STATS_CYCLE_NOTICE_MIN_OCCURRENCES completed cycles are longer than
+ * STATS_LONG_CYCLE_NOTICE_THRESHOLD_DAYS. Pattern-gated so a one-off missed-log
+ * merge (which the median prediction already absorbs) never triggers it.
+ */
+export function shouldShowLongCycleNotice(
+  history: StatsCycleHistorySummary,
+): boolean {
+  const long = history.completedCycles.filter(
+    (cycle) => cycle.cycleLength > STATS_LONG_CYCLE_NOTICE_THRESHOLD_DAYS,
+  ).length;
+  return long >= STATS_CYCLE_NOTICE_MIN_OCCURRENCES;
 }
 
 function buildCompletedCycleSummaries(
@@ -715,17 +859,20 @@ function resolvePredictionCycleLength(
   profile: ProfileRecord,
   history: StatsCycleHistorySummary,
 ): number {
-  if (
-    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
-    history.averageCycleLength > 0
-  ) {
-    return Math.round(history.averageCycleLength);
-  }
+  // Median-first matches the canonical algorithm: a single missed-log gap that
+  // merges two cycles skews the mean but not the median. The mean is only a
+  // degenerate fallback; profile.cycleLength bootstraps when no statistic exists.
   if (
     history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
     history.medianCycleLength > 0
   ) {
     return history.medianCycleLength;
+  }
+  if (
+    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
+    history.averageCycleLength > 0
+  ) {
+    return Math.round(history.averageCycleLength);
   }
   return profile.cycleLength;
 }

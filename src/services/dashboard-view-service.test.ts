@@ -447,7 +447,11 @@ describe("dashboard-view-service", () => {
     );
   });
 
-  it("falls back to unknown dates when the prior prediction window is stale", () => {
+  it("keeps a conservative rolled-forward hero when the prior prediction window is stale", () => {
+    // Web parity: the segmented hero is suppressed (text-first) when the data is
+    // stale, but predictions are NOT blanked. Anchor 2026-02-01, len 28, today
+    // 2026-03-25 rolls forward to day 25 with next period 2026-03-29 shown in
+    // conservative ("around") wording plus a "log your period" hint.
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-02-01",
       cycleLength: 28,
@@ -477,9 +481,73 @@ describe("dashboard-view-service", () => {
       expect.objectContaining({
         state: "stale",
         title: "Day",
-        value: "Unknown",
-        detail: "Waiting for next cycle",
+        value: "25",
+        detail: "Cycle data may be outdated. Log your period when it starts.",
+        caption: "Next period: around Mar 29",
+        progressPercent: null,
         phaseCards: [],
+        phaseSegments: [],
+      }),
+    );
+  });
+
+  it("suppresses the segmented hero for sparse irregular cycles (under 3 completed)", () => {
+    // Web parity: DisplayNextPeriodNeedsData (irregular && <3 completed cycles)
+    // forces the segmented ring off in favour of a text-first surface with the
+    // needs-more-cycles note. A single logged cycle start is not enough history.
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-03-10",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        pregnancyTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+
+    const history = buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17));
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      history,
+      new Date(2026, 2, 17),
+    );
+
+    expect(history.hasReliableTrend).toBe(false);
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "approximate",
+        title: "Day",
+        value: "8",
+        detail: "Approximate cycle",
+        progressPercent: null,
+        phaseCards: [],
+        phaseSegments: [],
       }),
     );
   });

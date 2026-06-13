@@ -154,6 +154,13 @@ export function DashboardOverviewScreen({
             </Text>
           ) : null}
 
+          <Text
+            style={styles.disclaimerText}
+            testID="dashboard-prediction-disclaimer"
+          >
+            {viewData.predictionDisclaimer}
+          </Text>
+
           {viewData.advancedFertilitySummary ? (
             <InsightSummaryCard
               testID="dashboard-advanced-fertility-summary"
@@ -288,6 +295,11 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
+    },
+    disclaimerText: {
+      color: colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
     },
     quickActionsBlock: {
       gap: spacing.xs,

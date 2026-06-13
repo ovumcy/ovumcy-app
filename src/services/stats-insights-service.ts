@@ -1,6 +1,7 @@
 import type { DayLogRecord } from "../models/day-log";
 import type { SymptomRecord } from "../models/symptom";
 import {
+  MIN_CURRENT_CYCLE_BBT_POINTS,
   STATS_BBT_POINT_LIMIT,
   STATS_LAST_CYCLE_SYMPTOMS_LIMIT,
   STATS_PHASE_SYMPTOM_LIMIT,
@@ -284,6 +285,10 @@ export function buildStatsBBTSeries(
     )
     .sort((left, right) => left.date.localeCompare(right.date))
     .slice(-STATS_BBT_POINT_LIMIT);
+
+  if (cycleRecords.length < MIN_CURRENT_CYCLE_BBT_POINTS) {
+    return [];
+  }
 
   return cycleRecords.map((record) => ({
     key: record.date,

@@ -660,6 +660,9 @@ function buildCalendarPredictionMaps(
   const predictedPeriodLength = resolvePredictedPeriodLength(profile, history);
 
   if (projection.cycleAnchorDate) {
+    // Web parity (calendar_days.go appendCurrentBaselinePeriod/PreFertile): the
+    // logged-anchor cycle is always painted from the ORIGINAL anchor, including
+    // when forward-roll has marked the prediction stale.
     appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
     appendPredictedWindow(
       preFertile,
@@ -673,32 +676,24 @@ function buildCalendarPredictionMaps(
     );
   }
 
-  if (projection.isPredictionStale) {
-    appendImmediateStalePeriod(
-      predictedPeriod,
-      projection.cycleAnchorDate,
-      projection.predictionCycleLength,
-      predictedPeriodLength,
-    );
-
-    return {
-      predictedPeriod,
-      preFertile,
-      fertilityEdge,
-      fertilityPeak,
-      ovulation,
-      tentativeOvulation,
-    };
-  }
-
-  if (projection.nextPeriodDate) {
+  // Web parity (calendar_days.go appendPredictedCycles): subsequent cycles are
+  // painted from stats.NextPeriodStart = anchor + cycleLength, stepping forward
+  // by cycleLength to the grid end. This is the NON-rolled next start (the
+  // projection's nextPeriodDate may be rolled forward for the dashboard), so the
+  // stale case still paints the immediate "missed" cycle's period AND fertile
+  // window, then every later predicted cycle — no special-casing of stale.
+  const baselineNextPeriodDate = resolveCalendarBaselineNextPeriodDate(
+    projection.cycleAnchorDate,
+    projection.predictionCycleLength,
+  );
+  if (baselineNextPeriodDate) {
     appendPredictedCycles(
       predictedPeriod,
       preFertile,
       fertilityEdge,
       fertilityPeak,
       ovulation,
-      projection.nextPeriodDate,
+      baselineNextPeriodDate,
       projection.predictionCycleLength,
       predictedPeriodLength,
       projection.lutealPhase,
@@ -762,26 +757,27 @@ function applyCurrentCycleBBTSignal(
   tentativeOvulation.add(projection.ovulationDate);
 }
 
-function appendImmediateStalePeriod(
-  predictedPeriod: Set<string>,
+/**
+ * App analog of web's stats.NextPeriodStart for the calendar
+ * (applyProjectedBaseline → anchor + predictionCycleLength). Deliberately NOT
+ * the rolled projection.nextPeriodDate: the calendar paints predicted cycles
+ * forward from the first cycle after the logged anchor, so a stale (missed)
+ * cycle still shows its predicted period and fertile window.
+ */
+function resolveCalendarBaselineNextPeriodDate(
   cycleAnchorDate: string | null,
   predictionCycleLength: number,
-  predictedPeriodLength: number,
-) {
-  if (!cycleAnchorDate) {
-    return;
+): string | null {
+  if (!cycleAnchorDate || predictionCycleLength <= 0) {
+    return null;
   }
 
   const cycleAnchor = parseLocalDate(cycleAnchorDate);
   if (!cycleAnchor) {
-    return;
+    return null;
   }
 
-  appendPredictedPeriod(
-    predictedPeriod,
-    formatLocalDate(addDays(cycleAnchor, predictionCycleLength)),
-    predictedPeriodLength,
-  );
+  return formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
 }
 
 function appendPredictedCycles(

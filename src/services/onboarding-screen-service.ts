@@ -13,7 +13,11 @@ import {
   buildCycleGuidanceState,
   sanitizeStepTwoValues,
   validateStepOneStartDate,
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
 } from "./onboarding-policy";
+import { sanitizeDayLogRecord } from "./day-log-policy";
 
 export type LoadedOnboardingState = {
   record: OnboardingRecord;
@@ -157,6 +161,7 @@ export async function saveOnboardingStepOne(
 export async function finishOnboarding(
   storage: LocalAppStorage,
   state: LoadedOnboardingState,
+  now: Date = new Date(),
 ): Promise<
   | {
       ok: true;
@@ -217,6 +222,15 @@ export async function finishOnboarding(
         incompleteOnboardingStep: null,
       }),
     ]);
+
+    if (completedRecord.autoPeriodFill && completedRecord.lastPeriodStart) {
+      await seedOnboardingPeriodDays(
+        storage,
+        completedRecord.lastPeriodStart,
+        completedRecord.periodLength,
+        now,
+      );
+    }
   } catch {
     return {
       ok: false,
@@ -233,6 +247,52 @@ export async function finishOnboarding(
       stepTwoValues: sanitizedValues,
     },
   };
+}
+
+/**
+ * Seeds period day-log records for the onboarding window.
+ *
+ * Mirrors web's CompleteOnboarding upsert semantics: existing records are merged
+ * (isPeriod=true, flow preserved as "none") rather than skipped.
+ *
+ * Deliberate deviation from web: days after today are NOT seeded. Web seeds the
+ * full periodLength window unconditionally, but the app invariant ("future period
+ * days remain predictions") takes priority.
+ *
+ * cycleStart is NOT set on any seeded day (including the anchor) — web's
+ * CompleteOnboarding never sets CycleStart on the seeded rows.
+ */
+async function seedOnboardingPeriodDays(
+  storage: LocalAppStorage,
+  lastPeriodStart: string,
+  periodLength: number,
+  now: Date,
+): Promise<void> {
+  const anchor = parseLocalDate(lastPeriodStart);
+  if (!anchor) {
+    return;
+  }
+
+  const today = formatLocalDate(now);
+
+  for (let offset = 0; offset < periodLength; offset += 1) {
+    const date = formatLocalDate(addDays(anchor, offset));
+    if (date > today) {
+      // App invariant: future period days remain predictions, not observations.
+      break;
+    }
+
+    const existing = await storage.readDayLogRecord(date);
+    const merged = sanitizeDayLogRecord({
+      ...existing,
+      date,
+      isPeriod: true,
+      // cycleStart intentionally not set — mirrors web's CompleteOnboarding,
+      // which never sets CycleStart on seeded rows.
+      cycleStart: false,
+    });
+    await storage.writeDayLogRecord(merged);
+  }
 }
 
 export async function persistIncompleteOnboardingStep(

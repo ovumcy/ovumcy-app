@@ -55,6 +55,12 @@ export type DashboardCycleHeroViewData = {
 export type DashboardViewData = {
   cycleHero: DashboardCycleHeroViewData;
   predictionExplanation: string;
+  // Web parity (dashboard.html data-dashboard-prediction-disclaimer): a
+  // persistent "estimates, not medical advice or contraception" disclaimer near
+  // the prediction surfaces. Always present on the dashboard, which is the
+  // owner's own-device surface (web gates on {{if .IsOwner}}; the partner shared
+  // view is a separate screen and never reuses this view-data).
+  predictionDisclaimer: string;
   advancedFertilitySummary?: CurrentCycleAdvancedFertilitySummaryViewData;
   quickActionsTitle: string;
   quickActions: {
@@ -163,6 +169,7 @@ export function buildDashboardViewData(
   return {
     cycleHero: buildDashboardCycleHero(profile, projectedCycle, history, locale),
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
+    predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
     quickActions: {
@@ -196,12 +203,27 @@ function buildDashboardCycleHero(
   const heroTitle = dashboardCopy.cycleHeroDayLabel;
 
   if (projection.isPredictionStale) {
+    // Web parity (canRenderDashboardCycleHero=false when CycleDataStale): the
+    // segmented hero is suppressed in favour of the text-first surface, but
+    // predictions are NOT blanked. We surface the rolled-forward cycle day and a
+    // conservative "log your period" hint, plus the rolled-forward next-period
+    // date in approximate wording — mirroring web's dashboard-stale status line.
+    const staleDayValue =
+      projection.currentCycleDay !== null
+        ? String(projection.currentCycleDay)
+        : statsCopy.phaseLabels.unknown;
+    const staleCaption = projection.nextPeriodDate
+      ? `${dashboardCopy.nextPeriod}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(
+          projection.nextPeriodDate,
+          locale,
+        )}`
+      : `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`;
     return {
       state: "stale",
       title: heroTitle,
-      value: statsCopy.phaseLabels.unknown,
+      value: staleDayValue,
       detail: dashboardCopy.cycleHeroStale,
-      caption: `${dashboardCopy.nextPeriod}: ${dashboardCopy.nextPeriodUnknown}`,
+      caption: staleCaption,
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
@@ -230,6 +252,25 @@ function buildDashboardCycleHero(
       value: statsCopy.phaseLabels.unknown,
       detail: dashboardCopy.cycleHeroWaiting,
       caption: dashboardCopy.nextPeriodPrompt,
+      progressPercent: null,
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
+    };
+  }
+
+  if (profile.irregularCycle && !history.hasReliableTrend) {
+    // Web parity: DisplayNextPeriodNeedsData (irregular && completedCycleCount<3)
+    // forces canRenderDashboardCycleHero=false, so the segmented ring is
+    // suppressed entirely. The text-first surface shows the cycle day plus the
+    // approximate next-period date with the needs-more-cycles note as the
+    // primary status — not an "approximate" ring in a falsely confident shape.
+    return {
+      state: "approximate",
+      title: heroTitle,
+      value: cycleDayValue,
+      detail: dashboardCopy.cycleHeroApproximate,
+      caption: buildDashboardCycleHeroCaption(profile, projection, history, locale),
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
