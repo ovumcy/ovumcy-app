@@ -41,7 +41,6 @@ export type TOTPCopy = {
 
   errors: {
     currentPasswordRequired: string;
-    codeRequired: string;
     invalidCurrentPassword: string;
     totpNotConfigured: string;
     totpAlreadyEnabled: string;
@@ -97,7 +96,6 @@ const totpCopyEn: TOTPCopy = {
   },
   errors: {
     currentPasswordRequired: "Enter your current password.",
-    codeRequired: "Enter the 6-digit code.",
     invalidCurrentPassword: "Current password is incorrect.",
     totpNotConfigured: "Two-factor is not configured on this server.",
     totpAlreadyEnabled: "Two-factor is already enabled. Disable it first.",
@@ -117,7 +115,7 @@ const totpCopyEn: TOTPCopy = {
 const totpCopyDe: TOTPCopy = {
   section: {
     title: "Zwei-Faktor-Authentifizierung",
-    hint: "Ergänze dein Passwort um einen 6-stelligen Code aus einer Authenticator-App.",
+    hint: "Ergänzen Sie Ihr Passwort um einen 6-stelligen Code aus einer Authenticator-App.",
     enableTab: "Aktivieren",
     disableTab: "Deaktivieren",
     statusEnabled: "Die Zwei-Faktor-Authentifizierung ist aktiviert.",
@@ -128,13 +126,13 @@ const totpCopyDe: TOTPCopy = {
     startLabel: "Einrichtung starten",
     secretTitle: "Diesen Code scannen oder eingeben",
     secretHint:
-      "Füge ihn in Google Authenticator, 1Password, Authy oder einer beliebigen RFC-6238-App hinzu und gib dann den 6-stelligen Code ein.",
+      "Fügen Sie ihn in Google Authenticator, 1Password, Authy oder einer beliebigen RFC-6238-App hinzu und geben Sie dann den 6-stelligen Code ein.",
     secretManualLabel: "Manueller Einrichtungscode",
     provisioningUriLabel: "QR-Code-URI",
     codeLabel: "6-stelliger Code",
     verifyLabel: "Verifizieren und aktivieren",
     successMessage:
-      "Zwei-Faktor ist aktiv. Andere Geräte wurden abgemeldet; melde dich neu an, um Sync weiter zu nutzen.",
+      "Zwei-Faktor ist aktiv. Andere Geräte wurden abgemeldet; melden Sie sich neu an, um Sync weiter zu nutzen.",
     cancelLabel: "Abbrechen",
   },
   disable: {
@@ -144,29 +142,28 @@ const totpCopyDe: TOTPCopy = {
     successMessage: "Zwei-Faktor ist aus. Alle Sitzungen wurden beendet.",
   },
   challenge: {
-    title: "Gib deinen 6-stelligen Code ein",
-    hint: "Öffne deine Authenticator-App und gib den aktuellen Code für dieses Konto ein.",
+    title: "Geben Sie Ihren 6-stelligen Code ein",
+    hint: "Öffnen Sie Ihre Authenticator-App und geben Sie den aktuellen Code für dieses Konto ein.",
     codeLabel: "6-stelliger Code",
     submitLabel: "Verifizieren",
     cancelLabel: "Abbrechen",
     expiredHint: "Anmelde-Challenge abgelaufen. Bitte erneut anmelden.",
   },
   errors: {
-    currentPasswordRequired: "Gib dein aktuelles Passwort ein.",
-    codeRequired: "Gib den 6-stelligen Code ein.",
+    currentPasswordRequired: "Geben Sie Ihr aktuelles Passwort ein.",
     invalidCurrentPassword: "Aktuelles Passwort ist falsch.",
     totpNotConfigured:
       "Zwei-Faktor ist auf diesem Server nicht konfiguriert.",
-    totpAlreadyEnabled: "Zwei-Faktor ist bereits aktiv. Deaktiviere ihn zuerst.",
+    totpAlreadyEnabled: "Zwei-Faktor ist bereits aktiv. Deaktivieren Sie ihn zuerst.",
     totpInvalidCode:
-      "Code ist falsch. Probiere den aktuellen Code aus deiner App.",
-    totpReplayed: "Dieser Code wurde schon verwendet. Warte auf einen neuen.",
+      "Code ist falsch. Probieren Sie den aktuellen Code aus Ihrer App.",
+    totpReplayed: "Dieser Code wurde schon verwendet. Warten Sie auf einen neuen.",
     totpChallengeInvalid: "Anmelde-Challenge abgelaufen. Bitte erneut anmelden.",
     totpSecretFailed:
       "Mit dem Secret ist etwas schiefgegangen. Bitte erneut versuchen.",
     challengeIDRequired: "Challenge fehlt. Bitte erneut anmelden.",
     notConnected:
-      "Verbinde ein Sync-Konto, bevor du Zwei-Faktor änderst.",
+      "Verbinden Sie ein Sync-Konto, bevor Sie Zwei-Faktor ändern.",
     rateLimited: "Zu viele Versuche. Bitte später erneut versuchen.",
     networkFailed: "Netzwerkfehler. Bitte erneut versuchen.",
     unauthorized: "Sitzung abgelaufen. Bitte erneut anmelden.",
@@ -177,7 +174,7 @@ const totpCopyDe: TOTPCopy = {
 const totpCopyFr: TOTPCopy = {
   section: {
     title: "Authentification à deux facteurs",
-    hint: "Ajoute un code à 6 chiffres depuis une appli d'authentification en plus de ton mot de passe.",
+    hint: "Ajoutez un code à 6 chiffres depuis une appli d'authentification en plus de votre mot de passe.",
     enableTab: "Activer",
     disableTab: "Désactiver",
     statusEnabled: "L'authentification à deux facteurs est activée.",
@@ -186,15 +183,15 @@ const totpCopyFr: TOTPCopy = {
   enroll: {
     currentPasswordLabel: "Mot de passe actuel",
     startLabel: "Démarrer la configuration",
-    secretTitle: "Scanne ou saisis ce code",
+    secretTitle: "Scannez ou saisissez ce code",
     secretHint:
-      "Ajoute-le à Google Authenticator, 1Password, Authy, ou toute appli RFC 6238, puis entre le code à 6 chiffres ci-dessous.",
+      "Ajoutez-le à Google Authenticator, 1Password, Authy, ou toute appli RFC 6238, puis entrez le code à 6 chiffres ci-dessous.",
     secretManualLabel: "Code de configuration manuelle",
     provisioningUriLabel: "URI du QR code",
     codeLabel: "Code à 6 chiffres",
     verifyLabel: "Vérifier et activer",
     successMessage:
-      "Le deuxième facteur est actif. Les autres appareils ont été déconnectés ; reconnecte-toi pour continuer à utiliser sync.",
+      "Le deuxième facteur est actif. Les autres appareils ont été déconnectés ; reconnectez-vous pour continuer à utiliser sync.",
     cancelLabel: "Annuler",
   },
   disable: {
@@ -204,41 +201,40 @@ const totpCopyFr: TOTPCopy = {
     successMessage: "Le deuxième facteur est désactivé. Toutes les sessions ont été déconnectées.",
   },
   challenge: {
-    title: "Saisis ton code à 6 chiffres",
-    hint: "Ouvre ton appli d'authentification et saisis le code actuel pour ce compte.",
+    title: "Saisissez votre code à 6 chiffres",
+    hint: "Ouvrez votre appli d'authentification et saisissez le code actuel pour ce compte.",
     codeLabel: "Code à 6 chiffres",
     submitLabel: "Vérifier",
     cancelLabel: "Annuler",
-    expiredHint: "Défi de connexion expiré. Reconnecte-toi.",
+    expiredHint: "Défi de connexion expiré. Reconnectez-vous.",
   },
   errors: {
-    currentPasswordRequired: "Saisis ton mot de passe actuel.",
-    codeRequired: "Saisis le code à 6 chiffres.",
+    currentPasswordRequired: "Saisissez votre mot de passe actuel.",
     invalidCurrentPassword: "Le mot de passe actuel est incorrect.",
     totpNotConfigured:
       "Le deuxième facteur n'est pas configuré sur ce serveur.",
     totpAlreadyEnabled:
-      "Le deuxième facteur est déjà activé. Désactive-le d'abord.",
+      "Le deuxième facteur est déjà activé. Désactivez-le d'abord.",
     totpInvalidCode:
-      "Code incorrect. Essaie le dernier code de ton appli.",
-    totpReplayed: "Ce code a déjà été utilisé. Attends-en un nouveau.",
-    totpChallengeInvalid: "Défi de connexion expiré. Reconnecte-toi.",
+      "Code incorrect. Essayez le dernier code de votre appli.",
+    totpReplayed: "Ce code a déjà été utilisé. Attendez-en un nouveau.",
+    totpChallengeInvalid: "Défi de connexion expiré. Reconnectez-vous.",
     totpSecretFailed:
-      "Problème avec le secret. Réessaie.",
-    challengeIDRequired: "Défi manquant. Reconnecte-toi.",
+      "Problème avec le secret. Réessayez.",
+    challengeIDRequired: "Défi manquant. Reconnectez-vous.",
     notConnected:
-      "Connecte un compte sync avant de modifier le deuxième facteur.",
-    rateLimited: "Trop d'essais. Réessaie plus tard.",
-    networkFailed: "Erreur réseau. Réessaie.",
-    unauthorized: "Session expirée. Reconnecte-toi.",
-    generic: "Quelque chose a échoué. Réessaie.",
+      "Connectez un compte sync avant de modifier le deuxième facteur.",
+    rateLimited: "Trop d'essais. Réessayez plus tard.",
+    networkFailed: "Erreur réseau. Réessayez.",
+    unauthorized: "Session expirée. Reconnectez-vous.",
+    generic: "Quelque chose a échoué. Réessayez.",
   },
 };
 
 const totpCopyRu: TOTPCopy = {
   section: {
     title: "Двухфакторная аутентификация",
-    hint: "Дополни пароль шестизначным кодом из приложения-аутентификатора.",
+    hint: "Дополните пароль шестизначным кодом из приложения-аутентификатора.",
     enableTab: "Включить",
     disableTab: "Выключить",
     statusEnabled: "Двухфакторная аутентификация включена.",
@@ -247,15 +243,15 @@ const totpCopyRu: TOTPCopy = {
   enroll: {
     currentPasswordLabel: "Текущий пароль",
     startLabel: "Начать настройку",
-    secretTitle: "Отсканируй или введи этот код",
+    secretTitle: "Отсканируйте или введите этот код",
     secretHint:
-      "Добавь его в Google Authenticator, 1Password, Authy или любое приложение по RFC 6238, затем введи шестизначный код ниже.",
+      "Добавьте его в Google Authenticator, 1Password, Authy или любое приложение по RFC 6238, затем введите шестизначный код ниже.",
     secretManualLabel: "Код для ручного ввода",
     provisioningUriLabel: "URI QR-кода",
     codeLabel: "Шестизначный код",
     verifyLabel: "Проверить и включить",
     successMessage:
-      "Двухфакторка включена. Остальные устройства были отключены; войди заново, чтобы продолжить пользоваться синхронизацией.",
+      "Двухфакторка включена. Остальные устройства были отключены; войдите заново, чтобы продолжить пользоваться синхронизацией.",
     cancelLabel: "Отмена",
   },
   disable: {
@@ -265,31 +261,30 @@ const totpCopyRu: TOTPCopy = {
     successMessage: "Двухфакторка выключена. Все сессии завершены.",
   },
   challenge: {
-    title: "Введи свой шестизначный код",
-    hint: "Открой приложение-аутентификатор и введи текущий код для этого аккаунта.",
+    title: "Введите свой шестизначный код",
+    hint: "Откройте приложение-аутентификатор и введите текущий код для этого аккаунта.",
     codeLabel: "Шестизначный код",
     submitLabel: "Проверить",
     cancelLabel: "Отмена",
-    expiredHint: "Срок запроса истёк. Войди заново.",
+    expiredHint: "Срок запроса истёк. Войдите заново.",
   },
   errors: {
-    currentPasswordRequired: "Введи текущий пароль.",
-    codeRequired: "Введи шестизначный код.",
+    currentPasswordRequired: "Введите текущий пароль.",
     invalidCurrentPassword: "Текущий пароль неверный.",
     totpNotConfigured: "Двухфакторка не настроена на этом сервере.",
     totpAlreadyEnabled:
-      "Двухфакторка уже включена. Сначала выключи её.",
-    totpInvalidCode: "Код неверный. Попробуй последний код из приложения.",
-    totpReplayed: "Этот код уже использовался. Подожди следующий.",
-    totpChallengeInvalid: "Срок запроса на вход истёк. Войди заново.",
-    totpSecretFailed: "Что-то с секретом пошло не так. Повтори попытку.",
-    challengeIDRequired: "Запрос отсутствует. Войди заново.",
+      "Двухфакторка уже включена. Сначала выключите её.",
+    totpInvalidCode: "Код неверный. Попробуйте последний код из приложения.",
+    totpReplayed: "Этот код уже использовался. Подождите следующий.",
+    totpChallengeInvalid: "Срок запроса на вход истёк. Войдите заново.",
+    totpSecretFailed: "Что-то с секретом пошло не так. Повторите попытку.",
+    challengeIDRequired: "Запрос отсутствует. Войдите заново.",
     notConnected:
-      "Сначала подключи аккаунт синхронизации, чтобы менять двухфакторку.",
-    rateLimited: "Слишком много попыток. Повтори позже.",
-    networkFailed: "Сетевая ошибка. Повтори попытку.",
-    unauthorized: "Сессия истекла. Войди заново.",
-    generic: "Что-то пошло не так. Повтори попытку.",
+      "Сначала подключите аккаунт синхронизации, чтобы менять двухфакторку.",
+    rateLimited: "Слишком много попыток. Повторите позже.",
+    networkFailed: "Сетевая ошибка. Повторите попытку.",
+    unauthorized: "Сессия истекла. Войдите заново.",
+    generic: "Что-то пошло не так. Повторите попытку.",
   },
 };
 
@@ -332,7 +327,6 @@ const totpCopyEs: TOTPCopy = {
   },
   errors: {
     currentPasswordRequired: "Introduce tu contraseña actual.",
-    codeRequired: "Introduce el código de 6 dígitos.",
     invalidCurrentPassword: "La contraseña actual es incorrecta.",
     totpNotConfigured:
       "El segundo factor no está configurado en este servidor.",

@@ -20,12 +20,14 @@ const dashboardCopyEn = {
     "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
   pregnancyPausedHint:
     "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+  predictionDisclaimer:
+    "These are estimates, not medical advice or a method of contraception.",
   cycleHeroDayLabel: "Day",
   cycleHeroRegular: (days: number) => `Cycle ${days} days`,
   cycleHeroApproximate: "Approximate cycle",
   cycleHeroFactsOnly: "Predictions off",
   cycleHeroWaiting: "Add a cycle start",
-  cycleHeroStale: "Waiting for next cycle",
+  cycleHeroStale: "Cycle data may be outdated. Log your period when it starts.",
   cycleHeroPhaseCards: {
     period: "Period",
     follicular: "Follicular",
@@ -82,7 +84,7 @@ const dashboardCopyDe: DashboardCopy = {
   cycleDay: "Zyklustag",
   nextPeriod: "Nächste Periode",
   nextPeriodUnknown: "unbekannt",
-  nextPeriodPrompt: "Gib das Startdatum deines letzten Zyklus ein",
+  nextPeriodPrompt: "Geben Sie das Startdatum Ihres letzten Zyklus ein",
   nextPeriodNeedsMoreCycles:
     "Für einen verlässlichen Bereich werden 3 Zyklen benötigt",
   approximateDatePrefix: "etwa",
@@ -92,17 +94,20 @@ const dashboardCopyDe: DashboardCopy = {
   predictionsApproximateHint:
     "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
   predictionVariableRangesHint:
-    "Deine Zykluslänge schwankt, daher wird die nächste Periode als Zeitraum statt als einzelner Tag angezeigt.",
+    "Ihre Zykluslänge schwankt, daher wird die nächste Periode als Zeitraum statt als einzelner Tag angezeigt.",
   factsOnlyHint:
     "Im unvorhersagbaren Zyklusmodus zeigt Ovumcy nur erfasste Fakten an.",
   pregnancyPausedHint:
-    "Nach einem positiven Schwangerschaftstest pausieren die Zyklusvorhersagen. Erfasse eine neue Periode, um sie fortzusetzen.",
+    "Nach einem positiven Schwangerschaftstest pausieren die Zyklusvorhersagen. Erfassen Sie eine neue Periode, um sie fortzusetzen.",
+  predictionDisclaimer:
+    "Dies sind Schätzungen, keine medizinische Beratung und keine Verhütungsmethode.",
   cycleHeroDayLabel: "Tag",
   cycleHeroRegular: (days: number) => `Zyklus ${days} Tage`,
-  cycleHeroApproximate: "Ungefähren Zyklus",
+  cycleHeroApproximate: "Ungefährer Zyklus",
   cycleHeroFactsOnly: "Vorhersagen aus",
   cycleHeroWaiting: "Zyklusbeginn ergänzen",
-  cycleHeroStale: "Wartet auf den nächsten Zyklus",
+  cycleHeroStale:
+    "Zyklusdaten könnten veraltet sein. Erfassen Sie Ihre Periode, sobald sie beginnt.",
   cycleHeroPhaseCards: {
     period: "Periode",
     follicular: "Follikelphase",
@@ -134,32 +139,32 @@ const dashboardCopyDe: DashboardCopy = {
   cancelAction: "Abbrechen",
   manualCycleStartSaved: "Zyklusbeginn lokal aktualisiert.",
   manualCycleStartFailed:
-    "Ein neuer Zyklusbeginn konnte nicht markiert werden. Bitte versuche es erneut.",
+    "Ein neuer Zyklusbeginn konnte nicht markiert werden. Bitte versuchen Sie es erneut.",
   invalidCycleStartDate:
     "Ein neuer Zyklusbeginn kann nur für heute oder vergangene Tage markiert werden.",
   cycleStartSuggestion:
-    "Das könnte der erste Tag deiner Periode sein. Wenn ja, markiere ihn als neuen Zyklusbeginn.",
+    "Das könnte der erste Tag Ihrer Periode sein. Wenn ja, markieren Sie ihn als neuen Zyklusbeginn.",
   cycleStartReplaceMessage:
-    "Du hast bereits einen Zyklusbeginn am %s markiert. Durch %s ersetzen?",
+    "Sie haben bereits einen Zyklusbeginn am %s markiert. Durch %s ersetzen?",
   cycleStartReplaceAccept: "Ersetzen",
   cycleStartReplaceRequired:
-    "Bestätige das Ersetzen des bereits markierten Zyklusbeginns.",
+    "Bestätigen Sie das Ersetzen des bereits markierten Zyklusbeginns.",
   cycleStartShortGapMessage:
     "⚠️ Seit dem vorherigen Zyklus sind erst %s Tage vergangen. Das ist vielleicht kein neuer Zyklus. Vorheriges Datum: %s.",
   cycleStartShortGapAccept: "Trotzdem markieren",
   cycleStartConfirmationRequired:
-    "Bestätige das Markieren eines Zyklusbeginns mit kurzem Abstand.",
+    "Bestätigen Sie das Markieren eines Zyklusbeginns mit kurzem Abstand.",
   futureCycleStartNotice:
     "Die Vorhersagen werden neu berechnet, wenn dieser Tag erreicht ist.",
   implantationWarning:
-    "Das könnte eine Einnistungsblutung und kein neuer Zyklus sein. Wenn du schwanger werden möchtest, ziehe einen Test in Betracht.",
+    "Das könnte eine Einnistungsblutung und kein neuer Zyklus sein. Wenn Sie schwanger werden möchten, ziehen Sie einen Test in Betracht.",
 };
 
 const dashboardCopyFr: DashboardCopy = {
   cycleDay: "Jour du cycle",
   nextPeriod: "Prochaines règles",
   nextPeriodUnknown: "inconnu",
-  nextPeriodPrompt: "Saisis la date de début de ton dernier cycle",
+  nextPeriodPrompt: "Saisissez la date de début de votre dernier cycle",
   nextPeriodNeedsMoreCycles:
     "3 cycles sont nécessaires pour obtenir une plage fiable",
   approximateDatePrefix: "vers",
@@ -169,17 +174,20 @@ const dashboardCopyFr: DashboardCopy = {
   predictionsApproximateHint:
     "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   predictionVariableRangesHint:
-    "La longueur de ton cycle varie, donc tes prochaines règles sont affichées sous forme de plage plutôt qu'une date unique.",
+    "La longueur de votre cycle varie, donc vos prochaines règles sont affichées sous forme de plage plutôt qu'une date unique.",
   factsOnlyHint:
     "En mode cycle imprévisible, Ovumcy affiche seulement les faits enregistrés.",
   pregnancyPausedHint:
-    "Les prédictions de cycle sont en pause après un test de grossesse positif. Enregistre de nouvelles règles pour les reprendre.",
+    "Les prédictions de cycle sont en pause après un test de grossesse positif. Enregistrez de nouvelles règles pour les reprendre.",
+  predictionDisclaimer:
+    "Ce sont des estimations, pas un avis médical ni une méthode de contraception.",
   cycleHeroDayLabel: "Jour",
   cycleHeroRegular: (days: number) => `Cycle de ${days} jours`,
   cycleHeroApproximate: "Cycle approximatif",
   cycleHeroFactsOnly: "Prédictions désactivées",
-  cycleHeroWaiting: "Ajoute un début de cycle",
-  cycleHeroStale: "En attente du prochain cycle",
+  cycleHeroWaiting: "Ajoutez un début de cycle",
+  cycleHeroStale:
+    "Les données du cycle peuvent être obsolètes. Enregistrez vos règles dès qu'elles commencent.",
   cycleHeroPhaseCards: {
     period: "Règles",
     follicular: "Phase folliculaire",
@@ -205,31 +213,31 @@ const dashboardCopyFr: DashboardCopy = {
   cervicalMucus: "Glaire cervicale",
   cervicalMucusExplainer:
     "La glaire cervicale correspond aux pertes vaginales. Une glaire type blanc d'œuf apparaît souvent près du pic de fertilité.",
-  bbt: "TBC",
+  bbt: "TB",
   notes: "Notes",
   manualCycleStart: "Marquer un nouveau début de cycle",
   cancelAction: "Annuler",
   manualCycleStartSaved: "Début du cycle mis à jour localement.",
   manualCycleStartFailed:
-    "Impossible de marquer un nouveau début de cycle. Réessaie.",
+    "Impossible de marquer un nouveau début de cycle. Réessayez.",
   invalidCycleStartDate:
     "Un nouveau début de cycle peut être marqué uniquement pour aujourd'hui ou des jours passés.",
   cycleStartSuggestion:
-    "Cela peut être le premier jour de tes règles. Si c'est le cas, marque-le comme nouveau début de cycle.",
+    "Cela peut être le premier jour de vos règles. Si c'est le cas, marquez-le comme nouveau début de cycle.",
   cycleStartReplaceMessage:
-    "Tu as déjà marqué un début de cycle le %s. Le remplacer par %s ?",
+    "Vous avez déjà marqué un début de cycle le %s. Le remplacer par %s ?",
   cycleStartReplaceAccept: "Remplacer",
   cycleStartReplaceRequired:
-    "Confirme le remplacement du début de cycle déjà marqué.",
+    "Confirmez le remplacement du début de cycle déjà marqué.",
   cycleStartShortGapMessage:
     "⚠️ Seulement %s jours se sont écoulés depuis le cycle précédent. Ce n'est peut-être pas un nouveau cycle. Date précédente : %s.",
   cycleStartShortGapAccept: "Marquer quand même",
   cycleStartConfirmationRequired:
-    "Confirme le marquage d'un début de cycle avec un intervalle court.",
+    "Confirmez le marquage d'un début de cycle avec un intervalle court.",
   futureCycleStartNotice:
     "Les prédictions seront recalculées lorsque ce jour arrivera.",
   implantationWarning:
-    "Cela peut être un saignement d'implantation et non un nouveau cycle. Si tu essaies de concevoir, pense à faire un test.",
+    "Cela peut être un saignement d'implantation et non un nouveau cycle. Si vous essayez de concevoir, pensez à faire un test.",
 };
 
 const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
@@ -243,21 +251,24 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     approximateDatePrefix: "примерно",
     ovulation: "Овуляция",
     ovulationUnavailable: "Не вычисляется",
-    predictionsOff: "Предсказания выключены",
+    predictionsOff: "Прогнозы выключены",
     predictionsApproximateHint:
-      "В режиме нерегулярного цикла предсказания остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
+      "В режиме нерегулярного цикла прогнозы остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
     predictionVariableRangesHint:
       "Длина цикла колеблется, поэтому следующая менструация показана диапазоном, а не одним днём.",
     factsOnlyHint:
       "В непредсказуемом режиме Ovumcy показывает только записанные факты.",
     pregnancyPausedHint:
-      "Прогнозы цикла приостановлены после положительного теста на беременность. Отметьте новую менструацию, чтобы возобновить их.",
+      "Прогнозы цикла приостановлены после положительного теста на беременность. Отметьте начало новых месячных, чтобы возобновить их.",
+    predictionDisclaimer:
+      "Это оценки, а не медицинский совет и не метод контрацепции.",
     cycleHeroDayLabel: "День",
-    cycleHeroRegular: (days: number) => `Цикл ${days} дней`,
+    cycleHeroRegular: (days: number) => `${days}-дневный цикл`,
     cycleHeroApproximate: "Примерный цикл",
     cycleHeroFactsOnly: "Прогнозы выключены",
     cycleHeroWaiting: "Добавьте начало цикла",
-    cycleHeroStale: "Ожидание следующего цикла",
+    cycleHeroStale:
+      "Данные цикла могут быть устаревшими. Отметьте начало новых месячных, когда они начнутся.",
     cycleHeroPhaseCards: {
       period: "Месячные",
       follicular: "Фолликулярная",
@@ -305,7 +316,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cycleStartConfirmationRequired:
       "Подтвердите отметку начала цикла при коротком интервале.",
     futureCycleStartNotice:
-      "Предсказания будут пересчитаны, когда наступит этот день.",
+      "Прогнозы будут пересчитаны, когда наступит этот день.",
     implantationWarning:
       "Это может быть имплантационное кровотечение, а не новый цикл. Если вы пытаетесь зачать, подумайте о тесте.",
   },
@@ -327,12 +338,15 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
       "En el modo de ciclo impredecible, Ovumcy muestra solo hechos registrados.",
     pregnancyPausedHint:
       "Las predicciones del ciclo están en pausa tras un test de embarazo positivo. Registra una nueva regla para reanudarlas.",
+    predictionDisclaimer:
+      "Son estimaciones, no consejo médico ni un método anticonceptivo.",
     cycleHeroDayLabel: "Día",
     cycleHeroRegular: (days: number) => `Ciclo de ${days} días`,
     cycleHeroApproximate: "Ciclo aproximado",
     cycleHeroFactsOnly: "Predicciones desactivadas",
     cycleHeroWaiting: "Añade un inicio de ciclo",
-    cycleHeroStale: "Esperando el próximo ciclo",
+    cycleHeroStale:
+      "Los datos del ciclo pueden estar desactualizados. Registra tu período cuando empiece.",
     cycleHeroPhaseCards: {
       period: "Período",
       follicular: "Folicular",
@@ -358,7 +372,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     cervicalMucus: "Moco cervical",
     cervicalMucusExplainer:
       "Moco cervical significa flujo vaginal. El moco tipo clara de huevo suele aparecer cerca del pico fértil.",
-    bbt: "TCB",
+    bbt: "TBC",
     notes: "Notas",
     manualCycleStart: "Marcar nuevo inicio de ciclo",
     cancelAction: "Cancelar",

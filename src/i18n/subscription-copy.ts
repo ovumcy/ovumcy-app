@@ -1,21 +1,9 @@
 import type { InterfaceLanguage } from "../models/profile";
 import type { SubscriptionCountdownCopy } from "../services/subscription-countdown-service";
 import { resolveCopyLanguage } from "./runtime";
+import { ruDayWord } from "./ru-plural";
 
-// Russian needs three plural forms for "day": 1 день, 2–4 дня, 5–20 дней,
-// repeating every hundred (21 день, 22 дня, 25 дней). Counts here are always
-// whole and >= 1, so the zero case never reaches this helper.
-function ruDayWord(days: number): string {
-  const mod100 = days % 100;
-  const mod10 = days % 10;
-  if (mod10 === 1 && mod100 !== 11) {
-    return "день";
-  }
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "дня";
-  }
-  return "дней";
-}
+export { ruDayWord };
 
 const subscriptionCopyEn: SubscriptionCountdownCopy = {
   trial: (days) => `Free trial — ${days} ${days === 1 ? "day" : "days"} left`,

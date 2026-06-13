@@ -127,7 +127,7 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
 
 const accountSecurityCopyDe: AccountSecurityCopy = {
   title: "Konto-Sicherheit",
-  subtitle: "Verwalte das Passwort und den Wiederherstellungscode deines Sync-Kontos.",
+  subtitle: "Verwalten Sie das Passwort und den Wiederherstellungscode Ihres Sync-Kontos.",
   backLabel: "Zurück zu Backup & Sync",
   loading: "Konto wird geladen…",
 
@@ -142,59 +142,59 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
 
   forgotPassword: {
     title: "Passwort vergessen",
-    hint: "Verwende den Konto-Wiederherstellungscode, um das Passwort zurückzusetzen.",
+    hint: "Verwenden Sie den Konto-Wiederherstellungscode, um das Passwort zurückzusetzen.",
     loginLabel: "Login oder E-Mail",
     recoveryCodeLabel: "Wiederherstellungscode",
     submitLabel: "Zurücksetzung anfordern",
     stageTwoTitle: "Neues Passwort setzen",
     stageTwoHint:
-      "Das Zurücksetzen meldet dich überall ab, deaktiviert die Zwei-Faktor-Authentifizierung (falls aktiv) und gibt einen neuen Wiederherstellungscode aus.",
+      "Das Zurücksetzen meldet Sie überall ab, deaktiviert die Zwei-Faktor-Authentifizierung (falls aktiv) und gibt einen neuen Wiederherstellungscode aus.",
     newPasswordLabel: "Neues Passwort",
     submitResetLabel: "Passwort zurücksetzen",
     cancelLabel: "Abbrechen",
     completedMessage:
-      "Passwort zurückgesetzt. Speichere den neuen Wiederherstellungscode oben und melde dich erneut an.",
+      "Passwort zurückgesetzt. Speichern Sie den neuen Wiederherstellungscode oben und melden Sie sich erneut an.",
   },
 
   regenerate: {
     title: "Wiederherstellungscode erneuern",
-    hint: "Bestätige mit deinem aktuellen Passwort. Der neue Code ersetzt den alten.",
+    hint: "Bestätigen Sie mit Ihrem aktuellen Passwort. Der neue Code ersetzt den alten.",
     currentPasswordLabel: "Aktuelles Passwort",
     submitLabel: "Neuen Wiederherstellungscode erzeugen",
   },
 
   reveal: {
     title: "Diesen Wiederherstellungscode speichern",
-    hint: "Wird nur einmal angezeigt. Verwende ihn, falls du das Konto-Passwort vergisst.",
+    hint: "Wird nur einmal angezeigt. Verwenden Sie ihn, falls Sie das Konto-Passwort vergessen.",
     confirmLabel: "Ich habe ihn gespeichert",
   },
 
   errors: {
-    currentPasswordRequired: "Gib dein aktuelles Passwort ein.",
-    newPasswordRequired: "Gib ein neues Passwort ein.",
+    currentPasswordRequired: "Geben Sie Ihr aktuelles Passwort ein.",
+    newPasswordRequired: "Geben Sie ein neues Passwort ein.",
     invalidCurrentPassword: "Aktuelles Passwort ist falsch.",
     newPasswordMustDiffer:
       "Das neue Passwort muss sich vom aktuellen unterscheiden.",
     weakNewPassword: "Das neue Passwort ist zu kurz.",
     invalidRecoveryCredentials: "Login oder Wiederherstellungscode ist falsch.",
     invalidResetToken:
-      "Zurücksetzungs-Token abgelaufen oder ungültig. Starte erneut.",
+      "Zurücksetzungs-Token abgelaufen oder ungültig. Starten Sie erneut.",
     notConnected:
-      "Verbinde ein Sync-Konto, bevor du dessen Passwort änderst.",
-    rateLimited: "Zu viele Versuche. Versuche es später erneut.",
-    networkFailed: "Netzwerkfehler. Versuche es erneut.",
-    loginRequired: "Gib deinen Login oder deine E-Mail ein.",
-    recoveryCodeRequired: "Gib den Wiederherstellungscode ein.",
+      "Verbinden Sie ein Sync-Konto, bevor Sie dessen Passwort ändern.",
+    rateLimited: "Zu viele Versuche. Versuchen Sie es später erneut.",
+    networkFailed: "Netzwerkfehler. Versuchen Sie es erneut.",
+    loginRequired: "Geben Sie Ihren Login oder Ihre E-Mail ein.",
+    recoveryCodeRequired: "Geben Sie den Wiederherstellungscode ein.",
     resetTokenRequired: "Zurücksetzungs-Token fehlt.",
-    unauthorized: "Sitzung abgelaufen. Melde dich erneut an.",
-    generic: "Etwas ist schiefgelaufen. Versuche es erneut.",
+    unauthorized: "Sitzung abgelaufen. Melden Sie sich erneut an.",
+    generic: "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
   },
 };
 
 const accountSecurityCopyFr: AccountSecurityCopy = {
   title: "Sécurité du compte",
   subtitle:
-    "Gère le mot de passe et le code de récupération de ton compte de sync.",
+    "Gérez le mot de passe et le code de récupération de votre compte de sync.",
   backLabel: "Retour à Backup & Sync",
   loading: "Chargement du compte…",
 
@@ -210,52 +210,52 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
 
   forgotPassword: {
     title: "Mot de passe oublié",
-    hint: "Utilise ton code de récupération du compte pour réinitialiser le mot de passe.",
+    hint: "Utilisez votre code de récupération du compte pour réinitialiser le mot de passe.",
     loginLabel: "Login ou e-mail",
     recoveryCodeLabel: "Code de récupération",
     submitLabel: "Demander la réinitialisation",
     stageTwoTitle: "Définir un nouveau mot de passe",
     stageTwoHint:
-      "La réinitialisation te déconnecte partout, désactive l'authentification à deux facteurs si elle était active, et émet un nouveau code de récupération.",
+      "La réinitialisation vous déconnecte partout, désactive l'authentification à deux facteurs si elle était active, et émet un nouveau code de récupération.",
     newPasswordLabel: "Nouveau mot de passe",
     submitResetLabel: "Réinitialiser le mot de passe",
     cancelLabel: "Annuler",
     completedMessage:
-      "Mot de passe réinitialisé. Sauvegarde le nouveau code de récupération affiché ci-dessus, puis reconnecte-toi.",
+      "Mot de passe réinitialisé. Sauvegardez le nouveau code de récupération affiché ci-dessus, puis reconnectez-vous.",
   },
 
   regenerate: {
     title: "Régénérer le code de récupération",
-    hint: "Confirme avec ton mot de passe actuel. Le nouveau code remplace l'ancien.",
+    hint: "Confirmez avec votre mot de passe actuel. Le nouveau code remplace l'ancien.",
     currentPasswordLabel: "Mot de passe actuel",
     submitLabel: "Générer un nouveau code de récupération",
   },
 
   reveal: {
-    title: "Sauvegarde ce code de récupération",
-    hint: "Affiché une seule fois. Utilise-le si tu oublies le mot de passe du compte.",
+    title: "Sauvegardez ce code de récupération",
+    hint: "Affiché une seule fois. Utilisez-le si vous oubliez le mot de passe du compte.",
     confirmLabel: "Je l'ai sauvegardé",
   },
 
   errors: {
-    currentPasswordRequired: "Entre ton mot de passe actuel.",
-    newPasswordRequired: "Entre un nouveau mot de passe.",
+    currentPasswordRequired: "Entrez votre mot de passe actuel.",
+    newPasswordRequired: "Entrez un nouveau mot de passe.",
     invalidCurrentPassword: "Mot de passe actuel incorrect.",
     newPasswordMustDiffer:
       "Le nouveau mot de passe doit être différent de l'actuel.",
     weakNewPassword: "Le nouveau mot de passe est trop court.",
     invalidRecoveryCredentials: "Login ou code de récupération incorrect.",
     invalidResetToken:
-      "Token de réinitialisation expiré ou invalide. Recommence.",
+      "Token de réinitialisation expiré ou invalide. Recommencez.",
     notConnected:
-      "Connecte un compte de sync avant de changer son mot de passe.",
-    rateLimited: "Trop de tentatives. Réessaie plus tard.",
-    networkFailed: "Erreur réseau. Réessaie.",
-    loginRequired: "Entre ton login ou ton e-mail.",
-    recoveryCodeRequired: "Entre le code de récupération.",
+      "Connectez un compte de sync avant de changer son mot de passe.",
+    rateLimited: "Trop de tentatives. Réessayez plus tard.",
+    networkFailed: "Erreur réseau. Réessayez.",
+    loginRequired: "Entrez votre login ou votre e-mail.",
+    recoveryCodeRequired: "Entrez le code de récupération.",
     resetTokenRequired: "Token de réinitialisation manquant.",
-    unauthorized: "Session expirée. Reconnecte-toi.",
-    generic: "Quelque chose s'est mal passé. Réessaie.",
+    unauthorized: "Session expirée. Reconnectez-vous.",
+    generic: "Quelque chose s'est mal passé. Réessayez.",
   },
 };
 

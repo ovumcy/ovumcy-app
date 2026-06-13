@@ -73,6 +73,9 @@ const partnerCopyEn = {
   sharedViewAveragePeriodLabel: "Average period",
   sharedViewLoggedDaysLabel: "Logged days",
   sharedViewTopSymptomsLabel: "Top symptoms",
+  sharedViewStaleNotice:
+    "Shared data may be out of date — predictions hidden.",
+  sharedViewHistoryQualifier: "Showing the last 90 days.",
   errors: {
     notConnected: "Sign in to Ovumcy Cloud first.",
     invalidPartnerInvite: "This partner invite is not valid.",
@@ -96,7 +99,7 @@ const partnerCopyDe = {
     "Partnerzugriff ist eine Premium-Funktion des Ovumcy-Cloud-Kontos, das die Einladung erstellt.",
   ownerTitle: "Partner einladen",
   ownerHint:
-    "Ovumcy erstellt einen privaten Einladungslink aus deinem Ovumcy-Cloud-Konto. Der Partner meldet sich auf seinem eigenen Gerät an und nimmt den Link in der App an.",
+    "Ovumcy erstellt einen privaten Einladungslink aus Ihrem Ovumcy-Cloud-Konto. Der Partner meldet sich auf seinem eigenen Gerät an und nimmt den Link in der App an.",
   accessLevelLabel: "Zugriffslevel",
   accessLevelSummary: "Nur Zusammenfassung",
   accessLevelFull: "Voller Zugriff",
@@ -128,7 +131,7 @@ const partnerCopyDe = {
   acceptReadyHint:
     "Dieser Link kann mit dem aktuell angemeldeten Ovumcy-Cloud-Konto angenommen werden.",
   acceptSignInHint:
-    "Melde dich zuerst bei deinem Ovumcy-Cloud-Konto an und nimm dann diese Partnereinladung auf diesem Gerät an.",
+    "Melden Sie sich zuerst bei Ihrem Ovumcy-Cloud-Konto an und nehmen Sie dann diese Partnereinladung auf diesem Gerät an.",
   acceptActionLabel: "Einladung annehmen",
   statusInviteIssued: "Partner-Einladungslink erstellt.",
   statusInviteAccepted: "Partnereinladung auf diesem Gerät angenommen.",
@@ -160,8 +163,11 @@ const partnerCopyDe = {
   sharedViewAveragePeriodLabel: "Durchschnittliche Periode",
   sharedViewLoggedDaysLabel: "Erfasste Tage",
   sharedViewTopSymptomsLabel: "Häufigste Symptome",
+  sharedViewStaleNotice:
+    "Die geteilten Daten sind möglicherweise veraltet — Vorhersagen ausgeblendet.",
+  sharedViewHistoryQualifier: "Zeigt die letzten 90 Tage.",
   errors: {
-    notConnected: "Melde dich zuerst bei Ovumcy Cloud an.",
+    notConnected: "Melden Sie sich zuerst bei Ovumcy Cloud an.",
     invalidPartnerInvite: "Diese Partnereinladung ist ungültig.",
     partnerInviteNotFound: "Diese Partnereinladung wurde nicht gefunden.",
     partnerInviteExpired: "Diese Partnereinladung ist abgelaufen.",
@@ -169,7 +175,7 @@ const partnerCopyDe = {
       "Partnerzugriff ist für dieses Ovumcy-Cloud-Konto gerade nicht verfügbar.",
     partnerAccessNotFound: "Dieser Partnerzugriff wurde nicht gefunden.",
     networkFailed: "Ovumcy Cloud ist gerade nicht erreichbar.",
-    generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuche es erneut.",
+    generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Partner-Einladungen",
@@ -183,18 +189,18 @@ const partnerCopyFr = {
     "L’accès partenaire est une fonction premium du compte Ovumcy Cloud qui crée l’invitation.",
   ownerTitle: "Inviter un partenaire",
   ownerHint:
-    "Ovumcy crée un lien d’invitation privé depuis ton compte Ovumcy Cloud. Le partenaire se connecte sur son propre appareil et accepte le lien dans l’app.",
+    "Ovumcy crée un lien d’invitation privé depuis votre compte Ovumcy Cloud. Le partenaire se connecte sur son propre appareil et accepte le lien dans l’app.",
   accessLevelLabel: "Niveau d’accès",
   accessLevelSummary: "Résumé seulement",
   accessLevelFull: "Accès complet",
   accessLevelSummaryHint:
-    "Partage la vue récapitulative légère au lieu d’un historique détaillé jour par jour.",
+    "Partagez la vue récapitulative légère au lieu d’un historique détaillé jour par jour.",
   accessLevelFullHint:
-    "Autorise la vue partagée complète, y compris l’historique détaillé jour par jour lorsqu’il est disponible.",
+    "Autorisez la vue partagée complète, y compris l’historique détaillé jour par jour lorsqu’il est disponible.",
   issueInviteLabel: "Créer un lien d’invitation",
   inviteLinkTitle: "Lien d’invitation",
   inviteLinkHint:
-    "Partage ou ouvre ce lien avec le partenaire. L’acceptation demande quand même sa propre connexion à Ovumcy Cloud.",
+    "Partagez ou ouvrez ce lien avec le partenaire. L’acceptation demande quand même sa propre connexion à Ovumcy Cloud.",
   pendingInvitesTitle: "Invitations en attente",
   pendingInvitesEmpty: "Aucune invitation en attente pour le moment.",
   pendingInviteLabel: "Lien d’invitation en attente",
@@ -215,7 +221,7 @@ const partnerCopyFr = {
   acceptReadyHint:
     "Ce lien peut être accepté avec le compte Ovumcy Cloud actuellement connecté.",
   acceptSignInHint:
-    "Connecte-toi d’abord à ton compte Ovumcy Cloud, puis accepte cette invitation partenaire sur cet appareil.",
+    "Connectez-vous d’abord à votre compte Ovumcy Cloud, puis acceptez cette invitation partenaire sur cet appareil.",
   acceptActionLabel: "Accepter l’invitation",
   statusInviteIssued: "Lien d’invitation partenaire créé.",
   statusInviteAccepted: "Invitation partenaire acceptée sur cet appareil.",
@@ -247,8 +253,11 @@ const partnerCopyFr = {
   sharedViewAveragePeriodLabel: "Durée moyenne des règles",
   sharedViewLoggedDaysLabel: "Jours saisis",
   sharedViewTopSymptomsLabel: "Symptômes principaux",
+  sharedViewStaleNotice:
+    "Les données partagées sont peut-être obsolètes — prédictions masquées.",
+  sharedViewHistoryQualifier: "Affiche les 90 derniers jours.",
   errors: {
-    notConnected: "Connecte-toi d’abord à Ovumcy Cloud.",
+    notConnected: "Connectez-vous d’abord à Ovumcy Cloud.",
     invalidPartnerInvite: "Cette invitation partenaire n’est pas valide.",
     partnerInviteNotFound: "Cette invitation partenaire est introuvable.",
     partnerInviteExpired: "Cette invitation partenaire a expiré.",
@@ -256,7 +265,7 @@ const partnerCopyFr = {
       "L’accès partenaire n’est pas disponible pour ce compte Ovumcy Cloud pour le moment.",
     partnerAccessNotFound: "Cet accès partenaire est introuvable.",
     networkFailed: "Impossible de joindre Ovumcy Cloud pour le moment.",
-    generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessaie.",
+    generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessayez.",
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Invitations partenaires",
@@ -334,6 +343,9 @@ const partnerCopyRu = {
   sharedViewAveragePeriodLabel: "Средняя длина месячных",
   sharedViewLoggedDaysLabel: "Дней с записями",
   sharedViewTopSymptomsLabel: "Топ симптомов",
+  sharedViewStaleNotice:
+    "Общие данные могут быть устаревшими — прогнозы скрыты.",
+  sharedViewHistoryQualifier: "Показаны последние 90 дней.",
   errors: {
     notConnected: "Сначала войди в Ovumcy Cloud.",
     invalidPartnerInvite: "Это приглашение партнёра недействительно.",
@@ -421,6 +433,9 @@ const partnerCopyEs = {
   sharedViewAveragePeriodLabel: "Periodo medio",
   sharedViewLoggedDaysLabel: "Días registrados",
   sharedViewTopSymptomsLabel: "Síntomas principales",
+  sharedViewStaleNotice:
+    "Los datos compartidos pueden estar desactualizados — predicciones ocultas.",
+  sharedViewHistoryQualifier: "Mostrando los últimos 90 días.",
   errors: {
     notConnected: "Primero inicia sesión en Ovumcy Cloud.",
     invalidPartnerInvite: "Esta invitación de pareja no es válida.",

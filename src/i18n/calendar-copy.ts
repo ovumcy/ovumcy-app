@@ -91,9 +91,9 @@ const calendarCopyDe: CalendarCopy = {
   stateHints: {
     neutral: "Diesem Tag ist noch kein erfasstes oder vorhergesagtes Ereignis zugeordnet.",
     recordedPeriod:
-      "Du hast diesen Tag als tatsächlichen Periodentag markiert. Die Vorhersagen werden darum neu berechnet.",
+      "Sie haben diesen Tag als tatsächlichen Periodentag markiert. Die Vorhersagen werden darum neu berechnet.",
     predictedPeriod:
-      "Dieser hellere Bereich wird aus deinen Zykluseinstellungen und deinem Verlauf vorhergesagt.",
+      "Dieser hellere Bereich wird aus Ihren Zykluseinstellungen und Ihrem Verlauf vorhergesagt.",
     lowProbability:
       "Dies ist der frühe Teil des vorhergesagten fruchtbaren Fensters.",
     fertilityEdge: "Dieser Tag liegt im wahrscheinlichen fruchtbaren Fenster.",
@@ -107,7 +107,7 @@ const calendarCopyDe: CalendarCopy = {
   },
   legend: {
     meaningTitle: "Tagesstile",
-    markersTitle: "Deine Marker",
+    markersTitle: "Ihre Marker",
     showLegend: "Kalenderhilfe anzeigen",
     hideLegend: "Kalenderhilfe ausblenden",
     recordedPeriod: "Erfasste Periode",
@@ -152,9 +152,9 @@ const calendarCopyFr: CalendarCopy = {
     neutral:
       "Aucun événement enregistré ou prédit n'est encore associé à cette journée.",
     recordedPeriod:
-      "Tu as marqué ce jour comme un vrai jour de règles. Les prédictions sont recalculées autour de lui.",
+      "Vous avez marqué ce jour comme un vrai jour de règles. Les prédictions sont recalculées autour de lui.",
     predictedPeriod:
-      "Cette zone plus claire est prédite à partir de tes réglages de cycle et de ton historique.",
+      "Cette zone plus claire est prédite à partir de vos réglages de cycle et de votre historique.",
     lowProbability:
       "C'est le début de la fenêtre fertile prédite.",
     fertilityEdge:
@@ -165,11 +165,11 @@ const calendarCopyFr: CalendarCopy = {
       "C'est le jour d'ovulation prédit selon le modèle actuel du cycle.",
     ovulationTentative:
       "C'est un jour d'ovulation possible sans confirmation thermique.",
-    loggedEntry: "Tu as déjà enregistré une entrée locale pour cette journée.",
+    loggedEntry: "Vous avez déjà enregistré une entrée locale pour cette journée.",
   },
   legend: {
     meaningTitle: "Styles de jour",
-    markersTitle: "Tes marqueurs",
+    markersTitle: "Vos marqueurs",
     showLegend: "Afficher l'aide du calendrier",
     hideLegend: "Masquer l'aide du calendrier",
     recordedPeriod: "Règles enregistrées",
