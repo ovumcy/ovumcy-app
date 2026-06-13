@@ -1,0 +1,50 @@
+name: Mutation (advisory)
+
+# Advisory mutation-testing lane (Stryker), mirroring the Go `gremlins`
+# discipline. It is NON-GATING: it runs weekly (and on demand) over a focused
+# set of pure domain/policy modules and reports a mutation score. A low score
+# never blocks CI — there is no break threshold and the job is allowed to fail
+# soft.
+
+on:
+  schedule:
+    # Weekly, Mondays 05:43 UTC (offset from the other scheduled scans).
+    - cron: "43 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Advisory only: surface the score, never fail the workflow on a low result.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation testing
+        run: npm run mutation
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          if-no-files-found: ignore

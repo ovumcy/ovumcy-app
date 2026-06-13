@@ -1,0 +1,47 @@
+# Onboarding — complete the 2-step local-first setup and land on the dashboard.
+#
+# Step 1: pick a "last period start" day, then Next.
+# Step 2: cycle/period sliders + age group, then Finish -> Dashboard ("Today").
+#
+# testIDs are verified against src/ui/screens/onboarding/* and the existing
+# Playwright web-smoke spec. The day-option id is dynamic
+# (`onboarding-day-option-YYYY-MM-DD`), so we match it by id regex rather than
+# hard-coding a date.
+#
+# NOTE: unvalidated against a running device/emulator in this environment.
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+
+# --- Step 1: choose a cycle start day ---
+- assertVisible:
+    id: "onboarding-next-button"
+# Tap the first available day option (id is onboarding-day-option-<date>).
+- tapOn:
+    id: "onboarding-day-option-.*"
+    index: 0
+- tapOn:
+    id: "onboarding-next-button"
+
+# --- Step 2: cycle details ---
+- assertVisible:
+    id: "onboarding-cycle-length-slider"
+- assertVisible:
+    id: "onboarding-finish-button"
+# Age group is a choice grid; pick the under-40 bucket if it is shown.
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-age-group-under_40"
+    commands:
+      - tapOn:
+          id: "onboarding-age-group-under_40"
+- tapOn:
+    id: "onboarding-finish-button"
+
+# --- Landed on the dashboard ("Today" tab) ---
+- assertVisible:
+    id: "dashboard-quick-action-period"
+- assertVisible:
+    id: "dashboard-manual-cycle-start-button"
