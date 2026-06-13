@@ -23,6 +23,7 @@ export type ManagedCloudAPIErrorCode =
   | "partner_invite_expired"
   | "partner_invite_not_found"
   | "reminder_schedule_unavailable"
+  | "entitlements_unavailable"
   | "unauthorized"
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
@@ -91,6 +92,15 @@ export type ManagedCloudBillingSnapshot = {
   // billingManagement reports which self-service renewal actions the backend
   // currently allows for this account (drives cancel/resume affordances).
   billingManagement: ManagedCloudBillingManagement;
+};
+
+export type ManagedCloudEntitlementToken = {
+  // token is the compact JWT (EdDSA) the app verifies with
+  // verifyEntitlementToken before trusting any entitlement claim.
+  token: string;
+  // expiresAt is the server-reported expiry (RFC3339). The authoritative expiry
+  // is the signed `exp` claim inside the token; this mirror is informational.
+  expiresAt: string;
 };
 
 export type ManagedCloudReminderEmailScheduleKind =
@@ -213,6 +223,17 @@ export type ManagedCloudAPIClient = {
     sessionToken: string,
   ): Promise<
     | { ok: true; billing: ManagedCloudBillingSnapshot }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  // getEntitlementToken fetches a signed entitlement token (JWT-EdDSA) for the
+  // purely-local premium gates. The managed server returns 503 when no signing
+  // key is configured (pre-rollout) and may be entirely absent on older
+  // servers; both surface as `ok: false` with an error code so the caller can
+  // fall back to the billing-snapshot boolean without any behaviour change.
+  getEntitlementToken(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; result: ManagedCloudEntitlementToken }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   getReminderEmailSchedules(
@@ -463,6 +484,11 @@ type RawManagedCloudBillingSnapshot = {
   };
   active_subscription?: RawManagedCloudActiveSubscription | null;
   billing_management?: RawManagedCloudBillingManagement;
+};
+
+type RawManagedCloudEntitlementToken = {
+  token: string;
+  expires_at: string;
 };
 
 type RawManagedCloudReminderEmailSchedule = {
@@ -790,6 +816,29 @@ export function createManagedCloudAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, billing: mapBillingSnapshot(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async getEntitlementToken(sessionToken) {
+      return requestJSON<RawManagedCloudEntitlementToken>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/entitlements/token",
+        {
+          method: "POST",
+          sessionToken,
+        },
+        isRawManagedCloudEntitlementToken,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: {
+                token: result.payload.token,
+                expiresAt: result.payload.expires_at,
+              },
+            }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -1138,6 +1187,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "invalid_partner_projection":
       case "partner_projection_not_found":
       case "reminder_schedule_unavailable":
+      case "entitlements_unavailable":
       case "unauthorized":
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
@@ -1300,6 +1350,17 @@ function isRawManagedCloudBillingSnapshot(
       typeof features.partner_access === "undefined") &&
     (typeof features.reminders === "boolean" ||
       typeof features.reminders === "undefined")
+  );
+}
+
+function isRawManagedCloudEntitlementToken(
+  value: unknown,
+): value is RawManagedCloudEntitlementToken {
+  return (
+    isObject(value) &&
+    typeof value.token === "string" &&
+    value.token.length > 0 &&
+    typeof value.expires_at === "string"
   );
 }
 

@@ -53,12 +53,15 @@ follows from that:
 - **No telemetry.** The app ships no analytics, advertising, crash-attribution,
   or third-party tracking SDKs. Nothing about the user's health data or usage is
   reported off-device by default.
-- **Premium is gated only by a managed billing snapshot.** Premium features
-  (advanced insights, advanced fertility, extended reports, doctor PDF, partner
-  access, reminders) are unlocked by a boolean entitlement / `has_active_plan`
-  snapshot read from `ovumcy-managed`. Gating is **additive**: a free or expired
-  account keeps full core cycle-tracking and renders an explicit lock card; no
-  health feature is taken away.
+- **Premium is gated by a managed billing snapshot, with signed tokens for the
+  purely-local features.** Most premium features (advanced fertility, extended
+  reports, partner access, reminders) are unlocked by a boolean entitlement /
+  `has_active_plan` snapshot read from `ovumcy-managed`. The two purely-local
+  compute features (doctor PDF, advanced insights) additionally prefer a signed
+  EdDSA entitlement token when one verifies, falling back to the snapshot
+  boolean otherwise (see Accepted Residual Risks). Gating is **additive**: a free
+  or expired account keeps full core cycle-tracking and renders an explicit lock
+  card; no health feature is taken away.
 
 ### On-device privacy hardening
 
@@ -96,13 +99,25 @@ follows from that:
   (`react-native-ssl-public-key-pinning`) is **not installed or registered**, so
   TLS today relies on standard CA-chain trust. The JS policy is defense-in-depth
   for when native pinning is enabled.
-- **The client-side premium gate is a billing-snapshot boolean.** Entitlement is
-  a boolean / feature map read from the managed backend, not yet a signed,
-  tamper-evident token. A user who controls their own device can flip the
-  in-memory flag to reveal premium UI; this exposes only the user's own data and
-  is acceptable pending signed entitlement tokens. The authoritative gate for
-  any *server-side* premium capability (e.g. managed sync) is enforced on the
-  backend, not by this flag.
+- **Signed entitlement tokens are verified, but verification is bypassable by a
+  forked client (honest non-DRM scope).** The two *purely-local* premium
+  features (doctor PDF, advanced insights) are now gated by a signed
+  EdDSA/Ed25519 token (`src/security/entitlement-token.ts`): the app verifies the
+  signature against an embedded public key keyed by `kid`, checks
+  `iss`/`aud`/`exp`/`sub`, and trusts the token's `entitlements` over the plain
+  snapshot boolean when a valid token is present. This raises casual
+  circumvention from "flip a boolean" to "patch out signature verification or
+  reimplement the managed signer" — and that is the entire claim. It is **not**
+  DRM: a determined forker can still patch out the verifier or reimplement the
+  signer, and doing so only exposes the user's own data. During rollout phase 1
+  the gate **falls back to the billing-snapshot boolean** whenever no valid token
+  is present (no endpoint, offline with an expired cache, unknown `kid`, tamper),
+  so older managed servers and the pre-rollout state behave exactly as before.
+  The embedded public key shipped today is a documented placeholder; until the
+  operator installs the production key (and managed ships the issuance endpoint)
+  no production token verifies and every gate uses the snapshot. The
+  authoritative gate for any *server-side* premium capability (e.g. managed sync)
+  remains enforced on the backend, not by this token.
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
@@ -219,6 +234,22 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Premium plan status stays billing-owned and is not inferred from sync state | `keeps managed plan status billing-owned when sync entitlement stays enabled without premium billing` in [src/services/settings-screen-service.test.ts](src/services/settings-screen-service.test.ts) |
 | Free-tier stats render with locked sections in the empty state (no feature removed), surfaced on the page | `stats shows premium lock placeholders when entitlements are missing and the lock routes to backup-sync` in [e2e/web-smoke.spec.ts](e2e/web-smoke.spec.ts) |
 
+### Signed entitlement-token verification (purely-local premium)
+
+| Claim | Enforced by |
+| --- | --- |
+| The golden interop vector (the exact token the `ovumcy-managed` signer emits for the same key) verifies under its embedded public key and yields its `entitlements` and `sub` | `accepts the golden token under the golden pubkey and returns its entitlements + sub` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| Flipping a single payload character invalidates the signature (verification is over the received signing-input bytes, not a JSON re-serialization) | `rejects when a single payload character is flipped (signature no longer matches)` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| An unknown / rotated-out `kid` is rejected (locked), never trusted | `rejects an unknown / rotated-out kid (locked)` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| An expired token (`now >= exp`, including exactly at `exp`) is rejected | `rejects an expired token (now >= exp), including exactly at exp` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| A non-EdDSA `alg` header (incl. `none`) is rejected before any signature work, even with an otherwise-valid signature | `rejects a header whose alg is not EdDSA, even with a valid signature` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| A truncated / garbage token is rejected without throwing | `rejects a truncated signature without throwing`, `rejects garbage / structurally-invalid input without throwing` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| A token minted for account A is rejected when bound to account B (`sub` mismatch / cross-account replay) | `accepts the golden token when expectedSub matches and rejects on sub mismatch (cross-account replay)` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| Any token signed by a freshly generated keypair verifies, and any single-byte tamper of the signing-input or signature fails (property-based) | `verifies any token signed by a freshly generated keypair`, `rejects any single-byte tamper of the signing-input (header.payload bytes)`, `rejects any single-byte tamper of the signature segment` in [src/security/entitlement-token.property.test.ts](src/security/entitlement-token.property.test.ts) |
+| With no token gate the premium snapshot is returned verbatim and the token endpoint is never called (rollout fallback preserves today's behaviour) | `returns the snapshot premiumFeatures verbatim when no gate is supplied`, `does not call the entitlements/token endpoint at all when no gate is supplied` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| When the issuance endpoint 503s (signing key absent) with nothing cached, the gate falls back to the snapshot booleans (no regression) | `falls back to snapshot booleans when the endpoint is 503 and nothing is cached (no regression)` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A verified token overlays the two local features (and only those); an expired cached token re-locks and falls back to the snapshot | `overlays a verified token: the two local features become true, server-gated stay from the snapshot`, `re-locks when the cached token is expired and falls back to the snapshot booleans` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+
 ### Policy / Planned (human-reviewed, not in the matrix)
 
 - **No telemetry.** The absence of analytics/ad/tracking SDKs is a dependency-
@@ -231,9 +262,14 @@ items) are intentionally excluded — they are reviewed by humans, not by
   (`react-native-ssl-public-key-pinning`) is not yet wired, so the
   observed-fingerprint comparison cannot be exercised against a real handshake in
   the app test suite; only the pure policy and store are tested today. Planned.
-- **Signed premium entitlement tokens.** The current gate is a billing-snapshot
-  boolean; a tamper-evident signed token is planned. Until then the gate is
-  treated as a UX control over the user's own data, not a trust boundary.
+- **Signed premium entitlement tokens (honest non-DRM scope).** The two
+  purely-local premium features are now verified against a signed EdDSA token
+  (matrix rows above); the remaining policy note is that verification is
+  *bypassable by a forked client* by design. This is not asserted by a single
+  test — it is the explicit non-goal recorded in
+  `ovumcy-managed/docs/signed-entitlements.md` and the Accepted-Residual note,
+  reviewed by humans. The token is treated as a hardened UX control over the
+  user's own local data, not a DRM trust boundary.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore
   itself is not exercised by Jest (it is mocked), so this is a code-review
