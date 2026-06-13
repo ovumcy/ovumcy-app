@@ -164,6 +164,14 @@ export function PartnerSharedScreen({
 
       {readState ? (
         <>
+          {readState.isStale ? (
+            <StatusBanner
+              message={copy.sharedViewStaleNotice}
+              testID="partner-shared-stale-banner"
+              tone="info"
+            />
+          ) : null}
+
           <FeatureCard
             description={
               readState.accessLevel === "full"
@@ -173,23 +181,27 @@ export function PartnerSharedScreen({
             testID="partner-shared-summary-card"
             title={copy.sharedViewMetricsTitle}
           >
+            {!readState.isStale ? (
+              <View style={styles.metricGrid}>
+                <MetricItem
+                  label={copy.sharedViewCycleDayLabel}
+                  value={
+                    readState.cycleStatus.currentCycleDay === null
+                      ? "—"
+                      : String(readState.cycleStatus.currentCycleDay)
+                  }
+                />
+                <MetricItem
+                  label={copy.sharedViewNextPeriodLabel}
+                  value={formatDateRange(
+                    readState.cycleStatus.nextPeriodWindowStartDate,
+                    readState.cycleStatus.nextPeriodWindowEndDate,
+                    language,
+                  )}
+                />
+              </View>
+            ) : null}
             <View style={styles.metricGrid}>
-              <MetricItem
-                label={copy.sharedViewCycleDayLabel}
-                value={
-                  readState.cycleStatus.currentCycleDay === null
-                    ? "—"
-                    : String(readState.cycleStatus.currentCycleDay)
-                }
-              />
-              <MetricItem
-                label={copy.sharedViewNextPeriodLabel}
-                value={formatDateRange(
-                  readState.cycleStatus.nextPeriodWindowStartDate,
-                  readState.cycleStatus.nextPeriodWindowEndDate,
-                  language,
-                )}
-              />
               <MetricItem
                 label={copy.sharedViewLastCycleLabel}
                 value={formatMetricDays(
@@ -223,9 +235,11 @@ export function PartnerSharedScreen({
                 timeStyle: "short",
               }).format(new Date(readState.generatedAt))}
             </Text>
-            <Text style={styles.helperText}>
-              {readState.cycleStatus.predictionExplanation}
-            </Text>
+            {!readState.isStale ? (
+              <Text style={styles.helperText}>
+                {readState.cycleStatus.predictionExplanation}
+              </Text>
+            ) : null}
             <Text style={styles.helperText}>
               {copy.sharedViewTopSymptomsLabel}:{" "}
               {readState.summaryMetrics.topSymptoms.length > 0
@@ -235,7 +249,11 @@ export function PartnerSharedScreen({
           </FeatureCard>
 
           <FeatureCard
-            description={copy.sharedViewHistoryEmpty}
+            description={
+              readState.recentRows.length > 0
+                ? copy.sharedViewHistoryQualifier
+                : ""
+            }
             testID="partner-shared-history-card"
             title={copy.sharedViewHistoryTitle}
           >

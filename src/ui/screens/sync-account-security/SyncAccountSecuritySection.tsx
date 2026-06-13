@@ -544,8 +544,6 @@ function resolveTOTPErrorMessage(
   switch (code) {
     case "current_password_required":
       return copy.errors.currentPasswordRequired;
-    case "code_required":
-      return copy.errors.codeRequired;
     case "invalid_current_password":
       return copy.errors.invalidCurrentPassword;
     case "totp_not_configured":

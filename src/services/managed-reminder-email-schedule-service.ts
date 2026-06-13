@@ -118,12 +118,16 @@ export function buildManagedReminderEmailSchedules(
 }
 
 function normalizeReminderLocale(locale: string | undefined): string {
-  switch (locale) {
+  const subtag = String(locale ?? "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .split("-")[0];
+  switch (subtag) {
     case "ru":
     case "es":
     case "de":
     case "fr":
-      return locale;
+      return subtag;
     default:
       return "en";
   }

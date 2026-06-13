@@ -295,7 +295,8 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpVerifyCode("");
     setTotpEnrollment(null);
-    setTwoFactorEnabled(true);
+    const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
+    setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
 
   async function handleDisableTOTP() {
@@ -317,7 +318,8 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpDisablePassword("");
     setTotpDisableCode("");
-    setTwoFactorEnabled(false);
+    const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
+    setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
 
   function handleCancelTOTPEnrollment() {

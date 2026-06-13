@@ -238,12 +238,40 @@ function createProjectionPayload(): PartnerSharedProjectionPayload {
   };
 }
 
-function renderPartnerSharedScreen(languageOverride: InterfaceLanguage | null = "en") {
+function renderPartnerSharedScreen(
+  languageOverride: InterfaceLanguage | null = "en",
+  now: Date = new Date("2026-04-05T10:00:00.000Z"),
+) {
   return render(
     <AppPreferencesTestProvider languageOverride={languageOverride}>
-      <PartnerSharedScreen now={new Date("2026-04-05T10:00:00.000Z")} />
+      <PartnerSharedScreen now={now} />
     </AppPreferencesTestProvider>,
   );
+}
+
+function setupMocksWithPayload(payload: PartnerSharedProjectionPayload) {
+  mockLoadManagedPartnerAccess.mockResolvedValue({
+    ok: true,
+    value: {
+      owned: { invites: [], grants: [] },
+      sharedWithMe: [
+        {
+          id: "grant-1",
+          ownerAccountID: "owner-1",
+          partnerAccountID: "partner-1",
+          accessLevel: "full",
+          sourceInviteID: "invite-1",
+          acceptedAt: "2026-04-05T08:00:00.000Z",
+          lastSeenAt: "2026-04-05T08:05:00.000Z",
+          revokedAt: null,
+          revokedReason: "",
+          createdAt: "2026-04-05T08:00:00.000Z",
+          updatedAt: "2026-04-05T08:05:00.000Z",
+        },
+      ],
+    },
+  });
+  mockLoadManagedPartnerProjection.mockResolvedValue({ ok: true, value: payload });
 }
 
 describe("PartnerSharedScreen", () => {
@@ -342,6 +370,63 @@ describe("PartnerSharedScreen", () => {
         "This device cannot open the shared view because the invite key is missing.",
       ),
     ).toBeTruthy();
+  });
+
+  it("shows stale notice and suppresses prediction block when snapshot is 30 days old", async () => {
+    const stalePayload: PartnerSharedProjectionPayload = {
+      ...createProjectionPayload(),
+      generatedAt: "2026-03-01T00:00:00.000Z",
+    };
+    setupMocksWithPayload(stalePayload);
+
+    // now is 2026-04-05 → 35 days after generatedAt → stale
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(screen.getByTestId("partner-shared-stale-banner")).toBeTruthy();
+    expect(
+      screen.getByText("Shared data may be out of date — predictions hidden."),
+    ).toBeTruthy();
+    // Prediction metrics (cycle day, next period) must not be visible
+    expect(screen.queryByText("Cycle day")).toBeNull();
+    expect(screen.queryByText("Next period window")).toBeNull();
+  });
+
+  it("does not show stale notice when snapshot is fresh", async () => {
+    setupMocksWithPayload(createProjectionPayload()); // generatedAt 2026-04-05, now 2026-04-05 (2h old)
+
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(screen.queryByTestId("partner-shared-stale-banner")).toBeNull();
+    // Prediction metrics should be visible
+    expect(screen.getByText("Cycle day")).toBeTruthy();
+  });
+
+  it("shows 90-day qualifier on history card when rows are present", async () => {
+    setupMocksWithPayload(createProjectionPayload());
+
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-history-card");
+    expect(screen.getByText("Showing the last 90 days.")).toBeTruthy();
+  });
+
+  it("shows no qualifier (empty description) on history card when there are no rows", async () => {
+    const emptyPayload: PartnerSharedProjectionPayload = {
+      ...createProjectionPayload(),
+      // summary access → recentRows will be [] in the read state
+      accessLevel: "summary",
+      dayLogs: [],
+    };
+    setupMocksWithPayload(emptyPayload);
+
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-history-card");
+    expect(screen.queryByText("Showing the last 90 days.")).toBeNull();
+    // The empty body text is still rendered inside the card
+    expect(screen.getByText("No shared day-by-day history is available yet.")).toBeTruthy();
   });
 
   it("localizes shared history details and builtin symptom labels", async () => {

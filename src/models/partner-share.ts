@@ -67,6 +67,9 @@ export type PartnerSharedSummaryMetrics = {
 export type PartnerSharedReadState = {
   accessLevel: PartnerShareAccessLevel;
   generatedAt: string;
+  // isStale is true when the snapshot is older than PARTNER_SNAPSHOT_STALE_DAYS.
+  // When stale, the screen suppresses predictions and shows a notice.
+  isStale: boolean;
   temperatureUnit: ProfileRecord["temperatureUnit"];
   cycleStatus: {
     currentCycleDay: number | null;

@@ -44,7 +44,8 @@ describe("partner-shared-projection-service", () => {
     expect(projection.dayLogs).toHaveLength(1);
     expect(projection.dayLogs[0]).toEqual(
       expect.objectContaining({
-        flow: "medium",
+        // flow is dropped in summary (data minimisation — not rendered in summary UI)
+        flow: "none",
         mood: 0,
         sexActivity: "none",
         bbt: 0,
@@ -156,6 +157,104 @@ describe("partner-shared-projection-service", () => {
     // range (medical-correctness rewrite of resolvePredictionSpanDays).
     expect(readState.cycleStatus.nextPeriodWindowStartDate).toBeNull();
     expect(readState.recentRows[0]?.date).toBe("2026-04-02");
+  });
+
+  it("full projection strips pregnancyTest even when record has a non-none value (regression)", () => {
+    const profile = createDefaultProfileRecord();
+    const record = {
+      ...createEmptyDayLogRecord("2026-04-05"),
+      isPeriod: true,
+      pregnancyTest: "positive" as const,
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [record],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    expect(projection.dayLogs[0]?.pregnancyTest).toBe("none");
+  });
+
+  it("summary projection strips flow (data minimisation)", () => {
+    const profile = createDefaultProfileRecord();
+    const record = {
+      ...createEmptyDayLogRecord("2026-04-05"),
+      isPeriod: true,
+      flow: "heavy" as const,
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "summary",
+      dayLogs: [record],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    expect(projection.dayLogs[0]?.flow).toBe("none");
+  });
+
+  it("sets isStale when snapshot is older than 14 days", () => {
+    const profile = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-01-01",
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [{ ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true }],
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    // 30 days after generatedAt — clearly stale
+    const readState = buildPartnerSharedReadState(
+      projection,
+      new Date("2026-01-31T00:00:00.000Z"),
+      "en",
+    );
+
+    expect(readState.isStale).toBe(true);
+  });
+
+  it("does not set isStale when snapshot is fresh (within 14 days)", () => {
+    const profile = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-04-01",
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [{ ...createEmptyDayLogRecord("2026-04-01"), isPeriod: true, cycleStart: true }],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    // Only 5 days after generatedAt — fresh
+    const readState = buildPartnerSharedReadState(
+      projection,
+      new Date("2026-04-10T08:00:00.000Z"),
+      "en",
+    );
+
+    expect(readState.isStale).toBe(false);
   });
 
   it("localizes builtin symptom labels in shared summaries and history", () => {

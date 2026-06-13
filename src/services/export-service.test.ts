@@ -1,9 +1,11 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { createEmptyDayLogRecord, type DayCycleFactorKey } from "../models/day-log";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   buildLocalExportArtifact,
+  buildExportCSVRows,
   loadLocalExportState,
+  serializeExportCSV,
 } from "./export-service";
 
 describe("export-service", () => {
@@ -136,6 +138,109 @@ describe("export-service", () => {
       mimeType: "application/pdf",
       content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
     });
+  });
+});
+
+describe("CSV formula injection neutralization (sanitizeCSVTextCell)", () => {
+  it("(a) neutralizes a note starting with an injection formula prefix", () => {
+    const dayLogs = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        notes: '=IMPORTDATA("https://x")',
+      },
+    ];
+    const rows = buildExportCSVRows(dayLogs, [], "c");
+    const csv = serializeExportCSV(
+      ["Date", "Notes"],
+      rows,
+      { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-01" },
+    );
+
+    expect(csv).toContain("'=IMPORTDATA");
+    expect(csv).not.toContain(",=IMPORTDATA");
+  });
+
+  it("(b) neutralizes a custom symptom label starting with + and a cycle factor starting with @", () => {
+    // +extra goes through buildExportCSVRows → otherSymptoms (custom label not in built-in map)
+    const customSymptom = {
+      id: "custom_plus",
+      slug: "plus-symptom",
+      label: "+extra",
+      icon: "",
+      color: "#000000",
+      isArchived: false,
+      sortOrder: 1,
+      isDefault: false,
+    } as const;
+    const dayLogs = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        symptomIDs: ["custom_plus"],
+      },
+    ];
+    const rows = buildExportCSVRows(dayLogs, [customSymptom], "c");
+    // +extra in otherSymptoms → neutralized
+    const csvSymptom = serializeExportCSV(
+      ["Date", "Other", "Notes"],
+      rows,
+      { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-01" },
+    );
+    expect(csvSymptom).toContain("'+extra");
+
+    // @-prefix cycle factor: ExportCSVRow.cycleFactors is string[], so build it directly
+    const baseRow = rows[0]!;
+    const rowWithAtFactor = [
+      {
+        ...baseRow,
+        cycleFactors: ["@work"],
+      },
+    ];
+    const csvFactor = serializeExportCSV(
+      ["Date", "Cycle factors", "Notes"],
+      rowWithAtFactor,
+      { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-01" },
+    );
+    expect(csvFactor).toContain("'@work");
+  });
+
+  it("(c) does not modify normal text without a dangerous prefix", () => {
+    const dayLogs = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        notes: "Feeling good today",
+        cycleFactorKeys: ["travel"] as DayCycleFactorKey[],
+      },
+    ];
+    const rows = buildExportCSVRows(dayLogs, [], "c");
+    const csv = serializeExportCSV(
+      ["Date", "Cycle factors", "Notes"],
+      rows,
+      { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-01" },
+    );
+
+    expect(csv).toContain("Feeling good today");
+    expect(csv).toContain("travel");
+    expect(csv).not.toContain("'Feeling");
+    expect(csv).not.toContain("'travel");
+  });
+
+  it("(d) wraps an apostrophe-prefixed value in RFC4180 quotes when it also contains a comma", () => {
+    const dayLogs = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        notes: "=SUM(1,2)",
+      },
+    ];
+    const rows = buildExportCSVRows(dayLogs, [], "c");
+    const csv = serializeExportCSV(
+      ["Date", "Notes"],
+      rows,
+      { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-01" },
+    );
+
+    // After sanitization the value becomes '=SUM(1,2) which contains a comma,
+    // so RFC4180 quoting must wrap it: "'=SUM(1,2)"
+    expect(csv).toContain('"\'=SUM(1,2)"');
   });
 });
 

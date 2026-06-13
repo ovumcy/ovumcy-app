@@ -66,9 +66,21 @@ describe("describeSubscriptionCountdown", () => {
     expect(result.willRenew).toBe(true);
   });
 
-  it("reports 'canceling' (no renew) when cancel_at_period_end is set, even mid-trial", () => {
+  it("reports 'trialing' (no renew) when trialing+cancelAtPeriodEnd — trial kind takes priority", () => {
+    // Previously this returned kind="canceling"; now trialing outranks cancelAtPeriodEnd
+    // so the UI can show the trial countdown. willRenew=false signals non-renewal.
     const result = describeSubscriptionCountdown(
       sub({ status: "trialing", cancelAtPeriodEnd: true }),
+      "2026-06-01T00:00:00.000Z",
+    );
+    expect(result.kind).toBe("trialing");
+    expect(result.willRenew).toBe(false);
+    expect(result.daysRemaining).toBe(29);
+  });
+
+  it("reports 'canceling' (no renew) when a PAID plan has cancelAtPeriodEnd set", () => {
+    const result = describeSubscriptionCountdown(
+      sub({ status: "active", source: "subscription", cancelAtPeriodEnd: true }),
       "2026-06-01T00:00:00.000Z",
     );
     expect(result.kind).toBe("canceling");
@@ -110,6 +122,18 @@ describe("describeSubscriptionCountdown", () => {
     expect(result.kind).toBe("trialing");
     expect(result.daysRemaining).toBeNull();
     expect(result.willRenew).toBe(true);
+  });
+
+  it("preserves kind='canceling' with null days when timestamps are unparseable and cancelAtPeriodEnd=true", () => {
+    // Previously this collapsed to kind="active"; now cancelAtPeriodEnd is respected
+    // even when the period end timestamp is unparseable.
+    const result = describeSubscriptionCountdown(
+      sub({ status: "active", source: "subscription", currentPeriodEndsAt: "not-a-date", cancelAtPeriodEnd: true }),
+      "2026-06-01T00:00:00.000Z",
+    );
+    expect(result.kind).toBe("canceling");
+    expect(result.daysRemaining).toBeNull();
+    expect(result.willRenew).toBe(false);
   });
 });
 
