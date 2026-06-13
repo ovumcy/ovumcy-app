@@ -50,6 +50,8 @@ function createHistory(): StatsCycleHistorySummary {
 
 describe("buildCurrentCycleAdvancedFertilitySummary", () => {
   it("prefers ovulation confirmation over lower-priority fertility signals", () => {
+    // Baseline window 03-29..04-02 stays flat; the sustained streak starts on
+    // 04-03, so the canonical detector anchors the shift after the baseline.
     const records = [
       {
         ...createEmptyDayLogRecord("2026-03-29"),
@@ -57,26 +59,34 @@ describe("buildCurrentCycleAdvancedFertilitySummary", () => {
       },
       {
         ...createEmptyDayLogRecord("2026-03-30"),
-        bbt: 36.32,
+        bbt: 36.31,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-31"),
+        bbt: 36.29,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-01"),
+        bbt: 36.3,
         cervicalMucus: "eggwhite" as const,
         lhTest: "peak" as const,
         pregnancyTest: "none" as const,
       },
       {
-        ...createEmptyDayLogRecord("2026-03-31"),
-        bbt: 36.34,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-01"),
-        bbt: 36.57,
-      },
-      {
         ...createEmptyDayLogRecord("2026-04-02"),
-        bbt: 36.6,
+        bbt: 36.3,
       },
       {
         ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.63,
+        bbt: 36.55,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-04"),
+        bbt: 36.56,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-05"),
+        bbt: 36.57,
       },
     ];
 
@@ -106,23 +116,31 @@ describe("buildCurrentCycleAdvancedFertilitySummary", () => {
       },
       {
         ...createEmptyDayLogRecord("2026-03-30"),
-        bbt: 36.32,
+        bbt: 36.31,
       },
       {
         ...createEmptyDayLogRecord("2026-03-31"),
-        bbt: 36.34,
+        bbt: 36.29,
       },
       {
         ...createEmptyDayLogRecord("2026-04-01"),
-        bbt: 36.57,
+        bbt: 36.3,
       },
       {
         ...createEmptyDayLogRecord("2026-04-02"),
-        bbt: 36.6,
+        bbt: 36.3,
       },
       {
         ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.63,
+        bbt: 36.55,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-04"),
+        bbt: 36.56,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-05"),
+        bbt: 36.57,
       },
     ];
 

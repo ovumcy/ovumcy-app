@@ -235,7 +235,6 @@ describe("BackupSyncScreen", () => {
             {
               mode: "self_hosted",
               syncEnabled: true,
-              premiumActive: false,
               recoverySupported: true,
               pushSupported: false,
               portalSupported: false,
@@ -328,7 +327,6 @@ describe("BackupSyncScreen", () => {
         JSON.stringify({
           mode: "self_hosted",
           sync_enabled: true,
-          premium_active: false,
           recovery_supported: true,
           push_supported: false,
           portal_supported: false,
@@ -1214,7 +1212,6 @@ describe("BackupSyncScreen", () => {
         JSON.stringify({
           mode: "self_hosted",
           sync_enabled: true,
-          premium_active: false,
           recovery_supported: true,
           push_supported: false,
           portal_supported: false,
@@ -1405,7 +1402,6 @@ describe("BackupSyncScreen", () => {
           {
             mode: "managed",
             syncEnabled: true,
-            premiumActive: true,
             recoverySupported: false,
             pushSupported: false,
             portalSupported: false,
