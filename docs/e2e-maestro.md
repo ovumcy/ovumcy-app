@@ -89,9 +89,16 @@ other flows reuse whatever state is on the device.
 
 `.github/workflows/e2e-maestro.yml` is **`workflow_dispatch` only** and opt-in.
 Its `validate-flows` job just lists the flows (no device needed); the
-`run-flows` job is gated behind a manual `confirm: yes` input because the
-default GitHub-hosted runners provide neither an emulator nor a built app. Wire
-in an emulator action and a build step there before depending on it.
+`run-flows` job (gated behind a manual `confirm: yes` input) now contains the
+full pipeline — Temurin 17 + `npm ci` + `expo prebuild` + `gradle
+assembleDebug`, then `reactivecircus/android-emulator-runner` boots an emulator,
+installs the APK, and runs `maestro test .maestro`. Set the repo/Org variable
+`MAESTRO_APP_ID` to the app id (`app.ovumcy.mobile` on Android).
+
+> **Unverified.** This `run-flows` job has never executed yet — it was authored
+> without an Android toolchain. The action SHAs and step order are real and
+> pinned, but the prebuild/Gradle build and the launch activity may need tuning
+> on the first real run. Treat the first green CI run as the validation.
 
 ## Maestro output
 
