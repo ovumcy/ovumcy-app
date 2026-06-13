@@ -31,6 +31,7 @@ function baseProps() {
     forgotStage: "credentials" as const,
     forgotStatus: "idle" as const,
     forgotErrorCode: null,
+    forgotSignedOut: false,
     forgotResetTokenExpiresAt: "",
     onRequestReset: noop,
     onSubmitResetPassword: noop,
@@ -159,6 +160,62 @@ describe("SyncAccountSecuritySection", () => {
     expect(
       screen.getByText(copy.forgotPassword.completedMessage),
     ).toBeTruthy();
+  });
+
+  // FIX 7.1
+  it("surfaces the signed-out notice after a reset when forgotSignedOut is set", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          forgotStage="completed"
+          forgotSignedOut={true}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-forgot-signed-out-banner"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(copy.forgotPassword.signedOutMessage),
+    ).toBeTruthy();
+  });
+
+  it("hides the signed-out notice when forgotSignedOut is false", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          forgotStage="completed"
+          forgotSignedOut={false}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.queryByTestId("account-security-forgot-signed-out-banner"),
+    ).toBeNull();
+  });
+
+  // FIX 7.2
+  it("shows the distinct rate-limited message and disables submit when a flow is rate-limited", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          changeErrorCode="rate_limited"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    // Distinct wait copy, not the terse rateLimited string.
+    expect(screen.getByText(copy.errors.rateLimitedRetry)).toBeTruthy();
+    // Submit affordance is transiently disabled.
+    expect(
+      screen.getByTestId("account-security-change-submit").props
+        .accessibilityState?.disabled,
+    ).toBe(true);
   });
 
   it("maps invalid_recovery_credentials to the generic localized error", () => {

@@ -11,6 +11,7 @@ import { getSettingsCopy } from "./settings-copy";
 import { getOnboardingCopy } from "./app-copy";
 import { selectTOTPCopy } from "./totp-copy";
 import { getReminderCopy } from "./reminder-copy";
+import { selectAccountSecurityCopy } from "./account-security-copy";
 
 // ── A. Russian count grammar ───────────────────────────────────────────────
 
@@ -561,5 +562,57 @@ describe("G infoCycleShort — threshold aligned to canonical 24 days", () => {
   });
   it("settings-copy es mentions 24", () => {
     expect(getSettingsCopy("es").cycle.infoCycleShort).toContain("24");
+  });
+});
+
+// ── J. Account-security UX copy (FIX 7.1 signed-out, FIX 7.2 rate-limited) ──
+
+describe("J account-security copy — signed-out + rate-limited keys present in 5 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es"] as const;
+
+  it.each(locales)("%s has a non-empty forgotPassword.signedOutMessage", (lang) => {
+    const copy = selectAccountSecurityCopy(lang);
+    expect(copy.forgotPassword.signedOutMessage.trim().length).toBeGreaterThan(0);
+  });
+
+  it.each(locales)("%s has a non-empty errors.rateLimitedRetry", (lang) => {
+    const copy = selectAccountSecurityCopy(lang);
+    expect(copy.errors.rateLimitedRetry.trim().length).toBeGreaterThan(0);
+  });
+});
+
+describe("J account-security copy — formal register (de Sie / fr vous / ru Вы)", () => {
+  it("de signedOutMessage uses formal Sie, no informal du/dich", () => {
+    const de = selectAccountSecurityCopy("de");
+    expect(de.forgotPassword.signedOutMessage).toContain("Sie");
+    expect(de.forgotPassword.signedOutMessage).toContain("Verbinden Sie");
+    expect(de.forgotPassword.signedOutMessage).not.toMatch(/\b(du|dich|dein)\b/i);
+  });
+  it("de rateLimitedRetry uses formal Sie, no informal du", () => {
+    const de = selectAccountSecurityCopy("de");
+    expect(de.errors.rateLimitedRetry).toContain("warten Sie");
+    expect(de.errors.rateLimitedRetry).not.toMatch(/\b(du|dich|dein)\b/i);
+  });
+
+  it("fr signedOutMessage uses formal vous, no informal tu/toi/ton", () => {
+    const fr = selectAccountSecurityCopy("fr");
+    expect(fr.forgotPassword.signedOutMessage).toContain("Vous");
+    expect(fr.forgotPassword.signedOutMessage).not.toMatch(/\b(tu|toi|ton|tes)\b/i);
+  });
+  it("fr rateLimitedRetry uses formal Veuillez, no informal tu", () => {
+    const fr = selectAccountSecurityCopy("fr");
+    expect(fr.errors.rateLimitedRetry).toContain("Veuillez");
+    expect(fr.errors.rateLimitedRetry).not.toMatch(/\b(tu|toi|ton|tes)\b/i);
+  });
+
+  it("ru signedOutMessage uses formal Вы and formal imperative Подключитесь", () => {
+    const ru = selectAccountSecurityCopy("ru");
+    expect(ru.forgotPassword.signedOutMessage).toContain("Вы");
+    expect(ru.forgotPassword.signedOutMessage).toContain("Подключитесь");
+  });
+  it("ru rateLimitedRetry uses formal imperative подождите, not informal подожди", () => {
+    const ru = selectAccountSecurityCopy("ru");
+    expect(ru.errors.rateLimitedRetry).toContain("подождите");
+    expect(ru.errors.rateLimitedRetry).not.toContain("подожди ");
   });
 });

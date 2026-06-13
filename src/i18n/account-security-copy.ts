@@ -27,6 +27,7 @@ export type AccountSecurityCopy = {
     submitResetLabel: string;
     cancelLabel: string;
     completedMessage: string;
+    signedOutMessage: string;
   };
 
   regenerate: {
@@ -51,7 +52,7 @@ export type AccountSecurityCopy = {
     invalidRecoveryCredentials: string;
     invalidResetToken: string;
     notConnected: string;
-    rateLimited: string;
+    rateLimitedRetry: string;
     networkFailed: string;
     loginRequired: string;
     recoveryCodeRequired: string;
@@ -90,6 +91,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     cancelLabel: "Cancel",
     completedMessage:
       "Password reset. Save the new recovery code shown above, then sign in again.",
+    signedOutMessage:
+      "You've been signed out on this device. Reconnect with your new password.",
   },
 
   regenerate: {
@@ -115,7 +118,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     invalidRecoveryCredentials: "Login or recovery code is incorrect.",
     invalidResetToken: "Reset token expired or is invalid. Start over.",
     notConnected: "Connect a sync account before changing its password.",
-    rateLimited: "Too many attempts. Try again later.",
+    rateLimitedRetry:
+      "Too many attempts. Please wait a moment before trying again.",
     networkFailed: "Network error. Try again.",
     loginRequired: "Enter your login or email.",
     recoveryCodeRequired: "Enter the recovery code.",
@@ -154,6 +158,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     cancelLabel: "Abbrechen",
     completedMessage:
       "Passwort zurückgesetzt. Speichern Sie den neuen Wiederherstellungscode oben und melden Sie sich erneut an.",
+    signedOutMessage:
+      "Sie wurden auf diesem Gerät abgemeldet. Verbinden Sie sich erneut mit Ihrem neuen Passwort.",
   },
 
   regenerate: {
@@ -181,7 +187,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
       "Zurücksetzungs-Token abgelaufen oder ungültig. Starten Sie erneut.",
     notConnected:
       "Verbinden Sie ein Sync-Konto, bevor Sie dessen Passwort ändern.",
-    rateLimited: "Zu viele Versuche. Versuchen Sie es später erneut.",
+    rateLimitedRetry:
+      "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
     networkFailed: "Netzwerkfehler. Versuchen Sie es erneut.",
     loginRequired: "Geben Sie Ihren Login oder Ihre E-Mail ein.",
     recoveryCodeRequired: "Geben Sie den Wiederherstellungscode ein.",
@@ -222,6 +229,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     cancelLabel: "Annuler",
     completedMessage:
       "Mot de passe réinitialisé. Sauvegardez le nouveau code de récupération affiché ci-dessus, puis reconnectez-vous.",
+    signedOutMessage:
+      "Vous avez été déconnecté(e) sur cet appareil. Reconnectez-vous avec votre nouveau mot de passe.",
   },
 
   regenerate: {
@@ -249,7 +258,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
       "Token de réinitialisation expiré ou invalide. Recommencez.",
     notConnected:
       "Connectez un compte de sync avant de changer son mot de passe.",
-    rateLimited: "Trop de tentatives. Réessayez plus tard.",
+    rateLimitedRetry:
+      "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
     networkFailed: "Erreur réseau. Réessayez.",
     loginRequired: "Entrez votre login ou votre e-mail.",
     recoveryCodeRequired: "Entrez le code de récupération.",
@@ -289,6 +299,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     cancelLabel: "Отмена",
     completedMessage:
       "Пароль сброшен. Сохраните новый код восстановления выше и войдите снова.",
+    signedOutMessage:
+      "Вы вышли из аккаунта на этом устройстве. Подключитесь заново с новым паролем.",
   },
 
   regenerate: {
@@ -316,7 +328,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
       "Токен сброса истёк или недействителен. Начните заново.",
     notConnected:
       "Сначала подключите sync-аккаунт, чтобы сменить его пароль.",
-    rateLimited: "Слишком много попыток. Попробуйте позже.",
+    rateLimitedRetry:
+      "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
     networkFailed: "Ошибка сети. Попробуйте снова.",
     loginRequired: "Введите логин или email.",
     recoveryCodeRequired: "Введите код восстановления.",
@@ -357,6 +370,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     cancelLabel: "Cancelar",
     completedMessage:
       "Contraseña restablecida. Guarda el nuevo código de recuperación mostrado arriba y vuelve a iniciar sesión.",
+    signedOutMessage:
+      "Has cerrado sesión en este dispositivo. Vuelve a conectarte con tu nueva contraseña.",
   },
 
   regenerate: {
@@ -385,7 +400,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
       "Token de restablecimiento caducado o inválido. Empieza de nuevo.",
     notConnected:
       "Conecta una cuenta de sync antes de cambiar su contraseña.",
-    rateLimited: "Demasiados intentos. Inténtalo más tarde.",
+    rateLimitedRetry:
+      "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
     networkFailed: "Error de red. Vuelve a intentarlo.",
     loginRequired: "Introduce tu login o email.",
     recoveryCodeRequired: "Introduce el código de recuperación.",

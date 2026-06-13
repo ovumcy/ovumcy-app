@@ -9,6 +9,7 @@ import {
 } from "../../../sync/sync-contract";
 import * as syncTOTPService from "../../../sync/sync-totp-service";
 import * as syncAccountSessionService from "../../../sync/sync-account-session-service";
+import * as syncAccountRecoveryService from "../../../sync/sync-account-recovery-service";
 import { useSyncAccountSecurityController } from "./useSyncAccountSecurityController";
 
 function connectedSecrets() {
@@ -171,6 +172,157 @@ describe("useSyncAccountSecurityController", () => {
 
       // Preserved from before the mutation
       expect(result.current.twoFactorEnabled).toBe(true);
+    });
+  });
+
+  // FIX 7.1: a successful reset wipes local session tokens and drops setup back
+  // to local_ready, so this device is signed out. The controller must surface an
+  // explicit signed-out flag; otherwise the next security action silently fails
+  // with not_connected.
+  describe("handleSubmitResetPassword (FIX 7.1 signed-out state)", () => {
+    function localReadyPreferences(): SyncPreferencesRecord {
+      return { ...managedPreferences(), setupStatus: "local_ready" };
+    }
+
+    it("exposes forgotSignedOut after a successful reset", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "resetSyncAccountPassword")
+        .mockResolvedValue({
+          ok: true,
+          recoveryCode: "newcode0000newcode0000newcode00",
+          preferences: localReadyPreferences(),
+        });
+
+      const { result } = renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      expect(result.current.forgotSignedOut).toBe(false);
+
+      await act(async () => {
+        await result.current.handleSubmitResetPassword();
+      });
+
+      expect(result.current.forgotSignedOut).toBe(true);
+      expect(result.current.forgotStage).toBe("completed");
+    });
+
+    it("clears forgotSignedOut when the forgot flow is cancelled", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "resetSyncAccountPassword")
+        .mockResolvedValue({
+          ok: true,
+          recoveryCode: "newcode0000newcode0000newcode00",
+          preferences: localReadyPreferences(),
+        });
+
+      const { result } = renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleSubmitResetPassword();
+      });
+      expect(result.current.forgotSignedOut).toBe(true);
+
+      act(() => {
+        result.current.handleCancelForgot();
+      });
+      expect(result.current.forgotSignedOut).toBe(false);
+    });
+
+    it("does not flag signed-out when the reset fails", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "resetSyncAccountPassword")
+        .mockResolvedValue({ ok: false, errorCode: "invalid_reset_token" });
+
+      const { result } = renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      await act(async () => {
+        await result.current.handleSubmitResetPassword();
+      });
+
+      expect(result.current.forgotSignedOut).toBe(false);
+      expect(result.current.forgotErrorCode).toBe("invalid_reset_token");
+    });
+  });
+
+  // FIX 7.2: a rate_limited result surfaces the distinct error code (the screen
+  // maps it to the wait message and disables submit). Confirm the controller
+  // exposes the code rather than swallowing it into a generic error.
+  describe("rate_limited results (FIX 7.2)", () => {
+    it("surfaces rate_limited from a change-password attempt", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
+
+      const { result } = renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(result.current.changeErrorCode).toBe("rate_limited");
+      expect(result.current.changeStatus).toBe("idle");
+    });
+
+    it("surfaces rate_limited from a reset request attempt", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "requestSyncPasswordReset")
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
+
+      const { result } = renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      await act(async () => {
+        await result.current.handleRequestReset();
+      });
+
+      expect(result.current.forgotErrorCode).toBe("rate_limited");
     });
   });
 });

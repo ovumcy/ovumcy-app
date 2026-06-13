@@ -84,6 +84,11 @@ export function useSyncAccountSecurityController({
   const [forgotErrorCode, setForgotErrorCode] = useState<
     RequestSyncPasswordResetErrorCode | ResetSyncPasswordErrorCode | null
   >(null);
+  // A successful reset revokes every session, so this device is now signed out.
+  // The screen surfaces an explicit "reconnect with your new password" notice
+  // off this flag; without it the next security action would silently fail with
+  // not_connected.
+  const [forgotSignedOut, setForgotSignedOut] = useState(false);
 
   // Regenerate recovery code
   const [regeneratePassword, setRegeneratePassword] = useState("");
@@ -205,6 +210,7 @@ export function useSyncAccountSecurityController({
       setRevealedRecoveryCode(result.recoveryCode);
       setForgotStage("completed");
       setForgotStatus("success");
+      setForgotSignedOut(true);
       setForgotResetToken("");
       setForgotResetTokenExpiresAt("");
       setForgotNewPassword("");
@@ -222,6 +228,7 @@ export function useSyncAccountSecurityController({
     setForgotNewPassword("");
     setForgotErrorCode(null);
     setForgotStatus("idle");
+    setForgotSignedOut(false);
   }
 
   async function handleRegenerate() {
@@ -363,6 +370,7 @@ export function useSyncAccountSecurityController({
     forgotStage,
     forgotStatus,
     forgotErrorCode,
+    forgotSignedOut,
     forgotResetTokenExpiresAt,
     handleRequestReset,
     handleSubmitResetPassword,

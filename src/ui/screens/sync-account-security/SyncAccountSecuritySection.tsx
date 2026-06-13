@@ -69,6 +69,7 @@ export type SyncAccountSecuritySectionProps = {
     | RequestSyncPasswordResetErrorCode
     | ResetSyncPasswordErrorCode
     | null;
+  forgotSignedOut: boolean;
   forgotResetTokenExpiresAt: string;
   onRequestReset: () => void | Promise<void>;
   onSubmitResetPassword: () => void | Promise<void>;
@@ -105,6 +106,14 @@ export type SyncAccountSecuritySectionProps = {
   onCancelTOTPEnrollment: () => void;
 };
 
+// FIX 7.2: when a flow is rate-limited the backend wants the user to pause, so
+// the submit affordance is briefly disabled in addition to showing the distinct
+// wait message. The controller clears the error on the next edit/submit, which
+// re-enables the button — no countdown is needed.
+function isRateLimited(code: AnyErrorCode | TOTPErrorCode | null): boolean {
+  return code === "rate_limited";
+}
+
 export function SyncAccountSecuritySection({
   copy,
   changeCurrentPassword,
@@ -123,6 +132,7 @@ export function SyncAccountSecuritySection({
   forgotStage,
   forgotStatus,
   forgotErrorCode,
+  forgotSignedOut,
   forgotResetTokenExpiresAt,
   onRequestReset,
   onSubmitResetPassword,
@@ -201,7 +211,7 @@ export function SyncAccountSecuritySection({
           />
         ) : null}
         <AppButton
-          disabled={changeStatus === "submitting"}
+          disabled={changeStatus === "submitting" || isRateLimited(changeErrorCode)}
           label={copy.changePassword.submitLabel}
           onPress={onChangePassword}
           testID="account-security-change-submit"
@@ -243,7 +253,9 @@ export function SyncAccountSecuritySection({
               />
             ) : null}
             <AppButton
-              disabled={forgotStatus === "submitting"}
+              disabled={
+                forgotStatus === "submitting" || isRateLimited(forgotErrorCode)
+              }
               label={copy.forgotPassword.submitLabel}
               onPress={onRequestReset}
               testID="account-security-forgot-submit"
@@ -282,7 +294,9 @@ export function SyncAccountSecuritySection({
               />
             ) : null}
             <AppButton
-              disabled={forgotStatus === "submitting"}
+              disabled={
+                forgotStatus === "submitting" || isRateLimited(forgotErrorCode)
+              }
               label={copy.forgotPassword.submitResetLabel}
               onPress={onSubmitResetPassword}
               testID="account-security-forgot-reset-submit"
@@ -295,11 +309,20 @@ export function SyncAccountSecuritySection({
             />
           </>
         ) : (
-          <StatusBanner
-            message={copy.forgotPassword.completedMessage}
-            testID="account-security-forgot-completed-banner"
-            tone="success"
-          />
+          <>
+            <StatusBanner
+              message={copy.forgotPassword.completedMessage}
+              testID="account-security-forgot-completed-banner"
+              tone="success"
+            />
+            {forgotSignedOut ? (
+              <StatusBanner
+                message={copy.forgotPassword.signedOutMessage}
+                testID="account-security-forgot-signed-out-banner"
+                tone="info"
+              />
+            ) : null}
+          </>
         )}
       </FeatureCard>
 
@@ -325,7 +348,10 @@ export function SyncAccountSecuritySection({
           />
         ) : null}
         <AppButton
-          disabled={regenerateStatus === "submitting"}
+          disabled={
+            regenerateStatus === "submitting" ||
+            isRateLimited(regenerateErrorCode)
+          }
           label={copy.regenerate.submitLabel}
           onPress={onRegenerate}
           testID="account-security-regenerate-submit"
@@ -383,7 +409,9 @@ export function SyncAccountSecuritySection({
                 />
               ) : null}
               <AppButton
-                disabled={totpStatus === "submitting"}
+                disabled={
+                  totpStatus === "submitting" || isRateLimited(totpErrorCode)
+                }
                 label={totpCopy.enroll.startLabel}
                 onPress={onStartTOTPEnrollment}
                 testID="account-security-totp-enroll-submit"
@@ -437,7 +465,9 @@ export function SyncAccountSecuritySection({
                 />
               ) : null}
               <AppButton
-                disabled={totpStatus === "submitting"}
+                disabled={
+                  totpStatus === "submitting" || isRateLimited(totpErrorCode)
+                }
                 label={totpCopy.enroll.verifyLabel}
                 onPress={onVerifyTOTPEnrollment}
                 testID="account-security-totp-verify-submit"
@@ -494,7 +524,9 @@ export function SyncAccountSecuritySection({
               />
             ) : null}
             <AppButton
-              disabled={totpStatus === "submitting"}
+              disabled={
+                totpStatus === "submitting" || isRateLimited(totpErrorCode)
+              }
               label={totpCopy.disable.submitLabel}
               onPress={onDisableTOTP}
               testID="account-security-totp-disable-submit"
@@ -591,7 +623,7 @@ function resolveErrorMessage(
     case "not_connected":
       return copy.errors.notConnected;
     case "rate_limited":
-      return copy.errors.rateLimited;
+      return copy.errors.rateLimitedRetry;
     case "network_failed":
       return copy.errors.networkFailed;
     case "login_required":
