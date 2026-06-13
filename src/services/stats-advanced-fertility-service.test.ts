@@ -1,5 +1,6 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
+import { inferObservedOvulationDate } from "./observed-ovulation-service";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 
 function createHistory(): StatsCycleHistorySummary {
@@ -48,22 +49,39 @@ function createHistory(): StatsCycleHistorySummary {
   };
 }
 
+function bbt(date: string, value: number): DayLogRecord {
+  return { ...createEmptyDayLogRecord(date), bbt: value };
+}
+
+function lhPeak(date: string): DayLogRecord {
+  return { ...createEmptyDayLogRecord(date), lhTest: "peak" };
+}
+
+// A canonical sustained thermal shift anchored at the cycle start (2026-03-29):
+// first-5-day baseline = 36.30, threshold = 36.50; readings 04-03..04-05 are the
+// 3-day sustained streak, so the shift (ovulation) day is its start, 2026-04-03.
+// Extra elevated readings after the streak (04-06, 04-07) must NOT move the gap.
+function currentCycleShiftRecords(): DayLogRecord[] {
+  return [
+    bbt("2026-03-29", 36.3),
+    bbt("2026-03-30", 36.3),
+    bbt("2026-03-31", 36.3),
+    bbt("2026-04-01", 36.3),
+    bbt("2026-04-02", 36.3),
+    bbt("2026-04-03", 36.55),
+    bbt("2026-04-04", 36.56),
+    bbt("2026-04-05", 36.57),
+    bbt("2026-04-06", 36.58),
+    bbt("2026-04-07", 36.58),
+  ];
+}
+
 describe("buildStatsAdvancedFertility", () => {
-  it("derives luteal consistency from repeated mucus signals", () => {
-    const records = [
-      {
-        ...createEmptyDayLogRecord("2026-01-15"),
-        cervicalMucus: "eggwhite" as const,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-02-11"),
-        cervicalMucus: "eggwhite" as const,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-03-12"),
-        cervicalMucus: "eggwhite" as const,
-      },
-    ];
+  it("derives luteal consistency from a true ovulation anchor (LH peak) per cycle", () => {
+    // Mucus-only cycles are skipped for luteal (review 1.4). Anchor on LH peaks:
+    // C1 2026-01-15 -> 2026-01-29 = 14d; C2 2026-02-11 -> 2026-02-26 = 15d;
+    // C3 2026-03-12 -> 2026-03-29 = 17d. min 14, max 17, spread 3.
+    const records = [lhPeak("2026-01-15"), lhPeak("2026-02-11"), lhPeak("2026-03-12")];
 
     expect(
       buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
@@ -75,37 +93,52 @@ describe("buildStatsAdvancedFertility", () => {
           maxDays: 17,
           spreadDays: 3,
         }),
+        observedLutealSampleCount: 3,
       }),
     );
   });
 
-  it("detects an ovulation confirmation when egg-white mucus and a thermal rise align in the current cycle", () => {
+  it("skips a mucus-only cycle for luteal computation (no BBT shift, no LH peak)", () => {
+    // Egg-white alone is not a luteal anchor; the cycle contributes signal
+    // coverage but no observed luteal value.
     const records = [
-      {
-        ...createEmptyDayLogRecord("2026-03-29"),
-        bbt: 36.3,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-03-30"),
-        bbt: 36.32,
-        cervicalMucus: "eggwhite" as const,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-03-31"),
-        bbt: 36.34,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-01"),
-        bbt: 36.57,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-02"),
-        bbt: 36.6,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.63,
-      },
+      { ...createEmptyDayLogRecord("2026-01-15"), cervicalMucus: "eggwhite" as const },
+      { ...createEmptyDayLogRecord("2026-02-11"), cervicalMucus: "eggwhite" as const },
+      { ...createEmptyDayLogRecord("2026-03-12"), cervicalMucus: "eggwhite" as const },
+    ];
+
+    expect(
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
+    ).toEqual(
+      expect.objectContaining({
+        observedLutealSampleCount: 0,
+        observedLutealAverageDays: null,
+        observedLutealConsistency: null,
+        signalCoverageCount: 3,
+      }),
+    );
+  });
+
+  it("includes a cycle whose observed luteal phase is exactly the 10-day floor", () => {
+    // LH peak 2026-01-19 -> next start 2026-01-29 = 10d (inclusive lower bound).
+    const records = [lhPeak("2026-01-19")];
+
+    expect(
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
+    ).toEqual(
+      expect.objectContaining({
+        observedLutealSampleCount: 1,
+        observedLutealAverageDays: 10,
+      }),
+    );
+  });
+
+  it("measures the ovulation-confirmation gap to the thermal-shift day, not the last BBT record", () => {
+    // Egg-white on 2026-04-01, shift day 2026-04-03 => gap 2. The two extra
+    // elevated BBT days (04-06, 04-07) after the shift do not change the gap.
+    const records = [
+      ...currentCycleShiftRecords(),
+      { ...createEmptyDayLogRecord("2026-04-01"), cervicalMucus: "eggwhite" as const },
     ];
 
     expect(
@@ -114,41 +147,18 @@ describe("buildStatsAdvancedFertility", () => {
       expect.objectContaining({
         ovulationConfirmation: {
           kind: "confirmed",
-          gapDays: 4,
-          mucusDate: "2026-03-30",
+          gapDays: 2,
+          mucusDate: "2026-04-01",
         },
       }),
     );
   });
 
-  it("detects an LH peak aligned with a thermal rise in the current cycle", () => {
+  it("aligns an LH peak only when the thermal-shift day is within the LH-peak window", () => {
+    // LH peak 2026-04-01, shift day 2026-04-03 => gap 2 -> aligned.
     const records = [
-      {
-        ...createEmptyDayLogRecord("2026-03-29"),
-        bbt: 36.3,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-03-30"),
-        bbt: 36.32,
-        lhTest: "peak" as const,
-        pregnancyTest: "none" as const,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-03-31"),
-        bbt: 36.34,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-01"),
-        bbt: 36.57,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-02"),
-        bbt: 36.6,
-      },
-      {
-        ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.63,
-      },
+      ...currentCycleShiftRecords(),
+      lhPeak("2026-04-01"),
     ];
 
     expect(
@@ -157,10 +167,65 @@ describe("buildStatsAdvancedFertility", () => {
       expect.objectContaining({
         lhPeakSignal: {
           kind: "aligned",
-          date: "2026-03-30",
-          gapDays: 4,
+          date: "2026-04-01",
+          gapDays: 2,
         },
       }),
     );
+  });
+
+  it("keeps the LH peak logged (not aligned) when the shift day is more than 4 days after it", () => {
+    // LH peak on the cycle-start day 2026-03-29 is 5 days before the shift day
+    // 2026-04-03 (> 4) -> logged, gap null.
+    const records = [
+      ...currentCycleShiftRecords(),
+      lhPeak("2026-03-29"),
+    ];
+
+    expect(
+      buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
+    ).toEqual(
+      expect.objectContaining({
+        lhPeakSignal: {
+          kind: "logged",
+          date: "2026-03-29",
+          gapDays: null,
+        },
+      }),
+    );
+  });
+
+  it("agrees with inferObservedOvulationDate on the same current-cycle data", () => {
+    // The advanced panel's confirmed shift must use the same shift day the
+    // calendar marker derives from inferObservedOvulationDate.
+    const records = currentCycleShiftRecords();
+    const calendarOvulation = inferObservedOvulationDate(
+      records,
+      "2026-03-29",
+      "2026-04-26",
+    );
+    expect(calendarOvulation).toBe("2026-04-03");
+
+    const withMucus = [
+      ...records,
+      { ...createEmptyDayLogRecord("2026-04-01"), cervicalMucus: "eggwhite" as const },
+    ];
+    const summary = buildStatsAdvancedFertility(createHistory(), withMucus, "2026-03-29");
+    // gap = mucus 2026-04-01 -> calendar shift day 2026-04-03 = 2.
+    expect(summary?.ovulationConfirmation?.gapDays).toBe(2);
+    expect(summary?.thermalShift?.kind).toBe("confirmed");
+  });
+
+  it("does not emit a confirmed shift with only 4 BBT readings (below the canonical 5-reading baseline)", () => {
+    const records = [
+      bbt("2026-03-29", 36.3),
+      bbt("2026-03-30", 36.3),
+      bbt("2026-03-31", 36.7),
+      bbt("2026-04-01", 36.7),
+    ];
+
+    const summary = buildStatsAdvancedFertility(createHistory(), records, "2026-03-29");
+    expect(summary?.thermalShift ?? null).toBeNull();
+    expect(summary?.ovulationConfirmation ?? null).toBeNull();
   });
 });

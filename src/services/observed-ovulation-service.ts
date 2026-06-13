@@ -6,17 +6,34 @@ const BBT_BASELINE_WINDOW = 5;
 const BBT_SHIFT_STREAK_LENGTH = 3;
 const BBT_SHIFT_THRESHOLD_CELSIUS = 0.2;
 
-export function inferBBTOvulationDate(
+export type SustainedThermalShift = {
+  // First day of the sustained shift (streak start), i.e. the observed
+  // ovulation/thermal-shift day. Same anchor inferBBTOvulationDate returns.
+  shiftStartDate: LocalDateISO;
+  // Average rise of the 3-day sustained streak above the first-5-day baseline.
+  rise: number;
+  // Total in-cycle BBT points considered (>= MIN_BBT_POINTS_FOR_OVULATION).
+  sampleCount: number;
+};
+
+// Canonical thermal-shift detector: first-5-day baseline + 0.2C threshold +
+// 3-day sustained streak. The shift day is the streak start. This is the single
+// source of truth for both the calendar's observed-ovulation marker
+// (inferBBTOvulationDate) and the advanced-fertility thermal-shift panel.
+//
+// cycleEndDate is optional and exclusive: when omitted the window is
+// open-ended (used by the current, in-progress cycle which has no next start).
+export function detectSustainedThermalShift(
   records: readonly DayLogRecord[],
   cycleStartDate: LocalDateISO,
-  cycleEndDate: LocalDateISO,
-): LocalDateISO | null {
+  cycleEndDate?: LocalDateISO,
+): SustainedThermalShift | null {
   const points = records
     .filter(
       (record) =>
         record.bbt > 0 &&
         record.date >= cycleStartDate &&
-        record.date < cycleEndDate,
+        (cycleEndDate === undefined || record.date < cycleEndDate),
     )
     .sort((left, right) => left.date.localeCompare(right.date));
 
@@ -42,11 +59,37 @@ export function inferBBTOvulationDate(
       streak = 0;
     }
     if (streak >= BBT_SHIFT_STREAK_LENGTH) {
-      return points[index - 2]?.date ?? null;
+      const shiftStart = points[index - 2];
+      if (!shiftStart) {
+        return null;
+      }
+      const streakPoints = points.slice(
+        index - 2,
+        index + 1,
+      );
+      const streakAverage =
+        streakPoints.reduce((sum, streakPoint) => sum + streakPoint.bbt, 0) /
+        streakPoints.length;
+      return {
+        shiftStartDate: shiftStart.date,
+        rise: streakAverage - baseline,
+        sampleCount: points.length,
+      };
     }
   }
 
   return null;
+}
+
+export function inferBBTOvulationDate(
+  records: readonly DayLogRecord[],
+  cycleStartDate: LocalDateISO,
+  cycleEndDate: LocalDateISO,
+): LocalDateISO | null {
+  return (
+    detectSustainedThermalShift(records, cycleStartDate, cycleEndDate)
+      ?.shiftStartDate ?? null
+  );
 }
 
 export function inferEggWhiteOvulationDate(
