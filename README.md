@@ -27,7 +27,7 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - custom symptom catalog and journal-style day logging
 - pregnancy test field with automatic prediction pause on a positive result
 - optional encrypted backup and sync instead of cloud-first dependence
-- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and email reminders
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminders (push + email)
 
 ## Screens
 
@@ -54,7 +54,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 
 | Tier | Backend | Cost | What you get |
 | --- | --- | --- | --- |
-| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export, on-device push reminders |
+| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
 | **Ovumcy Cloud** | managed `ovumcy-managed` | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (email + push) |
 
