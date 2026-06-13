@@ -40,8 +40,14 @@ export function buildCycleHistorySummary(
   const lengths = completedCycles.map((cycle) => cycle.cycleLength);
   const recentCycleLengths = tailInts(lengths, STATS_CYCLE_PREDICTION_WINDOW);
   const completedCycleCount = completedCycles.length;
-  const minCycleLength = lengths.length > 0 ? Math.min(...lengths) : 0;
-  const maxCycleLength = lengths.length > 0 ? Math.max(...lengths) : 0;
+  // Range/spread describe the same recent-6 window the median prediction uses
+  // (web populateObservedCycleStats -> minMaxInts(recentLengths),
+  // cycles.go:290). An outlier that has aged out of the window must stop
+  // widening the spread, irregularity notice, and irregular prediction range.
+  const minCycleLength =
+    recentCycleLengths.length > 0 ? Math.min(...recentCycleLengths) : 0;
+  const maxCycleLength =
+    recentCycleLengths.length > 0 ? Math.max(...recentCycleLengths) : 0;
 
   return {
     completedCycles,
@@ -520,13 +526,19 @@ export function hasDataDrivenPredictionSpan(
   return resolvePredictionSpanDays(history) !== null;
 }
 
+// Sample standard deviation (n-1 denominator), mirroring web stddevInts
+// (cycles.go:576-588). Observed cycle lengths are a small sample (at most the
+// recent prediction window) of the owner's ongoing cycle process; the
+// population formula (n) systematically understates variability at small n.
+// With fewer than two values the spread is undefined, so 0 is returned.
 function computeCycleLengthStdDev(values: readonly number[]): number {
-  if (values.length === 0) {
+  if (values.length < 2) {
     return 0;
   }
   const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
   const variance =
-    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    (values.length - 1);
   return Math.sqrt(variance);
 }
 
@@ -632,7 +644,11 @@ function buildCompletedCycleSummaries(
     const start = parseLocalDate(startDate);
     const nextStart = parseLocalDate(nextStartDate);
 
-    if (!start || !nextStart || nextStartDate > todayValue) {
+    // A cycle is completed only when its next start is strictly BEFORE today
+    // (web CompletedCycleTrendLengths: `if !currentStart.Before(today) break`,
+    // dashboard_cycle.go:336). A cycle whose next start lands exactly on today
+    // is not yet completed.
+    if (!start || !nextStart || nextStartDate >= todayValue) {
       continue;
     }
 

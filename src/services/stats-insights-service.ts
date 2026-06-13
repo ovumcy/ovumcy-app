@@ -19,6 +19,10 @@ import {
   type StatsSymptomPattern,
   type StatsTrendPoint,
 } from "../models/stats";
+import {
+  calcOvulationDay,
+  DEFAULT_LUTEAL_PHASE_DAYS,
+} from "./cycle-prediction-policy";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 type CompletedCycleBucket = {
@@ -170,6 +174,9 @@ export function buildStatsPhaseMoodInsights(
         continue;
       }
       const phase = resolveRecordPhase(bucket.summary, record);
+      if (phase === null) {
+        continue;
+      }
       const current = phaseStats.get(phase) ?? { totalMood: 0, entryCount: 0 };
       current.totalMood += record.mood;
       current.entryCount += 1;
@@ -213,6 +220,9 @@ export function buildStatsPhaseSymptomInsights(
   for (const bucket of buckets) {
     for (const record of bucket.records) {
       const phase = resolveRecordPhase(bucket.summary, record);
+      if (phase === null) {
+        continue;
+      }
       totals.set(phase, (totals.get(phase) ?? 0) + 1);
 
       if (record.symptomIDs.length === 0) {
@@ -343,19 +353,36 @@ function buildSymptomFrequencyItems(
     });
 }
 
+/**
+ * Classifies a record's cycle day into a phase, mirroring web's
+ * phaseForCompletedCycleDay (stats_phase_insights.go:90-107). Returns null to
+ * signal the day must be EXCLUDED from phase aggregation — either the day falls
+ * outside the cycle (web's "" via Start/NextStart bound) or CalcOvulationDay
+ * cannot place ovulation for this cycle length (web's `continue` at
+ * stats_phase_insights.go:74). The ovulation day uses the per-cycle DEFAULT
+ * luteal phase (14), matching web's `CalcOvulationDay(cycleLength,
+ * defaultLutealPhaseDays)` — not the per-owner inferred luteal.
+ */
 function resolveRecordPhase(
   summary: CompletedCycleSummary,
   record: DayLogRecord,
-): StatsPhase {
+): StatsPhase | null {
   const cycleDay = resolveCycleDay(summary.startDate, record.date);
   if (cycleDay <= 0) {
-    return "unknown";
+    return null;
   }
+
+  const ovulationDay = calcOvulationDay(
+    summary.cycleLength,
+    DEFAULT_LUTEAL_PHASE_DAYS,
+  ).day;
+  if (ovulationDay === null) {
+    return null;
+  }
+
   if (cycleDay <= summary.periodLength) {
     return "menstrual";
   }
-
-  const ovulationDay = Math.max(summary.cycleLength - 14, 1);
   if (cycleDay === ovulationDay) {
     return "ovulation";
   }

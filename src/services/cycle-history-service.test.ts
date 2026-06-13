@@ -6,6 +6,7 @@ import {
   collectCycleStartDates,
   hasDataDrivenPredictionSpan,
   shouldShowAgeVariabilityHint,
+  shouldShowIrregularityNotice,
 } from "./cycle-history-service";
 
 function createProfileRecord(
@@ -30,6 +31,29 @@ function createProfileRecord(
     dismissedOnboardingHelperNoticeKey: null,
     ...overrides,
   };
+}
+
+function isoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Builds period-start markers beginning at `firstStart`, each separated from
+// the previous by the next value in `gaps` (in days). N gaps produce N+1
+// starts and therefore N completed cycles (given `now` is past the last start).
+function periodMarkersFromGaps(firstStart: Date, gaps: number[]) {
+  const records = [
+    { ...createEmptyDayLogRecord(isoDate(firstStart)), isPeriod: true, cycleStart: true },
+  ];
+  let cursor = firstStart;
+  for (const gap of gaps) {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + gap);
+    records.push({
+      ...createEmptyDayLogRecord(isoDate(cursor)),
+      isPeriod: true,
+      cycleStart: true,
+    });
+  }
+  return { records, lastStart: cursor };
 }
 
 describe("cycle-history-service", () => {
@@ -359,6 +383,120 @@ describe("cycle-history-service", () => {
       expect(shouldShowAgeVariabilityHint(createProfileRecord({ ageGroup: "age_40_45" }))).toBe(false);
       expect(shouldShowAgeVariabilityHint(createProfileRecord({ ageGroup: "under_40" }))).toBe(false);
       expect(shouldShowAgeVariabilityHint(createProfileRecord({ ageGroup: "" }))).toBe(false);
+    });
+  });
+
+  describe("min/max cycle length use the recent-6 window (web minMaxInts(recentLengths))", () => {
+    // Web populateObservedCycleStats restricts range/spread to the recent
+    // prediction window (cycles.go:290) so an outlier that has aged out of the
+    // window stops widening the spread, the irregularity notice, and the
+    // irregular prediction range (docs/cycle-prediction.md:113-117).
+
+    it("does NOT let an aged-out outlier widen spread once it leaves the recent-6 window", () => {
+      // 8 starts: first gap is a 40-day outlier, then six 28s. 7 completed
+      // cycles; the recent-6 window is the last six lengths = [28,28,28,28,28,28].
+      // The 40 has aged out -> min=max=28, spread=0.
+      const profile = createProfileRecord({ lastPeriodStart: "2025-01-01" });
+      const { records, lastStart } = periodMarkersFromGaps(new Date(2025, 0, 1), [
+        40, 28, 28, 28, 28, 28, 28,
+      ]);
+      const now = new Date(lastStart.getFullYear(), lastStart.getMonth(), lastStart.getDate() + 5);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(7);
+      expect(history.recentCycleLengths).toEqual([28, 28, 28, 28, 28, 28]);
+      expect(history.minCycleLength).toBe(28);
+      expect(history.maxCycleLength).toBe(28);
+      expect(history.cycleLengthSpread).toBe(0);
+      expect(shouldShowIrregularityNotice(profile, history)).toBe(false);
+    });
+
+    it("DOES widen spread when the same outlier is still inside the recent-6 window", () => {
+      // 7 starts -> 6 completed cycles, all within the recent-6 window:
+      // lengths [28,28,40,28,28,28]. The 40 is in the window -> min=28, max=40,
+      // spread=12 (> IRREGULAR_CYCLE_SPREAD_DAYS=7) so the notice fires.
+      const profile = createProfileRecord({ lastPeriodStart: "2025-06-01" });
+      const { records, lastStart } = periodMarkersFromGaps(new Date(2025, 5, 1), [
+        28, 28, 40, 28, 28, 28,
+      ]);
+      const now = new Date(lastStart.getFullYear(), lastStart.getMonth(), lastStart.getDate() + 5);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(6);
+      expect(history.recentCycleLengths).toEqual([28, 28, 40, 28, 28, 28]);
+      expect(history.minCycleLength).toBe(28);
+      expect(history.maxCycleLength).toBe(40);
+      expect(history.cycleLengthSpread).toBe(12);
+      expect(shouldShowIrregularityNotice(profile, history)).toBe(true);
+    });
+  });
+
+  describe("prediction span uses sample standard deviation (n-1, web stddevInts)", () => {
+    it("rounds the n-1 SD of [25,30,28] to a +/-3 day window (population n would give +/-2)", () => {
+      // 4 markers, gaps 25/30/28 -> 3 completed cycle lengths [25,30,28].
+      //   mean = 27.6667
+      //   sum of squared deviations = 12.6667
+      //   sample (n-1) variance = 12.6667 / 2 = 6.3333 -> SD = 2.5166 -> round 3
+      //   population (n) variance = 12.6667 / 3 = 4.2222 -> SD = 2.0548 -> round 2
+      // So the data-driven span is round(SD) clamped [1,5] = 3, and the window
+      // is anchor-derived next period (2026-03-22) +/- 3 = [03-19, 03-25].
+      const profile = createProfileRecord({ lastPeriodStart: "2025-12-01" });
+      const { records } = periodMarkersFromGaps(new Date(2025, 11, 1), [25, 30, 28, 27]);
+      const now = new Date(2026, 2, 10);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.completedCycleCount).toBe(3);
+      expect(history.recentCycleLengths).toEqual([25, 30, 28]);
+      expect(hasDataDrivenPredictionSpan(profile, history)).toBe(true);
+
+      expect(projection.cycleAnchorDate).toBe("2026-02-22");
+      expect(projection.nextPeriodDate).toBe("2026-03-22");
+      // +/-3 (sample SD), NOT +/-2 (population SD).
+      expect(projection.nextPeriodWindowStartDate).toBe("2026-03-19");
+      expect(projection.nextPeriodWindowEndDate).toBe("2026-03-25");
+    });
+  });
+
+  describe("completed cycle requires next start strictly before today (web !currentStart.Before(today))", () => {
+    it("does NOT count a cycle whose next start lands exactly on today", () => {
+      // Starts 2026-02-01 and 2026-03-01; today is exactly the second start.
+      // Web breaks on !currentStart.Before(today) (dashboard_cycle.go:336), so
+      // the 2026-02-01 cycle is not yet completed: count 0.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      ];
+      const now = new Date(2026, 2, 1); // 2026-03-01
+
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(0);
+      expect(history.completedCycles).toEqual([]);
+    });
+
+    it("DOES count the same cycle once its next start is strictly before today", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      ];
+      const now = new Date(2026, 2, 2); // 2026-03-02, one day later
+
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(1);
+      expect(history.completedCycles[0]).toEqual(
+        expect.objectContaining({
+          startDate: "2026-02-01",
+          nextStartDate: "2026-03-01",
+          cycleLength: 28,
+        }),
+      );
     });
   });
 
