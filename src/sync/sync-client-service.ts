@@ -1244,7 +1244,6 @@ function buildManagedCapabilitiesDocument(
   return {
     mode: "managed",
     syncEnabled: syncAllowed,
-    premiumActive: syncAllowed,
     recoverySupported: true,
     pushSupported: false,
     portalSupported: false,

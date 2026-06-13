@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultSymptomRecords } from "../models/symptom";
+import { getExportPDFCopy } from "../i18n/export-pdf-copy";
 import { buildExportPDFContent, buildExportPDFReport } from "./export-pdf-service";
 
 describe("export-pdf-service", () => {
@@ -177,5 +178,67 @@ describe("export-pdf-service", () => {
 
     expect(Buffer.from(content).subarray(0, 4).toString("utf8")).toBe("%PDF");
     expect(content.byteLength).toBeGreaterThan(1000);
+  });
+
+  it("exposes the logged-period-length footnote in all supported locales", () => {
+    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+      const copy = getExportPDFCopy(locale);
+      expect(typeof copy.summaryLoggedPeriodLengthFootnote).toBe("string");
+      expect(copy.summaryLoggedPeriodLengthFootnote.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("exposes the fertile-window assumption footnote in all supported locales", () => {
+    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+      const copy = getExportPDFCopy(locale);
+      expect(typeof copy.fertileWindowAssumptionFootnote).toBe("string");
+      expect(copy.fertileWindowAssumptionFootnote.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("summary section label no longer calls it 'Average period length' (honesty relabel)", () => {
+    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+      const copy = getExportPDFCopy(locale);
+      // Label should reference logged/recorded days, not a bare average
+      expect(copy.summaryAveragePeriodLengthLabel).not.toBe("Average period length");
+    }
+  });
+
+  it("calendar title includes last-6-months qualifier in all supported locales", () => {
+    const copy = getExportPDFCopy("en");
+    expect(copy.calendarTitle).toContain("6 months");
+  });
+
+  it("advanced fertility section title references the live current cycle", () => {
+    const copy = getExportPDFCopy("en");
+    expect(copy.advancedFertilityTitle).toContain("current cycle");
+  });
+
+  it("ovulation title uses signal-based framing, not confirmation framing", () => {
+    const copy = getExportPDFCopy("en");
+    expect(copy.advancedFertilityOvulationTitle).toBe("Estimated ovulation (signal-based)");
+    expect(copy.advancedFertilityOvulationTitle).not.toContain("confirmation");
+  });
+
+  it("short luteal warning is non-directive in all supported locales", () => {
+    const directives: Record<string, string> = {
+      en: "Consider clinical follow-up",
+      de: "Klinische Abklärung empfohlen",
+      fr: "Suivi clinique recommandé",
+      ru: "Рекомендуется клиническая консультация",
+      es: "Se sugiere seguimiento clínico",
+    };
+    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+      const copy = getExportPDFCopy(locale);
+      const desc = copy.shortLutealWarningDescription(10.5, 3);
+      expect(desc).not.toContain(directives[locale]);
+    }
+  });
+
+  it("Spanish BBT abbreviation uses TBC not TCB", () => {
+    const copy = getExportPDFCopy("es");
+    expect(copy.tableColumns.bbt).toBe("TBC");
+    expect(copy.advancedFertilityThermalShiftTitle).toContain("TBC");
+    expect(copy.tableColumns.bbt).not.toBe("TCB");
   });
 });

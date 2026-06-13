@@ -45,7 +45,6 @@ describe("sync-api-client", () => {
           JSON.stringify({
             mode: "self_hosted",
             sync_enabled: true,
-            premium_active: false,
             recovery_supported: false,
             push_supported: false,
             portal_supported: false,
@@ -81,7 +80,6 @@ describe("sync-api-client", () => {
       capabilities: {
         mode: "self_hosted",
         syncEnabled: true,
-        premiumActive: false,
         recoverySupported: false,
         pushSupported: false,
         portalSupported: false,

@@ -17,7 +17,7 @@ import { hasDayLogData, type DayLogRecord } from "../models/day-log";
 import { celsiusDeltaToUnit, celsiusToUnit } from "./temperature-policy";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
-import { buildCycleHistorySummary } from "./cycle-history-service";
+import { buildCycleHistorySummary, inferUserLutealPhase } from "./cycle-history-service";
 import {
   predictCycleWindow,
   resolveLutealPhase,
@@ -30,7 +30,7 @@ import {
   rgbRuntime,
 } from "./export-pdf-runtime";
 import { inferObservedOvulationDate } from "./observed-ovulation-service";
-import { diffLocalDays, parseLocalDate } from "./profile-settings-policy";
+import { addDays, diffLocalDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildShortLutealHint } from "./stats-premium-insights-service";
@@ -153,32 +153,28 @@ export function buildExportPDFReport({
   const symptomLookup = new Map(symptomRecords.map((record) => [record.id, record]));
   const completedCycleEntries = new Set<string>();
 
-  const cycles = completedCycles.map<ExportPDFCycle>((cycle) => {
-    const entries = sortedDayLogs
-      .filter((record) => record.date >= cycle.startDate && record.date < cycle.nextStartDate)
-      .map((record) => {
-        completedCycleEntries.add(record.date);
-        return buildExportPDFCycleDay(record, cycle.startDate, symptomLookup, dayLogLabels);
-      });
-
-    return {
-      startDate: cycle.startDate,
-      endDate: buildInclusiveCycleEndDate(cycle.nextStartDate),
-      cycleLength: cycle.cycleLength,
-      periodLength: cycle.periodLength,
-      entries,
-    };
-  });
+  const cycles = completedCycles.map<ExportPDFCycle>((cycle) =>
+    buildExportPDFCycle(cycle, sortedDayLogs, completedCycleEntries, symptomLookup, dayLogLabels),
+  );
 
   const includedLogs =
     cycles.length > 0
       ? sortedDayLogs.filter((record) => completedCycleEntries.has(record.date))
       : sortedDayLogs;
 
+  const todayValue = formatLocalDate(now);
+  const observedLuteal = inferUserLutealPhase(
+    profile,
+    [...sortedDayLogs],
+    todayValue,
+  );
+  const personalizedLuteal = resolveLutealPhase(observedLuteal ?? 0);
+
   const calendarMarkers = buildCalendarMarkers(
     completedCycles,
     sortedDayLogs,
     profile.temperatureUnit,
+    personalizedLuteal,
   );
   const pdfCopy = getExportPDFCopy(language);
   const advancedFertilityItems = buildAdvancedFertilityItemsForPDF(
@@ -231,10 +227,13 @@ function buildAdvancedFertilityItemsForPDF(
   profile: ProfileRecord,
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
 ): ExportPDFAdvancedFertilityItem[] {
+  // Use the live current-cycle anchor (profile.lastPeriodStart) instead of the
+  // last completed cycle's start, so the stats match the cycle the app treats as
+  // current rather than the one before it.
   const summary = buildStatsAdvancedFertility(
     history,
     sortedDayLogs,
-    history.completedCycles[history.completedCycles.length - 1]?.startDate ?? null,
+    profile.lastPeriodStart ?? null,
   );
   if (!summary) {
     return [];
@@ -301,6 +300,7 @@ function buildCalendarMarkers(
   completedCycles: ReturnType<typeof buildCycleHistorySummary>["completedCycles"],
   sortedDayLogs: readonly DayLogRecord[],
   temperatureUnit: ProfileRecord["temperatureUnit"],
+  lutealPhase: number,
 ): ExportPDFCalendarMarkers {
   const fertileDates = new Set<string>();
   const observedOvulationDates = new Set<string>();
@@ -320,7 +320,7 @@ function buildCalendarMarkers(
     const predicted = predictCycleWindow(
       cycle.startDate,
       cycle.cycleLength,
-      resolveLutealPhase(0),
+      lutealPhase,
     );
 
     if (predicted.fertilityStart && predicted.fertilityEnd) {
@@ -356,6 +356,29 @@ function formatPDFDateISO(value: Date): string {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   const day = String(value.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function buildExportPDFCycle(
+  cycle: ReturnType<typeof buildCycleHistorySummary>["completedCycles"][number],
+  sortedDayLogs: readonly DayLogRecord[],
+  completedCycleEntries: Set<string>,
+  symptomLookup: Map<string, SymptomRecord>,
+  dayLogLabels: ReturnType<typeof getDayLogCopy>,
+): ExportPDFCycle {
+  const entries = sortedDayLogs
+    .filter((record) => record.date >= cycle.startDate && record.date < cycle.nextStartDate)
+    .map((record) => {
+      completedCycleEntries.add(record.date);
+      return buildExportPDFCycleDay(record, cycle.startDate, symptomLookup, dayLogLabels);
+    });
+
+  return {
+    startDate: cycle.startDate,
+    endDate: buildInclusiveCycleEndDate(cycle.nextStartDate),
+    cycleLength: cycle.cycleLength,
+    periodLength: cycle.periodLength,
+    entries,
+  };
 }
 
 function buildExportPDFCycleDay(
@@ -727,6 +750,13 @@ function drawSummarySection(
   ];
 
   drawStatCards(layout, cards);
+  layout.cursorY -= 4;
+  layout.cursorY = drawTextBlock(layout, pdfCopy.summaryLoggedPeriodLengthFootnote, {
+    color: COLOR_MUTED,
+    font: layout.fonts.regular,
+    fontSize: SMALL_FONT_SIZE,
+    lineHeight: 10,
+  });
   layout.cursorY -= SECTION_GAP - 2;
 }
 
@@ -805,6 +835,12 @@ function drawCalendarSection(
   if (calendarDays.length === 0) {
     layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
     drawCalendarLegend(layout, pdfCopy);
+    layout.cursorY = drawTextBlock(layout, pdfCopy.fertileWindowAssumptionFootnote, {
+      color: COLOR_MUTED,
+      font: layout.fonts.regular,
+      fontSize: SMALL_FONT_SIZE,
+      lineHeight: 10,
+    });
     layout.cursorY = drawTextBlock(layout, pdfCopy.calendarEmpty, {
       color: COLOR_MUTED,
       font: layout.fonts.regular,
@@ -821,10 +857,16 @@ function drawCalendarSection(
     rows * MONTH_HEIGHT + Math.max(0, rows - 1) * MONTH_GAP;
   // Keep the heading, legend and the whole month grid together on one page so
   // the legend never strands at the bottom of a page above an empty gap.
-  ensurePageSpace(layout, 24 + 46 + monthsHeight + SECTION_GAP);
+  ensurePageSpace(layout, 24 + 46 + 10 + monthsHeight + SECTION_GAP);
 
   layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
   drawCalendarLegend(layout, pdfCopy);
+  layout.cursorY = drawTextBlock(layout, pdfCopy.fertileWindowAssumptionFootnote, {
+    color: COLOR_MUTED,
+    font: layout.fonts.regular,
+    fontSize: SMALL_FONT_SIZE,
+    lineHeight: 10,
+  });
 
   const monthWidth =
     (layout.contentWidth - MONTH_GAP * (MONTH_COLUMNS - 1)) / MONTH_COLUMNS;
@@ -992,7 +1034,7 @@ function drawCalendarMonth(
   for (let row = 0; row < 6; row += 1) {
     for (let column = 0; column < 7; column += 1) {
       const currentDay = addDays(gridStart, row * 7 + column);
-      const currentDate = formatDateISO(currentDay);
+      const currentDate = formatLocalDate(currentDay);
       const cellX = x + MONTH_PADDING + column * cellWidth;
       const cellBottom = gridTop - row * MONTH_DAY_HEIGHT - MONTH_DAY_HEIGHT + 1;
       const entry = month.daysByDate.get(currentDate);
@@ -1475,7 +1517,7 @@ function buildInclusiveCycleEndDate(nextStartDate: string): string {
     return nextStartDate;
   }
 
-  return formatDateISO(addDays(nextStart, -1));
+  return formatLocalDate(addDays(nextStart, -1));
 }
 
 function startOfCalendarGrid(monthStart: Date): Date {
@@ -1493,13 +1535,6 @@ function formatMonthKey(value: Date): string {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function formatDateISO(value: Date): string {
-  const year = value.getFullYear();
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatGeneratedAt(
   value: string,
   language: ExportPDFReport["language"],
@@ -1513,12 +1548,6 @@ function formatGeneratedAt(
     dateStyle: "medium",
     timeStyle: "short",
   });
-}
-
-function addDays(value: Date, days: number): Date {
-  const next = new Date(value);
-  next.setDate(next.getDate() + days);
-  return next;
 }
 
 function hexColor(value: string): RGB {

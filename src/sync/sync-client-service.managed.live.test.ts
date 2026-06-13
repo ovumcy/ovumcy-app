@@ -157,7 +157,6 @@ describeIfLive("sync-client-service managed live transport", () => {
       capabilities: expect.objectContaining({
         mode: "managed",
         syncEnabled: true,
-        premiumActive: true,
       }),
     });
 
