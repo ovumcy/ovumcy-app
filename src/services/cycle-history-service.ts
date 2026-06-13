@@ -878,6 +878,13 @@ function resolvePredictionCycleLength(
   // Median-first matches the canonical algorithm: a single missed-log gap that
   // merges two cycles skews the mean but not the median. The mean is only a
   // degenerate fallback; profile.cycleLength bootstraps when no statistic exists.
+  //
+  // INTENTIONAL divergence from web predictedCycleLength (cycles.go:339-353):
+  // web uses the observed median from the FIRST completed cycle, but a median of
+  // one element offers no merge protection — a single 48-day merged-log cycle
+  // would drive a 48-day prediction. We require >=2 completed cycles before
+  // trusting observed data and fall back to the owner's configured cycle length
+  // until then. This is strictly safer than web for the single-merged-cycle case.
   if (
     history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
     history.medianCycleLength > 0
