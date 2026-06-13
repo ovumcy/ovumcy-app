@@ -6,6 +6,7 @@ import { buildCycleHistorySummary } from "./cycle-history-service";
 import {
   buildStatsPhaseMoodInsights,
   buildStatsBBTSeries,
+  detectGapBasedCycleStarts,
 } from "./stats-insights-service";
 
 function createPhaseProfile(
@@ -200,7 +201,7 @@ describe("phase classifier parity (resolveRecordPhase via mood insights)", () =>
       }),
     );
 
-    const insights = buildStatsPhaseMoodInsights(history, records);
+    const insights = buildStatsPhaseMoodInsights(records);
 
     // Day 5 lands in ovulation with mood 5; day 2 must NOT be there.
     expect(moodEntryCount(insights, "ovulation")).toBe(1);
@@ -233,7 +234,7 @@ describe("phase classifier parity (resolveRecordPhase via mood insights)", () =>
       expect.objectContaining({ cycleLength: 14 }),
     );
 
-    const insights = buildStatsPhaseMoodInsights(history, records);
+    const insights = buildStatsPhaseMoodInsights(records);
 
     for (const phase of [
       "menstrual",
@@ -263,12 +264,79 @@ describe("phase classifier parity (resolveRecordPhase via mood insights)", () =>
       expect.objectContaining({ cycleLength: 28, periodLength: 1 }),
     );
 
-    const insights = buildStatsPhaseMoodInsights(history, records);
+    const insights = buildStatsPhaseMoodInsights(records);
 
     expect(moodEntryCount(insights, "menstrual")).toBe(0); // day 3 > period length 1
     expect(moodEntryCount(insights, "follicular")).toBe(2); // days 3 and 10
     expect(moodEntryCount(insights, "ovulation")).toBe(1); // day 14
     expect(moodAverage(insights, "ovulation")).toBe(5);
     expect(moodEntryCount(insights, "luteal")).toBe(1); // day 25
+  });
+});
+
+describe("phase insights use gap-based cycle detection (web DetectCycleStarts)", () => {
+  function periodDayNoFlag(date: string) {
+    // A logged period day with NO explicit cycleStart flag.
+    return { ...createEmptyDayLogRecord(date), isPeriod: true };
+  }
+
+  it("detects cycles from period-day gaps even when no cycleStart flags are set", () => {
+    // Two period days 28 days apart, neither flagged as a cycle start. Gap-based
+    // detection (>= 5-day gap) still builds the [01-01, 01-29) cycle, so the
+    // day-14 mood lands in ovulation. The explicit-flag path would not see a
+    // start here.
+    const records = [
+      periodDayNoFlag("2026-01-01"),
+      periodDayNoFlag("2026-01-29"),
+      moodOn("2026-01-14", 5), // day 14 of a 28-day cycle -> ovulation
+    ];
+
+    const insights = buildStatsPhaseMoodInsights(records);
+
+    expect(moodEntryCount(insights, "ovulation")).toBe(1);
+    expect(moodAverage(insights, "ovulation")).toBe(5);
+  });
+
+  it("ignores a cycleStart flag that is not preceded by a 5+ day gap", () => {
+    // 01-03 is flagged as a cycle start but is only 2 days after 01-01, so
+    // gap-based detection does NOT split there: the single cycle is
+    // [01-01, 01-29), and the day-14 mood is its ovulation. If the mid-run flag
+    // were honored the day numbering would shift and this would not be day 14.
+    const records = [
+      periodMarker("2026-01-01"),
+      { ...createEmptyDayLogRecord("2026-01-03"), isPeriod: true, cycleStart: true },
+      periodMarker("2026-01-29"),
+      moodOn("2026-01-14", 5),
+    ];
+
+    const insights = buildStatsPhaseMoodInsights(records);
+
+    expect(moodEntryCount(insights, "ovulation")).toBe(1);
+    expect(moodAverage(insights, "ovulation")).toBe(5);
+  });
+
+  it("yields no phase insights with fewer than two detected starts", () => {
+    const records = [periodMarker("2026-01-01"), moodOn("2026-01-10", 4)];
+
+    const insights = buildStatsPhaseMoodInsights(records);
+
+    expect(insights.every((item) => item.hasData === false)).toBe(true);
+  });
+
+  it("starts a new cycle at a 5-day gap but not a 4-day gap (web >= 5)", () => {
+    // 01-01 -> 01-07: 5 non-period days between (gapDays 5) -> new start.
+    expect(
+      detectGapBasedCycleStarts([
+        periodMarker("2026-01-01"),
+        periodMarker("2026-01-07"),
+      ]),
+    ).toEqual(["2026-01-01", "2026-01-07"]);
+    // 01-01 -> 01-06: only 4 between (gapDays 4) -> no new start.
+    expect(
+      detectGapBasedCycleStarts([
+        periodMarker("2026-01-01"),
+        periodMarker("2026-01-06"),
+      ]),
+    ).toEqual(["2026-01-01"]);
   });
 });

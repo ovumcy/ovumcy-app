@@ -366,10 +366,10 @@ export function buildStatsViewData(
     ? buildStatsSymptomPatterns(history, records, localizedSymptomRecords)
     : [];
   const phaseMoodInsights = phaseInsightsUnlocked
-    ? buildStatsPhaseMoodInsights(history, records)
+    ? buildStatsPhaseMoodInsights(records)
     : [];
   const phaseSymptomInsights = phaseInsightsUnlocked
-    ? buildStatsPhaseSymptomInsights(history, records, localizedSymptomRecords)
+    ? buildStatsPhaseSymptomInsights(records, localizedSymptomRecords)
     : [];
   const personalForecasts = premiumFeatures.advancedInsights
     ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)

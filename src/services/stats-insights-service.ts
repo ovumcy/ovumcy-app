@@ -1,4 +1,5 @@
 import type { DayLogRecord } from "../models/day-log";
+import { DEFAULT_PERIOD_LENGTH } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import {
   MIN_CURRENT_CYCLE_BBT_POINTS,
@@ -23,7 +24,11 @@ import {
   calcOvulationDay,
   DEFAULT_LUTEAL_PHASE_DAYS,
 } from "./cycle-prediction-policy";
-import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import {
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
+} from "./profile-settings-policy";
 
 type CompletedCycleBucket = {
   summary: CompletedCycleSummary;
@@ -156,10 +161,9 @@ export function buildStatsSymptomPatterns(
 }
 
 export function buildStatsPhaseMoodInsights(
-  history: StatsCycleHistorySummary,
   records: readonly DayLogRecord[],
 ): StatsPhaseMoodInsight[] {
-  const buckets = buildCompletedCycleBuckets(history, records);
+  const buckets = buildPhaseCycleBuckets(records);
   const phaseStats = new Map<
     StatsPhase,
     {
@@ -173,7 +177,7 @@ export function buildStatsPhaseMoodInsights(
       if (record.mood <= 0) {
         continue;
       }
-      const phase = resolveRecordPhase(bucket.summary, record);
+      const phase = resolveRecordPhase(bucket.context, record);
       if (phase === null) {
         continue;
       }
@@ -208,18 +212,17 @@ export function buildStatsPhaseMoodInsights(
 }
 
 export function buildStatsPhaseSymptomInsights(
-  history: StatsCycleHistorySummary,
   records: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
 ): StatsPhaseSymptomInsight[] {
-  const buckets = buildCompletedCycleBuckets(history, records);
+  const buckets = buildPhaseCycleBuckets(records);
   const symptomMap = createSymptomMap(symptomRecords);
   const totals = new Map<StatsPhase, number>();
   const counts = new Map<StatsPhase, Map<string, number>>();
 
   for (const bucket of buckets) {
     for (const record of bucket.records) {
-      const phase = resolveRecordPhase(bucket.summary, record);
+      const phase = resolveRecordPhase(bucket.context, record);
       if (phase === null) {
         continue;
       }
@@ -323,6 +326,122 @@ function buildCompletedCycleBuckets(
   }));
 }
 
+type PhaseCycleContext = {
+  startDate: string;
+  cycleLength: number;
+  periodLength: number;
+};
+
+type PhaseCycleBucket = {
+  context: PhaseCycleContext;
+  records: DayLogRecord[];
+};
+
+const GAP_BASED_CYCLE_START_MIN_GAP_DAYS = 5;
+const PHASE_PERIOD_LENGTH_SCAN_DAYS = 10;
+
+function calendarDaysBetween(fromDate: string, toDate: string): number {
+  const from = parseLocalDate(fromDate);
+  const to = parseLocalDate(toDate);
+  if (!from || !to) {
+    return 0;
+  }
+  return Math.round((to.getTime() - from.getTime()) / 86400000);
+}
+
+// Gap-based cycle-start detection, mirroring web DetectCycleStarts
+// (ovumcy-web cycles.go:148-177): a logged period day begins a new cycle when
+// 5+ days separate it from the previous period day, INDEPENDENT of explicit
+// cycleStart flags. Phase insights use this; trend/spans keep the explicit-flag
+// completed-cycle set — exactly as web pairs DetectCycleStarts (phase insights)
+// with ObservedCycleStarts (trend).
+export function detectGapBasedCycleStarts(
+  records: readonly DayLogRecord[],
+): string[] {
+  const periodDays = records
+    .filter((record) => record.isPeriod)
+    .map((record) => record.date)
+    .sort((left, right) => left.localeCompare(right));
+
+  const starts: string[] = [];
+  let previousPeriodDay: string | null = null;
+  for (const day of periodDays) {
+    if (previousPeriodDay === null) {
+      starts.push(day);
+      previousPeriodDay = day;
+      continue;
+    }
+    const gapDays = calendarDaysBetween(previousPeriodDay, day) - 1;
+    if (gapDays >= GAP_BASED_CYCLE_START_MIN_GAP_DAYS) {
+      starts.push(day);
+    }
+    previousPeriodDay = day;
+  }
+  return starts;
+}
+
+// Port of web buildCompletedCyclePhaseContexts (stats_phase_insights.go:51-88)
+// + the buildCycles period-length scan (cycles.go:431-437). Cycle length is the
+// span between consecutive gap-based starts; period length is the leading run of
+// logged period days from the start (capped, defaulted); a context is dropped
+// when calcOvulationDay cannot place ovulation. Each bucket's records are the
+// logs in [start, nextStart).
+function buildPhaseCycleBuckets(
+  records: readonly DayLogRecord[],
+): PhaseCycleBucket[] {
+  const starts = detectGapBasedCycleStarts(records);
+  if (starts.length < 2) {
+    return [];
+  }
+
+  const periodDates = new Set(
+    records.filter((record) => record.isPeriod).map((record) => record.date),
+  );
+  const sorted = [...records].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+
+  const buckets: PhaseCycleBucket[] = [];
+  for (let index = 0; index + 1 < starts.length; index += 1) {
+    const startDate = starts[index]!;
+    const nextStartDate = starts[index + 1]!;
+    const cycleLength = calendarDaysBetween(startDate, nextStartDate);
+    if (cycleLength <= 0) {
+      continue;
+    }
+    if (calcOvulationDay(cycleLength, DEFAULT_LUTEAL_PHASE_DAYS).day === null) {
+      continue;
+    }
+
+    let periodLength = 0;
+    const start = parseLocalDate(startDate);
+    if (start) {
+      for (
+        let offset = 0;
+        offset <= PHASE_PERIOD_LENGTH_SCAN_DAYS;
+        offset += 1
+      ) {
+        if (!periodDates.has(formatLocalDate(addDays(start, offset)))) {
+          break;
+        }
+        periodLength += 1;
+      }
+    }
+    if (periodLength <= 0) {
+      periodLength = DEFAULT_PERIOD_LENGTH;
+    }
+
+    buckets.push({
+      context: { startDate, cycleLength, periodLength },
+      records: sorted.filter(
+        (record) =>
+          record.date >= startDate && record.date < nextStartDate,
+      ),
+    });
+  }
+  return buckets;
+}
+
 function buildSymptomFrequencyItems(
   counts: Map<string, number>,
   symptomRecords: readonly SymptomRecord[],
@@ -364,23 +483,23 @@ function buildSymptomFrequencyItems(
  * defaultLutealPhaseDays)` — not the per-owner inferred luteal.
  */
 function resolveRecordPhase(
-  summary: CompletedCycleSummary,
+  cycle: { startDate: string; cycleLength: number; periodLength: number },
   record: DayLogRecord,
 ): StatsPhase | null {
-  const cycleDay = resolveCycleDay(summary.startDate, record.date);
+  const cycleDay = resolveCycleDay(cycle.startDate, record.date);
   if (cycleDay <= 0) {
     return null;
   }
 
   const ovulationDay = calcOvulationDay(
-    summary.cycleLength,
+    cycle.cycleLength,
     DEFAULT_LUTEAL_PHASE_DAYS,
   ).day;
   if (ovulationDay === null) {
     return null;
   }
 
-  if (cycleDay <= summary.periodLength) {
+  if (cycleDay <= cycle.periodLength) {
     return "menstrual";
   }
   if (cycleDay === ovulationDay) {
