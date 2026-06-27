@@ -212,16 +212,52 @@ describe("sync-totp-service", () => {
   });
 
   describe("verifyTOTPEnrollment", () => {
-    it("requires a non-empty code", async () => {
+    it("rejects non-6-digit codes locally without calling fetch", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const cases: [string, string][] = [
+        ["abc", "letters"],
+        ["12345", "5 digits"],
+        ["1234567", "7 digits"],
+        ["   ", "whitespace only"],
+      ];
+
+      for (const [code] of cases) {
+        const result = await verifyTOTPEnrollment(
+          secretStore,
+          managedPreferences(),
+          { code },
+          apiFactory,
+          managedFactory,
+        );
+        expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+      }
+
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes a trimmed 6-digit code through to the network", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const verifyFn = jest.fn().mockResolvedValue({ ok: true });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ verifyTOTPEnrollment: verifyFn }));
 
       const result = await verifyTOTPEnrollment(
         secretStore,
         managedPreferences(),
-        { code: "   " },
+        { code: " 123456 " },
+        jest.fn(),
+        managedFactory,
       );
 
-      expect(result).toEqual({ ok: false, errorCode: "code_required" });
+      expect(result).toEqual({ ok: true });
+      expect(verifyFn).toHaveBeenCalledWith("managed-session-1", {
+        code: " 123456 ",
+      });
     });
 
     it("maps totp_invalid_code from the community backend", async () => {
@@ -247,7 +283,7 @@ describe("sync-totp-service", () => {
   });
 
   describe("disableTOTP", () => {
-    it("requires both password and code", async () => {
+    it("requires a non-empty password", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
 
       expect(
@@ -256,13 +292,28 @@ describe("sync-totp-service", () => {
           code: "123456",
         }),
       ).toEqual({ ok: false, errorCode: "current_password_required" });
+    });
 
-      expect(
-        await disableTOTP(secretStore, managedPreferences(), {
-          currentPassword: "very secure password",
-          code: "  ",
-        }),
-      ).toEqual({ ok: false, errorCode: "code_required" });
+    it("rejects non-6-digit codes locally without calling fetch", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const badCodes = ["  ", "abc", "12345", "1234567"];
+
+      for (const code of badCodes) {
+        const result = await disableTOTP(
+          secretStore,
+          managedPreferences(),
+          { currentPassword: "very secure password", code },
+          apiFactory,
+          managedFactory,
+        );
+        expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+      }
+
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
     });
 
     it("dispatches the managed client when in managed mode", async () => {
@@ -289,20 +340,33 @@ describe("sync-totp-service", () => {
   });
 
   describe("completeTOTPChallenge", () => {
-    it("requires non-empty challenge id and code", async () => {
+    it("requires a non-empty challenge id", async () => {
       expect(
         await completeTOTPChallenge(managedPreferences(), {
           challengeID: "",
           code: "123456",
         }),
       ).toEqual({ ok: false, errorCode: "challenge_id_required" });
+    });
 
-      expect(
-        await completeTOTPChallenge(managedPreferences(), {
-          challengeID: "challenge-1",
-          code: "",
-        }),
-      ).toEqual({ ok: false, errorCode: "code_required" });
+    it("rejects non-6-digit codes locally without calling fetch", async () => {
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const badCodes = ["", "abc", "12345", "1234567"];
+
+      for (const code of badCodes) {
+        const result = await completeTOTPChallenge(
+          managedPreferences(),
+          { challengeID: "challenge-1", code },
+          apiFactory,
+          managedFactory,
+        );
+        expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+      }
+
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
     });
 
     it("returns a SyncAuthResult shape for both backends", async () => {

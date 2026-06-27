@@ -1,0 +1,37 @@
+# Dashboard — open today's quick log, record a period day + symptom, and
+# confirm it persists (status banner appears).
+#
+# Assumes onboarding is already complete (state from a prior run or the
+# onboarding flow). testIDs verified against
+# src/ui/screens/DashboardOverviewScreen.tsx and
+# src/ui/components/DayLogEditorCard.tsx, and exercised by the Playwright
+# web-smoke spec.
+#
+# NOTE: unvalidated against a running device/emulator in this environment.
+appId: ${APP_ID}
+---
+- launchApp
+
+# We need to be on the dashboard with the quick actions visible.
+- assertVisible:
+    id: "dashboard-quick-action-period"
+
+# Open the day-log editor for today via the period quick action.
+- tapOn:
+    id: "dashboard-quick-action-period"
+- assertVisible:
+    id: "day-log-flow-none"
+
+# Mark the day as a period day.
+- tapOn:
+    id: "day-log-period-toggle"
+    index: 0
+
+# Add a symptom (cramps) to the same day.
+- tapOn:
+    id: "day-log-symptom-cramps"
+    index: 0
+
+# Persistence confirmation banner.
+- assertVisible:
+    id: "day-log-status-banner"

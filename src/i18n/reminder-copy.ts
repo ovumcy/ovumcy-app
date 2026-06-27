@@ -8,20 +8,20 @@ const reminderCopyEn = {
 
 const reminderCopyDe = {
   notificationTitle: "Ovumcy-Erinnerung",
-  dailyLogBody: "Öffne Ovumcy, um den heutigen Eintrag zu aktualisieren.",
-  cycleBody: "Öffne Ovumcy, um deine nächsten Zyklusdaten zu prüfen.",
+  dailyLogBody: "Öffnen Sie Ovumcy, um den heutigen Eintrag zu aktualisieren.",
+  cycleBody: "Öffnen Sie Ovumcy, um Ihre nächsten Zyklusdaten zu prüfen.",
 };
 
 const reminderCopyFr = {
   notificationTitle: "Rappel Ovumcy",
-  dailyLogBody: "Ouvre Ovumcy pour mettre à jour l’entrée d’aujourd’hui.",
-  cycleBody: "Ouvre Ovumcy pour vérifier tes prochaines dates de cycle.",
+  dailyLogBody: "Ouvrez Ovumcy pour mettre à jour l’entrée d’aujourd’hui.",
+  cycleBody: "Ouvrez Ovumcy pour vérifier vos prochaines dates de cycle.",
 };
 
 const reminderCopyRu = {
   notificationTitle: "Напоминание Ovumcy",
-  dailyLogBody: "Открой Ovumcy, чтобы обновить сегодняшнюю запись.",
-  cycleBody: "Открой Ovumcy, чтобы проверить ближайшие даты цикла.",
+  dailyLogBody: "Откройте Ovumcy, чтобы обновить сегодняшнюю запись.",
+  cycleBody: "Откройте Ovumcy, чтобы проверить ближайшие даты цикла.",
 };
 
 const reminderCopyEs = {

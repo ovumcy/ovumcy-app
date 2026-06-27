@@ -9,10 +9,11 @@ const exportPDFCopyEn = {
   summaryLoggedDaysLabel: "Logged days",
   summaryCompletedCyclesLabel: "Completed cycles",
   summaryAverageCycleLengthLabel: "Average cycle length",
-  summaryAveragePeriodLengthLabel: "Average period length",
+  summaryAveragePeriodLengthLabel: "Avg. logged period length",
+  summaryLoggedPeriodLengthFootnote: "Values reflect logged days only, not full period duration.",
   summaryAverageMoodLabel: "Average mood",
   summaryRangeLabel: "Range",
-  calendarTitle: "Color calendar",
+  calendarTitle: "Color calendar (last 6 months)",
   calendarEmpty: "No recorded days yet.",
   legendPeriod: "Period",
   legendLoggedDay: "Logged day",
@@ -47,7 +48,7 @@ const exportPDFCopyEn = {
     notes: "Notes",
   },
   weekdays: ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"],
-  advancedFertilityTitle: "Advanced fertility signals",
+  advancedFertilityTitle: "Advanced fertility signals (current cycle)",
   advancedFertilityEmpty: "No advanced fertility signals from recent cycles.",
   advancedFertilityUnitCelsius: "°C",
   advancedFertilityUnitFahrenheit: "°F",
@@ -59,7 +60,7 @@ const exportPDFCopyEn = {
     unit: string,
     sampleCount: number,
   ) => `+${rise} ${unit} sustained over ${sampleCount} readings.`,
-  advancedFertilityOvulationTitle: "Ovulation confirmation",
+  advancedFertilityOvulationTitle: "Estimated ovulation (signal-based)",
   advancedFertilityOvulationConfirmedValue: "Signals aligned",
   advancedFertilityOvulationBuildingValue: "Signals building",
   advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
@@ -87,8 +88,9 @@ const exportPDFCopyEn = {
           : "within variable pattern"
     })`,
   shortLutealWarningTitle: "Short luteal phase",
+  fertileWindowAssumptionFootnote: "Fertile windows assume a 14-day luteal phase where a personalised estimate is unavailable.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
-    `Observed luteal phase averages ${averageDays.toFixed(1)} d across ${observationCount} recent cycles. Typical is 11-14 d. Consider clinical follow-up.`,
+    `Observed luteal phase averages ${averageDays.toFixed(1)} d across ${observationCount} recent cycles. Typical is 11–14 d. This is an estimate from logged signals, not a diagnosis; you may wish to discuss it with a clinician.`,
 } as const;
 
 type ExportPDFCopy = WidenLiteral<typeof exportPDFCopyEn>;
@@ -100,10 +102,11 @@ const exportPDFCopyDe: ExportPDFCopy = {
   summaryLoggedDaysLabel: "Erfasste Tage",
   summaryCompletedCyclesLabel: "Abgeschlossene Zyklen",
   summaryAverageCycleLengthLabel: "Durchschnittliche Zykluslänge",
-  summaryAveragePeriodLengthLabel: "Durchschnittliche Periodendauer",
+  summaryAveragePeriodLengthLabel: "Ø erfasste Periodendauer",
+  summaryLoggedPeriodLengthFootnote: "Werte basieren nur auf erfassten Tagen, nicht auf der vollständigen Periodendauer.",
   summaryAverageMoodLabel: "Durchschnittliche Stimmung",
   summaryRangeLabel: "Zeitraum",
-  calendarTitle: "Farbkalender",
+  calendarTitle: "Farbkalender (letzte 6 Monate)",
   calendarEmpty: "Noch keine erfassten Tage.",
   legendPeriod: "Periode",
   legendLoggedDay: "Erfasster Tag",
@@ -139,7 +142,7 @@ const exportPDFCopyDe: ExportPDFCopy = {
     notes: "Notizen",
   },
   weekdays: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
-  advancedFertilityTitle: "Erweiterte Fruchtbarkeitssignale",
+  advancedFertilityTitle: "Erweiterte Fruchtbarkeitssignale (aktueller Zyklus)",
   advancedFertilityEmpty:
     "Keine erweiterten Fruchtbarkeitssignale aus den letzten Zyklen.",
   advancedFertilityUnitCelsius: "°C",
@@ -152,7 +155,7 @@ const exportPDFCopyDe: ExportPDFCopy = {
     unit: string,
     sampleCount: number,
   ) => `+${rise} ${unit} anhaltend über ${sampleCount} Messungen.`,
-  advancedFertilityOvulationTitle: "Eisprungbestätigung",
+  advancedFertilityOvulationTitle: "Geschätzter Eisprung (signalbasiert)",
   advancedFertilityOvulationConfirmedValue: "Signale aufeinander abgestimmt",
   advancedFertilityOvulationBuildingValue: "Signale aufbauend",
   advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
@@ -180,8 +183,9 @@ const exportPDFCopyDe: ExportPDFCopy = {
           : "innerhalb eines variablen Musters"
     })`,
   shortLutealWarningTitle: "Kurze Lutealphase",
+  fertileWindowAssumptionFootnote: "Fruchtbarkeitsfenster setzen eine 14-tägige Lutealphase voraus, wenn keine personalisierte Schätzung verfügbar ist.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
-    `Beobachtete Lutealphase durchschnittlich ${averageDays.toFixed(1)} T. in ${observationCount} aktuellen Zyklen. Typisch sind 11-14 T. Klinische Abklärung empfohlen.`,
+    `Beobachtete Lutealphase durchschnittlich ${averageDays.toFixed(1)} T. in ${observationCount} aktuellen Zyklen. Typisch sind 11–14 T. Dies ist eine Schätzung aus erfassten Signalen, keine Diagnose; Sie können dies gerne mit einer Ärztin oder einem Arzt besprechen.`,
 };
 
 const exportPDFCopyFr: ExportPDFCopy = {
@@ -191,10 +195,11 @@ const exportPDFCopyFr: ExportPDFCopy = {
   summaryLoggedDaysLabel: "Jours enregistrés",
   summaryCompletedCyclesLabel: "Cycles terminés",
   summaryAverageCycleLengthLabel: "Durée moyenne du cycle",
-  summaryAveragePeriodLengthLabel: "Durée moyenne des règles",
+  summaryAveragePeriodLengthLabel: "Durée moy. des règles (jours saisis)",
+  summaryLoggedPeriodLengthFootnote: "Les valeurs reflètent uniquement les jours saisis, pas la durée totale des règles.",
   summaryAverageMoodLabel: "Humeur moyenne",
   summaryRangeLabel: "Plage",
-  calendarTitle: "Calendrier en couleurs",
+  calendarTitle: "Calendrier en couleurs (6 derniers mois)",
   calendarEmpty: "Aucun jour enregistré pour le moment.",
   legendPeriod: "Règles",
   legendLoggedDay: "Jour enregistré",
@@ -230,7 +235,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     notes: "Notes",
   },
   weekdays: ["Di", "Lu", "Ma", "Me", "Je", "Ve", "Sa"],
-  advancedFertilityTitle: "Signaux de fertilité avancés",
+  advancedFertilityTitle: "Signaux de fertilité avancés (cycle en cours)",
   advancedFertilityEmpty:
     "Aucun signal de fertilité avancé sur les cycles récents.",
   advancedFertilityUnitCelsius: "°C",
@@ -243,7 +248,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     unit: string,
     sampleCount: number,
   ) => `+${rise} ${unit} maintenue sur ${sampleCount} mesures.`,
-  advancedFertilityOvulationTitle: "Confirmation d'ovulation",
+  advancedFertilityOvulationTitle: "Ovulation estimée (basée sur les signaux)",
   advancedFertilityOvulationConfirmedValue: "Signaux alignés",
   advancedFertilityOvulationBuildingValue: "Signaux en cours",
   advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
@@ -271,8 +276,9 @@ const exportPDFCopyFr: ExportPDFCopy = {
           : "dans un schéma variable"
     })`,
   shortLutealWarningTitle: "Phase lutéale courte",
+  fertileWindowAssumptionFootnote: "Les fenêtres fertiles supposent une phase lutéale de 14 jours lorsqu'aucune estimation personnalisée n'est disponible.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
-    `Phase lutéale observée en moyenne ${averageDays.toFixed(1)} j sur ${observationCount} cycles récents. Typiquement 11 à 14 j. Suivi clinique recommandé.`,
+    `Phase lutéale observée en moyenne ${averageDays.toFixed(1)} j sur ${observationCount} cycles récents. Typiquement 11 à 14 j. Il s'agit d'une estimation fondée sur les signaux saisis, non d'un diagnostic ; vous pouvez en discuter avec un professionnel de santé.`,
 };
 
 const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
@@ -284,10 +290,11 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     summaryLoggedDaysLabel: "Записанных дней",
     summaryCompletedCyclesLabel: "Завершённых циклов",
     summaryAverageCycleLengthLabel: "Средняя длина цикла",
-    summaryAveragePeriodLengthLabel: "Средняя длительность менструации",
+    summaryAveragePeriodLengthLabel: "Ср. длит. менстр. (записанные дни)",
+    summaryLoggedPeriodLengthFootnote: "Значения отражают только записанные дни, а не полную длительность менструации.",
     summaryAverageMoodLabel: "Среднее настроение",
     summaryRangeLabel: "Диапазон",
-    calendarTitle: "Цветной календарь",
+    calendarTitle: "Цветной календарь (последние 6 месяцев)",
     calendarEmpty: "Пока нет записанных дней.",
     legendPeriod: "Менструация",
     legendLoggedDay: "Записанный день",
@@ -323,7 +330,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       notes: "Заметки",
     },
     weekdays: ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"],
-    advancedFertilityTitle: "Расширенные сигналы фертильности",
+    advancedFertilityTitle: "Расширенные сигналы фертильности (текущий цикл)",
     advancedFertilityEmpty:
       "Нет расширенных сигналов фертильности по недавним циклам.",
     advancedFertilityUnitCelsius: "°C",
@@ -336,7 +343,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       unit: string,
       sampleCount: number,
     ) => `+${rise} ${unit} удерживается на ${sampleCount} измерениях.`,
-    advancedFertilityOvulationTitle: "Подтверждение овуляции",
+    advancedFertilityOvulationTitle: "Предполагаемая овуляция (на основе сигналов)",
     advancedFertilityOvulationConfirmedValue: "Сигналы согласованы",
     advancedFertilityOvulationBuildingValue: "Сигналы собираются",
     advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
@@ -364,11 +371,12 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
             : "в пределах вариативного паттерна"
       })`,
     shortLutealWarningTitle: "Короткая лютеиновая фаза",
+    fertileWindowAssumptionFootnote: "Фертильные окна рассчитаны с учётом лютеиновой фазы в 14 дней, если персонализированная оценка недоступна.",
     shortLutealWarningDescription: (
       averageDays: number,
       observationCount: number,
     ) =>
-      `Наблюдаемая лютеиновая фаза в среднем ${averageDays.toFixed(1)} д. в ${observationCount} последних циклах. Типично 11-14 д. Рекомендуется клиническая консультация.`,
+      `Наблюдаемая лютеиновая фаза в среднем ${averageDays.toFixed(1)} д. в ${observationCount} последних циклах. Типично 11–14 д. Это оценка на основе записанных сигналов, а не диагноз; вы можете обсудить это с врачом.`,
   },
   es: {
     documentTitle: "Informe de Ovumcy para el médico",
@@ -377,10 +385,11 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     summaryLoggedDaysLabel: "Días registrados",
     summaryCompletedCyclesLabel: "Ciclos completados",
     summaryAverageCycleLengthLabel: "Duración media del ciclo",
-    summaryAveragePeriodLengthLabel: "Duración media del período",
+    summaryAveragePeriodLengthLabel: "Dur. media del período (días registrados)",
+    summaryLoggedPeriodLengthFootnote: "Los valores reflejan solo los días registrados, no la duración total del período.",
     summaryAverageMoodLabel: "Estado de ánimo medio",
     summaryRangeLabel: "Rango",
-    calendarTitle: "Calendario en color",
+    calendarTitle: "Calendario en color (últimos 6 meses)",
     calendarEmpty: "Todavía no hay días registrados.",
     legendPeriod: "Período",
     legendLoggedDay: "Día registrado",
@@ -409,19 +418,19 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       flow: "Flujo",
       mood: "Ánimo",
       sex: "Sexo",
-      bbt: "TCB",
+      bbt: "TBC",
       cervical: "Moco cervical",
       lh: "Test LH",
       symptoms: "Síntomas",
       notes: "Notas",
     },
     weekdays: ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"],
-    advancedFertilityTitle: "Señales avanzadas de fertilidad",
+    advancedFertilityTitle: "Señales avanzadas de fertilidad (ciclo actual)",
     advancedFertilityEmpty:
       "No hay señales avanzadas de fertilidad de ciclos recientes.",
     advancedFertilityUnitCelsius: "°C",
     advancedFertilityUnitFahrenheit: "°F",
-    advancedFertilityThermalShiftTitle: "Cambio térmico de TCB",
+    advancedFertilityThermalShiftTitle: "Cambio térmico de TBC",
     advancedFertilityThermalShiftConfirmedValue: "Confirmado",
     advancedFertilityThermalShiftBuildingValue: "Formándose",
     advancedFertilityThermalShiftDescription: (
@@ -429,7 +438,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       unit: string,
       sampleCount: number,
     ) => `+${rise} ${unit} sostenido durante ${sampleCount} lecturas.`,
-    advancedFertilityOvulationTitle: "Confirmación de ovulación",
+    advancedFertilityOvulationTitle: "Ovulación estimada (basada en señales)",
     advancedFertilityOvulationConfirmedValue: "Señales alineadas",
     advancedFertilityOvulationBuildingValue: "Señales formándose",
     advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
@@ -456,12 +465,13 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
             ? "más corto de lo habitual"
             : "dentro de un patrón variable"
       })`,
+    fertileWindowAssumptionFootnote: "Las ventanas fértiles asumen una fase lútea de 14 días cuando no hay una estimación personalizada disponible.",
     shortLutealWarningTitle: "Fase lútea corta",
     shortLutealWarningDescription: (
       averageDays: number,
       observationCount: number,
     ) =>
-      `Fase lútea observada promedio ${averageDays.toFixed(1)} d en ${observationCount} ciclos recientes. Lo típico son 11-14 d. Se sugiere seguimiento clínico.`,
+      `Fase lútea observada en promedio ${averageDays.toFixed(1)} d en ${observationCount} ciclos recientes. Lo típico son 11–14 d. Se trata de una estimación a partir de señales registradas, no de un diagnóstico; si lo desea, puede comentarlo con su médico.`,
   },
   de: exportPDFCopyDe,
   fr: exportPDFCopyFr,

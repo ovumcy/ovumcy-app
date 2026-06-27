@@ -6,6 +6,7 @@ import {
   DEFAULT_CUSTOM_SYMPTOM_ICON,
   HIDDEN_BUILTIN_ENTRY_PICKER_SYMPTOM_IDS,
   MAX_CUSTOM_SYMPTOM_NAME_LENGTH,
+  MAX_CUSTOM_SYMPTOM_ICON_LENGTH,
   type SymptomID,
   type SymptomRecord,
 } from "../models/symptom";
@@ -21,6 +22,8 @@ export type SymptomValidationErrorCode =
   | "label_required"
   | "label_too_long"
   | "label_invalid_characters"
+  | "icon_too_long"
+  | "icon_invalid_characters"
   | "invalid_color"
   | "duplicate_label"
   | "builtin_edit_forbidden"
@@ -181,6 +184,11 @@ export function createCustomSymptomRecord(
     };
   }
 
+  const iconResult = normalizeSymptomIconInput(draft.icon);
+  if (!iconResult.ok) {
+    return iconResult;
+  }
+
   const colorResult = resolveSymptomColorInput(
     draft.color ?? "",
     DEFAULT_CUSTOM_SYMPTOM_COLOR,
@@ -200,7 +208,7 @@ export function createCustomSymptomRecord(
       id: createCustomSymptomID(),
       slug: createCustomSymptomSlug(labelResult.value),
       label: labelResult.value,
-      icon: normalizeSymptomIconInput(draft.icon),
+      icon: iconResult.value,
       color: colorResult.value,
       isArchived: false,
       sortOrder,
@@ -240,6 +248,11 @@ export function updateCustomSymptomRecord(
     };
   }
 
+  const iconResult = normalizeSymptomIconInput(draft.icon);
+  if (!iconResult.ok) {
+    return iconResult;
+  }
+
   const colorResult = resolveSymptomColorInput(draft.color ?? "", currentRecord.color);
   if (!colorResult.ok) {
     return colorResult;
@@ -250,7 +263,7 @@ export function updateCustomSymptomRecord(
     record: {
       ...currentRecord,
       label: labelResult.value,
-      icon: normalizeSymptomIconInput(draft.icon),
+      icon: iconResult.value,
       color: colorResult.value,
     },
   };
@@ -360,9 +373,23 @@ export function normalizeSymptomLabelInput(
   };
 }
 
-export function normalizeSymptomIconInput(raw: string): string {
-  const normalized = raw.trim();
-  return normalized === "" ? DEFAULT_CUSTOM_SYMPTOM_ICON : normalized;
+export function normalizeSymptomIconInput(
+  raw: string,
+): { ok: true; value: string } | { ok: false; errorCode: SymptomValidationErrorCode } {
+  const icon = raw.trim();
+  if (icon === "") {
+    return { ok: true, value: DEFAULT_CUSTOM_SYMPTOM_ICON };
+  }
+
+  if ([...icon].length > MAX_CUSTOM_SYMPTOM_ICON_LENGTH) {
+    return { ok: false, errorCode: "icon_too_long" };
+  }
+
+  if (containsInvalidPlainTextLabelRune(icon)) {
+    return { ok: false, errorCode: "icon_invalid_characters" };
+  }
+
+  return { ok: true, value: icon };
 }
 
 export function resolveSymptomColorInput(

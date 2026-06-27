@@ -287,10 +287,10 @@ function resolvePotentialImplantationGapDays(
     addDays(targetDate, -1),
   );
   const predictionCycleLength =
-    history.averageCycleLength > 0
-      ? Math.round(history.averageCycleLength)
-      : history.medianCycleLength > 0
-        ? history.medianCycleLength
+    history.medianCycleLength > 0
+      ? history.medianCycleLength
+      : history.averageCycleLength > 0
+        ? Math.round(history.averageCycleLength)
         : profile.cycleLength;
   const lutealPhase = resolveLutealPhase(
     inferUserLutealPhase(

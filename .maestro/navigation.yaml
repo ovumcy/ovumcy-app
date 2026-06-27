@@ -1,0 +1,41 @@
+# Navigation — tab between Today (dashboard), Calendar, Insights (stats) and
+# Settings, asserting a stable element on each screen.
+#
+# Native tabs are reached by their accessibility label (the localized tab
+# title from src/i18n/shell-copy.ts). This flow assumes the English shell
+# copy: Today / Calendar / Insights / Settings. Per-screen assertions use
+# verified testIDs.
+#
+# Assumes onboarding is already complete.
+#
+# NOTE: unvalidated against a running device/emulator in this environment.
+appId: ${APP_ID}
+---
+- launchApp
+
+# --- Today (dashboard) ---
+- tapOn: "Today"
+- assertVisible:
+    id: "dashboard-quick-actions-title"
+
+# --- Calendar ---
+- tapOn: "Calendar"
+- assertVisible:
+    id: "calendar-day-panel"
+- assertVisible:
+    id: "calendar-today-button"
+
+# --- Insights (stats) ---
+- tapOn: "Insights"
+- assertVisible:
+    id: "stats-screen-title"
+
+# --- Settings ---
+- tapOn: "Settings"
+- assertVisible:
+    id: "settings-interface-section"
+
+# --- back to Today ---
+- tapOn: "Today"
+- assertVisible:
+    id: "dashboard-quick-actions-title"

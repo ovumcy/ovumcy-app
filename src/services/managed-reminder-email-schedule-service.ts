@@ -5,7 +5,11 @@ import {
   type ManagedCloudReminderEmailScheduleType,
 } from "../sync/managed-cloud-api-client";
 import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contract";
-import type { LocalReminderPlan } from "./local-reminder-plan-service";
+import {
+  resolveReminderTimeZone,
+  zonedWallTimeToUTC,
+  type LocalReminderPlan,
+} from "./local-reminder-plan-service";
 
 export type ManagedReminderEmailSyncResult =
   | "synced"
@@ -90,7 +94,11 @@ export function buildManagedReminderEmailSchedules(
     const base = {
       kind: plan.kind,
       locale: normalizeReminderLocale(locale),
-      timeZone: resolveReminderTimeZone(timeZone),
+      // The plan already carries the resolved zone that the device push trigger
+      // was built against; prefer it so email and push share one local day. The
+      // explicit `timeZone` argument is only a fallback for plans built before
+      // this field existed.
+      timeZone: resolveReminderTimeZone(plan.timeZone ?? timeZone),
     } as const;
 
     if (plan.trigger.type === "daily") {
@@ -118,28 +126,18 @@ export function buildManagedReminderEmailSchedules(
 }
 
 function normalizeReminderLocale(locale: string | undefined): string {
-  switch (locale) {
+  const subtag = String(locale ?? "")
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .split("-")[0];
+  switch (subtag) {
     case "ru":
     case "es":
     case "de":
     case "fr":
-      return locale;
+      return subtag;
     default:
       return "en";
-  }
-}
-
-function resolveReminderTimeZone(timeZone: string | undefined): string {
-  const normalized = String(timeZone ?? "").trim();
-  if (normalized.length > 0) {
-    return normalized;
-  }
-
-  try {
-    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return resolved?.trim() ? resolved : "UTC";
-  } catch {
-    return "UTC";
   }
 }
 
@@ -167,50 +165,10 @@ function nextDailyReminderDeliveryAt(
     parts.find((part) => part.type === "minute")?.value ?? "0",
   );
 
-  const candidate = zonedDateTimeToUTC(timeZone, year, month, day, hour, minute);
+  const candidate = zonedWallTimeToUTC(timeZone, year, month, day, hour, minute);
   if (hour < currentHour || (hour === currentHour && minute <= currentMinute)) {
-    return zonedDateTimeToUTC(timeZone, year, month, day + 1, hour, minute);
+    return zonedWallTimeToUTC(timeZone, year, month, day + 1, hour, minute);
   }
 
   return candidate;
-}
-
-function zonedDateTimeToUTC(
-  timeZone: string,
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute: number,
-): Date {
-  const approximate = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).formatToParts(approximate);
-
-  const zonedYear = Number(parts.find((part) => part.type === "year")?.value ?? year);
-  const zonedMonth = Number(parts.find((part) => part.type === "month")?.value ?? month);
-  const zonedDay = Number(parts.find((part) => part.type === "day")?.value ?? day);
-  const zonedHour = Number(parts.find((part) => part.type === "hour")?.value ?? hour);
-  const zonedMinute = Number(parts.find((part) => part.type === "minute")?.value ?? minute);
-  const zonedSecond = Number(parts.find((part) => part.type === "second")?.value ?? 0);
-
-  const zonedAsUTC = Date.UTC(
-    zonedYear,
-    zonedMonth - 1,
-    zonedDay,
-    zonedHour,
-    zonedMinute,
-    zonedSecond,
-    0,
-  );
-  const targetAsUTC = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
-  return new Date(approximate.getTime() - (zonedAsUTC - targetAsUTC));
 }

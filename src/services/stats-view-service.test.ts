@@ -92,9 +92,21 @@ describe("buildStatsViewData", () => {
           bbt: 36.62,
           symptomIDs: ["headache"],
         },
+        {
+          ...createEmptyDayLogRecord("2026-03-17"),
+          bbt: 36.55,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-18"),
+          bbt: 36.7,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-19"),
+          bbt: 36.65,
+        },
       ],
       createDefaultSymptomRecords(),
-      new Date(2026, 2, 17),
+      new Date(2026, 2, 19),
     );
 
     expect(viewData.hasInsights).toBe(true);
@@ -127,7 +139,7 @@ describe("buildStatsViewData", () => {
     expect(viewData.phaseSymptomInsights?.items.some((item) => item.hasData)).toBe(
       true,
     );
-    expect(viewData.bbtTrend?.points).toHaveLength(2);
+    expect(viewData.bbtTrend?.points).toHaveLength(5);
   });
 
   it("adds a mucus-based fertility insight when egg-white mucus is logged in the current cycle", () => {
@@ -312,6 +324,7 @@ describe("buildStatsViewData", () => {
         {
           ...createEmptyDayLogRecord("2025-10-14"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-10-11"),
@@ -321,6 +334,7 @@ describe("buildStatsViewData", () => {
         {
           ...createEmptyDayLogRecord("2025-11-12"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-11-08"),
@@ -330,6 +344,7 @@ describe("buildStatsViewData", () => {
         {
           ...createEmptyDayLogRecord("2025-12-10"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-12-06"),
@@ -339,44 +354,53 @@ describe("buildStatsViewData", () => {
         {
           ...createEmptyDayLogRecord("2026-01-08"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         createPeriodRecord("2026-01-21"),
         {
           ...createEmptyDayLogRecord("2026-02-04"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         createPeriodRecord("2026-02-18"),
         {
           ...createEmptyDayLogRecord("2026-03-12"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
-        createPeriodRecord("2026-03-28"),
+        // Current cycle: 5 flat baseline BBT days, then a 3-day sustained
+        // streak so the canonical detector anchors the shift on 2026-04-02.
+        createPeriodRecord("2026-03-28", { bbt: 36.3 }),
         {
           ...createEmptyDayLogRecord("2026-03-29"),
-          bbt: 36.3,
+          bbt: 36.31,
         },
         {
           ...createEmptyDayLogRecord("2026-03-30"),
-          bbt: 36.32,
+          bbt: 36.29,
           cervicalMucus: "eggwhite",
           lhTest: "peak",
           pregnancyTest: "none",
         },
         {
           ...createEmptyDayLogRecord("2026-03-31"),
-          bbt: 36.34,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-04-01"),
-          bbt: 36.57,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-04-02"),
-          bbt: 36.6,
+          bbt: 36.55,
         },
         {
           ...createEmptyDayLogRecord("2026-04-03"),
-          bbt: 36.63,
+          bbt: 36.56,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-04"),
+          bbt: 36.57,
         },
       ],
       createDefaultSymptomRecords(),
@@ -506,17 +530,17 @@ describe("buildStatsViewData", () => {
         createPeriodRecord("2025-12-01"),
         {
           ...createEmptyDayLogRecord("2025-12-20"),
-          cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         createPeriodRecord("2025-12-26"),
         {
           ...createEmptyDayLogRecord("2026-01-15"),
-          cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         createPeriodRecord("2026-01-20"),
         {
           ...createEmptyDayLogRecord("2026-02-09"),
-          cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         createPeriodRecord("2026-02-14"),
       ],
@@ -542,5 +566,82 @@ describe("buildStatsViewData", () => {
         }),
       ]),
     );
+  });
+});
+
+describe("buildStatsViewData short/long completed-cycle notices", () => {
+  const SHORT_NOTICE =
+    "Several of your recent cycles are shorter than 24 days. Cycles this short are less common — consider discussing them with a health professional.";
+  const LONG_NOTICE =
+    "Several of your recent cycles are longer than 45 days. Cycles this long are less common and can have many causes — consider discussing them with a health professional.";
+
+  // Builds completed cycles of the given lengths by placing cycle starts that
+  // many days apart, beginning at startDate. N lengths => N+1 starts => N
+  // completed cycles. lastPeriodStart is pinned to the first start so the
+  // profile does not inject a stray cluster start.
+  function buildNoticeViewData(
+    cycleLengths: number[],
+    startDate = "2026-01-01",
+  ) {
+    const records = [createPeriodRecord(startDate)];
+    // UTC-based day stepping so the generated cycle lengths are exact calendar
+    // gaps regardless of any DST transition the span happens to cross.
+    const [year, month, day] = startDate.split("-").map(Number);
+    let cursorMs = Date.UTC(year!, month! - 1, day!);
+    for (const length of cycleLengths) {
+      cursorMs += length * 24 * 60 * 60 * 1000;
+      const iso = new Date(cursorMs).toISOString().slice(0, 10);
+      records.push(createPeriodRecord(iso));
+    }
+
+    return buildStatsViewData(
+      createProfileRecord({ lastPeriodStart: startDate }),
+      records,
+      createDefaultSymptomRecords(),
+      // Late in the year so every generated start is strictly in the past.
+      new Date(2026, 11, 31),
+    );
+  }
+
+  it("shows the short-cycle notice when exactly 3 completed cycles are below 24 days", () => {
+    const viewData = buildNoticeViewData([23, 23, 23]);
+
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.notices).toContain(SHORT_NOTICE);
+    expect(viewData.notices).not.toContain(LONG_NOTICE);
+  });
+
+  it("does not show the short-cycle notice with only 2 short cycles", () => {
+    const viewData = buildNoticeViewData([23, 23]);
+
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.notices).not.toContain(SHORT_NOTICE);
+  });
+
+  it("does not treat a cycle of exactly 24 days as short (strict < threshold)", () => {
+    const viewData = buildNoticeViewData([24, 24, 24]);
+
+    expect(viewData.notices).not.toContain(SHORT_NOTICE);
+  });
+
+  it("shows the long-cycle notice when 3 completed cycles are above 45 days", () => {
+    const viewData = buildNoticeViewData([46, 46, 46]);
+
+    expect(viewData.notices).toContain(LONG_NOTICE);
+    expect(viewData.notices).not.toContain(SHORT_NOTICE);
+  });
+
+  it("does not treat a cycle of exactly 45 days as long (strict > threshold)", () => {
+    const viewData = buildNoticeViewData([45, 45, 45]);
+
+    expect(viewData.notices).not.toContain(LONG_NOTICE);
+  });
+
+  it("does not show either notice for a single short cycle among normal cycles", () => {
+    // 23-day short cycle followed by three ~28-day cycles: only one short.
+    const viewData = buildNoticeViewData([23, 28, 28, 28]);
+
+    expect(viewData.notices).not.toContain(SHORT_NOTICE);
+    expect(viewData.notices).not.toContain(LONG_NOTICE);
   });
 });

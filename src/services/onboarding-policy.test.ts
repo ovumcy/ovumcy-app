@@ -47,12 +47,21 @@ describe("onboarding-policy", () => {
     expect(buildCycleGuidanceState(21, 14)).toEqual({
       adjusted: false,
       cycleLong: false,
-      cycleShort: false,
+      cycleShort: true,
       invalid: true,
       periodLength: 14,
       periodLong: true,
       warning: false,
     });
+  });
+
+  it("flags short cycles at the canonical 24-day boundary", () => {
+    expect(buildCycleGuidanceState(23, 5)).toEqual(
+      expect.objectContaining({ cycleShort: true }),
+    );
+    expect(buildCycleGuidanceState(24, 5)).toEqual(
+      expect.objectContaining({ cycleShort: false }),
+    );
   });
 
   it("flags unusually long cycles for medical guidance", () => {

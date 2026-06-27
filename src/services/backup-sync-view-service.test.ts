@@ -117,7 +117,6 @@ describe("backup sync view service", () => {
       {
         mode: "managed",
         syncEnabled: true,
-        premiumActive: false,
         recoverySupported: true,
         pushSupported: false,
         portalSupported: false,
@@ -174,7 +173,6 @@ describe("backup sync view service", () => {
       {
         mode: "managed",
         syncEnabled: true,
-        premiumActive: true,
         recoverySupported: true,
         pushSupported: false,
         portalSupported: false,

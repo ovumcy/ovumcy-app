@@ -18,6 +18,7 @@ export const STATS_LAST_CYCLE_SYMPTOMS_LIMIT = 3;
 export const STATS_SYMPTOM_PATTERN_LIMIT = 2;
 export const STATS_PHASE_SYMPTOM_LIMIT = 3;
 export const STATS_BBT_POINT_LIMIT = 12;
+export const MIN_CURRENT_CYCLE_BBT_POINTS = 5;
 
 export type StatsPhase =
   | "unknown"
@@ -92,6 +93,11 @@ export type StatsCycleProjection = {
   currentCycleDay: number | null;
   currentPhase: StatsPhase;
   isPredictionStale: boolean;
+  // Mirrors web DashboardCycleDayLooksLong: the raw cycle day from the original
+  // anchor exceeds the reference length + 7. A soft "running long" qualifier
+  // that annotates rather than suppresses. Optional so existing projection
+  // literals (e.g. frozen test fixtures) stay valid; the producer always sets it.
+  cycleDayLooksLong?: boolean;
   isPregnancyPaused: boolean;
   pregnancyTestDate: LocalDateISO | null;
   lutealPhase: number;

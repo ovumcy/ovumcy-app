@@ -1,0 +1,266 @@
+import {
+  createEntitlementTokenStore,
+  type EntitlementTokenStore,
+} from "../security/entitlement-token-store";
+import type { SyncSecretsRecord } from "../sync/sync-contract";
+import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
+import {
+  loadManagedBillingSnapshot,
+  loadManagedPremiumFeatures,
+  type EntitlementTokenGate,
+} from "./managed-premium-features-service";
+
+// The golden token from entitlement-token.test.ts (the Go-signer interop
+// vector). It carries entitlements ["doctor_pdf","advanced_insights"], sub
+// "acct-test-0001", exp 1750086400, signed by the golden key. The service
+// resolves the embedded public-key map, whose PLACEHOLDER is the golden key,
+// so this end-to-end test verifies the real path without a private key.
+const GOLDEN_TOKEN =
+  "eyJhbGciOiJFZERTQSIsImtpZCI6IjY1YjYwNjczZDZlZDg4NGIiLCJ0eXAiOiJKV1QifQ" +
+  ".eyJhdWQiOiJvdnVtY3ktYXBwIiwiZW50aXRsZW1lbnRzIjpbImRvY3Rvcl9wZGYiLCJhZHZhbmNlZF9pbnNpZ2h0cyJdLCJleHAiOjE3NTAwODY0MDAsImlhdCI6MTc1MDAwMDAwMCwiaXNzIjoib3Z1bWN5LW1hbmFnZWQiLCJzdWIiOiJhY2N0LXRlc3QtMDAwMSJ9" +
+  ".aLxva7cu0mWgbcl5QJCnFQFvyC4z5j9GEEuSTnSDomqkC1xccZl3tBaw45_RwaTLlRVQS9qjgRaDO8Nq2w2zBw";
+const GOLDEN_SUB = "acct-test-0001";
+const GOLDEN_NOW = 1_750_000_000; // < exp 1750086400
+const GOLDEN_PAST_EXP = 1_750_086_401; // >= exp
+
+const MANAGED_SECRETS: SyncSecretsRecord = {
+  device: {
+    deviceID: "device-1",
+    deviceLabel: "Pixel 7",
+    createdAt: "2026-03-19T08:15:00.000Z",
+  },
+  masterKeyHex: "aa",
+  deviceSecretHex: "bb",
+  wrappedKey: {
+    algorithm: "xchacha20poly1305",
+    kdf: "bip39_seed_hkdf_sha256",
+    mnemonicWordCount: 12,
+    wrapNonceHex: "cc",
+    wrappedMasterKeyHex: "dd",
+    phraseFingerprintHex: "ee",
+  },
+  authSessionToken: null,
+  managedAuthSessionToken: "managed-session-1",
+};
+
+const originalFetch = global.fetch;
+
+function createMemoryEntitlementTokenStore(): EntitlementTokenStore {
+  let raw: string | null = null;
+  return createEntitlementTokenStore({
+    async deleteItem(): Promise<void> {
+      raw = null;
+    },
+    async getItem(): Promise<string | null> {
+      return raw;
+    },
+    async setItem(_key: string, value: string): Promise<void> {
+      raw = value;
+    },
+  });
+}
+
+const FULL_FALSE_FEATURES = {
+  advancedFertility: false,
+  advancedInsights: false,
+  doctorPDF: false,
+  extendedReports: false,
+  partnerAccess: false,
+  reminders: false,
+};
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// Routes the two endpoints the gate touches: /account/billing and
+// /account/entitlements/token. `tokenResponse` of null means the
+// entitlement-token endpoint is never expected to be called.
+function mockManagedFetch(options: {
+  billingFeatures: typeof FULL_FALSE_FEATURES;
+  tokenResponse: Response | null;
+}): jest.Mock {
+  const fn = jest.fn(async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.endsWith("/account/billing")) {
+      return jsonResponse({
+        has_active_plan: true,
+        premium_features: {
+          advanced_fertility: options.billingFeatures.advancedFertility,
+          advanced_insights: options.billingFeatures.advancedInsights,
+          doctor_pdf: options.billingFeatures.doctorPDF,
+          extended_reports: options.billingFeatures.extendedReports,
+          partner_access: options.billingFeatures.partnerAccess,
+          reminders: options.billingFeatures.reminders,
+        },
+      });
+    }
+    if (url.endsWith("/account/entitlements/token")) {
+      if (options.tokenResponse) {
+        return options.tokenResponse;
+      }
+      throw new Error("unexpected entitlements/token call");
+    }
+    throw new Error(`unexpected fetch to ${url}`);
+  });
+  global.fetch = fn as unknown as typeof fetch;
+  return fn;
+}
+
+afterEach(() => {
+  global.fetch = originalFetch;
+});
+
+describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchanged", () => {
+  it("returns the snapshot premiumFeatures verbatim when no gate is supplied", async () => {
+    mockManagedFetch({
+      billingFeatures: { ...FULL_FALSE_FEATURES, reminders: true },
+      tokenResponse: null, // gate absent -> the token endpoint is never hit
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    const features = await loadManagedPremiumFeatures(secretStore, "managed");
+
+    expect(features).toEqual({ ...FULL_FALSE_FEATURES, reminders: true });
+  });
+
+  it("does not call the entitlements/token endpoint at all when no gate is supplied", async () => {
+    const fetchMock = mockManagedFetch({
+      billingFeatures: FULL_FALSE_FEATURES,
+      tokenResponse: null,
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    await loadManagedBillingSnapshot(secretStore, "managed");
+
+    const calledUrls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls.some((url) => url.endsWith("/account/billing"))).toBe(
+      true,
+    );
+    expect(
+      calledUrls.some((url) => url.endsWith("/account/entitlements/token")),
+    ).toBe(false);
+  });
+});
+
+describe("loadManagedBillingSnapshot — verified-token overlay", () => {
+  function gate(store: EntitlementTokenStore): EntitlementTokenGate {
+    // publicKeysByKid is resolved from the embedded placeholder (== golden
+    // key), so the gate itself need only carry the store/now/sub.
+    return { store, now: GOLDEN_NOW, expectedSub: GOLDEN_SUB };
+  }
+
+  it("overlays a verified token: the two local features become true, server-gated stay from the snapshot", async () => {
+    mockManagedFetch({
+      billingFeatures: { ...FULL_FALSE_FEATURES, reminders: true },
+      tokenResponse: jsonResponse({
+        token: GOLDEN_TOKEN,
+        expires_at: "2025-06-16T17:46:40Z",
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const store = createMemoryEntitlementTokenStore();
+
+    const snapshot = await loadManagedBillingSnapshot(
+      secretStore,
+      "managed",
+      gate(store),
+    );
+
+    expect(snapshot?.premiumFeatures).toEqual({
+      ...FULL_FALSE_FEATURES,
+      doctorPDF: true,
+      advancedInsights: true,
+      reminders: true, // server-gated: untouched
+    });
+    expect(snapshot?.hasActivePlan).toBe(true);
+    // Token cached for offline use.
+    expect(await store.readEntitlementToken()).toEqual({ token: GOLDEN_TOKEN });
+  });
+
+  it("falls back to snapshot booleans when the endpoint is 503 and nothing is cached (no regression)", async () => {
+    mockManagedFetch({
+      billingFeatures: {
+        ...FULL_FALSE_FEATURES,
+        doctorPDF: true,
+        advancedInsights: true,
+      },
+      tokenResponse: jsonResponse({ error: "entitlements_unavailable" }, 503),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const store = createMemoryEntitlementTokenStore();
+
+    const snapshot = await loadManagedBillingSnapshot(
+      secretStore,
+      "managed",
+      gate(store),
+    );
+
+    // Identical to the snapshot — no token, no overlay.
+    expect(snapshot?.premiumFeatures).toEqual({
+      ...FULL_FALSE_FEATURES,
+      doctorPDF: true,
+      advancedInsights: true,
+    });
+  });
+
+  it("honors a cached non-expired token offline when the endpoint is unavailable", async () => {
+    mockManagedFetch({
+      billingFeatures: FULL_FALSE_FEATURES,
+      tokenResponse: jsonResponse({ error: "network_failed" }, 599),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const store = createMemoryEntitlementTokenStore();
+    await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
+
+    const snapshot = await loadManagedBillingSnapshot(
+      secretStore,
+      "managed",
+      gate(store),
+    );
+
+    expect(snapshot?.premiumFeatures.doctorPDF).toBe(true);
+    expect(snapshot?.premiumFeatures.advancedInsights).toBe(true);
+  });
+
+  it("re-locks when the cached token is expired and falls back to the snapshot booleans", async () => {
+    mockManagedFetch({
+      billingFeatures: FULL_FALSE_FEATURES,
+      tokenResponse: jsonResponse({ error: "network_failed" }, 599),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const store = createMemoryEntitlementTokenStore();
+    await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
+
+    const snapshot = await loadManagedBillingSnapshot(secretStore, "managed", {
+      store,
+      now: GOLDEN_PAST_EXP, // token exp has passed
+      expectedSub: GOLDEN_SUB,
+    });
+
+    expect(snapshot?.premiumFeatures).toEqual(FULL_FALSE_FEATURES);
+  });
+
+  it("rejects a token minted for another account (sub mismatch) and falls back", async () => {
+    mockManagedFetch({
+      billingFeatures: FULL_FALSE_FEATURES,
+      tokenResponse: jsonResponse({
+        token: GOLDEN_TOKEN,
+        expires_at: "2025-06-16T17:46:40Z",
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const store = createMemoryEntitlementTokenStore();
+
+    const snapshot = await loadManagedBillingSnapshot(secretStore, "managed", {
+      store,
+      now: GOLDEN_NOW,
+      expectedSub: "acct-someone-else",
+    });
+
+    expect(snapshot?.premiumFeatures).toEqual(FULL_FALSE_FEATURES);
+  });
+});

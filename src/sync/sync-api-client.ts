@@ -6,7 +6,6 @@ import type {
   SyncForgotPasswordResult,
   SyncPasswordResetResult,
   SyncRegenerateRecoveryCodeResult,
-  SyncTOTPChallengeHandoff,
   SyncTOTPEnrollmentStart,
   WrappedSyncKeyMetadata,
 } from "./sync-contract";
@@ -200,7 +199,6 @@ type RawSyncChangePasswordResult = {
 type RawSyncCapabilityDocument = {
   mode: "managed" | "self_hosted";
   sync_enabled: boolean;
-  premium_active: boolean;
   recovery_supported: boolean;
   push_supported: boolean;
   portal_supported: boolean;
@@ -843,7 +841,6 @@ function isRawSyncCapabilities(value: unknown): value is RawSyncCapabilityDocume
     isObject(value) &&
     (value.mode === "managed" || value.mode === "self_hosted") &&
     typeof value.sync_enabled === "boolean" &&
-    typeof value.premium_active === "boolean" &&
     typeof value.recovery_supported === "boolean" &&
     typeof value.push_supported === "boolean" &&
     typeof value.portal_supported === "boolean" &&
@@ -912,7 +909,6 @@ function mapSyncCapabilities(
   return {
     mode: raw.mode,
     syncEnabled: raw.sync_enabled,
-    premiumActive: raw.premium_active,
     recoverySupported: raw.recovery_supported,
     pushSupported: raw.push_supported,
     portalSupported: raw.portal_supported,

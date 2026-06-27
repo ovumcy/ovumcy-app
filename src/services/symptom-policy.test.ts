@@ -6,11 +6,76 @@ import {
   archiveCustomSymptomRecord,
   buildEntryPickerSymptoms,
   createCustomSymptomRecord,
+  normalizeSymptomIconInput,
   restoreCustomSymptomRecord,
   updateCustomSymptomRecord,
 } from "./symptom-policy";
 
+describe("normalizeSymptomIconInput", () => {
+  it("rejects icon containing '<'", () => {
+    expect(normalizeSymptomIconInput("<script>")).toEqual({
+      ok: false,
+      errorCode: "icon_invalid_characters",
+    });
+  });
+
+  it("rejects icon containing '>'", () => {
+    expect(normalizeSymptomIconInput(">")).toEqual({
+      ok: false,
+      errorCode: "icon_invalid_characters",
+    });
+  });
+
+  it("rejects icon containing a control character", () => {
+    expect(normalizeSymptomIconInput("🔥\x01")).toEqual({
+      ok: false,
+      errorCode: "icon_invalid_characters",
+    });
+  });
+
+  it("rejects icon that exceeds the max length (> 16 runes)", () => {
+    // 17 emoji — each counts as one rune
+    expect(normalizeSymptomIconInput("🔥".repeat(17))).toEqual({
+      ok: false,
+      errorCode: "icon_too_long",
+    });
+  });
+
+  it("accepts a normal emoji icon", () => {
+    expect(normalizeSymptomIconInput("🔥")).toEqual({
+      ok: true,
+      value: "🔥",
+    });
+  });
+
+  it("falls back to the default icon when input is empty", () => {
+    expect(normalizeSymptomIconInput("")).toEqual({
+      ok: true,
+      value: "✨",
+    });
+  });
+
+  it("falls back to the default icon when input is only whitespace", () => {
+    expect(normalizeSymptomIconInput("   ")).toEqual({
+      ok: true,
+      value: "✨",
+    });
+  });
+});
+
 describe("symptom-policy", () => {
+  it("rejects a custom symptom whose icon contains invalid characters", () => {
+    const result = createCustomSymptomRecord(createDefaultSymptomRecords(), {
+      label: "Test symptom",
+      icon: "<script>",
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "icon_invalid_characters",
+    });
+  });
+
   it("rejects custom symptom labels that duplicate built-ins case-insensitively", () => {
     const result = createCustomSymptomRecord(createDefaultSymptomRecords(), {
       label: "  cramps ",

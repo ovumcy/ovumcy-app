@@ -84,7 +84,6 @@ describe("sync-client-service", () => {
       capabilities: expect.objectContaining({
         mode: "managed",
         syncEnabled: true,
-        premiumActive: true,
       }),
       preferences: expect.objectContaining({
         normalizedEndpoint: "https://sync.ovumcy.cloud",
@@ -135,7 +134,6 @@ describe("sync-client-service", () => {
           capabilities: {
             mode: "self_hosted",
             syncEnabled: true,
-            premiumActive: false,
             recoverySupported: true,
             pushSupported: false,
             portalSupported: false,
@@ -267,7 +265,6 @@ describe("sync-client-service", () => {
           capabilities: {
             mode: "self_hosted",
             syncEnabled: true,
-            premiumActive: false,
             recoverySupported: true,
             pushSupported: false,
             portalSupported: false,
@@ -359,7 +356,6 @@ describe("sync-client-service", () => {
       ok: true,
       capabilities: expect.objectContaining({
         mode: "managed",
-        premiumActive: false,
       }),
     });
     expect(apiClientFactory).not.toHaveBeenCalled();
@@ -401,7 +397,6 @@ describe("sync-client-service", () => {
           capabilities: {
             mode: "self_hosted",
             syncEnabled: true,
-            premiumActive: false,
             recoverySupported: true,
             pushSupported: false,
             portalSupported: false,
@@ -549,7 +544,6 @@ describe("sync-client-service", () => {
       ok: true,
       capabilities: expect.objectContaining({
         mode: "managed",
-        premiumActive: true,
         recoverySupported: true,
       }),
       preferences: expect.objectContaining({
@@ -987,7 +981,6 @@ describe("finalizeSyncSessionAfterTOTP", () => {
         capabilities: {
           mode: "self_hosted",
           syncEnabled: true,
-          premiumActive: false,
           recoverySupported: false,
           pushSupported: false,
           portalSupported: false,

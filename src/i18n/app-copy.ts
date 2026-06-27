@@ -106,8 +106,8 @@ const appCopyDe: AppCopy = {
       finish: "Fertig",
     },
     step1: {
-      title: "Wann hat deine letzte Periode begonnen?",
-      subtitle: "Wähle ein Datum aus den letzten 60 Tagen.",
+      title: "Wann hat Ihre letzte Periode begonnen?",
+      subtitle: "Wählen Sie ein Datum aus den letzten 60 Tagen.",
       day1Tip: "Tag 1 ist der erste Tag mit voller Blutung, nicht Schmierblutung.",
       dismissTip: "Hinweis schließen",
       today: "Heute",
@@ -121,7 +121,7 @@ const appCopyDe: AppCopy = {
       cycleLength: "Übliche Zykluslänge",
       daysShort: "T",
       cycleLengthHint:
-        "Stelle den Regler auf die Zykluslänge ein, die du normalerweise vom Beginn einer Periode bis zum Beginn der nächsten siehst. Ein häufiger Ausgangswert liegt bei etwa 21 bis 35 Tagen.",
+        "Stellen Sie den Regler auf die Zykluslänge ein, die Sie normalerweise vom Beginn einer Periode bis zum Beginn der nächsten sehen. Ein häufiger Ausgangswert liegt bei etwa 21 bis 35 Tagen.",
       periodLength: "Periodendauer",
       periodLengthHint:
         "Das ist die Anzahl der Tage mit echter Blutung, nicht mit Schmierblutung davor.",
@@ -132,26 +132,26 @@ const appCopyDe: AppCopy = {
       infoAdjusted:
         "Die Periodendauer wurde automatisch angepasst, damit mindestens 10 Tage bis zum nächsten Zyklus bleiben.",
       infoPeriodLong:
-        "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprich darüber mit einer Ärztin oder einem Arzt.",
+        "Eine Dauer von mehr als 8 Tagen kann auf Zyklusunregelmäßigkeiten hinweisen. Sprechen Sie darüber mit einer Ärztin oder einem Arzt.",
       infoCycleLong:
-        "Ein Zyklus von mehr als 45 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
+        "Ein Zyklus von mehr als 45 Tagen ist seltener. Sprechen Sie darüber mit einer Ärztin oder einem Arzt.",
       infoCycleShort:
-        "Ein Zyklus unter 24 Tagen ist seltener. Sprich darüber mit einer Ärztin oder einem Arzt.",
+        "Ein Zyklus unter 24 Tagen ist seltener. Sprechen Sie darüber mit einer Ärztin oder einem Arzt.",
       autoPeriodFill: "Periodentage automatisch markieren",
       autoPeriodFillHint:
-        "Wenn diese Option aktiviert ist, füllt das Markieren des ersten Tages die folgenden Tage automatisch auf Basis deiner Periodendauer aus.",
-      predictionMode: "Wie vorhersagbar ist dein Zyklus?",
-      predictionModeHint: "Wähle die Option, die am ehesten zu dir passt.",
+        "Wenn diese Option aktiviert ist, füllt das Markieren des ersten Tages die folgenden Tage automatisch auf Basis Ihrer Periodendauer aus.",
+      predictionMode: "Wie vorhersagbar ist Ihr Zyklus?",
+      predictionModeHint: "Wählen Sie die Option, die am ehesten zu Ihnen passt.",
       predictionModeRegular: "Meist regelmäßig",
       predictionModeRegularHint: "Normale Vorhersagen anzeigen.",
       predictionModeIrregular: "Meist unregelmäßig",
       predictionModeIrregularHint: "Ungefähre Daten anzeigen.",
       predictionModeFactsOnly: "Keine Vorhersagen",
-      predictionModeFactsOnlyHint: "Nur deine Einträge anzeigen.",
-      ageGroup: "Dein Alter",
+      predictionModeFactsOnlyHint: "Nur Ihre Einträge anzeigen.",
+      ageGroup: "Ihr Alter",
       ageGroupHint:
         "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
-      usageGoal: "Wofür nutzt du Ovumcy?",
+      usageGoal: "Wofür nutzen Sie Ovumcy?",
       usageGoalHint:
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
     },
@@ -166,15 +166,15 @@ const appCopyDe: AppCopy = {
       health: "Allgemeines Zyklus-Tracking",
     },
     errors: {
-      dateRequired: "Bitte wähle ein Datum aus.",
+      dateRequired: "Bitte wählen Sie ein Datum aus.",
       dismissError: "Fehler schließen",
       invalidLastPeriodStart:
-        "Bitte wähle ein gültiges Startdatum für deine letzte Periode aus.",
-      lastPeriodRange: "Wähle ein Datum innerhalb der letzten 60 Tage aus.",
+        "Bitte wählen Sie ein gültiges Startdatum für Ihre letzte Periode aus.",
+      lastPeriodRange: "Wählen Sie ein Datum innerhalb der letzten 60 Tage aus.",
       generic:
-        "Die Onboarding-Daten konnten nicht gespeichert werden. Bitte versuche es erneut.",
+        "Die Onboarding-Daten konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     },
-    loading: "Deine lokale Einrichtung wird geladen…",
+    loading: "Ihre lokale Einrichtung wird geladen…",
   },
 };
 
@@ -194,8 +194,8 @@ const appCopyFr: AppCopy = {
       finish: "Terminer",
     },
     step1: {
-      title: "Quand tes dernières règles ont-elles commencé ?",
-      subtitle: "Choisis une date dans les 60 derniers jours.",
+      title: "Quand vos dernières règles ont-elles commencé ?",
+      subtitle: "Choisissez une date dans les 60 derniers jours.",
       day1Tip: "Le jour 1 est le premier jour de flux abondant, pas de spotting.",
       dismissTip: "Fermer la note",
       today: "Aujourd'hui",
@@ -209,7 +209,7 @@ const appCopyFr: AppCopy = {
       cycleLength: "Durée habituelle du cycle",
       daysShort: "j",
       cycleLengthHint:
-        "Déplace le curseur vers la durée du cycle que tu observes habituellement entre le début d'une période et le début de la suivante. Une base fréquente se situe autour de 21 à 35 jours.",
+        "Déplacez le curseur vers la durée du cycle que vous observez habituellement entre le début d'une période et le début de la suivante. Une base fréquente se situe autour de 21 à 35 jours.",
       periodLength: "Durée des règles",
       periodLengthHint:
         "Il s'agit du nombre de jours avec un vrai flux, pas des légers saignements avant.",
@@ -220,26 +220,26 @@ const appCopyFr: AppCopy = {
       infoAdjusted:
         "La durée des règles a été ajustée automatiquement pour qu'il reste au moins 10 jours avant le cycle suivant.",
       infoPeriodLong:
-        "Une durée supérieure à 8 jours peut indiquer des irrégularités du cycle. Parles-en avec un médecin.",
+        "Une durée supérieure à 8 jours peut indiquer des irrégularités du cycle. Parlez-en avec un médecin.",
       infoCycleLong:
-        "Un cycle de plus de 45 jours est moins courant. Parles-en avec un médecin.",
+        "Un cycle de plus de 45 jours est moins courant. Parlez-en avec un médecin.",
       infoCycleShort:
-        "Un cycle inférieur à 24 jours est moins courant. Parles-en avec un médecin.",
+        "Un cycle inférieur à 24 jours est moins courant. Parlez-en avec un médecin.",
       autoPeriodFill: "Marquer automatiquement les jours de règles",
       autoPeriodFillHint:
-        "Quand cette option est activée, marquer le premier jour remplit automatiquement les jours suivants selon la durée de tes règles.",
-      predictionMode: "À quel point ton cycle est-il prévisible ?",
-      predictionModeHint: "Choisis l'option qui te correspond le mieux.",
+        "Quand cette option est activée, marquer le premier jour remplit automatiquement les jours suivants selon la durée de vos règles.",
+      predictionMode: "À quel point votre cycle est-il prévisible ?",
+      predictionModeHint: "Choisissez l'option qui vous correspond le mieux.",
       predictionModeRegular: "Plutôt régulier",
       predictionModeRegularHint: "Afficher les prédictions habituelles.",
       predictionModeIrregular: "Plutôt irrégulier",
       predictionModeIrregularHint: "Afficher des dates approximatives.",
       predictionModeFactsOnly: "Pas de prédictions",
-      predictionModeFactsOnlyHint: "Afficher seulement tes enregistrements.",
-      ageGroup: "Ton âge",
+      predictionModeFactsOnlyHint: "Afficher seulement vos enregistrements.",
+      ageGroup: "Votre âge",
       ageGroupHint:
         "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
-      usageGoal: "Pourquoi utilises-tu Ovumcy ?",
+      usageGoal: "Pourquoi utilisez-vous Ovumcy ?",
       usageGoalHint:
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
     },
@@ -260,9 +260,9 @@ const appCopyFr: AppCopy = {
         "Veuillez sélectionner une date valide de début des dernières règles.",
       lastPeriodRange: "Choisissez une date dans les 60 derniers jours.",
       generic:
-        "Impossible d'enregistrer les données de configuration. Réessaie.",
+        "Impossible d'enregistrer les données de configuration. Réessayez.",
     },
-    loading: "Chargement de ta configuration locale…",
+    loading: "Chargement de votre configuration locale…",
   },
 };
 
@@ -396,11 +396,11 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         infoAdjusted:
           "La duración del período se ajustó automáticamente para que queden al menos 10 días antes del siguiente ciclo.",
         infoPeriodLong:
-          "Una duración superior a 8 días puede indicar irregularidades; coméntalo con un médico.",
+          "Una duración superior a 8 días puede indicar irregularidades; coméntalo con un profesional de la salud.",
         infoCycleLong:
-          "Un ciclo de más de 45 días es menos común; coméntalo con un médico.",
+          "Un ciclo de más de 45 días es menos común; coméntalo con un profesional de la salud.",
         infoCycleShort:
-          "Un ciclo más corto de 24 días es menos común; coméntalo con un médico.",
+          "Un ciclo más corto de 24 días es menos común; coméntalo con un profesional de la salud.",
         autoPeriodFill: "Marcar automáticamente los días del período",
         autoPeriodFillHint:
           "Cuando está activado, marcar el primer día completa automáticamente los días siguientes según la duración del período.",

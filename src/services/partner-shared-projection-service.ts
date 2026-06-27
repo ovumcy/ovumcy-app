@@ -16,6 +16,11 @@ import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { buildExportCSVRows } from "./export-service";
 import { getSymptomDisplayLabel } from "./symptom-presentation-service";
 
+// Snapshots older than this many days are considered stale. Predictions are
+// hidden for stale snapshots because they are computed from potentially old
+// data, which could be misleading to the partner.
+const PARTNER_SNAPSHOT_STALE_DAYS = 14;
+
 const exportFlagToBuiltinSymptomID = {
   cramps: "cramps",
   headache: "headache",
@@ -86,6 +91,14 @@ export function buildPartnerSharedReadState(
   const profile = buildProjectionProfile(payload);
   const history = buildCycleHistorySummary(profile, payload.dayLogs, now);
   const projection = buildCurrentCycleProjection(profile, history, payload.dayLogs, now);
+
+  const generatedAtMs = Date.parse(payload.generatedAt);
+  const staleDeltaDays =
+    Number.isNaN(generatedAtMs)
+      ? Infinity
+      : (now.getTime() - generatedAtMs) / (24 * 60 * 60 * 1000);
+  const isStale = staleDeltaDays > PARTNER_SNAPSHOT_STALE_DAYS;
+
   const recentRows =
     payload.accessLevel === "full"
       ? buildExportCSVRows(payload.dayLogs, payload.symptomRecords)
@@ -110,6 +123,7 @@ export function buildPartnerSharedReadState(
   return {
     accessLevel: payload.accessLevel,
     generatedAt: payload.generatedAt,
+    isStale,
     temperatureUnit: payload.profile.temperatureUnit,
     cycleStatus: {
       currentCycleDay: projection.currentCycleDay,
@@ -146,8 +160,12 @@ function redactDayLogForPartner(
   accessLevel: PartnerShareAccessLevel,
 ): DayLogRecord {
   if (accessLevel === "summary") {
+    // Summary projection: share only coarse period/cycle markers.
+    // Data minimisation: flow is not rendered in the summary UI, so drop it.
+    // pregnancyTest is owner-only per the canonical privacy rule.
     return {
       ...record,
+      flow: "none",
       mood: 0,
       sexActivity: "none",
       bbt: 0,
@@ -160,12 +178,15 @@ function redactDayLogForPartner(
     };
   }
 
+  // Full projection: respect owner privacy toggles.
+  // pregnancyTest is owner-only unconditionally — no opt-in exists.
   return {
     ...record,
     sexActivity: profile.hideSexChip ? "none" : record.sexActivity,
     bbt: profile.trackBBT ? record.bbt : 0,
     cervicalMucus: profile.trackCervicalMucus ? record.cervicalMucus : "none",
     notes: profile.hideNotes === true ? "" : record.notes,
+    pregnancyTest: "none",
   };
 }
 

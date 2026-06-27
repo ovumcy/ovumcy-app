@@ -56,3 +56,10 @@ app-example
 
 # Visual regression diagnostic screenshots (regenerated each run)
 e2e/screenshots/
+
+# Stryker mutation testing (advisory lane)
+.stryker-tmp/
+reports/mutation/
+
+# Maestro e2e (local run artifacts)
+.maestro-output/

@@ -1061,4 +1061,52 @@ describe("managed-cloud-api-client", () => {
       expect(result.auth.entitlement.syncAllowed).toBe(true);
     }
   });
+
+  it("maps a signed entitlement-token response and POSTs to /account/entitlements/token", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          token: "header.payload.signature",
+          expires_at: "2026-06-14T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    const result = await client.getEntitlementToken("managed-session-1");
+
+    expect(result).toEqual({
+      ok: true,
+      result: {
+        token: "header.payload.signature",
+        expiresAt: "2026-06-14T00:00:00.000Z",
+      },
+    });
+    const [url, init] = fetch.mock.calls[0];
+    expect(String(url)).toBe(
+      "https://managed.example/account/entitlements/token",
+    );
+    expect((init as RequestInit).method).toBe("POST");
+  });
+
+  it("maps a 503 (signing key absent) to entitlements_unavailable so the app falls back to the snapshot", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "entitlements_unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.getEntitlementToken("managed-session-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "entitlements_unavailable" });
+  });
 });

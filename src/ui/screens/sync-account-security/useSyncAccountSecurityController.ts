@@ -84,6 +84,11 @@ export function useSyncAccountSecurityController({
   const [forgotErrorCode, setForgotErrorCode] = useState<
     RequestSyncPasswordResetErrorCode | ResetSyncPasswordErrorCode | null
   >(null);
+  // A successful reset revokes every session, so this device is now signed out.
+  // The screen surfaces an explicit "reconnect with your new password" notice
+  // off this flag; without it the next security action would silently fail with
+  // not_connected.
+  const [forgotSignedOut, setForgotSignedOut] = useState(false);
 
   // Regenerate recovery code
   const [regeneratePassword, setRegeneratePassword] = useState("");
@@ -205,6 +210,7 @@ export function useSyncAccountSecurityController({
       setRevealedRecoveryCode(result.recoveryCode);
       setForgotStage("completed");
       setForgotStatus("success");
+      setForgotSignedOut(true);
       setForgotResetToken("");
       setForgotResetTokenExpiresAt("");
       setForgotNewPassword("");
@@ -222,6 +228,7 @@ export function useSyncAccountSecurityController({
     setForgotNewPassword("");
     setForgotErrorCode(null);
     setForgotStatus("idle");
+    setForgotSignedOut(false);
   }
 
   async function handleRegenerate() {
@@ -295,7 +302,8 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpVerifyCode("");
     setTotpEnrollment(null);
-    setTwoFactorEnabled(true);
+    const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
+    setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
 
   async function handleDisableTOTP() {
@@ -317,7 +325,8 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpDisablePassword("");
     setTotpDisableCode("");
-    setTwoFactorEnabled(false);
+    const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
+    setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
 
   function handleCancelTOTPEnrollment() {
@@ -361,6 +370,7 @@ export function useSyncAccountSecurityController({
     forgotStage,
     forgotStatus,
     forgotErrorCode,
+    forgotSignedOut,
     forgotResetTokenExpiresAt,
     handleRequestReset,
     handleSubmitResetPassword,

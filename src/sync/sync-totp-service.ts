@@ -42,7 +42,6 @@ export type StartTOTPEnrollmentErrorCode =
 export type VerifyTOTPEnrollmentErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "not_connected"
-  | "code_required"
   | "totp_not_configured"
   | "totp_already_enabled"
   | "totp_invalid_code"
@@ -57,7 +56,6 @@ export type DisableTOTPErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "not_connected"
   | "current_password_required"
-  | "code_required"
   | "invalid_current_password"
   | "totp_not_configured"
   | "totp_invalid_code"
@@ -71,7 +69,6 @@ export type DisableTOTPErrorCode =
 export type CompleteTOTPChallengeErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "challenge_id_required"
-  | "code_required"
   | "totp_not_configured"
   | "totp_invalid_code"
   | "totp_replayed"
@@ -167,8 +164,8 @@ export async function verifyTOTPEnrollment(
   | { ok: true }
   | { ok: false; errorCode: VerifyTOTPEnrollmentErrorCode }
 > {
-  if (input.code.trim().length === 0) {
-    return { ok: false, errorCode: "code_required" };
+  if (!/^\d{6}$/.test(input.code.trim())) {
+    return { ok: false, errorCode: "totp_invalid_code" };
   }
 
   const secrets = await secretStore.readSyncSecrets();
@@ -231,8 +228,8 @@ export async function disableTOTP(
   if (input.currentPassword.length === 0) {
     return { ok: false, errorCode: "current_password_required" };
   }
-  if (input.code.trim().length === 0) {
-    return { ok: false, errorCode: "code_required" };
+  if (!/^\d{6}$/.test(input.code.trim())) {
+    return { ok: false, errorCode: "totp_invalid_code" };
   }
 
   const secrets = await secretStore.readSyncSecrets();
@@ -295,8 +292,8 @@ export async function completeTOTPChallenge(
   if (input.challengeID.length === 0) {
     return { ok: false, errorCode: "challenge_id_required" };
   }
-  if (input.code.trim().length === 0) {
-    return { ok: false, errorCode: "code_required" };
+  if (!/^\d{6}$/.test(input.code.trim())) {
+    return { ok: false, errorCode: "totp_invalid_code" };
   }
 
   if (preferences.mode === "managed") {

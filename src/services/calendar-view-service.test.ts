@@ -519,7 +519,13 @@ describe("calendar-view-service", () => {
     );
   });
 
-  it("keeps the missed period window visible after a stale cycle but stops extending a new fertile window", () => {
+  it("keeps painting the missed cycle's period and fertile window after a stale cycle (web forward-roll parity)", () => {
+    // Anchor 2026-02-01, len 28, today 2026-03-25. Web's calendar paints
+    // predicted cycles from stats.NextPeriodStart = anchor + cycleLength =
+    // 2026-03-01 forward (calendar_days.go appendPredictedCycles), so the
+    // "missed" cycle that should have started 2026-03-01 still shows its
+    // predicted period AND its fertile window / ovulation (2026-03-14), rather
+    // than dropping all March predictions.
     const viewData = buildCalendarViewData(
       {
         lastPeriodStart: "2026-02-01",
@@ -550,11 +556,18 @@ describe("calendar-view-service", () => {
         stateKey: "predicted",
       }),
     );
-    expect(
-      viewData.days.some(
-        (day) => day.date.startsWith("2026-03") && day.hasOvulationMarker,
-      ),
-    ).toBe(false);
+    expect(byDate.get("2026-03-14")).toEqual(
+      expect.objectContaining({
+        stateKey: "ovulation",
+        hasOvulationMarker: true,
+      }),
+    );
+    // The next rolled cycle (2026-03-29) is also painted as predicted.
+    expect(byDate.get("2026-03-29")).toEqual(
+      expect.objectContaining({
+        stateKey: "predicted",
+      }),
+    );
   });
 
   it("explains saved markers separately from the selected day meaning", async () => {

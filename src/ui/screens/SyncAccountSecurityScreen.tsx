@@ -80,6 +80,7 @@ export function SyncAccountSecurityScreen({
         forgotStage={controller.forgotStage}
         forgotStatus={controller.forgotStatus}
         forgotErrorCode={controller.forgotErrorCode}
+        forgotSignedOut={controller.forgotSignedOut}
         forgotResetTokenExpiresAt={controller.forgotResetTokenExpiresAt}
         onRequestReset={controller.handleRequestReset}
         onSubmitResetPassword={controller.handleSubmitResetPassword}

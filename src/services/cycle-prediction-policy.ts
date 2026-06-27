@@ -8,7 +8,7 @@ import {
   parseLocalDate,
 } from "./profile-settings-policy";
 
-const DEFAULT_LUTEAL_PHASE_DAYS = 14;
+export const DEFAULT_LUTEAL_PHASE_DAYS = 14;
 const MIN_LUTEAL_PHASE_DAYS = 10;
 const MIN_OVULATION_CYCLE_DAY = 5;
 

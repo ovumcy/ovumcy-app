@@ -1,0 +1,43 @@
+# Settings — adjust a cycle setting and confirm it is saved.
+#
+# Navigates to Settings, nudges the cycle-length slider, saves all settings,
+# and asserts the success status banner. testIDs verified against
+# src/ui/screens/settings/SettingsCycleSection.tsx and
+# src/ui/screens/SettingsFlowScreen.tsx.
+#
+# Assumes onboarding is already complete.
+#
+# NOTE: unvalidated against a running device/emulator in this environment.
+# Slider drag distances are device-relative and may need tuning once this is
+# run against a real emulator.
+appId: ${APP_ID}
+---
+- launchApp
+
+# Go to Settings and find the cycle section.
+- tapOn: "Settings"
+- assertVisible:
+    id: "settings-cycle-section"
+- scrollUntilVisible:
+    element:
+      id: "settings-cycle-length-slider"
+    direction: DOWN
+
+# Nudge the cycle-length slider. Maestro drives sliders with a directional
+# swipe across the control; the exact delta is tuned per device.
+- swipe:
+    from:
+      id: "settings-cycle-length-slider"
+    direction: RIGHT
+
+# Persist all settings.
+- scrollUntilVisible:
+    element:
+      id: "settings-save-all-button"
+    direction: DOWN
+- tapOn:
+    id: "settings-save-all-button"
+
+# Confirm the cycle change was accepted (success banner).
+- assertVisible:
+    id: "settings-cycle-status-banner"

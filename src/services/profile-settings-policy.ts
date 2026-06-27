@@ -32,7 +32,7 @@ export type CycleGuidanceState = {
 };
 
 const CYCLE_LENGTH_LONG_WARNING_THRESHOLD = 45;
-const CYCLE_LENGTH_SHORT_WARNING_THRESHOLD = 21;
+const CYCLE_LENGTH_SHORT_WARNING_THRESHOLD = 24;
 
 export type SettingsDateBounds = {
   minDate: LocalDateISO;

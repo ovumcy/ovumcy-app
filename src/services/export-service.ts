@@ -380,9 +380,9 @@ export function serializeExportCSV(
         booleanToCSV(row.symptoms.foodCravings),
         booleanToCSV(row.symptoms.diarrhea),
         booleanToCSV(row.symptoms.constipation),
-        row.cycleFactors.join("; "),
-        row.otherSymptoms.join("; "),
-        row.notes,
+        row.cycleFactors.map(sanitizeCSVTextCell).join("; "),
+        row.otherSymptoms.map(sanitizeCSVTextCell).join("; "),
+        sanitizeCSVTextCell(row.notes),
       ]
         .map(escapeCSVField)
         .join(","),
@@ -491,6 +491,30 @@ function normalizeExportLHTest(value: DayLogRecord["lhTest"]): string {
 
 function booleanToCSV(value: boolean): string {
   return value ? "Yes" : "";
+}
+
+function sanitizeCSVTextCell(value: string): string {
+  if (value === "") {
+    return "";
+  }
+
+  const trimmed = value.replace(/^ +/, "");
+  if (trimmed.length > 0) {
+    const first = trimmed[0];
+    if (
+      first === "=" ||
+      first === "+" ||
+      first === "-" ||
+      first === "@" ||
+      first === "\t" ||
+      first === "\r" ||
+      first === "\n"
+    ) {
+      return "'" + value;
+    }
+  }
+
+  return value;
 }
 
 function escapeCSVField(raw: string): string {

@@ -1,13 +1,15 @@
 import type { DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
+import {
+  detectSustainedThermalShift,
+  type SustainedThermalShift,
+} from "./observed-ovulation-service";
 import { diffLocalDays } from "./profile-settings-policy";
 
 const ADVANCED_FERTILITY_CYCLE_LIMIT = 4;
 const MAX_OBSERVED_LUTEAL_DAYS = 20;
 const MIN_OBSERVED_LUTEAL_DAYS = 10;
-const MIN_SHIFT_SAMPLE_COUNT = 4;
 const MAX_OVULATION_CONFIRMATION_GAP_DAYS = 4;
-const CONFIRMED_SHIFT_THRESHOLD_CELSIUS = 0.2;
 
 export type StatsThermalShiftSummary = {
   kind: "building" | "confirmed";
@@ -70,12 +72,21 @@ export function buildStatsAdvancedFertility(
       .reverse()
       .find((record) => record.lhTest === "peak");
 
-    if (lastEggWhiteSignal || lastLHPeakSignal) {
-      const anchorSignal = lastLHPeakSignal ?? lastEggWhiteSignal;
-      const lutealDays = diffLocalDays(
-        anchorSignal?.date ?? cycle.startDate,
-        cycle.nextStartDate,
-      );
+    // Luteal anchor policy (review 1.4): prefer the inferred ovulation DAY from
+    // the canonical sustained thermal shift, else fall back to the LH peak (a
+    // true ovulation proxy). The last egg-white day alone is NOT a luteal anchor
+    // — post-mucus days overstate luteal length — so a mucus-only cycle is
+    // skipped for luteal computation (conservative). Note this uses the BBT
+    // shift directly, not inferObservedOvulationDate, whose egg-white fallback
+    // would reintroduce mucus-only anchoring.
+    const shiftDate = detectSustainedThermalShift(
+      cycleRecords,
+      cycle.startDate,
+      cycle.nextStartDate,
+    )?.shiftStartDate;
+    const lutealAnchorDate = shiftDate ?? lastLHPeakSignal?.date ?? null;
+    if (lutealAnchorDate) {
+      const lutealDays = diffLocalDays(lutealAnchorDate, cycle.nextStartDate);
       if (
         lutealDays >= MIN_OBSERVED_LUTEAL_DAYS &&
         lutealDays <= MAX_OBSERVED_LUTEAL_DAYS
@@ -84,7 +95,11 @@ export function buildStatsAdvancedFertility(
       }
     }
 
-    const thermalShift = detectThermalShift(cycleRecords);
+    const thermalShift = detectThermalShift(
+      cycleRecords,
+      cycle.startDate,
+      cycle.nextStartDate,
+    );
     if (lastEggWhiteSignal || lastLHPeakSignal || thermalShift) {
       signalCoverageCount += 1;
     }
@@ -95,13 +110,22 @@ export function buildStatsAdvancedFertility(
         .filter((record) => record.date >= currentCycleAnchorDate)
         .sort((left, right) => left.date.localeCompare(right.date))
     : [];
-  const thermalShift = currentCycleRecords.length
-    ? detectThermalShift(currentCycleRecords)
+  // Single source of truth for the current cycle: the canonical sustained
+  // thermal shift. shiftDate drives both the confirmation gap and the LH-peak
+  // alignment window so the advanced panel agrees with the calendar marker.
+  const sustainedShift =
+    currentCycleRecords.length && currentCycleAnchorDate
+      ? detectSustainedThermalShift(currentCycleRecords, currentCycleAnchorDate)
+      : null;
+  const thermalShift = sustainedShift
+    ? toThermalShiftSummary(sustainedShift)
     : null;
-  const lhPeakSignal = buildLHPeakSignal(currentCycleRecords, thermalShift);
+  const shiftDate = sustainedShift?.shiftStartDate ?? null;
+  const lhPeakSignal = buildLHPeakSignal(currentCycleRecords, shiftDate);
   const ovulationConfirmation = buildOvulationConfirmation(
     currentCycleRecords,
     thermalShift,
+    shiftDate,
   );
   const hasObservedLuteal = observedLutealValues.length > 0;
   const hasSignalCoverage = recentCycles.length > 0;
@@ -158,58 +182,58 @@ function buildObservedLutealConsistency(
   };
 }
 
+// Thermal-shift detection reuses the canonical streak primitive (review 1.2 /
+// 1.5): first-5-day baseline + 0.2C threshold + 3-day sustained streak, exactly
+// as inferObservedOvulationDate/the calendar marker. A confirmed shift requires
+// the canonical >= 5-reading baseline; below that the primitive returns null and
+// no "confirmed"/"building" state is emitted. cycleEndDate is exclusive; pass
+// undefined for the open-ended current cycle.
 function detectThermalShift(
   records: readonly DayLogRecord[],
+  cycleStartDate: string,
+  cycleEndDate?: string,
 ): StatsThermalShiftSummary | null {
-  const bbtValues = records
-    .filter((record) => record.bbt > 0)
-    .map((record) => record.bbt);
-  const windowSize = Math.min(3, Math.floor(bbtValues.length / 2));
-  if (windowSize < 2 || bbtValues.length < MIN_SHIFT_SAMPLE_COUNT) {
-    return null;
-  }
+  const shift = detectSustainedThermalShift(
+    records,
+    cycleStartDate,
+    cycleEndDate,
+  );
+  return shift ? toThermalShiftSummary(shift) : null;
+}
 
-  const baseline = bbtValues.slice(-(windowSize * 2), -windowSize);
-  const recent = bbtValues.slice(-windowSize);
-  const rise = average(recent) - average(baseline);
-  const confirmedThreshold = CONFIRMED_SHIFT_THRESHOLD_CELSIUS;
-  const buildingThreshold = confirmedThreshold / 2;
-
-  if (rise >= confirmedThreshold) {
-    return {
-      kind: "confirmed",
-      rise,
-      sampleCount: bbtValues.length,
-    };
-  }
-  if (rise >= buildingThreshold) {
-    return {
-      kind: "building",
-      rise,
-      sampleCount: bbtValues.length,
-    };
-  }
-
-  return null;
+function toThermalShiftSummary(
+  shift: SustainedThermalShift,
+): StatsThermalShiftSummary {
+  // The streak detector only emits rises that clear the 0.2C threshold, so
+  // every sustained shift is a confirmed shift. The "building" tier in the
+  // union type is retained for consumers (e.g. cycle-history-service) but is
+  // structurally unreachable here per the no-dead-code rule.
+  return {
+    kind: "confirmed",
+    rise: shift.rise,
+    sampleCount: shift.sampleCount,
+  };
 }
 
 function buildOvulationConfirmation(
   records: readonly DayLogRecord[],
   thermalShift: StatsThermalShiftSummary | null,
+  shiftDate: string | null,
 ): StatsOvulationConfirmationSummary | null {
-  if (!thermalShift || records.length === 0) {
+  if (!thermalShift || !shiftDate || records.length === 0) {
     return null;
   }
 
   const lastEggWhiteSignal = [...records]
     .reverse()
     .find((record) => record.cervicalMucus === "eggwhite");
-  const lastBBTRecord = [...records].reverse().find((record) => record.bbt > 0);
-  if (!lastEggWhiteSignal || !lastBBTRecord) {
+  if (!lastEggWhiteSignal) {
     return null;
   }
 
-  const gapDays = diffLocalDays(lastEggWhiteSignal.date, lastBBTRecord.date);
+  // Gap measured mucus -> THERMAL-SHIFT DAY (review 1.1), not mucus -> last BBT
+  // record. The > 4d rejection now applies to the real shift gap.
+  const gapDays = diffLocalDays(lastEggWhiteSignal.date, shiftDate);
   if (gapDays < 0 || gapDays > MAX_OVULATION_CONFIRMATION_GAP_DAYS) {
     return null;
   }
@@ -223,7 +247,7 @@ function buildOvulationConfirmation(
 
 function buildLHPeakSignal(
   records: readonly DayLogRecord[],
-  thermalShift: StatsThermalShiftSummary | null,
+  shiftDate: string | null,
 ): StatsLHPeakSignalSummary | null {
   const lastLHPeakSignal = [...records]
     .reverse()
@@ -232,8 +256,10 @@ function buildLHPeakSignal(
     return null;
   }
 
-  const lastBBTRecord = [...records].reverse().find((record) => record.bbt > 0);
-  if (!thermalShift || !lastBBTRecord) {
+  // Upgrade logged -> aligned only when the THERMAL-SHIFT DAY is within the
+  // window of the LH peak (review 1.3), not merely when any later BBT day
+  // exists.
+  if (!shiftDate) {
     return {
       kind: "logged",
       date: lastLHPeakSignal.date,
@@ -241,7 +267,7 @@ function buildLHPeakSignal(
     };
   }
 
-  const gapDays = diffLocalDays(lastLHPeakSignal.date, lastBBTRecord.date);
+  const gapDays = diffLocalDays(lastLHPeakSignal.date, shiftDate);
   if (gapDays < 0 || gapDays > MAX_OVULATION_CONFIRMATION_GAP_DAYS) {
     return {
       kind: "logged",
@@ -255,12 +281,4 @@ function buildLHPeakSignal(
     date: lastLHPeakSignal.date,
     gapDays,
   };
-}
-
-function average(values: readonly number[]): number {
-  if (values.length === 0) {
-    return 0;
-  }
-
-  return values.reduce((total, value) => total + value, 0) / values.length;
 }

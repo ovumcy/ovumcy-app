@@ -25,6 +25,8 @@ import {
   shouldShowAgeVariabilityHint,
   shouldShowIrregularityNotice,
   shouldShowIrregularModeRecommendation,
+  shouldShowLongCycleNotice,
+  shouldShowShortCycleNotice,
 } from "./cycle-history-service";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import type { ManagedCloudPremiumFeatures } from "../sync/managed-cloud-api-client";
@@ -364,10 +366,10 @@ export function buildStatsViewData(
     ? buildStatsSymptomPatterns(history, records, localizedSymptomRecords)
     : [];
   const phaseMoodInsights = phaseInsightsUnlocked
-    ? buildStatsPhaseMoodInsights(history, records)
+    ? buildStatsPhaseMoodInsights(records)
     : [];
   const phaseSymptomInsights = phaseInsightsUnlocked
-    ? buildStatsPhaseSymptomInsights(history, records, localizedSymptomRecords)
+    ? buildStatsPhaseSymptomInsights(records, localizedSymptomRecords)
     : [];
   const personalForecasts = premiumFeatures.advancedInsights
     ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
@@ -1155,6 +1157,12 @@ function buildStatsNotices(
   }
   if (shouldShowIrregularModeRecommendation(profile, history)) {
     notices.push(statsCopy.irregularRecommendation);
+  }
+  if (shouldShowShortCycleNotice(history)) {
+    notices.push(statsCopy.shortCycleNotice);
+  }
+  if (shouldShowLongCycleNotice(history)) {
+    notices.push(statsCopy.longCycleNotice);
   }
   if (hasDataDrivenPredictionSpan(profile, history)) {
     notices.push(statsCopy.dataDrivenRangeHint);

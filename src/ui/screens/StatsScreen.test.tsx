@@ -159,13 +159,29 @@ describe("StatsScreen", () => {
           bbt: 36.48,
           symptomIDs: ["headache"],
         },
+        {
+          ...createEmptyDayLogRecord("2026-03-16"),
+          bbt: 36.52,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-17"),
+          bbt: 36.55,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-18"),
+          bbt: 36.61,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-19"),
+          bbt: 36.66,
+        },
       ]),
     });
 
     render(
       <AppPreferencesTestProvider>
         <StatsScreen
-          now={new Date(2026, 2, 17)}
+          now={new Date(2026, 2, 19)}
           storage={storage}
         />
       </AppPreferencesTestProvider>,
@@ -244,6 +260,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-10-14"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-10-11"),
@@ -256,6 +273,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-11-12"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-11-08"),
@@ -268,6 +286,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-12-10"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2025-12-06"),
@@ -280,6 +299,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-01-08"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2026-01-21"),
@@ -288,6 +308,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-02-04"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2026-02-18"),
@@ -296,6 +317,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-03-12"),
           cervicalMucus: "eggwhite",
+          lhTest: "peak",
         },
         {
           ...createEmptyDayLogRecord("2026-03-28"),

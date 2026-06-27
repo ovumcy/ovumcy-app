@@ -1,6 +1,20 @@
 import type { InterfaceLanguage } from "../models/profile";
 import type { WidenLiteral } from "./catalog-types";
 import { resolveCopyLanguage } from "./runtime";
+import { ruDayWord, ruDayWordGenitive } from "./ru-plural";
+
+// Local helper for Russian participle agreement on «записанный день»
+function ruRecordedDayPhrase(count: number): string {
+  const mod100 = count % 100;
+  const mod10 = count % 10;
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${count} записанный день`;
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${count} записанных дня`;
+  }
+  return `${count} записанных дней`;
+}
 
 const statsCopyEn = {
   title: "Insights",
@@ -22,6 +36,10 @@ const statsCopyEn = {
     "After 45, cycles often become less predictable. If you notice persistent differences of 7 or more days between consecutive cycles, that can be an early sign of perimenopause — consider speaking with a healthcare professional.",
   dataDrivenRangeHint:
     "Your prediction shows a range that reflects how much your cycle length varies.",
+  shortCycleNotice:
+    "Several of your recent cycles are shorter than 24 days. Cycles this short are less common — consider discussing them with a health professional.",
+  longCycleNotice:
+    "Several of your recent cycles are longer than 45 days. Cycles this long are less common and can have many causes — consider discussing them with a health professional.",
   lastCycleLength: "Last cycle length",
   lastPeriodLength: "Period length",
   currentPhase: "Current phase",
@@ -298,27 +316,31 @@ type StatsCopy = WidenLiteral<typeof statsCopyEn>;
 const statsCopyDe: StatsCopy = {
   title: "Einblicke",
   subtitle:
-    "Sieh, wie sich Zykluslänge, Phasen und erfasste Faktoren im Laufe der Zeit verändern.",
+    "Sehen Sie, wie sich Zykluslänge, Phasen und erfasste Faktoren im Laufe der Zeit verändern.",
   noData: "-",
   dataNotice:
-    "Es gibt noch wenige Daten. Das Bild wird klarer, je mehr Zyklen du erfasst.",
-  emptyTitle: "Erfasse weiter, um Einblicke freizuschalten",
+    "Es gibt noch wenige Daten. Das Bild wird klarer, je mehr Zyklen Sie erfassen.",
+  emptyTitle: "Erfassen Sie weiter, um Einblicke freizuschalten",
   emptyBodyZero:
-    "Schließe 2 Zyklen ab, um Einblicke freizuschalten. Beginne damit, den ersten Tag deiner nächsten Periode einzugeben.",
+    "Schließen Sie 2 Zyklen ab, um Einblicke freizuschalten. Beginnen Sie damit, den ersten Tag Ihrer nächsten Periode einzugeben.",
   emptyBodyOne:
-    "Du hast 1 abgeschlossenen Zyklus. Schließe noch einen ab, um Einblicke freizuschalten.",
+    "Sie haben 1 abgeschlossenen Zyklus. Schließen Sie noch einen ab, um Einblicke freizuschalten.",
   emptyProgressHint:
     "Vorhersagen werden nach mindestens 2 abgeschlossenen Zyklen klarer.",
   emptyActionLabel: "Heute eintragen, damit es schneller geht",
   completedCyclesProgress: (count: number) => `Zyklus ${count} von 2 abgeschlossen`,
   irregularNotice: (minDays: number, maxDays: number) =>
-    `Deine Zyklen schwanken zwischen ${minDays} und ${maxDays} Tagen. Das ist ein unregelmäßiger Rhythmus. Vorhersagen sind nur ungefähr.`,
+    `Ihre Zyklen schwanken zwischen ${minDays} und ${maxDays} Tagen. Das ist ein unregelmäßiger Rhythmus. Vorhersagen sind nur ungefähr.`,
   irregularRecommendation:
-    "Erwäge, den Modus für unregelmäßige Zyklen in den Einstellungen zu aktivieren.",
+    "Erwägen Sie, den Modus für unregelmäßige Zyklen in den Einstellungen zu aktivieren.",
   ageVariabilityHint:
     "Nach 45 werden Zyklen oft weniger vorhersehbar. Wenn Sie wiederkehrende Unterschiede von 7 oder mehr Tagen zwischen aufeinanderfolgenden Zyklen bemerken, kann das ein frühes Anzeichen für die Perimenopause sein — sprechen Sie es mit einer medizinischen Fachperson an.",
   dataDrivenRangeHint:
     "Ihre Vorhersage wird als Bereich angezeigt, der widerspiegelt, wie stark Ihre Zykluslänge schwankt.",
+  shortCycleNotice:
+    "Mehrere Ihrer letzten Zyklen sind kürzer als 24 Tage. So kurze Zyklen sind seltener — besprechen Sie das gegebenenfalls mit einer Ärztin oder einem Arzt.",
+  longCycleNotice:
+    "Mehrere Ihrer letzten Zyklen sind länger als 45 Tage. So lange Zyklen sind seltener und können viele Ursachen haben — besprechen Sie das gegebenenfalls mit einer Ärztin oder einem Arzt.",
   lastCycleLength: "Länge des letzten Zyklus",
   lastPeriodLength: "Periodendauer",
   currentPhase: "Aktuelle Phase",
@@ -326,7 +348,7 @@ const statsCopyDe: StatsCopy = {
   factsOnlyTitle: "Nur Fakten",
   factsOnlyValue: "Vorhersagen aus",
   factsOnlyHint:
-    "In diesem Modus konzentriert sich die Seite auf deinen erfassten Verlauf statt auf Schätzungen.",
+    "In diesem Modus konzentriert sich die Seite auf Ihren erfassten Verlauf statt auf Schätzungen.",
   mucusFertilityTitle: "Hohe Fruchtbarkeit",
   mucusFertilityValue: "Schleim-Signal",
   mucusFertilityDescription: (date: string) =>
@@ -336,7 +358,7 @@ const statsCopyDe: StatsCopy = {
   averageLabel: "Durchschnitt",
   medianLabel: "Median",
   cycleRangeSummary: (minDays: number, maxDays: number) =>
-    `Deine Zyklen: ${minDays} bis ${maxDays} Tage`,
+    `Ihre Zyklen: ${minDays} bis ${maxDays} Tage`,
   factorContextTitle: "Jüngste Zyklusfaktoren",
   factorContextWindow: (days: number) =>
     `In den letzten ${days} Tagen erfasst.`,
@@ -351,8 +373,8 @@ const statsCopyDe: StatsCopy = {
   factorCycleLength: (days: number) => `${days}-Tage-Zyklus`,
   factorCycleDates: (start: string, end: string) => `${start} bis ${end}`,
   factorCycleKinds: {
-    longer: "Länger als dein üblicher Median",
-    shorter: "Kürzer als dein üblicher Median",
+    longer: "Länger als Ihr üblicher Median",
+    shorter: "Kürzer als Ihr üblicher Median",
     variable: "Innerhalb eines variablen Musters",
   },
   cycleTrend: "Zyklustrend",
@@ -364,7 +386,7 @@ const statsCopyDe: StatsCopy = {
   noSymptomData: "Es gibt noch keinen erfassten Symptomverlauf.",
   lastCycleSymptomsTitle: "Symptome im letzten Zyklus",
   lastCycleSymptomsSubtitle:
-    "Was in deinem letzten abgeschlossenen Zyklus am häufigsten aufgetreten ist.",
+    "Was in Ihrem letzten abgeschlossenen Zyklus am häufigsten aufgetreten ist.",
   noCycleSymptomData:
     "Im letzten abgeschlossenen Zyklus gibt es noch keine Symptomdaten.",
   symptomPatternsTitle: "Symptommuster",
@@ -375,12 +397,12 @@ const statsCopyDe: StatsCopy = {
     `Meist um die Zyklustage ${start} bis ${end}`,
   phaseMoodTitle: "Stimmung nach Phase",
   phaseMoodSubtitle:
-    "Durchschnittlich erfasste Stimmung über deine Zyklusphasen hinweg.",
+    "Durchschnittlich erfasste Stimmung über Ihre Zyklusphasen hinweg.",
   phaseMoodEmpty: "Für diese Phase gibt es noch keine Stimmungseinträge.",
   phaseMoodCount: (count: number) => `${count} erfasste Tage`,
   phaseSymptomsTitle: "Symptome nach Phase",
   phaseSymptomsSubtitle:
-    "Die Symptome, die du in jeder Phase am häufigsten erfasst hast.",
+    "Die Symptome, die Sie in jeder Phase am häufigsten erfasst haben.",
   phaseSymptomsEmpty:
     "Für diese Phase gibt es noch kein wiederkehrendes Symptommuster.",
   phaseSymptomsDays: (count: number) => `${count} erfasste Tage in dieser Phase`,
@@ -388,10 +410,10 @@ const statsCopyDe: StatsCopy = {
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
   bbtCaption:
-    "BBT erscheint nur, wenn du sie erfasst. Die Werte bleiben lokal und werden nur für den aktuellen Zyklus angezeigt.",
+    "BBT erscheint nur, wenn Sie sie erfassen. Die Werte bleiben lokal und werden nur für den aktuellen Zyklus angezeigt.",
   advancedInsights: {
     title: "Erweiterte Analysen",
-    subtitle: "Premium-Muster nur aus deinem lokalen Zyklusverlauf der letzten Zyklen.",
+    subtitle: "Premium-Muster nur aus Ihrem lokalen Zyklusverlauf der letzten Zyklen.",
     weightedAverageTitle: "Gewichteter Durchschnitt",
     weightedAverageDescription: (count: number) =>
       `Neuere Zyklen zählen stärker, basierend auf den letzten ${count} abgeschlossenen Zyklen.`,
@@ -424,7 +446,7 @@ const statsCopyDe: StatsCopy = {
       shortestAverage: number,
       deltaDays: number,
     ) =>
-      `Deine Zyklen wirken in ${longestSeason} am längsten (${longestAverage.toFixed(1)} T.) und in ${shortestSeason} am kürzesten (${shortestAverage.toFixed(1)} T.), mit einer Spanne von ${deltaDays.toFixed(1)} T.`,
+      `Ihre Zyklen wirken in ${longestSeason} am längsten (${longestAverage.toFixed(1)} T.) und in ${shortestSeason} am kürzesten (${shortestAverage.toFixed(1)} T.), mit einer Spanne von ${deltaDays.toFixed(1)} T.`,
     phaseMoodContrastTitle: "Stimmungskontrast der Phasen",
     phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
       `${bestPhase} vs ${worstPhase}`,
@@ -448,7 +470,7 @@ const statsCopyDe: StatsCopy = {
     shortLutealValue: (averageDays: number) =>
       `Ø ${averageDays.toFixed(1)} T.`,
     shortLutealDescription: (count: number) =>
-      `Beobachtete Lutealphase unter 10 Tagen in ${count} aktuellen Zyklen. Typisch sind 11-14 Tage. Eine kurze Lutealphase kann die Empfängnis beeinflussen — sprich das mit einer Fachperson ab.`,
+      `Beobachtete Lutealphase unter 10 Tagen in ${count} aktuellen Zyklen. Typisch sind 11-14 Tage. Eine kurze Lutealphase kann die Empfängnis beeinflussen — sprechen Sie das mit einer Fachperson ab.`,
     seasonLabels: {
       winter: "Winter",
       spring: "Frühling",
@@ -460,7 +482,7 @@ const statsCopyDe: StatsCopy = {
   advancedFertility: {
     title: "Erweiterte Fruchtbarkeit",
     subtitle:
-      "Premium-Fruchtbarkeitssignale aus deinem lokalen BBT- und Zervixschleim-Verlauf.",
+      "Premium-Fruchtbarkeitssignale aus Ihrem lokalen BBT- und Zervixschleim-Verlauf.",
     observedLutealTitle: "Beobachtete Lutealphase",
     observedLutealDescription: (count: number, value: string) =>
       `Signalbasierter Durchschnitt aus ${count} letzten Zyklen: ${value} T.`,
@@ -478,7 +500,7 @@ const statsCopyDe: StatsCopy = {
     signalCoverageTitle: "Signalabdeckung",
     signalCoverageValue: (count: number, total: number) => `${count}/${total} Zyklen`,
     signalCoverageDescription: (count: number, total: number) =>
-      `Fruchtbarer Schleim oder ein Temperaturanstieg erschien in ${count} deiner letzten ${total} abgeschlossenen Zyklen.`,
+      `Fruchtbarer Schleim oder ein Temperaturanstieg erschien in ${count} Ihrer letzten ${total} abgeschlossenen Zyklen.`,
     thermalShiftTitle: "Temperaturanstieg",
     thermalShiftConfirmedValue: "Bestätigt",
     thermalShiftBuildingValue: "Im Aufbau",
@@ -502,7 +524,7 @@ const statsCopyDe: StatsCopy = {
     ovulationConfirmationConfirmedHint:
       "Das bedeutet meist, dass der Eisprung wahrscheinlich gerade stattgefunden hat und das fruchtbare Fenster sich schließt.",
     ovulationConfirmationBuildingHint:
-      "Miss in den nächsten 1-2 Morgen weiter die BBT, um zu sehen, ob daraus ein bestätigter Anstieg wird.",
+      "Messen Sie in den nächsten 1-2 Morgen weiter die BBT, um zu sehen, ob daraus ein bestätigter Anstieg wird.",
     lhPeakTitle: "LH-Peak",
     lhPeakLoggedValue: "Peak erfasst",
     lhPeakAlignedValue: "Peak + Temperaturanstieg",
@@ -513,19 +535,19 @@ const statsCopyDe: StatsCopy = {
         ? `Ein LH-Test mit Peak und der jüngste Temperaturanstieg wurden beide am ${date} erfasst.`
         : `Ein LH-Test mit Peak wurde am ${date} erfasst, und der jüngste Temperaturanstieg folgte ${gapDays} T. später.`,
     lhPeakLoggedHint:
-      "Ein LH-Peak liegt oft nahe an den fruchtbarsten Tagen. Miss in den nächsten 1-3 Morgen weiter die BBT.",
+      "Ein LH-Peak liegt oft nahe an den fruchtbarsten Tagen. Messen Sie in den nächsten 1-3 Morgen weiter die BBT.",
     lhPeakAlignedHint:
       "LH-Peak plus späterer Temperaturanstieg deutet darauf hin, dass die fruchtbarsten Tage wahrscheinlich gerade vorbei sind.",
     daysValue: (value: string) => `${value} T.`,
     thermalShiftConfirmedHint:
-      "Ein stabiler Anstieg bedeutet meist, dass der Eisprung vor Kurzem stattgefunden hat. Miss weiter, um zu bestätigen, dass die Werte erhöht bleiben.",
+      "Ein stabiler Anstieg bedeutet meist, dass der Eisprung vor Kurzem stattgefunden hat. Messen Sie weiter, um zu bestätigen, dass die Werte erhöht bleiben.",
     thermalShiftBuildingHint:
-      "Miss die BBT noch 2-3 Morgen weiter, bevor du dies als bestätigten Anstieg wertest.",
+      "Messen Sie die BBT noch 2-3 Morgen weiter, bevor Sie dies als bestätigten Anstieg werten.",
   },
   personalForecasts: {
     title: "Persönliche Vorhersagen",
     subtitle:
-      "Premium-Hinweise dazu, was dein wiederkehrendes Symptom-Timing als Nächstes andeutet.",
+      "Premium-Hinweise dazu, was Ihr wiederkehrendes Symptom-Timing als Nächstes andeutet.",
     aroundNowValue: "Etwa jetzt",
     inDaysValue: (days: number) => (days === 1 ? "In 1 Tag" : `In ${days} Tagen`),
     inDayRangeValue: (start: number, end: number) => `In ${start}-${end} Tagen`,
@@ -535,15 +557,15 @@ const statsCopyDe: StatsCopy = {
   },
   extendedReports: {
     title: "Erweiterte Berichte",
-    subtitle: "Vergleiche deine letzten abgeschlossenen Zyklen nebeneinander.",
+    subtitle: "Vergleichen Sie Ihre letzten abgeschlossenen Zyklen nebeneinander.",
     summary: (count: number, minDays: number, maxDays: number) =>
       `${count} abgeschlossene Zyklen. Bereich ${minDays}-${maxDays} T.`,
     rowTitle: (date: string) => `Beginn ${date}`,
     cycleLengthLabel: (days: number) => `Zyklus ${days} T.`,
     periodLengthLabel: (days: number) => `Periode ${days} T.`,
     comparisonLabels: {
-      longer: "Länger als dein übliches Muster",
-      shorter: "Kürzer als dein übliches Muster",
+      longer: "Länger als Ihr übliches Muster",
+      shorter: "Kürzer als Ihr übliches Muster",
       variable: "Innerhalb eines variablen Musters",
     },
   },
@@ -553,17 +575,17 @@ const statsCopyDe: StatsCopy = {
     advancedInsights: {
       title: "Erweiterte Einblicke",
       description:
-        "Gewichtete Durchschnitte, Drift-Erkennung, Warnungen bei untypischen Zyklen, saisonale Muster und persönliche Prognosen aus deinem Verlauf.",
+        "Gewichtete Durchschnitte, Drift-Erkennung, Warnungen bei untypischen Zyklen, saisonale Muster und persönliche Vorhersagen aus Ihrem Verlauf.",
     },
     advancedFertility: {
       title: "Erweiterte Fruchtbarkeit",
       description:
-        "Erfasse LH-Tests, BBT-Temperaturanstiege, Eisprungbestätigung, Konsistenz der Lutealphase und LH-Peak-Signale.",
+        "Erfassen Sie LH-Tests, BBT-Temperaturanstiege, Eisprungbestätigung, Konsistenz der Lutealphase und LH-Peak-Signale.",
     },
     extendedReports: {
       title: "Erweiterte Berichte",
       description:
-        "Vergleiche abgeschlossene Zyklen Seite an Seite mit Länge, Periode und Variationskennzeichnung.",
+        "Vergleichen Sie abgeschlossene Zyklen Seite an Seite mit Länge, Periode und Variationskennzeichnung.",
     },
   },
   reliabilityLabels: {
@@ -594,27 +616,31 @@ const statsCopyDe: StatsCopy = {
 const statsCopyFr: StatsCopy = {
   title: "Analyses",
   subtitle:
-    "Observe comment la durée du cycle, les phases et les facteurs enregistrés évoluent au fil du temps.",
+    "Observez comment la durée du cycle, les phases et les facteurs enregistrés évoluent au fil du temps.",
   noData: "-",
   dataNotice:
-    "Les données sont encore limitées. La vue d'ensemble sera plus nette à mesure que tu enregistres plus de cycles.",
-  emptyTitle: "Continue à enregistrer pour débloquer les analyses",
+    "Les données sont encore limitées. La vue d'ensemble sera plus nette à mesure que vous enregistrez plus de cycles.",
+  emptyTitle: "Continuez à enregistrer pour débloquer les analyses",
   emptyBodyZero:
-    "Complète 2 cycles pour débloquer les analyses. Commence par saisir le premier jour de tes prochaines règles.",
+    "Complétez 2 cycles pour débloquer les analyses. Commencez par saisir le premier jour de vos prochaines règles.",
   emptyBodyOne:
-    "Tu as 1 cycle terminé. Termine-en un autre pour débloquer les analyses.",
+    "Vous avez 1 cycle terminé. Terminez-en un autre pour débloquer les analyses.",
   emptyProgressHint:
     "Les prédictions deviennent plus claires après au moins 2 cycles terminés.",
   emptyActionLabel: "Noter aujourd'hui pour aller plus vite",
   completedCyclesProgress: (count: number) => `Cycle ${count} sur 2 terminé`,
   irregularNotice: (minDays: number, maxDays: number) =>
-    `Tes cycles varient entre ${minDays} et ${maxDays} jours. C'est un rythme irrégulier. Les prédictions restent approximatives.`,
+    `Vos cycles varient entre ${minDays} et ${maxDays} jours. C'est un rythme irrégulier. Les prédictions restent approximatives.`,
   irregularRecommendation:
-    "Pense à activer le mode cycle irrégulier dans les réglages.",
+    "Pensez à activer le mode cycle irrégulier dans les réglages.",
   ageVariabilityHint:
     "Après 45 ans, les cycles deviennent souvent moins prévisibles. Si vous remarquez des écarts persistants de 7 jours ou plus entre cycles consécutifs, cela peut être un signe précoce de périménopause — pensez à en parler à un·e professionnel·le de santé.",
   dataDrivenRangeHint:
     "Votre prédiction s'affiche en plage pour refléter la variabilité naturelle de la durée de votre cycle.",
+  shortCycleNotice:
+    "Plusieurs de vos cycles récents durent moins de 24 jours. Des cycles aussi courts sont moins fréquents — pensez à en parler à un médecin.",
+  longCycleNotice:
+    "Plusieurs de vos cycles récents durent plus de 45 jours. Des cycles aussi longs sont moins fréquents et peuvent avoir de nombreuses causes — pensez à en parler à un médecin.",
   lastCycleLength: "Durée du dernier cycle",
   lastPeriodLength: "Durée des règles",
   currentPhase: "Phase actuelle",
@@ -632,7 +658,7 @@ const statsCopyFr: StatsCopy = {
   averageLabel: "Moyenne",
   medianLabel: "Médiane",
   cycleRangeSummary: (minDays: number, maxDays: number) =>
-    `Tes cycles : de ${minDays} à ${maxDays} jours`,
+    `Vos cycles : de ${minDays} à ${maxDays} jours`,
   factorContextTitle: "Facteurs récents du cycle",
   factorContextWindow: (days: number) =>
     `Enregistrés au cours des ${days} derniers jours.`,
@@ -647,8 +673,8 @@ const statsCopyFr: StatsCopy = {
   factorCycleLength: (days: number) => `Cycle de ${days} jours`,
   factorCycleDates: (start: string, end: string) => `${start} à ${end}`,
   factorCycleKinds: {
-    longer: "Plus long que ta médiane habituelle",
-    shorter: "Plus court que ta médiane habituelle",
+    longer: "Plus long que votre médiane habituelle",
+    shorter: "Plus court que votre médiane habituelle",
     variable: "Dans un schéma variable",
   },
   cycleTrend: "Tendance du cycle",
@@ -660,7 +686,7 @@ const statsCopyFr: StatsCopy = {
   noSymptomData: "Pas encore d'historique de symptômes enregistrés.",
   lastCycleSymptomsTitle: "Symptômes du dernier cycle",
   lastCycleSymptomsSubtitle:
-    "Ce qui est apparu le plus souvent dans ton dernier cycle terminé.",
+    "Ce qui est apparu le plus souvent dans votre dernier cycle terminé.",
   noCycleSymptomData:
     "Pas encore de données de symptômes dans le dernier cycle terminé.",
   symptomPatternsTitle: "Schémas des symptômes",
@@ -672,24 +698,24 @@ const statsCopyFr: StatsCopy = {
     `Habituellement autour des jours ${start} à ${end} du cycle`,
   phaseMoodTitle: "Humeur selon la phase",
   phaseMoodSubtitle:
-    "Humeur moyenne enregistrée selon les phases de ton cycle.",
+    "Humeur moyenne enregistrée selon les phases de votre cycle.",
   phaseMoodEmpty: "Aucune entrée d'humeur pour cette phase pour le moment.",
   phaseMoodCount: (count: number) => `${count} jours enregistrés`,
   phaseSymptomsTitle: "Symptômes selon la phase",
   phaseSymptomsSubtitle:
-    "Les symptômes que tu as le plus souvent enregistrés dans chaque phase.",
+    "Les symptômes que vous avez le plus souvent enregistrés dans chaque phase.",
   phaseSymptomsEmpty:
     "Pas encore de schéma répété de symptômes dans cette phase.",
   phaseSymptomsDays: (count: number) =>
     `${count} jours enregistrés dans cette phase`,
-  bbtTitle: "Tendance TBC",
+  bbtTitle: "Tendance TB",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
   bbtCaption:
-    "La TBC apparaît seulement quand tu la suis. Les mesures restent locales et ne sont affichées que pour le cycle en cours.",
+    "La TB apparaît seulement quand vous la suivez. Les mesures restent locales et ne sont affichées que pour le cycle en cours.",
   advancedInsights: {
     title: "Analyses avancées",
-    subtitle: "Schémas premium calculés uniquement à partir de ton historique local récent.",
+    subtitle: "Schémas premium calculés uniquement à partir de votre historique local récent.",
     weightedAverageTitle: "Moyenne pondérée",
     weightedAverageDescription: (count: number) =>
       `Les cycles récents comptent davantage sur les ${count} derniers cycles terminés.`,
@@ -722,7 +748,7 @@ const statsCopyFr: StatsCopy = {
       shortestAverage: number,
       deltaDays: number,
     ) =>
-      `Tes cycles paraissent les plus longs en ${longestSeason} (${longestAverage.toFixed(1)} j) et les plus courts en ${shortestSeason} (${shortestAverage.toFixed(1)} j), avec un écart de ${deltaDays.toFixed(1)} j.`,
+      `Vos cycles paraissent les plus longs en ${longestSeason} (${longestAverage.toFixed(1)} j) et les plus courts en ${shortestSeason} (${shortestAverage.toFixed(1)} j), avec un écart de ${deltaDays.toFixed(1)} j.`,
     phaseMoodContrastTitle: "Contraste d’humeur par phase",
     phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
       `${bestPhase} vs ${worstPhase}`,
@@ -746,7 +772,7 @@ const statsCopyFr: StatsCopy = {
     shortLutealValue: (averageDays: number) =>
       `Moy. ${averageDays.toFixed(1)} j`,
     shortLutealDescription: (count: number) =>
-      `Phase lutéale observée inférieure à 10 jours sur ${count} cycles récents. La durée typique est de 11 à 14 jours. Une phase lutéale courte peut affecter la conception — pense à en parler à un·e professionnel·le de santé.`,
+      `Phase lutéale observée inférieure à 10 jours sur ${count} cycles récents. La durée typique est de 11 à 14 jours. Une phase lutéale courte peut affecter la conception — pensez à en parler à un·e professionnel·le de santé.`,
     seasonLabels: {
       winter: "hiver",
       spring: "printemps",
@@ -758,7 +784,7 @@ const statsCopyFr: StatsCopy = {
   advancedFertility: {
     title: "Fertilité avancée",
     subtitle:
-      "Signaux premium de fertilité issus de ton historique local de TBC et de glaire cervicale.",
+      "Signaux premium de fertilité issus de votre historique local de TB et de glaire cervicale.",
     observedLutealTitle: "Phase lutéale observée",
     observedLutealDescription: (count: number, value: string) =>
       `Moyenne dérivée du signal sur ${count} cycles récents : ${value} j.`,
@@ -776,7 +802,7 @@ const statsCopyFr: StatsCopy = {
     signalCoverageTitle: "Couverture des signaux",
     signalCoverageValue: (count: number, total: number) => `${count}/${total} cycles`,
     signalCoverageDescription: (count: number, total: number) =>
-      `Une glaire fertile ou une hausse thermique est apparue dans ${count} de tes ${total} derniers cycles terminés.`,
+      `Une glaire fertile ou une hausse thermique est apparue dans ${count} de vos ${total} derniers cycles terminés.`,
     thermalShiftTitle: "Hausse thermique",
     thermalShiftConfirmedValue: "Confirmée",
     thermalShiftBuildingValue: "En cours",
@@ -800,7 +826,7 @@ const statsCopyFr: StatsCopy = {
     ovulationConfirmationConfirmedHint:
       "Cela signifie généralement que l’ovulation a probablement eu lieu récemment et que la fenêtre fertile se referme.",
     ovulationConfirmationBuildingHint:
-      "Continue à enregistrer la TBC pendant les 1-2 prochains matins pour voir si cela devient une hausse confirmée.",
+      "Continuez à enregistrer la TB pendant les 1-2 prochains matins pour voir si cela devient une hausse confirmée.",
     lhPeakTitle: "Pic LH",
     lhPeakLoggedValue: "Pic enregistré",
     lhPeakAlignedValue: "Pic + hausse thermique",
@@ -811,19 +837,19 @@ const statsCopyFr: StatsCopy = {
         ? `Un test LH au pic et la dernière hausse thermique ont été enregistrés le ${date}.`
         : `Un test LH au pic a été enregistré le ${date}, puis la dernière hausse thermique a suivi ${gapDays} j plus tard.`,
     lhPeakLoggedHint:
-      "Un pic LH tombe souvent près des jours les plus fertiles. Continue à enregistrer la TBC pendant les 1-3 prochains matins.",
+      "Un pic LH tombe souvent près des jours les plus fertiles. Continuez à enregistrer la TB pendant les 1-3 prochains matins.",
     lhPeakAlignedHint:
       "Un pic LH suivi d’une hausse thermique suggère que les jours les plus fertiles viennent probablement de passer.",
     daysValue: (value: string) => `${value} j`,
     thermalShiftConfirmedHint:
-      "Une hausse durable signifie souvent que l’ovulation a peut-être eu lieu récemment. Continue à enregistrer pour vérifier qu’elle reste élevée.",
+      "Une hausse durable signifie souvent que l’ovulation a peut-être eu lieu récemment. Continuez à enregistrer pour vérifier qu’elle reste élevée.",
     thermalShiftBuildingHint:
-      "Continue à enregistrer la TBC encore 2-3 matins avant de traiter cela comme une hausse confirmée.",
+      "Continuez à enregistrer la TB encore 2-3 matins avant de traiter cela comme une hausse confirmée.",
   },
   personalForecasts: {
     title: "Prévisions personnelles",
     subtitle:
-      "Indices premium sur ce que le timing répété de tes symptômes peut annoncer ensuite.",
+      "Indices premium sur ce que le timing répété de vos symptômes peut annoncer ensuite.",
     aroundNowValue: "Autour de maintenant",
     inDaysValue: (days: number) => (days === 1 ? "Dans 1 jour" : `Dans ${days} jours`),
     inDayRangeValue: (start: number, end: number) => `Dans ${start}-${end} jours`,
@@ -834,15 +860,15 @@ const statsCopyFr: StatsCopy = {
   },
   extendedReports: {
     title: "Rapports étendus",
-    subtitle: "Compare tes derniers cycles terminés côte à côte.",
+    subtitle: "Comparez vos derniers cycles terminés côte à côte.",
     summary: (count: number, minDays: number, maxDays: number) =>
       `${count} cycles terminés. Plage ${minDays}-${maxDays} j.`,
     rowTitle: (date: string) => `Début ${date}`,
     cycleLengthLabel: (days: number) => `Cycle ${days} j`,
     periodLengthLabel: (days: number) => `Règles ${days} j`,
     comparisonLabels: {
-      longer: "Plus long que ton schéma habituel",
-      shorter: "Plus court que ton schéma habituel",
+      longer: "Plus long que votre schéma habituel",
+      shorter: "Plus court que votre schéma habituel",
       variable: "Dans un schéma variable",
     },
   },
@@ -852,17 +878,17 @@ const statsCopyFr: StatsCopy = {
     advancedInsights: {
       title: "Analyses avancées",
       description:
-        "Moyennes pondérées, détection de dérive, alertes de cycles atypiques, schémas saisonniers et prévisions personnelles selon ton historique.",
+        "Moyennes pondérées, détection de dérive, alertes de cycles atypiques, schémas saisonniers et prévisions personnelles selon votre historique.",
     },
     advancedFertility: {
       title: "Fertilité avancée",
       description:
-        "Suis les tests LH, les hausses thermiques de TBC, la confirmation d'ovulation, la régularité de la phase lutéale et les pics de LH.",
+        "Suivez les tests LH, les hausses thermiques de TB, la confirmation d'ovulation, la régularité de la phase lutéale et les pics de LH.",
     },
     extendedReports: {
       title: "Rapports étendus",
       description:
-        "Compare côte à côte chaque cycle terminé : durée, règles et étiquettes de variation.",
+        "Comparez côte à côte chaque cycle terminé : durée, règles et étiquettes de variation.",
     },
   },
   reliabilityLabels: {
@@ -893,31 +919,35 @@ const statsCopyFr: StatsCopy = {
 const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
   en: statsCopyEn,
   ru: {
-    title: "Инсайты",
+    title: "Аналитика",
     subtitle: "Смотрите, как со временем меняются длина цикла, фазы и записанные факторы.",
     noData: "-",
     dataNotice: "Данных пока мало. Картина станет точнее по мере записи новых циклов.",
-    emptyTitle: "Продолжайте записи, чтобы открыть инсайты",
+    emptyTitle: "Продолжайте записи, чтобы открыть аналитику",
     emptyBodyZero:
-      "Завершите 2 цикла, чтобы открыть инсайты. Начните с ввода первого дня следующей менструации.",
+      "Завершите 2 цикла, чтобы открыть аналитику. Начните с ввода первого дня следующей менструации.",
     emptyBodyOne:
-      "У вас есть 1 завершённый цикл. Завершите ещё один, чтобы открыть инсайты.",
-    emptyProgressHint: "Предсказания становятся точнее как минимум после 2 завершённых циклов.",
+      "У вас есть 1 завершённый цикл. Завершите ещё один, чтобы открыть аналитику.",
+    emptyProgressHint: "Прогнозы становятся точнее как минимум после 2 завершённых циклов.",
     emptyActionLabel: "Записать сегодня, чтобы открыть быстрее",
     completedCyclesProgress: (count: number) => `Завершён цикл ${count} из 2`,
     irregularNotice: (minDays: number, maxDays: number) =>
-      `Ваши циклы варьируются от ${minDays} до ${maxDays} дней. Это нерегулярный ритм. Предсказания приблизительны.`,
+      `Ваши циклы варьируются от ${minDays} до ${maxDays} ${ruDayWordGenitive(maxDays)}. Это нерегулярный ритм. Прогнозы приблизительны.`,
     irregularRecommendation: "Подумайте о включении режима нерегулярного цикла в настройках.",
     ageVariabilityHint:
       "После 45 лет циклы часто становятся менее предсказуемыми. Если вы замечаете устойчивые разницы в 7 и более дней между соседними циклами, это может быть ранним признаком перименопаузы — стоит обсудить это с врачом.",
     dataDrivenRangeHint:
       "Прогноз показан диапазоном, который отражает вариативность длины вашего цикла.",
+    shortCycleNotice:
+      "Несколько Ваших недавних циклов короче 24 дней. Такие короткие циклы встречаются реже — возможно, стоит обсудить это с врачом.",
+    longCycleNotice:
+      "Несколько Ваших недавних циклов длиннее 45 дней. Такие длинные циклы встречаются реже и могут иметь разные причины — возможно, стоит обсудить это с врачом.",
     lastCycleLength: "Длина последнего цикла",
     lastPeriodLength: "Длительность менструации",
     currentPhase: "Текущая фаза",
-    predictionReliability: "Надёжность предсказания",
+    predictionReliability: "Надёжность прогноза",
     factsOnlyTitle: "Только факты",
-    factsOnlyValue: "Предсказания выключены",
+    factsOnlyValue: "Прогнозы выключены",
     factsOnlyHint:
       "Этот режим держит страницу сфокусированной на записанной истории, а не на оценках.",
     mucusFertilityTitle: "Высокая фертильность",
@@ -929,9 +959,9 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     averageLabel: "Среднее",
     medianLabel: "Медиана",
     cycleRangeSummary: (minDays: number, maxDays: number) =>
-      `Ваши циклы: от ${minDays} до ${maxDays} дней`,
+      `Ваши циклы: от ${minDays} до ${maxDays} ${ruDayWordGenitive(maxDays)}`,
     factorContextTitle: "Недавние факторы цикла",
-    factorContextWindow: (days: number) => `Отмечено за последние ${days} дней.`,
+    factorContextWindow: (days: number) => `Отмечено за последние ${days} ${ruDayWord(days)}.`,
     factorContextHint:
       "Эти теги добавляют контекст, когда тайминг кажется менее стабильным, но не доказывают медицинскую причину.",
     factorPatternLabels: {
@@ -940,7 +970,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       variable: "Факторы, встречающиеся при вариативных циклах",
     },
     factorRecentCyclesTitle: "Контекст последних циклов",
-    factorCycleLength: (days: number) => `Цикл ${days} дней`,
+    factorCycleLength: (days: number) => `${days}-дневный цикл`,
     factorCycleDates: (start: string, end: string) => `${start} — ${end}`,
     factorCycleKinds: {
       longer: "Длиннее вашей обычной медианы",
@@ -965,18 +995,18 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseMoodTitle: "Настроение по фазам",
     phaseMoodSubtitle: "Среднее записанное настроение по фазам цикла.",
     phaseMoodEmpty: "Для этой фазы пока нет записей настроения.",
-    phaseMoodCount: (count: number) => `${count} записанных дней`,
+    phaseMoodCount: (count: number) => ruRecordedDayPhrase(count),
     phaseSymptomsTitle: "Симптомы по фазам",
     phaseSymptomsSubtitle: "Симптомы, которые вы чаще всего отмечали в каждой фазе.",
     phaseSymptomsEmpty: "Для этой фазы пока нет повторяющегося паттерна симптомов.",
-    phaseSymptomsDays: (count: number) => `${count} записанных дней в этой фазе`,
+    phaseSymptomsDays: (count: number) => `${ruRecordedDayPhrase(count)} в этой фазе`,
     bbtTitle: "Тренд БТТ",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "БТТ появляется только когда вы её отслеживаете. Показания остаются локальными и показываются только для текущего цикла.",
     advancedInsights: {
-      title: "Продвинутые инсайты",
+      title: "Расширенная аналитика",
       subtitle: "Премиум-паттерны, рассчитанные только по вашей недавней локальной истории циклов.",
       weightedAverageTitle: "Взвешенное среднее",
       weightedAverageDescription: (count: number) =>
@@ -1137,7 +1167,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       eyebrowLabel: "Премиум",
       ctaLabel: "Открыть Ovumcy Cloud",
       advancedInsights: {
-        title: "Расширенные инсайты",
+        title: "Расширенная аналитика",
         description:
           "Взвешенное среднее, выявление дрейфа, сигналы аномальных циклов, сезонные паттерны и персональные прогнозы по вашей истории.",
       },
@@ -1162,9 +1192,9 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     reliabilitySampleRecent: (count: number) =>
       `Основано на последних ${count} завершённых циклах.`,
     reliabilityHint:
-      "Чем больше завершённых циклов, тем стабильнее становится предсказанный диапазон.",
+      "Чем больше завершённых циклов, тем стабильнее становится прогнозируемый диапазон.",
     reliabilityHintVariable:
-      "Предсказания могут сильнее колебаться, когда длина цикла меняется от цикла к циклу.",
+      "Прогнозы могут сильнее колебаться, когда длина цикла меняется от цикла к циклу.",
     phaseLabels: {
       unknown: "Неизвестно",
       menstrual: "Менструальная",
@@ -1195,6 +1225,10 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       "Después de los 45, los ciclos suelen volverse menos predecibles. Si observas diferencias persistentes de 7 o más días entre ciclos consecutivos, puede ser un signo temprano de perimenopausia — conviene comentarlo con un profesional de la salud.",
     dataDrivenRangeHint:
       "La predicción se muestra como un rango que refleja cuánto varía la duración de tu ciclo.",
+    shortCycleNotice:
+      "Varios de tus ciclos recientes duran menos de 24 días. Los ciclos tan cortos son menos comunes; considera comentarlo con un profesional de la salud.",
+    longCycleNotice:
+      "Varios de tus ciclos recientes duran más de 45 días. Los ciclos tan largos son menos comunes y pueden tener muchas causas; considera comentarlo con un profesional de la salud.",
     lastCycleLength: "Duración del último ciclo",
     lastPeriodLength: "Duración del período",
     currentPhase: "Fase actual",
@@ -1253,11 +1287,11 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseSymptomsSubtitle: "Los síntomas que registraste con más frecuencia en cada fase.",
     phaseSymptomsEmpty: "Todavía no hay un patrón repetido de síntomas en esta fase.",
     phaseSymptomsDays: (count: number) => `${count} días registrados en esta fase`,
-    bbtTitle: "Tendencia de TCB",
+    bbtTitle: "Tendencia de TBC",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",
     bbtCaption:
-      "La TCB aparece solo cuando la registras. Las lecturas siguen siendo locales y se muestran solo para el ciclo actual.",
+      "La TBC aparece solo cuando la registras. Las lecturas siguen siendo locales y se muestran solo para el ciclo actual.",
     advancedInsights: {
       title: "Análisis avanzados",
       subtitle: "Patrones premium calculados solo a partir de tu historial local reciente.",
@@ -1317,7 +1351,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       shortLutealValue: (averageDays: number) =>
         `Prom. ${averageDays.toFixed(1)} d`,
       shortLutealDescription: (count: number) =>
-        `Fase lútea observada inferior a 10 días en ${count} ciclos recientes. Lo típico son 11-14 días. Una fase lútea corta puede afectar la concepción — considera comentarlo con tu médica/o.`,
+        `Fase lútea observada inferior a 10 días en ${count} ciclos recientes. Lo típico son 11-14 días. Una fase lútea corta puede afectar la concepción — considera comentarlo con un profesional de la salud.`,
       seasonLabels: {
         winter: "invierno",
         spring: "primavera",
@@ -1329,7 +1363,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     advancedFertility: {
       title: "Fertilidad avanzada",
       subtitle:
-        "Señales premium de fertilidad a partir de tu historial local de TCB y moco cervical.",
+        "Señales premium de fertilidad a partir de tu historial local de TBC y moco cervical.",
       observedLutealTitle: "Fase lútea observada",
       observedLutealDescription: (count: number, value: string) =>
         `Promedio derivado de señales en ${count} ciclos recientes: ${value} d.`,
@@ -1371,7 +1405,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       ovulationConfirmationConfirmedHint:
         "Esto suele significar que la ovulación probablemente ocurrió hace poco y que la ventana fértil puede estar cerrándose.",
       ovulationConfirmationBuildingHint:
-        "Sigue registrando la TCB durante las próximas 1-2 mañanas para ver si esto se convierte en un aumento confirmado.",
+        "Sigue registrando la TBC durante las próximas 1-2 mañanas para ver si esto se convierte en un aumento confirmado.",
       lhPeakTitle: "Pico LH",
       lhPeakLoggedValue: "Pico registrado",
       lhPeakAlignedValue: "Pico + aumento térmico",
@@ -1382,14 +1416,14 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
           ? `Se registraron el mismo día un test LH en pico y el último aumento térmico: ${date}.`
           : `Se registró un test LH en pico el ${date}, y el último aumento térmico apareció ${gapDays} d después.`,
       lhPeakLoggedHint:
-        "Un pico LH suele aparecer cerca de los días más fértiles. Sigue registrando la TCB durante las próximas 1-3 mañanas.",
+        "Un pico LH suele aparecer cerca de los días más fértiles. Sigue registrando la TBC durante las próximas 1-3 mañanas.",
       lhPeakAlignedHint:
         "Un pico LH junto con un aumento térmico posterior sugiere que los días más fértiles probablemente acaban de pasar.",
       daysValue: (value: string) => `${value} d`,
       thermalShiftConfirmedHint:
         "Un aumento sostenido suele significar que la ovulación pudo ocurrir hace poco. Sigue registrando para confirmar que se mantiene elevada.",
       thermalShiftBuildingHint:
-        "Sigue registrando la TCB otras 2-3 mañanas antes de tomar esto como un aumento confirmado.",
+        "Sigue registrando la TBC otras 2-3 mañanas antes de tomar esto como un aumento confirmado.",
     },
     personalForecasts: {
       title: "Pronósticos personales",
@@ -1428,7 +1462,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       advancedFertility: {
         title: "Fertilidad avanzada",
         description:
-          "Registra pruebas de LH, cambios térmicos de BBT, confirmación de la ovulación, consistencia de la fase lútea y picos de LH.",
+          "Registra pruebas de LH, cambios térmicos de TBC, confirmación de la ovulación, consistencia de la fase lútea y picos de LH.",
       },
       extendedReports: {
         title: "Informes ampliados",

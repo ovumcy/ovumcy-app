@@ -138,7 +138,6 @@ export type SyncRegenerateRecoveryCodeResult = {
 export type SyncCapabilityDocument = {
   mode: SyncMode;
   syncEnabled: boolean;
-  premiumActive: boolean;
   recoverySupported: boolean;
   pushSupported: boolean;
   portalSupported: boolean;

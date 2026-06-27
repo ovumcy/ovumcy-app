@@ -59,6 +59,36 @@ describe("managed-reminder-email-schedule-service", () => {
     ]);
   });
 
+  describe("normalizeReminderLocale (via buildManagedReminderEmailSchedules)", () => {
+    const plan = [
+      {
+        kind: "daily_log" as const,
+        title: "Reminder",
+        body: "Open app.",
+        trigger: { type: "daily" as const, hour: 9, minute: 0 },
+      },
+    ];
+
+    function localeFor(locale: string | undefined): string {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date("2026-04-05T07:00:00.000Z"));
+      const result = buildManagedReminderEmailSchedules(plan, locale, "UTC");
+      // plan always has one entry so result[0] is guaranteed
+      return result[0]!.locale;
+    }
+
+    it.each([
+      ["de-AT", "de"],
+      ["fr_CA", "fr"],
+      ["ru-RU", "ru"],
+      ["pt-BR", "en"],
+      [undefined, "en"],
+      ["", "en"],
+    ])("locale %p → %p", (input, expected) => {
+      expect(localeFor(input as string | undefined)).toBe(expected);
+    });
+  });
+
   it("rolls a daily reminder to the next day after the scheduled time passes", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-04-05T22:15:00.000Z"));

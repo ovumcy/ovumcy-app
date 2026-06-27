@@ -131,9 +131,9 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.32,
-      cervicalMucus: "eggwhite" as const,
-      lhTest: "peak" as const,
+      bbt: 36.31,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
       pregnancyTest: "none" as const,
       cycleFactorKeys: [],
       symptomIDs: [],
@@ -147,9 +147,9 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.34,
-      cervicalMucus: "none" as const,
-      lhTest: "none" as const,
+      bbt: 36.29,
+      cervicalMucus: "eggwhite" as const,
+      lhTest: "peak" as const,
       pregnancyTest: "none" as const,
       cycleFactorKeys: [],
       symptomIDs: [],
@@ -163,7 +163,7 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.57,
+      bbt: 36.3,
       cervicalMucus: "none" as const,
       lhTest: "none" as const,
       pregnancyTest: "none" as const,
@@ -179,7 +179,7 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.6,
+      bbt: 36.3,
       cervicalMucus: "none" as const,
       lhTest: "none" as const,
       pregnancyTest: "none" as const,
@@ -195,7 +195,39 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.63,
+      bbt: 36.55,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      pregnancyTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-04",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.56,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      pregnancyTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-05",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.57,
       cervicalMucus: "none" as const,
       lhTest: "none" as const,
       pregnancyTest: "none" as const,
@@ -259,6 +291,17 @@ describe("DashboardScreen", () => {
     10000,
   );
 
+  it("renders the persistent not-medical-advice prediction disclaimer (web parity)", async () => {
+    renderDashboard(createStorageMock());
+
+    const disclaimer = await screen.findByTestId(
+      "dashboard-prediction-disclaimer",
+    );
+    expect(disclaimer.props.children).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
+  });
+
   it("hides notes from the daily editor when the privacy toggle is enabled", async () => {
     renderDashboard(
       createStorageMock({
@@ -317,7 +360,7 @@ describe("DashboardScreen", () => {
 
     const storage = await createAdvancedFertilityStorage();
 
-    renderDashboard(storage, new Date(2026, 3, 3));
+    renderDashboard(storage, new Date(2026, 3, 5));
 
     await screen.findByTestId("dashboard-advanced-fertility-summary");
 

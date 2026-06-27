@@ -4,6 +4,7 @@ import type {
   StatsComparisonKind,
   StatsCycleHistorySummary,
 } from "../models/stats";
+import { detectSustainedThermalShift } from "./observed-ovulation-service";
 import { diffLocalDays } from "./profile-settings-policy";
 
 // These tuning constants intentionally diverge from the original Lvl3 spec
@@ -16,8 +17,16 @@ import { diffLocalDays } from "./profile-settings-policy";
 // these without an A/B comparison.
 const RECENT_WEIGHT_LIMIT = 6;
 const RECENT_DRIFT_WINDOW = 3;
-const MIN_DRIFT_BASELINE_WINDOW = 2;
+// Baseline must be a full window of the same size as the recent window so the
+// drift comparison is symmetric (review 2.2). Skip the insight when fewer
+// baseline cycles are available.
+const DRIFT_BASELINE_WINDOW = RECENT_DRIFT_WINDOW;
+const DRIFT_STRONG_DELTA_DAYS = 3;
+const DRIFT_DRIFTING_DELTA_DAYS = 1.5;
 const ANOMALOUS_CYCLE_DELTA_DAYS = 4;
+// Minimum cycles required in EACH compared season before a seasonal insight
+// can fire (review 2.4).
+const MIN_SEASONAL_CYCLES_PER_SEASON = 2;
 const MIN_SEASONAL_PATTERN_DELTA_DAYS = 1.5;
 const SHORT_LUTEAL_RECENT_LIMIT = 6;
 const SHORT_LUTEAL_THRESHOLD_DAYS = 10;
@@ -103,16 +112,18 @@ function calculateWeightedRecentAverage(lengths: readonly number[]): {
 function buildPatternDriftInsight(
   lengths: readonly number[],
 ): StatsPatternDriftInsight | null {
-  if (lengths.length < RECENT_DRIFT_WINDOW + MIN_DRIFT_BASELINE_WINDOW) {
+  if (lengths.length < RECENT_DRIFT_WINDOW + DRIFT_BASELINE_WINDOW) {
     return null;
   }
 
   const recent = lengths.slice(-RECENT_DRIFT_WINDOW);
   const baseline = lengths.slice(
-    Math.max(0, lengths.length - RECENT_DRIFT_WINDOW - 3),
+    -RECENT_DRIFT_WINDOW - DRIFT_BASELINE_WINDOW,
     -RECENT_DRIFT_WINDOW,
   );
-  if (baseline.length < MIN_DRIFT_BASELINE_WINDOW) {
+  // Require a full equal-size baseline window; the length guard above
+  // guarantees it, but keep this explicit so the comparison stays symmetric.
+  if (baseline.length < DRIFT_BASELINE_WINDOW) {
     return null;
   }
 
@@ -125,9 +136,9 @@ function buildPatternDriftInsight(
     baselineAverage,
     deltaDays,
     kind:
-      absoluteDelta >= 3
+      absoluteDelta >= DRIFT_STRONG_DELTA_DAYS
         ? "strong_drift"
-        : absoluteDelta >= 1.5
+        : absoluteDelta >= DRIFT_DRIFTING_DELTA_DAYS
           ? "drifting"
           : "stable",
     recentAverage,
@@ -145,22 +156,45 @@ function buildAnomalousCycleInsight(
   if (typeof lastCycleLength !== "number") {
     return null;
   }
-  const baseline = calculateWeightedRecentAverage(lengths.slice(0, -1));
-  if (baseline.value === null) {
+  // Compare against the unweighted MEDIAN of the prior window (review 2.3),
+  // consistent with the app's median-first canon. The weighted recent average
+  // over-weights one recent prior cycle, distorting the anomaly baseline.
+  const baselineLength = median(lengths.slice(0, -1));
+  if (baselineLength === null) {
     return null;
   }
 
-  const deltaDays = lastCycleLength - baseline.value;
+  const deltaDays = lastCycleLength - baselineLength;
   if (Math.abs(deltaDays) < ANOMALOUS_CYCLE_DELTA_DAYS) {
     return null;
   }
 
   return {
-    baselineLength: baseline.value,
+    baselineLength,
     cycleLength: lastCycleLength,
     deltaDays,
     kind: deltaDays > 0 ? "longer" : "shorter",
   };
+}
+
+// Intentionally separate from cycle-history-service's `medianInt`: this returns
+// a fractional (non-rounded) value for accurate ±-delta baseline comparison,
+// and returns null on empty input rather than 0, matching the null-guard logic below.
+function median(values: readonly number[]): number | null {
+  const sorted = [...values].sort((left, right) => left - right);
+  if (sorted.length === 0) {
+    return null;
+  }
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    const lower = sorted[mid - 1];
+    const upper = sorted[mid];
+    if (typeof lower !== "number" || typeof upper !== "number") {
+      return null;
+    }
+    return (lower + upper) / 2;
+  }
+  return sorted[mid] ?? null;
 }
 
 function buildSeasonalPatternInsight(
@@ -178,8 +212,10 @@ function buildSeasonalPatternInsight(
     seasonalBuckets.set(seasonKey, bucket);
   }
 
+  // Require at least MIN_SEASONAL_CYCLES_PER_SEASON cycles in EACH compared
+  // season (review 2.4); a single-cycle season is too noisy to compare.
   const seasonalAverages = [...seasonalBuckets.entries()]
-    .filter((entry) => entry[1].length > 0)
+    .filter((entry) => entry[1].length >= MIN_SEASONAL_CYCLES_PER_SEASON)
     .map(([season, values]) => ({
       season,
       average: average(values),
@@ -258,18 +294,25 @@ export function buildShortLutealHint(
       continue;
     }
 
+    // Clinical short-luteal anchor (review 2.1): inferred ovulation DAY from
+    // the canonical sustained thermal shift, else LH peak (a true ovulation
+    // proxy). The mucus-only fallback is dropped for this clinical warning —
+    // last egg-white alone overstates luteal length and would mis-fire the
+    // highest-stakes alert.
+    const shiftDate = detectSustainedThermalShift(
+      cycleRecords,
+      cycle.startDate,
+      cycle.nextStartDate,
+    )?.shiftStartDate;
     const lastLHPeak = [...cycleRecords]
       .reverse()
       .find((record) => record.lhTest === "peak");
-    const lastEggWhite = [...cycleRecords]
-      .reverse()
-      .find((record) => record.cervicalMucus === "eggwhite");
-    const anchor = lastLHPeak ?? lastEggWhite;
-    if (!anchor) {
+    const anchorDate = shiftDate ?? lastLHPeak?.date;
+    if (!anchorDate) {
       continue;
     }
 
-    const lutealDays = diffLocalDays(anchor.date, cycle.nextStartDate);
+    const lutealDays = diffLocalDays(anchorDate, cycle.nextStartDate);
     if (lutealDays <= 0) {
       continue;
     }

@@ -44,9 +44,16 @@ export function describeSubscriptionCountdown(
 
   if (Number.isNaN(endMs) || Number.isNaN(nowMs)) {
     // Unparseable timestamps: surface the plan status without a countdown
-    // rather than inventing a day count.
+    // rather than inventing a day count. cancelAtPeriodEnd takes priority
+    // over trialing so that a canceling subscription is never misreported
+    // as active.
+    const kind = subscription.cancelAtPeriodEnd
+      ? "canceling"
+      : subscription.status === "trialing"
+        ? "trialing"
+        : "active";
     return {
-      kind: subscription.status === "trialing" ? "trialing" : "active",
+      kind,
       daysRemaining: null,
       periodEndsAtISO: subscription.currentPeriodEndsAt || null,
       willRenew: !subscription.cancelAtPeriodEnd,
@@ -67,11 +74,14 @@ export function describeSubscriptionCountdown(
 
   const daysRemaining = Math.ceil(remainingMs / MS_PER_DAY);
 
+  // Check trialing before cancelAtPeriodEnd so a trial that will not renew
+  // is reported as "trialing" (with its countdown) rather than "canceling".
+  // "canceling" is reserved for paid plans set not to auto-renew.
+  if (subscription.status === "trialing") {
+    return { kind: "trialing", daysRemaining, periodEndsAtISO, willRenew: !subscription.cancelAtPeriodEnd };
+  }
   if (subscription.cancelAtPeriodEnd) {
     return { kind: "canceling", daysRemaining, periodEndsAtISO, willRenew: false };
-  }
-  if (subscription.status === "trialing") {
-    return { kind: "trialing", daysRemaining, periodEndsAtISO, willRenew: true };
   }
   return { kind: "active", daysRemaining, periodEndsAtISO, willRenew: true };
 }

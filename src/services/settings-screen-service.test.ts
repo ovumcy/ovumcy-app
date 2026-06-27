@@ -149,7 +149,6 @@ describe("settings services", () => {
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
-          premiumActive: false,
         }),
       }),
     );
@@ -239,7 +238,6 @@ describe("settings services", () => {
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
-          premiumActive: true,
         }),
       }),
     );
@@ -333,7 +331,6 @@ describe("settings services", () => {
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
-          premiumActive: true,
         }),
       }),
     );
@@ -898,7 +895,6 @@ describe("settings services", () => {
       {
         mode: "managed",
         syncEnabled: true,
-        premiumActive: false,
         recoverySupported: true,
         pushSupported: false,
         portalSupported: false,
