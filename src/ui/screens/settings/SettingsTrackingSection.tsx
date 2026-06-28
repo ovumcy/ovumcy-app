@@ -10,6 +10,7 @@ import type { SettingsFlowStyles } from "./settings-flow-styles";
 type SettingsTrackingSectionProps = {
   onHideNotesChange: (value: boolean) => void;
   onShowHistoricalPhasesChange: (value: boolean) => void;
+  onHideCycleFactorsChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
   onTemperatureUnitSelect: (
     value: LoadedSettingsState["trackingValues"]["temperatureUnit"],
@@ -25,6 +26,7 @@ type SettingsTrackingSectionProps = {
 export function SettingsTrackingSection({
   onHideNotesChange,
   onShowHistoricalPhasesChange,
+  onHideCycleFactorsChange,
   onHideSexChipChange,
   onTemperatureUnitSelect,
   onTrackBBTChange,
@@ -92,6 +94,18 @@ export function SettingsTrackingSection({
         onValueChange={onShowHistoricalPhasesChange}
         testID="settings-toggle-show-historical-phases"
         value={state.trackingValues.showHistoricalPhases}
+      />
+
+      <BinaryToggleCard
+        description={viewData.tracking.hideCycleFactors.hint}
+        descriptionPosition="below"
+        icon="🏷️"
+        label={viewData.tracking.hideCycleFactors.label}
+        onValueChange={(value) => {
+          onHideCycleFactorsChange(!value);
+        }}
+        testID="settings-toggle-hide-cycle-factors"
+        value={!state.trackingValues.hideCycleFactors}
       />
 
       <View style={styles.formGroup}>

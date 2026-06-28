@@ -609,6 +609,7 @@ describe("settings services", () => {
         trackCervicalMucus: true,
         hideSexChip: true,
         hideNotes: true,
+        hideCycleFactors: true,
         showHistoricalPhases: true,
       },
     );

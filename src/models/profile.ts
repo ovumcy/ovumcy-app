@@ -57,6 +57,7 @@ export type ProfileRecord = {
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
   hideNotes?: boolean;
+  hideCycleFactors?: boolean;
   showHistoricalPhases?: boolean;
   dailyLogReminderEnabled?: boolean;
   upcomingPeriodReminderEnabled?: boolean;
@@ -88,6 +89,7 @@ export type TrackingSettingsValues = {
   trackCervicalMucus: boolean;
   hideSexChip: boolean;
   hideNotes: boolean;
+  hideCycleFactors: boolean;
   showHistoricalPhases: boolean;
 };
 
@@ -215,6 +217,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     trackCervicalMucus: false,
     hideSexChip: false,
     hideNotes: false,
+    hideCycleFactors: false,
     showHistoricalPhases: false,
     dailyLogReminderEnabled: false,
     upcomingPeriodReminderEnabled: false,

@@ -630,6 +630,12 @@ export function useSettingsScreenController({
           { resetExportMessages: true },
         );
       },
+      onHideCycleFactorsChange: (value) => {
+        applyTrackingUpdates(
+          { hideCycleFactors: value },
+          { resetExportMessages: true },
+        );
+      },
       onHideSexChipChange: (value) => {
         applyTrackingUpdates({ hideSexChip: value }, { resetExportMessages: true });
       },

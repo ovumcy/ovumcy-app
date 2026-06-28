@@ -102,6 +102,13 @@ const settingsCopyEn = {
       "Currently shown on past months in the calendar.",
     showHistoricalPhasesStateOff:
       "Currently hidden; only upcoming predicted cycles show fertile windows.",
+    hideCycleFactors: "Show cycle factors",
+    hideCycleFactorsHint:
+      "Adds cycle factor tags (stress, illness, travel, ...) to dashboard and calendar entries without deleting saved tags.",
+    hideCycleFactorsStateOn:
+      "Currently visible in dashboard and calendar day editor.",
+    hideCycleFactorsStateOff:
+      "Currently hidden in dashboard and calendar day editor.",
     temperatureUnit: "BBT unit",
     temperatureUnitHint: "Used when the BBT field is visible.",
     temperatureUnitCelsius: "Celsius",
@@ -576,6 +583,13 @@ const settingsCopyDe: SettingsCopy = {
       "Derzeit in vergangenen Kalendermonaten angezeigt.",
     showHistoricalPhasesStateOff:
       "Derzeit verborgen; nur kommende vorhergesagte Zyklen zeigen fruchtbare Fenster.",
+    hideCycleFactors: "Zyklusfaktoren anzeigen",
+    hideCycleFactorsHint:
+      "Fügt Dashboard- und Kalendereinträgen Zyklusfaktor-Tags (Stress, Krankheit, Reisen, ...) hinzu, ohne gespeicherte Tags zu löschen.",
+    hideCycleFactorsStateOn:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
+    hideCycleFactorsStateOff:
+      "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
     temperatureUnit: "BBT-Einheit",
     temperatureUnitHint: "Wird verwendet, wenn das BBT-Feld sichtbar ist.",
     temperatureUnitCelsius: "Celsius",
@@ -1091,6 +1105,13 @@ const settingsCopyFr: SettingsCopy = {
       "Actuellement affiché sur les mois passés du calendrier.",
     showHistoricalPhasesStateOff:
       "Actuellement masqué ; seuls les prochains cycles prédits affichent des fenêtres fertiles.",
+    hideCycleFactors: "Afficher les facteurs de cycle",
+    hideCycleFactorsHint:
+      "Ajoute les étiquettes de facteurs de cycle (stress, maladie, voyage, ...) au tableau de bord et aux entrées du calendrier sans supprimer les étiquettes enregistrées.",
+    hideCycleFactorsStateOn:
+      "Actuellement visible dans le tableau de bord et dans l'éditeur journalier du calendrier.",
+    hideCycleFactorsStateOff:
+      "Actuellement masqué dans le tableau de bord et dans l'éditeur journalier du calendrier.",
     temperatureUnit: "Unité TB",
     temperatureUnitHint: "Utilisée quand le champ TB est visible.",
     temperatureUnitCelsius: "Celsius",
@@ -1610,6 +1631,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Сейчас показывается для прошлых месяцев календаря.",
       showHistoricalPhasesStateOff:
         "Сейчас скрыто; фертильные окна показываются только для будущих прогнозируемых циклов.",
+      hideCycleFactors: "Показывать факторы цикла",
+      hideCycleFactorsHint:
+        "Добавляет теги факторов цикла (стресс, болезнь, поездка, ...) на панель и в записи календаря, не удаляя сохранённые теги.",
+      hideCycleFactorsStateOn:
+        "Сейчас видно в dashboard и редакторе дня календаря.",
+      hideCycleFactorsStateOff:
+        "Сейчас скрыто в dashboard и редакторе дня календаря.",
       temperatureUnit: "Единица БТТ",
       temperatureUnitHint: "Используется, когда поле БТТ видно.",
       temperatureUnitCelsius: "Цельсий",
@@ -2093,6 +2121,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Actualmente se muestra en los meses pasados del calendario.",
       showHistoricalPhasesStateOff:
         "Actualmente oculto; solo los próximos ciclos previstos muestran ventanas fértiles.",
+      hideCycleFactors: "Mostrar factores del ciclo",
+      hideCycleFactorsHint:
+        "Añade etiquetas de factores del ciclo (estrés, enfermedad, viaje, ...) al panel y a las entradas del calendario sin borrar las etiquetas guardadas.",
+      hideCycleFactorsStateOn:
+        "Actualmente visible en el panel y en el editor diario del calendario.",
+      hideCycleFactorsStateOff:
+        "Actualmente oculto en el panel y en el editor diario del calendario.",
       temperatureUnit: "Unidad de TBC",
       temperatureUnitHint: "Se usa cuando el campo de TBC está visible.",
       temperatureUnitCelsius: "Celsius",

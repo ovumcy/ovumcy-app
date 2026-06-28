@@ -20,6 +20,7 @@ describe("day-log-editor-service", () => {
       showCervicalMucus: false,
       showLHTest: false,
       showNotes: true,
+      showCycleFactors: true,
     });
     expect(state.viewData.labels.bbtHint).toContain("°F");
   });

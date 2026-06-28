@@ -112,6 +112,12 @@ export type SettingsViewData = {
       stateOn: string;
       stateOff: string;
     };
+    hideCycleFactors: {
+      label: string;
+      hint: string;
+      stateOn: string;
+      stateOff: string;
+    };
     temperatureUnit: {
       label: string;
       hint: string;
@@ -564,6 +570,12 @@ export function buildSettingsViewData(
         stateOn: settingsCopy.tracking.showHistoricalPhasesStateOn,
         stateOff: settingsCopy.tracking.showHistoricalPhasesStateOff,
       },
+      hideCycleFactors: {
+        label: settingsCopy.tracking.hideCycleFactors,
+        hint: settingsCopy.tracking.hideCycleFactorsHint,
+        stateOn: settingsCopy.tracking.hideCycleFactorsStateOn,
+        stateOff: settingsCopy.tracking.hideCycleFactorsStateOff,
+      },
       temperatureUnit: {
         label: settingsCopy.tracking.temperatureUnit,
         hint: settingsCopy.tracking.temperatureUnitHint,
@@ -932,6 +944,7 @@ export function createLoadedSettingsState(
       trackCervicalMucus: profile.trackCervicalMucus,
       hideSexChip: profile.hideSexChip,
       hideNotes: profile.hideNotes === true,
+      hideCycleFactors: profile.hideCycleFactors === true,
       showHistoricalPhases: profile.showHistoricalPhases === true,
     },
     symptomRecords,
@@ -969,6 +982,7 @@ export function extractPersistedTrackingValues(
     trackCervicalMucus: profile.trackCervicalMucus,
     hideSexChip: profile.hideSexChip,
     hideNotes: profile.hideNotes === true,
+    hideCycleFactors: profile.hideCycleFactors === true,
     showHistoricalPhases: profile.showHistoricalPhases === true,
   };
 }
@@ -1023,6 +1037,7 @@ export function areTrackingSettingsEqual(
     left.trackCervicalMucus === right.trackCervicalMucus &&
     left.hideSexChip === right.hideSexChip &&
     left.hideNotes === right.hideNotes &&
+    left.hideCycleFactors === right.hideCycleFactors &&
     left.showHistoricalPhases === right.showHistoricalPhases
   );
 }
