@@ -27,6 +27,7 @@ export type DayLogVisibility = {
   showCervicalMucus: boolean;
   showLHTest: boolean;
   showNotes: boolean;
+  showCycleFactors: boolean;
 };
 
 export type DayLogVisibilityOptions = {
@@ -43,6 +44,7 @@ export function buildDayLogVisibility(
     showCervicalMucus: profile.trackCervicalMucus,
     showLHTest: options.showLHTests === true,
     showNotes: profile.hideNotes !== true,
+    showCycleFactors: profile.hideCycleFactors !== true,
   };
 }
 

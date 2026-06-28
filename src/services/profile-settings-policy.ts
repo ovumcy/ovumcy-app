@@ -128,6 +128,8 @@ export function sanitizeTrackingSettingsValues(
     trackCervicalMucus: values.trackCervicalMucus,
     hideSexChip: values.hideSexChip,
     hideNotes: values.hideNotes,
+    hideCycleFactors: values.hideCycleFactors,
+    showHistoricalPhases: values.showHistoricalPhases,
   };
 }
 

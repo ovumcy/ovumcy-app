@@ -624,6 +624,18 @@ export function useSettingsScreenController({
       onHideNotesChange: (value) => {
         applyTrackingUpdates({ hideNotes: value }, { resetExportMessages: true });
       },
+      onShowHistoricalPhasesChange: (value) => {
+        applyTrackingUpdates(
+          { showHistoricalPhases: value },
+          { resetExportMessages: true },
+        );
+      },
+      onHideCycleFactorsChange: (value) => {
+        applyTrackingUpdates(
+          { hideCycleFactors: value },
+          { resetExportMessages: true },
+        );
+      },
       onHideSexChipChange: (value) => {
         applyTrackingUpdates({ hideSexChip: value }, { resetExportMessages: true });
       },

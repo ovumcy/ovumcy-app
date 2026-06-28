@@ -65,6 +65,65 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("paints fertile markers on past completed cycles only when showHistoricalPhases is on", () => {
+    const baseProfile = {
+      lastPeriodStart: "2026-02-26",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: false,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    };
+    // Three cycle starts → two completed past cycles (Jan 1→29, Jan 29→Feb 26);
+    // the latest start is the current anchor and is painted separately.
+    const records = ["2026-01-01", "2026-01-29", "2026-02-26"].map((date) => ({
+      ...createEmptyDayLogRecord(date),
+      isPeriod: true,
+      cycleStart: true,
+      flow: "medium" as const,
+    }));
+
+    const off = buildCalendarViewData(
+      { ...baseProfile, showHistoricalPhases: false },
+      records,
+      new Date(2026, 2, 10),
+      new Date(2026, 0, 1),
+      "2026-01-15",
+    );
+    expect(
+      off.days.some(
+        (day) => day.date.startsWith("2026-01") && day.hasOvulationMarker,
+      ),
+    ).toBe(false);
+
+    const on = buildCalendarViewData(
+      { ...baseProfile, showHistoricalPhases: true },
+      records,
+      new Date(2026, 2, 10),
+      new Date(2026, 0, 1),
+      "2026-01-15",
+    );
+    expect(
+      on.days.some(
+        (day) => day.date.startsWith("2026-01") && day.hasOvulationMarker,
+      ),
+    ).toBe(true);
+    expect(
+      on.days.some(
+        (day) => day.date.startsWith("2026-01") && day.stateKey === "fertility_peak",
+      ),
+    ).toBe(true);
+  });
+
   it("opens empty days in direct-edit mode while keeping saved days summary-first", () => {
     const viewData = buildCalendarViewData(
       {

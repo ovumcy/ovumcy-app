@@ -1,3 +1,4 @@
+import { createDefaultProfileRecord } from "../models/profile";
 import {
   buildDayLogVisibility,
   normalizeDayBBT,
@@ -74,7 +75,20 @@ describe("day-log-policy", () => {
       showCervicalMucus: false,
       showLHTest: false,
       showNotes: false,
+      showCycleFactors: true,
     });
+  });
+
+  it("hides cycle factors only when the owner disables them", () => {
+    expect(
+      buildDayLogVisibility(createDefaultProfileRecord()).showCycleFactors,
+    ).toBe(true);
+    expect(
+      buildDayLogVisibility({
+        ...createDefaultProfileRecord(),
+        hideCycleFactors: true,
+      }).showCycleFactors,
+    ).toBe(false);
   });
 });
 

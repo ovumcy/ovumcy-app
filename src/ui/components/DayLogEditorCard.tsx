@@ -301,25 +301,27 @@ export function DayLogEditorCard({
         />
       </View>
 
-      <View
-        onLayout={handleSectionLayout("cycleFactors")}
-        style={resolveSectionStyle("cycleFactors", styles.section)}
-      >
-        <Text style={styles.sectionLabel}>{viewData.labels.cycleFactors}</Text>
-        <Text style={styles.sectionHint}>{viewData.labels.cycleFactorsHint}</Text>
-        <MultiSelectChipGroup
-          compact
-          onToggle={(value) => {
-            const next = record.cycleFactorKeys.includes(value)
-              ? record.cycleFactorKeys.filter((current) => current !== value)
-              : [...record.cycleFactorKeys, value];
-            onPatch({ cycleFactorKeys: next });
-          }}
-          options={viewData.options.cycleFactors}
-          selectedValues={record.cycleFactorKeys}
-          testIDPrefix="day-log-factor"
-        />
-      </View>
+      {viewData.visibility.showCycleFactors ? (
+        <View
+          onLayout={handleSectionLayout("cycleFactors")}
+          style={resolveSectionStyle("cycleFactors", styles.section)}
+        >
+          <Text style={styles.sectionLabel}>{viewData.labels.cycleFactors}</Text>
+          <Text style={styles.sectionHint}>{viewData.labels.cycleFactorsHint}</Text>
+          <MultiSelectChipGroup
+            compact
+            onToggle={(value) => {
+              const next = record.cycleFactorKeys.includes(value)
+                ? record.cycleFactorKeys.filter((current) => current !== value)
+                : [...record.cycleFactorKeys, value];
+              onPatch({ cycleFactorKeys: next });
+            }}
+            options={viewData.options.cycleFactors}
+            selectedValues={record.cycleFactorKeys}
+            testIDPrefix="day-log-factor"
+          />
+        </View>
+      ) : null}
 
       {viewData.visibility.showSexActivity ? (
         <View

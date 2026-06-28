@@ -88,6 +88,8 @@ export type SettingsFlowScreenProps = {
   onFertileWindowReminderChange: (value: boolean) => void;
   onManagedReminderEmailsChange: (value: boolean) => void;
   onHideNotesChange: (value: boolean) => void;
+  onShowHistoricalPhasesChange: (value: boolean) => void;
+  onHideCycleFactorsChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
@@ -171,6 +173,8 @@ export function SettingsFlowScreen({
   onFertileWindowReminderChange,
   onManagedReminderEmailsChange,
   onHideNotesChange,
+  onShowHistoricalPhasesChange,
+  onHideCycleFactorsChange,
   onHideSexChipChange,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
@@ -276,6 +280,8 @@ export function SettingsFlowScreen({
 
           <SettingsTrackingSection
             onHideNotesChange={onHideNotesChange}
+            onShowHistoricalPhasesChange={onShowHistoricalPhasesChange}
+            onHideCycleFactorsChange={onHideCycleFactorsChange}
             onHideSexChipChange={onHideSexChipChange}
             onTemperatureUnitSelect={onTemperatureUnitSelect}
             onTrackBBTChange={onTrackBBTChange}
