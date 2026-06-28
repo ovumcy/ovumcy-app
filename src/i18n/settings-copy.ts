@@ -95,6 +95,13 @@ const settingsCopyEn = {
       "Currently visible in dashboard and calendar day editor.",
     hideNotesStateOff:
       "Currently hidden in dashboard and calendar day editor.",
+    showHistoricalPhases: "Show fertile windows for past cycles",
+    showHistoricalPhasesHint:
+      "Shows ovulation, fertile peak, and pre-fertile markers on past completed cycles in the calendar, based on recorded cycle starts.",
+    showHistoricalPhasesStateOn:
+      "Currently shown on past months in the calendar.",
+    showHistoricalPhasesStateOff:
+      "Currently hidden; only upcoming predicted cycles show fertile windows.",
     temperatureUnit: "BBT unit",
     temperatureUnitHint: "Used when the BBT field is visible.",
     temperatureUnitCelsius: "Celsius",
@@ -562,6 +569,13 @@ const settingsCopyDe: SettingsCopy = {
       "Derzeit im Dashboard und im Tageseditor des Kalenders sichtbar.",
     hideNotesStateOff:
       "Derzeit im Dashboard und im Tageseditor des Kalenders verborgen.",
+    showHistoricalPhases: "Fruchtbare Fenster für vergangene Zyklen anzeigen",
+    showHistoricalPhasesHint:
+      "Zeigt Eisprung, fruchtbares Maximum und vor-fruchtbare Markierungen für vergangene abgeschlossene Zyklen im Kalender, basierend auf erfassten Zyklusbeginnen.",
+    showHistoricalPhasesStateOn:
+      "Derzeit in vergangenen Kalendermonaten angezeigt.",
+    showHistoricalPhasesStateOff:
+      "Derzeit verborgen; nur kommende vorhergesagte Zyklen zeigen fruchtbare Fenster.",
     temperatureUnit: "BBT-Einheit",
     temperatureUnitHint: "Wird verwendet, wenn das BBT-Feld sichtbar ist.",
     temperatureUnitCelsius: "Celsius",
@@ -1070,6 +1084,13 @@ const settingsCopyFr: SettingsCopy = {
       "Actuellement visible dans le tableau de bord et dans l'éditeur journalier du calendrier.",
     hideNotesStateOff:
       "Actuellement masquée dans le tableau de bord et dans l'éditeur journalier du calendrier.",
+    showHistoricalPhases: "Afficher les fenêtres fertiles sur les cycles passés",
+    showHistoricalPhasesHint:
+      "Affiche l'ovulation, le pic de fertilité et les marqueurs pré-fertiles sur les cycles passés terminés dans le calendrier, à partir des débuts de cycle enregistrés.",
+    showHistoricalPhasesStateOn:
+      "Actuellement affiché sur les mois passés du calendrier.",
+    showHistoricalPhasesStateOff:
+      "Actuellement masqué ; seuls les prochains cycles prédits affichent des fenêtres fertiles.",
     temperatureUnit: "Unité TB",
     temperatureUnitHint: "Utilisée quand le champ TB est visible.",
     temperatureUnitCelsius: "Celsius",
@@ -1582,6 +1603,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Сейчас видно в dashboard и редакторе дня календаря.",
       hideNotesStateOff:
         "Сейчас скрыто в dashboard и редакторе дня календаря.",
+      showHistoricalPhases: "Показывать фертильные окна для прошлых циклов",
+      showHistoricalPhasesHint:
+        "Показывает овуляцию, пик фертильности и предфертильные метки для прошлых завершённых циклов в календаре на основе сохранённых начал циклов.",
+      showHistoricalPhasesStateOn:
+        "Сейчас показывается для прошлых месяцев календаря.",
+      showHistoricalPhasesStateOff:
+        "Сейчас скрыто; фертильные окна показываются только для будущих прогнозируемых циклов.",
       temperatureUnit: "Единица БТТ",
       temperatureUnitHint: "Используется, когда поле БТТ видно.",
       temperatureUnitCelsius: "Цельсий",
@@ -2058,6 +2086,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Actualmente visible en el panel y en el editor diario del calendario.",
       hideNotesStateOff:
         "Actualmente oculta en el panel y en el editor diario del calendario.",
+      showHistoricalPhases: "Mostrar ventanas fértiles de ciclos pasados",
+      showHistoricalPhasesHint:
+        "Muestra la ovulación, el pico de fertilidad y los marcadores prefértiles en los ciclos pasados completados del calendario, según los inicios de ciclo registrados.",
+      showHistoricalPhasesStateOn:
+        "Actualmente se muestra en los meses pasados del calendario.",
+      showHistoricalPhasesStateOff:
+        "Actualmente oculto; solo los próximos ciclos previstos muestran ventanas fértiles.",
       temperatureUnit: "Unidad de TBC",
       temperatureUnitHint: "Se usa cuando el campo de TBC está visible.",
       temperatureUnitCelsius: "Celsius",

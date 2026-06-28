@@ -701,6 +701,18 @@ function buildCalendarPredictionMaps(
     );
   }
 
+  if (profile.showHistoricalPhases) {
+    appendHistoricalCycles(
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      history,
+      predictedPeriodLength,
+      projection.lutealPhase,
+    );
+  }
+
   applyCurrentCycleBBTSignal(
     profile,
     projection,
@@ -778,6 +790,35 @@ function resolveCalendarBaselineNextPeriodDate(
   }
 
   return formatLocalDate(addDays(cycleAnchor, predictionCycleLength));
+}
+
+// App analog of web's appendHistoricalCycles (calendar_days.go): paints the
+// pre-fertile, ovulation, and fertile-window markers onto past completed cycles,
+// using each cycle's own logged length and the inferred luteal phase. Gated on
+// the owner's showHistoricalPhases preference. The current/anchor cycle keeps its
+// existing predicted-window painting and is not part of history.completedCycles,
+// so there is no double-painting.
+function appendHistoricalCycles(
+  preFertile: Set<string>,
+  fertilityEdge: Set<string>,
+  fertilityPeak: Set<string>,
+  ovulation: Set<string>,
+  history: ReturnType<typeof buildCycleHistorySummary>,
+  predictedPeriodLength: number,
+  lutealPhase: number,
+) {
+  for (const cycle of history.completedCycles) {
+    appendPredictedWindow(
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      cycle.startDate,
+      cycle.cycleLength,
+      predictedPeriodLength,
+      lutealPhase,
+    );
+  }
 }
 
 function appendPredictedCycles(
