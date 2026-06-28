@@ -95,6 +95,9 @@
     "form-data": "^4.0.6",
     "@babel/core": "^7.29.6",
     "tmp": "^0.2.6",
-    "js-yaml": "^4.2.0"
+    "js-yaml": "^4.2.0",
+    "@stryker-mutator/core": {
+      "ajv": "^8.20.0"
+    }
   }
 }
