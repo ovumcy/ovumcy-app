@@ -92,7 +92,7 @@ const createStyles = (colors: AppThemeColors) =>
     fontWeight: "700",
   },
   primaryLabel: {
-    color: "#ffffff",
+    color: colors.accentContrastText,
   },
   secondaryLabel: {
     color: colors.text,

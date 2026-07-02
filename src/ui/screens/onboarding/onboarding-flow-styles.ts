@@ -287,7 +287,7 @@ export const createOnboardingFlowStyles = (colors: AppThemeColors) =>
       paddingVertical: 0,
     },
     primaryButtonText: {
-      color: "#ffffff",
+      color: colors.accentContrastText,
       fontSize: 14,
       fontWeight: "700",
       textAlign: "center",
