@@ -84,7 +84,7 @@ export function StatusBanner({
           <Pressable
             accessibilityLabel={resolvedDismissLabel}
             accessibilityRole="button"
-            hitSlop={10}
+            hitSlop={12}
             onPress={() => {
               setIsVisible(false);
               void onDismiss();

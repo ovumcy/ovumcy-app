@@ -26,6 +26,8 @@ export function OnboardingPrimaryButton({
 }: OnboardingPrimaryButtonProps) {
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={onPress}
       style={[
@@ -51,6 +53,7 @@ export function OnboardingSecondaryButton({
 }: OnboardingButtonProps) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={[
         styles.secondaryButton,
