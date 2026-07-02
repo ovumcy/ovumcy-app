@@ -142,8 +142,11 @@ export function useSettingsScreenController({
   const [rowSymptomStatusMessages, setRowSymptomStatusMessages] = useState<
     Record<string, string>
   >({});
-  const shellCopy = getShellCopy(language);
-  const viewData = buildSettingsViewData(effectiveNow, language);
+  const shellCopy = useMemo(() => getShellCopy(language), [language]);
+  const viewData = useMemo(
+    () => buildSettingsViewData(effectiveNow, language),
+    [effectiveNow, language],
+  );
   const {
     hasUnsavedSettingsChanges,
     isCycleDirty,

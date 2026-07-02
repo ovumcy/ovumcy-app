@@ -1,5 +1,6 @@
 import type { DayLogRecord } from "../models/day-log";
 import type { LocalDateISO } from "../models/profile";
+import { diffLocalDays } from "./profile-settings-policy";
 
 const MIN_BBT_POINTS_FOR_OVULATION = 5;
 const BBT_BASELINE_WINDOW = 5;
@@ -20,6 +21,10 @@ export type SustainedThermalShift = {
 // 3-day sustained streak. The shift day is the streak start. This is the single
 // source of truth for both the calendar's observed-ovulation marker
 // (inferBBTOvulationDate) and the advanced-fertility thermal-shift panel.
+//
+// The 3-day streak must fall on strictly consecutive calendar days: a point
+// continues the streak only when it is exactly 1 day after the previous logged
+// point, so sparse logging cannot fabricate a shift from an isolated spike.
 //
 // cycleEndDate is optional and exclusive: when omitted the window is
 // open-ended (used by the current, in-progress cycle which has no next start).
@@ -54,7 +59,11 @@ export function detectSustainedThermalShift(
       continue;
     }
     if (point.bbt >= threshold) {
-      streak += 1;
+      const previous = points[index - 1];
+      const isAdjacent =
+        previous !== undefined &&
+        diffLocalDays(previous.date, point.date) === 1;
+      streak = isAdjacent ? streak + 1 : 1;
     } else {
       streak = 0;
     }

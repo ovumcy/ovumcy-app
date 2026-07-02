@@ -11,6 +11,13 @@ export const lightColors = {
   accentSecondary: "#e8c4a8",
   accentStrong: "#ba8350",
   accentSoft: "#f4e1cd",
+  // Fixed (non-themed) dark brown for text/icons on top of accent-colored
+  // buttons. White text on `accent` measures ~2.2:1 (WCAG AA needs 4.5:1
+  // for this font size); this shade clears >=5.2:1 against every accent
+  // background used for button fills in both themes, including the web
+  // gradient's lighter stop. Deliberately identical across light/dark so
+  // it stays correct if `accent`/`accentStrong` are retuned independently.
+  accentContrastText: "#3d2a1a",
   border: "#ecd9c6",
   lineSoft: "#ecd9c6",
   brand: "#4a3d6a",
@@ -80,6 +87,8 @@ export const darkColors = {
   accentSecondary: "#a87a57",
   accentStrong: "#f0b57f",
   accentSoft: "#433024",
+  // Same fixed shade as light theme — see the comment on lightColors.
+  accentContrastText: "#3d2a1a",
   border: "#65547e",
   lineSoft: "rgba(116, 96, 145, 0.58)",
   brand: "#ece3ff",

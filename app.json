@@ -10,11 +10,10 @@
       [
         "expo-build-properties",
         {
-          "android": {
-            "usesCleartextTraffic": true
-          }
+          "android": {}
         }
-      ]
+      ],
+      "./plugins/withAndroidNetworkSecurityConfig"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
     "splash": {
@@ -26,6 +25,7 @@
     "android": {
       "package": "app.ovumcy.mobile",
       "versionCode": 1,
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",
         "backgroundColor": "#f7f0e6"
