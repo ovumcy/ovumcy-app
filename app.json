@@ -10,11 +10,10 @@
       [
         "expo-build-properties",
         {
-          "android": {
-            "usesCleartextTraffic": true
-          }
+          "android": {}
         }
-      ]
+      ],
+      "./plugins/withAndroidNetworkSecurityConfig"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
     "splash": {
