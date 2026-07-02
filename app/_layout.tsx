@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import type { ErrorBoundaryProps } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -9,6 +10,7 @@ import {
   AppPreferencesProvider,
   useAppPreferences,
 } from "../src/ui/providers/AppPreferencesProvider";
+import { AppErrorScreen } from "../src/ui/screens/AppErrorScreen";
 
 // F9 note: the invite_token scrub for web targets is bootstrapped from
 // index.js (see src/security/web-invite-token-scrub-bootstrap.ts). By the
@@ -28,6 +30,20 @@ export default function RootLayout() {
     <AppPreferencesProvider>
       <RootNavigator />
     </AppPreferencesProvider>
+  );
+}
+
+// expo-router renders this in place of the crashed tree, including
+// AppPreferencesProvider itself — so AppErrorScreen must stay
+// context-free (see its own file for the constraint).
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <AppErrorScreen
+      message={error.message}
+      onRetry={() => {
+        void retry();
+      }}
+    />
   );
 }
 
