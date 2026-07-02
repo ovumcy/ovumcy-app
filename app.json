@@ -26,6 +26,7 @@
     "android": {
       "package": "app.ovumcy.mobile",
       "versionCode": 1,
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",
         "backgroundColor": "#f7f0e6"
