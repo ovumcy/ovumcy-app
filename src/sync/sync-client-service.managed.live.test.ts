@@ -22,9 +22,9 @@ const describeIfLive =
   managedBaseURL && syncBaseURL && managedAdminToken ? describe : describe.skip;
 
 describeIfLive("sync-client-service managed live transport", () => {
-  jest.setTimeout(30000);
+  jest.setTimeout(45000);
 
-  it("gates managed sync by entitlement and uploads/restores through the bridge once enabled", async () => {
+  it("starts entitled from the signup trial, round-trips the bridge, re-locks on expiry, and recovers on re-activation", async () => {
     const now = new Date("2026-03-20T09:00:00.000Z");
     const storage = createVolatileWebAppStorage();
     const secretStore = createSyncSecretStoreMock();
@@ -126,39 +126,25 @@ describeIfLive("sync-client-service managed live transport", () => {
     if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
       return;
     }
-    expect(connectResult.capabilities.syncEnabled).toBe(false);
+    // Public signup auto-starts a 30-day trial, so a fresh account is
+    // entitled immediately (sync_allowed=true, source=billing_subscription).
+    expect(connectResult.capabilities.syncEnabled).toBe(true);
     preferences = connectResult.preferences;
     expect(managedAccountID).toBeTruthy();
 
-    await expect(
-      runSyncUpload(
-        storage,
-        secretStore,
-        preferences,
-        now,
-        syncClientFactory,
-        managedClientFactory,
-      ),
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: "sync_not_allowed",
-    });
-
-    await grantManagedSyncEntitlement(managedAccountID);
-
-    const capabilitiesResult = await loadConnectedSyncCapabilities(
-      secretStore,
-      preferences,
-      syncClientFactory,
-      managedClientFactory,
-    );
-    expect(capabilitiesResult).toEqual({
-      ok: true,
-      capabilities: expect.objectContaining({
-        mode: "managed",
-        syncEnabled: true,
+    const trialSnapshot = await fetchAdminAccountSnapshot(managedAccountID);
+    expect(trialSnapshot.sync_entitlement).toEqual(
+      expect.objectContaining({
+        sync_allowed: true,
+        source: "billing_subscription",
       }),
-    });
+    );
+    expect(trialSnapshot.active_subscription).toEqual(
+      expect.objectContaining({
+        source: "trial",
+        status: "trialing",
+      }),
+    );
 
     const uploadResult = await runSyncUpload(
       storage,
@@ -222,6 +208,79 @@ describeIfLive("sync-client-service managed live transport", () => {
         notes: "managed live sync smoke",
       }),
     );
+
+    // Admin-expire the subscription: the server re-derives the entitlement
+    // (sync_allowed=false, source=billing_subscription_inactive) and the app
+    // must re-lock both the capability document and the upload path.
+    await setManagedSubscriptionStatus(managedAccountID, "expired");
+
+    const expiredCapabilities = await loadConnectedSyncCapabilities(
+      secretStore,
+      preferences,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(expiredCapabilities).toEqual({
+      ok: true,
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        syncEnabled: false,
+      }),
+    });
+
+    await expect(
+      runSyncUpload(
+        storage,
+        secretStore,
+        preferences,
+        now,
+        syncClientFactory,
+        managedClientFactory,
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: "sync_not_allowed",
+    });
+
+    const expiredSnapshot = await fetchAdminAccountSnapshot(managedAccountID);
+    expect(expiredSnapshot.sync_entitlement).toEqual(
+      expect.objectContaining({
+        sync_allowed: false,
+        source: "billing_subscription_inactive",
+      }),
+    );
+
+    // Admin re-activation restores the entitlement and the app recovers
+    // without reconnecting: capabilities re-enable and uploads flow again.
+    await setManagedSubscriptionStatus(managedAccountID, "active");
+
+    const recoveredCapabilities = await loadConnectedSyncCapabilities(
+      secretStore,
+      preferences,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(recoveredCapabilities).toEqual({
+      ok: true,
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        syncEnabled: true,
+      }),
+    });
+
+    const recoveredUploadResult = await runSyncUpload(
+      storage,
+      secretStore,
+      preferences,
+      now,
+      syncClientFactory,
+      managedClientFactory,
+    );
+    expect(recoveredUploadResult.ok).toBe(true);
+    if (!recoveredUploadResult.ok) {
+      return;
+    }
+    preferences = recoveredUploadResult.preferences;
 
     const disconnectResult = await disconnectSyncAccount(
       storage,
@@ -326,11 +385,10 @@ describeIfLive("sync-client-service managed live transport", () => {
     if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
       return;
     }
+    // The signup trial entitles the account without any admin grant.
+    expect(connectResult.capabilities.syncEnabled).toBe(true);
     preferences = connectResult.preferences;
     expect(managedAccountID).toBeTruthy();
-
-    // Ensure entitlement (no-op if dev server auto-grants).
-    await grantManagedSyncEntitlement(managedAccountID);
 
     const uploadResult = await runSyncUpload(
       storage,
@@ -373,26 +431,81 @@ describeIfLive("sync-client-service managed live transport", () => {
   });
 });
 
-async function grantManagedSyncEntitlement(accountID: string): Promise<void> {
-  const response = await fetch(
-    `${managedBaseURL.replace(/\/+$/, "")}/admin/accounts/${encodeURIComponent(accountID)}/entitlements/sync`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${managedAdminToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sync_allowed: true,
-        explanation: "Live managed smoke test entitlement",
-      }),
+type AdminAccountSnapshot = {
+  sync_entitlement?: {
+    sync_allowed?: boolean;
+    source?: string;
+  };
+  active_subscription?: {
+    source?: string;
+    status?: string;
+  } | null;
+};
+
+function adminAccountURL(accountID: string, suffix = ""): string {
+  return `${managedBaseURL.replace(/\/+$/, "")}/admin/accounts/${encodeURIComponent(accountID)}${suffix}`;
+}
+
+async function fetchAdminAccountSnapshot(
+  accountID: string,
+): Promise<AdminAccountSnapshot> {
+  const response = await fetch(adminAccountURL(accountID), {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${managedAdminToken}`,
     },
-  );
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-      `Failed to grant managed sync entitlement: ${response.status} ${errorText}`,
+      `Failed to read managed admin account snapshot: ${response.status} ${errorText}`,
+    );
+  }
+
+  return (await response.json()) as AdminAccountSnapshot;
+}
+
+// setManagedSubscriptionStatus drives the real billing path: upserting the
+// subscription makes the server re-derive the sync entitlement, exactly like
+// a production expiry or re-activation would (unlike the manual_admin
+// entitlement override, which bypasses billing).
+async function setManagedSubscriptionStatus(
+  accountID: string,
+  status: "active" | "expired",
+): Promise<void> {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const realNow = Date.now();
+  const periodStartsAt = new Date(
+    status === "expired" ? realNow - 31 * dayMs : realNow - dayMs,
+  );
+  const periodEndsAt = new Date(
+    status === "expired" ? realNow - dayMs : realNow + 30 * dayMs,
+  );
+
+  const response = await fetch(adminAccountURL(accountID, "/billing/subscription"), {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${managedAdminToken}`,
+      "Content-Type": "application/json",
+      "X-Admin-Actor": "managed-live-test",
+    },
+    body: JSON.stringify({
+      billing_interval: "month",
+      source: "manual_admin",
+      status,
+      currency: "EUR",
+      amount_minor: 499,
+      current_period_starts_at: periodStartsAt.toISOString(),
+      current_period_ends_at: periodEndsAt.toISOString(),
+      reason: `Live managed smoke test: flip subscription to ${status}.`,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Failed to set managed subscription status "${status}": ${response.status} ${errorText}`,
     );
   }
 }
