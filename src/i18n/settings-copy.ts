@@ -286,6 +286,17 @@ const settingsCopyEn = {
     restoreAccept: "Restore backup copy",
     restoreDeviceAuthPrompt:
       "Confirm with device security to restore encrypted data from the sync server.",
+    uploadOverBackupPrompt:
+      "This account already has an encrypted backup copy on the server, but this device has never synced. Uploading now will replace that server copy with this device's data. Replace it?",
+    uploadOverBackupAccept: "Replace server copy",
+    renewalCancelLabel: "Turn off auto-renewal",
+    renewalResumeLabel: "Resume auto-renewal",
+    renewalCancelPrompt:
+      "Turn off automatic renewal? Your plan stays active until the end of the already-paid period.",
+    renewalCancelAccept: "Turn off renewal",
+    offerDismissLabel: "Dismiss this offer",
+    offerPromoEyebrow: "Offer",
+    offerAnnouncementEyebrow: "News",
     disconnectPrompt:
       "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
     disconnectDeviceAuthPrompt:
@@ -321,6 +332,9 @@ const settingsCopyEn = {
     uploaded: "Encrypted backup copy uploaded to the sync server.",
     restored: "Encrypted backup copy restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
+    renewalCancelled:
+      "Auto-renewal is off. Your plan stays active until the current period ends.",
+    renewalResumed: "Auto-renewal is on again.",
     errors: {
       loginRequired: "Login is required.",
       passwordRequired: "Password is required.",
@@ -358,6 +372,10 @@ const settingsCopyEn = {
         "Unable to upload the encrypted backup copy right now. Please try again.",
       restoreFailed:
         "Unable to restore the encrypted backup copy right now. Please try again.",
+      renewalUnavailable:
+        "Renewal for this plan cannot be managed from the app.",
+      renewalUpdateFailed:
+        "Unable to update the renewal setting right now. Please try again.",
     },
   },
   symptoms: {
@@ -777,6 +795,17 @@ const settingsCopyDe: SettingsCopy = {
     restoreAccept: "Sicherung wiederherstellen",
     restoreDeviceAuthPrompt:
       "Bestätigen Sie mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
+    uploadOverBackupPrompt:
+      "Für dieses Konto liegt bereits eine verschlüsselte Sicherungskopie auf dem Server, aber dieses Gerät hat noch nie synchronisiert. Beim Hochladen wird die Serverkopie durch die Daten dieses Geräts ersetzt. Ersetzen?",
+    uploadOverBackupAccept: "Serverkopie ersetzen",
+    renewalCancelLabel: "Automatische Verlängerung deaktivieren",
+    renewalResumeLabel: "Automatische Verlängerung fortsetzen",
+    renewalCancelPrompt:
+      "Automatische Verlängerung deaktivieren? Ihr Tarif bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv.",
+    renewalCancelAccept: "Verlängerung deaktivieren",
+    offerDismissLabel: "Dieses Angebot ausblenden",
+    offerPromoEyebrow: "Angebot",
+    offerAnnouncementEyebrow: "Neuigkeiten",
     disconnectPrompt:
       "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
     disconnectDeviceAuthPrompt:
@@ -814,8 +843,15 @@ const settingsCopyDe: SettingsCopy = {
     restored:
       "Verschlüsselte Sicherungskopie vom Sync-Server wiederhergestellt.",
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
+    renewalCancelled:
+      "Automatische Verlängerung ist aus. Ihr Tarif bleibt bis zum Ende des aktuellen Zeitraums aktiv.",
+    renewalResumed: "Automatische Verlängerung ist wieder aktiv.",
     errors: {
       ...settingsCopyEn.account.errors,
+      renewalUnavailable:
+        "Die Verlängerung dieses Tarifs kann nicht in der App verwaltet werden.",
+      renewalUpdateFailed:
+        "Die Verlängerungseinstellung konnte gerade nicht geändert werden. Bitte versuchen Sie es erneut.",
       loginRequired: "Login ist erforderlich.",
       passwordRequired: "Passwort ist erforderlich.",
       deviceLabelRequired: "Die Gerätebezeichnung ist erforderlich.",
@@ -1302,6 +1338,17 @@ const settingsCopyFr: SettingsCopy = {
     restoreAccept: "Restaurer la sauvegarde",
     restoreDeviceAuthPrompt:
       "Confirmez avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
+    uploadOverBackupPrompt:
+      "Ce compte a déjà une copie de sauvegarde chiffrée sur le serveur, mais cet appareil n'a jamais synchronisé. Le téléversement remplacera cette copie serveur par les données de cet appareil. La remplacer ?",
+    uploadOverBackupAccept: "Remplacer la copie serveur",
+    renewalCancelLabel: "Désactiver le renouvellement automatique",
+    renewalResumeLabel: "Réactiver le renouvellement automatique",
+    renewalCancelPrompt:
+      "Désactiver le renouvellement automatique ? Votre plan reste actif jusqu'à la fin de la période déjà payée.",
+    renewalCancelAccept: "Désactiver le renouvellement",
+    offerDismissLabel: "Ignorer cette offre",
+    offerPromoEyebrow: "Offre",
+    offerAnnouncementEyebrow: "Actualité",
     disconnectPrompt:
       "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
     disconnectDeviceAuthPrompt:
@@ -1340,8 +1387,15 @@ const settingsCopyFr: SettingsCopy = {
     restored:
       "Copie de sauvegarde chiffrée restaurée depuis le serveur de sync.",
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
+    renewalCancelled:
+      "Renouvellement automatique désactivé. Votre plan reste actif jusqu'à la fin de la période en cours.",
+    renewalResumed: "Renouvellement automatique réactivé.",
     errors: {
       ...settingsCopyEn.account.errors,
+      renewalUnavailable:
+        "Le renouvellement de ce plan ne peut pas être géré depuis l'app.",
+      renewalUpdateFailed:
+        "Impossible de modifier le renouvellement pour le moment. Veuillez réessayer.",
       loginRequired: "L'identifiant est obligatoire.",
       passwordRequired: "Le mot de passe est obligatoire.",
       deviceLabelRequired: "Le nom de l'appareil est obligatoire.",
@@ -1823,6 +1877,17 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreAccept: "Восстановить копию",
       restoreDeviceAuthPrompt:
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
+      uploadOverBackupPrompt:
+        "На сервере уже есть зашифрованная резервная копия этого аккаунта, а это устройство ещё ни разу не синхронизировалось. Загрузка заменит серверную копию данными этого устройства. Заменить?",
+      uploadOverBackupAccept: "Заменить копию на сервере",
+      renewalCancelLabel: "Отключить автопродление",
+      renewalResumeLabel: "Возобновить автопродление",
+      renewalCancelPrompt:
+        "Отключить автоматическое продление? План останется активным до конца уже оплаченного периода.",
+      renewalCancelAccept: "Отключить продление",
+      offerDismissLabel: "Скрыть это предложение",
+      offerPromoEyebrow: "Предложение",
+      offerAnnouncementEyebrow: "Новости",
       disconnectPrompt:
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
       disconnectDeviceAuthPrompt:
@@ -1858,6 +1923,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploaded: "Зашифрованная резервная копия отправлена на sync-сервер.",
       restored: "Зашифрованная резервная копия восстановлена с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
+      renewalCancelled:
+        "Автопродление отключено. План останется активным до конца текущего периода.",
+      renewalResumed: "Автопродление снова включено.",
       errors: {
         loginRequired: "Логин обязателен.",
         passwordRequired: "Пароль обязателен.",
@@ -1900,6 +1968,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Сейчас не удалось отправить зашифрованную резервную копию. Попробуйте ещё раз.",
         restoreFailed:
           "Сейчас не удалось восстановить зашифрованную резервную копию. Попробуйте ещё раз.",
+        renewalUnavailable:
+          "Продлением этого плана нельзя управлять из приложения.",
+        renewalUpdateFailed:
+          "Не удалось изменить настройку продления. Попробуйте ещё раз.",
       },
     },
     symptoms: {
@@ -2313,6 +2385,17 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreAccept: "Restaurar instantánea",
       restoreDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
+      uploadOverBackupPrompt:
+        "Esta cuenta ya tiene una copia de respaldo cifrada en el servidor, pero este dispositivo nunca ha sincronizado. Subir ahora sustituirá esa copia del servidor por los datos de este dispositivo. ¿Sustituirla?",
+      uploadOverBackupAccept: "Sustituir copia del servidor",
+      renewalCancelLabel: "Desactivar la renovación automática",
+      renewalResumeLabel: "Reanudar la renovación automática",
+      renewalCancelPrompt:
+        "¿Desactivar la renovación automática? Tu plan sigue activo hasta el final del periodo ya pagado.",
+      renewalCancelAccept: "Desactivar renovación",
+      offerDismissLabel: "Descartar esta oferta",
+      offerPromoEyebrow: "Oferta",
+      offerAnnouncementEyebrow: "Novedades",
       disconnectPrompt:
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
       disconnectDeviceAuthPrompt:
@@ -2350,6 +2433,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restored:
         "La copia de respaldo cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
+      renewalCancelled:
+        "La renovación automática está desactivada. Tu plan sigue activo hasta el final del periodo actual.",
+      renewalResumed: "La renovación automática está activada de nuevo.",
       errors: {
         loginRequired: "El login es obligatorio.",
         passwordRequired: "La contraseña es obligatoria.",
@@ -2396,6 +2482,10 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo subir la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
         restoreFailed:
           "No se pudo restaurar la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
+        renewalUnavailable:
+          "La renovación de este plan no se puede gestionar desde la app.",
+        renewalUpdateFailed:
+          "No se pudo cambiar la renovación ahora mismo. Inténtalo de nuevo.",
       },
     },
     symptoms: {

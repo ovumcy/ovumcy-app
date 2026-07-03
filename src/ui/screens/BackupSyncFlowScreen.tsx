@@ -8,6 +8,7 @@ import type {
   BackupSyncErrorPresentation,
   BackupSyncSetupPresentation,
 } from "../../services/backup-sync-view-service";
+import type { ResolvedBillingOffer } from "../../services/offers-service";
 import { AppButton } from "../components/AppButton";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
@@ -25,6 +26,7 @@ import type {
 export type BackupSyncFlowScreenProps = {
   authLoginValue: string;
   authPasswordValue: string;
+  billingOffers: ResolvedBillingOffer[];
   confirmActionLabel: string;
   errorPresentation: BackupSyncErrorPresentation;
   generatedRecoveryCode: string;
@@ -37,13 +39,17 @@ export type BackupSyncFlowScreenProps = {
   onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
+  onCancelRenewal: () => void | Promise<void>;
   onDisconnect: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
+  onDismissOffer: (offerID: string) => void | Promise<void>;
   onEndpointChange: (value: string) => void;
   onExportRecoveryPhrase: () => void | Promise<void>;
   onIssuePartnerInvite: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
+  onOfferCTAPress: (offer: ResolvedBillingOffer) => void;
+  onResumeRenewal: () => void | Promise<void>;
   onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onPartnerAcceptInvite: () => void | Promise<void>;
   onPartnerRevokeGrant: (grantID: string) => void | Promise<void>;
@@ -90,6 +96,7 @@ export type BackupSyncFlowScreenProps = {
 export function BackupSyncFlowScreen({
   authLoginValue,
   authPasswordValue,
+  billingOffers,
   confirmActionLabel,
   errorPresentation,
   generatedRecoveryCode,
@@ -102,13 +109,17 @@ export function BackupSyncFlowScreen({
   onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
+  onCancelRenewal,
   onDisconnect,
   onDeviceLabelChange,
+  onDismissOffer,
   onEndpointChange,
   onExportRecoveryPhrase,
   onIssuePartnerInvite,
   onLogin,
   onModeSelect,
+  onOfferCTAPress,
+  onResumeRenewal,
   onPartnerAccessLevelChange,
   onPartnerAcceptInvite,
   onPartnerOpenGrant,
@@ -178,6 +189,7 @@ export function BackupSyncFlowScreen({
       <SettingsSyncSetupSection
         authLoginValue={authLoginValue}
         authPasswordValue={authPasswordValue}
+        billingOffers={billingOffers}
         confirmActionLabel={confirmActionLabel}
         errorPresentation={errorPresentation}
         generatedRecoveryCode={generatedRecoveryCode}
@@ -189,14 +201,18 @@ export function BackupSyncFlowScreen({
         onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
         onAuthLoginChange={onAuthLoginChange}
         onAuthPasswordChange={onAuthPasswordChange}
+        onCancelRenewal={onCancelRenewal}
         onDisconnect={onDisconnect}
         onDeviceLabelChange={onDeviceLabelChange}
+        onDismissOffer={onDismissOffer}
         onEndpointChange={onEndpointChange}
         onExportRecoveryPhrase={onExportRecoveryPhrase}
         onLogin={onLogin}
         onModeSelect={onModeSelect}
+        onOfferCTAPress={onOfferCTAPress}
         onPrepare={onPrepare}
         onRecoverAccess={onRecoverAccess}
+        onResumeRenewal={onResumeRenewal}
         onRetryPlanCheck={onRetryPlanCheck}
         onRecoveryPhraseChange={onRecoveryPhraseChange}
         onRegister={onRegister}

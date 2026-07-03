@@ -3,6 +3,7 @@ import {
   type EntitlementTokenStore,
 } from "../security/entitlement-token-store";
 import type { SyncSecretsRecord } from "../sync/sync-contract";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   loadManagedBillingSnapshot,
@@ -122,7 +123,7 @@ describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchan
     });
     const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
 
-    const features = await loadManagedPremiumFeatures(secretStore, "managed");
+    const features = await loadManagedPremiumFeatures(createLocalAppStorageMock(), secretStore, "managed");
 
     expect(features).toEqual({ ...FULL_FALSE_FEATURES, reminders: true });
   });
@@ -134,7 +135,7 @@ describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchan
     });
     const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
 
-    await loadManagedBillingSnapshot(secretStore, "managed");
+    await loadManagedBillingSnapshot(createLocalAppStorageMock(), secretStore, "managed");
 
     const calledUrls = fetchMock.mock.calls.map((call) => String(call[0]));
     expect(calledUrls.some((url) => url.endsWith("/account/billing"))).toBe(
@@ -165,6 +166,7 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     const store = createMemoryEntitlementTokenStore();
 
     const snapshot = await loadManagedBillingSnapshot(
+      createLocalAppStorageMock(),
       secretStore,
       "managed",
       gate(store),
@@ -194,6 +196,7 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     const store = createMemoryEntitlementTokenStore();
 
     const snapshot = await loadManagedBillingSnapshot(
+      createLocalAppStorageMock(),
       secretStore,
       "managed",
       gate(store),
@@ -217,6 +220,7 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
 
     const snapshot = await loadManagedBillingSnapshot(
+      createLocalAppStorageMock(),
       secretStore,
       "managed",
       gate(store),
@@ -235,7 +239,7 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     const store = createMemoryEntitlementTokenStore();
     await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
 
-    const snapshot = await loadManagedBillingSnapshot(secretStore, "managed", {
+    const snapshot = await loadManagedBillingSnapshot(createLocalAppStorageMock(), secretStore, "managed", {
       store,
       now: GOLDEN_PAST_EXP, // token exp has passed
       expectedSub: GOLDEN_SUB,
@@ -255,12 +259,201 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
     const store = createMemoryEntitlementTokenStore();
 
-    const snapshot = await loadManagedBillingSnapshot(secretStore, "managed", {
+    const snapshot = await loadManagedBillingSnapshot(createLocalAppStorageMock(), secretStore, "managed", {
       store,
       now: GOLDEN_NOW,
       expectedSub: "acct-someone-else",
     });
 
     expect(snapshot?.premiumFeatures).toEqual(FULL_FALSE_FEATURES);
+  });
+});
+
+describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
+  const CACHE_NOW = new Date("2026-07-01T12:00:00.000Z");
+  const FRESH_FETCHED_AT = "2026-06-30T12:00:00.000Z"; // 24h old, inside 72h
+  const STALE_FETCHED_AT = "2026-06-28T11:00:00.000Z"; // 73h old, outside 72h
+
+  function cachedRecord(fetchedAt: string) {
+    return {
+      snapshot: {
+        hasActivePlan: true,
+        premiumFeatures: {
+          ...FULL_FALSE_FEATURES,
+          doctorPDF: true,
+          reminders: true,
+        },
+        fetchedAt,
+      },
+      dismissedOfferIDs: ["offer-1"],
+    };
+  }
+
+  function mockFailedBillingFetch(): void {
+    // performFetch turns thrown network errors into a synthetic 599 response.
+    global.fetch = jest.fn(async () => {
+      throw new Error("network down");
+    }) as unknown as typeof fetch;
+  }
+
+  it("refreshes the persisted last-known-good snapshot on a successful fetch", async () => {
+    mockManagedFetch({
+      billingFeatures: { ...FULL_FALSE_FEATURES, doctorPDF: true },
+      tokenResponse: null,
+    });
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    const snapshot = await loadManagedBillingSnapshot(
+      storage,
+      secretStore,
+      "managed",
+      undefined,
+      CACHE_NOW,
+    );
+
+    expect(snapshot?.hasActivePlan).toBe(true);
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith({
+      snapshot: {
+        hasActivePlan: true,
+        premiumFeatures: { ...FULL_FALSE_FEATURES, doctorPDF: true },
+        fetchedAt: CACHE_NOW.toISOString(),
+      },
+      dismissedOfferIDs: [],
+    });
+  });
+
+  it("serves the cached snapshot within the 72h TTL when the billing fetch fails", async () => {
+    mockFailedBillingFetch();
+    const storage = createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest
+        .fn()
+        .mockResolvedValue(cachedRecord(FRESH_FETCHED_AT)),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    const snapshot = await loadManagedBillingSnapshot(
+      storage,
+      secretStore,
+      "managed",
+      undefined,
+      CACHE_NOW,
+    );
+
+    expect(snapshot).toEqual({
+      hasActivePlan: true,
+      premiumFeatures: {
+        ...FULL_FALSE_FEATURES,
+        doctorPDF: true,
+        reminders: true,
+      },
+      // Server-driven affordances fail closed on cached truth.
+      activeSubscription: null,
+      billingManagement: {
+        canManageRenewal: false,
+        canCancelAtPeriodEnd: false,
+        canResumeRenewal: false,
+      },
+      offers: [],
+    });
+  });
+
+  it("fails closed exactly as before once the cache is older than 72h", async () => {
+    mockFailedBillingFetch();
+    const storage = createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest
+        .fn()
+        .mockResolvedValue(cachedRecord(STALE_FETCHED_AT)),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    await expect(
+      loadManagedBillingSnapshot(
+        storage,
+        secretStore,
+        "managed",
+        undefined,
+        CACHE_NOW,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("fails closed when the fetch fails and no snapshot was ever cached", async () => {
+    mockFailedBillingFetch();
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    await expect(
+      loadManagedBillingSnapshot(
+        storage,
+        secretStore,
+        "managed",
+        undefined,
+        CACHE_NOW,
+      ),
+    ).resolves.toBeNull();
+  });
+
+  it("never serves the cache without a managed session token", async () => {
+    mockFailedBillingFetch();
+    const storage = createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest
+        .fn()
+        .mockResolvedValue(cachedRecord(FRESH_FETCHED_AT)),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      ...MANAGED_SECRETS,
+      managedAuthSessionToken: null,
+    });
+
+    await expect(
+      loadManagedBillingSnapshot(
+        storage,
+        secretStore,
+        "managed",
+        undefined,
+        CACHE_NOW,
+      ),
+    ).resolves.toBeNull();
+    expect(storage.readManagedBillingCacheRecord).not.toHaveBeenCalled();
+  });
+
+  it("keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip", async () => {
+    mockFailedBillingFetch();
+    const storage = createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest.fn().mockResolvedValue({
+        snapshot: {
+          hasActivePlan: true,
+          premiumFeatures: {
+            advancedFertility: true,
+            advancedInsights: true,
+            doctorPDF: true,
+            extendedReports: true,
+            partnerAccess: true,
+            reminders: true,
+          },
+          fetchedAt: FRESH_FETCHED_AT,
+        },
+        dismissedOfferIDs: [],
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    await expect(
+      loadManagedPremiumFeatures(
+        storage,
+        secretStore,
+        "managed",
+        undefined,
+        CACHE_NOW,
+      ),
+    ).resolves.toEqual({
+      advancedFertility: true,
+      advancedInsights: true,
+      doctorPDF: true,
+      extendedReports: true,
+      partnerAccess: true,
+      reminders: true,
+    });
   });
 });

@@ -54,15 +54,18 @@ import type {
   LocalAppStorage,
   LocalBootstrapState,
   LocalDayLogSummary,
+  ManagedBillingCacheRecord,
 } from "./storage-contract";
 import {
   createDefaultBootstrapState,
+  createDefaultManagedBillingCacheRecord,
+  normalizeManagedBillingCacheRecord,
   persistBootstrapIncompleteOnboardingStep,
   resolveBootstrapIncompleteOnboardingStep,
 } from "./storage-contract";
 
 const DATABASE_NAME = "ovumcy-local.db";
-const DATABASE_VERSION = 12;
+const DATABASE_VERSION = 13;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -147,6 +150,18 @@ const CREATE_SYMPTOMS_TABLE = `
 const CREATE_SYMPTOMS_SLUG_INDEX = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_symptoms_slug
   ON symptoms(slug);
+`;
+
+// v13: last-known-good managed billing snapshot + dismissed offer ids.
+// The row is a singleton and carries no plaintext shadow columns: premium
+// flags are account-adjacent sensitive state, so the whole record lives in
+// the AEAD-protected payload only (security.md forbids plaintext premium-flag
+// persistence).
+const CREATE_MANAGED_BILLING_CACHE_TABLE = `
+  CREATE TABLE IF NOT EXISTS managed_billing_cache (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    encrypted_payload TEXT
+  );
 `;
 
 const ADD_PROFILE_ENCRYPTED_PAYLOAD_COLUMN = `
@@ -257,6 +272,10 @@ type SymptomRow = {
   is_default: number;
   is_archived: number;
   sort_order: number;
+  encrypted_payload: string | null;
+};
+
+type ManagedBillingCacheRow = {
   encrypted_payload: string | null;
 };
 
@@ -714,6 +733,34 @@ export function createSQLiteAppStorage(
     await upsertSymptomRecord(database, record, await getLocalDataKey(database));
   }
 
+  async function readManagedBillingCacheRecordInternal(): Promise<ManagedBillingCacheRecord> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const row = await withStorageOperationLabel(
+      "sqlite/readManagedBillingCache/select",
+      () =>
+        database.getFirstAsync<ManagedBillingCacheRow>(
+          `SELECT encrypted_payload
+           FROM managed_billing_cache
+           WHERE id = 1;`,
+        ),
+    );
+
+    return row
+      ? mapManagedBillingCacheRow(row, localDataKey)
+      : createDefaultManagedBillingCacheRecord();
+  }
+
+  async function writeManagedBillingCacheRecordInternal(
+    record: ManagedBillingCacheRecord,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writeManagedBillingCache/upsert", () =>
+      upsertManagedBillingCacheRecord(database, record, localDataKey),
+    );
+  }
+
   return {
     readBootstrapState() {
       return enqueueStorageOperation(() => readBootstrapStateInternal());
@@ -762,6 +809,14 @@ export function createSQLiteAppStorage(
     },
     writeSymptomRecord(record) {
       return enqueueStorageOperation(() => writeSymptomRecordInternal(record));
+    },
+    readManagedBillingCacheRecord() {
+      return enqueueStorageOperation(() => readManagedBillingCacheRecordInternal());
+    },
+    writeManagedBillingCacheRecord(record) {
+      return enqueueStorageOperation(() =>
+        writeManagedBillingCacheRecordInternal(record),
+      );
     },
   };
 }
@@ -883,6 +938,9 @@ async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<void> {
   );
   await withStorageOperationLabel("sqlite/schema/reconcileSymptoms", () =>
     reconcileSymptomsSchema(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileManagedBillingCache", () =>
+    migrateV13ManagedBillingCache(database),
   );
   await withStorageOperationLabel("sqlite/schema/setUserVersion", () =>
     runSchemaStatement(database, `PRAGMA user_version = ${DATABASE_VERSION};`),
@@ -1010,6 +1068,15 @@ async function migrateV12DayLogPregnancyTest(
     database,
     ADD_DAY_LOG_PREGNANCY_TEST_COLUMN,
   );
+}
+
+// v12 -> v13: adds the managed_billing_cache singleton table. CREATE TABLE IF
+// NOT EXISTS keeps this idempotent for both fresh installs and re-runs, so it
+// can double as the reconcile step like the other table migrations.
+async function migrateV13ManagedBillingCache(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_MANAGED_BILLING_CACHE_TABLE);
 }
 
 async function reconcileBootstrapStateSchema(
@@ -1167,7 +1234,14 @@ async function canDecryptCanaryRow(
 }
 
 async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolean> {
-  const [bootstrapRow, profileRow, dayLogRow, syncPreferencesRow, symptomRow] =
+  const [
+    bootstrapRow,
+    profileRow,
+    dayLogRow,
+    syncPreferencesRow,
+    symptomRow,
+    managedBillingCacheRow,
+  ] =
     await Promise.all([
       database.getFirstAsync<{ encrypted_payload: string | null }>(
         "SELECT encrypted_payload FROM bootstrap_state WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
@@ -1184,6 +1258,9 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
     database.getFirstAsync<{ encrypted_payload: string | null }>(
       "SELECT encrypted_payload FROM symptoms WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
     ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM managed_billing_cache WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
   ]);
 
   return Boolean(
@@ -1191,7 +1268,8 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
       profileRow?.encrypted_payload ||
       dayLogRow?.encrypted_payload ||
       syncPreferencesRow?.encrypted_payload ||
-      symptomRow?.encrypted_payload,
+      symptomRow?.encrypted_payload ||
+      managedBillingCacheRow?.encrypted_payload,
   );
 }
 
@@ -1201,6 +1279,7 @@ async function wipeLocalAppTables(database: LocalAppDatabase): Promise<void> {
   await database.runAsync("DELETE FROM profile_settings;");
   await database.runAsync("DELETE FROM bootstrap_state;");
   await database.runAsync("DELETE FROM sync_preferences;");
+  await database.runAsync("DELETE FROM managed_billing_cache;");
 }
 
 async function maybeMigrateLegacyLocalAppData(
@@ -1390,11 +1469,18 @@ async function ensureSeedRows(
   database: LocalAppDatabase,
   localDataKey: string,
 ): Promise<void> {
-  const [bootstrapCount, profileCount, syncPreferencesCount, symptomCount] = await Promise.all([
+  const [
+    bootstrapCount,
+    profileCount,
+    syncPreferencesCount,
+    symptomCount,
+    managedBillingCacheCount,
+  ] = await Promise.all([
     readRowCount(database, "bootstrap_state"),
     readRowCount(database, "profile_settings"),
     readRowCount(database, "sync_preferences"),
     readRowCount(database, "symptoms"),
+    readRowCount(database, "managed_billing_cache"),
   ]);
 
   if (bootstrapCount === 0) {
@@ -1422,6 +1508,14 @@ async function ensureSeedRows(
       await upsertSymptomRecord(database, record, localDataKey);
     }
   }
+
+  if (managedBillingCacheCount === 0) {
+    await upsertManagedBillingCacheRecord(
+      database,
+      createDefaultManagedBillingCacheRecord(),
+      localDataKey,
+    );
+  }
 }
 
 async function readRowCount(
@@ -1431,7 +1525,8 @@ async function readRowCount(
     | "profile_settings"
     | "day_logs"
     | "sync_preferences"
-    | "symptoms",
+    | "symptoms"
+    | "managed_billing_cache",
 ): Promise<number> {
   const row = await database.getFirstAsync<CountRow>(
     `SELECT COUNT(*) AS count FROM ${tableName};`,
@@ -1697,6 +1792,44 @@ async function upsertSymptomRecord(
       localDataKey,
       record,
       buildLocalDataAad("symptom", lookupKey),
+    ),
+  );
+}
+
+async function upsertManagedBillingCacheRecord(
+  database: LocalAppDatabase,
+  record: ManagedBillingCacheRecord,
+  localDataKey: string,
+): Promise<void> {
+  await database.runAsync(
+    `INSERT INTO managed_billing_cache (
+       id,
+       encrypted_payload
+     )
+     VALUES (1, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       encrypted_payload = excluded.encrypted_payload;`,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalizeManagedBillingCacheRecord(record),
+      buildLocalDataAad("managed_billing_cache", "1"),
+    ),
+  );
+}
+
+function mapManagedBillingCacheRow(
+  row: ManagedBillingCacheRow,
+  localDataKey: string,
+): ManagedBillingCacheRecord {
+  if (!row.encrypted_payload) {
+    return createDefaultManagedBillingCacheRecord();
+  }
+
+  return normalizeManagedBillingCacheRecord(
+    decryptLocalDataRecord<ManagedBillingCacheRecord>(
+      localDataKey,
+      row.encrypted_payload,
+      buildLocalDataAad("managed_billing_cache", "1"),
     ),
   );
 }

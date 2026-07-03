@@ -1,6 +1,9 @@
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import { createSyncSecretsRecord } from "../security/sync-crypto";
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import {
+  createDefaultManagedBillingCacheRecord,
+  type LocalAppStorage,
+} from "../storage/local/storage-contract";
 import {
   MANAGED_SYNC_BASE_URL,
   createDefaultSyncPreferencesRecord,
@@ -182,6 +185,12 @@ export async function saveSyncPreferencesDraft(
   try {
     if (shouldResetPreparedState) {
       await secretStore.clearSyncSecrets();
+      // Clearing sync secrets ends the managed session context (mode switch,
+      // endpoint change, relabel): purge the billing-snapshot cache alongside,
+      // per the same session-boundary invariant as the partner-invite buffer.
+      await storage.writeManagedBillingCacheRecord(
+        createDefaultManagedBillingCacheRecord(),
+      );
     }
     await storage.writeSyncPreferencesRecord(nextPreferences);
 

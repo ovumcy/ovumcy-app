@@ -128,6 +128,7 @@ describe("managed-cloud-api-client", () => {
           canCancelAtPeriodEnd: false,
           canResumeRenewal: false,
         },
+        offers: [],
       },
     });
 
@@ -138,6 +139,200 @@ describe("managed-cloud-api-client", () => {
         sessionToken: "sync-session-1",
         sessionExpiresAt: "2026-03-24T01:00:00.000Z",
       },
+    });
+  });
+
+  it("parses billing offers tolerantly: malformed entries drop, valid entries survive", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          has_active_plan: true,
+          offers: [
+            // Valid promo with full copy + play_checkout action.
+            {
+              id: "offer-1",
+              kind: "subscription_promo",
+              audience: ["trial"],
+              startsAt: "2026-06-01T00:00:00.000Z",
+              endsAt: "2026-08-01T00:00:00.000Z",
+              copy: {
+                en: { title: "Summer deal", body: "Save 20%", cta: "Upgrade" },
+                ru: { title: "Летняя акция", body: "Скидка 20%", cta: "Обновить" },
+                // Malformed locale entry: dropped, offer survives.
+                de: { title: "Nur Titel" },
+              },
+              action: {
+                type: "play_checkout",
+                productId: "premium",
+                basePlanId: "monthly",
+                offerId: "summer20",
+              },
+            },
+            // Announcement pointing at a screen; optional fields absent.
+            {
+              id: "offer-2",
+              kind: "announcement",
+              copy: {
+                en: { title: "New", body: "Backup got faster", cta: "Open" },
+              },
+              action: { type: "screen", screen: "backup-sync" },
+            },
+            // Malformed entries: dropped without failing the snapshot.
+            { kind: "subscription_promo" },
+            { id: "", kind: "announcement", action: { type: "screen" } },
+            { id: "offer-3", kind: "announcement", action: "not-an-object" },
+            "not-an-object",
+            null,
+          ],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8091",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    const result = await client.getBillingSnapshot("managed-session-1");
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected ok billing snapshot");
+    }
+    expect(result.billing.offers).toEqual([
+      {
+        id: "offer-1",
+        kind: "subscription_promo",
+        audience: ["trial"],
+        startsAt: "2026-06-01T00:00:00.000Z",
+        endsAt: "2026-08-01T00:00:00.000Z",
+        copy: {
+          en: { title: "Summer deal", body: "Save 20%", cta: "Upgrade" },
+          ru: { title: "Летняя акция", body: "Скидка 20%", cta: "Обновить" },
+        },
+        action: {
+          type: "play_checkout",
+          productId: "premium",
+          basePlanId: "monthly",
+          offerId: "summer20",
+          screen: null,
+        },
+      },
+      {
+        id: "offer-2",
+        kind: "announcement",
+        audience: [],
+        startsAt: null,
+        endsAt: null,
+        copy: {
+          en: { title: "New", body: "Backup got faster", cta: "Open" },
+        },
+        action: {
+          type: "screen",
+          productId: null,
+          basePlanId: null,
+          offerId: null,
+          screen: "backup-sync",
+        },
+      },
+    ]);
+  });
+
+  it("maps a missing or invalid offers field to an empty list", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ has_active_plan: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ has_active_plan: true, offers: "corrupted" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8091",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    const missing = await client.getBillingSnapshot("managed-session-1");
+    expect(missing.ok && missing.billing.offers).toEqual([]);
+    const invalid = await client.getBillingSnapshot("managed-session-1");
+    expect(invalid.ok && invalid.billing.offers).toEqual([]);
+  });
+
+  it("sends the renewal toggle and maps the refreshed billing snapshot", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          has_active_plan: true,
+          active_subscription: {
+            status: "active",
+            current_period_ends_at: "2026-08-01T00:00:00.000Z",
+            cancel_at_period_end: true,
+          },
+          billing_management: {
+            can_manage_renewal: true,
+            can_cancel_at_period_end: false,
+            can_resume_renewal: true,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8091",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    const result = await client.updateBillingRenewal("managed-session-1", {
+      cancelAtPeriodEnd: true,
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:8091/account/billing/renewal",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ cancel_at_period_end: true }),
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected ok renewal result");
+    }
+    expect(result.billing.activeSubscription?.cancelAtPeriodEnd).toBe(true);
+    expect(result.billing.billingManagement).toEqual({
+      canManageRenewal: true,
+      canCancelAtPeriodEnd: false,
+      canResumeRenewal: true,
+    });
+  });
+
+  it("maps renewal management error codes", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "billing_management_unavailable" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8091",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.updateBillingRenewal("managed-session-1", {
+        cancelAtPeriodEnd: true,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: "billing_management_unavailable",
     });
   });
 

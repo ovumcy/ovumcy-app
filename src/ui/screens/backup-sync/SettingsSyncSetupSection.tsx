@@ -15,6 +15,7 @@ import type {
   BackupSyncErrorPresentation,
   BackupSyncSetupPresentation,
 } from "../../../services/backup-sync-view-service";
+import type { ResolvedBillingOffer } from "../../../services/offers-service";
 import type {
   SyncPreferencesRecord,
 } from "../../../sync/sync-contract";
@@ -22,6 +23,7 @@ import { AppButton } from "../../components/AppButton";
 import { AppTextInput } from "../../components/AppTextInput";
 import { ChoiceGroup } from "../../components/ChoiceGroup";
 import { FeatureCard } from "../../components/FeatureCard";
+import { OfferCard } from "../../components/OfferCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
 import { spacing } from "../../theme/tokens";
@@ -30,6 +32,7 @@ import { useThemedStyles } from "../../theme/useThemedStyles";
 type SettingsSyncSetupSectionProps = {
   authLoginValue: string;
   authPasswordValue: string;
+  billingOffers?: ResolvedBillingOffer[];
   confirmActionLabel: string;
   errorPresentation: BackupSyncErrorPresentation;
   generatedRecoveryCode: string;
@@ -41,14 +44,18 @@ type SettingsSyncSetupSectionProps = {
   onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
+  onCancelRenewal?: (() => void | Promise<void>) | undefined;
   onDisconnect: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
+  onDismissOffer?: ((offerID: string) => void | Promise<void>) | undefined;
   onEndpointChange: (value: string) => void;
   onExportRecoveryPhrase: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
+  onOfferCTAPress?: ((offer: ResolvedBillingOffer) => void) | undefined;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
+  onResumeRenewal?: (() => void | Promise<void>) | undefined;
   onRetryPlanCheck: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
@@ -65,6 +72,7 @@ type SettingsSyncSetupSectionProps = {
 export function SettingsSyncSetupSection({
   authLoginValue,
   authPasswordValue,
+  billingOffers = [],
   confirmActionLabel,
   errorPresentation,
   generatedRecoveryCode,
@@ -76,14 +84,18 @@ export function SettingsSyncSetupSection({
   onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
+  onCancelRenewal,
   onDisconnect,
   onDeviceLabelChange,
+  onDismissOffer,
   onEndpointChange,
   onExportRecoveryPhrase,
   onLogin,
   onModeSelect,
+  onOfferCTAPress,
   onPrepare,
   onRecoverAccess,
+  onResumeRenewal,
   onRetryPlanCheck,
   onRecoveryPhraseChange,
   onRegister,
@@ -479,6 +491,59 @@ export function SettingsSyncSetupSection({
                 {presentation.planCountdownMessage}
               </Text>
             ) : null}
+            {presentation.showRenewalManagement ? (
+              <View
+                style={styles.actionsStack}
+                testID="settings-sync-renewal-row"
+              >
+                {presentation.showCancelRenewal ? (
+                  <AppButton
+                    disabled={presentation.accountActionsDisabled}
+                    label={viewData.renewalCancelLabel}
+                    onPress={onCancelRenewal ?? (() => {})}
+                    testID="settings-sync-renewal-cancel-button"
+                    variant="secondary"
+                  />
+                ) : null}
+                {presentation.showResumeRenewal ? (
+                  <AppButton
+                    disabled={presentation.accountActionsDisabled}
+                    label={viewData.renewalResumeLabel}
+                    onPress={onResumeRenewal ?? (() => {})}
+                    testID="settings-sync-renewal-resume-button"
+                    variant="secondary"
+                  />
+                ) : null}
+              </View>
+            ) : null}
+            {billingOffers.map((offer) => (
+              <OfferCard
+                body={offer.body}
+                title={offer.title}
+                // play_checkout CTAs stay inert until Play Billing lands in a
+                // later phase; only "screen" offers are actionable in v1.
+                ctaDisabled={offer.action.type === "play_checkout"}
+                ctaLabel={offer.cta}
+                dismissAccessibilityLabel={viewData.offerDismissLabel}
+                eyebrowLabel={
+                  offer.kind === "subscription_promo"
+                    ? viewData.offerPromoEyebrow
+                    : viewData.offerAnnouncementEyebrow
+                }
+                key={offer.id}
+                onDismiss={() => {
+                  onDismissOffer?.(offer.id);
+                }}
+                onPressCTA={
+                  offer.action.type === "screen" && onOfferCTAPress
+                    ? () => {
+                        onOfferCTAPress(offer);
+                      }
+                    : undefined
+                }
+                testID={`settings-sync-offer-${offer.id}`}
+              />
+            ))}
             <Text style={styles.helperText}>{viewData.planUnavailable}</Text>
             {hasSyncSession && !presentation.hasManagedPlan ? (
               <AppButton

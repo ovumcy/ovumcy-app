@@ -4,6 +4,86 @@ import type { ProfileRecord } from "../../models/profile";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { SymptomRecord } from "../../models/symptom";
 
+// ManagedBillingCachedSnapshot is the last-known-good managed billing state
+// persisted for the bounded offline grace window. It carries only what local
+// feature gates derive (plan state + the six premium booleans) plus the
+// fetchedAt timestamp of the successful server fetch; server-driven
+// affordances (active subscription details, renewal management, offers) are
+// deliberately NOT cached so they fail closed while offline.
+export type ManagedBillingCachedSnapshot = {
+  hasActivePlan: boolean;
+  premiumFeatures: {
+    advancedFertility: boolean;
+    advancedInsights: boolean;
+    doctorPDF: boolean;
+    extendedReports: boolean;
+    partnerAccess: boolean;
+    reminders: boolean;
+  };
+  fetchedAt: string;
+};
+
+export type ManagedBillingCacheRecord = {
+  snapshot: ManagedBillingCachedSnapshot | null;
+  dismissedOfferIDs: string[];
+};
+
+export function createDefaultManagedBillingCacheRecord(): ManagedBillingCacheRecord {
+  return {
+    snapshot: null,
+    dismissedOfferIDs: [],
+  };
+}
+
+export function normalizeManagedBillingCacheRecord(
+  value: unknown,
+): ManagedBillingCacheRecord {
+  const defaults = createDefaultManagedBillingCacheRecord();
+  if (typeof value !== "object" || value === null) {
+    return defaults;
+  }
+
+  const record = value as Partial<ManagedBillingCacheRecord>;
+  return {
+    snapshot: normalizeManagedBillingCachedSnapshot(record.snapshot),
+    dismissedOfferIDs: Array.isArray(record.dismissedOfferIDs)
+      ? record.dismissedOfferIDs.filter(
+          (id): id is string => typeof id === "string" && id.length > 0,
+        )
+      : defaults.dismissedOfferIDs,
+  };
+}
+
+function normalizeManagedBillingCachedSnapshot(
+  value: unknown,
+): ManagedBillingCachedSnapshot | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+
+  const snapshot = value as Partial<ManagedBillingCachedSnapshot>;
+  if (typeof snapshot.fetchedAt !== "string" || snapshot.fetchedAt.length === 0) {
+    return null;
+  }
+
+  const features: Partial<ManagedBillingCachedSnapshot["premiumFeatures"]> =
+    typeof snapshot.premiumFeatures === "object" && snapshot.premiumFeatures !== null
+      ? snapshot.premiumFeatures
+      : {};
+  return {
+    hasActivePlan: snapshot.hasActivePlan === true,
+    premiumFeatures: {
+      advancedFertility: features.advancedFertility === true,
+      advancedInsights: features.advancedInsights === true,
+      doctorPDF: features.doctorPDF === true,
+      extendedReports: features.extendedReports === true,
+      partnerAccess: features.partnerAccess === true,
+      reminders: features.reminders === true,
+    },
+    fetchedAt: snapshot.fetchedAt,
+  };
+}
+
 export type LocalBootstrapState = {
   hasCompletedOnboarding: boolean;
   profileVersion: number;
@@ -83,4 +163,6 @@ export interface LocalAppStorage {
   ): Promise<LocalDayLogSummary>;
   listSymptomRecords(): Promise<SymptomRecord[]>;
   writeSymptomRecord(record: SymptomRecord): Promise<void>;
+  readManagedBillingCacheRecord(): Promise<ManagedBillingCacheRecord>;
+  writeManagedBillingCacheRecord(record: ManagedBillingCacheRecord): Promise<void>;
 }

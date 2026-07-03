@@ -26,6 +26,7 @@ export async function syncManagedPartnerSharedProjections(
   }
 
   const premiumFeatures = await loadManagedPremiumFeatures(
+    storage,
     syncSecretStore,
     syncState.preferences.mode,
   );

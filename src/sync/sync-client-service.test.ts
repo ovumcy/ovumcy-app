@@ -15,11 +15,13 @@ import {
   type EncryptedSyncEnvelope,
 } from "./sync-contract";
 import {
+  clearLocalSyncSession,
   connectSyncAccount,
   disconnectSyncAccount,
   finalizeSyncSessionAfterTOTP,
   loadConnectedSyncCapabilities,
   recoverSyncAccess,
+  requiresUploadOverBackupConfirmation,
   runSyncRestore,
   runSyncUpload,
 } from "./sync-client-service";
@@ -304,6 +306,268 @@ describe("sync-client-service", () => {
         lastSyncedAt: "2026-03-20T08:10:00.000Z",
       }),
     );
+  });
+
+  it("flags upload-over-backup only for never-synced installs facing an existing remote blob", () => {
+    expect(
+      requiresUploadOverBackupConfirmation({
+        lastRemoteGeneration: null,
+        remoteBackupExists: true,
+      }),
+    ).toBe(true);
+    expect(
+      requiresUploadOverBackupConfirmation({
+        lastRemoteGeneration: null,
+        remoteBackupExists: false,
+      }),
+    ).toBe(false);
+    expect(
+      requiresUploadOverBackupConfirmation({
+        lastRemoteGeneration: 42,
+        remoteBackupExists: true,
+      }),
+    ).toBe(false);
+  });
+
+  describe("upload-over-backup guard in runSyncUpload", () => {
+    function createUploadGuardHarness(options: {
+      lastRemoteGeneration: number | null;
+      remoteBlobExists: boolean;
+    }) {
+      const storage = createLocalAppStorageMock();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock({
+        ...preparedSecrets.record,
+        authSessionToken: "session-1",
+      });
+      const preferences = {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted" as const,
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected" as const,
+        preparedAt: "2026-03-20T08:00:00.000Z",
+        lastRemoteGeneration: options.lastRemoteGeneration,
+      };
+      const getBlob = jest.fn().mockResolvedValue(
+        options.remoteBlobExists
+          ? {
+              ok: true,
+              blob: {
+                schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+                generation: 999,
+                checksumSHA256: "aa",
+                ciphertextBase64: "bb",
+                ciphertextSize: 2,
+                updatedAt: "2026-03-19T00:00:00.000Z",
+              },
+            }
+          : { ok: false, errorCode: "blob_not_found" },
+      );
+      const putBlob = jest.fn().mockImplementation(async (_token, input) => ({
+        ok: true,
+        blob: {
+          schemaVersion: input.schemaVersion,
+          generation: input.generation,
+          checksumSHA256: input.checksumSHA256,
+          ciphertextBase64: input.ciphertextBase64,
+          ciphertextSize: 3,
+          updatedAt: "2026-03-20T08:10:00.000Z",
+        },
+      }));
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          getCapabilities: jest.fn().mockResolvedValue({
+            ok: true,
+            capabilities: {
+              mode: "self_hosted",
+              syncEnabled: true,
+              recoverySupported: false,
+              pushSupported: false,
+              portalSupported: false,
+              advancedCloudInsights: false,
+              maxDevices: 5,
+              maxBlobBytes: 1024,
+            },
+          }),
+          getBlob,
+          putBlob,
+        }),
+      );
+
+      return { storage, secretStore, preferences, getBlob, putBlob, apiClientFactory };
+    }
+
+    it("requires the confirmation and aborts on decline for a fresh install over an existing backup", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: null,
+        remoteBlobExists: true,
+      });
+      const confirmUploadOverExistingBackup = jest.fn().mockResolvedValue(false);
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+        undefined,
+        { confirmUploadOverExistingBackup },
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "upload_over_backup_declined",
+      });
+      expect(confirmUploadOverExistingBackup).toHaveBeenCalledTimes(1);
+      expect(harness.putBlob).not.toHaveBeenCalled();
+      expect(harness.storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
+    it("proceeds with the upload when the owner explicitly confirms the overwrite", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: null,
+        remoteBlobExists: true,
+      });
+      const confirmUploadOverExistingBackup = jest.fn().mockResolvedValue(true);
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+        undefined,
+        { confirmUploadOverExistingBackup },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(confirmUploadOverExistingBackup).toHaveBeenCalledTimes(1);
+      expect(harness.putBlob).toHaveBeenCalledTimes(1);
+    });
+
+    it("fails closed when no guard is wired and a remote backup exists", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: null,
+        remoteBlobExists: true,
+      });
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "upload_over_backup_declined",
+      });
+      expect(harness.putBlob).not.toHaveBeenCalled();
+    });
+
+    it("uploads without any prompt on a fresh install when the server has no blob yet", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: null,
+        remoteBlobExists: false,
+      });
+      const confirmUploadOverExistingBackup = jest.fn().mockResolvedValue(false);
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+        undefined,
+        { confirmUploadOverExistingBackup },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(harness.getBlob).toHaveBeenCalledTimes(1);
+      expect(confirmUploadOverExistingBackup).not.toHaveBeenCalled();
+      expect(harness.putBlob).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips the remote probe entirely for an already-synced install", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: 456,
+        remoteBlobExists: true,
+      });
+      const confirmUploadOverExistingBackup = jest.fn().mockResolvedValue(false);
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+        undefined,
+        { confirmUploadOverExistingBackup },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(harness.getBlob).not.toHaveBeenCalled();
+      expect(confirmUploadOverExistingBackup).not.toHaveBeenCalled();
+      expect(harness.putBlob).toHaveBeenCalledTimes(1);
+    });
+
+    it("fails closed when the remote-backup probe errors with anything but blob_not_found", async () => {
+      const harness = createUploadGuardHarness({
+        lastRemoteGeneration: null,
+        remoteBlobExists: false,
+      });
+      (harness.getBlob as jest.Mock).mockResolvedValue({
+        ok: false,
+        errorCode: "network_failed",
+      });
+
+      const result = await runSyncUpload(
+        harness.storage,
+        harness.secretStore,
+        harness.preferences,
+        new Date("2026-03-20T08:10:00.000Z"),
+        harness.apiClientFactory,
+        undefined,
+        {
+          confirmUploadOverExistingBackup: jest.fn().mockResolvedValue(true),
+        },
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+      expect(harness.putBlob).not.toHaveBeenCalled();
+    });
+  });
+
+  it("purges the managed billing cache when the local sync session is cleared", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "sync-session-1",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      setupStatus: "connected" as const,
+      deviceLabel: "Pixel 7",
+    };
+
+    await clearLocalSyncSession(storage, secretStore, preferences);
+
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith({
+      snapshot: null,
+      dismissedOfferIDs: [],
+    });
   });
 
   it("loads managed sync capabilities from the managed cloud session", async () => {
@@ -783,7 +1047,11 @@ function createAPIClientMock(
     getCapabilities: jest.fn(),
     getRecoveryKey: jest.fn(),
     attachDevice: jest.fn(),
-    getBlob: jest.fn(),
+    // Default to "no remote backup yet" so fresh-generation upload tests pass
+    // the upload-over-backup probe without an explicit override.
+    getBlob: jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "blob_not_found" }),
     putRecoveryKey: jest.fn(),
     putBlob: jest.fn(),
     ...overrides,

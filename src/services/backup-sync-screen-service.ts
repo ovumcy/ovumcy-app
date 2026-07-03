@@ -11,8 +11,16 @@ import {
   type SyncConnectErrorCode,
   type SyncRecoverErrorCode,
   type SyncRunErrorCode,
+  type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
-import type { SyncPreferencesRecord } from "../sync/sync-contract";
+import {
+  MANAGED_CLOUD_AUTH_BASE_URL,
+  type SyncPreferencesRecord,
+} from "../sync/sync-contract";
+import {
+  createManagedCloudAPIClient,
+  type ManagedCloudAPIErrorCode,
+} from "../sync/managed-cloud-api-client";
 import {
   completeTOTPChallenge,
   type CompleteTOTPChallengeErrorCode,
@@ -24,9 +32,14 @@ import {
   type SaveSyncPreferencesDraftErrorCode,
 } from "../sync/sync-setup-service";
 import { loadLocalExportState } from "./export-service";
-import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
 import {
+  loadManagedBillingSnapshot,
+  persistManagedBillingSnapshotCache,
+} from "./managed-premium-features-service";
+import {
+  createEmptySettingsManagedPremiumAccess,
   createLoadedSettingsState,
+  mapBillingSnapshotToManagedPremiumAccess,
   type LoadedSettingsState,
   type SettingsManagedPremiumAccess,
 } from "./settings-view-service";
@@ -42,23 +55,20 @@ type SyncRunScreenErrorCode = SyncRunErrorCode;
 // is reopened. For self-hosted mode loadManagedBillingSnapshot returns null and
 // the prior access value is preserved.
 async function resolveManagedPremiumAccessAfterConnect(
+  storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   fallback: SettingsManagedPremiumAccess,
 ): Promise<SettingsManagedPremiumAccess> {
   const billingSnapshot = await loadManagedBillingSnapshot(
+    storage,
     secretStore,
     preferences.mode,
   );
   if (!billingSnapshot) {
     return fallback;
   }
-  return {
-    planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
-    doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
-    reminders: billingSnapshot.premiumFeatures.reminders,
-    activeSubscription: billingSnapshot.activeSubscription,
-  };
+  return mapBillingSnapshotToManagedPremiumAccess(billingSnapshot);
 }
 
 export async function prepareBackupSyncSetup(
@@ -206,6 +216,7 @@ export async function connectBackupSyncAccount(
   }
 
   const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
+    storage,
     secretStore,
     result.preferences,
     currentState.managedPremiumAccess,
@@ -282,6 +293,7 @@ export async function completeBackupSyncTOTPChallenge(
   }
 
   const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
+    storage,
     secretStore,
     finalizeResult.preferences,
     currentState.managedPremiumAccess,
@@ -354,6 +366,10 @@ export async function uploadBackupSyncSnapshot(
   secretStore: SyncSecretStore,
   currentState: LoadedSettingsState,
   now: Date,
+  // The controller supplies the destructive-confirm bridge; the decision of
+  // WHEN to ask stays in runSyncUpload's policy (fresh install over an
+  // existing remote backup). Absent guard = fail closed (never overwrite).
+  uploadOverBackupGuard?: UploadOverBackupGuard,
 ): Promise<
   | {
       ok: true;
@@ -369,6 +385,9 @@ export async function uploadBackupSyncSnapshot(
     secretStore,
     currentState.savedSyncPreferences,
     now,
+    undefined,
+    undefined,
+    uploadOverBackupGuard,
   );
   if (!result.ok) {
     return result;
@@ -459,12 +478,7 @@ export async function disconnectBackupSyncAccount(
       currentState.exportState,
       result.preferences,
       null,
-      {
-        planStatus: "unknown",
-        doctorPDF: false,
-        reminders: false,
-        activeSubscription: null,
-      },
+      createEmptySettingsManagedPremiumAccess(),
     ),
   };
 }
@@ -489,11 +503,94 @@ export async function clearUnauthorizedBackupSyncSession(
     currentState.exportState,
     nextPreferences,
     null,
-    {
-      planStatus: "unknown",
-      doctorPDF: false,
-      reminders: false,
-      activeSubscription: null,
-    },
+    createEmptySettingsManagedPremiumAccess(),
   );
+}
+
+export type BackupSyncRenewalAction = "cancel_at_period_end" | "resume";
+
+export type UpdateBackupSyncRenewalErrorCode =
+  | "not_connected"
+  | "unauthorized"
+  | "billing_management_unavailable"
+  | "billing_subscription_conflict"
+  | "billing_provider_unavailable"
+  | "network_failed"
+  | "generic";
+
+function mapRenewalAPIError(
+  errorCode: ManagedCloudAPIErrorCode,
+): UpdateBackupSyncRenewalErrorCode {
+  switch (errorCode) {
+    case "unauthorized":
+    case "billing_management_unavailable":
+    case "billing_subscription_conflict":
+    case "billing_provider_unavailable":
+    case "network_failed":
+      return errorCode;
+    default:
+      return "generic";
+  }
+}
+
+/**
+ * updateBackupSyncRenewal drives PUT /account/billing/renewal for the two
+ * flag-gated affordances (cancel at period end / resume renewal). The server
+ * both authorises the action and returns the refreshed billing snapshot,
+ * which becomes the new screen state and refreshes the offline-grace cache.
+ * Confirmation UX (confirm-before-cancel) is owned by the controller; this
+ * function assumes the caller already gated the destructive path.
+ */
+export async function updateBackupSyncRenewal(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  action: BackupSyncRenewalAction,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: UpdateBackupSyncRenewalErrorCode;
+    }
+> {
+  if (currentState.savedSyncPreferences.mode !== "managed") {
+    return { ok: false, errorCode: "not_connected" };
+  }
+
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets?.managedAuthSessionToken) {
+    return { ok: false, errorCode: "not_connected" };
+  }
+
+  const renewalResult = await createManagedCloudAPIClient(
+    MANAGED_CLOUD_AUTH_BASE_URL,
+  ).updateBillingRenewal(secrets.managedAuthSessionToken, {
+    cancelAtPeriodEnd: action === "cancel_at_period_end",
+  });
+  if (!renewalResult.ok) {
+    return { ok: false, errorCode: mapRenewalAPIError(renewalResult.errorCode) };
+  }
+
+  // The response is a refreshed billing snapshot: treat it like any other
+  // successful billing fetch for the offline-grace cache.
+  await persistManagedBillingSnapshotCache(storage, renewalResult.billing, now);
+
+  return {
+    ok: true,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      currentState.savedSyncPreferences,
+      currentState.hasStoredSyncSecrets,
+      currentState.hasSyncSession,
+      currentState.symptomRecords,
+      currentState.exportState,
+      currentState.syncPreferences,
+      currentState.syncCapabilities,
+      mapBillingSnapshotToManagedPremiumAccess(renewalResult.billing),
+    ),
+  };
 }

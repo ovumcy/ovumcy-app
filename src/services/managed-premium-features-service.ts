@@ -1,4 +1,7 @@
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import {
+  createDefaultManagedBillingCacheRecord,
+  type LocalAppStorage,
+} from "../storage/local/storage-contract";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { EntitlementTokenStore } from "../security/entitlement-token-store";
 import {
@@ -96,13 +99,116 @@ export const EMPTY_MANAGED_BILLING_SNAPSHOT: ManagedCloudBillingSnapshot = {
     canCancelAtPeriodEnd: false,
     canResumeRenewal: false,
   },
+  offers: [],
 };
 
+// Bounded offline grace for the LOCAL premium gates. Trade-off: bounded
+// availability grace (a network blip or managed outage must not instantly
+// re-lock all six premium gates on a paying device) versus strict
+// fail-closed enforcement (a revoked plan keeps its local unlocks for at
+// most this long while the device cannot reach billing truth). 72 hours is
+// the ceiling; after it every failed fetch fails closed exactly as before.
+// Server-checked actions (sync upload/restore, partner projections, renewal)
+// never read this cache — the server stays their authority.
+export const MANAGED_BILLING_CACHE_TTL_MS = 72 * 60 * 60 * 1000;
+
+export function isManagedBillingCacheFresh(
+  fetchedAt: string,
+  now: Date,
+): boolean {
+  const fetchedAtMs = Date.parse(fetchedAt);
+  if (Number.isNaN(fetchedAtMs)) {
+    return false;
+  }
+
+  const ageMs = now.getTime() - fetchedAtMs;
+  return ageMs >= 0 && ageMs <= MANAGED_BILLING_CACHE_TTL_MS;
+}
+
+/**
+ * persistManagedBillingSnapshotCache refreshes the last-known-good billing
+ * snapshot after any successful billing fetch. Only the locally-derived plan
+ * state and premium booleans are persisted (pre token-overlay server truth);
+ * server-driven affordances (subscription details, renewal flags, offers)
+ * intentionally stay out so they fail closed when served from cache.
+ * Cache IO failures are swallowed: caching must never break a successful
+ * billing fetch.
+ */
+export async function persistManagedBillingSnapshotCache(
+  storage: LocalAppStorage,
+  billing: ManagedCloudBillingSnapshot,
+  now: Date,
+): Promise<void> {
+  try {
+    const record = await storage.readManagedBillingCacheRecord();
+    await storage.writeManagedBillingCacheRecord({
+      ...record,
+      snapshot: {
+        hasActivePlan: billing.hasActivePlan,
+        premiumFeatures: { ...billing.premiumFeatures },
+        fetchedAt: now.toISOString(),
+      },
+    });
+  } catch {
+    // Best-effort cache refresh; the live snapshot result stands regardless.
+  }
+}
+
+/**
+ * clearManagedBillingSnapshotCache resets the whole cache record (snapshot
+ * AND dismissed offer ids) at session boundaries — mirroring the
+ * pending-partner-invite buffer invariant: state derived under one managed
+ * account context must not survive into the next.
+ */
+export async function clearManagedBillingSnapshotCache(
+  storage: LocalAppStorage,
+): Promise<void> {
+  try {
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
+  } catch {
+    // A failed purge must not block the surrounding session teardown; the
+    // cache is unreachable without a managed session token anyway.
+  }
+}
+
+async function readFreshCachedBillingSnapshot(
+  storage: LocalAppStorage,
+  now: Date,
+): Promise<ManagedCloudBillingSnapshot | null> {
+  try {
+    const record = await storage.readManagedBillingCacheRecord();
+    if (!record.snapshot || !isManagedBillingCacheFresh(record.snapshot.fetchedAt, now)) {
+      return null;
+    }
+
+    return {
+      hasActivePlan: record.snapshot.hasActivePlan,
+      premiumFeatures: { ...record.snapshot.premiumFeatures },
+      // Server-driven display/affordance state is never cached: countdown,
+      // renewal management, and offers all degrade to their empty defaults
+      // while the device is on cached billing truth.
+      activeSubscription: null,
+      billingManagement: {
+        canManageRenewal: false,
+        canCancelAtPeriodEnd: false,
+        canResumeRenewal: false,
+      },
+      offers: [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadManagedBillingSnapshot(
+  storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   syncMode: SyncMode,
   // Optional signed-token gate. Absent -> pure snapshot behaviour (today).
   tokenGate?: EntitlementTokenGate,
+  now: Date = new Date(),
 ): Promise<ManagedCloudBillingSnapshot | null> {
   if (syncMode !== "managed") {
     return null;
@@ -110,6 +216,8 @@ export async function loadManagedBillingSnapshot(
 
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets?.managedAuthSessionToken) {
+    // No session, no grace: the cache is only ever served underneath a
+    // still-present managed session whose billing fetch failed.
     return null;
   }
 
@@ -117,33 +225,45 @@ export async function loadManagedBillingSnapshot(
     MANAGED_CLOUD_AUTH_BASE_URL,
   ).getBillingSnapshot(secrets.managedAuthSessionToken);
 
-  if (!billingResult.ok) {
-    return null;
+  let billing: ManagedCloudBillingSnapshot;
+  if (billingResult.ok) {
+    billing = billingResult.billing;
+    await persistManagedBillingSnapshotCache(storage, billing, now);
+  } else {
+    const cached = await readFreshCachedBillingSnapshot(storage, now);
+    if (!cached) {
+      return null;
+    }
+    billing = cached;
   }
 
   // Overlay verified-token entitlements onto the two purely-local features.
   // When no gate is supplied or no valid token is present, premiumFeatures is
   // returned unchanged.
   const premiumFeatures = await applyEntitlementTokenOverlay(
-    billingResult.billing.premiumFeatures,
+    billing.premiumFeatures,
     tokenGate,
     secrets.managedAuthSessionToken,
   );
-  if (premiumFeatures === billingResult.billing.premiumFeatures) {
-    return billingResult.billing;
+  if (premiumFeatures === billing.premiumFeatures) {
+    return billing;
   }
-  return { ...billingResult.billing, premiumFeatures };
+  return { ...billing, premiumFeatures };
 }
 
 export async function loadManagedPremiumFeatures(
+  storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   syncMode: SyncMode,
   tokenGate?: EntitlementTokenGate,
+  now: Date = new Date(),
 ): Promise<ManagedCloudPremiumFeatures> {
   const billingSnapshot = await loadManagedBillingSnapshot(
+    storage,
     secretStore,
     syncMode,
     tokenGate,
+    now,
   );
   return billingSnapshot?.premiumFeatures ?? EMPTY_MANAGED_PREMIUM_FEATURES;
 }
@@ -160,6 +280,7 @@ export async function loadManagedPremiumFeaturesForCurrentSession(
     }
 
     return loadManagedPremiumFeatures(
+      storage,
       secretStore,
       syncState.preferences.mode,
       tokenGate,
