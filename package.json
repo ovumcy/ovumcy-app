@@ -17,6 +17,7 @@
     "export:web": "expo export -p web",
     "e2e:web": "playwright test",
     "mutation": "stryker run",
+    "knip": "knip",
     "deploy": "npm run export:web && npx eas-cli@18.4.0 deploy"
   },
   "dependencies": {
@@ -69,6 +70,7 @@
     "eslint-config-expo": "~10.0.0",
     "fast-check": "^4.8.0",
     "jest-expo": "~54.0.17",
+    "knip": "6.24.0",
     "react-test-renderer": "^19.1.0",
     "typescript": "^5.9.3"
   },
