@@ -276,6 +276,13 @@ export type SettingsViewData = {
     offerAnnouncementEyebrow: string;
     disconnectPrompt: string;
     disconnectDeviceAuthPrompt: string;
+    deleteAccountLabel: string;
+    deleteAccountPrompt: string;
+    deleteAccountAccept: string;
+    deleteAccountDeviceAuthPrompt: string;
+    deleteAccountSubscriptionWarningTitle: string;
+    deleteAccountSubscriptionWarningMessage: string;
+    deleteAccountSubscriptionWarningAccept: string;
     recoveryTitle: string;
     recoveryHint: string;
     recoveryNotice: string;
@@ -301,6 +308,7 @@ export type SettingsViewData = {
       uploaded: string;
       restored: string;
       disconnected: string;
+      deleted: string;
       renewalCancelled: string;
       renewalResumed: string;
     };
@@ -332,6 +340,7 @@ export type SettingsViewData = {
       saveFailed: string;
       syncFailed: string;
       restoreFailed: string;
+      deleteAccountFailed: string;
       renewalUnavailable: string;
       renewalUpdateFailed: string;
     };
@@ -803,6 +812,17 @@ export function buildSettingsViewData(
       offerAnnouncementEyebrow: settingsCopy.account.offerAnnouncementEyebrow,
       disconnectPrompt: settingsCopy.account.disconnectPrompt,
       disconnectDeviceAuthPrompt: settingsCopy.account.disconnectDeviceAuthPrompt,
+      deleteAccountLabel: settingsCopy.account.deleteAccountLabel,
+      deleteAccountPrompt: settingsCopy.account.deleteAccountPrompt,
+      deleteAccountAccept: settingsCopy.account.deleteAccountAccept,
+      deleteAccountDeviceAuthPrompt:
+        settingsCopy.account.deleteAccountDeviceAuthPrompt,
+      deleteAccountSubscriptionWarningTitle:
+        settingsCopy.account.deleteAccountSubscriptionWarningTitle,
+      deleteAccountSubscriptionWarningMessage:
+        settingsCopy.account.deleteAccountSubscriptionWarningMessage,
+      deleteAccountSubscriptionWarningAccept:
+        settingsCopy.account.deleteAccountSubscriptionWarningAccept,
       recoveryTitle: settingsCopy.account.recoveryTitle,
       recoveryHint: settingsCopy.account.recoveryHint,
       recoveryNotice: settingsCopy.account.recoveryNotice,
@@ -828,6 +848,7 @@ export function buildSettingsViewData(
         uploaded: settingsCopy.account.uploaded,
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
+        deleted: settingsCopy.account.deleted,
         renewalCancelled: settingsCopy.account.renewalCancelled,
         renewalResumed: settingsCopy.account.renewalResumed,
       },
@@ -865,6 +886,7 @@ export function buildSettingsViewData(
         saveFailed: settingsCopy.account.errors.saveFailed,
         syncFailed: settingsCopy.account.errors.syncFailed,
         restoreFailed: settingsCopy.account.errors.restoreFailed,
+        deleteAccountFailed: settingsCopy.account.errors.deleteAccountFailed,
         renewalUnavailable: settingsCopy.account.errors.renewalUnavailable,
         renewalUpdateFailed: settingsCopy.account.errors.renewalUpdateFailed,
       },

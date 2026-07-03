@@ -301,6 +301,16 @@ const settingsCopyEn = {
       "Disconnect this device from the sync server session? Local encrypted keys will stay on this device.",
     disconnectDeviceAuthPrompt:
       "Confirm with device security to disconnect this device from the sync server.",
+    deleteAccountLabel: "Delete account",
+    deleteAccountPrompt:
+      "Permanently delete your account and all its data from the server? This cannot be undone.",
+    deleteAccountAccept: "Delete account",
+    deleteAccountDeviceAuthPrompt:
+      "Confirm with device security to permanently delete your account.",
+    deleteAccountSubscriptionWarningTitle: "Your subscription will keep billing",
+    deleteAccountSubscriptionWarningMessage:
+      "Deleting your account does NOT cancel your Google Play subscription. You must cancel it separately in the Play Store, or you will keep being charged. Confirm below only if you understand this and still want to permanently delete your account.",
+    deleteAccountSubscriptionWarningAccept: "I understand, delete anyway",
     recoveryTitle: "Recovery phrase for this device",
     recoveryHint:
       "Write down the 12 words exactly and keep them offline. If you lose every device and this phrase, synced data cannot be recovered.",
@@ -332,6 +342,7 @@ const settingsCopyEn = {
     uploaded: "Encrypted backup copy uploaded to the sync server.",
     restored: "Encrypted backup copy restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
+    deleted: "Account deleted. Returning to onboarding.",
     renewalCancelled:
       "Auto-renewal is off. Your plan stays active until the current period ends.",
     renewalResumed: "Auto-renewal is on again.",
@@ -372,6 +383,8 @@ const settingsCopyEn = {
         "Unable to upload the encrypted backup copy right now. Please try again.",
       restoreFailed:
         "Unable to restore the encrypted backup copy right now. Please try again.",
+      deleteAccountFailed:
+        "Unable to delete your account right now. Nothing was changed. Please try again.",
       renewalUnavailable:
         "Renewal for this plan cannot be managed from the app.",
       renewalUpdateFailed:
@@ -810,6 +823,16 @@ const settingsCopyDe: SettingsCopy = {
       "Dieses Gerät von der Sync-Server-Sitzung trennen? Die lokalen verschlüsselten Schlüssel bleiben auf diesem Gerät.",
     disconnectDeviceAuthPrompt:
       "Bestätigen Sie mit Geräteschutz, um dieses Gerät vom Sync-Server zu trennen.",
+    deleteAccountLabel: "Konto löschen",
+    deleteAccountPrompt:
+      "Ihr Konto und alle Daten dauerhaft vom Server löschen? Dies kann nicht rückgängig gemacht werden.",
+    deleteAccountAccept: "Konto löschen",
+    deleteAccountDeviceAuthPrompt:
+      "Bestätigen Sie mit Geräteschutz, um Ihr Konto dauerhaft zu löschen.",
+    deleteAccountSubscriptionWarningTitle: "Ihr Abo wird weiter abgerechnet",
+    deleteAccountSubscriptionWarningMessage:
+      "Das Löschen Ihres Kontos kündigt NICHT Ihr Google-Play-Abo. Sie müssen es separat im Play Store kündigen, sonst werden Sie weiterhin belastet. Bestätigen Sie unten nur, wenn Sie das verstanden haben und Ihr Konto trotzdem dauerhaft löschen möchten.",
+    deleteAccountSubscriptionWarningAccept: "Verstanden, trotzdem löschen",
     recoveryTitle: "Wiederherstellungsphrase für dieses Gerät",
     recoveryHint:
       "Schreiben Sie die 12 Wörter exakt auf und bewahren Sie sie offline auf. Wenn Sie alle Geräte und diese Phrase verlieren, können synchronisierte Daten nicht wiederhergestellt werden.",
@@ -843,6 +866,7 @@ const settingsCopyDe: SettingsCopy = {
     restored:
       "Verschlüsselte Sicherungskopie vom Sync-Server wiederhergestellt.",
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
+    deleted: "Konto gelöscht. Rückkehr zum Onboarding.",
     renewalCancelled:
       "Automatische Verlängerung ist aus. Ihr Tarif bleibt bis zum Ende des aktuellen Zeitraums aktiv.",
     renewalResumed: "Automatische Verlängerung ist wieder aktiv.",
@@ -899,6 +923,8 @@ const settingsCopyDe: SettingsCopy = {
         "Die verschlüsselte Sicherungskopie konnte gerade nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
       restoreFailed:
         "Die verschlüsselte Sicherungskopie konnte gerade nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.",
+      deleteAccountFailed:
+        "Ihr Konto konnte gerade nicht gelöscht werden. Es wurde nichts geändert. Bitte versuchen Sie es erneut.",
     },
   },
   symptoms: {
@@ -1353,6 +1379,17 @@ const settingsCopyFr: SettingsCopy = {
       "Déconnecter cet appareil de la session du serveur de sync ? Les clés chiffrées locales resteront sur cet appareil.",
     disconnectDeviceAuthPrompt:
       "Confirmez avec la sécurité de l'appareil pour déconnecter cet appareil du serveur de sync.",
+    deleteAccountLabel: "Supprimer le compte",
+    deleteAccountPrompt:
+      "Supprimer définitivement votre compte et toutes ses données du serveur ? Cette action est irréversible.",
+    deleteAccountAccept: "Supprimer le compte",
+    deleteAccountDeviceAuthPrompt:
+      "Confirmez avec la sécurité de l'appareil pour supprimer définitivement votre compte.",
+    deleteAccountSubscriptionWarningTitle:
+      "Votre abonnement continuera d'être facturé",
+    deleteAccountSubscriptionWarningMessage:
+      "Supprimer votre compte n'annule PAS votre abonnement Google Play. Vous devez l'annuler séparément dans le Play Store, sinon vous continuerez à être facturé. Ne confirmez ci-dessous que si vous avez compris et que vous souhaitez quand même supprimer définitivement votre compte.",
+    deleteAccountSubscriptionWarningAccept: "J'ai compris, supprimer quand même",
     recoveryTitle: "Phrase de récupération pour cet appareil",
     recoveryHint:
       "Notez exactement les 12 mots et gardez-les hors ligne. Si vous perdez tous les appareils et cette phrase, les données synchronisées ne pourront pas être récupérées.",
@@ -1387,6 +1424,7 @@ const settingsCopyFr: SettingsCopy = {
     restored:
       "Copie de sauvegarde chiffrée restaurée depuis le serveur de sync.",
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
+    deleted: "Compte supprimé. Retour à l'onboarding.",
     renewalCancelled:
       "Renouvellement automatique désactivé. Votre plan reste actif jusqu'à la fin de la période en cours.",
     renewalResumed: "Renouvellement automatique réactivé.",
@@ -1444,6 +1482,8 @@ const settingsCopyFr: SettingsCopy = {
         "Impossible de téléverser la copie de sauvegarde chiffrée pour le moment. Réessayez.",
       restoreFailed:
         "Impossible de restaurer la copie de sauvegarde chiffrée pour le moment. Réessayez.",
+      deleteAccountFailed:
+        "Impossible de supprimer votre compte pour le moment. Rien n'a été modifié. Veuillez réessayer.",
     },
   },
   symptoms: {
@@ -1892,6 +1932,16 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Отключить это устройство от сессии sync-сервера? Локальные зашифрованные ключи останутся на устройстве.",
       disconnectDeviceAuthPrompt:
         "Подтвердите защитой устройства отключение этого устройства от sync-сервера.",
+      deleteAccountLabel: "Удалить аккаунт",
+      deleteAccountPrompt:
+        "Безвозвратно удалить ваш аккаунт и все его данные с сервера? Это действие нельзя отменить.",
+      deleteAccountAccept: "Удалить аккаунт",
+      deleteAccountDeviceAuthPrompt:
+        "Подтвердите защитой устройства безвозвратное удаление вашего аккаунта.",
+      deleteAccountSubscriptionWarningTitle: "Подписка продолжит списывать средства",
+      deleteAccountSubscriptionWarningMessage:
+        "Удаление аккаунта НЕ отменяет вашу подписку Google Play. Отменить её нужно отдельно в Play Store, иначе списания продолжатся. Подтверждайте ниже, только если вы это понимаете и всё равно хотите безвозвратно удалить аккаунт.",
+      deleteAccountSubscriptionWarningAccept: "Понимаю, всё равно удалить",
       recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
         "Запишите все 12 слов точно и храните их офлайн. Если вы потеряете все устройства и эту фразу, synced data восстановить нельзя.",
@@ -1923,6 +1973,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploaded: "Зашифрованная резервная копия отправлена на sync-сервер.",
       restored: "Зашифрованная резервная копия восстановлена с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
+      deleted: "Аккаунт удалён. Возврат к онбордингу.",
       renewalCancelled:
         "Автопродление отключено. План останется активным до конца текущего периода.",
       renewalResumed: "Автопродление снова включено.",
@@ -1968,6 +2019,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Сейчас не удалось отправить зашифрованную резервную копию. Попробуйте ещё раз.",
         restoreFailed:
           "Сейчас не удалось восстановить зашифрованную резервную копию. Попробуйте ещё раз.",
+        deleteAccountFailed:
+          "Сейчас не удалось удалить аккаунт. Ничего не изменилось. Попробуйте ещё раз.",
         renewalUnavailable:
           "Продлением этого плана нельзя управлять из приложения.",
         renewalUpdateFailed:
@@ -2400,6 +2453,17 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "¿Desconectar este dispositivo de la sesión del servidor de sync? Las claves cifradas locales permanecerán en este dispositivo.",
       disconnectDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para desconectar este dispositivo del servidor de sync.",
+      deleteAccountLabel: "Eliminar cuenta",
+      deleteAccountPrompt:
+        "¿Eliminar permanentemente tu cuenta y todos sus datos del servidor? Esta acción no se puede deshacer.",
+      deleteAccountAccept: "Eliminar cuenta",
+      deleteAccountDeviceAuthPrompt:
+        "Confirma con la seguridad del dispositivo para eliminar permanentemente tu cuenta.",
+      deleteAccountSubscriptionWarningTitle:
+        "Tu suscripción seguirá cobrándose",
+      deleteAccountSubscriptionWarningMessage:
+        "Eliminar tu cuenta NO cancela tu suscripción de Google Play. Debes cancelarla por separado en Play Store, o se te seguirá cobrando. Confirma abajo solo si entiendes esto y aun así quieres eliminar permanentemente tu cuenta.",
+      deleteAccountSubscriptionWarningAccept: "Entiendo, eliminar de todos modos",
       recoveryTitle: "Frase de recuperación de este dispositivo",
       recoveryHint:
         "Escribe exactamente las 12 palabras y guárdalas fuera de línea. Si pierdes todos los dispositivos y esta frase, no se podrán recuperar los datos sincronizados.",
@@ -2433,6 +2497,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restored:
         "La copia de respaldo cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
+      deleted: "Cuenta eliminada. Volviendo al onboarding.",
       renewalCancelled:
         "La renovación automática está desactivada. Tu plan sigue activo hasta el final del periodo actual.",
       renewalResumed: "La renovación automática está activada de nuevo.",
@@ -2482,6 +2547,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo subir la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
         restoreFailed:
           "No se pudo restaurar la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
+        deleteAccountFailed:
+          "No se pudo eliminar tu cuenta ahora. No se cambió nada. Inténtalo de nuevo.",
         renewalUnavailable:
           "La renovación de este plan no se puede gestionar desde la app.",
         renewalUpdateFailed:

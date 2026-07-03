@@ -5,6 +5,10 @@ import { useNavigation, usePreventRemove } from "@react-navigation/native";
 import { getShellCopy } from "../../../i18n/shell-copy";
 import { getPartnerCopy } from "../../../i18n/partner-copy";
 import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
+import {
+  buildAccountDeletionViewModel,
+  deleteOvumcyAccount,
+} from "../../../sync/account-deletion-service";
 import { appStorage, readHasCompletedOnboarding } from "../../../services/app-bootstrap-service";
 import {
   buildBackupSyncDirtyState,
@@ -106,7 +110,7 @@ export function useBackupSyncScreenController({
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
 }: BackupSyncScreenControllerOptions): BackupSyncScreenControllerResult {
-  const { colors, language } = useAppPreferences();
+  const { colors, language, syncProfilePreferences } = useAppPreferences();
   const navigation = useNavigation();
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ invite_token?: string | string[] }>();
@@ -152,6 +156,7 @@ export function useBackupSyncScreenController({
   const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
   const [isUpdatingRenewal, setIsUpdatingRenewal] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
   const shellCopy = getShellCopy(language);
   const partnerCopy = getPartnerCopy(language);
@@ -960,6 +965,98 @@ export function useBackupSyncScreenController({
     setAccountStatusMessage(viewData.account.status.disconnected);
   }
 
+  /**
+   * handleDeleteAccount drives the irreversible "Delete account" flow:
+   * device-auth challenge -> standard destructive confirm -> (only when a
+   * subscription is active) a SECOND, distinctly-worded confirm that must be
+   * read and accepted separately, warning that deleting the account does not
+   * cancel the Google Play subscription. A dismissal at any step is the safe
+   * answer and aborts with nothing changed, matching the confirm-dialog
+   * invariant used everywhere else in this screen. The actual network call +
+   * secrets/local-data teardown is delegated to `deleteOvumcyAccount`, which
+   * aborts before touching local state if the server delete fails.
+   */
+  async function handleDeleteAccount() {
+    if (!state) {
+      return;
+    }
+
+    resetFeedbackMessages();
+    const challengeResult = await requestSensitiveActionChallenge(
+      viewData.account.deleteAccountDeviceAuthPrompt,
+    );
+    if (!challengeResult.ok) {
+      if (challengeResult.reason === "unavailable") {
+        setErrorState({
+          code: "deviceAuthUnavailable",
+          scope: "delete_account",
+        });
+      } else if (challengeResult.reason === "failed") {
+        setErrorState({
+          code: "deviceAuthFailed",
+          scope: "delete_account",
+        });
+      }
+      return;
+    }
+
+    const confirmed = await openConfirmation(
+      viewData.account.deleteAccountPrompt,
+      viewData.account.deleteAccountAccept,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const deletionViewModel = buildAccountDeletionViewModel({
+      hasConnectedSession: state.hasSyncSession,
+      preferences: state.savedSyncPreferences,
+      activeSubscription: state.managedPremiumAccess.activeSubscription,
+      now: effectiveNow,
+    });
+
+    if (deletionViewModel.requiresSubscriptionWarning) {
+      // Distinct dialog, distinct wording, distinct accept label: a dismissal
+      // or the shared cancel label both resolve to false here exactly like
+      // every other destructive confirm, so there is no accidental one-tap
+      // path into deleting an account with a live subscription.
+      const acknowledgedSubscriptionWarning = await openConfirmation(
+        `${viewData.account.deleteAccountSubscriptionWarningTitle}\n\n${viewData.account.deleteAccountSubscriptionWarningMessage}`,
+        viewData.account.deleteAccountSubscriptionWarningAccept,
+      );
+      if (!acknowledgedSubscriptionWarning) {
+        return;
+      }
+    }
+
+    setIsDeletingAccount(true);
+    const result = await deleteOvumcyAccount(
+      storage,
+      syncSecretStore,
+      state.savedSyncPreferences,
+    );
+    if (!result.ok) {
+      setErrorState({
+        code: result.errorCode,
+        scope: "delete_account",
+      });
+      setIsDeletingAccount(false);
+      return;
+    }
+
+    // Same buffers this screen already clears on disconnect; deletion just
+    // wiped local data through the same danger-zone path, so also reset the
+    // in-memory interface preferences the danger-zone action resets.
+    clearManagedPartnerInviteToken();
+    setPendingPartnerInviteToken("");
+    syncProfilePreferences({
+      languageOverride: null,
+      themeOverride: null,
+      screenCaptureProtectionEnabled: true,
+    });
+    router.replace(`/onboarding?reset=${Date.now().toString()}`);
+  }
+
   async function handleUpdateRenewal(action: BackupSyncRenewalAction) {
     if (!state) {
       return;
@@ -1078,9 +1175,10 @@ export function useBackupSyncScreenController({
     isPreparing: isPreparingSync,
     isRecovering: isRecoveringSync,
     isRestoring: isRestoringSync,
-    // A renewal update in flight disables the same action set as a running
-    // upload, so the owner cannot double-submit billing changes.
-    isSyncing: isSyncingNow || isUpdatingRenewal,
+    // A renewal update or an in-flight account deletion disables the same
+    // action set as a running upload, so the owner cannot double-submit
+    // billing changes or another destructive action mid-deletion.
+    isSyncing: isSyncingNow || isUpdatingRenewal || isDeletingAccount,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
@@ -1150,6 +1248,9 @@ export function useBackupSyncScreenController({
       },
       onDisconnect: () => {
         void handleDisconnectSync();
+      },
+      onDeleteAccount: () => {
+        void handleDeleteAccount();
       },
       onDismissOffer: (offerID) => {
         void handleDismissOffer(offerID);

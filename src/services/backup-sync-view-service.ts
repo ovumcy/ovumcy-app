@@ -10,10 +10,11 @@ import type {
   SettingsViewData,
 } from "./settings-view-service";
 
-export type BackupSyncErrorScope = "local" | "account" | "sync";
+export type BackupSyncErrorScope = "local" | "account" | "sync" | "delete_account";
 
 export type BackupSyncErrorPresentation = {
   accountMessage: string;
+  deleteAccountMessage: string;
   deviceLabelMessage: string;
   endpointMessage: string;
   localMessage: string;
@@ -317,6 +318,7 @@ export function resolveBackupSyncErrorPresentation(
 ): BackupSyncErrorPresentation {
   const emptyPresentation: BackupSyncErrorPresentation = {
     accountMessage: "",
+    deleteAccountMessage: "",
     deviceLabelMessage: "",
     endpointMessage: "",
     localMessage: "",
@@ -331,6 +333,21 @@ export function resolveBackupSyncErrorPresentation(
   }
 
   const message = resolveBackupSyncErrorMessage(errorCode, viewData);
+
+  // delete_account errors (unauthorized, network_failed, or a rare/unmapped
+  // server code) always render in the dedicated delete-account banner, never
+  // in the shared account/sync banners used by login, connect, or restore.
+  if (scope === "delete_account") {
+    return {
+      ...emptyPresentation,
+      deleteAccountMessage:
+        errorCode === "not_connected" ||
+        errorCode === "unauthorized" ||
+        errorCode === "network_failed"
+          ? message
+          : viewData.errors.deleteAccountFailed,
+    };
+  }
 
   switch (errorCode) {
     case "device_label_required":

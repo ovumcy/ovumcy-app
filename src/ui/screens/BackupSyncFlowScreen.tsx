@@ -41,6 +41,7 @@ export type BackupSyncFlowScreenProps = {
   onAuthPasswordChange: (value: string) => void;
   onCancelRenewal: () => void | Promise<void>;
   onDisconnect: () => void | Promise<void>;
+  onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
   onDismissOffer: (offerID: string) => void | Promise<void>;
   onEndpointChange: (value: string) => void;
@@ -111,6 +112,7 @@ export function BackupSyncFlowScreen({
   onAuthPasswordChange,
   onCancelRenewal,
   onDisconnect,
+  onDeleteAccount,
   onDeviceLabelChange,
   onDismissOffer,
   onEndpointChange,
@@ -203,6 +205,7 @@ export function BackupSyncFlowScreen({
         onAuthPasswordChange={onAuthPasswordChange}
         onCancelRenewal={onCancelRenewal}
         onDisconnect={onDisconnect}
+        onDeleteAccount={onDeleteAccount}
         onDeviceLabelChange={onDeviceLabelChange}
         onDismissOffer={onDismissOffer}
         onEndpointChange={onEndpointChange}

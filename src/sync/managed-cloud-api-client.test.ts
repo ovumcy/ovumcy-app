@@ -1304,4 +1304,50 @@ describe("managed-cloud-api-client", () => {
       client.getEntitlementToken("managed-session-1"),
     ).resolves.toEqual({ ok: false, errorCode: "entitlements_unavailable" });
   });
+
+  it("deletes the managed account with a DELETE /account bearer request and tolerates an empty body", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(null, { status: 204 }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(client.deleteAccount("managed-session-1")).resolves.toEqual({
+      ok: true,
+    });
+    const call = fetch.mock.calls[0];
+    expect(call?.[0]).toBe("https://managed.example/account");
+    expect(call?.[1]?.method).toBe("DELETE");
+    expect((call?.[1]?.headers as Headers).get("Authorization")).toBe(
+      "Bearer managed-session-1",
+    );
+    expect((call?.[1] as RequestInit).redirect).toBe("error");
+  });
+
+  it("maps deleteAccount error keys, including unauthorized and network failure", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockRejectedValueOnce(new Error("offline"));
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(client.deleteAccount("managed-session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "unauthorized",
+    });
+    await expect(client.deleteAccount("managed-session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "network_failed",
+    });
+  });
 });

@@ -46,6 +46,7 @@ type SettingsSyncSetupSectionProps = {
   onAuthPasswordChange: (value: string) => void;
   onCancelRenewal?: (() => void | Promise<void>) | undefined;
   onDisconnect: () => void | Promise<void>;
+  onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
   onDismissOffer?: ((offerID: string) => void | Promise<void>) | undefined;
   onEndpointChange: (value: string) => void;
@@ -86,6 +87,7 @@ export function SettingsSyncSetupSection({
   onAuthPasswordChange,
   onCancelRenewal,
   onDisconnect,
+  onDeleteAccount,
   onDeviceLabelChange,
   onDismissOffer,
   onEndpointChange,
@@ -575,6 +577,14 @@ export function SettingsSyncSetupSection({
             />
           ) : null}
 
+          {errorPresentation.deleteAccountMessage ? (
+            <StatusBanner
+              message={errorPresentation.deleteAccountMessage}
+              testID="settings-sync-delete-account-error-banner"
+              tone="error"
+            />
+          ) : null}
+
           {presentation.isManaged && hasSyncSession && !presentation.hasManagedPlan ? (
             <StatusBanner
               message={viewData.syncBlockedNoPlan}
@@ -604,15 +614,31 @@ export function SettingsSyncSetupSection({
                 testID="settings-sync-disconnect-button"
                 variant="secondary"
               />
+              <AppButton
+                disabled={presentation.accountActionsDisabled}
+                label={viewData.deleteAccountLabel}
+                onPress={onDeleteAccount}
+                testID="settings-sync-delete-account-button"
+                variant="danger"
+              />
             </View>
           ) : presentation.shouldShowDisconnectOnly ? (
-            <AppButton
-              disabled={presentation.accountActionsDisabled}
-              label={viewData.disconnectLabel}
-              onPress={onDisconnect}
-              testID="settings-sync-disconnect-button"
-              variant="secondary"
-            />
+            <View style={styles.actionsStack}>
+              <AppButton
+                disabled={presentation.accountActionsDisabled}
+                label={viewData.disconnectLabel}
+                onPress={onDisconnect}
+                testID="settings-sync-disconnect-button"
+                variant="secondary"
+              />
+              <AppButton
+                disabled={presentation.accountActionsDisabled}
+                label={viewData.deleteAccountLabel}
+                onPress={onDeleteAccount}
+                testID="settings-sync-delete-account-button"
+                variant="danger"
+              />
+            </View>
           ) : null}
         </View>
 
