@@ -203,6 +203,9 @@ describe("offers-service resolveVisibleBillingOffers", () => {
           .date({
             min: new Date("2020-01-01T00:00:00.000Z"),
             max: new Date("2030-01-01T00:00:00.000Z"),
+            // fast-check v4 emits Invalid Date by default even with bounds;
+            // toISOString() on it throws inside the generator, not the SUT.
+            noInvalidDate: true,
           })
           .map((date) => date.toISOString()),
         fc.string(),
@@ -213,6 +216,9 @@ describe("offers-service resolveVisibleBillingOffers", () => {
           .date({
             min: new Date("2020-01-01T00:00:00.000Z"),
             max: new Date("2030-01-01T00:00:00.000Z"),
+            // fast-check v4 emits Invalid Date by default even with bounds;
+            // toISOString() on it throws inside the generator, not the SUT.
+            noInvalidDate: true,
           })
           .map((date) => date.toISOString()),
         fc.string(),
