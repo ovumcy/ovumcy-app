@@ -532,7 +532,7 @@ export function SettingsSyncSetupSection({
                 }
                 key={offer.id}
                 onDismiss={() => {
-                  onDismissOffer?.(offer.id);
+                  void onDismissOffer?.(offer.id);
                 }}
                 onPressCTA={
                   offer.action.type === "screen" && onOfferCTAPress
