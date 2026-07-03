@@ -405,5 +405,3 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
 export function getDashboardCopy(language: string | null | undefined) {
   return dashboardCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const dashboardCopy = dashboardCopyEn;

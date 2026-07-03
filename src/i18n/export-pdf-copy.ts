@@ -480,5 +480,3 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
 export function getExportPDFCopy(language: string | null | undefined) {
   return exportPDFCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const exportPDFCopy = exportPDFCopyEn;

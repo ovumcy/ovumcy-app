@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ActivityIndicator, View, useWindowDimensions } from "react-native";
+import { useWindowDimensions } from "react-native";
 
 import type { OnboardingViewData } from "../../services/onboarding-view-service";
 import type { LoadedOnboardingState } from "../../services/onboarding-screen-service";
@@ -12,8 +12,7 @@ import type {
   UsageGoal,
 } from "../../models/onboarding";
 import type { PredictionMode } from "../../models/profile";
-import { getAppInfo, getOnboardingCopy } from "../../i18n/app-copy";
-import { useAppPreferences } from "../providers/AppPreferencesProvider";
+import { getOnboardingCopy } from "../../i18n/app-copy";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { formatOnboardingLongDate } from "./onboarding/onboarding-flow-format";
 import { createOnboardingFlowStyles } from "./onboarding/onboarding-flow-styles";
@@ -47,31 +46,6 @@ export type OnboardingFlowScreenProps = {
   stepTwoError: string;
   viewData: OnboardingViewData;
 };
-
-export function OnboardingLoadingScreen() {
-  const styles = useThemedStyles(createOnboardingFlowStyles);
-  const { colors, language } = useAppPreferences();
-  const { height, width } = useWindowDimensions();
-  const onboardingCopy = getOnboardingCopy(language);
-  const appInfo = getAppInfo(language);
-
-  return (
-    <OnboardingShell
-      compact={width < 430}
-      progressLabel={appInfo.name}
-      progressPercent={0}
-      screenHeight={height}
-      scrollEnabled
-      styles={styles}
-      subtitle={appInfo.tagline}
-      title={onboardingCopy.loading}
-    >
-      <View style={styles.loadingBlock}>
-        <ActivityIndicator color={colors.accent} size="large" />
-      </View>
-    </OnboardingShell>
-  );
-}
 
 export function OnboardingFlowScreen({
   guidance,

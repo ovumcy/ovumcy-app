@@ -241,11 +241,6 @@ export async function readAsyncStorageProfileRecord(): Promise<ProfileRecord> {
   );
 }
 
-export async function readAsyncStorageOnboardingRecord(): Promise<OnboardingRecord> {
-  const profile = await readAsyncStorageProfileRecord();
-  return profileToOnboardingRecord(profile);
-}
-
 export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
   const entries = await AsyncStorage.multiGet([
     BOOTSTRAP_STATE_KEY,

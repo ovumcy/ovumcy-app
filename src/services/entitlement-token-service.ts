@@ -110,12 +110,3 @@ async function loadToken(
   return cached?.token ?? null;
 }
 
-/**
- * Clears the cached entitlement token. Call on sign-out / disconnect so a
- * stale token cannot keep premium UI unlocked after the session is gone.
- */
-export async function clearEntitlementTokenCache(
-  store: EntitlementTokenStore,
-): Promise<void> {
-  await store.clearEntitlementToken();
-}

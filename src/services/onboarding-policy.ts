@@ -15,8 +15,6 @@ import {
 import {
   addDays,
   buildCycleGuidanceState as buildSharedCycleGuidanceState,
-  clampCycleLength,
-  clampPeriodLength,
   formatLocalDate,
   normalizeUsageGoal,
   atLocalDay,
@@ -48,14 +46,6 @@ export type StepOneValidationCode =
   | "date_required"
   | "invalid_last_period_start"
   | "last_period_range";
-
-export function clampOnboardingCycleLength(value: number): number {
-  return clampCycleLength(value);
-}
-
-export function clampOnboardingPeriodLength(value: number): number {
-  return clampPeriodLength(value);
-}
 
 export function sanitizeOnboardingCycleAndPeriod(
   cycleLength: number,

@@ -450,5 +450,3 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
 export function getDayLogCopy(language: string | null | undefined) {
   return dayLogCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const dayLogCopy = dayLogCopyEn;

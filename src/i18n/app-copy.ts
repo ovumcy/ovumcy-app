@@ -444,13 +444,6 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
   fr: appCopyFr,
 };
 
-export function getAppInfo(language: string | null | undefined) {
-  return appCopyCatalog[resolveCopyLanguage(language)].appInfo;
-}
-
 export function getOnboardingCopy(language: string | null | undefined) {
   return appCopyCatalog[resolveCopyLanguage(language)].onboarding;
 }
-
-export const appInfo = appCopyEn.appInfo;
-export const onboardingCopy = appCopyEn.onboarding;

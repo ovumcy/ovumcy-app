@@ -2615,5 +2615,3 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
 export function getSettingsCopy(language: string | null | undefined) {
   return settingsCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const settingsCopy = settingsCopyEn;
