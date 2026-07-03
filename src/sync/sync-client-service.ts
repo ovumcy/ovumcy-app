@@ -10,7 +10,10 @@ import {
   isValidRecoveryPhrase,
 } from "../security/sync-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
-import type { LocalAppStorage } from "../storage/local/storage-contract";
+import {
+  createDefaultManagedBillingCacheRecord,
+  type LocalAppStorage,
+} from "../storage/local/storage-contract";
 import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
@@ -83,8 +86,30 @@ export type SyncRunErrorCode =
   | "invalid_blob"
   | "stale_generation"
   | "invalid_payload"
+  | "upload_over_backup_declined"
   | "network_failed"
   | "generic";
+
+/**
+ * Data-loss guard policy for `runSyncUpload`: a device that has never
+ * uploaded or restored (lastRemoteGeneration === null) while the server
+ * already holds a backup blob is about to overwrite that backup with a
+ * possibly near-empty local database (fresh install → connect → upload
+ * before restore). The wall-clock generation scheme does not protect here
+ * because a fresh device's clock exceeds the stored generation.
+ */
+export function requiresUploadOverBackupConfirmation(input: {
+  lastRemoteGeneration: number | null;
+  remoteBackupExists: boolean;
+}): boolean {
+  return input.lastRemoteGeneration === null && input.remoteBackupExists;
+}
+
+export type UploadOverBackupGuard = {
+  // Invoked only when the policy above fires. Resolving false (the safe
+  // dismissal answer) aborts the upload with "upload_over_backup_declined".
+  confirmUploadOverExistingBackup: () => Promise<boolean>;
+};
 
 type SyncAPIClientFactory = (baseURL: string) => SyncAPIClient;
 type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
@@ -195,6 +220,13 @@ export async function connectSyncAccount(
       setupStatus: "connected",
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
+
+    // New managed session (possibly a different account): drop billing-cache
+    // state derived under the previous session. The post-connect billing
+    // refresh repopulates it.
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
 
     const success: {
       ok: true;
@@ -375,6 +407,11 @@ export async function finalizeSyncSessionAfterTOTP(
       setupStatus: "connected",
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
+
+    // Same session-boundary purge as the password-only connect path.
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
 
     return {
       ok: true,
@@ -662,6 +699,11 @@ export async function recoverSyncAccess(
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
+    // Recovery establishes a fresh managed session context as well.
+    await storage.writeManagedBillingCacheRecord(
+      createDefaultManagedBillingCacheRecord(),
+    );
+
     return {
       ok: true,
       capabilities,
@@ -777,6 +819,7 @@ export async function runSyncUpload(
   now: Date,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  uploadOverBackupGuard?: UploadOverBackupGuard,
 ): Promise<
   | {
       ok: true;
@@ -797,6 +840,34 @@ export async function runSyncUpload(
     return prepared;
   }
 
+  const client = apiClientFactory(prepared.baseURL);
+
+  // Fresh-install guard: probe the server for an existing backup before this
+  // never-synced device is allowed to overwrite it. The probe runs only when
+  // lastRemoteGeneration is null, so steady-state uploads pay no extra
+  // request. Fail closed on probe errors other than "no blob yet": if the
+  // remote state is unknown, overwriting is exactly the risk being guarded.
+  if (preferences.lastRemoteGeneration === null) {
+    const remoteBlobResult = await client.getBlob(prepared.secrets.authSessionToken);
+    if (!remoteBlobResult.ok && remoteBlobResult.errorCode !== "blob_not_found") {
+      return { ok: false, errorCode: mapRunAPIError(remoteBlobResult.errorCode) };
+    }
+
+    if (
+      requiresUploadOverBackupConfirmation({
+        lastRemoteGeneration: preferences.lastRemoteGeneration,
+        remoteBackupExists: remoteBlobResult.ok,
+      })
+    ) {
+      const confirmed = uploadOverBackupGuard
+        ? await uploadOverBackupGuard.confirmUploadOverExistingBackup()
+        : false;
+      if (!confirmed) {
+        return { ok: false, errorCode: "upload_over_backup_declined" };
+      }
+    }
+  }
+
   const snapshot = await buildSyncSnapshot(storage, now);
   const payload = encodeSyncSnapshot(snapshot);
   const encryptedEnvelope = encryptSyncPayload(
@@ -808,7 +879,6 @@ export async function runSyncUpload(
   const checksumSHA256 = bytesToHex(sha256(ciphertextBytes));
   const generation = nextRemoteGeneration(preferences, now);
 
-  const client = apiClientFactory(prepared.baseURL);
   const capabilitiesResult = await client.getCapabilities(prepared.secrets.authSessionToken);
   if (capabilitiesResult.ok) {
     const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
@@ -970,6 +1040,13 @@ export async function clearLocalSyncSession(
         : "not_configured",
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
+
+  // Session boundary: the cached billing snapshot (and dismissed offer ids)
+  // belong to the managed account context that just ended — same invariant
+  // as the pending partner-invite buffer.
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
 
   return nextPreferences;
 }

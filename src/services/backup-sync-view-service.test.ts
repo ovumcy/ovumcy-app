@@ -3,6 +3,7 @@ import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import {
   buildSettingsViewData,
+  createEmptySettingsManagedPremiumAccess,
   createLoadedSettingsState,
 } from "./settings-view-service";
 import {
@@ -125,10 +126,8 @@ describe("backup sync view service", () => {
         maxBlobBytes: 1024,
       },
       {
+        ...createEmptySettingsManagedPremiumAccess(),
         planStatus: "inactive",
-        doctorPDF: false,
-        reminders: false,
-        activeSubscription: null,
       },
     );
 
@@ -181,10 +180,8 @@ describe("backup sync view service", () => {
         maxBlobBytes: 1024,
       },
       {
+        ...createEmptySettingsManagedPremiumAccess(),
         planStatus: "inactive",
-        doctorPDF: false,
-        reminders: false,
-        activeSubscription: null,
       },
     );
 

@@ -31,9 +31,12 @@ import type {
   LocalAppStorage,
   LocalBootstrapState,
   LocalDayLogSummary,
+  ManagedBillingCacheRecord,
 } from "./storage-contract";
 import {
   createDefaultBootstrapState,
+  createDefaultManagedBillingCacheRecord,
+  normalizeManagedBillingCacheRecord,
   persistBootstrapIncompleteOnboardingStep,
   resolveBootstrapIncompleteOnboardingStep,
 } from "./storage-contract";
@@ -44,6 +47,7 @@ type VolatileWebStorageState = {
   syncPreferencesRecord: SyncPreferencesRecord;
   dayLogRecords: Record<string, DayLogRecord>;
   symptomRecords: SymptomRecord[];
+  managedBillingCacheRecord: ManagedBillingCacheRecord;
 };
 
 export function createVolatileWebAppStorage(): LocalAppStorage {
@@ -200,6 +204,19 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
         ],
       };
     },
+
+    async readManagedBillingCacheRecord(): Promise<ManagedBillingCacheRecord> {
+      return normalizeManagedBillingCacheRecord(state.managedBillingCacheRecord);
+    },
+
+    async writeManagedBillingCacheRecord(
+      record: ManagedBillingCacheRecord,
+    ): Promise<void> {
+      state = {
+        ...state,
+        managedBillingCacheRecord: normalizeManagedBillingCacheRecord(record),
+      };
+    },
   };
 }
 
@@ -221,6 +238,7 @@ function createDefaultVolatileWebStorageState(): VolatileWebStorageState {
     syncPreferencesRecord: createDefaultSyncPreferencesRecord(),
     dayLogRecords: {},
     symptomRecords: createDefaultSymptomRecords(),
+    managedBillingCacheRecord: createDefaultManagedBillingCacheRecord(),
   };
 }
 

@@ -30,6 +30,12 @@ import {
 import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
 import {
+  dismissBillingOffer,
+  readDismissedBillingOfferIDs,
+  resolveVisibleBillingOffers,
+  type ResolvedBillingOffer,
+} from "../../../services/offers-service";
+import {
   describeSubscriptionCountdown,
   formatSubscriptionCountdownMessage,
 } from "../../../services/subscription-countdown-service";
@@ -42,7 +48,9 @@ import {
   recoverBackupSyncAccess,
   restoreBackupSyncSnapshot,
   saveBackupSyncDraft,
+  updateBackupSyncRenewal,
   uploadBackupSyncSnapshot,
+  type BackupSyncRenewalAction,
 } from "../../../services/backup-sync-screen-service";
 import {
   createPlatformExportDeliveryClient,
@@ -143,6 +151,8 @@ export function useBackupSyncScreenController({
   );
   const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
+  const [isUpdatingRenewal, setIsUpdatingRenewal] = useState(false);
+  const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
   const shellCopy = getShellCopy(language);
   const partnerCopy = getPartnerCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
@@ -187,6 +197,7 @@ export function useBackupSyncScreenController({
       }
 
       const premiumFeatures = await loadManagedPremiumFeatures(
+        storage,
         syncSecretStore,
         loadedState.syncPreferences.mode,
       );
@@ -258,13 +269,17 @@ export function useBackupSyncScreenController({
         setGeneratedRecoveryCode("");
         setRecoveryPhraseInputValue("");
         resetPartnerFeedback();
-        const partnerState = await loadPartnerState(loadedState);
+        const [partnerState, dismissedIDs] = await Promise.all([
+          loadPartnerState(loadedState),
+          readDismissedBillingOfferIDs(storage),
+        ]);
         if (!isMounted) {
           return;
         }
         setShowPartnerOwnerControls(partnerState.showOwnerControls);
         setPartnerOverview(partnerState.overview);
         setPartnerErrorMessage(partnerState.errorMessage);
+        setDismissedOfferIDs(dismissedIDs);
         setIsLoading(false);
       }
 
@@ -745,8 +760,24 @@ export function useBackupSyncScreenController({
       syncSecretStore,
       syncReadyState,
       effectiveNow,
+      {
+        // Destructive gate: fresh install about to overwrite an existing
+        // server backup. Dialog dismissal resolves false = do NOT upload.
+        confirmUploadOverExistingBackup: () =>
+          openConfirmation(
+            viewData.account.uploadOverBackupPrompt,
+            viewData.account.uploadOverBackupAccept,
+            viewData.common.cancelAction,
+          ),
+      },
     );
     if (!result.ok) {
+      if (result.errorCode === "upload_over_backup_declined") {
+        // Owner declined the overwrite — not an error, just stop quietly like
+        // every other declined confirmation.
+        setIsSyncingNow(false);
+        return;
+      }
       if (result.errorCode === "unauthorized") {
         const clearedState = await clearUnauthorizedBackupSyncSession(
           storage,
@@ -929,6 +960,69 @@ export function useBackupSyncScreenController({
     setAccountStatusMessage(viewData.account.status.disconnected);
   }
 
+  async function handleUpdateRenewal(action: BackupSyncRenewalAction) {
+    if (!state) {
+      return;
+    }
+
+    resetFeedbackMessages();
+    if (action === "cancel_at_period_end") {
+      const confirmed = await openConfirmation(
+        viewData.account.renewalCancelPrompt,
+        viewData.account.renewalCancelAccept,
+        viewData.common.cancelAction,
+      );
+      // A dismissal resolves to false = keep the subscription untouched.
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    setIsUpdatingRenewal(true);
+    const result = await updateBackupSyncRenewal(
+      storage,
+      syncSecretStore,
+      state,
+      action,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setErrorState({
+        code: result.errorCode,
+        scope: "account",
+      });
+      setIsUpdatingRenewal(false);
+      return;
+    }
+
+    setErrorState(null);
+    setState(result.state);
+    setAccountStatusMessage(
+      action === "cancel_at_period_end"
+        ? viewData.account.status.renewalCancelled
+        : viewData.account.status.renewalResumed,
+    );
+    setIsUpdatingRenewal(false);
+  }
+
+  async function handleDismissOffer(offerID: string) {
+    const nextDismissedOfferIDs = await dismissBillingOffer(storage, offerID);
+    setDismissedOfferIDs(nextDismissedOfferIDs);
+  }
+
+  function handleOfferCTAPress(offer: ResolvedBillingOffer) {
+    if (offer.action.type === "screen") {
+      // v1 renders offers only on the backup-sync screen and the single
+      // known screen target IS /backup-sync — navigating again would remount
+      // the flow, so this is a deliberate no-op while already here. Other
+      // surfaces (stats/settings) get real routing when they adopt OfferCard.
+      return;
+    }
+    // "play_checkout" CTAs are inert until Play Billing lands in a later
+    // phase; the card renders them disabled so this branch is unreachable
+    // from the UI today.
+  }
+
   function handleAcknowledgeRecoveryCode() {
     setGeneratedRecoveryCode("");
   }
@@ -977,13 +1071,16 @@ export function useBackupSyncScreenController({
     getSubscriptionCopy(language),
   );
   const presentation = buildBackupSyncSetupPresentation({
+    billingManagement: state.managedPremiumAccess.billingManagement,
     hasStoredSyncSecrets: state.hasStoredSyncSecrets,
     hasSyncSession: state.hasSyncSession,
     isAuthenticating: isAuthenticatingSync,
     isPreparing: isPreparingSync,
     isRecovering: isRecoveringSync,
     isRestoring: isRestoringSync,
-    isSyncing: isSyncingNow,
+    // A renewal update in flight disables the same action set as a running
+    // upload, so the owner cannot double-submit billing changes.
+    isSyncing: isSyncingNow || isUpdatingRenewal,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
@@ -991,6 +1088,12 @@ export function useBackupSyncScreenController({
     subscriptionCountdownMessage,
     syncCapabilities: state.syncCapabilities,
     viewData: viewData.account,
+  });
+  const billingOffers = resolveVisibleBillingOffers({
+    offers: state.managedPremiumAccess.offers,
+    now: effectiveNow,
+    language,
+    dismissedOfferIDs,
   });
   const showPartnerSection =
     presentation.isManaged &&
@@ -1007,6 +1110,7 @@ export function useBackupSyncScreenController({
       authLoginValue: accountLoginValue,
       authPasswordValue: accountPasswordValue,
       backLabel: viewData.account.backToSettingsLabel,
+      billingOffers,
       confirmActionLabel: viewData.common.confirmAction,
       errorPresentation,
       generatedRecoveryCode,
@@ -1041,8 +1145,14 @@ export function useBackupSyncScreenController({
             : current,
         );
       },
+      onCancelRenewal: () => {
+        void handleUpdateRenewal("cancel_at_period_end");
+      },
       onDisconnect: () => {
         void handleDisconnectSync();
+      },
+      onDismissOffer: (offerID) => {
+        void handleDismissOffer(offerID);
       },
       onEndpointChange: (value) => {
         resetFeedbackMessages();
@@ -1093,6 +1203,7 @@ export function useBackupSyncScreenController({
             : current,
         );
       },
+      onOfferCTAPress: handleOfferCTAPress,
       onPartnerAcceptInvite: () => {
         void handleAcceptPartnerInvite();
       },
@@ -1114,6 +1225,9 @@ export function useBackupSyncScreenController({
       },
       onRecoverAccess: () => {
         void handleRecoverSync();
+      },
+      onResumeRenewal: () => {
+        void handleUpdateRenewal("resume");
       },
       onRetryPlanCheck: () => {
         void handleRetryPlanCheck();

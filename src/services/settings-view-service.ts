@@ -1,6 +1,11 @@
 import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
 import { getSettingsCopy } from "../i18n/settings-copy";
-import type { ManagedCloudActiveSubscription } from "../sync/managed-cloud-api-client";
+import type {
+  ManagedCloudActiveSubscription,
+  ManagedCloudBillingManagement,
+  ManagedCloudBillingOffer,
+  ManagedCloudBillingSnapshot,
+} from "../sync/managed-cloud-api-client";
 import type { LoadedExportState } from "../models/export";
 import type {
   AgeGroup,
@@ -261,6 +266,15 @@ export type SettingsViewData = {
     restorePrompt: string;
     restoreAccept: string;
     restoreDeviceAuthPrompt: string;
+    uploadOverBackupPrompt: string;
+    uploadOverBackupAccept: string;
+    renewalCancelLabel: string;
+    renewalResumeLabel: string;
+    renewalCancelPrompt: string;
+    renewalCancelAccept: string;
+    offerDismissLabel: string;
+    offerPromoEyebrow: string;
+    offerAnnouncementEyebrow: string;
     disconnectPrompt: string;
     disconnectDeviceAuthPrompt: string;
     recoveryTitle: string;
@@ -288,6 +302,8 @@ export type SettingsViewData = {
       uploaded: string;
       restored: string;
       disconnected: string;
+      renewalCancelled: string;
+      renewalResumed: string;
     };
     errors: {
       loginRequired: string;
@@ -317,6 +333,8 @@ export type SettingsViewData = {
       saveFailed: string;
       syncFailed: string;
       restoreFailed: string;
+      renewalUnavailable: string;
+      renewalUpdateFailed: string;
     };
   };
   symptoms: {
@@ -407,7 +425,43 @@ export type SettingsManagedPremiumAccess = {
   // when there is no managed subscription row (self-hosted, signed out, or a
   // plan-less managed account).
   activeSubscription: ManagedCloudActiveSubscription | null;
+  // billingManagement mirrors the live snapshot's renewal affordances; all
+  // false when signed out, self-hosted, or on cached (offline-grace) billing
+  // truth, which hides the manage-renewal row entirely.
+  billingManagement: ManagedCloudBillingManagement;
+  // offers carries billing-surface promos/announcements from the LIVE
+  // snapshot only ([] on cached truth); backup-sync is the single render
+  // surface in v1.
+  offers: ManagedCloudBillingOffer[];
 };
+
+export function createEmptySettingsManagedPremiumAccess(): SettingsManagedPremiumAccess {
+  return {
+    planStatus: "unknown",
+    doctorPDF: false,
+    reminders: false,
+    activeSubscription: null,
+    billingManagement: {
+      canManageRenewal: false,
+      canCancelAtPeriodEnd: false,
+      canResumeRenewal: false,
+    },
+    offers: [],
+  };
+}
+
+export function mapBillingSnapshotToManagedPremiumAccess(
+  billingSnapshot: ManagedCloudBillingSnapshot,
+): SettingsManagedPremiumAccess {
+  return {
+    planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
+    doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
+    reminders: billingSnapshot.premiumFeatures.reminders,
+    activeSubscription: billingSnapshot.activeSubscription,
+    billingManagement: billingSnapshot.billingManagement,
+    offers: billingSnapshot.offers,
+  };
+}
 
 export type LoadedSettingsState = {
   profile: ProfileRecord;
@@ -739,6 +793,15 @@ export function buildSettingsViewData(
       restorePrompt: settingsCopy.account.restorePrompt,
       restoreAccept: settingsCopy.account.restoreAccept,
       restoreDeviceAuthPrompt: settingsCopy.account.restoreDeviceAuthPrompt,
+      uploadOverBackupPrompt: settingsCopy.account.uploadOverBackupPrompt,
+      uploadOverBackupAccept: settingsCopy.account.uploadOverBackupAccept,
+      renewalCancelLabel: settingsCopy.account.renewalCancelLabel,
+      renewalResumeLabel: settingsCopy.account.renewalResumeLabel,
+      renewalCancelPrompt: settingsCopy.account.renewalCancelPrompt,
+      renewalCancelAccept: settingsCopy.account.renewalCancelAccept,
+      offerDismissLabel: settingsCopy.account.offerDismissLabel,
+      offerPromoEyebrow: settingsCopy.account.offerPromoEyebrow,
+      offerAnnouncementEyebrow: settingsCopy.account.offerAnnouncementEyebrow,
       disconnectPrompt: settingsCopy.account.disconnectPrompt,
       disconnectDeviceAuthPrompt: settingsCopy.account.disconnectDeviceAuthPrompt,
       recoveryTitle: settingsCopy.account.recoveryTitle,
@@ -766,6 +829,8 @@ export function buildSettingsViewData(
         uploaded: settingsCopy.account.uploaded,
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
+        renewalCancelled: settingsCopy.account.renewalCancelled,
+        renewalResumed: settingsCopy.account.renewalResumed,
       },
       errors: {
         loginRequired: settingsCopy.account.errors.loginRequired,
@@ -801,6 +866,8 @@ export function buildSettingsViewData(
         saveFailed: settingsCopy.account.errors.saveFailed,
         syncFailed: settingsCopy.account.errors.syncFailed,
         restoreFailed: settingsCopy.account.errors.restoreFailed,
+        renewalUnavailable: settingsCopy.account.errors.renewalUnavailable,
+        renewalUpdateFailed: settingsCopy.account.errors.renewalUpdateFailed,
       },
     },
     symptoms: {
@@ -898,12 +965,7 @@ export function createLoadedSettingsState(
   exportState: LoadedExportState,
   syncPreferences: SyncPreferencesRecord = savedSyncPreferences,
   syncCapabilities: SyncCapabilityDocument | null = null,
-  managedPremiumAccess: SettingsManagedPremiumAccess = {
-    planStatus: "unknown",
-    doctorPDF: false,
-    reminders: false,
-    activeSubscription: null,
-  },
+  managedPremiumAccess: SettingsManagedPremiumAccess = createEmptySettingsManagedPremiumAccess(),
 ): LoadedSettingsState {
   return {
     profile,

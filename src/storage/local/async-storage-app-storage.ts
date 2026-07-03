@@ -34,9 +34,11 @@ import type {
   LocalAppStorage,
   LocalBootstrapState,
   LocalDayLogSummary,
+  ManagedBillingCacheRecord,
 } from "./storage-contract";
 import {
   createDefaultBootstrapState,
+  createDefaultManagedBillingCacheRecord,
   persistBootstrapIncompleteOnboardingStep,
   resolveBootstrapIncompleteOnboardingStep,
 } from "./storage-contract";
@@ -178,6 +180,16 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
       nextRecords.push(mergeSymptomRecord(record));
       await AsyncStorage.setItem(SYMPTOM_RECORDS_KEY, JSON.stringify(nextRecords));
     },
+
+    // Deliberate no-op cache: this legacy adapter persists to plain
+    // AsyncStorage, and derived premium flags must never live in a broadly
+    // readable plaintext store (see .agents/context/security.md). The active
+    // backends (encrypted SQLite, volatile web) carry the real cache.
+    async readManagedBillingCacheRecord(): Promise<ManagedBillingCacheRecord> {
+      return createDefaultManagedBillingCacheRecord();
+    },
+
+    async writeManagedBillingCacheRecord(): Promise<void> {},
   };
 }
 

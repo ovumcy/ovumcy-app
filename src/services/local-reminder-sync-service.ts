@@ -106,6 +106,7 @@ export async function syncReminderDeliveryState(
 
   const syncPreferences = await storage.readSyncPreferencesRecord();
   const premiumFeatures = await loadManagedPremiumFeatures(
+    storage,
     secretStore,
     syncPreferences.mode,
   );

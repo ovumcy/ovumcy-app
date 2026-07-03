@@ -83,6 +83,12 @@ type FakeDatabaseState = {
     last_synced_at?: string | null;
     encrypted_payload?: string | null;
   } | null;
+  // hasManagedBillingCacheTable models a pre-v13 database until the schema
+  // reconcile runs CREATE TABLE for managed_billing_cache.
+  hasManagedBillingCacheTable: boolean;
+  managedBillingCacheRow: {
+    encrypted_payload: string | null;
+  } | null;
   userVersion: number;
 };
 
@@ -106,13 +112,25 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       "encrypted_payload",
     ],
     syncPreferencesRow: null,
+    hasManagedBillingCacheTable: false,
+    managedBillingCacheRow: null,
     userVersion: 0,
     ...state,
   };
 
+  function requireManagedBillingCacheTable() {
+    if (!databaseState.hasManagedBillingCacheTable) {
+      throw new Error("no such table: managed_billing_cache");
+    }
+  }
+
   function applySchemaStatement(source: string) {
     if (source.startsWith("PRAGMA user_version =")) {
       databaseState.userVersion = Number(source.replace(/\D/g, ""));
+    }
+
+    if (source.includes("CREATE TABLE IF NOT EXISTS managed_billing_cache")) {
+      databaseState.hasManagedBillingCacheTable = true;
     }
 
     if (source.includes("ALTER TABLE profile_settings ADD COLUMN language_override")) {
@@ -259,6 +277,10 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       if (source.includes("COUNT(*) AS count FROM symptoms")) {
         return { count: databaseState.symptomRows.length } as T;
       }
+      if (source.includes("COUNT(*) AS count FROM managed_billing_cache")) {
+        requireManagedBillingCacheTable();
+        return { count: databaseState.managedBillingCacheRow ? 1 : 0 } as T;
+      }
 
       if (source.includes("COUNT(*) AS total_entries")) {
         const from = params.length > 0 ? (params[0] as string | null) : null;
@@ -341,6 +363,25 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         return row
           ? ({ encrypted_payload: row.encrypted_payload ?? null } as T)
           : null;
+      }
+
+      if (
+        source.includes("SELECT encrypted_payload FROM managed_billing_cache") &&
+        source.includes("encrypted_payload IS NOT NULL")
+      ) {
+        requireManagedBillingCacheTable();
+        if (databaseState.managedBillingCacheRow?.encrypted_payload) {
+          return {
+            encrypted_payload:
+              databaseState.managedBillingCacheRow.encrypted_payload,
+          } as T;
+        }
+        return null;
+      }
+
+      if (source.includes("FROM managed_billing_cache")) {
+        requireManagedBillingCacheTable();
+        return (databaseState.managedBillingCacheRow as T) ?? null;
       }
 
       if (source.includes("FROM bootstrap_state")) {
@@ -503,6 +544,16 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           last_synced_at: (params[7] as string | null) ?? null,
           encrypted_payload: (params[8] as string | null) ?? null,
         };
+      }
+      if (source.includes("INSERT INTO managed_billing_cache")) {
+        requireManagedBillingCacheTable();
+        databaseState.managedBillingCacheRow = {
+          encrypted_payload: (params[0] as string | null) ?? null,
+        };
+      }
+      if (source.includes("DELETE FROM managed_billing_cache")) {
+        requireManagedBillingCacheTable();
+        databaseState.managedBillingCacheRow = null;
       }
       if (source.includes("INSERT INTO symptoms")) {
         const nextRow = {
@@ -730,6 +781,111 @@ describe("sqlite-app-storage", () => {
         }),
       ]),
     );
+  });
+
+  it("migrates a v12 database by creating and seeding the managed billing cache table", async () => {
+    // Simulates an existing install: user_version already 12, no
+    // managed_billing_cache table on disk yet. Hydration must create the
+    // table (v13), seed the default encrypted record, and bump the version.
+    const inspected = createInspectableFakeDatabase({
+      hasManagedBillingCacheTable: false,
+      userVersion: 12,
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+      snapshot: null,
+      dismissedOfferIDs: [],
+    });
+    expect(inspected.state.hasManagedBillingCacheTable).toBe(true);
+    expect(inspected.state.userVersion).toBe(13);
+    expect(inspected.state.managedBillingCacheRow?.encrypted_payload).toEqual(
+      expect.any(String),
+    );
+  });
+
+  it("round-trips the managed billing cache record through the encrypted payload only", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    const record = {
+      snapshot: {
+        hasActivePlan: true,
+        premiumFeatures: {
+          advancedFertility: true,
+          advancedInsights: false,
+          doctorPDF: true,
+          extendedReports: false,
+          partnerAccess: false,
+          reminders: true,
+        },
+        fetchedAt: "2026-07-01T10:00:00.000Z",
+      },
+      dismissedOfferIDs: ["offer-1", "offer-2"],
+    };
+    await storage.writeManagedBillingCacheRecord(record);
+
+    await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual(record);
+    const storedPayload =
+      inspected.state.managedBillingCacheRow?.encrypted_payload ?? "";
+    // Premium flags and offer ids must never sit in plaintext columns or a
+    // readable payload (security.md invariant for derived premium flags).
+    expect(storedPayload).toEqual(expect.any(String));
+    expect(storedPayload).not.toContain("hasActivePlan");
+    expect(storedPayload).not.toContain("offer-1");
+    expect(storedPayload).not.toContain("2026-07-01");
+  });
+
+  it("wipes the managed billing cache on destructive local reset and reseeds the default", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    await storage.writeManagedBillingCacheRecord({
+      snapshot: {
+        hasActivePlan: true,
+        premiumFeatures: {
+          advancedFertility: false,
+          advancedInsights: false,
+          doctorPDF: true,
+          extendedReports: false,
+          partnerAccess: false,
+          reminders: false,
+        },
+        fetchedAt: "2026-07-01T10:00:00.000Z",
+      },
+      dismissedOfferIDs: ["offer-1"],
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+      snapshot: null,
+      dismissedOfferIDs: [],
+    });
   });
 
   it("persists bootstrap and canonical profile updates in sqlite", async () => {

@@ -24,6 +24,9 @@ export type ManagedCloudAPIErrorCode =
   | "partner_invite_not_found"
   | "reminder_schedule_unavailable"
   | "entitlements_unavailable"
+  | "billing_management_unavailable"
+  | "billing_subscription_conflict"
+  | "billing_provider_unavailable"
   | "unauthorized"
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
@@ -83,6 +86,37 @@ export type ManagedCloudBillingManagement = {
   canResumeRenewal: boolean;
 };
 
+export type ManagedCloudBillingOfferCopy = {
+  title: string;
+  body: string;
+  cta: string;
+};
+
+// Action keeps `type`/`screen` as plain strings on purpose: the client stays
+// structurally tolerant (a future action type must not break parsing), and
+// `offers-service` narrows to the action kinds this app version understands.
+export type ManagedCloudBillingOfferAction = {
+  type: string;
+  productId: string | null;
+  basePlanId: string | null;
+  offerId: string | null;
+  screen: string | null;
+};
+
+export type ManagedCloudBillingOffer = {
+  id: string;
+  // kind is a plain string for the same forward tolerance as action.type;
+  // known values today: "subscription_promo" | "announcement".
+  kind: string;
+  audience: string[];
+  startsAt: string | null;
+  endsAt: string | null;
+  // copy maps a locale tag ("en", "ru", ...) to the offer strings; entries
+  // with missing/invalid title/body/cta are dropped at parse time.
+  copy: Record<string, ManagedCloudBillingOfferCopy>;
+  action: ManagedCloudBillingOfferAction;
+};
+
 export type ManagedCloudBillingSnapshot = {
   hasActivePlan: boolean;
   premiumFeatures: ManagedCloudPremiumFeatures;
@@ -92,6 +126,10 @@ export type ManagedCloudBillingSnapshot = {
   // billingManagement reports which self-service renewal actions the backend
   // currently allows for this account (drives cancel/resume affordances).
   billingManagement: ManagedCloudBillingManagement;
+  // offers carries billing-surface promos/announcements. Parsing is fully
+  // tolerant (mirrors the null-tolerant partner-overview pattern): a missing
+  // or malformed offers field yields [], malformed entries are dropped.
+  offers: ManagedCloudBillingOffer[];
 };
 
 export type ManagedCloudEntitlementToken = {
@@ -221,6 +259,16 @@ export type ManagedCloudAPIClient = {
   >;
   getBillingSnapshot(
     sessionToken: string,
+  ): Promise<
+    | { ok: true; billing: ManagedCloudBillingSnapshot }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  // updateBillingRenewal toggles cancel_at_period_end on the account's
+  // subscription (PUT /account/billing/renewal) and returns the refreshed
+  // billing snapshot on success.
+  updateBillingRenewal(
+    sessionToken: string,
+    input: { cancelAtPeriodEnd: boolean },
   ): Promise<
     | { ok: true; billing: ManagedCloudBillingSnapshot }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
@@ -484,6 +532,9 @@ type RawManagedCloudBillingSnapshot = {
   };
   active_subscription?: RawManagedCloudActiveSubscription | null;
   billing_management?: RawManagedCloudBillingManagement;
+  // offers stays `unknown`: the guard never validates it, mapBillingOffers
+  // absorbs any malformed shape instead of failing the whole snapshot.
+  offers?: unknown;
 };
 
 type RawManagedCloudEntitlementToken = {
@@ -811,6 +862,26 @@ export function createManagedCloudAPIClient(
         {
           method: "GET",
           sessionToken,
+        },
+        isRawManagedCloudBillingSnapshot,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, billing: mapBillingSnapshot(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async updateBillingRenewal(sessionToken, input) {
+      return requestJSON<RawManagedCloudBillingSnapshot>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/billing/renewal",
+        {
+          method: "PUT",
+          sessionToken,
+          body: {
+            cancel_at_period_end: input.cancelAtPeriodEnd,
+          },
         },
         isRawManagedCloudBillingSnapshot,
       ).then((result) =>
@@ -1188,6 +1259,9 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_projection_not_found":
       case "reminder_schedule_unavailable":
       case "entitlements_unavailable":
+      case "billing_management_unavailable":
+      case "billing_subscription_conflict":
+      case "billing_provider_unavailable":
       case "unauthorized":
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
@@ -1630,7 +1704,87 @@ function mapBillingSnapshot(
       canCancelAtPeriodEnd: management.can_cancel_at_period_end === true,
       canResumeRenewal: management.can_resume_renewal === true,
     },
+    offers: mapBillingOffers(raw.offers),
   };
+}
+
+// mapBillingOffers is the tolerant boundary for the offers contract: the
+// server side is built in parallel against this shape, so a missing/invalid
+// offers field maps to [] and each malformed entry is dropped — never an
+// error that would take down the whole billing snapshot.
+function mapBillingOffers(raw: unknown): ManagedCloudBillingOffer[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const offers: ManagedCloudBillingOffer[] = [];
+  for (const entry of raw) {
+    const offer = mapBillingOffer(entry);
+    if (offer) {
+      offers.push(offer);
+    }
+  }
+  return offers;
+}
+
+function mapBillingOffer(raw: unknown): ManagedCloudBillingOffer | null {
+  if (!isObject(raw)) {
+    return null;
+  }
+  if (typeof raw.id !== "string" || raw.id.length === 0) {
+    return null;
+  }
+  if (typeof raw.kind !== "string" || raw.kind.length === 0) {
+    return null;
+  }
+  if (!isObject(raw.action) || typeof raw.action.type !== "string") {
+    return null;
+  }
+
+  return {
+    id: raw.id,
+    kind: raw.kind,
+    audience: Array.isArray(raw.audience)
+      ? raw.audience.filter((item): item is string => typeof item === "string")
+      : [],
+    startsAt: typeof raw.startsAt === "string" ? raw.startsAt : null,
+    endsAt: typeof raw.endsAt === "string" ? raw.endsAt : null,
+    copy: mapBillingOfferCopy(raw.copy),
+    action: {
+      type: raw.action.type,
+      productId:
+        typeof raw.action.productId === "string" ? raw.action.productId : null,
+      basePlanId:
+        typeof raw.action.basePlanId === "string" ? raw.action.basePlanId : null,
+      offerId: typeof raw.action.offerId === "string" ? raw.action.offerId : null,
+      screen: typeof raw.action.screen === "string" ? raw.action.screen : null,
+    },
+  };
+}
+
+function mapBillingOfferCopy(
+  raw: unknown,
+): Record<string, ManagedCloudBillingOfferCopy> {
+  if (!isObject(raw)) {
+    return {};
+  }
+
+  const copy: Record<string, ManagedCloudBillingOfferCopy> = {};
+  for (const [locale, entry] of Object.entries(raw)) {
+    if (
+      isObject(entry) &&
+      typeof entry.title === "string" &&
+      typeof entry.body === "string" &&
+      typeof entry.cta === "string"
+    ) {
+      copy[locale] = {
+        title: entry.title,
+        body: entry.body,
+        cta: entry.cta,
+      };
+    }
+  }
+  return copy;
 }
 
 function mapReminderEmailSchedule(

@@ -17,7 +17,10 @@ import {
 } from "./settings-screen-service";
 import { prepareBackupSyncSetup, saveBackupSyncDraft } from "./backup-sync-screen-service";
 import { loadSettingsScreenState } from "./settings-state-service";
-import { createLoadedSettingsState } from "./settings-view-service";
+import {
+  createEmptySettingsManagedPremiumAccess,
+  createLoadedSettingsState,
+} from "./settings-view-service";
 
 const originalFetch = global.fetch;
 
@@ -142,10 +145,8 @@ describe("settings services", () => {
       expect.objectContaining({
         hasSyncSession: true,
         managedPremiumAccess: {
+          ...createEmptySettingsManagedPremiumAccess(),
           planStatus: "inactive",
-          doctorPDF: false,
-          reminders: false,
-          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -231,10 +232,8 @@ describe("settings services", () => {
       expect.objectContaining({
         hasSyncSession: true,
         managedPremiumAccess: {
+          ...createEmptySettingsManagedPremiumAccess(),
           planStatus: "inactive",
-          doctorPDF: false,
-          reminders: false,
-          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -324,10 +323,10 @@ describe("settings services", () => {
           setupStatus: "local_ready",
         }),
         managedPremiumAccess: {
+          ...createEmptySettingsManagedPremiumAccess(),
           planStatus: "active",
           doctorPDF: true,
           reminders: true,
-          activeSubscription: null,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",
@@ -905,10 +904,9 @@ describe("settings services", () => {
         maxBlobBytes: 1024,
       },
       {
+        ...createEmptySettingsManagedPremiumAccess(),
         planStatus: "active",
         doctorPDF: true,
-        reminders: false,
-        activeSubscription: null,
       },
     );
 

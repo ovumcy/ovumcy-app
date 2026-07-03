@@ -44,6 +44,7 @@ export function StatsScreen({
         const premiumFeatures =
           syncState.hasAuthSession && syncState.preferences.mode === "managed"
             ? await loadManagedPremiumFeatures(
+                storage,
                 syncSecretStore,
                 syncState.preferences.mode,
               )

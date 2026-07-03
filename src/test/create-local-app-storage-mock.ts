@@ -5,6 +5,7 @@ import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultOnboardingRecord } from "../services/onboarding-policy";
 import {
   createDefaultBootstrapState,
+  createDefaultManagedBillingCacheRecord,
   type LocalAppStorage,
 } from "../storage/local/storage-contract";
 
@@ -45,6 +46,10 @@ export function createLocalAppStorageMock(
     }),
     listSymptomRecords: jest.fn().mockResolvedValue(createDefaultSymptomRecords()),
     writeSymptomRecord: jest.fn().mockResolvedValue(undefined),
+    readManagedBillingCacheRecord: jest
+      .fn()
+      .mockResolvedValue(createDefaultManagedBillingCacheRecord()),
+    writeManagedBillingCacheRecord: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

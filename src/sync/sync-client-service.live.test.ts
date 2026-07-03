@@ -156,4 +156,118 @@ describeIfLive("sync-client-service live transport", () => {
     );
     expect(disconnectResult.preferences.setupStatus).toBe("local_ready");
   });
+
+  it("guards a never-synced install from overwriting an existing server backup", async () => {
+    const now = new Date("2026-03-21T09:00:00.000Z");
+    const storage = createVolatileWebAppStorage();
+    const secretStore = createSyncSecretStoreMock();
+
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "light",
+      mood: 2,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      lhTest: "none",
+      pregnancyTest: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "device A history",
+    });
+
+    let preferences: SyncPreferencesRecord = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted",
+      endpointInput: liveBaseURL,
+      normalizedEndpoint: liveBaseURL,
+      deviceLabel: "Guard Device A",
+    };
+
+    const prepareResult = await prepareSyncSetup(
+      storage,
+      secretStore,
+      preferences,
+      now,
+    );
+    expect(prepareResult.ok).toBe(true);
+    if (!prepareResult.ok) {
+      return;
+    }
+    preferences = prepareResult.preferences;
+
+    const connectResult = await connectSyncAccount(
+      storage,
+      secretStore,
+      preferences,
+      {
+        login: `guard-${Date.now()}@ovumcy.test`,
+        password: "CorrectHorseBattery42!",
+      },
+      "register",
+      now,
+    );
+    expect(connectResult.ok).toBe(true);
+    if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
+      return;
+    }
+    preferences = connectResult.preferences;
+
+    // Device A uploads its history: the account now has a server backup.
+    const firstUpload = await runSyncUpload(storage, secretStore, preferences, now);
+    expect(firstUpload.ok).toBe(true);
+
+    // "Fresh install" moment: this device has never uploaded or restored
+    // (lastRemoteGeneration null — the exact state connect/recover leaves
+    // behind) while the server still holds the backup. Declining the
+    // confirmation must abort before anything is overwritten.
+    const freshInstallPreferences: SyncPreferencesRecord = {
+      ...preferences,
+      lastRemoteGeneration: null,
+      lastSyncedAt: null,
+    };
+    const declined = await runSyncUpload(
+      storage,
+      secretStore,
+      freshInstallPreferences,
+      new Date("2026-03-21T09:05:00.000Z"),
+      undefined,
+      undefined,
+      { confirmUploadOverExistingBackup: async () => false },
+    );
+    expect(declined).toEqual({
+      ok: false,
+      errorCode: "upload_over_backup_declined",
+    });
+
+    // The server copy must still decode after the declined attempt.
+    const restoreAfterDecline = await runSyncRestore(
+      storage,
+      secretStore,
+      freshInstallPreferences,
+    );
+    expect(restoreAfterDecline.ok).toBe(true);
+
+    // An explicit confirmation still allows the overwrite.
+    const confirmed = await runSyncUpload(
+      storage,
+      secretStore,
+      { ...preferences, lastRemoteGeneration: null, lastSyncedAt: null },
+      new Date("2026-03-21T09:10:00.000Z"),
+      undefined,
+      undefined,
+      { confirmUploadOverExistingBackup: async () => true },
+    );
+    expect(confirmed.ok).toBe(true);
+
+    await disconnectSyncAccount(storage, secretStore, preferences);
+  });
 });

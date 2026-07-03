@@ -7,7 +7,10 @@ import { clearManagedPartnerInviteToken } from "../../security/managed-partner-i
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import * as backupSyncScreenService from "../../services/backup-sync-screen-service";
 import { formatBackupSyncLastSeen } from "../../services/backup-sync-view-service";
-import { createLoadedSettingsState } from "../../services/settings-view-service";
+import {
+  createEmptySettingsManagedPremiumAccess,
+  createLoadedSettingsState,
+} from "../../services/settings-view-service";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
@@ -242,12 +245,7 @@ describe("BackupSyncScreen", () => {
               maxDevices: 5,
               maxBlobBytes: 1024,
             },
-            {
-              planStatus: "unknown",
-              doctorPDF: false,
-              reminders: false,
-              activeSubscription: null,
-            },
+            createEmptySettingsManagedPremiumAccess(),
           ),
         });
 
@@ -1410,10 +1408,8 @@ describe("BackupSyncScreen", () => {
             maxBlobBytes: 1024,
           },
           {
+            ...createEmptySettingsManagedPremiumAccess(),
             planStatus: "active",
-            doctorPDF: false,
-            reminders: false,
-            activeSubscription: null,
           },
         ),
       });
@@ -1575,4 +1571,245 @@ describe("BackupSyncScreen", () => {
       completeSpy.mockRestore();
     }
   });
+
+  it("renders no manage-renewal row when both billing management flags are false", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedBillingFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: { partner_access: false },
+      },
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    await screen.findByTestId("settings-sync-plan-banner");
+
+    expect(screen.queryByTestId("settings-sync-renewal-row")).toBeNull();
+    expect(screen.queryByTestId("settings-sync-renewal-cancel-button")).toBeNull();
+    expect(screen.queryByTestId("settings-sync-renewal-resume-button")).toBeNull();
+  });
+
+  it("shows only the flag-enabled renewal action and requires confirmation before cancelling", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    const renewalPut = jest.fn(async () =>
+      createJSONResponse({
+        has_active_plan: true,
+        premium_features: {},
+        active_subscription: {
+          status: "active",
+          current_period_ends_at: "2026-04-20T00:00:00.000Z",
+          cancel_at_period_end: true,
+        },
+        billing_management: {
+          can_manage_renewal: true,
+          can_cancel_at_period_end: false,
+          can_resume_renewal: true,
+        },
+      }),
+    );
+    global.fetch = createManagedBillingFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: {},
+        billing_management: {
+          can_manage_renewal: true,
+          can_cancel_at_period_end: true,
+          can_resume_renewal: false,
+        },
+      },
+      onRenewalPut: renewalPut,
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-renewal-row");
+    expect(screen.getByTestId("settings-sync-renewal-cancel-button")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-renewal-resume-button")).toBeNull();
+
+    // Dismissal / decline resolves false = the subscription stays untouched.
+    mockOpenConfirmation.mockResolvedValueOnce(false);
+    fireEvent.press(screen.getByTestId("settings-sync-renewal-cancel-button"));
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(mockOpenConfirmation).toHaveBeenCalledWith(
+      expect.stringContaining("automatic renewal"),
+      expect.any(String),
+      expect.any(String),
+    );
+    expect(renewalPut).not.toHaveBeenCalled();
+
+    // Explicit accept drives the PUT and the row flips to the resume action.
+    mockOpenConfirmation.mockResolvedValueOnce(true);
+    fireEvent.press(screen.getByTestId("settings-sync-renewal-cancel-button"));
+    await waitFor(() => expect(renewalPut).toHaveBeenCalledTimes(1));
+    await screen.findByTestId("settings-sync-renewal-resume-button");
+    expect(screen.queryByTestId("settings-sync-renewal-cancel-button")).toBeNull();
+  });
+
+  it("renders billing offers in the plan area and persists dismissal", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedBillingFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: {},
+        offers: [
+          {
+            id: "promo-1",
+            kind: "subscription_promo",
+            audience: ["trial"],
+            startsAt: null,
+            endsAt: null,
+            copy: {
+              en: {
+                title: "Yearly saves 20%",
+                body: "Switch to the yearly plan.",
+                cta: "See plans",
+              },
+            },
+            action: {
+              type: "play_checkout",
+              productId: "premium",
+              basePlanId: "yearly",
+            },
+          },
+        ],
+      },
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-offer-promo-1");
+    expect(screen.getByTestId("settings-sync-offer-promo-1-title").props.children).toBe(
+      "Yearly saves 20%",
+    );
+    // play_checkout stays inert until Play Billing lands.
+    expect(
+      screen.getByTestId("settings-sync-offer-promo-1-cta").props
+        .accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+
+    fireEvent.press(screen.getByTestId("settings-sync-offer-promo-1-dismiss"));
+
+    await waitFor(() =>
+      expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dismissedOfferIDs: ["promo-1"],
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("settings-sync-offer-promo-1")).toBeNull(),
+    );
+  });
 });
+
+function createConnectedManagedPreferences() {
+  return {
+    mode: "managed" as const,
+    endpointInput: "",
+    normalizedEndpoint: "https://sync.ovumcy.cloud",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+    preparedAt: "2026-03-19T08:15:00.000Z",
+    lastRemoteGeneration: 12,
+    lastSyncedAt: "2026-03-19T09:00:00.000Z",
+  };
+}
+
+function createConnectedManagedSecrets() {
+  return {
+    device: {
+      deviceID: "device-1",
+      deviceLabel: "Pixel 7",
+      createdAt: "2026-03-19T08:15:00.000Z",
+    },
+    masterKeyHex: "aa",
+    deviceSecretHex: "bb",
+    wrappedKey: {
+      algorithm: "xchacha20poly1305" as const,
+      kdf: "bip39_seed_hkdf_sha256" as const,
+      mnemonicWordCount: 12 as const,
+      wrapNonceHex: "cc",
+      wrappedMasterKeyHex: "dd",
+      phraseFingerprintHex: "ee",
+    },
+    authSessionToken: null,
+    managedAuthSessionToken: "managed-session-1",
+  };
+}
+
+function createManagedBillingFetchMock(options: {
+  billing: Record<string, unknown>;
+  onRenewalPut?: (() => Promise<Response>) | undefined;
+}): typeof fetch {
+  return jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/account/billing/renewal")) {
+      if (options.onRenewalPut && init?.method === "PUT") {
+        return options.onRenewalPut();
+      }
+      throw new Error(`Unexpected renewal fetch in test: ${url}`);
+    }
+    if (url.includes("/auth/session")) {
+      return createJSONResponse({
+        account_id: "managed-account-1",
+        email: "alice@example.com",
+        session_expires_at: "2026-03-21T08:00:00.000Z",
+        sync_entitlement: {
+          sync_allowed: true,
+          source: "billing_subscription",
+          updated_at: "2026-03-20T08:05:00.000Z",
+          effective_at: "2026-03-20T08:05:00.000Z",
+          explanation: "plan active",
+        },
+      });
+    }
+    if (url.includes("/account/billing")) {
+      return createJSONResponse(options.billing);
+    }
+    if (url.includes("/account/partner/access")) {
+      return createJSONResponse({
+        owned: { invites: [], grants: [] },
+        shared_with_me: [],
+      });
+    }
+    throw new Error(`Unexpected fetch in test: ${url}`);
+  }) as unknown as typeof fetch;
+}
