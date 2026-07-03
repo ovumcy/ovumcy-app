@@ -147,8 +147,6 @@ export const darkColors = {
 
 export type AppThemeColors = typeof lightColors;
 
-export const colors = lightColors;
-
 export const spacing = {
   xs: 8,
   sm: 12,
