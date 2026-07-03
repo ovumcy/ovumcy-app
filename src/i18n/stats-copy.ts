@@ -1500,5 +1500,3 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
 export function getStatsCopy(language: string | null | undefined) {
   return statsCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const statsCopy = statsCopyEn;

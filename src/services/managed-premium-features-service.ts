@@ -1,7 +1,4 @@
-import {
-  createDefaultManagedBillingCacheRecord,
-  type LocalAppStorage,
-} from "../storage/local/storage-contract";
+import type { LocalAppStorage } from "../storage/local/storage-contract";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { EntitlementTokenStore } from "../security/entitlement-token-store";
 import {
@@ -90,18 +87,6 @@ export const EMPTY_MANAGED_PREMIUM_FEATURES: ManagedCloudPremiumFeatures = {
   reminders: false,
 };
 
-export const EMPTY_MANAGED_BILLING_SNAPSHOT: ManagedCloudBillingSnapshot = {
-  hasActivePlan: false,
-  premiumFeatures: EMPTY_MANAGED_PREMIUM_FEATURES,
-  activeSubscription: null,
-  billingManagement: {
-    canManageRenewal: false,
-    canCancelAtPeriodEnd: false,
-    canResumeRenewal: false,
-  },
-  offers: [],
-};
-
 // Bounded offline grace for the LOCAL premium gates. Trade-off: bounded
 // availability grace (a network blip or managed outage must not instantly
 // re-lock all six premium gates on a paying device) versus strict
@@ -154,24 +139,6 @@ export async function persistManagedBillingSnapshotCache(
   }
 }
 
-/**
- * clearManagedBillingSnapshotCache resets the whole cache record (snapshot
- * AND dismissed offer ids) at session boundaries — mirroring the
- * pending-partner-invite buffer invariant: state derived under one managed
- * account context must not survive into the next.
- */
-export async function clearManagedBillingSnapshotCache(
-  storage: LocalAppStorage,
-): Promise<void> {
-  try {
-    await storage.writeManagedBillingCacheRecord(
-      createDefaultManagedBillingCacheRecord(),
-    );
-  } catch {
-    // A failed purge must not block the surrounding session teardown; the
-    // cache is unreachable without a managed session token anyway.
-  }
-}
 
 async function readFreshCachedBillingSnapshot(
   storage: LocalAppStorage,

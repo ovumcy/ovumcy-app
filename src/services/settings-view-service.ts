@@ -8,7 +8,6 @@ import type {
 } from "../sync/managed-cloud-api-client";
 import type { LoadedExportState } from "../models/export";
 import type {
-  AgeGroup,
   AgeGroupOption,
   CycleSettingsValues,
   InterfaceLanguage,
@@ -1236,12 +1235,6 @@ export function buildSettingsSyncSummary(
     statusMessage,
     statusTone,
   };
-}
-
-export function resolveSettingsAgeGroupSelection(
-  cycleValues: CycleSettingsValues,
-): AgeGroup {
-  return normalizeAgeGroup(cycleValues.ageGroup);
 }
 
 export function resolveSettingsPredictionMode(

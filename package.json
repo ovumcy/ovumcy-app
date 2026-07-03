@@ -44,7 +44,6 @@
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
     "expo-sqlite": "~16.0.10",
-    "expo-status-bar": "~3.0.9",
     "pdf-lib": "^1.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

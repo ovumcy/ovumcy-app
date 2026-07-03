@@ -208,28 +208,3 @@ export function decryptPartnerSharedProjection(
 
   return payload;
 }
-
-export function exportEncryptedPayloadEnvelope(
-  envelope: EncryptedPayloadEnvelope,
-): Uint8Array {
-  return utf8ToBytes(JSON.stringify(envelope));
-}
-
-export function importEncryptedPayloadEnvelope(
-  encodedEnvelope: Uint8Array,
-): EncryptedPayloadEnvelope {
-  const parsed = JSON.parse(
-    new TextDecoder().decode(encodedEnvelope),
-  ) as EncryptedPayloadEnvelope;
-  if (
-    parsed.algorithm !== "xchacha20poly1305" ||
-    typeof parsed.nonceHex !== "string" ||
-    typeof parsed.ciphertextHex !== "string"
-  ) {
-    throw new Error("invalid_partner_projection");
-  }
-
-  hexToBytes(parsed.nonceHex);
-  hexToBytes(parsed.ciphertextHex);
-  return parsed;
-}

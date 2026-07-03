@@ -311,5 +311,3 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
 export function getCalendarCopy(language: string | null | undefined) {
   return calendarCopyCatalog[resolveCopyLanguage(language)];
 }
-
-export const calendarCopy = calendarCopyEn;

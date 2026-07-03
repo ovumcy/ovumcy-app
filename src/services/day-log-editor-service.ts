@@ -195,18 +195,6 @@ export async function saveDayLogEditorRecord(
   };
 }
 
-export async function deleteDayLogEditorRecord(
-  storage: LocalAppStorage,
-  date: DayLogRecord["date"],
-): Promise<boolean> {
-  try {
-    await storage.deleteDayLogRecord(date);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function clearDayLogEditorRecord(
   storage: LocalAppStorage,
   date: DayLogRecord["date"],
