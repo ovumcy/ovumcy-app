@@ -17,7 +17,7 @@
     "export:web": "expo export -p web",
     "e2e:web": "playwright test",
     "mutation": "stryker run",
-    "knip": "knip",
+    "deadcode": "knip",
     "deploy": "npm run export:web && npx eas-cli@18.4.0 deploy"
   },
   "dependencies": {
