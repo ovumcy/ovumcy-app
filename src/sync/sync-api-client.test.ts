@@ -746,4 +746,46 @@ describe("sync-api-client", () => {
       expect.objectContaining({ method: "GET" }),
     );
   });
+
+  it("deletes the self-hosted account with a DELETE /account bearer request and tolerates an empty body", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+      ok: true,
+    });
+    const call = fetchMock.mock.calls[0];
+    expect(call?.[0]).toBe("http://127.0.0.1:8080/account");
+    expect(call?.[1]?.method).toBe("DELETE");
+    expect((call?.[1]?.headers as Headers).get("Authorization")).toBe(
+      "Bearer session-1",
+    );
+    expect((call?.[1] as RequestInit).redirect).toBe("error");
+  });
+
+  it("maps deleteAccount error keys, including unauthorized and network failure", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockRejectedValueOnce(new Error("offline"));
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "unauthorized",
+    });
+    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "network_failed",
+    });
+  });
 });

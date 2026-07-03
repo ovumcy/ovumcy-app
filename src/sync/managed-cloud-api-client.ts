@@ -318,6 +318,13 @@ export type ManagedCloudAPIClient = {
   logout(
     sessionToken: string,
   ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  // deleteAccount permanently erases the managed account and all its data
+  // (DELETE /account). It does NOT cancel the external app-store subscription
+  // — the caller is responsible for surfacing that limitation to the owner
+  // before calling this.
+  deleteAccount(
+    sessionToken: string,
+  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   issuePartnerInvite(
     sessionToken: string,
     input: {
@@ -639,6 +646,13 @@ export function createManagedCloudAPIClient(
 
     async logout(sessionToken) {
       return requestNoPayload(fetchImpl, normalizedBaseURL, "/auth/session", {
+        method: "DELETE",
+        sessionToken,
+      });
+    },
+
+    async deleteAccount(sessionToken) {
+      return requestNoPayload(fetchImpl, normalizedBaseURL, "/account", {
         method: "DELETE",
         sessionToken,
       });

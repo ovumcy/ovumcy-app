@@ -84,6 +84,11 @@ export type SyncAPIClient = {
   logout(
     sessionToken: string,
   ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+  // deleteAccount permanently erases the self-hosted account's blobs and
+  // registration (DELETE /account).
+  deleteAccount(
+    sessionToken: string,
+  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
   putBlob(
     sessionToken: string,
     input: {
@@ -250,6 +255,13 @@ export function createSyncAPIClient(
 
     async logout(sessionToken) {
       return requestNoPayload(fetchImpl, normalizedBaseURL, "/auth/session", {
+        method: "DELETE",
+        sessionToken,
+      });
+    },
+
+    async deleteAccount(sessionToken) {
+      return requestNoPayload(fetchImpl, normalizedBaseURL, "/account", {
         method: "DELETE",
         sessionToken,
       });

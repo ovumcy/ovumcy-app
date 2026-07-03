@@ -13,6 +13,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
     confirmActionLabel: "Confirm",
     errorPresentation: {
       accountMessage: "",
+      deleteAccountMessage: "",
       deviceLabelMessage: "",
       endpointMessage: "",
       localMessage: "",
@@ -31,6 +32,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
     onAuthLoginChange: () => {},
     onAuthPasswordChange: () => {},
     onDisconnect: () => {},
+    onDeleteAccount: () => {},
     onDeviceLabelChange: () => {},
     onEndpointChange: () => {},
     onExportRecoveryPhrase: () => {},
@@ -312,6 +314,82 @@ describe("SettingsSyncSetupSection", () => {
 
     expect(await screen.findByText(/Mar|20|2026/)).toBeTruthy();
     expect(screen.queryByText("2026-03-20T08:10:00.000Z")).toBeNull();
+  });
+
+  it("renders a delete-account action alongside disconnect once signed in, and wires it to the handler", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onDeleteAccount = jest.fn();
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          hasSyncSession
+          onDeleteAccount={onDeleteAccount}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const deleteButton = await screen.findByTestId("settings-sync-delete-account-button");
+    expect(deleteButton).toBeTruthy();
+    fireEvent.press(deleteButton);
+    expect(onDeleteAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the dedicated delete-account error banner without touching the shared sync error banner", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          errorPresentation={{
+            ...props.errorPresentation,
+            deleteAccountMessage: viewData.errors.deleteAccountFailed,
+          }}
+          hasStoredSyncSecrets
+          hasSyncSession
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      await screen.findByTestId("settings-sync-delete-account-error-banner"),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-actions-error-banner")).toBeNull();
   });
 
   it("submits sign in from the password field when auth actions are enabled", async () => {
