@@ -1,7 +1,6 @@
 import {
   BUILTIN_ENTRY_PICKER_ORDER,
   BUILTIN_SYMPTOM_DEFINITIONS,
-  createBuiltinSymptomRecords,
   DEFAULT_CUSTOM_SYMPTOM_COLOR,
   DEFAULT_CUSTOM_SYMPTOM_ICON,
   HIDDEN_BUILTIN_ENTRY_PICKER_SYMPTOM_IDS,
@@ -40,16 +39,8 @@ export function createDefaultSymptomDraft(): SymptomDraftValues {
   };
 }
 
-export function createDefaultSymptomRecords(): SymptomRecord[] {
-  return createBuiltinSymptomRecords();
-}
-
 export function normalizeSymptomLabelKey(raw: string): string {
   return normalizeSymptomSpacing(raw).toLocaleLowerCase("en");
-}
-
-export function sanitizeSymptomDraftLabel(raw: string): string {
-  return normalizeSymptomSpacing(raw);
 }
 
 export function sortSymptomRecords(records: readonly SymptomRecord[]): SymptomRecord[] {
