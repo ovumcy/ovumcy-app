@@ -13,7 +13,8 @@
           "android": {}
         }
       ],
-      "./plugins/withAndroidNetworkSecurityConfig"
+      "./plugins/withAndroidNetworkSecurityConfig",
+      "expo-font"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
     "splash": {
