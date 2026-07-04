@@ -8,6 +8,12 @@ module.exports = defineConfig([
   {
     ignores: ["dist/*"],
   },
+  {
+    files: ["eslint.config.js"],
+    languageOptions: {
+      globals: { __dirname: "readonly" },
+    },
+  },
   // Type-aware promise safety: a lost `await` in the async storage/crypto/sync
   // layers is a silent data race that Jest's mocked timing rarely catches, so
   // it must fail lint instead of relying on review.

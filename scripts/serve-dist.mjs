@@ -72,7 +72,6 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  // eslint-disable-next-line no-console
   console.log(`ovumcy-app dist server listening on http://127.0.0.1:${port}`);
 });
 

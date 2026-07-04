@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- jest.mock factories
+   must lazily require() their targets; jest hoists jest.mock above imports. */
+
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
