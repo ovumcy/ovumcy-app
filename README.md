@@ -1,7 +1,9 @@
 [![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml)
 [![Security](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml)
 [![CodeQL](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml)
-[![Tested](https://img.shields.io/badge/tested-property%20%C2%B7%20e2e-2ea44f)](https://github.com/ovumcy/ovumcy-app#testing-and-quality)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ovumcy/ovumcy-app/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ovumcy/ovumcy-app)
+[![Coverage](https://codecov.io/gh/ovumcy/ovumcy-app/graph/badge.svg)](https://app.codecov.io/gh/ovumcy/ovumcy-app)
+[![Tested](https://img.shields.io/badge/tested-mutation%20%C2%B7%20property%20%C2%B7%20e2e-2ea44f)](https://github.com/ovumcy/ovumcy-app/blob/main/TESTING.md)
 [![Status](https://img.shields.io/badge/Status-alpha-c7756d)](https://github.com/ovumcy/ovumcy-app)
 [![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020?logo=expo)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
@@ -45,7 +47,7 @@ Current light-theme mobile-view screenshots below reflect the latest dashboard, 
 
 - [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) is the canonical self-hosted web product.
 - [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) is the optional self-hosted encrypted sync backend for the app.
-- [`ovumcy-managed`](https://github.com/ovumcy/ovumcy-managed) is the managed-cloud backend behind Ovumcy Cloud (auth, billing, partner sharing).
+- Ovumcy Cloud is the managed hosted backend behind the paid tier (auth, billing, partner sharing).
 - `ovumcy-app` is the mobile client that keeps the core experience usable even when sync is turned off.
 
 ## Tiers
@@ -56,7 +58,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 | --- | --- | --- | --- |
 | **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
-| **Ovumcy Cloud** | managed `ovumcy-managed` | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (email + push) |
+| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (email + push) |
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
@@ -237,30 +239,6 @@ npm run ios
 npm run web
 ```
 
-### Optional: local Ovumcy Cloud stack for premium testing
-
-To exercise managed cloud sync and premium gates against real backends, bring up the dev stack from the sibling `ovumcy-managed` repository, then rebuild the app with the local backends pinned:
-
-```powershell
-cd ../ovumcy-managed
-docker compose -f docker-compose.dev.yml run --rm ovumcy-sync-community migrate
-docker compose -f docker-compose.dev.yml -f docker-compose.dev.browser.yml up -d
-
-cd ../ovumcy-app
-$env:EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL = "http://localhost:8080"
-$env:EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL = "http://localhost:8090"
-npm run export:web
-```
-
-Live sync integration tests opt into the same stack through environment variables:
-
-```powershell
-$env:OVUMCY_SYNC_LIVE_BASE_URL = "http://localhost:8080"
-$env:OVUMCY_MANAGED_LIVE_BASE_URL = "http://localhost:8090"
-$env:OVUMCY_MANAGED_LIVE_ADMIN_TOKEN = "dev-admin-token"
-npx jest sync-client-service.live sync-client-service.managed.live
-```
-
 ## Testing and Quality
 
 Common local commands:
@@ -324,8 +302,6 @@ Near-term:
 
 - [`ovumcy-web`](https://github.com/ovumcy/ovumcy-web) — the self-hosted web and server product
 - [`ovumcy-sync-community`](https://github.com/ovumcy/ovumcy-sync-community) — the self-hosted encrypted sync backend for Ovumcy app
-- [`ovumcy-managed`](https://github.com/ovumcy/ovumcy-managed) — the managed cloud (auth, billing, partner sharing) behind Ovumcy Cloud
-
 ## License
 
 Ovumcy App is source-available under the **PolyForm Noncommercial License 1.0.0**.

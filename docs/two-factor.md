@@ -68,4 +68,4 @@ The plaintext shared secret is surfaced exactly once during enrollment, never lo
 - Login challenge UI: [`src/ui/screens/backup-sync/BackupSyncTOTPChallengeSection.tsx`](../src/ui/screens/backup-sync/BackupSyncTOTPChallengeSection.tsx)
 - i18n strings: [`src/i18n/totp-copy.ts`](../src/i18n/totp-copy.ts)
 
-The server side lives in `ovumcy-managed` (managed cloud) and `ovumcy-sync-community` (self-hosted). See those repositories for backend behaviour, deployment knobs (`FIELD_ENCRYPTION_KEY`, `TOTP_ISSUER`), and operator-facing observability.
+The server side lives in the managed cloud service and in `ovumcy-sync-community` (self-hosted). See the self-hosted repository for backend behaviour, deployment knobs (`FIELD_ENCRYPTION_KEY`, `TOTP_ISSUER`), and operator-facing observability.

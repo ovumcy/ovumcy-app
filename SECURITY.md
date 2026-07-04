@@ -39,7 +39,7 @@ follows from that:
   Keystore via `expo-secure-store`) with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`
   accessibility — never in plaintext `AsyncStorage` or the SQLite database.
 - **Sync is zero-knowledge.** When the user opts into backup/sync (self-hosted
-  `ovumcy-sync-community` or `ovumcy-managed`), payloads are encrypted on-device
+  `ovumcy-sync-community` or the managed Ovumcy Cloud), payloads are encrypted on-device
   before upload. The server receives opaque ciphertext plus integrity metadata
   (size, checksum, generation) and returns it byte-for-byte; it never holds the
   master key or plaintext. Sync subkeys are derived from the device/recovery key
@@ -56,7 +56,7 @@ follows from that:
 - **Premium is gated by a managed billing snapshot, with signed tokens for the
   purely-local features.** Most premium features (advanced fertility, extended
   reports, partner access, reminders) are unlocked by a boolean entitlement /
-  `has_active_plan` snapshot read from `ovumcy-managed`. The two purely-local
+  `has_active_plan` snapshot read from the managed cloud. The two purely-local
   compute features (doctor PDF, advanced insights) additionally prefer a signed
   EdDSA entitlement token when one verifies, falling back to the snapshot
   boolean otherwise (see Accepted Residual Risks). Gating is **additive**: a free
@@ -87,8 +87,8 @@ follows from that:
 - The trust model of a configured sync backend beyond the zero-knowledge
   contract: a self-hoster operates their own server.
 - Server-side controls (auth rate limiting, blob CAS, webhook verification) —
-  those live in `ovumcy-sync-community` / `ovumcy-managed` and carry their own
-  `SECURITY.md`.
+  those live in `ovumcy-sync-community` and the managed cloud service and carry
+  their own `SECURITY.md`.
 
 ## Accepted Residual Risks
 
@@ -238,7 +238,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
 
 | Claim | Enforced by |
 | --- | --- |
-| The golden interop vector (the exact token the `ovumcy-managed` signer emits for the same key) verifies under its embedded public key and yields its `entitlements` and `sub` | `accepts the golden token under the golden pubkey and returns its entitlements + sub` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
+| The golden interop vector (the exact token the managed cloud signer emits for the same key) verifies under its embedded public key and yields its `entitlements` and `sub` | `accepts the golden token under the golden pubkey and returns its entitlements + sub` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
 | Flipping a single payload character invalidates the signature (verification is over the received signing-input bytes, not a JSON re-serialization) | `rejects when a single payload character is flipped (signature no longer matches)` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
 | An unknown / rotated-out `kid` is rejected (locked), never trusted | `rejects an unknown / rotated-out kid (locked)` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
 | An expired token (`now >= exp`, including exactly at `exp`) is rejected | `rejects an expired token (now >= exp), including exactly at exp` in [src/security/entitlement-token.test.ts](src/security/entitlement-token.test.ts) |
@@ -256,7 +256,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
   and code-review invariant, not a single unit test.
 - **Zero-knowledge sync rationale.** The end-to-end guarantee that the server
   only ever sees opaque ciphertext is enforced jointly with the backend test
-  suites (`ovumcy-sync-community` / `ovumcy-managed`); the app side is covered by
+  suites (`ovumcy-sync-community` and the managed cloud); the app side is covered by
   the local/partner crypto rows above and by the env-gated live smoke tests.
 - **Certificate pinning enforcement.** Native pin registration
   (`react-native-ssl-public-key-pinning`) is not yet wired, so the
@@ -266,9 +266,8 @@ items) are intentionally excluded — they are reviewed by humans, not by
   purely-local premium features are now verified against a signed EdDSA token
   (matrix rows above); the remaining policy note is that verification is
   *bypassable by a forked client* by design. This is not asserted by a single
-  test — it is the explicit non-goal recorded in
-  `ovumcy-managed/docs/signed-entitlements.md` and the Accepted-Residual note,
-  reviewed by humans. The token is treated as a hardened UX control over the
+  test — it is the explicit non-goal recorded in the Accepted-Residual note
+  above, reviewed by humans. The token is treated as a hardened UX control over the
   user's own local data, not a DRM trust boundary.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore

@@ -5,9 +5,9 @@ import { toByteArray } from "base64-js";
 /**
  * Signed entitlement token verifier (consumer side).
  *
- * Implements the app half of the cross-repo contract in
- * `ovumcy-managed/docs/signed-entitlements.md`. `ovumcy-managed` issues a
- * compact JWT signed with EdDSA (Ed25519); this module verifies the signature
+ * Implements the app half of the signed-entitlement contract with the managed
+ * cloud service, which issues a compact JWT signed with EdDSA (Ed25519); this
+ * module verifies the signature
  * against an embedded public-key map (keyed by `kid`) and validates the
  * minimal claim set, returning the unlocked `entitlements` on success.
  *

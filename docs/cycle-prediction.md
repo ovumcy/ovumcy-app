@@ -1,0 +1,162 @@
+# Cycle prediction — how the math works
+
+This document describes, in full, how Ovumcy App estimates ovulation, the fertile
+window, and the next period. It exists so that anyone — users, contributors,
+auditors — can read exactly what the app computes on-device and verify it against
+the code.
+
+The prediction math is **identical to `ovumcy-web`'s Free-tier prediction** —
+Ovumcy App mirrors web's owner-flow baseline, so the same constants and steps run
+locally here. The pure policy lives in
+[`src/services/cycle-prediction-policy.ts`](../src/services/cycle-prediction-policy.ts)
+(`predictCycleWindow`, `calcOvulationDay`, `resolveLutealPhase`) and is guarded by
+[`src/services/cycle-prediction-policy.test.ts`](../src/services/cycle-prediction-policy.test.ts).
+
+> [!IMPORTANT]
+> **This is a calendar-based estimate, not medical advice and not a method of
+> contraception.** Predictions are statistical guesses derived from cycle
+> dates. They cannot detect ovulation, do not account for illness, stress,
+> medication, or hormonal conditions, and are unreliable for irregular cycles.
+> Do not rely on them to avoid or achieve pregnancy. Consult a qualified
+> healthcare professional for medical decisions.
+
+## Inputs
+
+| Input | Meaning | Source |
+|-------|---------|--------|
+| `cycleStartDate` | First day of the current menstrual period (cycle day 1) | Canonical `profile.lastPeriodStart` / logged period days |
+| `cycleLength` | Length of the cycle in days | Median of observed cycles, or the owner's configured value |
+| `lutealPhase` | Days from ovulation to the next period | **14-day** default (`DEFAULT_LUTEAL_PHASE_DAYS`), refined toward the owner's own value from logged BBT / cervical-mucus signals when enough cycles carry them |
+
+## The model
+
+The model rests on one physiological assumption: **the luteal phase (ovulation →
+next period) is relatively stable per person** — modelled at ~14 days by default,
+and refined toward the owner's own value when logged signals allow — while the
+follicular phase (period → ovulation) absorbs the variation in cycle length. So
+ovulation is counted *backwards* from the next expected period.
+
+### Constants
+
+| Constant | Value | Role |
+|----------|-------|------|
+| `DEFAULT_LUTEAL_PHASE_DAYS` | 14 | Default luteal phase, used when it is not refined from logged signals |
+| `MIN_LUTEAL_PHASE_DAYS` | 10 | Lower clamp for the luteal phase |
+| `MIN_OVULATION_CYCLE_DAY` | 5 | Ovulation may not fall before cycle day 5 |
+| `MIN_CYCLE_LENGTH` | 15 | Shortest cycle that yields a prediction (`MIN_LUTEAL_PHASE_DAYS + MIN_OVULATION_CYCLE_DAY`) |
+
+### Step 1 — resolve the luteal phase (`resolveLutealPhase`)
+
+```
+luteal ≤ 0          → 14   (default)
+0 < luteal < 10     → 10   (minimum)
+luteal ≥ 10         → luteal
+```
+
+### Step 2 — ovulation day (`calcOvulationDay`, 1-based within the cycle)
+
+```
+if cycleLength < 15:                      no prediction
+maxSupportedLuteal = cycleLength − 5
+if maxSupportedLuteal < 10:               no prediction   (equivalent to the 15-day floor)
+if resolvedLuteal > maxSupportedLuteal:   resolvedLuteal = maxSupportedLuteal   (prediction marked non-exact: isExact = false)
+ovulationDay = cycleLength − resolvedLuteal
+if ovulationDay < 5:                      no prediction
+```
+
+`cycleStartDate` is cycle day 1, so the ovulation **date** is
+`cycleStartDate + (ovulationDay − 1)` days.
+
+### Step 3 — fertile window (`predictCycleWindow`)
+
+The fertile window is the **6-day range ending on ovulation day**, reflecting
+that sperm can survive several days and the egg is viable for about a day:
+
+```
+fertilityEnd   = ovulationDate
+fertilityStart = ovulationDate − 5 days
+if fertilityStart < cycleStartDate:  fertilityStart = cycleStartDate   (short-cycle clamp)
+```
+
+On short cycles the window may overlap menstruation; it is never allowed to
+start before the period.
+
+### Step 4 — next period
+
+```
+nextPeriodStart = cycleStartDate + cycleLength days
+```
+
+A window is only returned when the ovulation date falls strictly before the next
+period start; otherwise the result is non-calculable (empty).
+
+## Worked examples
+
+These vectors are the same as `ovumcy-web`'s reference vectors; Ovumcy App
+reproduces them because it runs the identical constants and steps.
+
+| cycleStartDate | cycleLength | lutealPhase | → ovulation | fertile window | next period | exact? |
+|----------------|-------------|-------------|-------------|----------------|-------------|--------|
+| 2026-03-10 | 28 | 14 | 2026-03-23 | 2026-03-18 … 2026-03-23 | 2026-04-07 | yes |
+| 2026-06-01 | 30 | 0 (→14) | 2026-06-16 | 2026-06-11 … 2026-06-16 | 2026-07-01 | yes |
+| 2026-01-01 | 21 | 14 | 2026-01-07 | 2026-01-02 … 2026-01-07 | 2026-01-22 | yes |
+| 2026-02-01 | 15 | 14 (→10) | 2026-02-05 | 2026-02-01 … 2026-02-05 | 2026-02-16 | no (luteal clamped, window clamped to period start) |
+| any | 14 | any | — | — | — | no prediction (cycle too short) |
+
+## How cycle length and luteal phase are chosen
+
+- **Cycle length** is the median of the owner's recent observed cycles (a cycle
+  being the gap between two detected period starts). The median is used rather
+  than the mean, so a single missed-log gap that merges two cycles cannot skew
+  the estimate. When there is not enough history, the owner's configured value
+  is used.
+- **Luteal phase** defaults to the fixed 14-day model value, but is refined for
+  the owner when their logs carry enough signal: when basal body temperature
+  (`detectSustainedThermalShift`) or cervical-mucus entries let the app infer the
+  ovulation-to-next-period length across several cycles, that observed luteal
+  length (lower-clamped at 10 days) replaces the default. With little or no such
+  data the fixed 14-day default stands. Individual luteal phases vary (commonly
+  11–17 days), which is one reason predictions remain estimates.
+- For irregular cycles the app widens the prediction into a range rather than a
+  single date, and surfaces variability statistics (shortest/longest cycle and
+  the sample standard deviation) computed over the same recent-cycle window as
+  the median, so an old outlier stops affecting them once it ages out.
+
+## Pregnancy pause (app-specific)
+
+Independently of the math above, a positive pregnancy test more recent than every
+recorded cycle start **pauses** predictions across dashboard, calendar, and stats
+until a new cycle start is logged. The pause lives in
+`cycle-history-service.buildCurrentCycleProjection` (not in this pure policy) and
+is a cross-cutting **Medical safety** invariant of the security constitution.
+
+## Assumptions and limitations
+
+- Luteal phase defaults to a constant 14 days and is only refined when enough
+  logged BBT / cervical-mucus signal exists; in reality it varies between people
+  and cycles.
+- Predictions are **calendar-based** and cannot observe the body. They do not by
+  themselves confirm ovulation from temperature, LH tests, or symptoms.
+- Accuracy degrades sharply for irregular or very short/long cycles.
+- The model is **not** a fertility-awareness contraceptive method (which require
+  trained tracking of multiple biomarkers).
+
+## Physiological basis
+
+The ~14-day luteal phase and the "6-day fertile window ending at ovulation" are
+standard reproductive-physiology concepts (e.g. the fertile-window work of
+Wilcox et al., *NEJM* 1995). Ovumcy applies them as a transparent calendar
+estimate, nothing more.
+
+## Verifying this document
+
+The prediction policy is guarded by
+[`src/services/cycle-prediction-policy.test.ts`](../src/services/cycle-prediction-policy.test.ts),
+which asserts the core behaviors: day-14 ovulation for a normal 28-day cycle, the
+short-supported-cycle clamp (non-exact), cycles below the 15-day floor returning
+non-calculable, and the ovulation-before-next-period invariant. The algorithm is
+identical to `ovumcy-web`'s Free prediction, whose `docs/cycle-prediction.md`
+mirrors the exact worked-example vectors above 1:1 via reference tests. Adding a
+matching per-vector reference test on the app side is the natural next step to
+lock every documented number to the code here as well. If you change the math,
+update this document and the guarding test in the same change.
