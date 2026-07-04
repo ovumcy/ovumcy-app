@@ -2028,7 +2028,7 @@ describe("sqlite-app-storage", () => {
   });
 
   it("wipes and reseeds the local database when SecureStore returns a key that no longer authenticates the on-disk data", async () => {
-    // F2 regression: per AGENTS.md, a wrong-key state must trigger a
+    // F2 regression: per SECURITY.md, a wrong-key state must trigger a
     // deterministic reset, not a crash.
     const inspected = createInspectableFakeDatabase();
     const storageWithRightKey = createSQLiteAppStorage({

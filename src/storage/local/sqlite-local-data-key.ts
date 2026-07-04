@@ -1,6 +1,6 @@
 // Encrypted-local-data key resolution: canary-decrypt a singleton row against the
 // SecureStore key, and on auth-tag failure wipe and reseed deterministically rather
-// than propagating a key/data mismatch (security invariant, see AI_CONTEXT.md).
+// than propagating a key/data mismatch (security invariant, see SECURITY.md).
 
 import {
   buildLocalDataAad,
@@ -22,7 +22,7 @@ export async function resolveLocalDataKey(
     // Verify the stored key actually authenticates existing data.
     // SecureStore can desynchronize from on-disk encrypted rows on
     // Android Auto Backup restore (DB restored but key regenerated)
-    // or after a buggy key rotation. Per the AGENTS.md invariant
+    // or after a buggy key rotation. Per the SECURITY.md invariant
     // "the storage layer must reset the local database deterministically
     // rather than crashing", we attempt a canary decrypt on a singleton
     // row first and fall through to wipe-and-reseed on auth-tag failure.

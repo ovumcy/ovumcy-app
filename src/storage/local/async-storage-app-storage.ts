@@ -183,7 +183,7 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
 
     // Deliberate no-op cache: this legacy adapter persists to plain
     // AsyncStorage, and derived premium flags must never live in a broadly
-    // readable plaintext store (see .agents/context/security.md). The active
+    // readable plaintext store (see SECURITY.md). The active
     // backends (encrypted SQLite, volatile web) carry the real cache.
     async readManagedBillingCacheRecord(): Promise<ManagedBillingCacheRecord> {
       return createDefaultManagedBillingCacheRecord();
