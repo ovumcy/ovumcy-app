@@ -37,12 +37,13 @@ Run on an Android emulator or physical device.
 20. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
 21. If managed `Partner access` is unlocked, owner-side controls create a link-only invite without asking for partner email, show the canonical invite URL, and allow revoke of pending or accepted access.
 22. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
-23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the Android system navigation buttons.
-25. No account, sync, or cloud requirement is shown for core local use.
-26. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
-27. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
-28. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
+23. With a connected managed or self-hosted account, `Backup & sync` shows a `Delete account` action alongside sync/restore/disconnect. Tapping it prompts a device-security challenge, then a standard destructive confirm; if the managed account has an active or canceling plan, a second, distinctly-worded confirm warns that deleting the account does NOT cancel the Google Play subscription and requires a separate acknowledgment. Confirming deletes the account and its data on the connected server, wipes local data, and returns the app to onboarding; dismissing any step (device challenge, either confirm) leaves the account and local data untouched.
+24. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+25. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the Android system navigation buttons.
+26. No account, sync, or cloud requirement is shown for core local use.
+27. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
+28. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
+29. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
 
 ## iOS
 
@@ -73,12 +74,13 @@ Run on an iOS simulator or physical device.
 20. Settings shows a `Backup & sync` summary card with real status, destination, and last-sync details, and opens a dedicated `Backup & sync` screen for recovery phrase, account, plan, and sync actions.
 21. If managed `Partner access` is unlocked, owner-side controls create a link-only invite without asking for partner email, show the canonical invite URL, and allow revoke of pending or accepted access.
 22. On the dedicated `Backup & sync` screen, `Managed` mode keeps cloud account and billing outside the sync endpoint, while `Self-hosted` mode still exposes server endpoint plus inline account registration or login on the owner's server.
-23. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
-24. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the iOS home indicator or system navigation area.
-25. No account, sync, or cloud requirement is shown for core local use.
-26. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
-27. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
-28. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
+23. With a connected managed or self-hosted account, `Backup & sync` shows a `Delete account` action alongside sync/restore/disconnect. Tapping it prompts a device-security challenge, then a standard destructive confirm; if the managed account has an active or canceling plan, a second, distinctly-worded confirm warns that deleting the account does NOT cancel the Google Play subscription and requires a separate acknowledgment. Confirming deletes the account and its data on the connected server, wipes local data, and returns the app to onboarding; dismissing any step (device challenge, either confirm) leaves the account and local data untouched.
+24. Danger zone requires typed confirmation before clearing local data, and a confirmed clear returns the app to onboarding.
+25. Bottom tabs render and switch without broken icons or duplicate labels, and stay clearly above the iOS home indicator or system navigation area.
+26. No account, sync, or cloud requirement is shown for core local use.
+27. Pregnancy test field appears in the day editor with `None`, `Negative`, and `Positive` options. Selecting `Positive` autosaves locally and, after returning to dashboard, replaces the cycle hero prediction copy with the localized "predictions paused" banner. Calendar stops painting predicted period and fertile-window cells for the upcoming weeks until a new period is logged.
+28. Without an Ovumcy Cloud plan, stats premium sections render as unified paywall lock cards (PREMIUM eyebrow, section title, description, `Open Ovumcy Cloud` CTA) instead of disappearing. Tapping the CTA navigates to `Backup & sync` so the upgrade path stays discoverable.
+29. With an active Ovumcy Cloud plan, the same stats sections render real advanced-fertility, advanced-insight, and extended-report cards driven by canonical local history.
 
 ## Web Smoke
 
