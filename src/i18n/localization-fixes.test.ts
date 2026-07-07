@@ -513,6 +513,13 @@ describe("H stats-copy short/long cycle notices — thresholds and register", ()
     expect(es.shortCycleNotice).not.toContain("médico");
     expect(es.longCycleNotice).not.toContain("médico");
   });
+  it("it names 24/45 and a health professional, informal register", () => {
+    const it = getStatsCopy("it");
+    expect(it.shortCycleNotice).toContain("24");
+    expect(it.shortCycleNotice).toContain("professionista sanitario");
+    expect(it.longCycleNotice).toContain("45");
+    expect(it.longCycleNotice).toContain("professionista sanitario");
+  });
 });
 
 // ── I. Dashboard prediction disclaimer — web-parity safety copy ─────────────
@@ -543,6 +550,11 @@ describe("I dashboard-copy prediction disclaimer — five-locale safety copy", (
     expect(es).toContain("consejo médico");
     expect(es).toContain("anticonceptivo");
   });
+  it("it mirrors web exactly (stime, non consigli medici né un metodo contraccettivo)", () => {
+    expect(getDashboardCopy("it").predictionDisclaimer).toBe(
+      "Queste sono stime, non consigli medici né un metodo contraccettivo.",
+    );
+  });
 });
 
 // ── G. infoCycleShort threshold — NOT changed (code boundary is 21) ────────
@@ -567,8 +579,8 @@ describe("G infoCycleShort — threshold aligned to canonical 24 days", () => {
 
 // ── J. Account-security UX copy (FIX 7.1 signed-out, FIX 7.2 rate-limited) ──
 
-describe("J account-security copy — signed-out + rate-limited keys present in 5 locales", () => {
-  const locales = ["en", "de", "fr", "ru", "es"] as const;
+describe("J account-security copy — signed-out + rate-limited keys present in 6 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
 
   it.each(locales)("%s has a non-empty forgotPassword.signedOutMessage", (lang) => {
     const copy = selectAccountSecurityCopy(lang);

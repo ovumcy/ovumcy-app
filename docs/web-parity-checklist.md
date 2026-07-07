@@ -351,4 +351,4 @@ The following surfaces are intentionally richer in the app than on the canonical
 - Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, settings reminders, settings PDF export, and the backup-sync partner area.
 - Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
 - Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation solid gray border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
-- Five-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish).
+- Six-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish, Italian).

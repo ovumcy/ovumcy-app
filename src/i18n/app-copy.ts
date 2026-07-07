@@ -440,6 +440,92 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       loading: "Cargando tu configuración local…",
     },
   },
+  it: {
+    appInfo: {
+      name: "Ovumcy",
+      tagline: "Tracciamento del ciclo local-first per iOS e Android.",
+    },
+    onboarding: {
+      progress: {
+        step1: "Passo 1 di 2",
+        step2: "Passo 2 di 2",
+      },
+      buttons: {
+        back: "Indietro",
+        next: "Avanti",
+        finish: "Fine",
+      },
+      step1: {
+        title: "Quando è iniziato il tuo ultimo ciclo?",
+        subtitle: "Scegli una data negli ultimi 60 giorni.",
+        day1Tip: "Il Giorno 1 è il primo giorno di flusso pieno, non spotting.",
+        dismissTip: "Chiudi nota",
+        today: "Oggi",
+        yesterday: "Ieri",
+        twoDaysAgo: "2 giorni fa",
+        datePlaceholder: "gg.mm.aaaa",
+        selectedDate: "Data selezionata",
+      },
+      step2: {
+        title: "Imposta i parametri del ciclo",
+        cycleLength: "Lunghezza tipica del ciclo",
+        daysShort: "g",
+        cycleLengthHint:
+          "Sposta il cursore sulla lunghezza del ciclo che vedi di solito da un inizio del ciclo al successivo. Una base comune è circa 21-35 giorni.",
+        periodLength: "Durata del ciclo mestruale",
+        periodLengthHint:
+          "Questo è il numero di giorni con flusso effettivo, non lo spotting prima dell'inizio.",
+        errorIncompatible:
+          "La durata del ciclo mestruale è incompatibile con la lunghezza del ciclo. La mestruazione non può occupare quasi tutto il ciclo.",
+        warningApproximate:
+          "Con questi valori, l'ovulazione non può essere calcolata in modo affidabile. La previsione sarà approssimativa.",
+        infoAdjusted:
+          "La durata del ciclo mestruale è stata regolata automaticamente in modo che rimangano almeno 10 giorni prima del ciclo successivo.",
+        infoPeriodLong:
+          "Una durata superiore a 8 giorni può indicare irregolarità del ciclo; parlane con un medico.",
+        infoCycleLong:
+          "Un ciclo più lungo di 45 giorni è meno comune; parlane con un medico.",
+        infoCycleShort:
+          "Un ciclo più corto di 24 giorni è meno comune; parlane con un medico.",
+        autoPeriodFill: "Segna automaticamente i giorni di ciclo",
+        autoPeriodFillHint:
+          "Se abilitato, segnare il primo giorno compila automaticamente i giorni successivi in base alla durata del ciclo mestruale.",
+        predictionMode: "Quanto è prevedibile il tuo ciclo?",
+        predictionModeHint: "Scegli l'opzione che ti somiglia di più.",
+        predictionModeRegular: "Di solito regolare",
+        predictionModeRegularHint: "Mostra le previsioni abituali.",
+        predictionModeIrregular: "Di solito irregolare",
+        predictionModeIrregularHint: "Mostra date approssimative.",
+        predictionModeFactsOnly: "Nessuna previsione",
+        predictionModeFactsOnlyHint: "Mostra solo i tuoi dati.",
+        ageGroup: "La tua età",
+        ageGroupHint:
+          "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
+        usageGoal: "Perché usi Ovumcy?",
+        usageGoalHint:
+          "Opzionale. Modifica solo l'enfasi dell'interfaccia, non l'algoritmo di previsione.",
+      },
+      ageGroup: {
+        under40: "Sotto i 40",
+        age40to45: "40-45",
+        age45plus: "45+",
+      },
+      usageGoal: {
+        avoidPregnancy: "Evitare una gravidanza",
+        tryingToConceive: "Cercare una gravidanza",
+        health: "Tracciamento generale del ciclo",
+      },
+      errors: {
+        dateRequired: "Seleziona una data.",
+        dismissError: "Chiudi errore",
+        invalidLastPeriodStart:
+          "Seleziona una data valida di inizio dell'ultimo ciclo.",
+        lastPeriodRange: "Scegli una data entro gli ultimi 60 giorni.",
+        generic: "Impossibile salvare i dati di configurazione. Riprova.",
+      },
+      loading: "Caricamento della tua configurazione locale…",
+    },
+  },
   de: appCopyDe,
   fr: appCopyFr,
 };

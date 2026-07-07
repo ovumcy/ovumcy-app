@@ -10,10 +10,11 @@ describe("runtime i18n helpers", () => {
     expect(resolveCopyLanguage("de-DE")).toBe("de");
     expect(resolveCopyLanguage("fr_CA")).toBe("fr");
     expect(resolveCopyLanguage("es_MX")).toBe("es");
+    expect(resolveCopyLanguage("it-IT")).toBe("it");
   });
 
   it("falls back to English for unsupported languages", () => {
-    expect(resolveCopyLanguage("it-IT")).toBe("en");
+    expect(resolveCopyLanguage("ja-JP")).toBe("en");
     expect(resolveCopyLanguage(null)).toBe("en");
   });
 
@@ -24,6 +25,7 @@ describe("runtime i18n helpers", () => {
       es: "Español",
       de: "Deutsch",
       fr: "Français",
+      it: "Italiano",
     });
   });
 
@@ -34,7 +36,10 @@ describe("runtime i18n helpers", () => {
     expect(getShellCopy("de").tabs.stats).toBe("Einblicke");
     expect(getStatsCopy("fr").title).toBe("Analyses");
     expect(getStatsCopy("es").title).toBe("Análisis");
+    expect(getStatsCopy("it").title).toBe("Analisi");
     expect(getShellCopy("es").tabs.stats).toBe("Análisis");
+    expect(getShellCopy("it").tabs.stats).toBe("Statistiche");
+    expect(getSettingsCopy("it").title).toBe("Impostazioni");
     expect(getSettingsCopy("ru").reminders.emailDeliveryStateOn).toBe(
       "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
     );

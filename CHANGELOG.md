@@ -24,6 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Doctor-friendly PDF export with a multi-locale sample-rendering harness and a
   visual sweep across all shipped languages.
 - Formal German and French localizations and a runtime localization layer.
+- Italian (`it`) interface localization across every copy catalog, reaching
+  six-locale parity with the web app; Italian is selectable in the settings
+  language picker.
 
 ### Changed
 
