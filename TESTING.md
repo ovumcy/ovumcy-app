@@ -18,10 +18,11 @@ honest. Every claim here is backed by code in the repository and by CI.
 | **Live smoke (opt-in)** | Encrypted upload/restore against a real sync/managed server | `src/sync/*.live.test.ts` (env-gated) |
 | **PDF sample harness (opt-in)** | Doctor-PDF rendered to disk per locale for visual inspection | `src/services/export-pdf-service.sample.test.ts` (env-gated) |
 
-Currently **880+ Jest test cases across 99 test files** (counted from `it(` /
-`test(` declarations plus the parameterized `it.each` blocks), spanning the
-security, services, sync, storage, i18n, and UI trees. Tests favor behavior and
-persisted/encrypted state over markup or implementation details.
+The suite currently spans **1000+ Jest test cases across 100+ test files**
+(`it(` / `test(` declarations plus the parameterized `it.each` blocks),
+covering the security, services, sync, storage, i18n, and UI trees. For the
+exact current file count, run `npx jest --listTests | wc -l`. Tests favor
+behavior and persisted/encrypted state over markup or implementation details.
 
 ## Running the suite
 
