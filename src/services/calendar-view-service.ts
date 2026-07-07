@@ -1,4 +1,5 @@
 import { getCalendarCopy } from "../i18n/calendar-copy";
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import {
   createEmptyDayLogRecord,
   hasDayLogData,
@@ -100,6 +101,11 @@ export type CalendarViewData = {
   usageGoal: ProfileRecord["usageGoal"];
   isPredictionDisabled: boolean;
   predictionNotice: CalendarPredictionNoticeViewData | null;
+  // Web parity (calendar.html data-calendar-prediction-disclaimer): the same
+  // persistent "estimates, not medical advice or contraception" disclaimer the
+  // dashboard shows, reusing the shared `dashboard.prediction_disclaimer` copy.
+  // Always present on this owner surface, regardless of prediction/pause state.
+  predictionDisclaimer: string;
   days: CalendarDayCellViewData[];
   actions: {
     prevLabel: string;
@@ -244,6 +250,7 @@ export function buildCalendarViewData(
   } = {},
 ): CalendarViewData {
   const calendarCopy = getCalendarCopy(locale);
+  const dashboardCopy = getDashboardCopy(locale);
   const history =
     options.history ?? buildCycleHistorySummary(profile, records, today);
   const projection =
@@ -315,6 +322,7 @@ export function buildCalendarViewData(
     usageGoal: profile.usageGoal,
     isPredictionDisabled: profile.unpredictableCycle,
     predictionNotice,
+    predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     days,
     actions: {
       prevLabel: calendarCopy.prev,
