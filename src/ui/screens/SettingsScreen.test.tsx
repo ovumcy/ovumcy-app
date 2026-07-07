@@ -829,6 +829,36 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("persists the system theme option when selected from settings", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-interface-theme-system"));
+
+    expect(
+      screen.getByTestId("settings-interface-theme-system").props
+        .accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "NAVIGATE" } } });
+    });
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          themeOverride: "system",
+        }),
+      ),
+    );
+  });
+
   it("saves pending settings before switching tabs", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");

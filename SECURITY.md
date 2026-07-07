@@ -136,7 +136,12 @@ follows from that:
   so older managed servers and the pre-rollout state behave exactly as before.
   The embedded public key shipped today is a documented placeholder; until the
   operator installs the production key (and managed ships the issuance endpoint)
-  no production token verifies and every gate uses the snapshot. The
+  no production token verifies and every gate uses the snapshot. A release
+  guard (`scripts/verify-entitlement-pubkeys.mjs`, run as the
+  `eas-build-pre-install` hook on the production EAS profile and at the start
+  of `npm run deploy`) fails any production build or web deploy whose
+  `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` would leave the placeholder active, so a
+  production artifact cannot ship it silently. The
   authoritative gate for any *server-side* premium capability (e.g. managed sync)
   remains enforced on the backend, not by this token.
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
