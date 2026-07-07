@@ -37,7 +37,11 @@ follows from that:
 - **Secrets live in platform secure storage.** The local-data encryption key and
   all sync/partner secrets are held in the OS keystore (iOS Keychain / Android
   Keystore via `expo-secure-store`) with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`
-  accessibility — never in plaintext `AsyncStorage` or the SQLite database.
+  accessibility — never in plaintext `AsyncStorage` or the SQLite database. That
+  accessibility class means at-rest encryption protects a powered-off or
+  not-yet-unlocked device; once the device has been unlocked the key becomes
+  available to the app, so a thief with an already-unlocked or otherwise
+  compromised phone is out of scope (see *Out of scope* below).
 - **Sync is zero-knowledge.** When the user opts into backup/sync (self-hosted
   `ovumcy-sync-community` or the managed Ovumcy Cloud), payloads are encrypted on-device
   before upload. The server receives opaque ciphertext plus integrity metadata

@@ -3,7 +3,7 @@
 [![CodeQL](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ovumcy/ovumcy-app/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ovumcy/ovumcy-app)
 [![Coverage](https://codecov.io/gh/ovumcy/ovumcy-app/graph/badge.svg)](https://app.codecov.io/gh/ovumcy/ovumcy-app)
-[![Tested](https://img.shields.io/badge/tested-mutation%20%C2%B7%20property%20%C2%B7%20e2e-2ea44f)](https://github.com/ovumcy/ovumcy-app/blob/main/TESTING.md)
+[![Tested](https://img.shields.io/badge/tested-property%20%C2%B7%20web--e2e-2ea44f)](https://github.com/ovumcy/ovumcy-app/blob/main/TESTING.md)
 [![Status](https://img.shields.io/badge/Status-alpha-c7756d)](https://github.com/ovumcy/ovumcy-app)
 [![Expo SDK](https://img.shields.io/badge/Expo%20SDK-54-000020?logo=expo)](https://expo.dev/)
 [![React Native](https://img.shields.io/badge/React%20Native-0.81-61DAFB?logo=react)](https://reactnative.dev/)
@@ -29,7 +29,7 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - custom symptom catalog and journal-style day logging
 - pregnancy test field with automatic prediction pause on a positive result
 - optional encrypted backup and sync instead of cloud-first dependence
-- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminders (push + email)
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminders (local device notifications + email)
 
 ## Screens
 
@@ -58,7 +58,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 | --- | --- | --- | --- |
 | **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
-| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (email + push) |
+| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (local device notifications + email) |
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
@@ -82,7 +82,7 @@ The app is still an early public alpha, but the main local-first slices already 
 | Extended cycle reports | :x: | :x: | :white_check_mark: |
 | Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
 | Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |
-| Premium reminders (email + push) | :x: | :x: | :white_check_mark: |
+| Premium reminders (local device notifications + email) | :x: | :x: | :white_check_mark: |
 
 ## Short FAQ
 
@@ -161,11 +161,12 @@ What this repository still does **not** claim yet:
 - No telemetry or ad trackers by default.
 - Core onboarding and future tracking flows must work without sync or cloud access.
 - Sensitive health baseline data is stored locally on-device.
-- Native bootstrap, profile, day-log, and symptom data now live behind a SQLite-backed repository boundary with encrypted-at-rest payloads and secure local key storage.
+- Native bootstrap, profile, day-log, and symptom data now live behind a SQLite-backed repository boundary with encrypted-at-rest payloads and secure local key storage. The device-local key uses `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` accessibility, so at-rest encryption protects a powered-off or not-yet-unlocked device — not an already-unlocked, seized, or otherwise compromised device (see [SECURITY.md](SECURITY.md)).
 - Web preview uses a non-persistent in-memory storage adapter so browser reloads do not retain health data as durable local storage.
 - Local encrypted sync setup keeps non-secret preferences in canonical local storage and stores wrapped secrets only in secure storage.
 - Recovery phrases are shown only during explicit local setup or rekey flows and are exported through an explicit local artifact flow instead of clipboard copy.
 - Self-hosted and managed sync transports are designed so health payloads are encrypted before upload. Sync servers should store ciphertext, device metadata, and auth/session metadata, not decrypted health content.
+- Transport uses standard TLS with platform CA-chain trust; certificate pinning is scaffolded but not yet wired. Payload confidentiality against a CA-compromise adversary (one able to obtain a fraudulent but chain-valid certificate) therefore relies on the end-to-end payload encryption above, not on pinning — while connection metadata and auth tokens would be exposed to such an adversary. Rationale and revisit criteria: [docs/sync-trust-model.md](docs/sync-trust-model.md#tls-pinning-posture).
 - Managed cloud auth and billing are a separate plane from sync transport. The sync endpoint should not become the place where email/password billing identity is handled.
 - Cloud accounts (managed and self-hosted) support optional TOTP two-factor authentication for login; enrollment, recovery, and the login challenge are described in [docs/two-factor.md](docs/two-factor.md).
 - Local CSV, JSON, and PDF exports are privacy-sensitive artifacts and should be handled like health-data backups.
