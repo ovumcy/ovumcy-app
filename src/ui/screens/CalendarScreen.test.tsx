@@ -204,6 +204,19 @@ describe("CalendarScreen", () => {
     );
   });
 
+  it("renders the persistent not-medical-advice prediction disclaimer (web parity)", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    const disclaimer = await screen.findByTestId(
+      "calendar-prediction-disclaimer",
+    );
+    expect(disclaimer.props.children).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
+  });
+
   it("moves the selected-day panel to the new month anchor when month navigation changes", async () => {
     const storage = createStorageMock();
 

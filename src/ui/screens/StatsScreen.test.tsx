@@ -82,6 +82,24 @@ describe("StatsScreen", () => {
     expect(screen.getByText("Cycle 0 of 2 completed")).toBeTruthy();
   });
 
+  it("renders the persistent not-medical-advice prediction disclaimer in the empty state (web parity)", async () => {
+    const storage = createStorageMock();
+
+    render(
+      <AppPreferencesTestProvider>
+        <StatsScreen
+          now={new Date(2026, 2, 17)}
+          storage={storage}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const disclaimer = await screen.findByTestId("stats-prediction-disclaimer");
+    expect(disclaimer.props.children).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
+  });
+
   it("routes back to logging from the empty-state CTA", async () => {
     const storage = createStorageMock();
 
@@ -189,6 +207,9 @@ describe("StatsScreen", () => {
 
     await screen.findByTestId("stats-trend-section");
     expect(screen.getByTestId("stats-trend-section")).toBeTruthy();
+    expect(screen.getByTestId("stats-prediction-disclaimer").props.children).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
     expect(screen.getByTestId("stats-symptom-frequency")).toBeTruthy();
     expect(screen.getByTestId("stats-last-cycle-symptoms")).toBeTruthy();
     expect(screen.getByTestId("stats-phase-mood")).toBeTruthy();

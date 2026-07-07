@@ -12,6 +12,7 @@ import type {
   StatsViewData,
 } from "../../services/stats-view-service";
 import { AppScreenSurface } from "../components/AppScreenSurface";
+import { PredictionDisclaimer } from "../components/PredictionDisclaimer";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 import { StatsOverviewEmptyState } from "./stats/StatsOverviewEmptyState";
@@ -119,6 +120,11 @@ export function StatsOverviewScreen({
               />
             </>
           ) : null}
+
+          <PredictionDisclaimer
+            testID="stats-prediction-disclaimer"
+            text={viewData.predictionDisclaimer}
+          />
         </View>
       </ScrollView>
     </AppScreenSurface>
