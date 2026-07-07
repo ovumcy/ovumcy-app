@@ -1,100 +1,34 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
-import { useNavigation, usePreventRemove } from "@react-navigation/native";
+import { usePreventRemove } from "@react-navigation/native";
 
-import { getShellCopy } from "../../../i18n/shell-copy";
-import { getPartnerCopy } from "../../../i18n/partner-copy";
 import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
 import {
-  buildAccountDeletionViewModel,
-  deleteOvumcyAccount,
-} from "../../../sync/account-deletion-service";
-import { appStorage, readHasCompletedOnboarding } from "../../../services/app-bootstrap-service";
-import {
-  buildBackupSyncDirtyState,
   buildBackupSyncSetupPresentation,
-  resolveBackupSyncConnectedStatusMessage,
   resolveBackupSyncErrorPresentation,
-  revertBackupSyncDraftState,
-  type BackupSyncErrorScope,
 } from "../../../services/backup-sync-view-service";
 import {
-  acceptManagedPartnerInvite,
-  issueManagedPartnerInvite,
-  loadManagedPartnerAccess,
-  revokeManagedPartnerGrant,
-  revokeManagedPartnerInvite,
-} from "../../../services/managed-partner-access-service";
-import {
-  clearManagedPartnerGrantKey,
-  reconcileManagedPartnerShareKeys,
-  storeAcceptedManagedPartnerGrantKey,
-  storeIssuedManagedPartnerInviteKey,
-} from "../../../services/managed-partner-share-service";
-import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
-import { loadManagedPremiumFeatures } from "../../../services/managed-premium-features-service";
-import {
-  dismissBillingOffer,
-  readDismissedBillingOfferIDs,
   resolveVisibleBillingOffers,
-  type ResolvedBillingOffer,
 } from "../../../services/offers-service";
 import {
   describeSubscriptionCountdown,
   formatSubscriptionCountdownMessage,
 } from "../../../services/subscription-countdown-service";
+import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import {
-  clearUnauthorizedBackupSyncSession,
-  completeBackupSyncTOTPChallenge,
-  connectBackupSyncAccount,
-  disconnectBackupSyncAccount,
-  prepareBackupSyncSetup,
-  recoverBackupSyncAccess,
-  restoreBackupSyncSnapshot,
-  saveBackupSyncDraft,
-  updateBackupSyncRenewal,
-  uploadBackupSyncSnapshot,
-  type BackupSyncRenewalAction,
-} from "../../../services/backup-sync-screen-service";
-import {
-  createPlatformExportDeliveryClient,
-  type ExportDeliveryClient,
-} from "../../../services/export-delivery";
-import { deliverRecoveryPhraseArtifact } from "../../../services/recovery-phrase-delivery-service";
-import { loadSettingsScreenState } from "../../../services/settings-state-service";
-import {
-  buildSettingsViewData,
-  type LoadedSettingsState,
-} from "../../../services/settings-view-service";
-import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
-import {
-  clearManagedPartnerInviteToken,
-  readManagedPartnerInviteToken,
-  stashManagedPartnerInviteToken,
-} from "../../../security/managed-partner-invite-token-buffer";
-import type { SyncSecretStore } from "../../../security/sync-secret-store";
-import type { LocalAppStorage } from "../../../storage/local/storage-contract";
-import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
-import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
-import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
-import {
-  openConfirmation,
   openLeaveConfirmation,
 } from "../../confirm/open-confirmation";
-import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type { BackupSyncFlowScreenProps } from "../BackupSyncFlowScreen";
-import type {
-  ManagedCloudPartnerAccessLevel,
-  ManagedCloudPartnerAccessOverview,
-} from "../../../sync/managed-cloud-api-client";
+import {
+  useBackupSyncSessionCore,
+  type BackupSyncSessionCoreOptions,
+} from "./useBackupSyncSessionCore";
+import { useBackupSyncRecoveryMaterials } from "./useBackupSyncRecoveryMaterials";
+import { useBackupSyncAccountConnection } from "./useBackupSyncAccountConnection";
+import { useBackupSyncActions } from "./useBackupSyncActions";
+import { useBackupSyncManagedPlan } from "./useBackupSyncManagedPlan";
+import { useBackupSyncPartnerAccess } from "./useBackupSyncPartnerAccess";
+import { useBackupSyncAccountDeletion } from "./useBackupSyncAccountDeletion";
 
-type BackupSyncScreenControllerOptions = {
-  exportDeliveryClient?: ExportDeliveryClient | undefined;
-  now?: Date | undefined;
-  partnerShareSecretStore?: PartnerShareSecretStore | undefined;
-  storage?: LocalAppStorage | undefined;
-  syncSecretStore?: SyncSecretStore | undefined;
-};
+type BackupSyncScreenControllerOptions = BackupSyncSessionCoreOptions;
 
 type BackupSyncScreenControllerResult = {
   accentColor: string;
@@ -103,412 +37,73 @@ type BackupSyncScreenControllerResult = {
   loadingTitle: string;
 };
 
-export function useBackupSyncScreenController({
-  exportDeliveryClient = createPlatformExportDeliveryClient(),
-  now,
-  partnerShareSecretStore = defaultPartnerShareSecretStore,
-  storage = appStorage,
-  syncSecretStore = defaultSyncSecretStore,
-}: BackupSyncScreenControllerOptions): BackupSyncScreenControllerResult {
-  const { colors, language, syncProfilePreferences } = useAppPreferences();
-  const navigation = useNavigation();
-  const router = useRouter();
-  const searchParams = useLocalSearchParams<{ invite_token?: string | string[] }>();
-  const [effectiveNow] = useState(() => now ?? new Date());
-  const [isLoading, setIsLoading] = useState(true);
-  const [state, setState] = useState<LoadedSettingsState | null>(null);
-  const [accountLoginValue, setAccountLoginValue] = useState("");
-  const [accountPasswordValue, setAccountPasswordValue] = useState("");
-  const [errorState, setErrorState] = useState<{
-    code: string;
-    scope: BackupSyncErrorScope;
-  } | null>(null);
-  const [accountStatusMessage, setAccountStatusMessage] = useState("");
-  const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
-  const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState("");
-  const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
-  const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
-  // Pending TOTP challenge from login. Lives in memory only — the challenge id
-  // is single-use and short-lived (~5 min); persisting it would defeat the
-  // purpose of the second factor.
-  const [pendingTOTPChallenge, setPendingTOTPChallenge] = useState<{
-    challengeID: string;
-    challengeExpiresAt: string;
-    preferences: import("../../../sync/sync-contract").SyncPreferencesRecord;
-  } | null>(null);
-  const [totpChallengeCode, setTotpChallengeCode] = useState("");
-  const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
-  const [isPreparingSync, setIsPreparingSync] = useState(false);
-  const [isRecoveringSync, setIsRecoveringSync] = useState(false);
-  const [isRestoringSync, setIsRestoringSync] = useState(false);
-  const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
-  const [isSyncingNow, setIsSyncingNow] = useState(false);
-  const [partnerOverview, setPartnerOverview] =
-    useState<ManagedCloudPartnerAccessOverview | null>(null);
-  const [partnerInviteAccessLevel, setPartnerInviteAccessLevel] =
-    useState<ManagedCloudPartnerAccessLevel>("summary");
-  const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
-  const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
-  const [partnerInviteLink, setPartnerInviteLink] = useState("");
-  const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState(() =>
-    readManagedPartnerInviteToken(),
-  );
-  const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
-  const [isPartnerBusy, setIsPartnerBusy] = useState(false);
-  const [isUpdatingRenewal, setIsUpdatingRenewal] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-  const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
-  const shellCopy = getShellCopy(language);
-  const partnerCopy = getPartnerCopy(language);
-  const viewData = buildSettingsViewData(effectiveNow, language);
-  const isSyncDirty = buildBackupSyncDirtyState(state);
+/**
+ * Composition root for the backup & sync screen. It wires the shared session
+ * core to the concern hooks (recovery materials, account connection, sync
+ * actions, managed plan, partner access, account deletion), owns the cross-hook
+ * leave guard, and assembles the presentation view-data into the flat
+ * `flowProps` object the screen consumes. All product logic lives in the
+ * services those hooks call; this file is orchestration + glue only.
+ */
+export function useBackupSyncScreenController(
+  options: BackupSyncScreenControllerOptions,
+): BackupSyncScreenControllerResult {
+  const core = useBackupSyncSessionCore(options);
+  const recovery = useBackupSyncRecoveryMaterials(core);
+  const connection = useBackupSyncAccountConnection(core);
+  const actions = useBackupSyncActions(core);
+  const managedPlan = useBackupSyncManagedPlan(core);
+  const partner = useBackupSyncPartnerAccess(core);
+  const deletion = useBackupSyncAccountDeletion(core);
+
+  const {
+    accountStatusMessage,
+    colors,
+    dismissedOfferIDs,
+    effectiveNow,
+    errorState,
+    generatedRecoveryCode,
+    generatedRecoveryPhrase,
+    isLoading,
+    isSavingSyncDraft,
+    isSyncDirty,
+    language,
+    navigation,
+    partnerCopy,
+    partnerErrorMessage,
+    partnerOverview,
+    partnerStatusMessage,
+    pendingPartnerInviteToken,
+    recoveryPhraseInputValue,
+    resetFeedbackMessages,
+    resetPartnerFeedback,
+    revertUnsavedSync,
+    router,
+    saveSyncDraftIfNeeded,
+    setPendingPartnerInviteToken,
+    setPartnerOverview,
+    setShowPartnerOwnerControls,
+    setState,
+    shellCopy,
+    showPartnerOwnerControls,
+    state,
+    viewData,
+  } = core;
+
   const errorPresentation = resolveBackupSyncErrorPresentation(
     errorState?.code,
     errorState?.scope,
     viewData.account,
   );
 
-  useEffect(() => {
-    const rawInviteToken = searchParams.invite_token;
-    const nextInviteToken = Array.isArray(rawInviteToken)
-      ? rawInviteToken[0] ?? ""
-      : rawInviteToken ?? "";
-    const trimmedInviteToken = String(nextInviteToken).trim();
-    if (trimmedInviteToken.length === 0) {
-      return;
-    }
-
-    stashManagedPartnerInviteToken(trimmedInviteToken);
-    setPendingPartnerInviteToken(trimmedInviteToken);
-    router.replace("/backup-sync");
-  }, [router, searchParams.invite_token]);
-
-  const resetPartnerFeedback = useCallback(() => {
-    setPartnerErrorMessage("");
-    setPartnerStatusMessage("");
-  }, []);
-
-  const loadPartnerState = useCallback(
-    async (loadedState: LoadedSettingsState) => {
-      if (
-        loadedState.syncPreferences.mode !== "managed" ||
-        !loadedState.hasSyncSession
-      ) {
-        return {
-          errorMessage: "",
-          overview: null as ManagedCloudPartnerAccessOverview | null,
-          showOwnerControls: false,
-        };
-      }
-
-      const premiumFeatures = await loadManagedPremiumFeatures(
-        storage,
-        syncSecretStore,
-        loadedState.syncPreferences.mode,
-      );
-
-      const partnerResult = await loadManagedPartnerAccess(
-        syncSecretStore,
-        loadedState.syncPreferences.mode,
-      );
-      if (!partnerResult.ok) {
-        return {
-          errorMessage: resolvePartnerErrorMessage(
-            partnerResult.errorCode,
-            partnerCopy,
-          ),
-          overview: null as ManagedCloudPartnerAccessOverview | null,
-          showOwnerControls: premiumFeatures.partnerAccess,
-        };
-      }
-
-      await reconcileManagedPartnerShareKeys(
-        partnerShareSecretStore,
-        partnerResult.value,
-        effectiveNow,
-      );
-      if (partnerResult.value.owned.grants.length > 0) {
-        await syncManagedPartnerSharedProjections(
-          storage,
-          syncSecretStore,
-          partnerShareSecretStore,
-          effectiveNow,
-        );
-      }
-
-      return {
-        errorMessage: "",
-        overview: partnerResult.value,
-        showOwnerControls: premiumFeatures.partnerAccess,
-      };
-    },
-    [effectiveNow, partnerCopy, partnerShareSecretStore, storage, syncSecretStore],
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      let isMounted = true;
-
-      async function load() {
-        const hasCompletedOnboarding = await readHasCompletedOnboarding(storage);
-        if (!isMounted) {
-          return;
-        }
-
-        if (!hasCompletedOnboarding) {
-          router.replace("/onboarding");
-          return;
-        }
-
-        const loadedState = await loadSettingsScreenState(
-          storage,
-          syncSecretStore,
-          effectiveNow,
-        );
-        if (!isMounted) {
-          return;
-        }
-
-        setState(loadedState);
-        setGeneratedRecoveryPhrase("");
-        setGeneratedRecoveryCode("");
-        setRecoveryPhraseInputValue("");
-        resetPartnerFeedback();
-        const [partnerState, dismissedIDs] = await Promise.all([
-          loadPartnerState(loadedState),
-          readDismissedBillingOfferIDs(storage),
-        ]);
-        if (!isMounted) {
-          return;
-        }
-        setShowPartnerOwnerControls(partnerState.showOwnerControls);
-        setPartnerOverview(partnerState.overview);
-        setPartnerErrorMessage(partnerState.errorMessage);
-        setDismissedOfferIDs(dismissedIDs);
-        setIsLoading(false);
-      }
-
-      setIsLoading(true);
-      void load();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [
-      effectiveNow,
-      loadPartnerState,
-      resetPartnerFeedback,
-      router,
-      storage,
-      syncSecretStore,
-    ]),
-  );
-
-  const resetFeedbackMessages = useCallback(() => {
-    setErrorState(null);
-    setAccountStatusMessage("");
-  }, []);
-
-  const revertUnsavedSync = useCallback(() => {
-    resetFeedbackMessages();
-    setState((current) =>
-      current ? revertBackupSyncDraftState(current) : current,
-    );
-  }, [resetFeedbackMessages]);
-
-  async function reloadPartnerAccess(nextState: LoadedSettingsState) {
-    const partnerState = await loadPartnerState(nextState);
-    setShowPartnerOwnerControls(partnerState.showOwnerControls);
-    setPartnerOverview(partnerState.overview);
-    setPartnerErrorMessage(partnerState.errorMessage);
-  }
-
-  // Re-fetches the managed billing snapshot on demand so the owner can recover
-  // from a transient "could not confirm plan" state without leaving the screen.
-  async function handleRetryPlanCheck() {
-    resetFeedbackMessages();
-    const refreshed = await loadSettingsScreenState(
-      storage,
-      syncSecretStore,
-      effectiveNow,
-    );
-    setState(refreshed);
-    await reloadPartnerAccess(refreshed);
-  }
-
-  async function handleIssuePartnerInvite() {
-    if (!state) {
-      return;
-    }
-
-    resetPartnerFeedback();
-    setIsPartnerBusy(true);
-
-    const result = await issueManagedPartnerInvite(
-      syncSecretStore,
-      state.syncPreferences.mode,
-      {
-        accessLevel: partnerInviteAccessLevel,
-      },
-    );
-
-    if (!result.ok) {
-      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    try {
-      await storeIssuedManagedPartnerInviteKey(
-        partnerShareSecretStore,
-        result.value,
-      );
-    } catch {
-      setPartnerErrorMessage(partnerCopy.errors.generic);
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    setPartnerInviteLink(result.value.inviteURL);
-    setPartnerStatusMessage(partnerCopy.statusInviteIssued);
-    await reloadPartnerAccess(state);
-    setIsPartnerBusy(false);
-  }
-
-  async function handleAcceptPartnerInvite() {
-    if (!state || pendingPartnerInviteToken.length === 0) {
-      return;
-    }
-
-    resetPartnerFeedback();
-    setIsPartnerBusy(true);
-
-    const result = await acceptManagedPartnerInvite(
-      syncSecretStore,
-      state.syncPreferences.mode,
-      pendingPartnerInviteToken,
-    );
-    if (!result.ok) {
-      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    try {
-      await storeAcceptedManagedPartnerGrantKey(
-        partnerShareSecretStore,
-        result.value.grant,
-        pendingPartnerInviteToken,
-        effectiveNow,
-      );
-    } catch {
-      setPartnerErrorMessage(partnerCopy.errors.generic);
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    setPartnerStatusMessage(partnerCopy.statusInviteAccepted);
-    clearManagedPartnerInviteToken();
-    setPendingPartnerInviteToken("");
-    router.replace("/backup-sync");
-    await reloadPartnerAccess(state);
-    setIsPartnerBusy(false);
-  }
-
-  async function handleRevokePartnerInvite(inviteID: string) {
-    if (!state) {
-      return;
-    }
-
-    resetPartnerFeedback();
-    const confirmed = await openConfirmation(
-      partnerCopy.revokeInviteLabel,
-      viewData.common.confirmAction,
-      viewData.common.cancelAction,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsPartnerBusy(true);
-    const result = await revokeManagedPartnerInvite(
-      syncSecretStore,
-      state.syncPreferences.mode,
-      inviteID,
-    );
-    if (!result.ok) {
-      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    setPartnerStatusMessage(partnerCopy.statusInviteRevoked);
-    await reloadPartnerAccess(state);
-    setIsPartnerBusy(false);
-  }
-
-  async function handleRevokePartnerGrant(grantID: string) {
-    if (!state) {
-      return;
-    }
-
-    resetPartnerFeedback();
-    const confirmed = await openConfirmation(
-      partnerCopy.revokeGrantLabel,
-      viewData.common.confirmAction,
-      viewData.common.cancelAction,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsPartnerBusy(true);
-    const result = await revokeManagedPartnerGrant(
-      syncSecretStore,
-      state.syncPreferences.mode,
-      grantID,
-    );
-    if (!result.ok) {
-      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
-      setIsPartnerBusy(false);
-      return;
-    }
-
-    // Server confirmed revoke — drop the local K_grant and per-grant
-    // generation counter so subsequent uploads cannot re-encrypt under a
-    // stale key. The anti-replay marker in `consumedInviteIDs[sourceInviteID]`
-    // is intentionally preserved (re-issuing the same invite would otherwise
-    // become possible). A failure here is non-fatal for the user (server
-    // already accepted the revoke), but we surface the generic copy so the
-    // local-state divergence doesn't go silent.
-    try {
-      await clearManagedPartnerGrantKey(partnerShareSecretStore, grantID);
-    } catch {
-      setPartnerErrorMessage(partnerCopy.errors.generic);
-    }
-
-    setPartnerStatusMessage(partnerCopy.statusGrantRevoked);
-    await reloadPartnerAccess(state);
-    setIsPartnerBusy(false);
-  }
-
-  function handleOpenPartnerGrant(grantID: string) {
-    router.push({
-      pathname: "/partner-shared",
-      params: {
-        grant_id: grantID,
-      },
-    });
-  }
-
   usePreventRemove(
     isSyncDirty &&
       !isSavingSyncDraft &&
-      !isPreparingSync &&
-      !isAuthenticatingSync &&
-      !isRecoveringSync &&
-      !isRestoringSync &&
-      !isSyncingNow,
+      !recovery.isPreparingSync &&
+      !connection.isAuthenticatingSync &&
+      !connection.isRecoveringSync &&
+      !actions.isRestoringSync &&
+      !actions.isSyncingNow,
     ({ data }) => {
       void (async () => {
         const outcome = await openLeaveConfirmation(
@@ -540,617 +135,6 @@ export function useBackupSyncScreenController({
     },
   );
 
-  async function saveSyncDraftIfNeeded(scope: BackupSyncErrorScope) {
-    if (!state) {
-      return null;
-    }
-    if (!buildBackupSyncDirtyState(state)) {
-      return state;
-    }
-
-    setIsSavingSyncDraft(true);
-    const syncResult = await saveBackupSyncDraft(storage, syncSecretStore, state);
-    setIsSavingSyncDraft(false);
-    if (!syncResult.ok) {
-      setErrorState({
-        code: syncResult.errorCode,
-        scope,
-      });
-      return null;
-    }
-
-    if (!syncResult.state.hasStoredSyncSecrets) {
-      setGeneratedRecoveryPhrase("");
-      setGeneratedRecoveryCode("");
-    }
-    setState(syncResult.state);
-    return syncResult.state;
-  }
-
-  async function handlePrepareSyncSetup() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-
-    if (state.hasStoredSyncSecrets) {
-      const confirmed = await openConfirmation(
-        viewData.account.regeneratePrompt,
-        viewData.account.regenerateAccept,
-      );
-      if (!confirmed) {
-        return;
-      }
-
-      const challengeResult = await requestSensitiveActionChallenge(
-        viewData.account.regenerateDeviceAuthPrompt,
-      );
-      if (!challengeResult.ok) {
-        if (challengeResult.reason === "unavailable") {
-          setErrorState({
-            code: "deviceAuthUnavailable",
-            scope: "local",
-          });
-        } else if (challengeResult.reason === "failed") {
-          setErrorState({
-            code: "deviceAuthFailed",
-            scope: "local",
-          });
-        }
-        return;
-      }
-    }
-
-    setIsPreparingSync(true);
-
-    const result = await prepareBackupSyncSetup(
-      storage,
-      syncSecretStore,
-      state,
-      effectiveNow,
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "local",
-      });
-      setIsPreparingSync(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    await reloadPartnerAccess(result.state);
-    setGeneratedRecoveryPhrase(result.recoveryPhrase);
-    setAccountStatusMessage(
-      result.regenerated
-        ? viewData.account.status.regenerated
-        : viewData.account.status.prepared,
-    );
-    setIsPreparingSync(false);
-  }
-
-  async function handleConnectSync(mode: "register" | "login") {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    setIsAuthenticatingSync(true);
-
-    const syncReadyState = await saveSyncDraftIfNeeded("account");
-    if (!syncReadyState) {
-      setIsAuthenticatingSync(false);
-      return;
-    }
-
-    const result = await connectBackupSyncAccount(
-      storage,
-      syncSecretStore,
-      syncReadyState,
-      {
-        login: accountLoginValue,
-        password: accountPasswordValue,
-      },
-      mode,
-      effectiveNow,
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "account",
-      });
-      setIsAuthenticatingSync(false);
-      return;
-    }
-
-    if ("totpChallengeRequired" in result) {
-      // Keep the password we just verified out of state but DO remember the
-      // challenge handoff so the user can type the 6-digit code on the next
-      // screen. The challenge id is single-use and short-lived; if the user
-      // cancels we drop it without persisting anywhere.
-      setPendingTOTPChallenge({
-        challengeID: result.challengeID,
-        challengeExpiresAt: result.challengeExpiresAt,
-        preferences: result.preferences,
-      });
-      setAccountPasswordValue("");
-      setErrorState(null);
-      setIsAuthenticatingSync(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    if (result.recoveryCode) {
-      setGeneratedRecoveryCode(result.recoveryCode);
-    }
-    await reloadPartnerAccess(result.state);
-    setAccountPasswordValue("");
-    setAccountStatusMessage(
-      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
-    );
-    setIsAuthenticatingSync(false);
-  }
-
-  async function handleSubmitTOTPChallenge() {
-    if (!state || !pendingTOTPChallenge) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    setIsAuthenticatingSync(true);
-
-    const result = await completeBackupSyncTOTPChallenge(
-      storage,
-      syncSecretStore,
-      state,
-      pendingTOTPChallenge.preferences,
-      {
-        challengeID: pendingTOTPChallenge.challengeID,
-        code: totpChallengeCode,
-      },
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "account",
-      });
-      // A `totp_challenge_invalid` (expired or replayed) is unrecoverable in
-      // place — drop the pending handoff so the user goes back to the login
-      // form. Any other error (wrong code, rate-limited, network) is
-      // retryable, so we keep the challenge id alive.
-      if (result.errorCode === "totp_challenge_invalid") {
-        setPendingTOTPChallenge(null);
-        setTotpChallengeCode("");
-      }
-      setIsAuthenticatingSync(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    setPendingTOTPChallenge(null);
-    setTotpChallengeCode("");
-    await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(
-      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
-    );
-    setIsAuthenticatingSync(false);
-  }
-
-  function handleCancelTOTPChallenge() {
-    setPendingTOTPChallenge(null);
-    setTotpChallengeCode("");
-    setErrorState(null);
-  }
-
-  async function handleSyncNow() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    setIsSyncingNow(true);
-
-    const syncReadyState = await saveSyncDraftIfNeeded("sync");
-    if (!syncReadyState) {
-      setIsSyncingNow(false);
-      return;
-    }
-
-    const result = await uploadBackupSyncSnapshot(
-      storage,
-      syncSecretStore,
-      syncReadyState,
-      effectiveNow,
-      {
-        // Destructive gate: fresh install about to overwrite an existing
-        // server backup. Dialog dismissal resolves false = do NOT upload.
-        confirmUploadOverExistingBackup: () =>
-          openConfirmation(
-            viewData.account.uploadOverBackupPrompt,
-            viewData.account.uploadOverBackupAccept,
-            viewData.common.cancelAction,
-          ),
-      },
-    );
-    if (!result.ok) {
-      if (result.errorCode === "upload_over_backup_declined") {
-        // Owner declined the overwrite — not an error, just stop quietly like
-        // every other declined confirmation.
-        setIsSyncingNow(false);
-        return;
-      }
-      if (result.errorCode === "unauthorized") {
-        const clearedState = await clearUnauthorizedBackupSyncSession(
-          storage,
-          syncSecretStore,
-          syncReadyState,
-        );
-        clearManagedPartnerInviteToken();
-        setPendingPartnerInviteToken("");
-        setState(clearedState);
-        await reloadPartnerAccess(clearedState);
-      }
-      setErrorState({
-        code: result.errorCode,
-        scope: "sync",
-      });
-      setIsSyncingNow(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(viewData.account.status.uploaded);
-    setIsSyncingNow(false);
-  }
-
-  async function handleRestoreSync() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-
-    const challengeResult = await requestSensitiveActionChallenge(
-      viewData.account.restoreDeviceAuthPrompt,
-    );
-    if (!challengeResult.ok) {
-      if (challengeResult.reason === "unavailable") {
-        setErrorState({
-          code: "deviceAuthUnavailable",
-          scope: "sync",
-        });
-      } else if (challengeResult.reason === "failed") {
-        setErrorState({
-          code: "deviceAuthFailed",
-          scope: "sync",
-        });
-      }
-      return;
-    }
-
-    const confirmed = await openConfirmation(
-      viewData.account.restorePrompt,
-      viewData.account.restoreAccept,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setIsRestoringSync(true);
-    const result = await restoreBackupSyncSnapshot(
-      storage,
-      syncSecretStore,
-      state,
-      effectiveNow,
-    );
-    if (!result.ok) {
-      if (result.errorCode === "unauthorized") {
-        const clearedState = await clearUnauthorizedBackupSyncSession(
-          storage,
-          syncSecretStore,
-          state,
-        );
-        clearManagedPartnerInviteToken();
-        setPendingPartnerInviteToken("");
-        setState(clearedState);
-        await reloadPartnerAccess(clearedState);
-      }
-      setErrorState({
-        code: result.errorCode,
-        scope: "sync",
-      });
-      setIsRestoringSync(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(viewData.account.status.restored);
-    setIsRestoringSync(false);
-  }
-
-  async function handleRecoverSync() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    setIsRecoveringSync(true);
-
-    const syncReadyState = await saveSyncDraftIfNeeded("account");
-    if (!syncReadyState) {
-      setIsRecoveringSync(false);
-      return;
-    }
-
-    const result = await recoverBackupSyncAccess(
-      storage,
-      syncSecretStore,
-      syncReadyState,
-      {
-        login: accountLoginValue,
-        password: accountPasswordValue,
-      },
-      recoveryPhraseInputValue,
-      effectiveNow,
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "account",
-      });
-      setIsRecoveringSync(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    await reloadPartnerAccess(result.state);
-    setAccountPasswordValue("");
-    setRecoveryPhraseInputValue("");
-    setAccountStatusMessage(viewData.account.status.recovered);
-    setIsRecoveringSync(false);
-  }
-
-  async function handleDisconnectSync() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    const challengeResult = await requestSensitiveActionChallenge(
-      viewData.account.disconnectDeviceAuthPrompt,
-    );
-    if (!challengeResult.ok) {
-      if (challengeResult.reason === "unavailable") {
-        setErrorState({
-          code: "deviceAuthUnavailable",
-          scope: "sync",
-        });
-      } else if (challengeResult.reason === "failed") {
-        setErrorState({
-          code: "deviceAuthFailed",
-          scope: "sync",
-        });
-      }
-      return;
-    }
-    const confirmed = await openConfirmation(
-      viewData.account.disconnectPrompt,
-      viewData.account.disconnectLabel,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    const result = await disconnectBackupSyncAccount(
-      storage,
-      syncSecretStore,
-      state,
-    );
-    // Drop any pending partner invite captured for the prior session so it
-    // can't be redeemed under a different managed account after re-login.
-    clearManagedPartnerInviteToken();
-    setPendingPartnerInviteToken("");
-    setErrorState(null);
-    setState(result.state);
-    await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(viewData.account.status.disconnected);
-  }
-
-  /**
-   * handleDeleteAccount drives the irreversible "Delete account" flow:
-   * device-auth challenge -> standard destructive confirm -> (only when a
-   * subscription is active) a SECOND, distinctly-worded confirm that must be
-   * read and accepted separately, warning that deleting the account does not
-   * cancel the Google Play subscription. A dismissal at any step is the safe
-   * answer and aborts with nothing changed, matching the confirm-dialog
-   * invariant used everywhere else in this screen. The actual network call +
-   * secrets/local-data teardown is delegated to `deleteOvumcyAccount`, which
-   * aborts before touching local state if the server delete fails.
-   */
-  async function handleDeleteAccount() {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    const challengeResult = await requestSensitiveActionChallenge(
-      viewData.account.deleteAccountDeviceAuthPrompt,
-    );
-    if (!challengeResult.ok) {
-      if (challengeResult.reason === "unavailable") {
-        setErrorState({
-          code: "deviceAuthUnavailable",
-          scope: "delete_account",
-        });
-      } else if (challengeResult.reason === "failed") {
-        setErrorState({
-          code: "deviceAuthFailed",
-          scope: "delete_account",
-        });
-      }
-      return;
-    }
-
-    const confirmed = await openConfirmation(
-      viewData.account.deleteAccountPrompt,
-      viewData.account.deleteAccountAccept,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    const deletionViewModel = buildAccountDeletionViewModel({
-      hasConnectedSession: state.hasSyncSession,
-      preferences: state.savedSyncPreferences,
-      activeSubscription: state.managedPremiumAccess.activeSubscription,
-      now: effectiveNow,
-    });
-
-    if (deletionViewModel.requiresSubscriptionWarning) {
-      // Distinct dialog, distinct wording, distinct accept label: a dismissal
-      // or the shared cancel label both resolve to false here exactly like
-      // every other destructive confirm, so there is no accidental one-tap
-      // path into deleting an account with a live subscription.
-      const acknowledgedSubscriptionWarning = await openConfirmation(
-        `${viewData.account.deleteAccountSubscriptionWarningTitle}\n\n${viewData.account.deleteAccountSubscriptionWarningMessage}`,
-        viewData.account.deleteAccountSubscriptionWarningAccept,
-      );
-      if (!acknowledgedSubscriptionWarning) {
-        return;
-      }
-    }
-
-    setIsDeletingAccount(true);
-    const result = await deleteOvumcyAccount(
-      storage,
-      syncSecretStore,
-      state.savedSyncPreferences,
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "delete_account",
-      });
-      setIsDeletingAccount(false);
-      return;
-    }
-
-    // Same buffers this screen already clears on disconnect; deletion just
-    // wiped local data through the same danger-zone path, so also reset the
-    // in-memory interface preferences the danger-zone action resets.
-    clearManagedPartnerInviteToken();
-    setPendingPartnerInviteToken("");
-    syncProfilePreferences({
-      languageOverride: null,
-      themeOverride: null,
-      screenCaptureProtectionEnabled: true,
-    });
-    router.replace(`/onboarding?reset=${Date.now().toString()}`);
-  }
-
-  async function handleUpdateRenewal(action: BackupSyncRenewalAction) {
-    if (!state) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    if (action === "cancel_at_period_end") {
-      const confirmed = await openConfirmation(
-        viewData.account.renewalCancelPrompt,
-        viewData.account.renewalCancelAccept,
-        viewData.common.cancelAction,
-      );
-      // A dismissal resolves to false = keep the subscription untouched.
-      if (!confirmed) {
-        return;
-      }
-    }
-
-    setIsUpdatingRenewal(true);
-    const result = await updateBackupSyncRenewal(
-      storage,
-      syncSecretStore,
-      state,
-      action,
-      effectiveNow,
-    );
-    if (!result.ok) {
-      setErrorState({
-        code: result.errorCode,
-        scope: "account",
-      });
-      setIsUpdatingRenewal(false);
-      return;
-    }
-
-    setErrorState(null);
-    setState(result.state);
-    setAccountStatusMessage(
-      action === "cancel_at_period_end"
-        ? viewData.account.status.renewalCancelled
-        : viewData.account.status.renewalResumed,
-    );
-    setIsUpdatingRenewal(false);
-  }
-
-  async function handleDismissOffer(offerID: string) {
-    const nextDismissedOfferIDs = await dismissBillingOffer(storage, offerID);
-    setDismissedOfferIDs(nextDismissedOfferIDs);
-  }
-
-  function handleOfferCTAPress(offer: ResolvedBillingOffer) {
-    if (offer.action.type === "screen") {
-      // v1 renders offers only on the backup-sync screen and the single
-      // known screen target IS /backup-sync — navigating again would remount
-      // the flow, so this is a deliberate no-op while already here. Other
-      // surfaces (stats/settings) get real routing when they adopt OfferCard.
-      return;
-    }
-    // "play_checkout" CTAs are inert until Play Billing lands in a later
-    // phase; the card renders them disabled so this branch is unreachable
-    // from the UI today.
-  }
-
-  function handleAcknowledgeRecoveryCode() {
-    setGeneratedRecoveryCode("");
-  }
-
-  async function handleExportRecoveryPhrase() {
-    if (!generatedRecoveryPhrase) {
-      return;
-    }
-
-    resetFeedbackMessages();
-    setIsExportingRecoveryPhrase(true);
-
-    const result = await deliverRecoveryPhraseArtifact(
-      exportDeliveryClient,
-      generatedRecoveryPhrase,
-      effectiveNow,
-    );
-
-    if (!result.ok) {
-      setErrorState({
-        code:
-          result.errorCode === "delivery_unavailable"
-            ? "recovery_export_unavailable"
-            : "recovery_export_failed",
-        scope: "local",
-      });
-    }
-
-    setIsExportingRecoveryPhrase(false);
-  }
-
   if (isLoading || !state) {
     return {
       accentColor: colors.accent,
@@ -1171,14 +155,17 @@ export function useBackupSyncScreenController({
     billingManagement: state.managedPremiumAccess.billingManagement,
     hasStoredSyncSecrets: state.hasStoredSyncSecrets,
     hasSyncSession: state.hasSyncSession,
-    isAuthenticating: isAuthenticatingSync,
-    isPreparing: isPreparingSync,
-    isRecovering: isRecoveringSync,
-    isRestoring: isRestoringSync,
+    isAuthenticating: connection.isAuthenticatingSync,
+    isPreparing: recovery.isPreparingSync,
+    isRecovering: connection.isRecoveringSync,
+    isRestoring: actions.isRestoringSync,
     // A renewal update or an in-flight account deletion disables the same
     // action set as a running upload, so the owner cannot double-submit
     // billing changes or another destructive action mid-deletion.
-    isSyncing: isSyncingNow || isUpdatingRenewal || isDeletingAccount,
+    isSyncing:
+      actions.isSyncingNow ||
+      managedPlan.isUpdatingRenewal ||
+      deletion.isDeletingAccount,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
@@ -1197,7 +184,7 @@ export function useBackupSyncScreenController({
     presentation.isManaged &&
     (pendingPartnerInviteToken.length > 0 ||
       showPartnerOwnerControls ||
-      partnerInviteLink.length > 0 ||
+      partner.partnerInviteLink.length > 0 ||
       (partnerOverview?.owned.invites.length ?? 0) > 0 ||
       (partnerOverview?.owned.grants.length ?? 0) > 0 ||
       (partnerOverview?.sharedWithMe.length ?? 0) > 0);
@@ -1205,8 +192,8 @@ export function useBackupSyncScreenController({
   return {
     accentColor: colors.accent,
     flowProps: {
-      authLoginValue: accountLoginValue,
-      authPasswordValue: accountPasswordValue,
+      authLoginValue: connection.accountLoginValue,
+      authPasswordValue: connection.accountPasswordValue,
       backLabel: viewData.account.backToSettingsLabel,
       billingOffers,
       confirmActionLabel: viewData.common.confirmAction,
@@ -1215,19 +202,19 @@ export function useBackupSyncScreenController({
       generatedRecoveryPhrase,
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,
       hasSyncSession: state.hasSyncSession,
-      isExportingRecoveryPhrase,
-      isPartnerBusy,
-      isPreparing: isPreparingSync,
+      isExportingRecoveryPhrase: recovery.isExportingRecoveryPhrase,
+      isPartnerBusy: partner.isPartnerBusy,
+      isPreparing: recovery.isPreparingSync,
       onBack: () => {
         router.replace("/(tabs)/settings");
       },
       onAuthLoginChange: (value) => {
         resetFeedbackMessages();
-        setAccountLoginValue(value);
+        connection.setAccountLoginValue(value);
       },
       onAuthPasswordChange: (value) => {
         resetFeedbackMessages();
-        setAccountPasswordValue(value);
+        connection.setAccountPasswordValue(value);
       },
       onDeviceLabelChange: (value) => {
         resetFeedbackMessages();
@@ -1244,16 +231,16 @@ export function useBackupSyncScreenController({
         );
       },
       onCancelRenewal: () => {
-        void handleUpdateRenewal("cancel_at_period_end");
+        void managedPlan.handleUpdateRenewal("cancel_at_period_end");
       },
       onDisconnect: () => {
-        void handleDisconnectSync();
+        void connection.handleDisconnectSync();
       },
       onDeleteAccount: () => {
-        void handleDeleteAccount();
+        void deletion.handleDeleteAccount();
       },
       onDismissOffer: (offerID) => {
-        void handleDismissOffer(offerID);
+        void managedPlan.handleDismissOffer(offerID);
       },
       onEndpointChange: (value) => {
         resetFeedbackMessages();
@@ -1269,20 +256,20 @@ export function useBackupSyncScreenController({
             : current,
         );
       },
-      onAcknowledgeRecoveryCode: handleAcknowledgeRecoveryCode,
+      onAcknowledgeRecoveryCode: recovery.handleAcknowledgeRecoveryCode,
       onExportRecoveryPhrase: () => {
-        void handleExportRecoveryPhrase();
+        void recovery.handleExportRecoveryPhrase();
       },
       onIssuePartnerInvite: () => {
-        void handleIssuePartnerInvite();
+        void partner.handleIssuePartnerInvite();
       },
       onLogin: () => {
-        void handleConnectSync("login");
+        void connection.handleConnectSync("login");
       },
       onModeSelect: (value) => {
         resetFeedbackMessages();
         resetPartnerFeedback();
-        setPartnerInviteLink("");
+        partner.setPartnerInviteLink("");
         setPartnerOverview(null);
         setShowPartnerOwnerControls(false);
         // A pending invite token is bound to the previously selected mode.
@@ -1304,52 +291,52 @@ export function useBackupSyncScreenController({
             : current,
         );
       },
-      onOfferCTAPress: handleOfferCTAPress,
+      onOfferCTAPress: managedPlan.handleOfferCTAPress,
       onPartnerAcceptInvite: () => {
-        void handleAcceptPartnerInvite();
+        void partner.handleAcceptPartnerInvite();
       },
       onPartnerAccessLevelChange: (value) => {
         resetPartnerFeedback();
-        setPartnerInviteAccessLevel(value);
+        partner.setPartnerInviteAccessLevel(value);
       },
       onPartnerOpenGrant: (grantID) => {
-        handleOpenPartnerGrant(grantID);
+        partner.handleOpenPartnerGrant(grantID);
       },
       onPartnerRevokeGrant: (grantID) => {
-        void handleRevokePartnerGrant(grantID);
+        void partner.handleRevokePartnerGrant(grantID);
       },
       onPartnerRevokeInvite: (inviteID) => {
-        void handleRevokePartnerInvite(inviteID);
+        void partner.handleRevokePartnerInvite(inviteID);
       },
       onPrepare: () => {
-        void handlePrepareSyncSetup();
+        void recovery.handlePrepareSyncSetup();
       },
       onRecoverAccess: () => {
-        void handleRecoverSync();
+        void connection.handleRecoverSync();
       },
       onResumeRenewal: () => {
-        void handleUpdateRenewal("resume");
+        void managedPlan.handleUpdateRenewal("resume");
       },
       onRetryPlanCheck: () => {
-        void handleRetryPlanCheck();
+        void managedPlan.handleRetryPlanCheck();
       },
       onRecoveryPhraseChange: (value) => {
         resetFeedbackMessages();
-        setRecoveryPhraseInputValue(value);
+        core.setRecoveryPhraseInputValue(value);
       },
       onRegister: () => {
-        void handleConnectSync("register");
+        void connection.handleConnectSync("register");
       },
       onRestore: () => {
-        void handleRestoreSync();
+        void actions.handleRestoreSync();
       },
       onSyncNow: () => {
-        void handleSyncNow();
+        void actions.handleSyncNow();
       },
       partnerCopy,
       partnerErrorMessage,
-      partnerInviteAccessLevel,
-      partnerInviteLink,
+      partnerInviteAccessLevel: partner.partnerInviteAccessLevel,
+      partnerInviteLink: partner.partnerInviteLink,
       partnerLocale: language,
       partnerOverview,
       partnerStatusMessage,
@@ -1360,40 +347,16 @@ export function useBackupSyncScreenController({
       showPartnerOwnerControls,
       showPartnerSection,
       statusMessage: accountStatusMessage,
-      pendingTOTPChallenge,
-      totpChallengeCode,
-      onTOTPChallengeCodeChange: setTotpChallengeCode,
+      pendingTOTPChallenge: connection.pendingTOTPChallenge,
+      totpChallengeCode: connection.totpChallengeCode,
+      onTOTPChallengeCodeChange: connection.setTotpChallengeCode,
       onSubmitTOTPChallenge: () => {
-        void handleSubmitTOTPChallenge();
+        void connection.handleSubmitTOTPChallenge();
       },
-      onCancelTOTPChallenge: handleCancelTOTPChallenge,
+      onCancelTOTPChallenge: connection.handleCancelTOTPChallenge,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,
     loadingTitle: shellCopy.loading.backupSyncTitle,
   };
-}
-
-function resolvePartnerErrorMessage(
-  errorCode: string,
-  copy: ReturnType<typeof getPartnerCopy>,
-): string {
-  switch (errorCode) {
-    case "not_connected":
-      return copy.errors.notConnected;
-    case "invalid_partner_invite":
-      return copy.errors.invalidPartnerInvite;
-    case "partner_invite_not_found":
-      return copy.errors.partnerInviteNotFound;
-    case "partner_invite_expired":
-      return copy.errors.partnerInviteExpired;
-    case "partner_access_unavailable":
-      return copy.errors.partnerAccessUnavailable;
-    case "partner_access_not_found":
-      return copy.errors.partnerAccessNotFound;
-    case "network_failed":
-      return copy.errors.networkFailed;
-    default:
-      return copy.errors.generic;
-  }
 }

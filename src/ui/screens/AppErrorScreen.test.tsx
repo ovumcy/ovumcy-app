@@ -45,8 +45,8 @@ describe("AppErrorScreen", () => {
 });
 
 describe("getErrorCopy", () => {
-  it("returns distinct, non-empty strings for all five locales", () => {
-    const locales = ["en", "ru", "de", "fr", "es"] as const;
+  it("returns distinct, non-empty strings for all six locales", () => {
+    const locales = ["en", "ru", "de", "fr", "es", "it"] as const;
     const seenTitles = new Set<string>();
 
     for (const locale of locales) {
