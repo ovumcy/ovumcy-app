@@ -714,6 +714,54 @@ describe("sqlite-app-storage", () => {
     expect(legacyStorageSource.clear).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps legacy plaintext intact when the encrypted migration write fails", async () => {
+    // Provable-safety guard for the plaintext purge (see #57): the legacy
+    // AsyncStorage residue must only be cleared AFTER the encrypted copy is
+    // durably written. If the encrypted profile upsert fails mid-migration,
+    // `clear()` must never run, so the plaintext source stays available for a
+    // retry on the next launch rather than being deleted with no encrypted
+    // replacement.
+    const legacyStorageSource = {
+      clear: jest.fn().mockResolvedValue(undefined),
+      hasData: jest.fn().mockResolvedValue(true),
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: true,
+        profileVersion: 3,
+        incompleteOnboardingStep: null,
+      }),
+      readProfileRecord: jest.fn().mockResolvedValue({
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: "2026-03-14",
+      }),
+    };
+
+    const { database } = createInspectableFakeDatabase();
+    const failingDatabase: LocalAppDatabase = {
+      ...database,
+      execAsync: (source) => database.execAsync(source),
+      getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getFirstAsync<T>(source, ...params),
+      getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getAllAsync<T>(source, ...params),
+      runAsync: (source: string, ...params: unknown[]) => {
+        if (source.includes("INSERT INTO profile_settings")) {
+          throw new Error("simulated encrypted-write failure");
+        }
+        return database.runAsync(source, ...params);
+      },
+    };
+
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource,
+      openDatabase: async () => failingDatabase,
+    });
+
+    await expect(storage.readProfileRecord()).rejects.toThrow(
+      "simulated encrypted-write failure",
+    );
+    expect(legacyStorageSource.clear).not.toHaveBeenCalled();
+  });
+
   it("migrates a v1 onboarding_profile row into the canonical profile table", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
