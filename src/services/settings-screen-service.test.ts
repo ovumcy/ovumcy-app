@@ -8,6 +8,7 @@ import {
   createSettingsSymptom,
   prepareSettingsExportArtifact,
   refreshSettingsExportState,
+  refreshSettingsStateAfterImport,
   restoreSettingsSymptom,
   saveReminderSettings,
   saveCycleSettings,
@@ -853,6 +854,42 @@ describe("settings services", () => {
         filename: "ovumcy-export-2026-03-18.json",
       }),
     });
+  });
+
+  it("refreshSettingsStateAfterImport preserves unsaved drafts unless the profile was restored", async () => {
+    const storage = createStorageMock();
+    const initialState = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+    // Simulate an unsaved edit: the user bumped cycle length but has not saved.
+    const draftState = {
+      ...initialState,
+      cycleValues: { ...initialState.cycleValues, cycleLength: 31 },
+    };
+
+    const refreshed = await refreshSettingsStateAfterImport(
+      storage,
+      draftState,
+      new Date(2026, 2, 18),
+      false,
+    );
+    expect(refreshed.profile.cycleLength).toBe(28);
+    expect(refreshed.cycleValues.cycleLength).toBe(31);
+    expect(refreshed.exportState.availableSummary.totalEntries).toBe(1);
+
+    const refreshedAfterProfileRestore = await refreshSettingsStateAfterImport(
+      storage,
+      draftState,
+      new Date(2026, 2, 18),
+      true,
+    );
+    // A restored profile intentionally replaces draft values wholesale.
+    expect(refreshedAfterProfileRestore.cycleValues.cycleLength).toBe(28);
   });
 
   it("blocks PDF export when no managed cloud plan is active", async () => {

@@ -9,6 +9,8 @@ import {
 import { BackHandler, Platform } from "react-native";
 
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
+import { createEmptyDayLogRecord } from "../../models/day-log";
+import { createDefaultProfileRecord } from "../../models/profile";
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
@@ -990,5 +992,254 @@ describe("SettingsScreen", () => {
     );
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  function importEnvelopeJSON(overrides: Record<string, unknown> = {}) {
+    return JSON.stringify({
+      app: "ovumcy",
+      formatVersion: 1,
+      exportedAt: "2026-03-01T10:00:00.000Z",
+      preset: "all",
+      range: { fromDate: null, toDate: null },
+      summary: {
+        totalEntries: 2,
+        hasData: true,
+        dateFrom: "2026-03-01",
+        dateTo: "2026-03-02",
+      },
+      profile: { lastPeriodStart: "2026-01-05", cycleLength: 30 },
+      symptoms: [],
+      dayLogs: [
+        { date: "2026-03-01", isPeriod: true, flow: "medium" },
+        { date: "2026-03-02", mood: 4 },
+      ],
+      ...overrides,
+    });
+  }
+
+  function createImportPickerMock(content: string) {
+    return {
+      pick: jest.fn().mockResolvedValue({ status: "picked", content }),
+    };
+  }
+
+  it("runs the two-phase import: preview shows counts and nothing is written until confirm", async () => {
+    const storage = createSettingsStorageMock({
+      readDayLogRecord: jest.fn().mockImplementation(async (date: string) =>
+        date === "2026-03-01"
+          ? { ...createEmptyDayLogRecord(date), notes: "existing entry" }
+          : createEmptyDayLogRecord(date),
+      ),
+    });
+    const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-preview");
+    expect(screen.getByText("New days to add: 1")).toBeTruthy();
+    expect(
+      screen.getByText("Days already on this device (kept unchanged): 1"),
+    ).toBeTruthy();
+    expect(screen.getByText("Your current settings stay unchanged.")).toBeTruthy();
+    // Two-phase contract: the preview is a dry run.
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("settings-import-confirm-button"));
+
+    await screen.findByTestId("settings-import-status-banner");
+    expect(
+      screen.getByText("Restored 1 days (1 already present, 0 ignored)."),
+    ).toBeTruthy();
+    expect(storage.writeDayLogRecord).toHaveBeenCalledTimes(1);
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ date: "2026-03-02", mood: 4 }),
+    );
+    // Configured device: the backup profile must never replace user settings.
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("settings-import-preview")).toBeNull();
+  });
+
+  it("cancels a previewed import without writing anything", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+    await screen.findByTestId("settings-import-preview");
+
+    fireEvent.press(screen.getByTestId("settings-import-cancel-button"));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("settings-import-preview")).toBeNull(),
+    );
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(storage.writeSymptomRecord).not.toHaveBeenCalled();
+  });
+
+  it("maps a malformed file to its localized message", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = createImportPickerMock("{not json");
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-error-banner");
+    expect(
+      screen.getByText(
+        "This file can't be read as a backup. Choose an unmodified JSON export created by Ovumcy.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("settings-import-preview")).toBeNull();
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("maps a foreign export file to the unrecognized-format message", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = createImportPickerMock(
+      JSON.stringify({ app: "other", formatVersion: 1 }),
+    );
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-error-banner");
+    expect(
+      screen.getByText("This file isn't a valid Ovumcy export."),
+    ).toBeTruthy();
+  });
+
+  it("maps an oversized pick to the too-large message", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = {
+      pick: jest
+        .fn()
+        .mockResolvedValue({ status: "failed", errorCode: "too_large" }),
+    };
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-error-banner");
+    expect(
+      screen.getByText("That file is too large to import."),
+    ).toBeTruthy();
+  });
+
+  it("stays quiet when the picker is dismissed", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = {
+      pick: jest.fn().mockResolvedValue({ status: "cancelled" }),
+    };
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await waitFor(() =>
+      expect(importFilePickerClient.pick).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByTestId("settings-import-error-banner")).toBeNull();
+    expect(screen.queryByTestId("settings-import-status-banner")).toBeNull();
+    expect(screen.queryByTestId("settings-import-preview")).toBeNull();
+  });
+
+  it("restores the backup profile on a pristine device and reports it", async () => {
+    const storage = createSettingsStorageMock({
+      readProfileRecord: jest
+        .fn()
+        .mockResolvedValue(createDefaultProfileRecord()),
+    });
+    const importFilePickerClient = createImportPickerMock(
+      importEnvelopeJSON({
+        profile: {
+          ...createDefaultProfileRecord(),
+          lastPeriodStart: "2026-01-05",
+          cycleLength: 31,
+        },
+      }),
+    );
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-preview");
+    expect(
+      screen.getByText(
+        "Cycle settings from the backup will be applied — this device still has the default settings.",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("settings-import-confirm-button"));
+
+    await screen.findByTestId("settings-import-status-banner");
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastPeriodStart: "2026-01-05",
+        cycleLength: 31,
+      }),
+    );
+    expect(
+      screen.getByText(
+        "Restored 2 days (0 already present, 0 ignored). Cycle settings were restored from the backup.",
+      ),
+    ).toBeTruthy();
   });
 });
