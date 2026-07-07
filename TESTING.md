@@ -63,7 +63,7 @@ OVUMCY_SYNC_LIVE_BASE_URL=... \
 OVUMCY_MANAGED_LIVE_ADMIN_TOKEN=... \
   npx jest sync-client-service.managed.live
 
-# Render the doctor PDF to e2e/screenshots/ per locale (en/ru/de/fr/es)
+# Render the doctor PDF to e2e/screenshots/ per locale (en/ru/de/fr/es/it)
 OVUMCY_PDF_SAMPLE=1 npx jest export-pdf-service.sample
 ```
 

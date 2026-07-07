@@ -50,6 +50,9 @@ describe("calendar-view-service", () => {
 
     expect(viewData.monthValue).toBe("2026-03");
     expect(viewData.selectedDate).toBe("2026-03-17");
+    expect(viewData.predictionDisclaimer).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
     expect(viewData.days).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

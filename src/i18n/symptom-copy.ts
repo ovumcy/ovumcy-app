@@ -99,12 +99,32 @@ const builtinSymptomCopyEs: BuiltinSymptomCopy = {
   swelling: "Hinchazón por líquidos",
 };
 
+const builtinSymptomCopyIt: BuiltinSymptomCopy = {
+  cramps: "Crampi",
+  headache: "Mal di testa",
+  mood_swings: "Sbalzi d'umore",
+  bloating: "Gonfiore",
+  fatigue: "Affaticamento",
+  breast_tenderness: "Dolore al seno",
+  acne: "Acne",
+  back_pain: "Mal di schiena",
+  nausea: "Nausea",
+  spotting: "Spotting",
+  irritability: "Irritabilità",
+  insomnia: "Insonnia",
+  food_cravings: "Desiderio di cibo",
+  diarrhea: "Diarrea",
+  constipation: "Stitichezza",
+  swelling: "Gonfiore da ritenzione",
+};
+
 const builtinSymptomCatalog: Record<InterfaceLanguage, BuiltinSymptomCopy> = {
   en: builtinSymptomCopyEn,
   ru: builtinSymptomCopyRu,
   es: builtinSymptomCopyEs,
   de: builtinSymptomCopyDe,
   fr: builtinSymptomCopyFr,
+  it: builtinSymptomCopyIt,
 };
 
 const builtinSymptomReservedLabelKeys = new Set(

@@ -1,61 +1,36 @@
+import goldenVectors from "./__fixtures__/cycle-prediction-golden-vectors.json";
 import { predictCycleWindow } from "./cycle-prediction-policy";
+import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
-// Reference vectors for docs/cycle-prediction.md.
+// Golden-vector parity test for the cycle-prediction math.
 //
-// Each case below is a worked example in that document. This test locks the
-// documented numbers to the code: if the prediction math changes, both this
-// file and docs/cycle-prediction.md must change in the same commit. Mirrors the
-// intent of ovumcy-web's cycles_reference_test.go. The next-period column in the
-// doc is cycleStartDate + cycleLength (not part of predictCycleWindow's output),
-// so it is not asserted here.
-describe("cycle-prediction reference vectors (docs/cycle-prediction.md)", () => {
-  it("28-day cycle, luteal 14 -> ovulation 2026-03-23, window 03-18..03-23 (exact)", () => {
-    expect(predictCycleWindow("2026-03-10", 28, 14)).toEqual({
-      calculable: true,
-      fertilityStart: "2026-03-18",
-      fertilityEnd: "2026-03-23",
-      ovulationDate: "2026-03-23",
-      isExact: true,
-    });
-  });
+// The vectors live in a single shared fixture
+// (./__fixtures__/cycle-prediction-golden-vectors.json) that is the source of
+// truth for BOTH this TypeScript suite and — by design — ovumcy-web's Go
+// reference test (internal/services/cycles_reference_test.go). The Go and TS
+// prediction implementations are hand-parallel ports; consuming one shared
+// file makes any divergence between them fail CI on both sides instead of
+// silently drifting. Each vector is also a worked example in
+// docs/cycle-prediction.md. If the prediction math changes, update the fixture,
+// the doc, and both reference tests in the same commit.
+describe("cycle-prediction golden vectors (shared with ovumcy-web)", () => {
+  for (const vector of goldenVectors.vectors) {
+    it(vector.name, () => {
+      const { cycleStartDate, cycleLength, lutealPhase } = vector.input;
+      const { nextPeriodStart, ...expectedWindow } = vector.expected;
 
-  it("30-day cycle, luteal 0 -> default 14 -> ovulation 2026-06-16, window 06-11..06-16 (exact)", () => {
-    expect(predictCycleWindow("2026-06-01", 30, 0)).toEqual({
-      calculable: true,
-      fertilityStart: "2026-06-11",
-      fertilityEnd: "2026-06-16",
-      ovulationDate: "2026-06-16",
-      isExact: true,
-    });
-  });
+      expect(predictCycleWindow(cycleStartDate, cycleLength, lutealPhase)).toEqual(
+        expectedWindow,
+      );
 
-  it("21-day cycle, luteal 14 -> ovulation 2026-01-07, window 01-02..01-07 (exact)", () => {
-    expect(predictCycleWindow("2026-01-01", 21, 14)).toEqual({
-      calculable: true,
-      fertilityStart: "2026-01-02",
-      fertilityEnd: "2026-01-07",
-      ovulationDate: "2026-01-07",
-      isExact: true,
+      // next period = cycleStartDate + cycleLength days. Not part of
+      // predictCycleWindow's output, so assert it directly to lock the
+      // doc's "next period" column to the code as well.
+      const cycleStart = parseLocalDate(cycleStartDate);
+      expect(cycleStart).not.toBeNull();
+      expect(formatLocalDate(addDays(cycleStart!, cycleLength))).toBe(
+        nextPeriodStart,
+      );
     });
-  });
-
-  it("15-day cycle, luteal 14 clamped to 10 -> ovulation 2026-02-05, window clamped to period start (non-exact)", () => {
-    expect(predictCycleWindow("2026-02-01", 15, 14)).toEqual({
-      calculable: true,
-      fertilityStart: "2026-02-01",
-      fertilityEnd: "2026-02-05",
-      ovulationDate: "2026-02-05",
-      isExact: false,
-    });
-  });
-
-  it("14-day cycle -> too short, no prediction", () => {
-    expect(predictCycleWindow("2026-02-01", 14, 14)).toEqual({
-      calculable: false,
-      fertilityStart: null,
-      fertilityEnd: null,
-      ovulationDate: null,
-      isExact: false,
-    });
-  });
+  }
 });

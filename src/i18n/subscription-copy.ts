@@ -52,12 +52,25 @@ const subscriptionCopyEs: SubscriptionCountdownCopy = {
   ended: "Plan Premium finalizado",
 };
 
+const subscriptionCopyIt: SubscriptionCountdownCopy = {
+  trial: (days) =>
+    `Prova gratuita — ${days === 1 ? "manca" : "mancano"} ${days} ${
+      days === 1 ? "giorno" : "giorni"
+    }`,
+  active: (days) =>
+    `Premium attivo — si rinnova tra ${days} ${days === 1 ? "giorno" : "giorni"}`,
+  canceling: (days) =>
+    `Premium termina tra ${days} ${days === 1 ? "giorno" : "giorni"}`,
+  ended: "Piano Premium terminato",
+};
+
 const subscriptionCopyCatalog: Record<InterfaceLanguage, SubscriptionCountdownCopy> = {
   en: subscriptionCopyEn,
   ru: subscriptionCopyRu,
   es: subscriptionCopyEs,
   de: subscriptionCopyDe,
   fr: subscriptionCopyFr,
+  it: subscriptionCopyIt,
 };
 
 export function getSubscriptionCopy(
