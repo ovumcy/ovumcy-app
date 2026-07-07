@@ -731,6 +731,9 @@ export function useSettingsScreenController({
       onRestoreSymptom: (symptomID) => {
         void runRestoreSymptomAction(symptomActionContext, readyState, symptomID);
       },
+      onReminderLeadDaysChange: (value) => {
+        applyReminderUpdates({ reminderLeadDays: value });
+      },
       onReminderTimeChange: (value) => {
         applyReminderUpdates({ reminderTime: value });
       },
