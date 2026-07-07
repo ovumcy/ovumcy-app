@@ -102,6 +102,77 @@ describe("sync-client-service", () => {
     );
   });
 
+  it("rejects a register password below the minimum before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn();
+    const managedClientFactory = jest.fn();
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-20T08:00:00.000Z",
+      },
+      { login: "alice", password: "short" },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "password_too_short" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("does NOT pre-validate password length on login (legacy short passwords stay the server's call)", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    // A short password on login must reach the client, which surfaces the
+    // server's invalid_credentials rather than a client-side length error.
+    const login = jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "invalid_credentials" });
+    const apiClientFactory = jest
+      .fn()
+      .mockReturnValue(createAPIClientMock({ login }));
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-20T08:00:00.000Z",
+      },
+      { login: "alice", password: "short" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_credentials" });
+    expect(login).toHaveBeenCalledTimes(1);
+  });
+
   it("connects a prepared device and uploads the wrapped recovery key when supported", async () => {
     const storage = createLocalAppStorageMock();
     const preparedSecrets = createSyncSecretsRecord(

@@ -172,10 +172,12 @@ describe("sync-account-recovery-service", () => {
       const apiFactory = jest.fn();
       const managedFactory = jest.fn();
 
+      // newPassword must clear the client-side length floor so this exercises
+      // the no-secrets branch rather than short-circuiting on password_too_short.
       const result = await changeSyncAccountPassword(
         secretStore,
         selfHostedPreferences(),
-        { currentPassword: "x", newPassword: "y" },
+        { currentPassword: "x", newPassword: "new password 12345" },
         apiFactory,
         managedFactory,
       );
@@ -207,6 +209,38 @@ describe("sync-account-recovery-service", () => {
       expect(a).toEqual({ ok: false, errorCode: "current_password_required" });
       expect(b).toEqual({ ok: false, errorCode: "new_password_required" });
       expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("rejects a new password below the minimum length before any network call", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "short" },
+        apiFactory,
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "password_too_short" });
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("reports an empty new password as required, not too short", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "" },
+        jest.fn(),
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "new_password_required" });
     });
   });
 
@@ -413,6 +447,27 @@ describe("sync-account-recovery-service", () => {
           managedAuthSessionToken: "managed-session-1",
         }),
       );
+    });
+
+    it("rejects a short new password before consuming the reset token", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        selfHostedPreferences(),
+        { resetToken: "reset-token-1", newPassword: "short" },
+        apiFactory,
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "password_too_short" });
+      // No client constructed → the single-use reset token was never spent.
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
     });
   });
 

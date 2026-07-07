@@ -352,6 +352,7 @@ const settingsCopyEn = {
     errors: {
       loginRequired: "Login is required.",
       passwordRequired: "Password is required.",
+      passwordTooShort: "Password must be at least 12 characters.",
       deviceLabelRequired: "Device label is required.",
       endpointRequired: "Enter a sync server endpoint.",
       invalidEndpoint: "Enter a valid host, IP address, or full URL.",
@@ -916,6 +917,7 @@ const settingsCopyDe: SettingsCopy = {
         "Die Verlängerungseinstellung konnte gerade nicht geändert werden. Bitte versuchen Sie es erneut.",
       loginRequired: "Login ist erforderlich.",
       passwordRequired: "Passwort ist erforderlich.",
+      passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
       deviceLabelRequired: "Die Gerätebezeichnung ist erforderlich.",
       endpointRequired: "Geben Sie einen Sync-Server-Endpunkt ein.",
       invalidEndpoint: "Geben Sie einen gültigen Host, eine IP-Adresse oder eine vollständige URL ein.",
@@ -1514,6 +1516,7 @@ const settingsCopyFr: SettingsCopy = {
         "Impossible de modifier le renouvellement pour le moment. Veuillez réessayer.",
       loginRequired: "L'identifiant est obligatoire.",
       passwordRequired: "Le mot de passe est obligatoire.",
+      passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
       deviceLabelRequired: "Le nom de l'appareil est obligatoire.",
       endpointRequired: "Saisissez un point d'accès du serveur de sync.",
       invalidEndpoint:
@@ -2096,6 +2099,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       errors: {
         loginRequired: "Логин обязателен.",
         passwordRequired: "Пароль обязателен.",
+        passwordTooShort: "Пароль должен содержать не менее 12 символов.",
         deviceLabelRequired: "Название устройства обязательно.",
         endpointRequired: "Введите endpoint sync-сервера.",
         invalidEndpoint: "Введите корректный host, IP-адрес или полный URL.",
@@ -2655,6 +2659,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       errors: {
         loginRequired: "El login es obligatorio.",
         passwordRequired: "La contraseña es obligatoria.",
+        passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
         deviceLabelRequired: "La etiqueta del dispositivo es obligatoria.",
         endpointRequired: "Introduce un endpoint del servidor de sync.",
         invalidEndpoint: "Introduce un host, una IP o una URL completa válidos.",
@@ -3221,6 +3226,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       errors: {
         loginRequired: "Il login è obbligatorio.",
         passwordRequired: "La password è obbligatoria.",
+        passwordTooShort: "La password deve contenere almeno 12 caratteri.",
         deviceLabelRequired: "L'etichetta del dispositivo è obbligatoria.",
         endpointRequired: "Inserisci un endpoint del server di sync.",
         invalidEndpoint: "Inserisci un host, un IP o un URL completo validi.",

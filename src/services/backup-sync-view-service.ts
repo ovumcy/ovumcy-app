@@ -240,6 +240,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.loginRequired;
     case "password_required":
       return viewData.errors.passwordRequired;
+    case "password_too_short":
+      return viewData.errors.passwordTooShort;
     case "device_label_required":
       return viewData.errors.deviceLabelRequired;
     case "endpoint_required":
