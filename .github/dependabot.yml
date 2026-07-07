@@ -38,6 +38,12 @@ updates:
       time: "05:15"
       timezone: "Europe/Moscow"
     open-pull-requests-limit: 5
+    groups:
+      # The codeql-action sub-actions (init/analyze/upload-sarif) must stay on
+      # one version: split bumps fail CI with a config/runner version mismatch.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
     labels:
       - "dependencies"
       - "github-actions"
