@@ -78,7 +78,7 @@ This is a privacy tradeoff, not a support bug: the server is not supposed to kno
 
 ## Premium Entitlement and the Sync Plane
 
-Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, premium reminders) read from the managed billing snapshot, not from the sync transport.
+Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, reminder emails) read from the managed billing snapshot, not from the sync transport. Local device reminder notifications are free-tier and read no billing state at all.
 
 What this means in practice:
 

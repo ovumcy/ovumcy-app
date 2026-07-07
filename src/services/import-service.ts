@@ -16,6 +16,7 @@ import { createCustomSymptomRecord } from "./symptom-policy";
 import {
   clampCycleLength,
   clampPeriodLength,
+  clampReminderLeadDays,
   normalizeAgeGroup,
   normalizeReminderTime,
   normalizeTemperatureUnit,
@@ -298,6 +299,9 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     fertileWindowReminderEnabled: record.fertileWindowReminderEnabled === true,
     managedReminderEmailsEnabled: record.managedReminderEmailsEnabled === true,
     reminderTime: normalizeReminderTime(String(record.reminderTime ?? "")),
+    // Number(undefined) is NaN, so a backup predating the field lands on the
+    // shared default the same way an out-of-range value does.
+    reminderLeadDays: clampReminderLeadDays(Number(record.reminderLeadDays)),
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
     screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(

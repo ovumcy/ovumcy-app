@@ -1,13 +1,16 @@
 import {
   DEFAULT_CYCLE_LENGTH,
   DEFAULT_PERIOD_LENGTH,
+  DEFAULT_REMINDER_LEAD_DAYS,
   DEFAULT_REMINDER_TIME,
   DEFAULT_TEMPERATURE_UNIT,
   MAX_CYCLE_LENGTH,
   MAX_PERIOD_LENGTH,
+  MAX_REMINDER_LEAD_DAYS,
   MIN_CYCLE_LENGTH,
   MIN_CYCLE_RESERVE_DAYS,
   MIN_PERIOD_LENGTH,
+  MIN_REMINDER_LEAD_DAYS,
   type AgeGroup,
   type AgeGroupOption,
   type CycleSettingsValues,
@@ -77,6 +80,18 @@ export function clampCycleLength(value: number): number {
 
 export function clampPeriodLength(value: number): number {
   return clampInteger(value, DEFAULT_PERIOD_LENGTH, MIN_PERIOD_LENGTH, MAX_PERIOD_LENGTH);
+}
+
+// Mirrors web's NormalizeReminderLeadDays: out-of-range values are clamped,
+// never rejected — this is a numeric preference, not a security input. A
+// non-numeric value falls back to the shared default (3).
+export function clampReminderLeadDays(value: number): number {
+  return clampInteger(
+    value,
+    DEFAULT_REMINDER_LEAD_DAYS,
+    MIN_REMINDER_LEAD_DAYS,
+    MAX_REMINDER_LEAD_DAYS,
+  );
 }
 
 export function maxPeriodLengthForCycle(cycleLength: number): number {
@@ -169,6 +184,7 @@ export function sanitizeReminderSettingsValues(
     fertileWindowReminderEnabled: values.fertileWindowReminderEnabled,
     managedReminderEmailsEnabled: values.managedReminderEmailsEnabled,
     reminderTime: normalizeReminderTime(values.reminderTime),
+    reminderLeadDays: clampReminderLeadDays(values.reminderLeadDays),
   };
 }
 

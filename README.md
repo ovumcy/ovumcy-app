@@ -28,8 +28,9 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - dashboard, calendar, insights, settings, exports, and optional backup flows
 - custom symptom catalog and journal-style day logging
 - pregnancy test field with automatic prediction pause on a positive result
+- free local device reminders (daily log, upcoming period, fertile window) scheduled entirely on-device
 - optional encrypted backup and sync instead of cloud-first dependence
-- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminders (local device notifications + email)
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminder emails
 
 ## Screens
 
@@ -56,9 +57,9 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 
 | Tier | Backend | Cost | What you get |
 | --- | --- | --- | --- |
-| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local CSV/JSON export |
+| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local device reminders, local CSV/JSON export |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
-| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, premium reminders (local device notifications + email) |
+| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, reminder emails |
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
@@ -81,8 +82,9 @@ The app is still an early public alpha, but the main local-first slices already 
 | Premium cycle insights (weighted average, drift, anomalies, seasonal, short luteal warning) | :x: | :x: | :white_check_mark: |
 | Extended cycle reports | :x: | :x: | :white_check_mark: |
 | Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
+| Local device reminder notifications | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |
-| Premium reminders (local device notifications + email) | :x: | :x: | :white_check_mark: |
+| Reminder emails | :x: | :x: | :white_check_mark: |
 
 ## Short FAQ
 
@@ -129,7 +131,8 @@ The current `main` branch provides:
 - native SQLite-backed bootstrap, profile, symptom-catalog, and day-log persistence;
 - local-first dashboard, calendar, settings, stats, custom symptom management, and export flows backed by the same canonical repositories;
 - pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
-- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and premium reminders;
+- free local device reminders (daily log, upcoming period with a configurable lead, fertile window) scheduled on-device;
+- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and reminder emails;
 - doctor-friendly PDF export with colored monthly calendar, advanced fertility signals, cycle comparison, and short luteal phase warning;
 - six-locale interface coverage (English, Russian, German, French, Spanish, Italian) for paywall, day-log, calendar, dashboard, and PDF surfaces;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;

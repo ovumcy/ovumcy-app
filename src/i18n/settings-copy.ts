@@ -124,10 +124,13 @@ const settingsCopyEn = {
     emailHint:
       "Premium reminder emails send only generic prompts. They never include symptoms, notes, or fertile details.",
     lockedHint:
-      "Premium reminder delivery needs an active Ovumcy Cloud plan on this device. Your saved reminder choices stay local.",
+      "Reminder emails need an active Ovumcy Cloud plan. On-device reminders work without an account or plan, and your saved choices stay local.",
     timeLabel: "Reminder time",
     timeHint:
       "Used for daily logging and for the next scheduled cycle reminders on this device.",
+    leadDaysLabel: "Reminder lead time (days)",
+    leadDaysHint:
+      "How many days before the predicted period window this device schedules the upcoming-period reminder (0–14). 0 reminds you on the day itself.",
     emailDelivery: "Also send reminder emails",
     emailDeliveryHint:
       "Uses Ovumcy Cloud email delivery with privacy-safe prompts based on your enabled reminder types.",
@@ -536,7 +539,7 @@ const settingsCopyEn = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Open Ovumcy Cloud",
-    remindersTitle: "Premium reminders",
+    remindersTitle: "Reminder emails",
     pdfExportTitle: "Doctor-friendly PDF",
   },
 } as const;
@@ -668,10 +671,13 @@ const settingsCopyDe: SettingsCopy = {
     emailHint:
       "Premium-Erinnerungs-E-Mails senden nur allgemeine Hinweise. Symptome, Notizen oder fruchtbare Details werden nie aufgenommen.",
     lockedHint:
-      "Premium-Erinnerungszustellung benötigt auf diesem Gerät einen aktiven Ovumcy-Cloud-Plan. Ihre gespeicherten Auswahloptionen bleiben lokal.",
+      "Erinnerungs-E-Mails benötigen einen aktiven Ovumcy-Cloud-Plan. Erinnerungen auf diesem Gerät funktionieren ohne Konto und Plan, und Ihre gespeicherten Auswahloptionen bleiben lokal.",
     timeLabel: "Erinnerungszeit",
     timeHint:
       "Wird für tägliche Log-Erinnerungen und für die nächsten geplanten Zyklus-Erinnerungen auf diesem Gerät verwendet.",
+    leadDaysLabel: "Vorlaufzeit der Erinnerung (Tage)",
+    leadDaysHint:
+      "Wie viele Tage vor dem vorhergesagten Periodenfenster dieses Gerät die Erinnerung plant (0–14). Der Wert 0 erinnert Sie am Tag selbst.",
     emailDelivery: "Auch Erinnerungs-E-Mails senden",
     emailDeliveryHint:
       "Verwendet die E-Mail-Zustellung von Ovumcy Cloud mit datensparsamen Hinweisen basierend auf Ihren aktivierten Erinnerungstypen.",
@@ -1128,7 +1134,7 @@ const settingsCopyDe: SettingsCopy = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Ovumcy Cloud öffnen",
-    remindersTitle: "Premium-Erinnerungen",
+    remindersTitle: "Erinnerungs-E-Mails",
     pdfExportTitle: "Arztgerechtes PDF",
   },
 };
@@ -1258,10 +1264,13 @@ const settingsCopyFr: SettingsCopy = {
     emailHint:
       "Les e-mails de rappel premium envoient seulement des messages génériques. Ils n’incluent jamais les symptômes, les notes ni des détails fertiles.",
     lockedHint:
-      "La livraison premium des rappels nécessite un abonnement Ovumcy Cloud actif sur cet appareil. Vos choix enregistrés restent locaux.",
+      "Les e-mails de rappel nécessitent un abonnement Ovumcy Cloud actif. Les rappels sur cet appareil fonctionnent sans compte ni abonnement, et vos choix enregistrés restent locaux.",
     timeLabel: "Heure du rappel",
     timeHint:
       "Utilisée pour le rappel quotidien et pour les prochains rappels de cycle planifiés sur cet appareil.",
+    leadDaysLabel: "Délai de rappel (jours)",
+    leadDaysHint:
+      "Combien de jours avant la fenêtre de règles prédite cet appareil planifie le rappel (0–14). La valeur 0 vous rappelle le jour même.",
     emailDelivery: "Envoyer aussi des e-mails de rappel",
     emailDeliveryHint:
       "Utilise l’envoi d’e-mails d’Ovumcy Cloud avec des messages prudents basés sur les types de rappels activés.",
@@ -1722,7 +1731,7 @@ const settingsCopyFr: SettingsCopy = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Ouvrir Ovumcy Cloud",
-    remindersTitle: "Rappels Premium",
+    remindersTitle: "E-mails de rappel",
     pdfExportTitle: "PDF pour votre médecin",
   },
 };
@@ -1851,10 +1860,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       emailHint:
         "Премиум email-напоминания содержат только общие подсказки. В них никогда не попадают симптомы, заметки или данные о фертильности.",
       lockedHint:
-        "Премиум-доставка напоминаний требует активного плана Ovumcy Cloud на этом устройстве. Сохранённые настройки остаются на устройстве.",
+        "Email-напоминаниям нужен активный план Ovumcy Cloud. Напоминания на этом устройстве работают без аккаунта и плана, а сохранённые настройки остаются на устройстве.",
       timeLabel: "Время напоминания",
       timeHint:
         "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
+      leadDaysLabel: "Заблаговременность напоминания (дней)",
+      leadDaysHint:
+        "За сколько дней до прогнозируемого окна месячных устройство планирует напоминание (0–14). Значение 0 — напоминание в сам день.",
       emailDelivery: "Также отправлять email-напоминания",
       emailDeliveryHint:
         "Отправляет email через Ovumcy Cloud с текстом без конфиденциальных данных, исходя из включённых типов напоминаний.",
@@ -2278,7 +2290,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Премиум",
       ctaLabel: "Открыть Ovumcy Cloud",
-      remindersTitle: "Премиум-напоминания",
+      remindersTitle: "Email-напоминания",
       pdfExportTitle: "PDF для врача",
     },
   },
@@ -2404,10 +2416,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       emailHint:
         "Los correos premium de recordatorio envían solo avisos genéricos. Nunca incluyen síntomas, notas ni detalles fértiles.",
       lockedHint:
-        "La entrega premium de recordatorios necesita un plan activo de Ovumcy Cloud en este dispositivo. Tus opciones guardadas siguen siendo locales.",
+        "Los correos de recordatorio necesitan un plan activo de Ovumcy Cloud. Los recordatorios en este dispositivo funcionan sin cuenta ni plan, y tus opciones guardadas siguen siendo locales.",
       timeLabel: "Hora del recordatorio",
       timeHint:
         "Se usa para el recordatorio diario y para los próximos recordatorios del ciclo programados en este dispositivo.",
+      leadDaysLabel: "Antelación del recordatorio (días)",
+      leadDaysHint:
+        "Con cuántos días de antelación este dispositivo programa el recordatorio antes de la ventana de período prevista (0–14). El valor 0 te recuerda el mismo día.",
       emailDelivery: "Enviar también correos de recordatorio",
       emailDeliveryHint:
         "Usa el envío por correo de Ovumcy Cloud con avisos respetuosos con la privacidad según los tipos de recordatorio activados.",
@@ -2841,7 +2856,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Premium",
       ctaLabel: "Abrir Ovumcy Cloud",
-      remindersTitle: "Recordatorios Premium",
+      remindersTitle: "Correos de recordatorio",
       pdfExportTitle: "PDF para tu profesional de la salud",
     },
   },
@@ -2967,10 +2982,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       emailHint:
         "Le email premium di promemoria inviano solo avvisi generici. Non includono mai sintomi, note o dettagli sulla fertilità.",
       lockedHint:
-        "La consegna premium dei promemoria richiede un piano Ovumcy Cloud attivo su questo dispositivo. Le tue opzioni salvate restano locali.",
+        "Le email di promemoria richiedono un piano Ovumcy Cloud attivo. I promemoria su questo dispositivo funzionano senza account né piano, e le tue opzioni salvate restano locali.",
       timeLabel: "Ora del promemoria",
       timeHint:
         "Usata per il promemoria giornaliero e per i prossimi promemoria del ciclo programmati su questo dispositivo.",
+      leadDaysLabel: "Anticipo del promemoria (giorni)",
+      leadDaysHint:
+        "Con quanti giorni di anticipo questo dispositivo programma il promemoria prima della finestra del ciclo prevista (0–14). Il valore 0 ti ricorda il giorno stesso.",
       emailDelivery: "Invia anche email di promemoria",
       emailDeliveryHint:
         "Usa l'invio via email di Ovumcy Cloud con avvisi rispettosi della privacy in base ai tipi di promemoria attivati.",
@@ -3406,7 +3424,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Premium",
       ctaLabel: "Apri Ovumcy Cloud",
-      remindersTitle: "Promemoria Premium",
+      remindersTitle: "Email di promemoria",
       pdfExportTitle: "PDF per il tuo professionista sanitario",
     },
   },

@@ -3,6 +3,13 @@ export const DEFAULT_PERIOD_LENGTH = 5;
 export const DEFAULT_AUTO_PERIOD_FILL = true;
 export const DEFAULT_TEMPERATURE_UNIT = "c";
 export const DEFAULT_REMINDER_TIME = "20:00";
+// Reminder lead window mirrors ovumcy-web's reminder_lead_days contract:
+// 0 means "on the day itself", 14 is the widest useful lead, and 3 matches
+// both web's column default and the app's previous hardcoded upcoming-period
+// lead, so an owner who never touched the setting keeps identical behavior.
+export const DEFAULT_REMINDER_LEAD_DAYS = 3;
+export const MIN_REMINDER_LEAD_DAYS = 0;
+export const MAX_REMINDER_LEAD_DAYS = 14;
 
 export const MIN_CYCLE_LENGTH = 15;
 export const MAX_CYCLE_LENGTH = 90;
@@ -65,6 +72,7 @@ export type ProfileRecord = {
   fertileWindowReminderEnabled?: boolean;
   managedReminderEmailsEnabled?: boolean;
   reminderTime?: ReminderTime;
+  reminderLeadDays?: number;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
   screenCaptureProtectionEnabled?: boolean;
@@ -100,6 +108,7 @@ export type ReminderSettingsValues = {
   fertileWindowReminderEnabled: boolean;
   managedReminderEmailsEnabled: boolean;
   reminderTime: ReminderTime;
+  reminderLeadDays: number;
 };
 
 export type InterfaceSettingsValues = Pick<
@@ -225,6 +234,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     fertileWindowReminderEnabled: false,
     managedReminderEmailsEnabled: false,
     reminderTime: DEFAULT_REMINDER_TIME,
+    reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
     languageOverride: null,
     themeOverride: null,
     screenCaptureProtectionEnabled: true,

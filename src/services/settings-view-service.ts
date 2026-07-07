@@ -21,6 +21,7 @@ import type {
   UsageGoal,
 } from "../models/profile";
 import {
+  DEFAULT_REMINDER_LEAD_DAYS,
   DEFAULT_REMINDER_TIME,
   resolvePredictionMode,
   resolveScreenCaptureProtectionEnabled,
@@ -34,6 +35,7 @@ import type {
 } from "../sync/sync-contract";
 import {
   buildCycleGuidanceState,
+  clampReminderLeadDays,
   formatLocalDate,
   getSettingsCycleStartDateBounds,
   normalizeAgeGroup,
@@ -137,6 +139,8 @@ export type SettingsViewData = {
     emailHint: string;
     timeLabel: string;
     timeHint: string;
+    leadDaysLabel: string;
+    leadDaysHint: string;
     emailDelivery: {
       label: string;
       hint: string;
@@ -657,6 +661,8 @@ export function buildSettingsViewData(
       emailHint: settingsCopy.reminders.emailHint,
       timeLabel: settingsCopy.reminders.timeLabel,
       timeHint: settingsCopy.reminders.timeHint,
+      leadDaysLabel: settingsCopy.reminders.leadDaysLabel,
+      leadDaysHint: settingsCopy.reminders.leadDaysHint,
       emailDelivery: {
         label: settingsCopy.reminders.emailDelivery,
         hint: settingsCopy.reminders.emailDeliveryHint,
@@ -1024,6 +1030,9 @@ export function createLoadedSettingsState(
       managedReminderEmailsEnabled:
         profile.managedReminderEmailsEnabled === true,
       reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
+      reminderLeadDays: clampReminderLeadDays(
+        profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
+      ),
     },
     trackingValues: {
       trackBBT: profile.trackBBT,
@@ -1083,6 +1092,9 @@ export function extractPersistedReminderValues(
     fertileWindowReminderEnabled: profile.fertileWindowReminderEnabled === true,
     managedReminderEmailsEnabled: profile.managedReminderEmailsEnabled === true,
     reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
+    reminderLeadDays: clampReminderLeadDays(
+      profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
+    ),
   };
 }
 
@@ -1138,7 +1150,8 @@ export function areReminderSettingsEqual(
     left.upcomingPeriodReminderEnabled === right.upcomingPeriodReminderEnabled &&
     left.fertileWindowReminderEnabled === right.fertileWindowReminderEnabled &&
     left.managedReminderEmailsEnabled === right.managedReminderEmailsEnabled &&
-    left.reminderTime === right.reminderTime
+    left.reminderTime === right.reminderTime &&
+    left.reminderLeadDays === right.reminderLeadDays
   );
 }
 

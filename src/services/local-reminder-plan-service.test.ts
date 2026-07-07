@@ -68,6 +68,88 @@ describe("local-reminder-plan-service", () => {
     );
   });
 
+  describe("reminder lead days (web parity: reminder_lead_days)", () => {
+    const now = new Date(2026, 3, 5, 10, 0, 0, 0);
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-03-28"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+
+    function upcomingPeriodTriggerAt(reminderLeadDays?: number): Date {
+      const profile = {
+        ...createDefaultProfileRecord(),
+        upcomingPeriodReminderEnabled: true,
+        fertileWindowReminderEnabled: true,
+        reminderTime: "20:00",
+      };
+      if (reminderLeadDays === undefined) {
+        // Simulate a profile persisted before the field existed.
+        delete profile.reminderLeadDays;
+      } else {
+        profile.reminderLeadDays = reminderLeadDays;
+      }
+      const plan = buildLocalReminderPlans(profile, records, now, "en").find(
+        (candidate) => candidate.kind === "upcoming_period",
+      );
+      if (!plan || plan.trigger.type !== "once") {
+        throw new Error("expected a one-shot upcoming-period plan");
+      }
+      return plan.trigger.at;
+    }
+
+    function fertileWindowTriggerAt(reminderLeadDays: number): Date {
+      const profile = {
+        ...createDefaultProfileRecord(),
+        fertileWindowReminderEnabled: true,
+        reminderTime: "20:00",
+        reminderLeadDays,
+      };
+      const plan = buildLocalReminderPlans(profile, records, now, "en").find(
+        (candidate) => candidate.kind === "fertile_window",
+      );
+      if (!plan || plan.trigger.type !== "once") {
+        throw new Error("expected a one-shot fertile-window plan");
+      }
+      return plan.trigger.at;
+    }
+
+    it("moves the upcoming-period trigger by exactly the configured lead", () => {
+      const dayInMs = 24 * 60 * 60 * 1000;
+      const leadZero = upcomingPeriodTriggerAt(0);
+      const leadSeven = upcomingPeriodTriggerAt(7);
+
+      // Same target date, same wall-clock time — a 7-day lead fires exactly
+      // 7 days earlier than a 0-day ("on the day itself") lead.
+      expect(leadZero.getTime() - leadSeven.getTime()).toBe(7 * dayInMs);
+    });
+
+    it("defaults to the previous hardcoded 3-day lead when the profile has no value", () => {
+      expect(upcomingPeriodTriggerAt().toISOString()).toBe(
+        upcomingPeriodTriggerAt(3).toISOString(),
+      );
+    });
+
+    it("clamps an out-of-range stored lead to the shared maximum", () => {
+      expect(upcomingPeriodTriggerAt(99).toISOString()).toBe(
+        upcomingPeriodTriggerAt(14).toISOString(),
+      );
+    });
+
+    it("does not shift the fertile-window reminder, which keeps its fixed window-start lead", () => {
+      expect(fertileWindowTriggerAt(0).toISOString()).toBe(
+        fertileWindowTriggerAt(7).toISOString(),
+      );
+    });
+  });
+
   it("keeps only the daily reminder in facts-only mode", () => {
     const profile = {
       ...createDefaultProfileRecord(),

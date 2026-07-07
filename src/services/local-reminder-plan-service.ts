@@ -1,5 +1,9 @@
 import type { DayLogRecord } from "../models/day-log";
-import { DEFAULT_REMINDER_TIME, type ProfileRecord } from "../models/profile";
+import {
+  DEFAULT_REMINDER_LEAD_DAYS,
+  DEFAULT_REMINDER_TIME,
+  type ProfileRecord,
+} from "../models/profile";
 import { getReminderCopy } from "../i18n/reminder-copy";
 import {
   buildCurrentCycleProjection,
@@ -8,6 +12,7 @@ import {
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   addDays,
+  clampReminderLeadDays,
   normalizeReminderTime,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -106,9 +111,13 @@ export function buildLocalReminderPlans(
   if (profile.upcomingPeriodReminderEnabled === true) {
     const targetDate =
       projection.nextPeriodWindowStartDate ?? projection.nextPeriodDate;
+    // The owner's lead-days preference (web parity: reminder_lead_days) sets
+    // how far ahead of the predicted period window the reminder fires; 0
+    // means on the day itself. Re-clamped here defensively in case a value
+    // reaches the profile through a path that skipped the settings sanitize.
     const triggerAt = resolveUpcomingTriggerDate(
       targetDate,
-      3,
+      clampReminderLeadDays(profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS),
       now,
       hour,
       minute,
@@ -137,6 +146,11 @@ export function buildLocalReminderPlans(
       projection.predictionCycleLength,
       projection.lutealPhase,
     );
+    // Deliberately NOT governed by reminderLeadDays: web's ovulation lead
+    // anchors on the ovulation date, while this reminder anchors on the
+    // fertile-window START, which already precedes ovulation by several
+    // days — applying the shared lead here would double-count the head
+    // start. A fixed 1-day heads-up before the window keeps prior behavior.
     const triggerAt = resolveUpcomingTriggerDate(
       window.fertilityStart,
       1,
