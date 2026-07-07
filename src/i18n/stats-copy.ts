@@ -1493,6 +1493,295 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     },
     phaseIcons: statsCopyEn.phaseIcons,
   },
+  it: {
+    title: "Analisi",
+    subtitle: "Osserva come cambiano nel tempo la lunghezza del ciclo, le fasi e i fattori registrati.",
+    noData: "-",
+    dataNotice: "I dati sono ancora limitati. Il quadro si chiarirà man mano che registrerai più cicli.",
+    emptyTitle: "Continua a registrare per sbloccare le analisi",
+    emptyBodyZero:
+      "Completa 2 cicli per sbloccare le analisi. Inizia inserendo il primo giorno del tuo prossimo ciclo.",
+    emptyBodyOne:
+      "Hai 1 ciclo completato. Completa un altro ciclo per sbloccare le analisi.",
+    emptyProgressHint: "Le previsioni diventano più chiare dopo almeno 2 cicli completati.",
+    emptyActionLabel: "Registra oggi per sbloccare prima",
+    completedCyclesProgress: (count: number) => `Ciclo ${count} di 2 completato`,
+    irregularNotice: (minDays: number, maxDays: number) =>
+      `I tuoi cicli variano da ${minDays} a ${maxDays} giorni. È un ritmo irregolare. Le previsioni sono approssimative.`,
+    irregularRecommendation: "Valuta di attivare la modalità ciclo irregolare nelle impostazioni.",
+    ageVariabilityHint:
+      "Dopo i 45 anni, i cicli spesso diventano meno prevedibili. Se noti differenze persistenti di 7 o più giorni tra cicli consecutivi, può essere un segno precoce di perimenopausa — considera di parlarne con un professionista sanitario.",
+    dataDrivenRangeHint:
+      "La previsione è mostrata come un intervallo che riflette quanto varia la lunghezza del tuo ciclo.",
+    shortCycleNotice:
+      "Diversi dei tuoi cicli recenti sono più corti di 24 giorni. Cicli così brevi sono meno comuni — considera di discuterne con un professionista sanitario.",
+    longCycleNotice:
+      "Diversi dei tuoi cicli recenti sono più lunghi di 45 giorni. Cicli così lunghi sono meno comuni e possono avere molte cause — considera di discuterne con un professionista sanitario.",
+    lastCycleLength: "Lunghezza dell'ultimo ciclo",
+    lastPeriodLength: "Durata del ciclo mestruale",
+    currentPhase: "Fase corrente",
+    predictionReliability: "Affidabilità della previsione",
+    factsOnlyTitle: "Solo fatti",
+    factsOnlyValue: "Previsioni disattivate",
+    factsOnlyHint:
+      "Questa modalità mantiene la pagina focalizzata sulla cronologia registrata anziché sulle stime.",
+    mucusFertilityTitle: "Alta fertilità",
+    mucusFertilityValue: "Segnale dal muco",
+    mucusFertilityDescription: (date: string) =>
+      `Muco tipo albume d'uovo registrato il ${date}.`,
+    cycleLengthCard: "Lunghezza del ciclo",
+    cycleRange: "Intervallo",
+    averageLabel: "Media",
+    medianLabel: "Mediana",
+    cycleRangeSummary: (minDays: number, maxDays: number) =>
+      `I tuoi cicli: da ${minDays} a ${maxDays} giorni`,
+    factorContextTitle: "Fattori recenti del ciclo",
+    factorContextWindow: (days: number) => `Registrati negli ultimi ${days} giorni.`,
+    factorContextHint:
+      "Questi tag possono aggiungere contesto quando il ritmo è meno costante, ma non provano una causa medica.",
+    factorPatternLabels: {
+      longer: "Fattori osservati più spesso in cicli più lunghi",
+      shorter: "Fattori osservati più spesso in cicli più corti",
+      variable: "Fattori osservati in cicli variabili",
+    },
+    factorRecentCyclesTitle: "Contesto dei cicli recenti",
+    factorCycleLength: (days: number) => `Ciclo di ${days} giorni`,
+    factorCycleDates: (start: string, end: string) => `${start} a ${end}`,
+    factorCycleKinds: {
+      longer: "Più lungo della tua mediana abituale",
+      shorter: "Più corto della tua mediana abituale",
+      variable: "All'interno di un pattern variabile",
+    },
+    cycleTrend: "Tendenza del ciclo",
+    recentCycles: "Cicli recenti",
+    noCycleData: "Ancora nessuna cronologia di cicli completati.",
+    chartActualLabel: "Reale",
+    chartAverageLabel: "Media",
+    symptomFrequency: "Frequenza dei sintomi",
+    noSymptomData: "Ancora nessuna cronologia di sintomi registrati.",
+    lastCycleSymptomsTitle: "Sintomi dell'ultimo ciclo",
+    lastCycleSymptomsSubtitle: "Cosa è comparso più spesso nel tuo ultimo ciclo completato.",
+    noCycleSymptomData: "Ancora nessun dato sui sintomi nell'ultimo ciclo completato.",
+    symptomPatternsTitle: "Pattern dei sintomi",
+    symptomPatternsSubtitle: "Pattern derivati dal ripetersi dei sintomi nei cicli completati.",
+    symptomPatternDay: (day: number) => `Di solito intorno al giorno ${day} del ciclo`,
+    symptomPatternDays: (start: number, end: number) =>
+      `Di solito intorno ai giorni ${start}-${end} del ciclo`,
+    phaseMoodTitle: "Umore per fase",
+    phaseMoodSubtitle: "Umore medio registrato nelle fasi del ciclo.",
+    phaseMoodEmpty: "Ancora nessuna voce sull'umore in questa fase.",
+    phaseMoodCount: (count: number) => (count === 1 ? "1 giorno registrato" : `${count} giorni registrati`),
+    phaseSymptomsTitle: "Sintomi per fase",
+    phaseSymptomsSubtitle: "I sintomi che hai registrato più spesso in ogni fase.",
+    phaseSymptomsEmpty: "Ancora nessun pattern di sintomi ripetuto in questa fase.",
+    phaseSymptomsDays: (count: number) =>
+      count === 1 ? "1 giorno registrato in questa fase" : `${count} giorni registrati in questa fase`,
+    bbtTitle: "Tendenza BBT",
+    bbtUnitCelsius: "°C",
+    bbtUnitFahrenheit: "°F",
+    bbtCaption:
+      "La BBT appare solo quando la registri. Le rilevazioni restano locali e sono mostrate solo per il ciclo corrente.",
+    advancedInsights: {
+      title: "Analisi avanzate",
+      subtitle: "Pattern premium calcolati solo dalla tua cronologia locale recente.",
+      weightedAverageTitle: "Media ponderata",
+      weightedAverageDescription: (count: number) =>
+        `I cicli recenti pesano di più, in base agli ultimi ${count} cicli completati.`,
+      patternDriftTitle: "Deriva del pattern",
+      patternDriftStableValue: "Ritmo stabile",
+      patternDriftDriftingValue: "In deriva",
+      patternDriftStrongValue: "Deriva forte",
+      patternDriftStableDescription: (recent: number, baseline: number) =>
+        `Media recente ${recent.toFixed(1)} g rispetto alla base ${baseline.toFixed(1)} g.`,
+      patternDriftDescription: (
+        delta: number,
+        recent: number,
+        baseline: number,
+      ) =>
+        `Media recente ${recent.toFixed(1)} g rispetto alla base ${baseline.toFixed(1)} g (${delta > 0 ? "+" : ""}${delta.toFixed(1)} g).`,
+      anomalousCycleTitle: "Ciclo anomalo",
+      anomalousCycleLongerValue: "Più lungo del solito",
+      anomalousCycleShorterValue: "Più corto del solito",
+      anomalousCycleDescription: (
+        cycleLength: number,
+        baselineLength: number,
+        deltaDays: number,
+      ) =>
+        `Ultimo ciclo completato ${cycleLength} g rispetto ai ${baselineLength.toFixed(1)} g attesi (${deltaDays > 0 ? "+" : ""}${deltaDays.toFixed(1)} g).`,
+      seasonalPatternTitle: "Pattern stagionale",
+      seasonalPatternDescription: (
+        longestSeason: string,
+        longestAverage: number,
+        shortestSeason: string,
+        shortestAverage: number,
+        deltaDays: number,
+      ) =>
+        `I tuoi cicli sembrano più lunghi in ${longestSeason} (${longestAverage.toFixed(1)} g) e più corti in ${shortestSeason} (${shortestAverage.toFixed(1)} g), con una differenza di ${deltaDays.toFixed(1)} g.`,
+      phaseMoodContrastTitle: "Contrasto dell'umore per fase",
+      phaseMoodContrastValue: (bestPhase: string, worstPhase: string) =>
+        `${bestPhase} vs ${worstPhase}`,
+      phaseMoodContrastDescription: (
+        bestPhase: string,
+        bestAverageMood: number,
+        worstPhase: string,
+        worstAverageMood: number,
+        deltaMood: number,
+      ) =>
+        `L'umore medio è più alto in ${bestPhase} (${bestAverageMood.toFixed(1)}/5) e più basso in ${worstPhase} (${worstAverageMood.toFixed(1)}/5), con una differenza di ${deltaMood.toFixed(1)} punti.`,
+      phaseSymptomPeakTitle: "Picco di sintomo per fase",
+      phaseSymptomPeakDescription: (
+        phase: string,
+        symptom: string,
+        percentage: number,
+        totalDays: number,
+      ) =>
+        `${symptom} compare più spesso nella fase ${phase}, nel ${percentage.toFixed(0)}% di ${totalDays} giorni registrati.`,
+      shortLutealTitle: "Fase luteale corta",
+      shortLutealValue: (averageDays: number) =>
+        `Media ${averageDays.toFixed(1)} g`,
+      shortLutealDescription: (count: number) =>
+        `Fase luteale osservata inferiore a 10 giorni in ${count} cicli recenti. Il valore tipico è 11-14 giorni. Una fase luteale corta può influenzare il concepimento — considera di parlarne con un medico.`,
+      seasonLabels: {
+        winter: "inverno",
+        spring: "primavera",
+        summer: "estate",
+        autumn: "autunno",
+      },
+      daysValue: (value: string) => `${value} g`,
+    },
+    advancedFertility: {
+      title: "Fertilità avanzata",
+      subtitle:
+        "Segnali di fertilità premium a partire dalla tua cronologia locale di BBT e muco cervicale.",
+      observedLutealTitle: "Fase luteale osservata",
+      observedLutealDescription: (count: number, value: string) =>
+        `Media derivata dai segnali in ${count} cicli recenti: ${value} g.`,
+      lutealConsistencyTitle: "Costanza luteale",
+      lutealConsistencyStableValue: "Costante",
+      lutealConsistencyVariableValue: "Con qualche variazione",
+      lutealConsistencyStrongValue: "Variabile",
+      lutealConsistencyDescription: (
+        count: number,
+        minDays: number,
+        maxDays: number,
+        spreadDays: number,
+      ) =>
+        `I giorni luteali osservati variano da ${minDays} a ${maxDays} g in ${count} cicli (${spreadDays.toFixed(1)} g di scarto).`,
+      signalCoverageTitle: "Copertura dei segnali",
+      signalCoverageValue: (count: number, total: number) => `${count}/${total} cicli`,
+      signalCoverageDescription: (count: number, total: number) =>
+        `Muco di qualità fertile o un rialzo termico è comparso in ${count} dei tuoi ultimi ${total} cicli completati.`,
+      thermalShiftTitle: "Rialzo termico",
+      thermalShiftConfirmedValue: "Confermato",
+      thermalShiftBuildingValue: "In corso",
+      thermalShiftConfirmedDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `Il ciclo corrente mostra un rialzo stabile di +${rise} ${unit} su ${count} rilevazioni.`,
+      thermalShiftBuildingDescription: (
+        rise: string,
+        unit: string,
+        count: number,
+      ) => `Si sta formando un possibile rialzo di +${rise} ${unit} su ${count} rilevazioni.`,
+      ovulationConfirmationTitle: "Conferma dell'ovulazione",
+      ovulationConfirmationConfirmedValue: "Segnali allineati",
+      ovulationConfirmationBuildingValue: "Segnali in progressione",
+      ovulationConfirmationDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `Il muco tipo albume d'uovo e l'ultimo rialzo termico sono stati registrati lo stesso giorno: ${date}.`
+          : `Muco tipo albume d'uovo registrato il ${date}, e l'ultimo rialzo termico è seguito ${gapDays} g dopo.`,
+      ovulationConfirmationConfirmedHint:
+        "Di solito significa che l'ovulazione è probabilmente avvenuta di recente e che la finestra fertile potrebbe chiudersi.",
+      ovulationConfirmationBuildingHint:
+        "Continua a registrare la BBT nelle prossime 1-2 mattine per vedere se si trasforma in un rialzo confermato.",
+      lhPeakTitle: "Picco LH",
+      lhPeakLoggedValue: "Picco registrato",
+      lhPeakAlignedValue: "Picco + rialzo termico",
+      lhPeakLoggedDescription: (date: string) =>
+        `Un test LH di picco è stato registrato il ${date}.`,
+      lhPeakAlignedDescription: (date: string, gapDays: number) =>
+        gapDays === 0
+          ? `Un test LH di picco e l'ultimo rialzo termico sono stati registrati lo stesso giorno: ${date}.`
+          : `Un test LH di picco è stato registrato il ${date}, e l'ultimo rialzo termico è seguito ${gapDays} g dopo.`,
+      lhPeakLoggedHint:
+        "Un picco LH compare spesso vicino ai giorni più fertili. Continua a registrare la BBT nelle prossime 1-3 mattine.",
+      lhPeakAlignedHint:
+        "Un picco LH con un rialzo termico successivo suggerisce che i giorni più fertili sono probabilmente appena passati.",
+      daysValue: (value: string) => `${value} g`,
+      thermalShiftConfirmedHint:
+        "Un rialzo sostenuto di solito significa che l'ovulazione potrebbe essere avvenuta di recente. Continua a registrare per confermare che resti elevata.",
+      thermalShiftBuildingHint:
+        "Continua a registrare la BBT per altre 2-3 mattine prima di considerarlo un rialzo confermato.",
+    },
+    personalForecasts: {
+      title: "Previsioni personali",
+      subtitle:
+        "Suggerimenti premium su cosa potrebbe indicare il ripetersi dei tuoi sintomi.",
+      aroundNowValue: "Intorno a ora",
+      inDaysValue: (days: number) => (days === 1 ? "Tra 1 giorno" : `Tra ${days} giorni`),
+      inDayRangeValue: (start: number, end: number) => `Tra ${start}-${end} giorni`,
+      descriptionSingle: (day: number) =>
+        `Di solito intorno al giorno ${day} del ciclo.`,
+      descriptionRange: (start: number, end: number) =>
+        `Di solito intorno ai giorni ${start}-${end} del ciclo.`,
+    },
+    extendedReports: {
+      title: "Report estesi",
+      subtitle: "Confronta i tuoi cicli completati recenti fianco a fianco.",
+      summary: (count: number, minDays: number, maxDays: number) =>
+        `${count} cicli completati. Intervallo ${minDays}-${maxDays} g.`,
+      rowTitle: (date: string) => `Inizio ${date}`,
+      cycleLengthLabel: (days: number) => `Ciclo ${days} g`,
+      periodLengthLabel: (days: number) => `Ciclo mestr. ${days} g`,
+      comparisonLabels: {
+        longer: "Più lungo del tuo pattern abituale",
+        shorter: "Più corto del tuo pattern abituale",
+        variable: "All'interno di un pattern variabile",
+      },
+    },
+    premiumLock: {
+      eyebrowLabel: "Premium",
+      ctaLabel: "Apri Ovumcy Cloud",
+      advancedInsights: {
+        title: "Analisi avanzate",
+        description:
+          "Medie ponderate, rilevamento della deriva, avvisi di cicli atipici, pattern stagionali e previsioni personali in base alla tua cronologia.",
+      },
+      advancedFertility: {
+        title: "Fertilità avanzata",
+        description:
+          "Registra i test LH, i rialzi termici della BBT, la conferma dell'ovulazione, la costanza della fase luteale e i picchi LH.",
+      },
+      extendedReports: {
+        title: "Report estesi",
+        description:
+          "Confronta ogni ciclo completato recente fianco a fianco: lunghezza, giorni di ciclo mestruale ed etichette di variazione.",
+      },
+    },
+    reliabilityLabels: {
+      early: "Stima iniziale",
+      building: "Pattern in costruzione",
+      stable: "Pattern più stabile",
+      variable: "Pattern variabile",
+    },
+    reliabilitySample: (count: number) => `Basato su ${count} cicli completati.`,
+    reliabilitySampleRecent: (count: number) =>
+      `Basato sugli ultimi ${count} cicli completati.`,
+    reliabilityHint:
+      "Più cicli completati rendono l'intervallo previsto più stabile.",
+    reliabilityHintVariable:
+      "Le previsioni possono variare di più quando la lunghezza del ciclo cambia da ciclo a ciclo.",
+    phaseLabels: {
+      unknown: "Sconosciuta",
+      menstrual: "Mestruale",
+      follicular: "Follicolare",
+      fertile: "Fertile",
+      ovulation: "Ovulazione",
+      luteal: "Luteale",
+    },
+    phaseIcons: statsCopyEn.phaseIcons,
+  },
   de: statsCopyDe,
   fr: statsCopyFr,
 };

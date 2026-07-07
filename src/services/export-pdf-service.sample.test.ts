@@ -12,7 +12,7 @@ import { buildExportPDFContent } from "./export-pdf-service";
 describe("export-pdf-service sample PDF", () => {
   const shouldEmit = process.env.OVUMCY_PDF_SAMPLE === "1";
 
-  it.each(["en", "ru", "de", "fr", "es"] as const)(
+  it.each(["en", "ru", "de", "fr", "es", "it"] as const)(
     "renders a sample doctor PDF in %s",
     async (locale) => {
     if (!shouldEmit) {

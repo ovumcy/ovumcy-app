@@ -131,7 +131,7 @@ The current `main` branch provides:
 - pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
 - Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and premium reminders;
 - doctor-friendly PDF export with colored monthly calendar, advanced fertility signals, cycle comparison, and short luteal phase warning;
-- five-locale interface coverage (English, Russian, German, French, Spanish) for paywall, day-log, calendar, dashboard, and PDF surfaces;
+- six-locale interface coverage (English, Russian, German, French, Spanish, Italian) for paywall, day-log, calendar, dashboard, and PDF surfaces;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;
 - baseline CI, security scanning, dependency automation, and browser smoke automation for the web shell.
 
@@ -200,7 +200,7 @@ Local Sync Setup -> Account/Auth Transport -> Self-hosted or managed sync servic
 - `src/ui/screens/`: screen-level presentation and feature-local screen sections.
 - `src/sync/`: optional sync contracts, endpoint policy, and setup orchestration.
 - `src/security/`: device, secure-storage, and crypto policy for local-data, sync, and partner-share envelopes.
-- `src/i18n/`: localized copy catalogs and the language runtime (en, ru, de, fr, es).
+- `src/i18n/`: localized copy catalogs and the language runtime (en, ru, de, fr, es, it).
 
 The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-trust-model.md).
 

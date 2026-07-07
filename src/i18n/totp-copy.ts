@@ -348,12 +348,68 @@ const totpCopyEs: TOTPCopy = {
   },
 };
 
+const totpCopyIt: TOTPCopy = {
+  section: {
+    title: "Autenticazione a due fattori",
+    hint: "Aggiungi un codice a 6 cifre da un'app di autenticazione oltre alla tua password.",
+    enableTab: "Attiva",
+    disableTab: "Disattiva",
+    statusEnabled: "L'autenticazione a due fattori è attiva.",
+    statusDisabled: "L'autenticazione a due fattori è disattivata.",
+  },
+  enroll: {
+    currentPasswordLabel: "Password corrente",
+    startLabel: "Avvia la configurazione",
+    secretTitle: "Scansiona o inserisci questo codice",
+    secretHint:
+      "Aggiungilo a Google Authenticator, 1Password, Authy o a qualsiasi app RFC 6238, poi inserisci il codice a 6 cifre qui sotto.",
+    secretManualLabel: "Codice di configurazione manuale",
+    provisioningUriLabel: "URI del codice QR",
+    codeLabel: "Codice a 6 cifre",
+    verifyLabel: "Verifica e attiva",
+    successMessage:
+      "L'autenticazione a due fattori è attiva. Gli altri dispositivi sono stati disconnessi; accedi di nuovo per continuare a usare sync.",
+    cancelLabel: "Annulla",
+  },
+  disable: {
+    currentPasswordLabel: "Password corrente",
+    codeLabel: "Codice a 6 cifre",
+    submitLabel: "Disattiva l'autenticazione a due fattori",
+    successMessage: "L'autenticazione a due fattori è disattivata. Tutte le sessioni sono state disconnesse.",
+  },
+  challenge: {
+    title: "Inserisci il tuo codice a 6 cifre",
+    hint: "Apri la tua app di autenticazione e inserisci il codice corrente per questo account.",
+    codeLabel: "Codice a 6 cifre",
+    submitLabel: "Verifica",
+    cancelLabel: "Annulla",
+    expiredHint: "La verifica è scaduta. Accedi di nuovo.",
+  },
+  errors: {
+    currentPasswordRequired: "Inserisci la tua password corrente.",
+    invalidCurrentPassword: "La password corrente non è corretta.",
+    totpNotConfigured: "L'autenticazione a due fattori non è configurata su questo server.",
+    totpAlreadyEnabled: "L'autenticazione a due fattori è già attiva. Disattivala prima.",
+    totpInvalidCode: "Codice non corretto. Prova l'ultimo generato dalla tua app.",
+    totpReplayed: "Quel codice è già stato usato. Attendi quello nuovo.",
+    totpChallengeInvalid: "La verifica di accesso è scaduta. Accedi di nuovo.",
+    totpSecretFailed: "Qualcosa è andato storto con il segreto. Riprova.",
+    challengeIDRequired: "Verifica mancante. Accedi di nuovo.",
+    notConnected: "Collega un account sync prima di modificare l'autenticazione a due fattori.",
+    rateLimited: "Troppi tentativi. Riprova più tardi.",
+    networkFailed: "Errore di rete. Riprova.",
+    unauthorized: "Sessione scaduta. Accedi di nuovo.",
+    generic: "Qualcosa è andato storto. Riprova.",
+  },
+};
+
 const TOTP_COPY: Record<InterfaceLanguage, TOTPCopy> = {
   en: totpCopyEn,
   de: totpCopyDe,
   fr: totpCopyFr,
   ru: totpCopyRu,
   es: totpCopyEs,
+  it: totpCopyIt,
 };
 
 export function selectTOTPCopy(language: InterfaceLanguage): TOTPCopy {

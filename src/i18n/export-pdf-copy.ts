@@ -473,6 +473,98 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     ) =>
       `Fase lútea observada en promedio ${averageDays.toFixed(1)} d en ${observationCount} ciclos recientes. Lo típico son 11–14 d. Se trata de una estimación a partir de señales registradas, no de un diagnóstico; si lo desea, puede comentarlo con su médico.`,
   },
+  it: {
+    documentTitle: "Report Ovumcy per il medico",
+    generatedAtLabel: "Generato",
+    summaryTitle: "Riepilogo",
+    summaryLoggedDaysLabel: "Giorni registrati",
+    summaryCompletedCyclesLabel: "Cicli completati",
+    summaryAverageCycleLengthLabel: "Lunghezza media del ciclo",
+    summaryAveragePeriodLengthLabel: "Durata media del ciclo mestruale (giorni registrati)",
+    summaryLoggedPeriodLengthFootnote: "I valori riflettono solo i giorni registrati, non la durata totale del ciclo mestruale.",
+    summaryAverageMoodLabel: "Umore medio",
+    summaryRangeLabel: "Intervallo",
+    calendarTitle: "Calendario a colori (ultimi 6 mesi)",
+    calendarEmpty: "Ancora nessun giorno registrato.",
+    legendPeriod: "Ciclo",
+    legendLoggedDay: "Giorno registrato",
+    legendFertileWindow: "Finestra fertile",
+    legendOvulation: "Ovulazione",
+    legendTentativeOvulation: "Ovulazione prevista",
+    cyclesEmpty:
+      "Non ci sono ancora abbastanza cicli completati per creare un report orientato al medico.",
+    cycleTitle: (
+      index: number,
+      startDate: string,
+      endDate: string,
+      cycleLength: number,
+      periodLength: number,
+    ) =>
+      `Ciclo ${index}: ${startDate} - ${endDate} (lung. ${cycleLength}, ciclo mestr. ${periodLength})`,
+    cycleContinuationTitle: (index: number, startDate: string, endDate: string) =>
+      `Ciclo ${index}: ${startDate} - ${endDate} (continua)`,
+    cycleFactorsPrefix: "Fattori del ciclo",
+    yes: "Sì",
+    no: "No",
+    tableColumns: {
+      date: "Data",
+      cycleDay: "Giorno del ciclo",
+      period: "Ciclo",
+      flow: "Flusso",
+      mood: "Umore",
+      sex: "Sesso",
+      bbt: "BBT",
+      cervical: "Muco cervicale",
+      lh: "Test LH",
+      symptoms: "Sintomi",
+      notes: "Note",
+    },
+    weekdays: ["Do", "Lu", "Ma", "Me", "Gi", "Ve", "Sa"],
+    advancedFertilityTitle: "Segnali di fertilità avanzati (ciclo corrente)",
+    advancedFertilityEmpty:
+      "Nessun segnale di fertilità avanzato dai cicli recenti.",
+    advancedFertilityUnitCelsius: "°C",
+    advancedFertilityUnitFahrenheit: "°F",
+    advancedFertilityThermalShiftTitle: "Rialzo termico BBT",
+    advancedFertilityThermalShiftConfirmedValue: "Confermato",
+    advancedFertilityThermalShiftBuildingValue: "In formazione",
+    advancedFertilityThermalShiftDescription: (
+      rise: string,
+      unit: string,
+      sampleCount: number,
+    ) => `+${rise} ${unit} sostenuto su ${sampleCount} rilevazioni.`,
+    advancedFertilityOvulationTitle: "Ovulazione stimata (basata sui segnali)",
+    advancedFertilityOvulationConfirmedValue: "Segnali allineati",
+    advancedFertilityOvulationBuildingValue: "Segnali in formazione",
+    advancedFertilityOvulationDescription: (mucusDate: string, gapDays: number) =>
+      gapDays === 0
+        ? `Muco tipo albume d'uovo e rialzo termico entrambi registrati il ${mucusDate}.`
+        : `Muco tipo albume d'uovo il ${mucusDate}; rialzo termico ${gapDays} g dopo.`,
+    advancedFertilityLHPeakTitle: "Segnale di picco LH",
+    advancedFertilityLHPeakAlignedValue: "Picco + rialzo termico",
+    advancedFertilityLHPeakLoggedValue: "Picco registrato",
+    advancedFertilityLHPeakDescription: (date: string) =>
+      `Test LH di picco registrato il ${date}.`,
+    extendedReportsTitle: "Confronto dei cicli",
+    extendedReportsEmpty: "Non ci sono ancora abbastanza cicli completati da confrontare.",
+    extendedReportsRow: (
+      startDate: string,
+      cycleLength: number,
+      periodLength: number,
+      comparison: "longer" | "shorter" | "variable",
+    ) =>
+      `${startDate} - ciclo ${cycleLength} g, ciclo mestr. ${periodLength} g (${
+        comparison === "longer"
+          ? "più lungo del solito"
+          : comparison === "shorter"
+            ? "più corto del solito"
+            : "all'interno di un pattern variabile"
+      })`,
+    shortLutealWarningTitle: "Fase luteale corta",
+    fertileWindowAssumptionFootnote: "Le finestre fertili presumono una fase luteale di 14 giorni quando non è disponibile una stima personalizzata.",
+    shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
+      `Fase luteale osservata in media ${averageDays.toFixed(1)} g su ${observationCount} cicli recenti. Il valore tipico è 11–14 g. Questa è una stima dai segnali registrati, non una diagnosi; potresti volerne parlare con un medico.`,
+  },
   de: exportPDFCopyDe,
   fr: exportPDFCopyFr,
 };

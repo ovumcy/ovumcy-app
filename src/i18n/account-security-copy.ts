@@ -411,12 +411,81 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
   },
 };
 
+const accountSecurityCopyIt: AccountSecurityCopy = {
+  title: "Sicurezza dell'account",
+  subtitle:
+    "Gestisci la password e il codice di recupero del tuo account sync.",
+  backLabel: "Torna a Backup & Sync",
+  loading: "Caricamento dell'account…",
+
+  changePassword: {
+    title: "Cambia password",
+    hint: "Gli altri dispositivi verranno disconnessi. Questo dispositivo resta connesso.",
+    currentPasswordLabel: "Password corrente",
+    newPasswordLabel: "Nuova password",
+    submitLabel: "Cambia password",
+    successMessage: "Password modificata. Gli altri dispositivi sono stati disconnessi.",
+  },
+
+  forgotPassword: {
+    title: "Password dimenticata",
+    hint: "Usa il codice di recupero dell'account per reimpostare la password.",
+    loginLabel: "Login o email",
+    recoveryCodeLabel: "Codice di recupero",
+    submitLabel: "Richiedi la reimpostazione della password",
+    stageTwoTitle: "Imposta una nuova password",
+    stageTwoHint:
+      "La reimpostazione ti disconnette ovunque, disattiva l'autenticazione a due fattori se era attiva ed emette un nuovo codice di recupero.",
+    newPasswordLabel: "Nuova password",
+    submitResetLabel: "Reimposta password",
+    cancelLabel: "Annulla",
+    completedMessage:
+      "Password reimpostata. Salva il nuovo codice di recupero mostrato sopra, poi accedi di nuovo.",
+    signedOutMessage:
+      "Sei stata disconnessa su questo dispositivo. Riconnettiti con la tua nuova password.",
+  },
+
+  regenerate: {
+    title: "Rigenera codice di recupero",
+    hint: "Conferma con la tua password corrente. Il nuovo codice sostituisce quello precedente.",
+    currentPasswordLabel: "Password corrente",
+    submitLabel: "Genera nuovo codice di recupero",
+  },
+
+  reveal: {
+    title: "Salva questo codice di recupero",
+    hint: "Mostrato solo una volta. Usalo se dovessi dimenticare la password dell'account.",
+    confirmLabel: "L'ho salvato",
+  },
+
+  errors: {
+    currentPasswordRequired: "Inserisci la tua password corrente.",
+    newPasswordRequired: "Inserisci una nuova password.",
+    invalidCurrentPassword: "La password corrente non è corretta.",
+    newPasswordMustDiffer:
+      "La nuova password deve essere diversa da quella corrente.",
+    weakNewPassword: "La nuova password è troppo corta.",
+    invalidRecoveryCredentials: "Login o codice di recupero non corretto.",
+    invalidResetToken: "Token di reimpostazione scaduto o non valido. Ricomincia.",
+    notConnected: "Collega un account sync prima di cambiarne la password.",
+    rateLimitedRetry:
+      "Troppi tentativi. Attendi un momento prima di riprovare.",
+    networkFailed: "Errore di rete. Riprova.",
+    loginRequired: "Inserisci il tuo login o la tua email.",
+    recoveryCodeRequired: "Inserisci il codice di recupero.",
+    resetTokenRequired: "Token di reimpostazione mancante.",
+    unauthorized: "Sessione scaduta. Accedi di nuovo.",
+    generic: "Qualcosa è andato storto. Riprova.",
+  },
+};
+
 const ACCOUNT_SECURITY_COPY: Record<InterfaceLanguage, AccountSecurityCopy> = {
   en: accountSecurityCopyEn,
   de: accountSecurityCopyDe,
   fr: accountSecurityCopyFr,
   ru: accountSecurityCopyRu,
   es: accountSecurityCopyEs,
+  it: accountSecurityCopyIt,
 };
 
 export function selectAccountSecurityCopy(

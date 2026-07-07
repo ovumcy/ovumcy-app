@@ -51,6 +51,14 @@ const statusBannerCopyCatalog: Record<InterfaceLanguage, StatusBannerCopy> = {
       info: "Info",
     },
   },
+  it: {
+    dismissAction: "Chiudi",
+    tones: {
+      success: "Fatto",
+      error: "Errore",
+      info: "Info",
+    },
+  },
 };
 
 export function getStatusBannerCopy(language: string | null | undefined) {

@@ -121,6 +121,28 @@ const shellCopyCatalog: Record<InterfaceLanguage, ShellCopy> = {
   },
   de: shellCopyDe,
   fr: shellCopyFr,
+  it: {
+    tabs: {
+      dashboard: "Oggi",
+      calendar: "Calendario",
+      stats: "Statistiche",
+      settings: "Impostazioni",
+    },
+    loading: {
+      appShellTitle: "Caricamento della tua configurazione locale…",
+      appShellDescription: "Preparazione della shell local-first dell'app.",
+      dashboardTitle: "Caricamento del cruscotto",
+      dashboardDescription: "Preparazione del tuo contesto locale del ciclo.",
+      calendarTitle: "Caricamento del calendario",
+      calendarDescription: "Preparazione della tua vista mensile locale.",
+      statsTitle: "Caricamento delle statistiche",
+      statsDescription: "Preparazione del riepilogo della tua cronologia locale.",
+      settingsTitle: "Caricamento delle impostazioni",
+      settingsDescription: "Preparazione delle tue impostazioni locali del ciclo.",
+      backupSyncTitle: "Caricamento di backup e sync",
+      backupSyncDescription: "Preparazione dei controlli del tuo backup protetto.",
+    },
+  },
 };
 
 export function getShellCopy(language: string | null | undefined) {
