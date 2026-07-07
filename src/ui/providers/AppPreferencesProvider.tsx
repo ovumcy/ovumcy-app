@@ -7,13 +7,18 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useColorScheme } from "react-native";
 
 import type {
   InterfaceLanguage,
   ProfileRecord,
+  ResolvedTheme,
   ThemePreference,
 } from "../../models/profile";
-import { resolveScreenCaptureProtectionEnabled } from "../../models/profile";
+import {
+  DEFAULT_RESOLVED_THEME,
+  resolveScreenCaptureProtectionEnabled,
+} from "../../models/profile";
 import { appStorage } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import {
@@ -21,6 +26,26 @@ import {
   resolveDeviceLanguage,
 } from "../../i18n/runtime";
 import { darkColors, lightColors, type AppThemeColors } from "../theme/tokens";
+
+// Collapse the stored tri-state preference to the theme the UI actually
+// renders. "system" defers to the live OS color scheme (`useColorScheme`),
+// falling back to the default when the OS reports null (unknown). "light"/
+// "dark" pin the theme; a legacy `null` also lands on the default. This is the
+// single place "system" is turned into a concrete palette.
+function resolveTheme(
+  themeOverride: ThemePreference | null,
+  systemColorScheme: ResolvedTheme | null,
+): ResolvedTheme {
+  if (themeOverride === "system") {
+    return systemColorScheme ?? DEFAULT_RESOLVED_THEME;
+  }
+
+  if (themeOverride === "dark") {
+    return "dark";
+  }
+
+  return DEFAULT_RESOLVED_THEME;
+}
 
 type PreferenceOverrides = Pick<
   ProfileRecord,
@@ -39,7 +64,9 @@ type AppPreferencesContextValue = {
   refreshPreferences: () => Promise<void>;
   screenCaptureProtectionEnabled: boolean;
   syncProfilePreferences: (profile: PreferenceOverrides) => void;
-  theme: ThemePreference;
+  // The resolved theme the UI renders — always "light" or "dark", never
+  // "system" (that stored value is collapsed via the live OS color scheme).
+  theme: ResolvedTheme;
   themeOverride: ThemePreference | null;
 };
 
@@ -48,6 +75,10 @@ type StaticAppPreferencesOverrides = {
   languageOverride?: InterfaceLanguage | null;
   screenCaptureProtectionEnabled?: boolean;
   themeOverride?: ThemePreference | null;
+  // Simulate the OS color scheme for the static (test) provider so a
+  // themeOverride of "system" can resolve deterministically without the live
+  // useColorScheme subscription. Defaults to null (OS unknown) → light.
+  systemColorScheme?: ResolvedTheme | null;
 };
 
 export function createAppPreferencesContextValue(
@@ -55,7 +86,7 @@ export function createAppPreferencesContextValue(
 ): AppPreferencesContextValue {
   const languageOverride = overrides.languageOverride ?? null;
   const themeOverride = overrides.themeOverride ?? null;
-  const theme: ThemePreference = themeOverride ?? "light";
+  const theme = resolveTheme(themeOverride, overrides.systemColorScheme ?? null);
 
   return {
     clearPreferencePreview: () => {},
@@ -110,6 +141,15 @@ export function AppPreferencesProvider({
     null,
   );
   const [isReady, setIsReady] = useState(false);
+  // Live OS color scheme. useColorScheme subscribes to Appearance change
+  // events on native and to the prefers-color-scheme media query on
+  // react-native-web, so a mid-session OS theme switch re-renders here and,
+  // when the preference is "system", flips the resolved theme immediately.
+  // React Native manages the listener lifecycle (add on mount, remove on
+  // unmount) inside the hook, so there is nothing to clean up here.
+  const rawColorScheme = useColorScheme();
+  const systemColorScheme: ResolvedTheme | null =
+    rawColorScheme === "dark" ? "dark" : rawColorScheme === "light" ? "light" : null;
 
   const refreshPreferences = useCallback(async () => {
     try {
@@ -142,8 +182,10 @@ export function AppPreferencesProvider({
     const effectiveOverrides = previewOverrides ?? persistedOverrides;
     const language =
       resolveCopyLanguage(effectiveOverrides.languageOverride) ?? resolveDeviceLanguage();
-    const theme: ThemePreference =
-      effectiveOverrides.themeOverride ?? "light";
+    const theme = resolveTheme(
+      effectiveOverrides.themeOverride,
+      systemColorScheme,
+    );
 
     return {
       clearPreferencePreview: () => {
@@ -183,6 +225,7 @@ export function AppPreferencesProvider({
     isReady,
     previewOverrides,
     refreshPreferences,
+    systemColorScheme,
   ]);
 
   return (

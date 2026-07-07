@@ -988,6 +988,66 @@ describe("sqlite-app-storage", () => {
     });
   });
 
+  it("round-trips the system theme preference through the encrypted profile row", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      themeOverride: "system",
+    });
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ themeOverride: "system" }),
+    );
+  });
+
+  it("degrades an unknown persisted theme override to null on read", async () => {
+    // A legacy plaintext row (pre-encryption) or a forward-migrated profile can
+    // carry a theme value this build does not know. It must sanitize to null
+    // (→ the light default via the provider), never surface the raw value or
+    // crash the profile read.
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () =>
+        createFakeDatabase({
+          profileRow: {
+            last_period_start: "2026-03-15",
+            cycle_length: 30,
+            period_length: 6,
+            auto_period_fill: 1,
+            irregular_cycle: 0,
+            unpredictable_cycle: 0,
+            age_group: "under_40",
+            usage_goal: "health",
+            track_bbt: 0,
+            temperature_unit: "c",
+            track_cervical_mucus: 0,
+            hide_sex_chip: 0,
+            language_override: null,
+            theme_override: "midnight",
+            encrypted_payload: null,
+          },
+        }),
+    });
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ themeOverride: null }),
+    );
+  });
+
   it("persists and lists canonical day logs in sqlite", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {

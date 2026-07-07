@@ -26,7 +26,16 @@ export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 
 export type TemperatureUnit = "c" | "f";
 export type InterfaceLanguage = "en" | "ru" | "es" | "de" | "fr" | "it";
-export type ThemePreference = "light" | "dark";
+// The stored preference tri-state. "system" defers to the OS color scheme at
+// runtime; "light"/"dark" pin the theme regardless of the OS. Existing rows
+// stored `null` (never "system"), which keeps meaning the default light theme
+// via `?? DEFAULT_RESOLVED_THEME` — adding "system" does not repurpose null.
+export type ThemePreference = "light" | "dark" | "system";
+// The two concrete themes the UI can actually render. `AppPreferencesProvider`
+// resolves any `ThemePreference` (including "system") down to one of these
+// before exposing it as `theme`, so palette consumers never see "system".
+export type ResolvedTheme = "light" | "dark";
+export const DEFAULT_RESOLVED_THEME: ResolvedTheme = "light";
 export type PredictionMode = "regular" | "irregular" | "facts_only";
 export type ReminderTime = string;
 export type CalendarPredictionNoticeKey =
@@ -42,7 +51,7 @@ export const SUPPORTED_INTERFACE_LANGUAGES = [
   "fr",
   "it",
 ] as const;
-export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
+export const SUPPORTED_THEME_PREFERENCES = ["light", "dark", "system"] as const;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",
   "calendar_unpredictable_prediction_notice_v1",
