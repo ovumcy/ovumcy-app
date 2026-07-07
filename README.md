@@ -311,3 +311,4 @@ service, or bundling it into a paid product — is not granted; contact Ovumcy f
 a commercial license.
 See [LICENSE](LICENSE).
 
+Third-party attribution notices are recorded in [NOTICE.md](NOTICE.md).

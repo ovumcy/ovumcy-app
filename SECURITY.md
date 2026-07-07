@@ -78,6 +78,17 @@ follows from that:
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
   cannot execute on open, with RFC 4180 quoting preserved.
+- **Cleartext HTTP blocked by default (Android).** The committed Android network
+  security config (`android/app/src/main/res/xml/network_security_config.xml`,
+  generated in prebuild by `plugins/withAndroidNetworkSecurityConfig.js`) sets
+  `cleartextTrafficPermitted="false"` app-wide and permits cleartext only for the
+  emulator-host/loopback dev addresses (`10.0.2.2`, `127.0.0.1`, `localhost`) that
+  serve Metro and local sync stacks in debug builds. Production traffic is
+  HTTPS-only at the OS layer. On top of that, `src/sync/sync-endpoint-policy.ts`
+  rejects `http://` to any non-private host (parsing the host as a literal IPv4
+  and bucketing by octet, never prefix-matching the hostname) as defense in
+  depth, so an `http://` sync/managed endpoint is refused before a request goes
+  out regardless of the OS layer.
 
 ### Out of scope
 
