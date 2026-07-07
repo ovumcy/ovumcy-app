@@ -1,5 +1,8 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
-import { createDefaultProfileRecord } from "../models/profile";
+import {
+  createDefaultProfileRecord,
+  type ProfileRecord,
+} from "../models/profile";
 import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import type { ExportBackupEnvelope } from "../models/export";
@@ -7,18 +10,23 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   importBackupEnvelope,
   parseImportEnvelope,
+  previewImportBackupEnvelope,
   restoreFromJSONBackup,
 } from "./import-service";
 
 // A stateful in-memory storage so writes are observable through reads, letting
 // the merge/skip semantics be asserted round-trip.
-function createStatefulStorage(): {
+function createStatefulStorage(
+  initialProfile: ProfileRecord = createDefaultProfileRecord(),
+): {
   storage: LocalAppStorage;
   dayLogs: Map<string, DayLogRecord>;
   symptoms: SymptomRecord[];
+  getProfile: () => ProfileRecord;
 } {
   const dayLogs = new Map<string, DayLogRecord>();
   const symptoms: SymptomRecord[] = createDefaultSymptomRecords();
+  let profile: ProfileRecord = initialProfile;
 
   const storage = createLocalAppStorageMock({
     readDayLogRecord: jest.fn(async (date: string) =>
@@ -31,9 +39,13 @@ function createStatefulStorage(): {
     writeSymptomRecord: jest.fn(async (record: SymptomRecord) => {
       symptoms.push(record);
     }),
+    readProfileRecord: jest.fn(async () => profile),
+    writeProfileRecord: jest.fn(async (record: ProfileRecord) => {
+      profile = record;
+    }),
   });
 
-  return { storage, dayLogs, symptoms };
+  return { storage, dayLogs, symptoms, getProfile: () => profile };
 }
 
 function envelope(
@@ -232,6 +244,181 @@ describe("import-service apply (additive merge)", () => {
     expect(outcome.symptomsAdded).toBe(1);
     expect(symptoms.length).toBe(before + 1);
     expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+  });
+});
+
+describe("import-service profile restore (pristine-only)", () => {
+  function backupProfile(overrides: Partial<ProfileRecord> = {}): ProfileRecord {
+    return {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 31,
+      periodLength: 6,
+      trackBBT: true,
+      ...overrides,
+    };
+  }
+
+  it("restores the backup profile on a fresh install (pristine defaults)", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: backupProfile() }),
+    );
+
+    expect(outcome.profileRestored).toBe(true);
+    expect(getProfile()).toMatchObject({
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 31,
+      periodLength: 6,
+      trackBBT: true,
+    });
+  });
+
+  it("never touches the profile on a configured device", async () => {
+    const configured = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-02-14",
+      cycleLength: 27,
+    };
+    const { storage, getProfile } = createStatefulStorage(configured);
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: backupProfile() }),
+    );
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(getProfile()).toEqual(configured);
+  });
+
+  it("treats any single non-default field — even a language override — as configured", async () => {
+    const { storage } = createStatefulStorage({
+      ...createDefaultProfileRecord(),
+      languageOverride: "it",
+    });
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: backupProfile() }),
+    );
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+  });
+
+  it("collapses invalid backup profile values to safe defaults instead of failing", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        profile: {
+          ...backupProfile(),
+          cycleLength: 9000,
+          periodLength: -3,
+          lastPeriodStart: "not-a-date",
+          temperatureUnit: "kelvin",
+          languageOverride: "xx",
+          reminderTime: "99:99",
+        } as unknown as ProfileRecord,
+      }),
+    );
+
+    expect(outcome.profileRestored).toBe(true);
+    expect(getProfile()).toMatchObject({
+      cycleLength: 90,
+      periodLength: 1,
+      lastPeriodStart: null,
+      temperatureUnit: "c",
+      languageOverride: null,
+      reminderTime: "20:00",
+    });
+  });
+
+  it("does not report a restore when the backup profile is missing or not an object", async () => {
+    const { storage } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: undefined as unknown as ProfileRecord }),
+    );
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+  });
+
+  it("does not report a restore when the backup profile only carries defaults", async () => {
+    const { storage } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: createDefaultProfileRecord() }),
+    );
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe("previewImportBackupEnvelope (dry-run)", () => {
+  it("computes the same counts as the apply without writing anything", async () => {
+    const seededEnvelope = envelope({
+      profile: {
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: "2026-03-01",
+      },
+      dayLogs: [
+        dayLog("2026-03-10", { isPeriod: true, flow: "medium" }),
+        dayLog("2026-03-11", { mood: 3 }),
+        dayLog("not-a-date", { notes: "bad" }),
+      ],
+      symptoms: [
+        {
+          id: "custom_a",
+          slug: "jaw-pain",
+          label: "Jaw pain",
+          icon: "🔥",
+          color: "#E8799F",
+          isArchived: false,
+          sortOrder: 900,
+          isDefault: false,
+        },
+      ],
+    });
+
+    const previewSide = createStatefulStorage();
+    previewSide.dayLogs.set(
+      "2026-03-11",
+      dayLog("2026-03-11", { notes: "already here" }),
+    );
+    const preview = await previewImportBackupEnvelope(
+      previewSide.storage,
+      seededEnvelope,
+    );
+
+    expect(previewSide.storage.writeDayLogRecord).not.toHaveBeenCalled();
+    expect(previewSide.storage.writeSymptomRecord).not.toHaveBeenCalled();
+    expect(previewSide.storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(previewSide.dayLogs.has("2026-03-10")).toBe(false);
+
+    const applySide = createStatefulStorage();
+    applySide.dayLogs.set(
+      "2026-03-11",
+      dayLog("2026-03-11", { notes: "already here" }),
+    );
+    const applied = await importBackupEnvelope(applySide.storage, seededEnvelope);
+
+    expect(preview).toEqual(applied);
+    expect(preview).toEqual({
+      dayLogsAdded: 1,
+      dayLogsSkipped: 1,
+      dayLogsRejected: 1,
+      symptomsAdded: 1,
+      profileRestored: true,
+    });
   });
 });
 

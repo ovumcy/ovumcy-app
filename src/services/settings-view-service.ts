@@ -6,7 +6,7 @@ import type {
   ManagedCloudBillingOffer,
   ManagedCloudBillingSnapshot,
 } from "../sync/managed-cloud-api-client";
-import type { LoadedExportState } from "../models/export";
+import type { ExportBackupEnvelope, LoadedExportState } from "../models/export";
 import type {
   AgeGroupOption,
   CycleSettingsValues,
@@ -41,6 +41,7 @@ import {
 } from "./profile-settings-policy";
 import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
+import type { ImportOutcome } from "./import-service";
 
 type SettingsCopy = ReturnType<typeof getSettingsCopy>;
 
@@ -403,6 +404,7 @@ export type SettingsViewData = {
       };
     errors: SettingsCopy["export"]["errors"];
   };
+  import: SettingsCopy["import"];
   danger: {
     title: string;
     subtitle: string;
@@ -955,6 +957,7 @@ export function buildSettingsViewData(
       },
       errors: settingsCopy.export.errors,
     },
+    import: settingsCopy.import,
     danger: {
       title: settingsCopy.danger.title,
       subtitle: settingsCopy.danger.subtitle,
@@ -1306,6 +1309,111 @@ export function buildSettingsExportSectionPresentationState(
           ? viewData.pdfPlanHint
           : "",
   };
+}
+
+export type SettingsImportPreviewViewData = {
+  detailLines: string[];
+  profileLine: string;
+  nothingNewLine: string;
+  canConfirm: boolean;
+};
+
+// Assemble the localized preview lines for the two-phase import flow: what the
+// backup contains and exactly what confirming will add. Values coming from the
+// (user-picked, untrusted) envelope are validated before display so a
+// tampered file cannot inject arbitrary strings into the preview.
+export function buildSettingsImportPreviewViewData(
+  envelope: ExportBackupEnvelope,
+  outcome: ImportOutcome,
+  viewData: SettingsViewData["import"],
+  locale: string,
+): SettingsImportPreviewViewData {
+  const detailLines: string[] = [];
+
+  const createdAt =
+    typeof envelope.exportedAt === "string" ? new Date(envelope.exportedAt) : null;
+  if (createdAt && !Number.isNaN(createdAt.getTime())) {
+    detailLines.push(
+      formatTemplate(viewData.previewCreatedTemplate, [
+        formatSettingsLastSync(envelope.exportedAt, locale),
+      ]),
+    );
+  }
+
+  const rangeFrom =
+    typeof envelope.summary?.dateFrom === "string" &&
+    parseLocalDate(envelope.summary.dateFrom)
+      ? envelope.summary.dateFrom
+      : "";
+  const rangeTo =
+    typeof envelope.summary?.dateTo === "string" &&
+    parseLocalDate(envelope.summary.dateTo)
+      ? envelope.summary.dateTo
+      : "";
+  if (rangeFrom && rangeTo) {
+    detailLines.push(
+      formatTemplate(viewData.previewRangeTemplate, [rangeFrom, rangeTo]),
+    );
+  }
+
+  detailLines.push(
+    formatTemplate(viewData.previewTotalTemplate, [
+      String(envelope.dayLogs?.length ?? 0),
+    ]),
+  );
+  detailLines.push(
+    formatTemplate(viewData.previewAddTemplate, [String(outcome.dayLogsAdded)]),
+  );
+  if (outcome.dayLogsSkipped > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewSkipTemplate, [
+        String(outcome.dayLogsSkipped),
+      ]),
+    );
+  }
+  if (outcome.dayLogsRejected > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewRejectTemplate, [
+        String(outcome.dayLogsRejected),
+      ]),
+    );
+  }
+  if (outcome.symptomsAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewSymptomsTemplate, [
+        String(outcome.symptomsAdded),
+      ]),
+    );
+  }
+
+  const hasChanges =
+    outcome.dayLogsAdded > 0 ||
+    outcome.symptomsAdded > 0 ||
+    outcome.profileRestored;
+
+  return {
+    detailLines,
+    profileLine: outcome.profileRestored
+      ? viewData.previewProfileRestore
+      : viewData.previewProfileKept,
+    nothingNewLine: hasChanges ? "" : viewData.previewNothingNew,
+    canConfirm: hasChanges,
+  };
+}
+
+export function buildSettingsImportResultMessage(
+  outcome: ImportOutcome,
+  viewData: SettingsViewData["import"],
+): string {
+  const base = formatTemplate(viewData.successTemplate, [
+    String(outcome.dayLogsAdded),
+    String(outcome.dayLogsSkipped),
+    String(outcome.dayLogsRejected),
+  ]);
+
+  return outcome.profileRestored
+    ? `${base} ${viewData.successProfileNote}`
+    : base;
 }
 
 export function buildSettingsFlowPresentationState(

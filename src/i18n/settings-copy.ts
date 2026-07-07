@@ -472,6 +472,38 @@ const settingsCopyEn = {
         "The export file was prepared, but sharing or download failed. Please try again.",
     },
   },
+  import: {
+    title: "Restore from backup",
+    subtitle:
+      "Import a previous Ovumcy JSON export. Only days you don't already have are added — nothing is overwritten or deleted.",
+    pickAction: "Choose export file",
+    previewTitle: "Ready to restore",
+    previewCreatedTemplate: "Backup created: %s",
+    previewRangeTemplate: "Backup range: %s to %s",
+    previewTotalTemplate: "Entries in backup: %d",
+    previewAddTemplate: "New days to add: %d",
+    previewSkipTemplate: "Days already on this device (kept unchanged): %d",
+    previewRejectTemplate: "Entries that can't be imported: %d",
+    previewSymptomsTemplate: "New custom symptoms: %d",
+    previewProfileRestore:
+      "Cycle settings from the backup will be applied — this device still has the default settings.",
+    previewProfileKept: "Your current settings stay unchanged.",
+    previewNothingNew: "Everything in this backup is already on this device.",
+    confirmAction: "Restore now",
+    cancelAction: "Cancel",
+    applyingLabel: "Restoring...",
+    successTemplate: "Restored %d days (%d already present, %d ignored).",
+    successProfileNote: "Cycle settings were restored from the backup.",
+    errors: {
+      malformed:
+        "This file can't be read as a backup. Choose an unmodified JSON export created by Ovumcy.",
+      unrecognizedFormat: "This file isn't a valid Ovumcy export.",
+      tooLarge: "That file is too large to import.",
+      pickUnavailable: "Choosing files isn't available on this device right now.",
+      readFailed: "The selected file couldn't be read. Please try again.",
+      importFailed: "Restore failed. Please try again.",
+    },
+  },
   danger: {
     title: "Danger zone",
     subtitle:
@@ -1019,6 +1051,43 @@ const settingsCopyDe: SettingsCopy = {
         "Dieses Gerät kann das Exportziel gerade nicht öffnen. Versuchen Sie es über einen unterstützten Browser oder ein Gerät mit Teilen/Speichern-Funktion.",
       deliveryFailed:
         "Die Exportdatei wurde vorbereitet, aber das Teilen oder Herunterladen ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    },
+  },
+  import: {
+    title: "Aus Sicherung wiederherstellen",
+    subtitle:
+      "Importieren Sie einen früheren Ovumcy-JSON-Export. Es werden nur Tage hinzugefügt, die Sie noch nicht haben — nichts wird überschrieben oder gelöscht.",
+    pickAction: "Exportdatei auswählen",
+    previewTitle: "Bereit zur Wiederherstellung",
+    previewCreatedTemplate: "Sicherung erstellt: %s",
+    previewRangeTemplate: "Zeitraum der Sicherung: %s bis %s",
+    previewTotalTemplate: "Einträge in der Sicherung: %d",
+    previewAddTemplate: "Neue Tage zum Hinzufügen: %d",
+    previewSkipTemplate: "Tage bereits auf diesem Gerät (bleiben unverändert): %d",
+    previewRejectTemplate: "Einträge, die nicht importiert werden können: %d",
+    previewSymptomsTemplate: "Neue eigene Symptome: %d",
+    previewProfileRestore:
+      "Die Zykluseinstellungen aus der Sicherung werden übernommen — dieses Gerät hat noch die Standardeinstellungen.",
+    previewProfileKept: "Ihre aktuellen Einstellungen bleiben unverändert.",
+    previewNothingNew:
+      "Alles aus dieser Sicherung ist bereits auf diesem Gerät vorhanden.",
+    confirmAction: "Jetzt wiederherstellen",
+    cancelAction: "Abbrechen",
+    applyingLabel: "Wird wiederhergestellt...",
+    successTemplate: "%d Tage wiederhergestellt (%d bereits vorhanden, %d ignoriert).",
+    successProfileNote:
+      "Die Zykluseinstellungen wurden aus der Sicherung wiederhergestellt.",
+    errors: {
+      malformed:
+        "Diese Datei konnte nicht als Sicherung gelesen werden. Wählen Sie einen unveränderten JSON-Export aus Ovumcy.",
+      unrecognizedFormat: "Diese Datei ist kein gültiger Ovumcy-Export.",
+      tooLarge: "Diese Datei ist zu groß zum Importieren.",
+      pickUnavailable:
+        "Die Dateiauswahl ist auf diesem Gerät gerade nicht verfügbar.",
+      readFailed:
+        "Die ausgewählte Datei konnte nicht gelesen werden. Bitte versuchen Sie es erneut.",
+      importFailed:
+        "Wiederherstellung fehlgeschlagen. Bitte versuchen Sie es erneut.",
     },
   },
   danger: {
@@ -1580,6 +1649,41 @@ const settingsCopyFr: SettingsCopy = {
         "Le fichier a été préparé, mais le partage ou le téléchargement a échoué. Réessayez.",
     },
   },
+  import: {
+    title: "Restaurer depuis une sauvegarde",
+    subtitle:
+      "Importez un export JSON Ovumcy précédent. Seuls les jours que vous n'avez pas déjà sont ajoutés — rien n'est écrasé ni supprimé.",
+    pickAction: "Choisir le fichier d'export",
+    previewTitle: "Prêt à restaurer",
+    previewCreatedTemplate: "Sauvegarde créée : %s",
+    previewRangeTemplate: "Période de la sauvegarde : %s à %s",
+    previewTotalTemplate: "Entrées dans la sauvegarde : %d",
+    previewAddTemplate: "Nouveaux jours à ajouter : %d",
+    previewSkipTemplate: "Jours déjà sur cet appareil (conservés tels quels) : %d",
+    previewRejectTemplate: "Entrées impossibles à importer : %d",
+    previewSymptomsTemplate: "Nouveaux symptômes personnalisés : %d",
+    previewProfileRestore:
+      "Les réglages de cycle de la sauvegarde seront appliqués — cet appareil a encore les réglages par défaut.",
+    previewProfileKept: "Vos réglages actuels restent inchangés.",
+    previewNothingNew:
+      "Tout le contenu de cette sauvegarde est déjà sur cet appareil.",
+    confirmAction: "Restaurer maintenant",
+    cancelAction: "Annuler",
+    applyingLabel: "Restauration...",
+    successTemplate: "%d jours restaurés (%d déjà présents, %d ignorés).",
+    successProfileNote:
+      "Les réglages de cycle ont été restaurés depuis la sauvegarde.",
+    errors: {
+      malformed:
+        "Ce fichier n'a pas pu être lu comme une sauvegarde. Choisissez un export JSON non modifié créé par Ovumcy.",
+      unrecognizedFormat: "Ce fichier n'est pas un export Ovumcy valide.",
+      tooLarge: "Ce fichier est trop volumineux pour être importé.",
+      pickUnavailable:
+        "Le choix de fichiers n'est pas disponible sur cet appareil pour le moment.",
+      readFailed: "Le fichier sélectionné n'a pas pu être lu. Réessayez.",
+      importFailed: "Échec de la restauration. Réessayez.",
+    },
+  },
   danger: {
     ...settingsCopyEn.danger,
     title: "Zone de danger",
@@ -2107,6 +2211,38 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Это устройство сейчас не может открыть экспорт. Попробуйте из поддерживаемого браузера или на устройстве с share/save.",
         deliveryFailed:
           "Файл был подготовлен, но download или share завершился неудачно. Попробуйте ещё раз.",
+      },
+    },
+    import: {
+      title: "Восстановить из резервной копии",
+      subtitle:
+        "Импортируйте предыдущий JSON-экспорт Ovumcy. Добавляются только дни, которых у Вас ещё нет, — ничего не перезаписывается и не удаляется.",
+      pickAction: "Выбрать файл экспорта",
+      previewTitle: "Готово к восстановлению",
+      previewCreatedTemplate: "Копия создана: %s",
+      previewRangeTemplate: "Диапазон копии: %s — %s",
+      previewTotalTemplate: "Записей в копии: %d",
+      previewAddTemplate: "Новых дней для добавления: %d",
+      previewSkipTemplate: "Дней уже есть на устройстве (останутся без изменений): %d",
+      previewRejectTemplate: "Записей невозможно импортировать: %d",
+      previewSymptomsTemplate: "Новых пользовательских симптомов: %d",
+      previewProfileRestore:
+        "Настройки цикла из копии будут применены — на этом устройстве ещё стандартные настройки.",
+      previewProfileKept: "Ваши текущие настройки останутся без изменений.",
+      previewNothingNew: "Всё из этой копии уже есть на этом устройстве.",
+      confirmAction: "Восстановить сейчас",
+      cancelAction: "Отмена",
+      applyingLabel: "Восстановление...",
+      successTemplate: "Восстановлено дней: %d (уже было: %d, отклонено: %d).",
+      successProfileNote: "Настройки цикла восстановлены из копии.",
+      errors: {
+        malformed:
+          "Не удалось прочитать этот файл как резервную копию. Выберите неизменённый JSON-экспорт, созданный в Ovumcy.",
+        unrecognizedFormat: "Этот файл не является допустимым экспортом Ovumcy.",
+        tooLarge: "Этот файл слишком большой для импорта.",
+        pickUnavailable: "Выбор файлов сейчас недоступен на этом устройстве.",
+        readFailed: "Не удалось прочитать выбранный файл. Попробуйте ещё раз.",
+        importFailed: "Не удалось восстановить данные. Попробуйте снова.",
       },
     },
     danger: {
@@ -2637,6 +2773,40 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "El archivo se preparó, pero la descarga o el compartir fallaron. Inténtalo de nuevo.",
       },
     },
+    import: {
+      title: "Restaurar desde copia de seguridad",
+      subtitle:
+        "Importa una exportación JSON anterior de Ovumcy. Solo se añaden los días que aún no tienes — no se sobrescribe ni se elimina nada.",
+      pickAction: "Elegir archivo de exportación",
+      previewTitle: "Todo listo para restaurar",
+      previewCreatedTemplate: "Copia creada: %s",
+      previewRangeTemplate: "Rango de la copia: %s a %s",
+      previewTotalTemplate: "Registros en la copia: %d",
+      previewAddTemplate: "Días nuevos para añadir: %d",
+      previewSkipTemplate:
+        "Días que ya están en este dispositivo (se conservan sin cambios): %d",
+      previewRejectTemplate: "Registros que no se pueden importar: %d",
+      previewSymptomsTemplate: "Síntomas personalizados nuevos: %d",
+      previewProfileRestore:
+        "Se aplicarán los ajustes de ciclo de la copia — este dispositivo aún tiene los ajustes predeterminados.",
+      previewProfileKept: "Tus ajustes actuales se mantienen sin cambios.",
+      previewNothingNew: "Todo lo de esta copia ya está en este dispositivo.",
+      confirmAction: "Restaurar ahora",
+      cancelAction: "Cancelar",
+      applyingLabel: "Restaurando...",
+      successTemplate: "Se restauraron %d días (%d ya existentes, %d ignorados).",
+      successProfileNote: "Los ajustes de ciclo se restauraron desde la copia.",
+      errors: {
+        malformed:
+          "Este archivo no se pudo leer como copia de seguridad. Elige una exportación JSON sin modificar creada por Ovumcy.",
+        unrecognizedFormat: "Este archivo no es una exportación válida de Ovumcy.",
+        tooLarge: "Ese archivo es demasiado grande para importarlo.",
+        pickUnavailable:
+          "Elegir archivos no está disponible en este dispositivo ahora mismo.",
+        readFailed: "No se pudo leer el archivo seleccionado. Inténtalo de nuevo.",
+        importFailed: "No se pudo restaurar. Inténtalo de nuevo.",
+      },
+    },
     danger: {
       title: "Zona de peligro",
       subtitle:
@@ -3164,6 +3334,42 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Questo dispositivo non può aprire la destinazione di esportazione in questo momento. Prova da un browser compatibile o da un dispositivo con condivisione/salvataggio.",
         deliveryFailed:
           "Il file è stato preparato, ma il download o la condivisione non è riuscito. Riprova.",
+      },
+    },
+    import: {
+      title: "Ripristina da backup",
+      subtitle:
+        "Importa un precedente export JSON di Ovumcy. Vengono aggiunti solo i giorni che non hai già — nulla viene sovrascritto o cancellato.",
+      pickAction: "Scegli file di export",
+      previewTitle: "Pronto per il ripristino",
+      previewCreatedTemplate: "Backup creato: %s",
+      previewRangeTemplate: "Periodo del backup: %s a %s",
+      previewTotalTemplate: "Voci nel backup: %d",
+      previewAddTemplate: "Nuovi giorni da aggiungere: %d",
+      previewSkipTemplate:
+        "Giorni già su questo dispositivo (restano invariati): %d",
+      previewRejectTemplate: "Voci che non possono essere importate: %d",
+      previewSymptomsTemplate: "Nuovi sintomi personalizzati: %d",
+      previewProfileRestore:
+        "Le impostazioni del ciclo del backup verranno applicate — questo dispositivo ha ancora le impostazioni predefinite.",
+      previewProfileKept: "Le tue impostazioni attuali restano invariate.",
+      previewNothingNew:
+        "Tutto il contenuto di questo backup è già su questo dispositivo.",
+      confirmAction: "Ripristina ora",
+      cancelAction: "Annulla",
+      applyingLabel: "Ripristino in corso...",
+      successTemplate: "Ripristinati %d giorni (%d già presenti, %d ignorati).",
+      successProfileNote:
+        "Le impostazioni del ciclo sono state ripristinate dal backup.",
+      errors: {
+        malformed:
+          "Questo file non può essere letto come backup. Scegli un export JSON non modificato creato da Ovumcy.",
+        unrecognizedFormat: "Questo file non è un export Ovumcy valido.",
+        tooLarge: "Quel file è troppo grande per l'importazione.",
+        pickUnavailable:
+          "La scelta dei file non è disponibile su questo dispositivo al momento.",
+        readFailed: "Impossibile leggere il file selezionato. Riprova.",
+        importFailed: "Ripristino fallito. Riprova.",
       },
     },
     danger: {
