@@ -42,3 +42,23 @@ export function resolveSettingsExportErrorMessage(
       return viewData.export.errors.exportFailed;
   }
 }
+
+export function resolveSettingsImportErrorMessage(
+  errorCode: string,
+  viewData: SettingsViewData,
+) {
+  switch (errorCode) {
+    case "malformed":
+      return viewData.import.errors.malformed;
+    case "unrecognized_format":
+      return viewData.import.errors.unrecognizedFormat;
+    case "too_large":
+      return viewData.import.errors.tooLarge;
+    case "pick_unavailable":
+      return viewData.import.errors.pickUnavailable;
+    case "read_failed":
+      return viewData.import.errors.readFailed;
+    default:
+      return viewData.import.errors.importFailed;
+  }
+}

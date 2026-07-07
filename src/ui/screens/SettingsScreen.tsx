@@ -6,6 +6,10 @@ import {
   type ExportDeliveryClient,
 } from "../../services/export-delivery";
 import type { ExportServiceDependencies } from "../../services/export-service";
+import {
+  createPlatformImportFilePickerClient,
+  type ImportFilePickerClient,
+} from "../../services/import-file-picker";
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
@@ -18,6 +22,7 @@ import { useSettingsScreenController } from "./settings/useSettingsScreenControl
 type SettingsScreenProps = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies;
+  importFilePickerClient?: ImportFilePickerClient;
   now?: Date;
   reminderScheduler?: LocalReminderScheduler;
   storage?: LocalAppStorage;
@@ -27,6 +32,7 @@ type SettingsScreenProps = {
 export function SettingsScreen({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
+  importFilePickerClient = createPlatformImportFilePickerClient(),
   now,
   reminderScheduler = createPlatformLocalReminderScheduler(),
   storage = appStorage,
@@ -36,6 +42,7 @@ export function SettingsScreen({
     useSettingsScreenController({
       exportDeliveryClient,
       exportServiceDependencies,
+      importFilePickerClient,
       now,
       reminderScheduler,
       storage,

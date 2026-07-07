@@ -11,18 +11,32 @@ type MockDirectoryEntry = {
 
 let mockExists = true;
 let mockEntries: (MockFile | MockDirectoryEntry)[] = [];
+let mockPickerDirExists = false;
+const mockPickerDirDelete = jest.fn();
 
 jest.mock("expo-file-system", () => {
   return {
     Paths: { cache: "/cache" },
-    Directory: jest.fn().mockImplementation(() => ({
-      get exists() {
-        return mockExists;
-      },
-      list() {
-        return mockEntries;
-      },
-    })),
+    Directory: jest.fn().mockImplementation((...segments: string[]) => {
+      // Two-segment construction targets the DocumentPicker subdirectory the
+      // import flow sweeps; single-segment is the cache root listing.
+      if (segments.length > 1) {
+        return {
+          get exists() {
+            return mockPickerDirExists;
+          },
+          delete: mockPickerDirDelete,
+        };
+      }
+      return {
+        get exists() {
+          return mockExists;
+        },
+        list() {
+          return mockEntries;
+        },
+      };
+    }),
   };
 });
 
@@ -34,6 +48,8 @@ describe("cleanupStaleExportArtifacts", () => {
   beforeEach(() => {
     mockExists = true;
     mockEntries = [];
+    mockPickerDirExists = false;
+    mockPickerDirDelete.mockReset();
   });
 
   it("removes files whose name matches an Ovumcy export prefix", async () => {
@@ -75,5 +91,35 @@ describe("cleanupStaleExportArtifacts", () => {
 
     expect(stuck.delete).toHaveBeenCalledTimes(1);
     expect(fresh.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes the document-picker cache directory left behind by a killed import", async () => {
+    mockPickerDirExists = true;
+
+    await cleanupStaleExportArtifacts();
+
+    expect(mockPickerDirDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the picker directory alone when it does not exist", async () => {
+    mockPickerDirExists = false;
+
+    await cleanupStaleExportArtifacts();
+
+    expect(mockPickerDirDelete).not.toHaveBeenCalled();
+  });
+
+  it("still sweeps export files when the picker-directory delete fails", async () => {
+    const exportFile = createMockFile("ovumcy-export-2026-04-01.csv");
+    mockEntries = [exportFile];
+    mockPickerDirExists = true;
+    mockPickerDirDelete.mockImplementation(() => {
+      throw new Error("EBUSY");
+    });
+
+    await expect(cleanupStaleExportArtifacts()).resolves.toBeUndefined();
+
+    expect(exportFile.delete).toHaveBeenCalledTimes(1);
+    expect(mockPickerDirDelete).toHaveBeenCalledTimes(1);
   });
 });

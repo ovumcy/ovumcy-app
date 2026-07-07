@@ -76,9 +76,13 @@ follows from that:
   biometric / passcode challenge (`expo-local-authentication`); browser preview
   is treated as unavailable unless a caller explicitly opts into a web bypass
   behind another guard.
-- **Export artifact cleanup.** Generated export files (cycle CSV/JSON/PDF and the
-  private recovery-phrase export) are swept from the cache directory so they do
-  not linger after sharing.
+- **Export and import artifact cleanup.** Generated export files (cycle
+  CSV/JSON/PDF and the private recovery-phrase export) are swept from the cache
+  directory so they do not linger after sharing. The JSON-import flow's picked
+  backup file — a cache copy created by the document picker — is deleted after
+  the read attempt whether it succeeds or fails, and the picker's cache
+  subdirectory is included in the boot sweep so a mid-import process kill
+  cannot leave a health-data backup behind.
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
   cannot execute on open, with RFC 4180 quoting preserved.
@@ -232,12 +236,14 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | A sensitive action succeeds only on a successful device challenge; unavailable security and user cancellation are distinguished | `succeeds when local authentication succeeds`, `maps unavailable device security to an unavailable result`, `maps user cancellation to a cancelled result` in [src/security/sensitive-action-auth.test.ts](src/security/sensitive-action-auth.test.ts) |
 | Browser preview is unavailable for device challenges unless the caller opts into an explicit web bypass | `treats browser preview as unavailable for sensitive device challenges`, `allows an explicit web bypass when the caller already has another guard` in [src/security/sensitive-action-auth.test.ts](src/security/sensitive-action-auth.test.ts) |
 
-### Export artifact cleanup
+### Export and import artifact cleanup
 
 | Claim | Enforced by |
 | --- | --- |
 | Stale Ovumcy export artifacts (cycle and private recovery exports) are removed from the cache; unrelated files are left alone | `removes files whose name matches an Ovumcy export prefix` in [src/services/export-artifact-cleanup.native.test.ts](src/services/export-artifact-cleanup.native.test.ts) |
 | The sweep is resilient: it ignores directory-like entries, returns silently when the cache is absent, and survives a per-file delete failure | `skips entries that lack a delete method (directory-like)`, `returns silently when the cache directory does not exist yet`, `swallows per-file delete failures so a single locked file does not abort the sweep` in [src/services/export-artifact-cleanup.native.test.ts](src/services/export-artifact-cleanup.native.test.ts) |
+| The JSON-import picker's cache copy is deleted after the read attempt — on success, on read failure, and on an oversized file rejected before reading | `returns the file content and deletes the cache copy after a successful read`, `deletes the cache copy even when reading the file fails`, `rejects an oversized file before reading it and still deletes the cache copy` in [src/services/import-file-picker.native.test.ts](src/services/import-file-picker.native.test.ts) |
+| The boot sweep also removes the document picker's cache subdirectory (orphaned import copies), without aborting the export sweep on failure | `removes the document-picker cache directory left behind by a killed import`, `leaves the picker directory alone when it does not exist`, `still sweeps export files when the picker-directory delete fails` in [src/services/export-artifact-cleanup.native.test.ts](src/services/export-artifact-cleanup.native.test.ts) |
 
 ### Premium additivity (gating never removes core features)
 
