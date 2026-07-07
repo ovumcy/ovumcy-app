@@ -24,6 +24,7 @@ export type ManagedCloudAPIErrorCode =
   | "partner_invite_not_found"
   | "reminder_schedule_unavailable"
   | "entitlements_unavailable"
+  | "entitlements_not_configured"
   | "billing_management_unavailable"
   | "billing_subscription_conflict"
   | "billing_provider_unavailable"
@@ -1273,6 +1274,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_projection_not_found":
       case "reminder_schedule_unavailable":
       case "entitlements_unavailable":
+      case "entitlements_not_configured":
       case "billing_management_unavailable":
       case "billing_subscription_conflict":
       case "billing_provider_unavailable":

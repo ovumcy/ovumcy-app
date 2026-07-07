@@ -1305,6 +1305,23 @@ describe("managed-cloud-api-client", () => {
     ).resolves.toEqual({ ok: false, errorCode: "entitlements_unavailable" });
   });
 
+  it("maps a 503 (signing disabled server-side) to entitlements_not_configured so the app falls back to the snapshot", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "entitlements_not_configured" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.getEntitlementToken("managed-session-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "entitlements_not_configured" });
+  });
+
   it("deletes the managed account with a DELETE /account bearer request and tolerates an empty body", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(null, { status: 204 }),
