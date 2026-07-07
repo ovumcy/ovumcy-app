@@ -304,6 +304,64 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       today: "Hoy",
     },
   },
+  it: {
+    title: "Calendario",
+    prev: "Prec.",
+    next: "Succ.",
+    today: "Oggi",
+    dayEditorTitle: "Dettagli del giorno",
+    dayEditorSubtitle: "Registro giornaliero",
+    noEntry: "Nessuna voce per questo giorno.",
+    addEntry: "Aggiungi voce",
+    editEntry: "Modifica voce",
+    cancelEdit: "Annulla",
+    futureEntryWarning:
+      "Questa è una data futura. Le voci registrate in anticipo possono influenzare la precisione delle previsioni.",
+    dismissNotice: "Chiudi avviso",
+    predictionModeIrregular:
+      "La modalità ciclo irregolare è attiva. Ovumcy mostra ancora le previsioni qui, ma vanno lette come un'indicazione approssimativa e non come date esatte.",
+    predictionModeUnpredictable:
+      "La modalità solo fatti è attiva. Le previsioni del calendario sono disattivate, quindi questa schermata mostra solo i fatti registrati e i marcatori salvati.",
+    calendarMeaning: "Cosa significa questo giorno",
+    calendarMarkers: "Marcatori aggiuntivi",
+    periodDayYes: "Sì",
+    periodDayNo: "No",
+    noData: "-",
+    legendGuide:
+      "Lo stile della cella mostra il tipo di giorno. I marcatori salvati appaiono all'interno della cella.",
+    stateHints: {
+      neutral: "A questo giorno non è ancora associato alcun evento registrato o previsto.",
+      recordedPeriod:
+        "Hai segnato questo giorno come giorno di ciclo effettivo, quindi le previsioni vengono ricalcolate attorno ad esso.",
+      predictedPeriod:
+        "Questo intervallo più chiaro è previsto in base alle tue impostazioni del ciclo e alla cronologia registrata.",
+      lowProbability:
+        "Questa è la parte iniziale della finestra fertile prevista.",
+      fertilityEdge: "Questo giorno rientra nella probabile finestra fertile.",
+      fertilityPeak:
+        "Questo giorno rientra nella parte a più alta probabilità della finestra fertile.",
+      ovulation: "Questo è il giorno di ovulazione previsto in base al modello attuale del ciclo.",
+      ovulationTentative:
+        "Questo è un possibile giorno di ovulazione senza conferma della temperatura.",
+      loggedEntry: "Hai già salvato una voce locale per questo giorno.",
+    },
+    legend: {
+      meaningTitle: "Stili del giorno",
+      markersTitle: "I tuoi marcatori",
+      showLegend: "Mostra la legenda del calendario",
+      hideLegend: "Nascondi la legenda del calendario",
+      recordedPeriod: "Ciclo registrato",
+      predictedPeriod: "Ciclo previsto",
+      lowProbability: "La fertilità potrebbe iniziare",
+      fertilityEdge: "Fertilità più alta",
+      fertilityPeak: "Picco di fertilità",
+      ovulation: "Giorno di ovulazione",
+      ovulationTentative: "Possibile giorno di ovulazione",
+      loggedEntry: "Voce registrata",
+      sexLogged: "Intimità registrata",
+      today: "Oggi",
+    },
+  },
   de: calendarCopyDe,
   fr: calendarCopyFr,
 };

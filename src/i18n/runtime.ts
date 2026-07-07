@@ -9,6 +9,7 @@ export const APP_LANGUAGE_LABELS: Record<InterfaceLanguage, string> = {
   es: "Español",
   de: "Deutsch",
   fr: "Français",
+  it: "Italiano",
 };
 
 export function resolveCopyLanguage(

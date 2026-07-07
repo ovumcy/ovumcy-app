@@ -270,4 +270,69 @@ describe("async-storage-app-storage", () => {
       dateTo: null,
     });
   });
+
+  it("overwrites legacy plaintext keys before removing them", async () => {
+    // Purge-hardening for #57: `multiRemove` alone unlinks keys but leaves the
+    // old plaintext in the store's freed pages. The clear path first overwrites
+    // each key with an inert filler (no health data, no secrets), then removes
+    // it — so the residue exposed to forensic recovery is filler, not the
+    // original health data. Assert the overwrite runs before the removal and
+    // that the values written back carry none of the original record content.
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-14",
+    });
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "spotting",
+      mood: 3,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      lhTest: "none",
+      pregnancyTest: "none",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "forensic residue check",
+    });
+
+    const multiSetSpy = jest.spyOn(AsyncStorage, "multiSet");
+    const multiRemoveSpy = jest.spyOn(AsyncStorage, "multiRemove");
+    // Ignore any writes the setup performed; only observe the clear path.
+    multiSetSpy.mockClear();
+    multiRemoveSpy.mockClear();
+
+    await storage.clearAllLocalData();
+
+    // Overwrite happened, and before the removal.
+    expect(multiSetSpy).toHaveBeenCalled();
+    expect(multiRemoveSpy).toHaveBeenCalled();
+    expect(multiSetSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      multiRemoveSpy.mock.invocationCallOrder[0]!,
+    );
+
+    // The clear path overwrites every legacy key with inert filler that
+    // carries none of the original record content.
+    const overwritePairs = multiSetSpy.mock.calls.flatMap((call) => call[0]);
+    const overwrittenKeys = overwritePairs.map(([key]) => key);
+    expect(overwrittenKeys).toEqual(
+      expect.arrayContaining([
+        "ovumcy/profile-record",
+        "ovumcy/day-log-records",
+      ]),
+    );
+    for (const [, value] of overwritePairs) {
+      expect(value).not.toContain("2026-03-14");
+      expect(value).not.toContain("forensic residue check");
+      expect(value).not.toContain("spotting");
+    }
+
+    multiSetSpy.mockRestore();
+    multiRemoveSpy.mockRestore();
+  });
 });

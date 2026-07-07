@@ -310,8 +310,6 @@ that owns the canonical web UX).
   setup section that covers mode selection, endpoint input, device label, and
   one-time recovery phrase preparation. The absence of live account auth must be
   explicit, not silent.
-- Until account deletion exists, the mobile app danger zone may expose a
-  destructive `Clear all local data` flow instead of `Delete account`.
 - Mobile bottom tabs remain a platform-specific navigation deviation from the
   web nav chrome.
 
@@ -332,14 +330,18 @@ that owns the canonical web UX).
     setup only;
   - PDF export is an app-managed perk gated by an active managed cloud plan,
     while CSV and JSON remain local-first exports;
-  - account deletion remains a local clear-data flow;
+  - in-app account deletion (`src/sync/account-deletion-service.ts`, shipped in
+    commit `07af34b`) permanently deletes the connected managed or self-hosted
+    account and all its server data, then wipes local data the same way the
+    danger-zone `Clear all local data` flow does; a live managed subscription
+    still requires a separate, distinctly-worded acknowledgment that deleting
+    the account does not cancel Google Play billing;
   - mobile bottom tabs remain platform-native chrome.
 
 ## Remaining Product Gaps
 
 1. Account-backed sync transport and multi-device restore
-2. Delete-account semantics beyond local clear-data
-3. A future non-mobile nav model if the app ever stops using native tabs
+2. A future non-mobile nav model if the app ever stops using native tabs
 
 ## App-Only Extensions Beyond Web Parity
 
@@ -349,4 +351,4 @@ The following surfaces are intentionally richer in the app than on the canonical
 - Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, settings reminders, settings PDF export, and the backup-sync partner area.
 - Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
 - Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation solid gray border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
-- Five-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish).
+- Six-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish, Italian).

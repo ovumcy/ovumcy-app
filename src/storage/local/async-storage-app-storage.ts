@@ -265,16 +265,45 @@ export async function hasAsyncStorageLocalAppData(): Promise<boolean> {
   );
 }
 
+const LEGACY_LOCAL_APP_DATA_KEYS = [
+  BOOTSTRAP_STATE_KEY,
+  PROFILE_RECORD_KEY,
+  ONBOARDING_RECORD_KEY,
+  DAY_LOG_RECORDS_KEY,
+  SYMPTOM_RECORDS_KEY,
+  SYNC_PREFERENCES_RECORD_KEY,
+] as const;
+
 export async function clearAsyncStorageLocalAppData(): Promise<void> {
-  await AsyncStorage.multiRemove([
-    BOOTSTRAP_STATE_KEY,
-    PROFILE_RECORD_KEY,
-    ONBOARDING_RECORD_KEY,
-    DAY_LOG_RECORDS_KEY,
-    SYMPTOM_RECORDS_KEY,
-    SYNC_PREFERENCES_RECORD_KEY,
-  ]);
+  // Overwrite-before-remove. AsyncStorage's `multiRemove` only unlinks the key
+  // references; on the SQLite/RocksDB-backed native store it does not reclaim
+  // or scrub the underlying pages, so the freed bytes can still hold the old
+  // plaintext health data and be recovered forensically (raw disk / backup
+  // extraction) after an upgrade migrates a user to the encrypted store.
+  // Writing a same-key overwrite first lets the store reuse those pages for
+  // junk before the delete, best-effort scrubbing the residue. This runs only
+  // on the legacy plaintext store; the encrypted SQLite backend never routes
+  // through here. Best-effort: if overwrite fails we still remove the keys.
+  await overwriteLegacyLocalAppDataKeys();
+  await AsyncStorage.multiRemove([...LEGACY_LOCAL_APP_DATA_KEYS]);
 }
+
+async function overwriteLegacyLocalAppDataKeys(): Promise<void> {
+  // Size the scrub value to plausibly cover the largest legacy record so the
+  // overwrite spans the pages the original occupied. Value content is inert
+  // (no health data, no secrets) — a fixed filler string.
+  const scrubValue = "0".repeat(SCRUB_OVERWRITE_LENGTH);
+  try {
+    await AsyncStorage.multiSet(
+      LEGACY_LOCAL_APP_DATA_KEYS.map((key) => [key, scrubValue]),
+    );
+  } catch {
+    // Overwrite is a hardening step, not a correctness requirement: the
+    // subsequent multiRemove still deletes the key references either way.
+  }
+}
+
+const SCRUB_OVERWRITE_LENGTH = 4096;
 
 export async function readAsyncStorageSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
   const rawValue = await AsyncStorage.getItem(SYNC_PREFERENCES_RECORD_KEY);

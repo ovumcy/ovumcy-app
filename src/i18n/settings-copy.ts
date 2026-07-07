@@ -2675,6 +2675,535 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       pdfExportTitle: "PDF para tu profesional de la salud",
     },
   },
+  it: {
+    title: "Impostazioni",
+    subtitle:
+      "Gestisci i parametri del ciclo, i campi di tracciamento, le azioni di esportazione e il comportamento locale del profilo.",
+    common: {
+      cancelAction: "Annulla",
+      confirmAction: "Conferma",
+      saveChanges: "Salva modifiche",
+      daysShort: "g",
+      changeDate: "Scegli data",
+      clearDate: "Cancella data",
+      notSet: "Non impostato",
+      saving: "Salvataggio...",
+    },
+    cycle: {
+      title: "Parametri del ciclo",
+      cycleLength: "Lunghezza tipica del ciclo",
+      periodLength: "Durata del ciclo mestruale",
+      lastPeriodStart: "Data di inizio dell'ultimo ciclo",
+      lastPeriodStartHint:
+        "Riferimento facoltativo quando il tuo diario non ha ancora un inizio ciclo segnato.",
+      errorIncompatible:
+        "La durata del ciclo mestruale è incompatibile con la lunghezza del ciclo. La mestruazione non può occupare quasi tutto il ciclo.",
+      warningApproximate:
+        "Con questi valori, l'ovulazione non può essere calcolata in modo affidabile. La previsione sarà approssimativa.",
+      infoAdjusted:
+        "La durata del ciclo mestruale è stata regolata automaticamente in modo che rimangano almeno 10 giorni prima del ciclo successivo.",
+      infoPeriodLong:
+        "Una durata superiore a 8 giorni può indicare irregolarità; parlane con un medico.",
+      infoCycleLong:
+        "Un ciclo più lungo di 45 giorni è meno comune; parlane con un medico.",
+      infoCycleShort:
+        "Un ciclo più corto di 24 giorni è meno comune; parlane con un medico.",
+      autoPeriodFill: "Compila automaticamente i giorni di ciclo",
+      autoPeriodFillHint:
+        "Se abilitato, segnare il primo giorno compila automaticamente i giorni successivi in base alla durata del ciclo mestruale.",
+      predictionModeLabel: "Modalità di previsione",
+      predictionModeHint: "Scegli come Ovumcy deve mostrare le previsioni delle date.",
+      predictionModeRegular: "Normale",
+      predictionModeRegularHint:
+        "Mostra la vista standard delle previsioni in base alle tue impostazioni del ciclo e alla cronologia.",
+      predictionModeIrregular: "Irregolare",
+      predictionModeIrregularHint:
+        "Mantieni visibili le previsioni, ma leggile come un'indicazione approssimativa.",
+      predictionModeFactsOnly: "Solo fatti",
+      predictionModeFactsOnlyHint:
+        "Disattiva le previsioni delle date e mostra solo i fatti registrati e i marcatori salvati.",
+      save: "Salva modifiche",
+    },
+    ageGroup: {
+      title: "Fascia d'età",
+      hint: "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
+      under40: "Sotto i 40",
+      age40to45: "40-45",
+      age45plus: "45+",
+    },
+    goal: {
+      title: "Obiettivo d'uso",
+      hint: "Opzionale. Cambia come i giorni fertili sono spiegati nell'interfaccia. Non modifica l'algoritmo.",
+      avoid: "Evitare una gravidanza",
+      trying: "Cercare una gravidanza",
+      health: "Monitorare la mia salute",
+    },
+    tracking: {
+      title: "Tracciamento aggiuntivo",
+      subtitle:
+        "Scegli campi extra per il registro giornaliero. I valori salvati restano nella tua cronologia privata.",
+      trackBBT: "Mostra campo BBT",
+      trackBBTHint:
+        "Mostra un campo temperatura basale nel cruscotto e nel calendario.",
+      trackBBTStateOn: "Attualmente visibile nel cruscotto e nell'editor giornaliero del calendario.",
+      trackBBTStateOff: "Attualmente nascosto dalle nuove voci del cruscotto e del calendario.",
+      trackCervicalMucus: "Mostra campo muco cervicale",
+      trackCervicalMucusHint:
+        "Mostra le opzioni per il muco cervicale nel cruscotto e nel calendario.",
+      trackCervicalMucusStateOn:
+        "Attualmente visibile nel cruscotto e nell'editor giornaliero del calendario.",
+      trackCervicalMucusStateOff:
+        "Attualmente nascosto dalle nuove voci del cruscotto e del calendario.",
+      hideSexChip: "Mostra sezione intimità",
+      hideSexChipHint:
+        "Mostra la sezione intimità nelle nuove voci del cruscotto e del calendario.",
+      hideSexChipStateOn:
+        "Attualmente visibile nel cruscotto e nell'editor giornaliero del calendario.",
+      hideSexChipStateOff:
+        "Attualmente nascosta nel cruscotto e nell'editor giornaliero del calendario.",
+      hideNotes: "Mostra sezione note",
+      hideNotesHint:
+        "Nasconde le note nel cruscotto e nelle voci del calendario senza eliminare le note salvate.",
+      hideNotesStateOn:
+        "Attualmente visibile nel cruscotto e nell'editor giornaliero del calendario.",
+      hideNotesStateOff:
+        "Attualmente nascosta nel cruscotto e nell'editor giornaliero del calendario.",
+      showHistoricalPhases: "Mostra finestre fertili dei cicli passati",
+      showHistoricalPhasesHint:
+        "Mostra ovulazione, picco di fertilità e marcatori pre-fertili sui cicli passati completati nel calendario, in base agli inizi ciclo registrati.",
+      showHistoricalPhasesStateOn:
+        "Attualmente mostrato nei mesi passati del calendario.",
+      showHistoricalPhasesStateOff:
+        "Attualmente nascosto; solo i prossimi cicli previsti mostrano le finestre fertili.",
+      hideCycleFactors: "Mostra fattori del ciclo",
+      hideCycleFactorsHint:
+        "Aggiunge le etichette dei fattori del ciclo (stress, malattia, viaggio, ...) al cruscotto e alle voci del calendario senza eliminare le etichette salvate.",
+      hideCycleFactorsStateOn:
+        "Attualmente visibile nel cruscotto e nell'editor giornaliero del calendario.",
+      hideCycleFactorsStateOff:
+        "Attualmente nascosto nel cruscotto e nell'editor giornaliero del calendario.",
+      temperatureUnit: "Unità BBT",
+      temperatureUnitHint: "Usata quando il campo BBT è visibile.",
+      temperatureUnitCelsius: "Celsius",
+      temperatureUnitFahrenheit: "Fahrenheit",
+      save: "Salva tracciamento",
+    },
+    reminders: {
+      title: "Promemoria",
+      subtitle:
+        "Mantieni private le notifiche del dispositivo e usa avvisi via email rispettosi della privacy quando la consegna premium è attiva.",
+      localOnlyHint:
+        "I promemoria del dispositivo restano solo su questo dispositivo. Non inviano i tuoi dati sulla salute a un server.",
+      emailHint:
+        "Le email premium di promemoria inviano solo avvisi generici. Non includono mai sintomi, note o dettagli sulla fertilità.",
+      lockedHint:
+        "La consegna premium dei promemoria richiede un piano Ovumcy Cloud attivo su questo dispositivo. Le tue opzioni salvate restano locali.",
+      timeLabel: "Ora del promemoria",
+      timeHint:
+        "Usata per il promemoria giornaliero e per i prossimi promemoria del ciclo programmati su questo dispositivo.",
+      emailDelivery: "Invia anche email di promemoria",
+      emailDeliveryHint:
+        "Usa l'invio via email di Ovumcy Cloud con avvisi rispettosi della privacy in base ai tipi di promemoria attivati.",
+      emailDeliveryStateOn:
+        "Le email di promemoria di Ovumcy Cloud verranno sincronizzate quando disponibili.",
+      emailDeliveryStateOff: "Le email di promemoria sono disattivate.",
+      dailyLog: "Ricordami di registrare oggi",
+      dailyLogHint:
+        "Programma un promemoria giornaliero per aprire Ovumcy e aggiornare la voce di oggi.",
+      dailyLogStateOn:
+        "È attivo un promemoria giornaliero del dispositivo.",
+      dailyLogStateOff:
+        "Nessun promemoria giornaliero di registrazione programmato.",
+      upcomingPeriod: "Ricordami prima della prossima finestra del ciclo",
+      upcomingPeriodHint:
+        "Programma un promemoria locale prima della prossima finestra del ciclo prevista quando sono disponibili previsioni.",
+      upcomingPeriodStateOn:
+        "Un promemoria prima del prossimo ciclo è attivo.",
+      upcomingPeriodStateOff:
+        "Nessun promemoria prima del prossimo ciclo programmato.",
+      fertileWindow: "Ricordami prima della finestra fertile",
+      fertileWindowHint:
+        "Programma un promemoria locale prima della prossima finestra fertile prevista quando sono disponibili previsioni.",
+      fertileWindowStateOn:
+        "Un promemoria prima della finestra fertile è attivo.",
+      fertileWindowStateOff:
+        "Nessun promemoria prima della finestra fertile programmato.",
+      statusOn: "Attivo",
+      statusOff: "Disattivato",
+      saved: "Le impostazioni dei promemoria sono state aggiornate per questo dispositivo.",
+      savedWithEmail:
+        "Le impostazioni dei promemoria sono state aggiornate. Le email di Ovumcy Cloud ora usano avvisi rispettosi della privacy.",
+      emailUnavailable:
+        "Le impostazioni dei promemoria sono state salvate, ma le email di Ovumcy Cloud non sono al momento disponibili.",
+      emailSyncFailed:
+        "Le impostazioni dei promemoria sono state salvate, ma non è stato possibile aggiornare le email di Ovumcy Cloud in questo momento.",
+      permissionDenied:
+        "Consenti le notifiche nelle impostazioni del dispositivo per ricevere promemoria su questo dispositivo.",
+      unavailable:
+        "Questo dispositivo non può programmare promemoria locali in questo momento.",
+      errors: {
+        invalidTime:
+          "Usa un'ora valida per il promemoria nel formato HH:MM.",
+        saveFailed:
+          "Impossibile salvare le impostazioni dei promemoria in questo momento. Riprova.",
+      },
+    },
+    interface: {
+      title: "Interfaccia",
+      subtitle: "Controlla la lingua e l'aspetto dell'app su questo dispositivo.",
+      languageLabel: "Lingua",
+      languageHint: "Salvata solo su questo dispositivo.",
+      previewHint:
+        "Lingua e tema si visualizzano in anteprima all'istante. Salva per conservarli su questo dispositivo.",
+      themeLabel: "Tema",
+      themeHint: "Salvato solo su questo dispositivo.",
+      screenCaptureProtectionLabel: "Proteggi screenshot",
+      screenCaptureProtectionHint:
+        "Blocca gli screenshot e l'anteprima nelle app recenti sui dispositivi compatibili.",
+      screenCaptureProtectionStateOn:
+        "Gli screenshot sono bloccati sui dispositivi compatibili.",
+      screenCaptureProtectionStateOff:
+        "Gli screenshot e le anteprime dell'app possono essere acquisiti su questo dispositivo.",
+      discardChanges: "Annulla modifiche",
+      save: "Salva interfaccia",
+      saveBeforeLeave: "Salva ed esci",
+      keepEditing: "Continua a modificare",
+      themeLight: "Chiaro",
+      themeDark: "Scuro",
+      saved: "L'interfaccia è stata aggiornata per questo dispositivo.",
+      languageSaved: "Lingua aggiornata per questo dispositivo.",
+      themeSaved: "Tema aggiornato per questo dispositivo.",
+      unsavedPrompt:
+        "Ci sono modifiche alle impostazioni non salvate. Vuoi salvarle prima di uscire dalle impostazioni?",
+    },
+    account: {
+      title: "Backup & sync",
+      subtitle:
+        "Prima proteggi questo dispositivo, poi collega Ovumcy Cloud o il tuo server di sync.",
+      hubSubtitle:
+        "Apre una schermata separata per la frase di recupero, la connessione dell'account, il piano cloud e le azioni di sync.",
+      openHubLabel: "Apri backup & sync",
+      backToSettingsLabel: "Torna alle impostazioni",
+      localStepTitle: "1. Proteggi questo dispositivo",
+      localStepHint:
+        "Crea una frase di recupero su questo dispositivo. Conservala offline nel caso dovessi mai ripristinare i tuoi dati.",
+      preparingTitle: "Preparazione del tuo backup protetto...",
+      preparingHint:
+        "Ovumcy sta creando una frase di recupero su questo dispositivo.",
+      accountStepTitle: "2. Collega un account",
+      accountStepHintManaged:
+        "Accedi qui con il tuo account Ovumcy Cloud. I tuoi dati sulla salute continuano a sincronizzarsi a parte come backup cifrato.",
+      accountStepHintSelfHosted:
+        "Crea o accedi all'account del tuo server di sync.",
+      planStepTitle: "3. Piano Ovumcy Cloud",
+      planStepHint:
+        "L'accesso cloud e la fatturazione vengono verificati separatamente. Il sync si attiva solo quando questo account ha un piano Ovumcy Cloud attivo.",
+      planSignInFirst:
+        "Accedi prima per verificare lo stato del tuo piano.",
+      planUnknown:
+        "Ovumcy sta verificando se questo account cloud ha un piano attivo.",
+      planInactive:
+        "Questo account cloud ha effettuato l'accesso, ma il sync cloud resta bloccato perché non è stato trovato un piano attivo.",
+      planCheckFailed:
+        "Ovumcy non è riuscito a confermare il piano cloud in questo momento. Riprova a breve.",
+      planUnavailable:
+        "Il tuo account Ovumcy Cloud e la fatturazione restano separati dall'archiviazione di sync cifrata.",
+      planActive: "Ovumcy Cloud è attivo per questo account.",
+      checkPlanAgain: "Verifica di nuovo il piano",
+      advancedSectionLabel: "Avanzate",
+      syncStepTitle: "4. Sincronizza questo backup",
+      syncStepHintManaged:
+        "Quando questo account cloud avrà un piano attivo, qui potrai caricare o ripristinare il backup protetto.",
+      syncStepHintSelfHosted:
+        "Dopo aver effettuato l'accesso al tuo server, qui potrai caricare o ripristinare il backup protetto.",
+      syncBlockedNoPlan:
+        "Il sync cloud resta bloccato finché questo account non ha un piano Ovumcy Cloud attivo.",
+      modeLabel: "Modalità di sync",
+      modeManaged: "Ovumcy Cloud",
+      modeSelfHosted: "Self-hosted",
+      managedHint:
+        "Ovumcy Cloud conserva il tuo backup cifrato nel nostro servizio ospitato. Self-hosted mantiene il sync sul tuo server.",
+      selfHostedHint:
+        "Usa un host, IP:porta o URL completo. L'http pubblico viene rifiutato; localhost e reti private sono consentiti.",
+      endpointLabel: "Endpoint del server",
+      endpointHint: "Necessario solo per il sync self-hosted.",
+      endpointPlaceholder: "sync.example.com o 192.168.1.20:8080",
+      deviceLabel: "Etichetta del dispositivo",
+      deviceHint:
+        "Comparirà in seguito negli elenchi dei dispositivi connessi e nei flussi di recupero cifrato.",
+      devicePlaceholder: "Inserisci il nome del dispositivo",
+      stateLabel: "Stato della frase di recupero",
+      stateReady: "Questo dispositivo ha già una frase di recupero.",
+      stateMissing: "Questo dispositivo non ha ancora una frase di recupero.",
+      connectionLabel: "Sessione dell'account",
+      connectionReady: "Questo dispositivo ha già effettuato l'accesso a un account sync.",
+      connectionMissing: "Questo dispositivo non ha ancora effettuato l'accesso a un account sync.",
+      lastSyncLabel: "Ultimo sync",
+      lastSyncNever: "Non ancora sincronizzato.",
+      modeRowLabel: "Destinazione",
+      endpointRowLabel: "Server",
+      encryptionRowLabel: "Protezione del dispositivo",
+      encryptionReady: "I materiali di recupero sono conservati solo su questo dispositivo.",
+      encryptionMissing: "Non è ancora stata creata una frase di recupero su questo dispositivo.",
+      loginLabel: "Email o nome utente",
+      loginPlaceholder: "owner@example.com",
+      passwordLabel: "Password",
+      passwordPlaceholder: "Inserisci la password",
+      recoveryImportTitle: "Ripristina l'accesso con una frase di recupero",
+      recoveryImportHint:
+        "Usalo quando questo dispositivo non ha più le chiavi locali di sync, ma conservi ancora la password dell'account e la frase di recupero di 12 parole.",
+      recoveryPhraseInputLabel: "Frase di recupero",
+      recoveryPhraseInputPlaceholder: "dodici parole separate da spazi",
+      recoveryPhraseInputHint:
+        "Inserisci esattamente le 12 parole che proteggono la tua chiave master di sync.",
+      recoverAccessLabel: "Ripristina accesso",
+      registerLabel: "Crea account",
+      loginActionLabel: "Accedi",
+      syncNowLabel: "Sincronizza ora",
+      restoreLabel: "Ripristina dal server",
+      disconnectLabel: "Disconnetti",
+      restorePrompt:
+        "Ripristinare l'istantanea cifrata dal server e sostituire i dati locali attuali di questo dispositivo?",
+      restoreAccept: "Ripristina istantanea",
+      restoreDeviceAuthPrompt:
+        "Conferma con la sicurezza del dispositivo per ripristinare i dati cifrati dal server di sync.",
+      uploadOverBackupPrompt:
+        "Questo account ha già un backup cifrato sul server, ma questo dispositivo non ha mai sincronizzato. Caricando ora sostituirai quel backup del server con i dati di questo dispositivo. Sostituirlo?",
+      uploadOverBackupAccept: "Sostituisci backup del server",
+      renewalCancelLabel: "Disattiva il rinnovo automatico",
+      renewalResumeLabel: "Riprendi il rinnovo automatico",
+      renewalCancelPrompt:
+        "Disattivare il rinnovo automatico? Il tuo piano resta attivo fino alla fine del periodo già pagato.",
+      renewalCancelAccept: "Disattiva rinnovo",
+      offerDismissLabel: "Ignora questa offerta",
+      offerPromoEyebrow: "Offerta",
+      offerAnnouncementEyebrow: "Novità",
+      disconnectPrompt:
+        "Disconnettere questo dispositivo dalla sessione del server di sync? Le chiavi cifrate locali resteranno su questo dispositivo.",
+      disconnectDeviceAuthPrompt:
+        "Conferma con la sicurezza del dispositivo per disconnettere questo dispositivo dal server di sync.",
+      deleteAccountLabel: "Elimina account",
+      deleteAccountPrompt:
+        "Eliminare definitivamente il tuo account e tutti i suoi dati dal server? Questa operazione non può essere annullata.",
+      deleteAccountAccept: "Elimina account",
+      deleteAccountDeviceAuthPrompt:
+        "Conferma con la sicurezza del dispositivo per eliminare definitivamente il tuo account.",
+      deleteAccountSubscriptionWarningTitle:
+        "Il tuo abbonamento continuerà a essere addebitato",
+      deleteAccountSubscriptionWarningMessage:
+        "L'eliminazione del tuo account NON annulla il tuo abbonamento Google Play. Devi annullarlo separatamente nel Play Store, altrimenti continuerai a essere addebitata. Conferma qui sotto solo se hai capito e vuoi comunque eliminare definitivamente il tuo account.",
+      deleteAccountSubscriptionWarningAccept: "Ho capito, elimina comunque",
+      recoveryTitle: "Frase di recupero di questo dispositivo",
+      recoveryHint:
+        "Trascrivi esattamente le 12 parole e conservale offline. Se perdi tutti i dispositivi e questa frase, i dati sincronizzati non potranno essere recuperati.",
+      recoveryNotice:
+        "Questa schermata mostra la frase di recupero solo quando prepari o ricrei le chiavi locali di sync.",
+      recoveryShownOnce: "Mostrata solo una volta dopo la generazione.",
+      recoveryExportLabel: "Esporta come testo",
+      recoveryCodeTitle: "Codice di recupero dell'account",
+      recoveryCodeHint:
+        "Conserva questo codice in un luogo sicuro. Viene mostrato solo una volta e ti permette di reimpostare la password del tuo account sync se la dimentichi.",
+      prepareLabel: "Crea frase di recupero",
+      regenerateLabel: "Crea una nuova frase di recupero",
+      regeneratePrompt:
+        "Ricreare le chiavi locali di sync invalida i vecchi backup cifrati finché non usi la nuova frase di recupero. Continuare?",
+      regenerateAccept: "Crea nuova frase",
+      regenerateDeviceAuthPrompt:
+        "Conferma con la sicurezza del dispositivo per creare una nuova frase di recupero per questo dispositivo.",
+      discardChangesLabel: "Annulla modifiche",
+      saveBeforeLeaveLabel: "Salva ed esci",
+      keepEditingLabel: "Continua a modificare",
+      unsavedPrompt:
+        "Ci sono modifiche a backup & sync non salvate. Vuoi salvarle prima di uscire da questa schermata?",
+      prepared: "La frase di recupero è stata creata per questo dispositivo.",
+      regenerated: "È stata creata una nuova frase di recupero per questo dispositivo.",
+      connected: "Questo dispositivo è stato collegato al server di sync.",
+      connectedNoPlan:
+        "L'account cloud è stato collegato. Il sync si attiverà quando questo account avrà un piano cloud attivo.",
+      recovered: "L'accesso di sync è stato ripristinato su questo dispositivo.",
+      uploaded:
+        "Il backup cifrato è stato caricato sul server di sync.",
+      restored:
+        "Il backup cifrato è stato ripristinato dal server di sync.",
+      disconnected: "La sessione del server di sync è stata rimossa da questo dispositivo.",
+      deleted: "Account eliminato. Ritorno alla configurazione iniziale.",
+      renewalCancelled:
+        "Il rinnovo automatico è disattivato. Il tuo piano resta attivo fino alla fine del periodo corrente.",
+      renewalResumed: "Il rinnovo automatico è di nuovo attivo.",
+      errors: {
+        loginRequired: "Il login è obbligatorio.",
+        passwordRequired: "La password è obbligatoria.",
+        deviceLabelRequired: "L'etichetta del dispositivo è obbligatoria.",
+        endpointRequired: "Inserisci un endpoint del server di sync.",
+        invalidEndpoint: "Inserisci un host, un IP o un URL completo validi.",
+        unsupportedScheme:
+          "Sono supportati solo https e gli endpoint http approvati per la rete locale.",
+        insecurePublicHttp: "Gli endpoint pubblici di sync devono usare https.",
+        invalidRegistrationInput:
+          "Usa un login valido e una password più robusta.",
+        registrationFailed:
+          "Impossibile creare un account sync con questi dati.",
+        invalidCredentials: "Login o password non validi.",
+        recoveryPhraseRequired: "La frase di recupero è obbligatoria.",
+        invalidRecoveryPhrase:
+          "Inserisci l'esatta frase di recupero di 12 parole.",
+        recoveryNotAvailable:
+          "Questo server di sync non supporta l'importazione con frase di recupero.",
+        recoveryPackageNotFound:
+          "Non c'è ancora alcun pacchetto di recupero salvato per questo account.",
+        tooManyDevices: "Questo account ha già raggiunto il limite attuale di dispositivi.",
+        syncNotPrepared:
+          "Prepara prima il sync cifrato su questo dispositivo.",
+        notConnected:
+          "Collega prima questo dispositivo a un server di sync.",
+        blobNotFound:
+          "Non esiste ancora un backup cifrato su questo server.",
+        invalidPayload:
+          "Impossibile leggere il backup cifrato ricevuto dal server.",
+        networkFailed:
+          "Impossibile raggiungere il server di sync in questo momento.",
+        recoveryExportUnavailable:
+          "Questo dispositivo non può esportare la frase di recupero in questo momento.",
+        recoveryExportFailed:
+          "Impossibile esportare la frase di recupero in questo momento. Riprova.",
+        deviceAuthUnavailable:
+          "Imposta un codice o la biometria su questo dispositivo prima di ricreare le chiavi locali di sync.",
+        deviceAuthFailed:
+          "Impossibile confermare la sicurezza del dispositivo in questo momento. Riprova.",
+        saveFailed:
+          "Impossibile preparare il sync cifrato in questo momento. Riprova.",
+        syncFailed:
+          "Impossibile caricare il backup cifrato in questo momento. Riprova.",
+        restoreFailed:
+          "Impossibile ripristinare il backup cifrato in questo momento. Riprova.",
+        deleteAccountFailed:
+          "Impossibile eliminare il tuo account in questo momento. Nulla è stato modificato. Riprova.",
+        renewalUnavailable:
+          "Il rinnovo di questo piano non può essere gestito dall'app.",
+        renewalUpdateFailed:
+          "Impossibile modificare il rinnovo in questo momento. Riprova.",
+      },
+    },
+    symptoms: {
+      title: "Sintomi personalizzati",
+      subtitle: "Crea etichette private e brevi per pattern che vuoi registrare.",
+      name: "Nome del sintomo",
+      namePlaceholder: "Scrivi il nome del sintomo",
+      nameHint: "Usa 40 caratteri o meno. Per dettagli lunghi, usa le note.",
+      icon: "Icona",
+      add: "Aggiungi sintomo",
+      save: "Salva sintomo",
+      hide: "Nascondi",
+      restore: "Ripristina",
+      activeHeading: "Visibile nelle nuove voci",
+      activeHint: "I sintomi personalizzati attivi appaiono nel cruscotto e nel calendario.",
+      activeItem: "Visibile nelle nuove voci",
+      archivedHeading: "Archiviato nelle nuove voci",
+      archivedHint: "I registri passati li mantengono. Ripristinane uno quando vuoi che torni nel selettore.",
+      archivedItem: "Nascosto nelle nuove voci",
+      archivedBadge: "Nascosto",
+      empty: "Ancora nessun sintomo personalizzato. Aggiungine uno sopra per usarlo nelle nuove voci.",
+      emptyActive:
+        "Al momento non ci sono sintomi personalizzati visibili. Ripristinane uno sotto o aggiungine uno nuovo sopra.",
+      created: "Sintomo personalizzato aggiunto.",
+      updated: "Sintomo personalizzato aggiornato.",
+      archived: "Sintomo personalizzato nascosto.",
+      restored: "Sintomo personalizzato ripristinato.",
+      confirmHide:
+        "Nascondere questo sintomo personalizzato dalle nuove voci? I registri passati lo conserveranno.",
+      errors: {
+        labelRequired: "Il nome è obbligatorio.",
+        labelTooLong:
+          "Usa 40 caratteri o meno. Per dettagli lunghi, usa le note.",
+        labelInvalidCharacters:
+          "Usa solo testo semplice. Parentesi angolari e caratteri di controllo non sono consentiti.",
+        duplicateLabel: "Quel nome esiste già nella tua lista.",
+        saveFailed: "Impossibile salvare questo sintomo in questo momento. Riprova.",
+        notFound: "Impossibile trovare questo sintomo. Ricarica le impostazioni e riprova.",
+      },
+    },
+    export: {
+      title: "Esporta dati",
+      subtitle:
+        "Crea una copia locale o una tabella utile per un professionista sanitario a partire dai tuoi registri.",
+      storageHint:
+        "Le esportazioni includono solo le voci inserite manualmente. Le previsioni non sono incluse.",
+      sensitiveHint:
+        "I file esportati sono sensibili. Salvali e condividili solo dove ti fidi del dispositivo o della destinazione.",
+      pdfCloudOnlyHint:
+        "L'esportazione in PDF è un vantaggio di Ovumcy Cloud. CSV e JSON restano disponibili localmente su questo dispositivo.",
+      pdfPlanHint:
+        "Questo account Ovumcy Cloud richiede un piano attivo per sbloccare l'esportazione in PDF.",
+      noData:
+        "Ancora nessuna voce registrata. Quando registrerai i giorni nel cruscotto o nel calendario, l'esportazione apparirà qui.",
+      presetLabel: "Preimpostazioni",
+      presetAll: "Tutto il periodo",
+      preset30: "30 giorni",
+      preset90: "90 giorni",
+      preset365: "365 giorni",
+      fromLabel: "Da",
+      toLabel: "A",
+      datePlaceholder: "AAAA-MM-GG",
+      summaryTotalTemplate: "Voci totali: %d",
+      summaryRangeTemplate: "Intervallo date: %s a %s",
+      summaryRangeEmpty: "Intervallo date: -",
+      csvAction: "Esporta CSV",
+      jsonAction: "Esporta JSON",
+      pdfAction: "Esporta PDF",
+      csvStatus: "L'esportazione CSV è pronta.",
+      jsonStatus: "La copia JSON è pronta.",
+      pdfStatus: "Il report PDF è pronto.",
+      errors: {
+        invalidFromDate: "Usa una data di inizio valida.",
+        invalidToDate: "Usa una data di fine valida.",
+        invalidRange: "La data di fine deve essere uguale o successiva alla data di inizio.",
+        pdfLocked:
+          "L'esportazione in PDF è disponibile solo con un piano Ovumcy Cloud attivo.",
+        exportFailed: "Impossibile preparare l'esportazione. Riprova.",
+        deliveryUnavailable:
+          "Questo dispositivo non può aprire la destinazione di esportazione in questo momento. Prova da un browser compatibile o da un dispositivo con condivisione/salvataggio.",
+        deliveryFailed:
+          "Il file è stato preparato, ma il download o la condivisione non è riuscito. Riprova.",
+      },
+    },
+    danger: {
+      title: "Zona pericolosa",
+      subtitle:
+        "Chiudere l'app non elimina i dati locali. Usa questa opzione solo se vuoi eliminare i registri sulla salute di questo dispositivo.",
+      clearTitle: "Elimina tutti i dati locali",
+      clearSubtitle:
+        "Elimina configurazione iniziale, impostazioni del profilo, registri giornalieri, sintomi personalizzati e stato locale di esportazione, e riporta l'app alla configurazione iniziale.",
+      confirmationLabel: "Scrivi CLEAR per confermare",
+      confirmationPlaceholder: "CLEAR",
+      confirmationHint:
+        "Questa operazione non può essere annullata dall'app. Esporta prima una copia se vuoi conservare i registri.",
+      deviceAuthPrompt:
+        "Conferma con la sicurezza del dispositivo per eliminare i dati locali di questo dispositivo.",
+      action: "Elimina dati locali",
+      success: "Dati locali eliminati. Ritorno alla configurazione iniziale.",
+      invalidConfirmation:
+        "Scrivi esattamente CLEAR per confermare l'eliminazione dei dati locali.",
+      deviceAuthUnavailable:
+        "Imposta un codice o la biometria su questo dispositivo prima di eliminare i dati locali.",
+      deviceAuthFailed:
+        "Impossibile confermare la sicurezza del dispositivo in questo momento. Riprova.",
+      failed:
+        "Impossibile eliminare i dati locali in questo momento. Riprova.",
+    },
+    status: {
+      cycleSaved: "Impostazioni del ciclo salvate. Le previsioni sono state aggiornate.",
+      trackingSaved: "I campi di tracciamento sono stati aggiornati per il cruscotto e il calendario.",
+      invalidLastPeriodStart:
+        "Inserisci una data valida dell'ultimo ciclo che non sia nel futuro.",
+      saveFailed: "Impossibile salvare le impostazioni. Riprova.",
+    },
+    premiumLock: {
+      eyebrowLabel: "Premium",
+      ctaLabel: "Apri Ovumcy Cloud",
+      remindersTitle: "Promemoria Premium",
+      pdfExportTitle: "PDF per il tuo professionista sanitario",
+    },
+  },
   de: settingsCopyDe,
   fr: settingsCopyFr,
 };
