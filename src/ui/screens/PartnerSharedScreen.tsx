@@ -2,6 +2,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getDayLogCopy } from "../../i18n/day-log-copy";
 import { getPartnerCopy } from "../../i18n/partner-copy";
 import { getSettingsCopy } from "../../i18n/settings-copy";
@@ -19,6 +20,7 @@ import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-s
 import { AppButton } from "../components/AppButton";
 import { FeatureCard } from "../components/FeatureCard";
 import { InlineBackButton } from "../components/InlineBackButton";
+import { PredictionDisclaimer } from "../components/PredictionDisclaimer";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { StatusBanner } from "../components/StatusBanner";
 import type { AppThemeColors } from "../theme/tokens";
@@ -42,6 +44,7 @@ export function PartnerSharedScreen({
   const styles = useThemedStyles(createStyles);
   const copy = getPartnerCopy(language);
   const dayLogCopy = getDayLogCopy(language);
+  const dashboardCopy = getDashboardCopy(language);
   const settingsCopy = getSettingsCopy(language);
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
@@ -151,6 +154,12 @@ export function PartnerSharedScreen({
           label={copy.sharedViewBackLabel}
           onPress={() => router.back()}
           testID="partner-shared-back-button"
+        />
+      }
+      footer={
+        <PredictionDisclaimer
+          testID="partner-shared-prediction-disclaimer"
+          text={dashboardCopy.predictionDisclaimer}
         />
       }
     >

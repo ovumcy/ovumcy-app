@@ -57,7 +57,7 @@ export function SettingsInterfaceSection({
         <Text style={styles.fieldLabel}>{viewData.themeLabel}</Text>
         <Text style={styles.helperText}>{viewData.themeHint}</Text>
         <ChoiceGroup
-          layout="grid2"
+          layout="grid3"
           onSelect={onThemeSelect}
           options={viewData.themeOptions}
           selectedValue={value.themeOverride ?? "light"}

@@ -719,6 +719,7 @@ export function buildSettingsViewData(
       themeOptions: [
         { value: "light", label: settingsCopy.interface.themeLight },
         { value: "dark", label: settingsCopy.interface.themeDark },
+        { value: "system", label: settingsCopy.interface.themeSystem },
       ],
       screenCaptureProtectionLabel:
         settingsCopy.interface.screenCaptureProtectionLabel,
