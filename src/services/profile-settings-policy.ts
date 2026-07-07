@@ -299,14 +299,25 @@ export function diffLocalDays(startDate: string, endDate: string): number {
   if (!start || !end) {
     return 0;
   }
-  return Math.round((end.getTime() - start.getTime()) / 86400000);
+  return calendarDayCount(start, end);
 }
 
 export function diffCalendarDays(left: Date | null, right: Date): number {
   if (!left) {
     return 0;
   }
-  return Math.round(
-    (atLocalDay(right).getTime() - atLocalDay(left).getTime()) / 86400000,
-  );
+  return calendarDayCount(left, right);
+}
+
+// Whole-calendar-days between two dates, read from each date's local
+// wall-clock Y/M/D. Anchoring the subtraction to UTC midnight (every UTC day
+// is exactly 86_400_000 ms, with no DST discontinuity) makes the count exact
+// and independent of the device time zone — matching the UTC-anchored
+// `dateOnly` day arithmetic in the Go prediction source of truth. Subtracting
+// raw local `getTime()` instants instead would drift by ±1h across a DST
+// boundary and rely on rounding to absorb it (see docs/cycle-prediction.md).
+function calendarDayCount(from: Date, to: Date): number {
+  const fromUTC = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+  const toUTC = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+  return Math.round((toUTC - fromUTC) / 86400000);
 }
