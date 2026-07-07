@@ -325,9 +325,58 @@ describe("PartnerSharedScreen", () => {
     expect(screen.getByText("Top symptoms: Cramps")).toBeTruthy();
     expect(screen.getByTestId("partner-shared-row-2026-04-04")).toBeTruthy();
     expect(screen.getByText("Shared note")).toBeTruthy();
+    // Medical-safety disclaimer sits with the prediction window (matches the
+    // owner Dashboard/Calendar/Stats surfaces; deviates beyond web parity).
+    expect(screen.getByTestId("partner-shared-prediction-disclaimer")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "These are estimates, not medical advice or a method of contraception.",
+      ),
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("partner-shared-back-button"));
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the prediction disclaimer visible in the empty no-data state", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({
+      ok: true,
+      value: {
+        owned: { invites: [], grants: [] },
+        sharedWithMe: [
+          {
+            id: "grant-1",
+            ownerAccountID: "owner-1",
+            partnerAccountID: "partner-1",
+            accessLevel: "full",
+            sourceInviteID: "invite-1",
+            acceptedAt: "2026-04-05T08:00:00.000Z",
+            lastSeenAt: null,
+            revokedAt: null,
+            revokedReason: "",
+            createdAt: "2026-04-05T08:00:00.000Z",
+            updatedAt: "2026-04-05T08:05:00.000Z",
+          },
+        ],
+      },
+    });
+    // No projection uploaded yet → read state stays null → empty card renders.
+    mockLoadManagedPartnerProjection.mockResolvedValue({
+      ok: false,
+      errorCode: "partner_projection_not_found",
+    });
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-empty-card");
+    expect(screen.queryByTestId("partner-shared-summary-card")).toBeNull();
+    // Disclaimer is unconditional, matching how Stats shows it in its empty state.
+    expect(screen.getByTestId("partner-shared-prediction-disclaimer")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "These are estimates, not medical advice or a method of contraception.",
+      ),
+    ).toBeTruthy();
   });
 
   it("shows the locked-state banner when the share key is unavailable", async () => {
