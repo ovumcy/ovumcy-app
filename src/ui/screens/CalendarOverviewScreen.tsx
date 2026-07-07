@@ -22,6 +22,7 @@ import { AppScreenSurface } from "../components/AppScreenSurface";
 import { CalendarDayPanel } from "../components/CalendarDayPanel";
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
 import { CalendarStateDecor } from "../components/CalendarStateDecor";
+import { PredictionDisclaimer } from "../components/PredictionDisclaimer";
 import { StatusBanner } from "../components/StatusBanner";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import type { AppThemeColors } from "../theme/tokens";
@@ -268,6 +269,11 @@ export function CalendarOverviewScreen({
               />
             </View>
           </View>
+
+          <PredictionDisclaimer
+            testID="calendar-prediction-disclaimer"
+            text={viewData.predictionDisclaimer}
+          />
         </View>
       </ScrollView>
     </AppScreenSurface>

@@ -12,6 +12,7 @@ import {
 } from "../components/DayLogEditorCard";
 import { InsightSummaryCard } from "../components/InsightSummaryCard";
 import { ManualCycleStartAction } from "../components/ManualCycleStartAction";
+import { PredictionDisclaimer } from "../components/PredictionDisclaimer";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import type { AppThemeColors } from "../theme/tokens";
@@ -154,12 +155,10 @@ export function DashboardOverviewScreen({
             </Text>
           ) : null}
 
-          <Text
-            style={styles.disclaimerText}
+          <PredictionDisclaimer
             testID="dashboard-prediction-disclaimer"
-          >
-            {viewData.predictionDisclaimer}
-          </Text>
+            text={viewData.predictionDisclaimer}
+          />
 
           {viewData.advancedFertilitySummary ? (
             <InsightSummaryCard
@@ -295,11 +294,6 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
-    },
-    disclaimerText: {
-      color: colors.textMuted,
-      fontSize: 12,
-      lineHeight: 18,
     },
     quickActionsBlock: {
       gap: spacing.xs,
