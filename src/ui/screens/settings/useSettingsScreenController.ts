@@ -9,6 +9,8 @@ import {
   type ExportDeliveryClient,
 } from "../../../services/export-delivery";
 import type { ExportServiceDependencies } from "../../../services/export-service";
+import { createPlatformImportFilePickerClient } from "../../../services/import-file-picker";
+import type { ImportFilePickerClient } from "../../../services/import-file-picker";
 import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
 import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { sanitizeExportDateInput } from "../../../services/export-policy";
@@ -45,6 +47,11 @@ import {
   runRefreshExportRangeAction,
 } from "./settings-screen-export-actions";
 import {
+  runConfirmImportAction,
+  runPickImportFileAction,
+  type PendingImportPreview,
+} from "./settings-screen-import-actions";
+import {
   runSavePendingSettingsAction,
 } from "./settings-screen-save-actions";
 import {
@@ -69,6 +76,7 @@ import { useSettingsExitGuards } from "./useSettingsExitGuards";
 type UseSettingsScreenControllerOptions = {
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies | undefined;
+  importFilePickerClient?: ImportFilePickerClient;
   now?: Date | undefined;
   partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
@@ -86,6 +94,7 @@ type SettingsScreenControllerResult = {
 export function useSettingsScreenController({
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
+  importFilePickerClient = createPlatformImportFilePickerClient(),
   now,
   partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
@@ -121,6 +130,11 @@ export function useSettingsScreenController({
   const [clearDataStatusMessage, setClearDataStatusMessage] = useState("");
   const [exportErrorMessage, setExportErrorMessage] = useState("");
   const [exportStatusMessage, setExportStatusMessage] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importErrorMessage, setImportErrorMessage] = useState("");
+  const [importStatusMessage, setImportStatusMessage] = useState("");
+  const [pendingImportPreview, setPendingImportPreview] =
+    useState<PendingImportPreview | null>(null);
   const [interfaceErrorMessage, setInterfaceErrorMessage] = useState("");
   const [interfaceStatusMessage, setInterfaceStatusMessage] = useState("");
   const [reminderStatusMessage, setReminderStatusMessage] = useState("");
@@ -214,6 +228,11 @@ export function useSettingsScreenController({
   function resetExportMessages() {
     setExportErrorMessage("");
     setExportStatusMessage("");
+  }
+
+  function resetImportMessages() {
+    setImportErrorMessage("");
+    setImportStatusMessage("");
   }
 
   function resetClearDataMessages() {
@@ -420,6 +439,20 @@ export function useSettingsScreenController({
     viewData,
   };
 
+  const importActionContext = {
+    effectiveNow,
+    importFilePickerClient,
+    resetImportMessages,
+    setImportErrorMessage,
+    setImportStatusMessage,
+    setIsImporting,
+    setPendingImportPreview,
+    setState: commitState,
+    storage,
+    syncProfilePreferences,
+    viewData,
+  };
+
   const dangerActionContext = {
     clearDataConfirmationValue,
     resetClearDataMessages,
@@ -448,13 +481,17 @@ export function useSettingsScreenController({
       exportErrorMessage,
       exportStatusMessage,
       hasUnsavedSettingsChanges,
+      importErrorMessage,
+      importStatusMessage,
       interfaceErrorMessage,
       interfaceStatusMessage,
       isClearingData,
       isExporting,
+      isImporting,
       isSavingSettings,
       locale: language,
       now: effectiveNow,
+      pendingImportPreview,
       reminderStatusMessage,
       reminderStatusTone,
       onAgeGroupSelect: (value) => {
@@ -641,6 +678,22 @@ export function useSettingsScreenController({
       },
       onHideSexChipChange: (value) => {
         applyTrackingUpdates({ hideSexChip: value }, { resetExportMessages: true });
+      },
+      onImportCancel: () => {
+        resetImportMessages();
+        setPendingImportPreview(null);
+      },
+      onImportConfirm: () => {
+        if (pendingImportPreview) {
+          void runConfirmImportAction(
+            importActionContext,
+            readyState,
+            pendingImportPreview,
+          );
+        }
+      },
+      onImportPickFile: () => {
+        void runPickImportFileAction(importActionContext);
       },
       onInterfaceLanguageSelect: (value) => {
         applyInterfaceValues({

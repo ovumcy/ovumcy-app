@@ -417,6 +417,49 @@ export async function refreshSettingsExportState(
   };
 }
 
+// Rebuild the loaded settings state after a JSON import: the import can add
+// day logs (export summary/bounds), custom symptoms, and — on a pristine
+// device — replace the profile, so all three are re-read from storage. Sync
+// and billing facets cannot change through an offline import and are carried
+// over untouched. Unless the profile itself was restored, the user's unsaved
+// draft values are carried over too, so importing never silently discards an
+// in-progress settings edit.
+export async function refreshSettingsStateAfterImport(
+  storage: LocalAppStorage,
+  currentState: LoadedSettingsState,
+  now: Date,
+  profileRestored: boolean,
+): Promise<LoadedSettingsState> {
+  const [profile, symptomRecords, exportResult] = await Promise.all([
+    storage.readProfileRecord(),
+    storage.listSymptomRecords(),
+    loadLocalExportState(storage, now),
+  ]);
+
+  const nextState = createLoadedSettingsState(
+    profile,
+    currentState.savedSyncPreferences,
+    currentState.hasStoredSyncSecrets,
+    currentState.hasSyncSession,
+    symptomRecords,
+    exportResult.state,
+    currentState.syncPreferences,
+    currentState.syncCapabilities,
+    currentState.managedPremiumAccess,
+  );
+  if (profileRestored) {
+    return nextState;
+  }
+
+  return {
+    ...nextState,
+    cycleValues: currentState.cycleValues,
+    interfaceValues: currentState.interfaceValues,
+    reminderValues: currentState.reminderValues,
+    trackingValues: currentState.trackingValues,
+  };
+}
+
 export async function prepareSettingsExportArtifact(
   storage: LocalAppStorage,
   currentState: LoadedSettingsState,

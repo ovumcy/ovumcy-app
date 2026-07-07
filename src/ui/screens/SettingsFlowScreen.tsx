@@ -13,6 +13,7 @@ import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
 import {
   buildSettingsFlowPresentationState,
+  buildSettingsImportPreviewViewData,
   type LoadedSettingsState,
   type SettingsSyncSummaryViewData,
   type SettingsViewData,
@@ -21,6 +22,7 @@ import { AppButton } from "../components/AppButton";
 import { AppScreenSurface } from "../components/AppScreenSurface";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
+import { SettingsImportSection } from "../components/SettingsImportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
 import { SettingsSyncSummaryCard } from "../components/SettingsSyncSummaryCard";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
@@ -29,6 +31,7 @@ import { useThemedStyles } from "../theme/useThemedStyles";
 import { SettingsCycleSection } from "./settings/SettingsCycleSection";
 import { SettingsRemindersSection } from "./settings/SettingsRemindersSection";
 import { createSettingsFlowStyles } from "./settings/settings-flow-styles";
+import type { PendingImportPreview } from "./settings/settings-screen-import-actions";
 import { SettingsTrackingSection } from "./settings/SettingsTrackingSection";
 
 export type SettingsFlowScreenProps = {
@@ -51,10 +54,13 @@ export type SettingsFlowScreenProps = {
   exportErrorMessage: string;
   exportStatusMessage: string;
   hasUnsavedSettingsChanges: boolean;
+  importErrorMessage: string;
+  importStatusMessage: string;
   interfaceErrorMessage: string;
   interfaceStatusMessage: string;
   isClearingData: boolean;
   isExporting: boolean;
+  isImporting: boolean;
   isSavingSettings: boolean;
   locale: string;
   now: Date;
@@ -91,6 +97,9 @@ export type SettingsFlowScreenProps = {
   onShowHistoricalPhasesChange: (value: boolean) => void;
   onHideCycleFactorsChange: (value: boolean) => void;
   onHideSexChipChange: (value: boolean) => void;
+  onImportCancel: () => void;
+  onImportConfirm: () => void | Promise<void>;
+  onImportPickFile: () => void | Promise<void>;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
@@ -112,6 +121,7 @@ export type SettingsFlowScreenProps = {
   onUpcomingPeriodReminderChange: (value: boolean) => void;
   onUpdateSymptom: (symptomID: SymptomID) => void | Promise<void>;
   onUsageGoalSelect: (value: LoadedSettingsState["cycleValues"]["usageGoal"]) => void;
+  pendingImportPreview: PendingImportPreview | null;
   reminderStatusMessage: string;
   reminderStatusTone: "success" | "error" | "info";
   rowSymptomDrafts: Record<string, SymptomDraftValues>;
@@ -139,10 +149,13 @@ export function SettingsFlowScreen({
   exportErrorMessage,
   exportStatusMessage,
   hasUnsavedSettingsChanges,
+  importErrorMessage,
+  importStatusMessage,
   interfaceErrorMessage,
   interfaceStatusMessage,
   isClearingData,
   isExporting,
+  isImporting,
   isSavingSettings,
   locale,
   now,
@@ -176,6 +189,9 @@ export function SettingsFlowScreen({
   onShowHistoricalPhasesChange,
   onHideCycleFactorsChange,
   onHideSexChipChange,
+  onImportCancel,
+  onImportConfirm,
+  onImportPickFile,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
   onScreenCaptureProtectionChange,
@@ -192,6 +208,7 @@ export function SettingsFlowScreen({
   onUpcomingPeriodReminderChange,
   onUpdateSymptom,
   onUsageGoalSelect,
+  pendingImportPreview,
   reminderStatusMessage,
   reminderStatusTone,
   rowSymptomDrafts,
@@ -214,6 +231,14 @@ export function SettingsFlowScreen({
     Platform.OS,
     showExportDatePicker,
   );
+  const importPreview = pendingImportPreview
+    ? buildSettingsImportPreviewViewData(
+        pendingImportPreview.envelope,
+        pendingImportPreview.outcome,
+        viewData.import,
+        locale,
+      )
+    : null;
 
   return (
     <AppScreenSurface>
@@ -369,6 +394,18 @@ export function SettingsFlowScreen({
               value={flowState.exportPickerValue}
             />
           ) : null}
+
+          <SettingsImportSection
+            errorMessage={importErrorMessage}
+            isImporting={isImporting}
+            onCancel={onImportCancel}
+            onConfirm={onImportConfirm}
+            onPickFile={onImportPickFile}
+            preview={importPreview}
+            statusMessage={importStatusMessage}
+            viewData={viewData.import}
+          />
+
 
           <SettingsDangerZoneSection
             confirmationValue={clearDataConfirmationValue}

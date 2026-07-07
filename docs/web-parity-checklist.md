@@ -336,6 +336,12 @@ that owns the canonical web UX).
     danger-zone `Clear all local data` flow does; a live managed subscription
     still requires a separate, distinctly-worded acknowledgment that deleting
     the account does not cancel Google Play billing;
+  - free offline JSON import (`src/services/import-service.ts` + the settings
+    `Restore from backup` section) mirrors web's `POST /api/v1/imports/json`
+    settings-import capability with the same strictly additive semantics; the
+    app adds a two-phase preview → confirm step on top of web's one-shot form,
+    and additionally restores the backup's profile when the local profile is
+    still pristine (untouched defaults);
   - mobile bottom tabs remain platform-native chrome.
 
 ## Remaining Product Gaps
