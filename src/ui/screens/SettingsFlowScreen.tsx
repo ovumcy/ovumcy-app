@@ -107,6 +107,7 @@ export type SettingsFlowScreenProps = {
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
+  onReminderLeadDaysChange: (value: number) => void;
   onReminderTimeChange: (value: string) => void;
   onSavePendingSettings: () => void | Promise<void>;
   onSymptomDraftChange: (
@@ -199,6 +200,7 @@ export function SettingsFlowScreen({
   onPeriodLengthChange,
   onPredictionModeSelect,
   onRestoreSymptom,
+  onReminderLeadDaysChange,
   onReminderTimeChange,
   onSavePendingSettings,
   onSymptomDraftChange,
@@ -324,6 +326,7 @@ export function SettingsFlowScreen({
             onPremiumCTAPress={() => {
               void onOpenBackupSync();
             }}
+            onReminderLeadDaysChange={onReminderLeadDaysChange}
             onReminderTimeChange={onReminderTimeChange}
             onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}
             reminderStatusMessage={reminderStatusMessage}

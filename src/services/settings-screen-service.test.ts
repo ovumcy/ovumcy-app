@@ -650,6 +650,7 @@ describe("settings services", () => {
       fertileWindowReminderEnabled: false,
       managedReminderEmailsEnabled: true,
       reminderTime: "21:30",
+      reminderLeadDays: 5,
     });
 
     expect(result).toEqual({
@@ -661,6 +662,7 @@ describe("settings services", () => {
           fertileWindowReminderEnabled: false,
           managedReminderEmailsEnabled: true,
           reminderTime: "21:30",
+          reminderLeadDays: 5,
         }),
       }),
     });
@@ -671,6 +673,35 @@ describe("settings services", () => {
         fertileWindowReminderEnabled: false,
         managedReminderEmailsEnabled: true,
         reminderTime: "21:30",
+        reminderLeadDays: 5,
+      }),
+    );
+  });
+
+  it("clamps out-of-range reminder lead days instead of rejecting the save", async () => {
+    const storage = createStorageMock();
+    const state = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      createDefaultSymptomRecords(),
+      createExportState(),
+    );
+
+    const result = await saveReminderSettings(storage, state, {
+      dailyLogReminderEnabled: false,
+      upcomingPeriodReminderEnabled: true,
+      fertileWindowReminderEnabled: false,
+      managedReminderEmailsEnabled: false,
+      reminderTime: "08:00",
+      reminderLeadDays: 99,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reminderLeadDays: 14,
       }),
     );
   });

@@ -59,8 +59,10 @@ follows from that:
   reported off-device by default.
 - **Premium is gated by a managed billing snapshot, with signed tokens for the
   purely-local features.** Most premium features (advanced fertility, extended
-  reports, partner access, reminders) are unlocked by a boolean entitlement /
-  `has_active_plan` snapshot read from the managed cloud. The two purely-local
+  reports, partner access, reminder emails) are unlocked by a boolean
+  entitlement / `has_active_plan` snapshot read from the managed cloud. Local
+  device reminder notifications are a free-tier feature derived entirely from
+  on-device data and read no billing state. The two purely-local
   compute features (doctor PDF, advanced insights) additionally prefer a signed
   EdDSA entitlement token when one verifies, falling back to the snapshot
   boolean otherwise (see Accepted Residual Risks). Gating is **additive**: a free

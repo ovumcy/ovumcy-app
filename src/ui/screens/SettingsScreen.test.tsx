@@ -391,6 +391,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
     expect(screen.getByTestId("settings-reminders-section")).toBeTruthy();
     expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
+    expect(screen.getByTestId("settings-reminder-lead-days-slider")).toBeTruthy();
     expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
@@ -521,6 +522,54 @@ describe("SettingsScreen", () => {
       ),
     );
     expect(buildPDFContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("schedules local device reminders for a free user while email delivery stays locked", async () => {
+    const storage = createSettingsStorageMock();
+    const reminderScheduler: LocalReminderScheduler = {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    };
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        reminderScheduler={reminderScheduler}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-reminders-section");
+    // No managed session: the email-delivery block stays premium-locked...
+    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
+
+    // ...but the local device controls are Free-tier: enabling a reminder
+    // and saving must reach the platform scheduler with real plans.
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
+    fireEvent(
+      screen.getByTestId("settings-reminder-lead-days-slider"),
+      "valueChange",
+      5,
+    );
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dailyLogReminderEnabled: true,
+          reminderLeadDays: 5,
+        }),
+      ),
+    );
+    await waitFor(() =>
+      expect(reminderScheduler.sync).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "daily_log",
+          }),
+        ]),
+      ),
+    );
+    expect(screen.getByTestId("settings-reminders-status-banner")).toBeTruthy();
   });
 
   it("saves managed reminder settings and syncs the local device schedule", async () => {

@@ -16,6 +16,10 @@ import type {
   LocalReminderSchedulerSyncResult,
 } from "./local-reminder-scheduler-contract";
 
+// "disabled" means there is nothing to schedule on this device — every
+// reminder toggle is off, or the enabled kinds produced no plans (pregnancy
+// pause, no upcoming dates). It is NOT a premium state: the local device
+// channel is a Free-tier feature and never consults the billing snapshot.
 export type LocalReminderSyncResult =
   | LocalReminderSchedulerSyncResult
   | "disabled";
@@ -25,6 +29,10 @@ export type ReminderDeliverySyncResult = {
   local: LocalReminderSyncResult;
 };
 
+// Free-tier local channel: derives reminder plans purely from on-device
+// profile + day-log data and hands them to the platform scheduler. Works
+// with no account, sync, or premium plan (web parity — reminders ship in
+// ovumcy-web's free owner flow).
 export async function syncLocalReminderSchedule(
   storage: LocalAppStorage,
   scheduler: LocalReminderScheduler,
@@ -32,23 +40,11 @@ export async function syncLocalReminderSchedule(
   options: {
     locale?: string | undefined;
     now: Date;
-    premiumEnabled: boolean;
   },
 ): Promise<LocalReminderSyncResult> {
-  const { locale = "en", now, premiumEnabled } = options;
+  const { locale = "en", now } = options;
   const plans = await loadLocalReminderPlans(storage, profile, now, locale);
-
-  if (!premiumEnabled) {
-    await scheduler.sync([]);
-    return "disabled";
-  }
-
-  if (plans.length === 0) {
-    await scheduler.sync([]);
-    return "disabled";
-  }
-
-  return scheduler.sync(plans);
+  return syncLocalReminderPlans(scheduler, plans);
 }
 
 export async function syncManagedLocalReminderSchedule(
@@ -105,23 +101,23 @@ export async function syncReminderDeliveryState(
   }
 
   const syncPreferences = await storage.readSyncPreferencesRecord();
-  const premiumFeatures = await loadManagedPremiumFeatures(
-    storage,
-    secretStore,
-    syncPreferences.mode,
-  );
   const plans = await loadLocalReminderPlans(
     storage,
     profile,
     options.now,
     options.locale ?? "en",
   );
-  const local = await syncLocalReminderPlans(
-    scheduler,
-    plans,
-    premiumFeatures.reminders,
-  );
+  // Local device notifications are Free-tier: they sync from local data
+  // alone, before and independently of any billing lookup.
+  const local = await syncLocalReminderPlans(scheduler, plans);
 
+  // The managed billing snapshot stays the only premium truth for the EMAIL
+  // channel — server-driven delivery beyond the web Free-tier baseline.
+  const premiumFeatures = await loadManagedPremiumFeatures(
+    storage,
+    secretStore,
+    syncPreferences.mode,
+  );
   const email = await syncManagedReminderEmailSchedules(
     secretStore,
     syncPreferences.mode,
@@ -158,9 +154,8 @@ async function loadLocalReminderPlans(
 async function syncLocalReminderPlans(
   scheduler: LocalReminderScheduler,
   plans: readonly LocalReminderPlan[],
-  premiumEnabled: boolean,
 ): Promise<LocalReminderSyncResult> {
-  if (!premiumEnabled || plans.length === 0) {
+  if (plans.length === 0) {
     await scheduler.sync([]);
     return "disabled";
   }

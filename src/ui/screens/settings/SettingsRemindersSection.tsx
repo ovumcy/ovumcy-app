@@ -1,5 +1,9 @@
 import { Text, View } from "react-native";
 
+import {
+  MAX_REMINDER_LEAD_DAYS,
+  MIN_REMINDER_LEAD_DAYS,
+} from "../../../models/profile";
 import type {
   LoadedSettingsState,
   SettingsViewData,
@@ -7,6 +11,7 @@ import type {
 import { AppTextInput } from "../../components/AppTextInput";
 import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { FeatureCard } from "../../components/FeatureCard";
+import { LabeledSliderField } from "../../components/LabeledSliderField";
 import { PremiumLockCard } from "../../components/PremiumLockCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
@@ -16,6 +21,7 @@ type SettingsRemindersSectionProps = {
   onFertileWindowReminderChange: (value: boolean) => void;
   onManagedReminderEmailsChange: (value: boolean) => void;
   onPremiumCTAPress?: (() => void) | undefined;
+  onReminderLeadDaysChange: (value: number) => void;
   onReminderTimeChange: (value: string) => void;
   onUpcomingPeriodReminderChange: (value: boolean) => void;
   reminderStatusMessage: string;
@@ -25,11 +31,16 @@ type SettingsRemindersSectionProps = {
   viewData: SettingsViewData;
 };
 
+// Local device reminders are a Free-tier surface (web parity): the toggles,
+// time, and lead-days controls below never sit behind a premium gate. Only
+// the managed EMAIL delivery block at the bottom is premium — it renders the
+// shared PremiumLockCard until the billing snapshot grants reminders.
 export function SettingsRemindersSection({
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
   onManagedReminderEmailsChange,
   onPremiumCTAPress,
+  onReminderLeadDaysChange,
   onReminderTimeChange,
   onUpcomingPeriodReminderChange,
   reminderStatusMessage,
@@ -48,18 +59,6 @@ export function SettingsRemindersSection({
       title={reminderView.title}
     >
       <Text style={styles.helperText}>{reminderView.localOnlyHint}</Text>
-      <Text style={styles.helperText}>{reminderView.emailHint}</Text>
-
-      {!state.managedPremiumAccess.reminders ? (
-        <PremiumLockCard
-          ctaLabel={premiumLockCopy.ctaLabel}
-          description={reminderView.lockedHint}
-          eyebrowLabel={premiumLockCopy.eyebrowLabel}
-          onPress={onPremiumCTAPress}
-          testID="settings-reminders-lock"
-          title={premiumLockCopy.remindersTitle}
-        />
-      ) : null}
 
       <BinaryToggleCard
         description={reminderView.dailyLog.hint}
@@ -106,21 +105,6 @@ export function SettingsRemindersSection({
         value={state.reminderValues.fertileWindowReminderEnabled}
       />
 
-      <BinaryToggleCard
-        description={reminderView.emailDelivery.hint}
-        descriptionPosition="below"
-        icon="✉️"
-        label={reminderView.emailDelivery.label}
-        onValueChange={onManagedReminderEmailsChange}
-        stateText={
-          state.reminderValues.managedReminderEmailsEnabled
-            ? reminderView.emailDelivery.stateOn
-            : reminderView.emailDelivery.stateOff
-        }
-        testID="settings-toggle-reminder-email-delivery"
-        value={state.reminderValues.managedReminderEmailsEnabled}
-      />
-
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{reminderView.timeLabel}</Text>
         <Text style={styles.helperText}>{reminderView.timeHint}</Text>
@@ -138,6 +122,45 @@ export function SettingsRemindersSection({
           value={state.reminderValues.reminderTime}
         />
       </View>
+
+      <LabeledSliderField
+        hint={reminderView.leadDaysHint}
+        label={reminderView.leadDaysLabel}
+        maximumValue={MAX_REMINDER_LEAD_DAYS}
+        minimumValue={MIN_REMINDER_LEAD_DAYS}
+        onValueChange={(value) => onReminderLeadDaysChange(Math.round(value))}
+        testID="settings-reminder-lead-days-slider"
+        value={state.reminderValues.reminderLeadDays}
+        valueSuffix={` ${viewData.common.daysShort}`}
+      />
+
+      <Text style={styles.helperText}>{reminderView.emailHint}</Text>
+
+      {!state.managedPremiumAccess.reminders ? (
+        <PremiumLockCard
+          ctaLabel={premiumLockCopy.ctaLabel}
+          description={reminderView.lockedHint}
+          eyebrowLabel={premiumLockCopy.eyebrowLabel}
+          onPress={onPremiumCTAPress}
+          testID="settings-reminders-lock"
+          title={premiumLockCopy.remindersTitle}
+        />
+      ) : null}
+
+      <BinaryToggleCard
+        description={reminderView.emailDelivery.hint}
+        descriptionPosition="below"
+        icon="✉️"
+        label={reminderView.emailDelivery.label}
+        onValueChange={onManagedReminderEmailsChange}
+        stateText={
+          state.reminderValues.managedReminderEmailsEnabled
+            ? reminderView.emailDelivery.stateOn
+            : reminderView.emailDelivery.stateOff
+        }
+        testID="settings-toggle-reminder-email-delivery"
+        value={state.reminderValues.managedReminderEmailsEnabled}
+      />
 
       {reminderStatusMessage ? (
         <StatusBanner
