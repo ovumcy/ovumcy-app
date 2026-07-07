@@ -1,3 +1,4 @@
+import { getDeviceCopy } from "../i18n/device-copy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
@@ -7,9 +8,11 @@ import {
   createLoadedSettingsState,
 } from "./settings-view-service";
 import {
+  buildBackupSyncDeviceListView,
   buildBackupSyncDirtyState,
   buildBackupSyncSetupPresentation,
   resolveBackupSyncConnectedStatusMessage,
+  resolveBackupSyncDeviceErrorMessage,
   resolveBackupSyncErrorMessage,
   revertBackupSyncDraftState,
 } from "./backup-sync-view-service";
@@ -217,5 +220,72 @@ describe("backup sync view service", () => {
     expect(presentation.endpointSummary).toBe("192.168.1.20:8080");
     expect(presentation.syncStepTitle).toBe("3. Sync this backup");
     expect(presentation.lastSyncValue).not.toBe("2026-03-20T08:10:00.000Z");
+  });
+
+  it("builds device list items with formatted last-seen and a current-device flag", () => {
+    const copy = getDeviceCopy("en");
+    const items = buildBackupSyncDeviceListView(
+      [
+        {
+          deviceID: "device-1",
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-03-19T08:00:00.000Z",
+          lastSeenAt: "2026-03-20T08:10:00.000Z",
+        },
+        {
+          deviceID: "device-2",
+          deviceLabel: "   ",
+          createdAt: "2026-03-20T09:00:00.000Z",
+          lastSeenAt: "2026-03-20T09:30:00.000Z",
+        },
+      ],
+      "device-1",
+      "en",
+      copy,
+    );
+
+    expect(items).toHaveLength(2);
+    expect(items[0]).toEqual(
+      expect.objectContaining({
+        deviceID: "device-1",
+        label: "Pixel 7",
+        isCurrentDevice: true,
+      }),
+    );
+    // Raw timestamps never leak into the rendered line.
+    expect(items[0]?.lastSeenText).not.toBe("2026-03-20T08:10:00.000Z");
+    expect(items[0]?.lastSeenText.length).toBeGreaterThan(0);
+    // A blank user-chosen label falls back to neutral copy instead of an
+    // empty row title.
+    expect(items[1]).toEqual(
+      expect.objectContaining({
+        deviceID: "device-2",
+        label: copy.fallbackDeviceLabel,
+        isCurrentDevice: false,
+      }),
+    );
+  });
+
+  it("maps device management error codes through device copy", () => {
+    const copy = getDeviceCopy("en");
+
+    expect(resolveBackupSyncDeviceErrorMessage("not_connected", copy)).toBe(
+      copy.errors.notConnected,
+    );
+    expect(resolveBackupSyncDeviceErrorMessage("unauthorized", copy)).toBe(
+      copy.errors.notConnected,
+    );
+    expect(resolveBackupSyncDeviceErrorMessage("sync_not_allowed", copy)).toBe(
+      copy.errors.syncNotAllowed,
+    );
+    expect(resolveBackupSyncDeviceErrorMessage("device_not_found", copy)).toBe(
+      copy.errors.deviceNotFound,
+    );
+    expect(resolveBackupSyncDeviceErrorMessage("network_failed", copy)).toBe(
+      copy.errors.networkFailed,
+    );
+    expect(resolveBackupSyncDeviceErrorMessage("generic", copy)).toBe(
+      copy.errors.generic,
+    );
   });
 });

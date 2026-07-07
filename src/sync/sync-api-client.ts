@@ -23,6 +23,7 @@ export type SyncAPIErrorCode =
   | "unauthorized"
   | "invalid_device"
   | "too_many_devices"
+  | "device_not_found"
   | "invalid_blob"
   | "invalid_recovery_package"
   | "stale_generation"
@@ -51,6 +52,21 @@ export type SyncAPIClient = {
     | { ok: true; device: SyncDeviceRecord }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  // listDevices returns every device attached to the account (GET
+  // /sync/devices), oldest first. The server does not mark the calling
+  // device; callers compare against their own stored device id.
+  listDevices(
+    sessionToken: string,
+  ): Promise<
+    | { ok: true; devices: SyncDeviceRecord[] }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
+  // removeDevice detaches one device so its slot is freed (DELETE
+  // /sync/devices/{device_id}, scoped to the authenticated account).
+  removeDevice(
+    sessionToken: string,
+    input: { deviceID: string },
+  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
   getBlob(
     sessionToken: string,
   ): Promise<
@@ -217,6 +233,10 @@ type RawSyncDeviceRecord = {
   device_label: string;
   created_at: string;
   last_seen_at: string;
+};
+
+type RawSyncDeviceListPayload = {
+  devices: RawSyncDeviceRecord[];
 };
 
 type RawSyncBlobRecord = {
@@ -514,6 +534,39 @@ export function createSyncAPIClient(
       );
     },
 
+    async listDevices(sessionToken) {
+      return requestJSON<RawSyncDeviceListPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/sync/devices",
+        {
+          method: "GET",
+          sessionToken,
+        },
+        isRawSyncDeviceListPayload,
+        "invalid_response",
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              devices: result.payload.devices.map(mapSyncDeviceRecord),
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async removeDevice(sessionToken, input) {
+      return requestNoPayload(
+        fetchImpl,
+        normalizedBaseURL,
+        `/sync/devices/${encodeURIComponent(input.deviceID)}`,
+        {
+          method: "DELETE",
+          sessionToken,
+        },
+      );
+    },
+
     async getRecoveryKey(sessionToken) {
       return requestJSON<RawRecoveryKeyPackage>(
         fetchImpl,
@@ -750,6 +803,7 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "unauthorized":
       case "invalid_device":
       case "too_many_devices":
+      case "device_not_found":
       case "invalid_blob":
       case "invalid_recovery_package":
       case "stale_generation":
@@ -869,6 +923,16 @@ function isRawSyncDeviceRecord(value: unknown): value is RawSyncDeviceRecord {
     typeof value.device_label === "string" &&
     typeof value.created_at === "string" &&
     typeof value.last_seen_at === "string"
+  );
+}
+
+function isRawSyncDeviceListPayload(
+  value: unknown,
+): value is RawSyncDeviceListPayload {
+  return (
+    isObject(value) &&
+    Array.isArray(value.devices) &&
+    value.devices.every(isRawSyncDeviceRecord)
   );
 }
 

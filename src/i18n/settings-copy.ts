@@ -367,7 +367,8 @@ const settingsCopyEn = {
         "This sync server does not support recovery phrase import.",
       recoveryPackageNotFound:
         "No recovery package is stored for this account yet.",
-      tooManyDevices: "This account has reached the current device limit.",
+      tooManyDevices:
+        "This account has reached its device limit. On a device that is still connected, open Backup & sync and remove a device you no longer use to free a slot.",
       syncNotPrepared: "Prepare encrypted sync on this device first.",
       notConnected: "Connect this device to a sync server first.",
       blobNotFound: "No encrypted backup copy exists on this server yet.",
@@ -938,7 +939,7 @@ const settingsCopyDe: SettingsCopy = {
       recoveryPackageNotFound:
         "Für dieses Konto ist noch kein Recovery-Paket gespeichert.",
       tooManyDevices:
-        "Dieses Konto hat das aktuelle Geräte-Limit erreicht.",
+        "Dieses Konto hat das Geräte-Limit erreicht. Öffnen Sie auf einem noch verbundenen Gerät Backup & Sync und entfernen Sie ein Gerät, das Sie nicht mehr verwenden, um einen Platz freizugeben.",
       syncNotPrepared:
         "Bereiten Sie zuerst den verschlüsselten Sync auf diesem Gerät vor.",
       notConnected:
@@ -1538,7 +1539,7 @@ const settingsCopyFr: SettingsCopy = {
       recoveryPackageNotFound:
         "Aucun paquet de récupération n'est encore stocké pour ce compte.",
       tooManyDevices:
-        "Ce compte a atteint la limite actuelle d'appareils.",
+        "Ce compte a atteint la limite d'appareils. Sur un appareil encore connecté, ouvrez Sauvegarde et sync et retirez un appareil que vous n'utilisez plus pour libérer une place.",
       syncNotPrepared:
         "Préparez d'abord le sync chiffré sur cet appareil.",
       notConnected:
@@ -2117,7 +2118,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Этот sync-сервер не поддерживает импорт по фразе восстановления.",
         recoveryPackageNotFound:
           "Для этого аккаунта ещё не сохранён recovery package.",
-        tooManyDevices: "Для этого аккаунта уже достигнут лимит устройств.",
+        tooManyDevices:
+          "Для этого аккаунта уже достигнут лимит устройств. На устройстве, которое ещё подключено, откройте «Резервная копия и sync» и удалите неиспользуемое устройство, чтобы освободить слот.",
         syncNotPrepared: "Сначала подготовьте зашифрованный sync на этом устройстве.",
         notConnected: "Сначала подключите это устройство к sync-серверу.",
         blobNotFound:
@@ -2678,7 +2680,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Este servidor de sync no admite importar con frase de recuperación.",
         recoveryPackageNotFound:
           "Todavía no hay ningún paquete de recuperación guardado para esta cuenta.",
-        tooManyDevices: "Esta cuenta ya alcanzó el límite actual de dispositivos.",
+        tooManyDevices:
+          "Esta cuenta ya alcanzó el límite de dispositivos. En un dispositivo que siga conectado, abre Copia y sync y quita un dispositivo que ya no uses para liberar una plaza.",
         syncNotPrepared:
           "Primero prepara el sync cifrado en este dispositivo.",
         notConnected:
@@ -3245,7 +3248,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Questo server di sync non supporta l'importazione con frase di recupero.",
         recoveryPackageNotFound:
           "Non c'è ancora alcun pacchetto di recupero salvato per questo account.",
-        tooManyDevices: "Questo account ha già raggiunto il limite attuale di dispositivi.",
+        tooManyDevices:
+          "Questo account ha raggiunto il limite di dispositivi. Su un dispositivo ancora collegato, apri Backup & sync e rimuovi un dispositivo che non usi più per liberare uno slot.",
         syncNotPrepared:
           "Prepara prima il sync cifrato su questo dispositivo.",
         notConnected:

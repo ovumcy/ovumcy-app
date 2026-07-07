@@ -27,6 +27,7 @@ import { useBackupSyncActions } from "./useBackupSyncActions";
 import { useBackupSyncManagedPlan } from "./useBackupSyncManagedPlan";
 import { useBackupSyncPartnerAccess } from "./useBackupSyncPartnerAccess";
 import { useBackupSyncAccountDeletion } from "./useBackupSyncAccountDeletion";
+import { useBackupSyncDeviceManagement } from "./useBackupSyncDeviceManagement";
 
 type BackupSyncScreenControllerOptions = BackupSyncSessionCoreOptions;
 
@@ -40,10 +41,11 @@ type BackupSyncScreenControllerResult = {
 /**
  * Composition root for the backup & sync screen. It wires the shared session
  * core to the concern hooks (recovery materials, account connection, sync
- * actions, managed plan, partner access, account deletion), owns the cross-hook
- * leave guard, and assembles the presentation view-data into the flat
- * `flowProps` object the screen consumes. All product logic lives in the
- * services those hooks call; this file is orchestration + glue only.
+ * actions, managed plan, partner access, account deletion, device management),
+ * owns the cross-hook leave guard, and assembles the presentation view-data
+ * into the flat `flowProps` object the screen consumes. All product logic
+ * lives in the services those hooks call; this file is orchestration + glue
+ * only.
  */
 export function useBackupSyncScreenController(
   options: BackupSyncScreenControllerOptions,
@@ -55,6 +57,7 @@ export function useBackupSyncScreenController(
   const managedPlan = useBackupSyncManagedPlan(core);
   const partner = useBackupSyncPartnerAccess(core);
   const deletion = useBackupSyncAccountDeletion(core);
+  const deviceManagement = useBackupSyncDeviceManagement(core);
 
   const {
     accountStatusMessage,
@@ -197,11 +200,15 @@ export function useBackupSyncScreenController(
       backLabel: viewData.account.backToSettingsLabel,
       billingOffers,
       confirmActionLabel: viewData.common.confirmAction,
+      deviceErrorMessage: deviceManagement.deviceErrorMessage,
+      deviceListItems: deviceManagement.deviceListItems,
+      deviceStatusMessage: deviceManagement.deviceStatusMessage,
       errorPresentation,
       generatedRecoveryCode,
       generatedRecoveryPhrase,
       hasStoredSyncSecrets: state.hasStoredSyncSecrets,
       hasSyncSession: state.hasSyncSession,
+      isDeviceBusy: deviceManagement.isDeviceBusy,
       isExportingRecoveryPhrase: recovery.isExportingRecoveryPhrase,
       isPartnerBusy: partner.isPartnerBusy,
       isPreparing: recovery.isPreparingSync,
@@ -262,6 +269,9 @@ export function useBackupSyncScreenController(
       },
       onIssuePartnerInvite: () => {
         void partner.handleIssuePartnerInvite();
+      },
+      onLoadDevices: () => {
+        void deviceManagement.handleLoadDevices();
       },
       onLogin: () => {
         void connection.handleConnectSync("login");
@@ -327,6 +337,9 @@ export function useBackupSyncScreenController(
       onRegister: () => {
         void connection.handleConnectSync("register");
       },
+      onRemoveDevice: (deviceID) => {
+        void deviceManagement.handleRemoveDevice(deviceID);
+      },
       onRestore: () => {
         void actions.handleRestoreSync();
       },
@@ -344,6 +357,10 @@ export function useBackupSyncScreenController(
       presentation,
       preferences: state.syncPreferences,
       recoveryPhraseValue: recoveryPhraseInputValue,
+      // Device management needs a live sync session on the sync server (in
+      // managed mode that additionally means an active plan), which is exactly
+      // the canShowSyncActions gate.
+      showDeviceSection: presentation.canShowSyncActions,
       showPartnerOwnerControls,
       showPartnerSection,
       statusMessage: accountStatusMessage,

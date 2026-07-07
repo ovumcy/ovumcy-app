@@ -1,9 +1,12 @@
 import { formatSettingsLastSync } from "./settings-view-service";
+import type { DeviceCopy } from "../i18n/device-copy";
 import {
   supportsInlineSyncAccountAuth,
   type SyncCapabilityDocument,
+  type SyncDeviceRecord,
   type SyncPreferencesRecord,
 } from "../sync/sync-contract";
+import type { SyncDeviceManagementErrorCode } from "../sync/sync-client-service";
 import type { ManagedCloudBillingManagement } from "../sync/managed-cloud-api-client";
 import type {
   LoadedSettingsState,
@@ -217,6 +220,54 @@ export function buildBackupSyncSetupPresentation({
     supportsInlineAccountAuth,
     syncStepTitle: renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3),
   };
+}
+
+export type BackupSyncDeviceListItemView = {
+  deviceID: string;
+  label: string;
+  lastSeenText: string;
+  isCurrentDevice: boolean;
+};
+
+/**
+ * buildBackupSyncDeviceListView maps the raw device records into ready-to-render
+ * items, preserving the server's oldest-first order. The server response has no
+ * current-device marker, so the flag is derived here from the device id this
+ * install registered under; a list without any current device is legitimate
+ * (managed connect attaches no device — only recovery does).
+ */
+export function buildBackupSyncDeviceListView(
+  devices: SyncDeviceRecord[],
+  currentDeviceID: string,
+  locale: string | undefined,
+  copy: DeviceCopy,
+): BackupSyncDeviceListItemView[] {
+  return devices.map((device) => ({
+    deviceID: device.deviceID,
+    label: device.deviceLabel.trim() || copy.fallbackDeviceLabel,
+    lastSeenText: formatSettingsLastSync(device.lastSeenAt, locale),
+    isCurrentDevice: device.deviceID === currentDeviceID,
+  }));
+}
+
+export function resolveBackupSyncDeviceErrorMessage(
+  errorCode: SyncDeviceManagementErrorCode,
+  copy: DeviceCopy,
+): string {
+  switch (errorCode) {
+    case "sync_not_prepared":
+    case "not_connected":
+    case "unauthorized":
+      return copy.errors.notConnected;
+    case "sync_not_allowed":
+      return copy.errors.syncNotAllowed;
+    case "device_not_found":
+      return copy.errors.deviceNotFound;
+    case "network_failed":
+      return copy.errors.networkFailed;
+    default:
+      return copy.errors.generic;
+  }
 }
 
 export function formatBackupSyncLastSeen(

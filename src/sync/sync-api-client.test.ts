@@ -194,6 +194,129 @@ describe("sync-api-client", () => {
     );
   });
 
+  it("lists account devices through the snake_case contract", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          devices: [
+            {
+              device_id: "device-1",
+              device_label: "Pixel 7",
+              created_at: "2026-03-19T08:00:00.000Z",
+              last_seen_at: "2026-03-20T08:00:00.000Z",
+            },
+            {
+              device_id: "device-2",
+              device_label: "Old tablet",
+              created_at: "2026-03-20T09:00:00.000Z",
+              last_seen_at: "2026-03-20T09:30:00.000Z",
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+
+    const client = createSyncAPIClient("http://127.0.0.1:8080", typedFetchMock);
+
+    await expect(client.listDevices("session-1")).resolves.toEqual({
+      ok: true,
+      devices: [
+        {
+          deviceID: "device-1",
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-03-19T08:00:00.000Z",
+          lastSeenAt: "2026-03-20T08:00:00.000Z",
+        },
+        {
+          deviceID: "device-2",
+          deviceLabel: "Old tablet",
+          createdAt: "2026-03-20T09:00:00.000Z",
+          lastSeenAt: "2026-03-20T09:30:00.000Z",
+        },
+      ],
+    });
+    expect(typedFetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8080/sync/devices",
+      expect.objectContaining({
+        method: "GET",
+      }),
+    );
+    const headers = typedFetchMock.mock.calls[0]?.[1]?.headers;
+    if (!(headers instanceof Headers)) {
+      throw new Error("Expected request headers to be a Headers instance");
+    }
+    expect(headers.get("Authorization")).toBe("Bearer session-1");
+  });
+
+  it("rejects a device list payload with malformed entries", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          devices: [{ device_id: "device-1" }],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+
+    const client = createSyncAPIClient("http://127.0.0.1:8080", typedFetchMock);
+
+    await expect(client.listDevices("session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "invalid_response",
+    });
+  });
+
+  it("removes a device through the account-scoped path and maps device_not_found", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "removed" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "device_not_found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+
+    const client = createSyncAPIClient("http://127.0.0.1:8080", typedFetchMock);
+
+    await expect(
+      client.removeDevice("session-1", { deviceID: "device-2" }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      client.removeDevice("session-1", { deviceID: "device-9" }),
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: "device_not_found",
+    });
+    expect(typedFetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://127.0.0.1:8080/sync/devices/device-2",
+      expect.objectContaining({
+        method: "DELETE",
+      }),
+    );
+    const headers = typedFetchMock.mock.calls[0]?.[1]?.headers;
+    if (!(headers instanceof Headers)) {
+      throw new Error("Expected request headers to be a Headers instance");
+    }
+    expect(headers.get("Authorization")).toBe("Bearer session-1");
+  });
+
   it("maps transport failures into stable app error codes", async () => {
     const fetchMock = jest
       .fn()

@@ -21,6 +21,7 @@ import {
 import type {
   EncryptedSyncEnvelope,
   SyncCapabilityDocument,
+  SyncDeviceRecord,
   SyncPreferencesRecord,
   SyncSecretsRecord,
   SyncSetupStatus,
@@ -87,6 +88,15 @@ export type SyncRunErrorCode =
   | "stale_generation"
   | "invalid_payload"
   | "upload_over_backup_declined"
+  | "network_failed"
+  | "generic";
+
+export type SyncDeviceManagementErrorCode =
+  | "sync_not_prepared"
+  | "not_connected"
+  | "sync_not_allowed"
+  | "unauthorized"
+  | "device_not_found"
   | "network_failed"
   | "generic";
 
@@ -978,6 +988,145 @@ export async function runSyncRestore(
   await restoreSyncSnapshot(storage, snapshot, nextPreferences);
 
   return { ok: true, preferences: nextPreferences };
+}
+
+/**
+ * listSyncDevices returns every device attached to the sync account plus the
+ * id of the device this install registered under, so callers can mark "this
+ * device" themselves — the server response carries no such marker. Works in
+ * both modes through the same prepared-session resolution as upload/restore
+ * (managed mode mints a bridged sync session first). The current device may
+ * legitimately be absent from the list: managed connect does not attach a
+ * device (only recovery does), and another device may have removed this one.
+ */
+export async function listSyncDevices(
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<
+  | {
+      ok: true;
+      devices: SyncDeviceRecord[];
+      currentDeviceID: string;
+    }
+  | {
+      ok: false;
+      errorCode: SyncDeviceManagementErrorCode;
+    }
+> {
+  const prepared = await readPreparedSyncContext(
+    secretStore,
+    preferences,
+    apiClientFactory,
+    managedClientFactory,
+  );
+  if (!prepared.ok) {
+    return {
+      ok: false,
+      errorCode: mapPreparedContextToDeviceManagementError(prepared.errorCode),
+    };
+  }
+
+  const client = apiClientFactory(prepared.baseURL);
+  const listResult = await client.listDevices(prepared.secrets.authSessionToken);
+  if (!listResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapDeviceManagementAPIError(listResult.errorCode),
+    };
+  }
+
+  return {
+    ok: true,
+    devices: listResult.devices,
+    currentDeviceID: prepared.secrets.device.deviceID,
+  };
+}
+
+/**
+ * removeSyncDevice detaches one device from the account so its slot is freed.
+ * The server allows removing the currently connected device: sessions are not
+ * device-bound, so sync on this install keeps working and the device simply
+ * re-registers on the next sign-in or recovery. The distinct confirmation for
+ * that case is owned by the caller; this function only reports whether the
+ * removed id was the current device's.
+ */
+export async function removeSyncDevice(
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  deviceID: string,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<
+  | {
+      ok: true;
+      removedCurrentDevice: boolean;
+    }
+  | {
+      ok: false;
+      errorCode: SyncDeviceManagementErrorCode;
+    }
+> {
+  const prepared = await readPreparedSyncContext(
+    secretStore,
+    preferences,
+    apiClientFactory,
+    managedClientFactory,
+  );
+  if (!prepared.ok) {
+    return {
+      ok: false,
+      errorCode: mapPreparedContextToDeviceManagementError(prepared.errorCode),
+    };
+  }
+
+  const client = apiClientFactory(prepared.baseURL);
+  const removeResult = await client.removeDevice(
+    prepared.secrets.authSessionToken,
+    { deviceID },
+  );
+  if (!removeResult.ok) {
+    return {
+      ok: false,
+      errorCode: mapDeviceManagementAPIError(removeResult.errorCode),
+    };
+  }
+
+  return {
+    ok: true,
+    removedCurrentDevice: deviceID === prepared.secrets.device.deviceID,
+  };
+}
+
+function mapPreparedContextToDeviceManagementError(
+  errorCode: SyncRunErrorCode,
+): SyncDeviceManagementErrorCode {
+  switch (errorCode) {
+    case "sync_not_prepared":
+    case "not_connected":
+    case "sync_not_allowed":
+    case "unauthorized":
+    case "network_failed":
+      return errorCode;
+    default:
+      return "generic";
+  }
+}
+
+function mapDeviceManagementAPIError(
+  errorCode: SyncAPIErrorCode,
+): SyncDeviceManagementErrorCode {
+  switch (errorCode) {
+    case "unauthorized":
+    case "device_not_found":
+    case "network_failed":
+      return errorCode;
+    default:
+      // invalid_device (empty id cannot come from the rendered list) and
+      // rate_limited collapse to generic, matching the connect/run mappers.
+      return "generic";
+  }
 }
 
 export async function disconnectSyncAccount(
