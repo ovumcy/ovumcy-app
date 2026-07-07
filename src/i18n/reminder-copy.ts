@@ -30,12 +30,19 @@ const reminderCopyEs = {
   cycleBody: "Abre Ovumcy para revisar tus próximas fechas del ciclo.",
 };
 
+const reminderCopyIt = {
+  notificationTitle: "Promemoria Ovumcy",
+  dailyLogBody: "Apri Ovumcy per aggiornare la voce di oggi.",
+  cycleBody: "Apri Ovumcy per rivedere le tue prossime date del ciclo.",
+};
+
 const reminderCopyCatalog = {
   en: reminderCopyEn,
   de: reminderCopyDe,
   fr: reminderCopyFr,
   ru: reminderCopyRu,
   es: reminderCopyEs,
+  it: reminderCopyIt,
 };
 
 export function getReminderCopy(language: string | null | undefined) {

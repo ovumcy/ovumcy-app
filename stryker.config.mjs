@@ -24,6 +24,13 @@ const config = {
   // Focused, high-signal pure-logic targets only — keep the blast radius small
   // and the run tractable. These are the policy/service files with the
   // strongest behavioural unit coverage.
+  //
+  // Scope rationale: this list is deliberately a curated handful, not the whole
+  // service tree. A file earns a slot only if it is (a) pure/deterministic logic
+  // (no storage, native, or I/O deps), (b) already backed by a strong sibling
+  // unit test, and (c) guarding a correctness or privacy invariant where a
+  // silent mutation would be materially harmful. Broad expansion is intentionally
+  // avoided — it inflates a weekly advisory run without adding signal.
   mutate: [
     "src/services/cycle-history-service.ts",
     "src/services/cycle-prediction-policy.ts",
@@ -32,6 +39,12 @@ const config = {
     "src/services/export-service.ts",
     "src/services/symptom-policy.ts",
     "src/services/profile-settings-policy.ts",
+    // BBT unit conversion + sustained-thermal-shift detection: pure math whose
+    // off-by-one/offset errors would silently corrupt temperature readings.
+    "src/services/temperature-policy.ts",
+    // Period auto-fill: the "observed days up to today only" guard that keeps
+    // predicted/future days out of exports, stats, and sync. Pure and testable.
+    "src/services/period-auto-fill-service.ts",
   ],
 
   jest: {

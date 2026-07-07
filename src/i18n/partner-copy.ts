@@ -451,12 +451,103 @@ const partnerCopyEs = {
   premiumLockTitle: "Invitaciones de pareja",
 } as const;
 
+const partnerCopyIt = {
+  title: "Accesso partner",
+  subtitle:
+    "Invita un partner tramite link, scegli il livello di accesso e revoca l'accesso rapidamente quando serve.",
+  planLocked:
+    "L'accesso partner è una funzione premium di Ovumcy Cloud per l'account proprietario che crea l'invito.",
+  ownerTitle: "Invita un partner",
+  ownerHint:
+    "Ovumcy crea un link di invito privato dal tuo account Ovumcy Cloud. Il partner accede sul proprio dispositivo e accetta il link nell'app.",
+  accessLevelLabel: "Livello di accesso",
+  accessLevelSummary: "Solo riepilogo",
+  accessLevelFull: "Accesso completo",
+  accessLevelSummaryHint:
+    "Condividi la vista di riepilogo più leggera invece della cronologia dettagliata giorno per giorno.",
+  accessLevelFullHint:
+    "Consenti la vista condivisa completa, inclusa la cronologia dettagliata giorno per giorno quando è disponibile.",
+  issueInviteLabel: "Crea link di invito",
+  inviteLinkTitle: "Link di invito",
+  inviteLinkHint:
+    "Apri o condividi questo link con il partner. L'accettazione richiede comunque il suo accesso a Ovumcy Cloud.",
+  pendingInvitesTitle: "Inviti in sospeso",
+  pendingInvitesEmpty: "Ancora nessun invito in sospeso.",
+  pendingInviteLabel: "Link di invito in sospeso",
+  activePartnersTitle: "Accessi partner attivi",
+  activePartnersEmpty: "Ancora nessun accesso partner attivo.",
+  activePartnerLabel: "Accesso partner",
+  sharedWithMeTitle: "Accesso condiviso con questo account",
+  sharedWithMeHint:
+    "Questo account Ovumcy Cloud ha già un accesso partner. Il livello di accesso concesso resta visibile qui anche dopo la scomparsa del banner di invito.",
+  sharedWithMeEmpty: "Nessun accesso partner è stato condiviso con questo account.",
+  sharedGrantLabel: "Vista condivisa del ciclo",
+  lastSeenLabel: "Ultimo accesso",
+  lastSeenNever: "Non ancora aperto.",
+  openSharedViewLabel: "Apri vista condivisa",
+  revokeInviteLabel: "Revoca invito",
+  revokeGrantLabel: "Revoca accesso",
+  acceptTitle: "Accetta invito partner",
+  acceptReadyHint:
+    "Questo link è pronto per essere accettato con l'account Ovumcy Cloud attualmente connesso.",
+  acceptSignInHint:
+    "Accedi prima al tuo account Ovumcy Cloud, poi accetta questo invito partner su questo dispositivo.",
+  acceptActionLabel: "Accetta invito",
+  statusInviteIssued: "Link di invito partner creato.",
+  statusInviteAccepted: "Invito partner accettato su questo dispositivo.",
+  statusInviteRevoked: "Invito partner in sospeso revocato.",
+  statusGrantRevoked: "Accesso partner revocato.",
+  sharedViewTitle: "Vista condivisa del ciclo",
+  sharedViewSubtitle:
+    "Questa vista di sola lettura è disponibile solo tramite la condivisione partner di Ovumcy Cloud.",
+  sharedViewBackLabel: "Torna all'accesso partner",
+  sharedViewLoadingTitle: "Caricamento della vista condivisa",
+  sharedViewLoadingSubtitle:
+    "La vista partner condivisa viene decifrata su questo dispositivo.",
+  sharedViewNotReady:
+    "Il proprietario non ha ancora caricato dati condivisi per questo accesso.",
+  sharedViewLocked:
+    "Questo dispositivo non può aprire la vista condivisa perché manca la chiave di invito.",
+  sharedViewSummaryHint:
+    "L'accesso di riepilogo mantiene la panoramica condivisa più leggera senza cronologia dettagliata giorno per giorno.",
+  sharedViewFullHint:
+    "L'accesso completo include il riepilogo condiviso e la cronologia dettagliata giorno per giorno che il proprietario ha consentito.",
+  sharedViewGeneratedAtLabel: "Aggiornato",
+  sharedViewMetricsTitle: "Riepilogo condiviso",
+  sharedViewHistoryTitle: "Cronologia condivisa recente",
+  sharedViewHistoryEmpty: "Nessuna cronologia condivisa giorno per giorno è ancora disponibile.",
+  sharedViewCycleDayLabel: "Giorno del ciclo",
+  sharedViewNextPeriodLabel: "Prossima finestra del ciclo",
+  sharedViewLastCycleLabel: "Ultimo ciclo",
+  sharedViewAverageCycleLabel: "Ciclo medio",
+  sharedViewAveragePeriodLabel: "Durata media del ciclo mestruale",
+  sharedViewLoggedDaysLabel: "Giorni registrati",
+  sharedViewTopSymptomsLabel: "Sintomi principali",
+  sharedViewStaleNotice:
+    "I dati condivisi potrebbero essere obsoleti — previsioni nascoste.",
+  sharedViewHistoryQualifier: "Mostra gli ultimi 90 giorni.",
+  errors: {
+    notConnected: "Accedi prima a Ovumcy Cloud.",
+    invalidPartnerInvite: "Questo invito partner non è valido.",
+    partnerInviteNotFound: "Impossibile trovare questo invito partner.",
+    partnerInviteExpired: "Questo invito partner è scaduto.",
+    partnerAccessUnavailable:
+      "L'accesso partner non è al momento disponibile per questo account Ovumcy Cloud.",
+    partnerAccessNotFound: "Impossibile trovare questo record di accesso partner.",
+    networkFailed: "Impossibile raggiungere Ovumcy Cloud in questo momento.",
+    generic: "Impossibile aggiornare l'accesso partner in questo momento. Riprova.",
+  },
+  premiumEyebrowLabel: "Premium",
+  premiumLockTitle: "Inviti partner",
+} as const;
+
 const catalogs = {
   en: partnerCopyEn,
   de: partnerCopyDe,
   fr: partnerCopyFr,
   ru: partnerCopyRu,
   es: partnerCopyEs,
+  it: partnerCopyIt,
 } as const satisfies Record<InterfaceLanguage, unknown>;
 
 export function getPartnerCopy(locale?: string) {

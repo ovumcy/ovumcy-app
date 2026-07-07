@@ -18,7 +18,7 @@ export type AgeGroupOption = Exclude<AgeGroup, "">;
 export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 
 export type TemperatureUnit = "c" | "f";
-export type InterfaceLanguage = "en" | "ru" | "es" | "de" | "fr";
+export type InterfaceLanguage = "en" | "ru" | "es" | "de" | "fr" | "it";
 export type ThemePreference = "light" | "dark";
 export type PredictionMode = "regular" | "irregular" | "facts_only";
 export type ReminderTime = string;
@@ -33,6 +33,7 @@ export const SUPPORTED_INTERFACE_LANGUAGES = [
   "es",
   "de",
   "fr",
+  "it",
 ] as const;
 export const SUPPORTED_THEME_PREFERENCES = ["light", "dark"] as const;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
