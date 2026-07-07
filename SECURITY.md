@@ -37,7 +37,11 @@ follows from that:
 - **Secrets live in platform secure storage.** The local-data encryption key and
   all sync/partner secrets are held in the OS keystore (iOS Keychain / Android
   Keystore via `expo-secure-store`) with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`
-  accessibility — never in plaintext `AsyncStorage` or the SQLite database.
+  accessibility — never in plaintext `AsyncStorage` or the SQLite database. That
+  accessibility class means at-rest encryption protects a powered-off or
+  not-yet-unlocked device; once the device has been unlocked the key becomes
+  available to the app, so a thief with an already-unlocked or otherwise
+  compromised phone is out of scope (see *Out of scope* below).
 - **Sync is zero-knowledge.** When the user opts into backup/sync (self-hosted
   `ovumcy-sync-community` or the managed Ovumcy Cloud), payloads are encrypted on-device
   before upload. The server receives opaque ciphertext plus integrity metadata
@@ -78,6 +82,17 @@ follows from that:
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
   cannot execute on open, with RFC 4180 quoting preserved.
+- **Cleartext HTTP blocked by default (Android).** The committed Android network
+  security config (`android/app/src/main/res/xml/network_security_config.xml`,
+  generated in prebuild by `plugins/withAndroidNetworkSecurityConfig.js`) sets
+  `cleartextTrafficPermitted="false"` app-wide and permits cleartext only for the
+  emulator-host/loopback dev addresses (`10.0.2.2`, `127.0.0.1`, `localhost`) that
+  serve Metro and local sync stacks in debug builds. Production traffic is
+  HTTPS-only at the OS layer. On top of that, `src/sync/sync-endpoint-policy.ts`
+  rejects `http://` to any non-private host (parsing the host as a literal IPv4
+  and bucketing by octet, never prefix-matching the hostname) as defense in
+  depth, so an `http://` sync/managed endpoint is refused before a request goes
+  out regardless of the OS layer.
 
 ### Out of scope
 

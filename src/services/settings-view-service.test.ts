@@ -19,6 +19,7 @@ describe("settings view service", () => {
       { value: "es", label: "Español" },
       { value: "de", label: "Deutsch" },
       { value: "fr", label: "Français" },
+      { value: "it", label: "Italiano" },
     ]);
   });
 

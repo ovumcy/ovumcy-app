@@ -398,6 +398,85 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     implantationWarning:
       "Esto puede ser sangrado de implantación y no un nuevo ciclo. Si buscas embarazo, considera hacerte una prueba.",
   },
+  it: {
+    cycleDay: "Giorno del ciclo",
+    nextPeriod: "Prossimo ciclo",
+    nextPeriodUnknown: "sconosciuto",
+    nextPeriodPrompt: "Inserisci la data di inizio del tuo ultimo ciclo",
+    nextPeriodNeedsMoreCycles:
+      "servono 3 cicli per un intervallo affidabile",
+    approximateDatePrefix: "intorno al",
+    ovulation: "Ovulazione",
+    ovulationUnavailable: "Non può essere calcolata",
+    predictionsOff: "Previsioni disattivate",
+    predictionsApproximateHint:
+      "La modalità ciclo irregolare mantiene visibili le previsioni, ma vanno lette come un'indicazione approssimativa e non come date esatte.",
+    predictionVariableRangesHint:
+      "La lunghezza del tuo ciclo varia, quindi il prossimo ciclo è mostrato come intervallo anziché come un singolo giorno.",
+    factsOnlyHint:
+      "In modalità ciclo imprevedibile le previsioni sono disattivate. Ovumcy mostra solo i fatti registrati.",
+    pregnancyPausedHint:
+      "Le previsioni del ciclo sono sospese dopo un test di gravidanza positivo. Registra un nuovo ciclo per riattivarle.",
+    predictionDisclaimer:
+      "Queste sono stime, non consigli medici né un metodo contraccettivo.",
+    cycleHeroDayLabel: "Giorno",
+    cycleHeroRegular: (days: number) => `Ciclo di ${days} giorni`,
+    cycleHeroApproximate: "Ciclo approssimativo",
+    cycleHeroFactsOnly: "Previsioni disattivate",
+    cycleHeroWaiting: "Aggiungi un inizio del ciclo",
+    cycleHeroStale:
+      "I dati del ciclo potrebbero essere obsoleti. Registra il ciclo quando inizia.",
+    cycleHeroPhaseCards: {
+      period: "Ciclo",
+      follicular: "Follicolare",
+      ovulation: "Ovulazione",
+      luteal: "Luteale",
+    },
+    cycleHeroDayRange: (startDay: number, endDay: number) =>
+      startDay === endDay ? `g. ${startDay}` : `g. ${startDay}-${endDay}`,
+    todayEditor: "Diario di oggi",
+    quickActionsTitle: "Azioni rapide",
+    quickActions: {
+      mood: "Umore",
+      period: "Ciclo",
+      symptom: "Sintomi",
+    },
+    periodDay: "Giorno di ciclo",
+    symptoms: "Sintomi",
+    mood: "Umore",
+    cycleFactors: "Fattori del ciclo",
+    cycleFactorsHint:
+      "Tag di contesto facoltativi per elementi che possono influenzare il timing del ciclo.",
+    intimacy: "Intimità",
+    cervicalMucus: "Muco cervicale",
+    cervicalMucusExplainer:
+      "Il muco cervicale indica le perdite vaginali. Il muco a consistenza di albume d'uovo di solito appare vicino al picco di fertilità.",
+    bbt: "BBT",
+    notes: "Note",
+    manualCycleStart: "Segna inizio nuovo ciclo",
+    cancelAction: "Annulla",
+    manualCycleStartSaved: "Inizio ciclo aggiornato localmente.",
+    manualCycleStartFailed:
+      "Impossibile segnare un nuovo inizio ciclo. Riprova.",
+    invalidCycleStartDate:
+      "Un nuovo inizio ciclo può essere segnato solo per oggi o per giorni passati.",
+    cycleStartSuggestion:
+      "Questo potrebbe essere il primo giorno del tuo ciclo. Se lo è, segnalo come nuovo inizio ciclo.",
+    cycleStartReplaceMessage:
+      "Hai già segnato un inizio ciclo il %s. Sostituirlo con %s?",
+    cycleStartReplaceAccept: "Sostituisci",
+    cycleStartReplaceRequired:
+      "Conferma la sostituzione dell'inizio ciclo già segnato.",
+    cycleStartShortGapMessage:
+      "⚠️ Sono passati solo %s giorni dal ciclo precedente. Potrebbe non trattarsi di un nuovo ciclo. Data precedente: %s.",
+    cycleStartShortGapAccept: "Segna comunque",
+    cycleStartConfirmationRequired:
+      "Conferma la marcatura di un inizio ciclo con un intervallo breve.",
+    futureCycleStartNotice:
+      "Le previsioni saranno ricalcolate quando quel giorno arriverà.",
+    implantationWarning:
+      "Potrebbe trattarsi di sanguinamento da impianto, non di un nuovo ciclo. Se stai cercando una gravidanza, considera di fare un test.",
+  },
   de: dashboardCopyDe,
   fr: dashboardCopyFr,
 };

@@ -1,3 +1,4 @@
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { getDayLogCopy } from "../i18n/day-log-copy";
 import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
@@ -83,6 +84,12 @@ export type StatsViewData = {
   title: string;
   description: string;
   hasInsights: boolean;
+  // Web parity (stats.html data-stats-prediction-disclaimer): the same
+  // persistent "estimates, not medical advice or contraception" disclaimer the
+  // dashboard shows, reusing the shared `dashboard.prediction_disclaimer` copy.
+  // Always present on this owner surface — including the empty state — so the
+  // Medical-safety invariant holds regardless of whether insights are unlocked.
+  predictionDisclaimer: string;
   predictionExplanation?: string;
   extendedReports?: {
     title: string;
@@ -310,6 +317,7 @@ export function buildStatsViewData(
   },
 ): StatsViewData {
   const statsCopy = getStatsCopy(locale);
+  const dashboardCopy = getDashboardCopy(locale);
   const dayLogCopy = getDayLogCopy(locale);
   const localizedSymptomRecords = localizeSymptomRecords(symptomRecords, locale);
   const history = buildCycleHistorySummary(profile, records, now);
@@ -319,6 +327,7 @@ export function buildStatsViewData(
       title: statsCopy.title,
       description: statsCopy.subtitle,
       hasInsights: false,
+      predictionDisclaimer: dashboardCopy.predictionDisclaimer,
       notices: shouldShowAgeVariabilityHint(profile)
         ? [statsCopy.ageVariabilityHint]
         : [],
@@ -415,6 +424,7 @@ export function buildStatsViewData(
     title: statsCopy.title,
     description: statsCopy.subtitle,
     hasInsights: true,
+    predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     ...(advancedInsightsSection
       ? {
           advancedInsights: advancedInsightsSection,

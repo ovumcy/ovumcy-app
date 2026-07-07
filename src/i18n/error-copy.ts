@@ -46,6 +46,13 @@ const errorCopyCatalog: Record<InterfaceLanguage, ErrorCopy> = {
   },
   de: errorCopyDe,
   fr: errorCopyFr,
+  it: {
+    title: "Qualcosa è andato storto",
+    description:
+      "L'app ha riscontrato un problema e non è riuscita a continuare. I tuoi dati locali sono al sicuro su questo dispositivo.",
+    retryAction: "Riprova",
+    detailsLabel: "Dettagli",
+  },
 };
 
 export function getErrorCopy(language: string | null | undefined) {

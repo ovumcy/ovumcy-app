@@ -90,6 +90,15 @@ nextPeriodStart = cycleStartDate + cycleLength days
 A window is only returned when the ovulation date falls strictly before the next
 period start; otherwise the result is non-calculable (empty).
 
+### A note on dates and time zones
+
+All date arithmetic here operates on **calendar dates** (`YYYY-MM-DD`), not
+instants. Day offsets and day-count differences are anchored so that one
+calendar day always counts as exactly one day, independent of the device time
+zone and of any daylight-saving transition between two dates — matching the
+UTC-anchored day arithmetic in `ovumcy-web`'s Go source of truth. The results
+are therefore the same on every device for the same input dates.
+
 ## Worked examples
 
 These vectors are the same as `ovumcy-web`'s reference vectors; Ovumcy App
@@ -155,8 +164,14 @@ The prediction policy is guarded by
 which asserts the core behaviors: day-14 ovulation for a normal 28-day cycle, the
 short-supported-cycle clamp (non-exact), cycles below the 15-day floor returning
 non-calculable, and the ovulation-before-next-period invariant. The algorithm is
-identical to `ovumcy-web`'s Free prediction, whose `docs/cycle-prediction.md`
-mirrors the exact worked-example vectors above 1:1 via reference tests. Adding a
-matching per-vector reference test on the app side is the natural next step to
-lock every documented number to the code here as well. If you change the math,
-update this document and the guarding test in the same change.
+identical to `ovumcy-web`'s Free prediction.
+
+Every worked-example vector above is pinned to the code by a **shared
+golden-vector fixture**,
+[`src/services/__fixtures__/cycle-prediction-golden-vectors.json`](../src/services/__fixtures__/cycle-prediction-golden-vectors.json),
+consumed by [`src/services/cycle-prediction-reference.test.ts`](../src/services/cycle-prediction-reference.test.ts).
+That same file is, by design, the source of truth for `ovumcy-web`'s Go reference
+test (`internal/services/cycles_reference_test.go`), so any change to either the
+Go (`cycles.go`) or TypeScript (`cycle-prediction-policy.ts`) implementation that
+breaks parity fails CI on both sides. If you change the math, update the fixture,
+this document, and both reference tests in the same change.
