@@ -23,6 +23,34 @@ describe("settings view service", () => {
     ]);
   });
 
+  it("offers light, dark, and system as the three theme options", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+    expect(viewData.interface.themeOptions).toEqual([
+      { value: "light", label: "Light" },
+      { value: "dark", label: "Dark" },
+      { value: "system", label: "System" },
+    ]);
+  });
+
+  it("localizes the system theme option label per locale", () => {
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "ru").interface.themeOptions,
+    ).toContainEqual({ value: "system", label: "Системная" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "de").interface.themeOptions,
+    ).toContainEqual({ value: "system", label: "System" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "fr").interface.themeOptions,
+    ).toContainEqual({ value: "system", label: "Système" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "es").interface.themeOptions,
+    ).toContainEqual({ value: "system", label: "Sistema" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "it").interface.themeOptions,
+    ).toContainEqual({ value: "system", label: "Sistema" });
+  });
+
   it("builds localized interface copy for German and French", () => {
     expect(buildSettingsViewData(new Date(2026, 2, 22), "de").interface.title).toBe(
       "Oberfläche",
