@@ -53,7 +53,9 @@ export const ENTITLEMENT_TOKEN_AUDIENCE = "ovumcy-app";
  * Optionally, an operator may supply the map at build time via the
  * `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` env var (JSON object of kid -> hex);
  * `resolveEmbeddedEntitlementPublicKeys()` reads it and falls back to this
- * constant when unset or malformed.
+ * constant when unset or malformed. A release guard pinned to that resolution
+ * (`scripts/verify-entitlement-pubkeys.mjs`) fails production EAS builds and
+ * web deploys that would leave this placeholder active.
  */
 export const EMBEDDED_ENTITLEMENT_PUBLIC_KEYS: Readonly<Record<string, string>> =
   Object.freeze({
