@@ -320,6 +320,7 @@ export type SettingsViewData = {
     errors: {
       loginRequired: string;
       passwordRequired: string;
+      passwordTooShort: string;
       deviceLabelRequired: string;
       endpointRequired: string;
       invalidEndpoint: string;
@@ -865,6 +866,7 @@ export function buildSettingsViewData(
       errors: {
         loginRequired: settingsCopy.account.errors.loginRequired,
         passwordRequired: settingsCopy.account.errors.passwordRequired,
+        passwordTooShort: settingsCopy.account.errors.passwordTooShort,
         deviceLabelRequired: settingsCopy.account.errors.deviceLabelRequired,
         endpointRequired: settingsCopy.account.errors.endpointRequired,
         invalidEndpoint: settingsCopy.account.errors.invalidEndpoint,

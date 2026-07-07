@@ -34,6 +34,9 @@ describe("backup sync view service", () => {
       resolveBackupSyncErrorMessage("sync_not_allowed", viewData.account),
     ).toBe(viewData.account.syncBlockedNoPlan);
     expect(
+      resolveBackupSyncErrorMessage("password_too_short", viewData.account),
+    ).toBe(viewData.account.errors.passwordTooShort);
+    expect(
       resolveBackupSyncErrorMessage("unknown_code", viewData.account),
     ).toBe(viewData.account.errors.saveFailed);
   });

@@ -46,6 +46,7 @@ export type AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: string;
     newPasswordRequired: string;
+    passwordTooShort: string;
     invalidCurrentPassword: string;
     newPasswordMustDiffer: string;
     weakNewPassword: string;
@@ -111,10 +112,11 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Enter your current password.",
     newPasswordRequired: "Enter a new password.",
+    passwordTooShort: "Password must be at least 12 characters.",
     invalidCurrentPassword: "Current password is incorrect.",
     newPasswordMustDiffer:
       "New password must be different from the current one.",
-    weakNewPassword: "New password is too short.",
+    weakNewPassword: "New password must be at least 12 characters.",
     invalidRecoveryCredentials: "Login or recovery code is incorrect.",
     invalidResetToken: "Reset token expired or is invalid. Start over.",
     notConnected: "Connect a sync account before changing its password.",
@@ -178,10 +180,11 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Geben Sie Ihr aktuelles Passwort ein.",
     newPasswordRequired: "Geben Sie ein neues Passwort ein.",
+    passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
     invalidCurrentPassword: "Aktuelles Passwort ist falsch.",
     newPasswordMustDiffer:
       "Das neue Passwort muss sich vom aktuellen unterscheiden.",
-    weakNewPassword: "Das neue Passwort ist zu kurz.",
+    weakNewPassword: "Das neue Passwort muss mindestens 12 Zeichen lang sein.",
     invalidRecoveryCredentials: "Login oder Wiederherstellungscode ist falsch.",
     invalidResetToken:
       "Zurücksetzungs-Token abgelaufen oder ungültig. Starten Sie erneut.",
@@ -249,10 +252,12 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Entrez votre mot de passe actuel.",
     newPasswordRequired: "Entrez un nouveau mot de passe.",
+    passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
     invalidCurrentPassword: "Mot de passe actuel incorrect.",
     newPasswordMustDiffer:
       "Le nouveau mot de passe doit être différent de l'actuel.",
-    weakNewPassword: "Le nouveau mot de passe est trop court.",
+    weakNewPassword:
+      "Le nouveau mot de passe doit comporter au moins 12 caractères.",
     invalidRecoveryCredentials: "Login ou code de récupération incorrect.",
     invalidResetToken:
       "Token de réinitialisation expiré ou invalide. Recommencez.",
@@ -319,10 +324,11 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Введите текущий пароль.",
     newPasswordRequired: "Введите новый пароль.",
+    passwordTooShort: "Пароль должен содержать не менее 12 символов.",
     invalidCurrentPassword: "Неверный текущий пароль.",
     newPasswordMustDiffer:
       "Новый пароль должен отличаться от текущего.",
-    weakNewPassword: "Новый пароль слишком короткий.",
+    weakNewPassword: "Новый пароль должен содержать не менее 12 символов.",
     invalidRecoveryCredentials: "Неверный логин или код восстановления.",
     invalidResetToken:
       "Токен сброса истёк или недействителен. Начните заново.",
@@ -390,10 +396,11 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Introduce tu contraseña actual.",
     newPasswordRequired: "Introduce una nueva contraseña.",
+    passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
     invalidCurrentPassword: "La contraseña actual es incorrecta.",
     newPasswordMustDiffer:
       "La nueva contraseña debe ser distinta de la actual.",
-    weakNewPassword: "La nueva contraseña es demasiado corta.",
+    weakNewPassword: "La nueva contraseña debe tener al menos 12 caracteres.",
     invalidRecoveryCredentials:
       "Login o código de recuperación incorrecto.",
     invalidResetToken:
@@ -461,10 +468,11 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
   errors: {
     currentPasswordRequired: "Inserisci la tua password corrente.",
     newPasswordRequired: "Inserisci una nuova password.",
+    passwordTooShort: "La password deve contenere almeno 12 caratteri.",
     invalidCurrentPassword: "La password corrente non è corretta.",
     newPasswordMustDiffer:
       "La nuova password deve essere diversa da quella corrente.",
-    weakNewPassword: "La nuova password è troppo corta.",
+    weakNewPassword: "La nuova password deve contenere almeno 12 caratteri.",
     invalidRecoveryCredentials: "Login o codice di recupero non corretto.",
     invalidResetToken: "Token di reimpostazione scaduto o non valido. Ricomincia.",
     notConnected: "Collega un account sync prima di cambiarne la password.",

@@ -114,6 +114,37 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
+  it("maps the client-side password_too_short code on change and reset flows", () => {
+    const { rerender } = render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          changeErrorCode="password_too_short"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-change-error-banner"),
+    ).toBeTruthy();
+    expect(screen.getByText(copy.errors.passwordTooShort)).toBeTruthy();
+
+    rerender(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          forgotStage="new_password"
+          forgotErrorCode="password_too_short"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-forgot-error-banner"),
+    ).toBeTruthy();
+    expect(screen.getByText(copy.errors.passwordTooShort)).toBeTruthy();
+  });
+
   it("shows the success banner once change-password completes", () => {
     render(
       <AppPreferencesTestProvider>
