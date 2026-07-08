@@ -39,6 +39,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Entitlement pubkey guard self-test
+        run: node scripts/verify-entitlement-pubkeys.mjs --self-test
+
       - name: Tests (with coverage)
         run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary
 

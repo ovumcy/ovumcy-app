@@ -18,12 +18,14 @@ import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
+import { isPasswordTooShort } from "./password-policy";
 
 export type ChangeSyncPasswordErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "not_connected"
   | "current_password_required"
   | "new_password_required"
+  | "password_too_short"
   | "invalid_current_password"
   | "new_password_must_differ"
   | "weak_new_password"
@@ -45,6 +47,7 @@ export type ResetSyncPasswordErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "reset_token_required"
   | "new_password_required"
+  | "password_too_short"
   | "invalid_reset_token"
   | "weak_new_password"
   | "rate_limited"
@@ -82,6 +85,13 @@ export async function changeSyncAccountPassword(
   }
   if (input.newPassword.length === 0) {
     return { ok: false, errorCode: "new_password_required" };
+  }
+  // Pre-validate against the shared server minimum so a short password is
+  // caught before the network round-trip (the server would otherwise reject it
+  // with weak_new_password). The empty check above takes precedence so a blank
+  // field still reads "required", not "too short".
+  if (isPasswordTooShort(input.newPassword)) {
+    return { ok: false, errorCode: "password_too_short" };
   }
 
   const secrets = await secretStore.readSyncSecrets();
@@ -222,6 +232,12 @@ export async function resetSyncAccountPassword(
   }
   if (input.newPassword.length === 0) {
     return { ok: false, errorCode: "new_password_required" };
+  }
+  // Same client-side floor as change-password: reject a short new password
+  // before consuming the single-use reset token on a call the server would
+  // reject with weak_new_password anyway.
+  if (isPasswordTooShort(input.newPassword)) {
+    return { ok: false, errorCode: "password_too_short" };
   }
 
   let recoveryCode: string;

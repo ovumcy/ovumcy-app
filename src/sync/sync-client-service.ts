@@ -18,6 +18,7 @@ import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
+import { isPasswordTooShort } from "./password-policy";
 import type {
   EncryptedSyncEnvelope,
   SyncCapabilityDocument,
@@ -53,6 +54,7 @@ export type SyncConnectErrorCode =
   | "sync_not_prepared"
   | "login_required"
   | "password_required"
+  | "password_too_short"
   | "sync_not_allowed"
   | "invalid_registration_input"
   | "registration_failed"
@@ -169,6 +171,14 @@ export async function connectSyncAccount(
   }
   if (credentials.password.length === 0) {
     return { ok: false, errorCode: "password_required" };
+  }
+  // Register-only pre-validation: a new account password below the shared
+  // server minimum is rejected here so the owner gets a specific "too short"
+  // message instead of the ambiguous invalid_registration_input the server
+  // folds it into. Login is deliberately exempt — a pre-existing account could
+  // hold a legacy short password, and authenticating it is the server's call.
+  if (mode === "register" && isPasswordTooShort(credentials.password)) {
+    return { ok: false, errorCode: "password_too_short" };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
