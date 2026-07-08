@@ -2,6 +2,7 @@ import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { Platform } from "react-native";
 
+import { getDeviceCopy } from "../../i18n/device-copy";
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { clearManagedPartnerInviteToken } from "../../security/managed-partner-invite-token-buffer";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
@@ -354,6 +355,197 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-sync-disconnect-button")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-login-button")).toBeNull();
     expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
+  });
+
+  function createConnectedSelfHostedDeviceFixture() {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: 123,
+        lastSyncedAt: "2026-03-20T08:10:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    const writeSecrets = syncSecretStore.writeSyncSecrets({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: "session-1",
+      managedAuthSessionToken: null,
+    });
+
+    let remoteDevices = [
+      {
+        device_id: "device-1",
+        device_label: "Pixel 7",
+        created_at: "2026-03-19T08:15:00.000Z",
+        last_seen_at: "2026-03-20T08:10:00.000Z",
+      },
+      {
+        device_id: "device-2",
+        device_label: "Old tablet",
+        created_at: "2026-03-20T09:00:00.000Z",
+        last_seen_at: "2026-03-20T09:30:00.000Z",
+      },
+    ];
+    const deletedDeviceIDs: string[] = [];
+    global.fetch = jest.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/sync/capabilities")) {
+          return createJSONResponse({
+            mode: "self_hosted",
+            sync_enabled: true,
+            recovery_supported: true,
+            push_supported: false,
+            portal_supported: false,
+            advanced_cloud_insights: false,
+            max_devices: 5,
+            max_blob_bytes: 1024,
+          });
+        }
+        if (method === "GET" && url.endsWith("/sync/devices")) {
+          return createJSONResponse({ devices: remoteDevices });
+        }
+        if (method === "DELETE" && url.includes("/sync/devices/")) {
+          const deviceID = url.slice(url.lastIndexOf("/") + 1);
+          deletedDeviceIDs.push(deviceID);
+          remoteDevices = remoteDevices.filter(
+            (device) => device.device_id !== deviceID,
+          );
+          return createJSONResponse({ status: "removed" });
+        }
+        throw new Error(`Unexpected fetch in test: ${method} ${url}`);
+      },
+    ) as typeof fetch;
+
+    return { storage, syncSecretStore, writeSecrets, deletedDeviceIDs };
+  }
+
+  it("lists sync devices on demand with a this-device badge and last-seen line", async () => {
+    const fixture = createConnectedSelfHostedDeviceFixture();
+    await fixture.writeSecrets;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={fixture.storage}
+        syncSecretStore={fixture.syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await screen.findByTestId("settings-sync-devices-section");
+
+    // Nothing is fetched until the owner asks for the list.
+    expect(screen.queryByTestId("settings-sync-device-device-1")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("settings-sync-devices-load-button"));
+
+    await screen.findByTestId("settings-sync-device-device-1");
+    expect(screen.getByTestId("settings-sync-device-device-2")).toBeTruthy();
+    expect(
+      screen.getByTestId("settings-sync-device-current-device-1"),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId("settings-sync-device-current-device-2"),
+    ).toBeNull();
+    expect(screen.getByText("Pixel 7")).toBeTruthy();
+    expect(screen.getByText("Old tablet")).toBeTruthy();
+    // The raw timestamp never renders; the line is locale-formatted.
+    expect(screen.queryByText(/2026-03-20T09:30:00/)).toBeNull();
+  });
+
+  it("removes another device only after an explicit confirm and refreshes the list", async () => {
+    const fixture = createConnectedSelfHostedDeviceFixture();
+    await fixture.writeSecrets;
+    const deviceCopy = getDeviceCopy("en");
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={fixture.storage}
+        syncSecretStore={fixture.syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    fireEvent.press(
+      await screen.findByTestId("settings-sync-devices-load-button"),
+    );
+    await screen.findByTestId("settings-sync-device-device-2");
+
+    fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
+
+    await waitFor(() =>
+      expect(fixture.deletedDeviceIDs).toEqual(["device-2"]),
+    );
+    expect(mockOpenConfirmation).toHaveBeenCalledWith(
+      deviceCopy.removeDevicePrompt("Old tablet"),
+      deviceCopy.removeConfirmAction,
+      expect.any(String),
+    );
+    await screen.findByTestId("settings-sync-devices-status-banner");
+    await waitFor(() =>
+      expect(screen.queryByTestId("settings-sync-device-device-2")).toBeNull(),
+    );
+    expect(screen.getByTestId("settings-sync-device-device-1")).toBeTruthy();
+  });
+
+  it("keeps a device when the removal confirm is dismissed and words the current-device confirm distinctly", async () => {
+    const fixture = createConnectedSelfHostedDeviceFixture();
+    await fixture.writeSecrets;
+    const deviceCopy = getDeviceCopy("en");
+    // Dismissal resolves false = keep the device attached.
+    mockOpenConfirmation.mockResolvedValue(false);
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={fixture.storage}
+        syncSecretStore={fixture.syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    fireEvent.press(
+      await screen.findByTestId("settings-sync-devices-load-button"),
+    );
+    await screen.findByTestId("settings-sync-device-device-1");
+
+    fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-1"));
+
+    await waitFor(() =>
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        deviceCopy.removeCurrentDevicePrompt("Pixel 7"),
+        deviceCopy.removeConfirmAction,
+        expect.any(String),
+      ),
+    );
+    expect(fixture.deletedDeviceIDs).toEqual([]);
+    expect(screen.getByTestId("settings-sync-device-device-1")).toBeTruthy();
   });
 
   it("keeps managed sync locked when the signed-in cloud account has no active plan", async () => {

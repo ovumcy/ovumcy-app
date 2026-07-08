@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
+import { getDeviceCopy } from "../../i18n/device-copy";
 import { selectTOTPCopy } from "../../i18n/totp-copy";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type {
+  BackupSyncDeviceListItemView,
   BackupSyncErrorPresentation,
   BackupSyncSetupPresentation,
 } from "../../services/backup-sync-view-service";
@@ -15,6 +17,7 @@ import { InlineBackButton } from "../components/InlineBackButton";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
+import { SettingsSyncDevicesSection } from "./backup-sync/SettingsSyncDevicesSection";
 import { BackupSyncTOTPChallengeSection } from "./backup-sync/BackupSyncTOTPChallengeSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { PartnerCopy } from "../../i18n/partner-copy";
@@ -28,11 +31,15 @@ export type BackupSyncFlowScreenProps = {
   authPasswordValue: string;
   billingOffers: ResolvedBillingOffer[];
   confirmActionLabel: string;
+  deviceErrorMessage: string;
+  deviceListItems: BackupSyncDeviceListItemView[] | null;
+  deviceStatusMessage: string;
   errorPresentation: BackupSyncErrorPresentation;
   generatedRecoveryCode: string;
   generatedRecoveryPhrase: string;
   hasSyncSession: boolean;
   hasStoredSyncSecrets: boolean;
+  isDeviceBusy: boolean;
   isExportingRecoveryPhrase: boolean;
   isPartnerBusy: boolean;
   isPreparing: boolean;
@@ -47,6 +54,7 @@ export type BackupSyncFlowScreenProps = {
   onEndpointChange: (value: string) => void;
   onExportRecoveryPhrase: () => void | Promise<void>;
   onIssuePartnerInvite: () => void | Promise<void>;
+  onLoadDevices: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onOfferCTAPress: (offer: ResolvedBillingOffer) => void;
@@ -61,6 +69,7 @@ export type BackupSyncFlowScreenProps = {
   onRetryPlanCheck: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
+  onRemoveDevice: (deviceID: string) => void | Promise<void>;
   onRestore: () => void | Promise<void>;
   onSyncNow: () => void | Promise<void>;
   presentation: BackupSyncSetupPresentation;
@@ -73,6 +82,7 @@ export type BackupSyncFlowScreenProps = {
   pendingPartnerInviteToken: string;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
+  showDeviceSection: boolean;
   showPartnerOwnerControls: boolean;
   showPartnerSection: boolean;
   partnerStatusMessage: string;
@@ -99,11 +109,15 @@ export function BackupSyncFlowScreen({
   authPasswordValue,
   billingOffers,
   confirmActionLabel,
+  deviceErrorMessage,
+  deviceListItems,
+  deviceStatusMessage,
   errorPresentation,
   generatedRecoveryCode,
   generatedRecoveryPhrase,
   hasSyncSession,
   hasStoredSyncSecrets,
+  isDeviceBusy,
   isExportingRecoveryPhrase,
   isPartnerBusy,
   isPreparing,
@@ -118,6 +132,7 @@ export function BackupSyncFlowScreen({
   onEndpointChange,
   onExportRecoveryPhrase,
   onIssuePartnerInvite,
+  onLoadDevices,
   onLogin,
   onModeSelect,
   onOfferCTAPress,
@@ -132,6 +147,7 @@ export function BackupSyncFlowScreen({
   onRetryPlanCheck,
   onRecoveryPhraseChange,
   onRegister,
+  onRemoveDevice,
   onRestore,
   onSyncNow,
   presentation,
@@ -144,6 +160,7 @@ export function BackupSyncFlowScreen({
   pendingPartnerInviteToken,
   preferences,
   recoveryPhraseValue,
+  showDeviceSection,
   showPartnerOwnerControls,
   showPartnerSection,
   partnerStatusMessage,
@@ -163,6 +180,7 @@ export function BackupSyncFlowScreen({
   const accountSecurityCopy = selectAccountSecurityCopy(language);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const totpCopy = selectTOTPCopy(language);
+  const deviceCopy = getDeviceCopy(language);
   return (
     <ScreenScaffold
       description={viewData.subtitle}
@@ -242,6 +260,17 @@ export function BackupSyncFlowScreen({
             testID="backup-sync-account-security-link"
             variant="secondary"
           />
+          {showDeviceSection ? (
+            <SettingsSyncDevicesSection
+              copy={deviceCopy}
+              devices={deviceListItems}
+              errorMessage={deviceErrorMessage}
+              isBusy={isDeviceBusy}
+              onLoadDevices={onLoadDevices}
+              onRemoveDevice={onRemoveDevice}
+              statusMessage={deviceStatusMessage}
+            />
+          ) : null}
           {showPartnerSection ? (
             <SettingsPartnerAccessSection
               copy={partnerCopy}

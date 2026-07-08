@@ -19,8 +19,10 @@ import {
   connectSyncAccount,
   disconnectSyncAccount,
   finalizeSyncSessionAfterTOTP,
+  listSyncDevices,
   loadConnectedSyncCapabilities,
   recoverSyncAccess,
+  removeSyncDevice,
   requiresUploadOverBackupConfirmation,
   runSyncRestore,
   runSyncUpload,
@@ -1118,6 +1120,8 @@ function createAPIClientMock(
     getCapabilities: jest.fn(),
     getRecoveryKey: jest.fn(),
     attachDevice: jest.fn(),
+    listDevices: jest.fn(),
+    removeDevice: jest.fn(),
     // Default to "no remote backup yet" so fresh-generation upload tests pass
     // the upload-over-backup probe without an explicit override.
     getBlob: jest
@@ -1388,5 +1392,218 @@ describe("finalizeSyncSessionAfterTOTP", () => {
     );
 
     expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+});
+
+describe("sync device management", () => {
+  const selfHostedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted" as const,
+    endpointInput: "192.168.1.20:8080",
+    normalizedEndpoint: "http://192.168.1.20:8080",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+  };
+  const managedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    normalizedEndpoint: "https://sync.ovumcy.cloud",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+  };
+
+  it("lists devices for a self-hosted session and reports this install's device id", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const listDevices = jest.fn().mockResolvedValue({
+      ok: true,
+      devices: [
+        {
+          deviceID: preparedSecrets.record.device.deviceID,
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-03-19T08:00:00.000Z",
+          lastSeenAt: "2026-03-20T08:00:00.000Z",
+        },
+        {
+          deviceID: "device-2",
+          deviceLabel: "Old tablet",
+          createdAt: "2026-03-20T09:00:00.000Z",
+          lastSeenAt: "2026-03-20T09:30:00.000Z",
+        },
+      ],
+    });
+    const apiClientFactory = jest
+      .fn()
+      .mockReturnValue(createAPIClientMock({ listDevices }));
+
+    const result = await listSyncDevices(
+      secretStore,
+      selfHostedPreferences,
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      devices: [
+        expect.objectContaining({
+          deviceID: preparedSecrets.record.device.deviceID,
+        }),
+        expect.objectContaining({ deviceID: "device-2" }),
+      ],
+      currentDeviceID: preparedSecrets.record.device.deviceID,
+    });
+    expect(listDevices).toHaveBeenCalledWith("session-1");
+  });
+
+  it("lists devices in managed mode through a bridge-minted sync session", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const listDevices = jest.fn().mockResolvedValue({ ok: true, devices: [] });
+    const apiClientFactory = jest
+      .fn()
+      .mockReturnValue(createAPIClientMock({ listDevices }));
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({
+          ok: true,
+          session: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+        createSyncSession: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "sync-account-1",
+            sessionToken: "bridged-session-1",
+            sessionExpiresAt: "2026-03-20T09:00:00.000Z",
+          },
+        }),
+      }),
+    );
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      apiClientFactory,
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      devices: [],
+      currentDeviceID: preparedSecrets.record.device.deviceID,
+    });
+    expect(listDevices).toHaveBeenCalledWith("bridged-session-1");
+  });
+
+  it("flags removal of the current device and passes the id to the server", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const removeDevice = jest.fn().mockResolvedValue({ ok: true });
+    const apiClientFactory = jest
+      .fn()
+      .mockReturnValue(createAPIClientMock({ removeDevice }));
+
+    const otherResult = await removeSyncDevice(
+      secretStore,
+      selfHostedPreferences,
+      "device-2",
+      apiClientFactory,
+    );
+    const currentResult = await removeSyncDevice(
+      secretStore,
+      selfHostedPreferences,
+      preparedSecrets.record.device.deviceID,
+      apiClientFactory,
+    );
+
+    expect(otherResult).toEqual({ ok: true, removedCurrentDevice: false });
+    expect(currentResult).toEqual({ ok: true, removedCurrentDevice: true });
+    expect(removeDevice).toHaveBeenNthCalledWith(1, "session-1", {
+      deviceID: "device-2",
+    });
+    expect(removeDevice).toHaveBeenNthCalledWith(2, "session-1", {
+      deviceID: preparedSecrets.record.device.deviceID,
+    });
+  });
+
+  it("keeps device_not_found distinct and collapses rate_limited to generic", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const removeDevice = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, errorCode: "device_not_found" })
+      .mockResolvedValueOnce({ ok: false, errorCode: "rate_limited" });
+    const apiClientFactory = jest
+      .fn()
+      .mockReturnValue(createAPIClientMock({ removeDevice }));
+
+    await expect(
+      removeSyncDevice(
+        secretStore,
+        selfHostedPreferences,
+        "device-9",
+        apiClientFactory,
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "device_not_found" });
+    await expect(
+      removeSyncDevice(
+        secretStore,
+        selfHostedPreferences,
+        "device-9",
+        apiClientFactory,
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+  });
+
+  it("fails with not_connected before any network call when no sync session exists", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn();
+
+    const result = await listSyncDevices(
+      secretStore,
+      selfHostedPreferences,
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
   });
 });
