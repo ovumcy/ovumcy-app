@@ -19,8 +19,8 @@
     "e2e:web": "playwright test",
     "mutation": "stryker run",
     "deadcode": "knip",
-    "eas-build-pre-install": "node scripts/verify-entitlement-pubkeys.mjs --eas-hook",
-    "deploy": "node scripts/verify-entitlement-pubkeys.mjs --production && npm run export:web && npx eas-cli@18.4.0 deploy"
+    "eas-build-pre-install": "node scripts/verify-entitlement-pubkeys.mjs --eas-hook && node scripts/verify-base-urls.mjs --eas-hook",
+    "deploy": "node scripts/verify-entitlement-pubkeys.mjs --production && node scripts/verify-base-urls.mjs --production && node scripts/export-web.mjs && npx eas-cli@18.4.0 deploy"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

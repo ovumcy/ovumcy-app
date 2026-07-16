@@ -168,6 +168,18 @@ follows from that:
   instantly re-lock all six premium gates on a paying device, at the cost of a revoked
   plan keeping its local unlocks for up to 72 hours while the device cannot reach
   billing truth.
+- **Compile-time sync/managed base-URL overrides are dev-only and release-guarded.**
+  `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` / `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL` let a
+  local build point at a self-hosted dev stack. A release guard
+  (`scripts/verify-base-urls.mjs`, run as the `eas-build-pre-install` hook on the
+  production EAS profile and at the start of `npm run deploy`) fails the build
+  unless both are unset or exactly the canonical `sync.ovumcy.cloud` /
+  `managed.ovumcy.cloud` defaults in the ambient process environment, and the
+  deploy web export itself runs through `scripts/export-web.mjs`, which disables
+  Expo's dotenv loading (`EXPO_NO_DOTENV=1`) and clears the bundler cache (a
+  stale Metro cache can re-inject values inlined under an earlier environment)
+  — so a stray `.env.local` override on the deploying machine cannot leak into
+  the exported web artifact either.
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
