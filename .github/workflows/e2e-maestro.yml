@@ -95,9 +95,22 @@ jobs:
           echo "APK_PATH=$(find android -path '*/outputs/apk/debug/*.apk' | head -1)" >> "$GITHUB_ENV"
 
       - name: Install Maestro CLI
+        # Pinned release + SHA-256 verification instead of `curl | bash` of an
+        # unpinned installer, so the downloaded artifact cannot change under us
+        # (OpenSSF Scorecard: Pinned-Dependencies). Bump MAESTRO_VERSION and
+        # MAESTRO_SHA256 together from the release's checksums_sha256.txt.
+        env:
+          MAESTRO_VERSION: "2.6.1"
+          MAESTRO_SHA256: "3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b"
         run: |
-          curl -Ls "https://get.maestro.mobile.dev" | bash
-          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          url="https://github.com/mobile-dev-inc/maestro/releases/download/cli-${MAESTRO_VERSION}/maestro.zip"
+          curl -fLsS -o maestro.zip "$url"
+          echo "${MAESTRO_SHA256}  maestro.zip" | sha256sum -c -
+          unzip -q maestro.zip -d "$RUNNER_TEMP/maestro-dist"
+          bindir="$(dirname "$(find "$RUNNER_TEMP/maestro-dist" -type f -name maestro -path '*/bin/*' | head -1)")"
+          test -n "$bindir"
+          echo "$bindir" >> "$GITHUB_PATH"
 
       - name: Run Maestro flows on an emulator
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
