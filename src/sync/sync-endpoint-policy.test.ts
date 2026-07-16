@@ -119,6 +119,38 @@ describe("sync-endpoint-policy", () => {
     });
   });
 
+  // Regression: WHATWG URL yields hostname "[::1]" (bracketed) for an IPv6
+  // loopback literal, not "::1". A bare string-equality check against "::1"
+  // never matched, permanently sending IPv6-loopback self-hosted endpoints
+  // down the public-http rejection path.
+  it("accepts IPv6 loopback http endpoints", () => {
+    const result = normalizeSyncEndpoint(
+      "self_hosted",
+      "http://[::1]:8080/api/",
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        baseURL: "http://[::1]:8080/api",
+        host: "[::1]",
+        isLocalNetwork: true,
+        isSecure: false,
+      }),
+    });
+  });
+
+  it("rejects insecure public http for link-local (169.254.0.0/16) addresses", () => {
+    // 169.254.0.0/16 is deliberately not classified as local-network — see
+    // the comment on isPrivateIPv4. Pin the fail-closed behavior.
+    const result = normalizeSyncEndpoint("self_hosted", "http://169.254.1.5:8080");
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "insecure_public_http",
+    });
+  });
+
   it("defaults the self-hosted pin set to null when no options are supplied", () => {
     const result = normalizeSyncEndpoint("self_hosted", "sync.example.com");
 

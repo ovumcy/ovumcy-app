@@ -172,7 +172,7 @@ function isLocalNetworkHost(host: string): boolean {
     return false;
   }
 
-  if (host === "localhost" || host === "::1") {
+  if (host === "localhost" || unbracketIPv6Host(host) === "::1") {
     return true;
   }
 
@@ -188,6 +188,16 @@ function isLocalNetworkHost(host: string): boolean {
   // at a public IP — that would let the policy approve plaintext HTTP against
   // a non-local host. Require an exact dotted-quad and bucket by parsed octets.
   return isPrivateIPv4(host);
+}
+
+// WHATWG URL wraps IPv6 literals in brackets — `new URL("http://[::1]").hostname`
+// is `"[::1]"`, not `"::1"` — so a bare `host === "::1"` comparison against
+// `parsed.hostname` can never match and the loopback branch is permanently
+// dead. Strip one matching bracket pair before comparing.
+function unbracketIPv6Host(host: string): string {
+  return host.startsWith("[") && host.endsWith("]")
+    ? host.slice(1, -1)
+    : host;
 }
 
 function isPrivateIPv4(host: string): boolean {
@@ -219,5 +229,9 @@ function isPrivateIPv4(host: string): boolean {
   if (first === 172 && second >= 16 && second <= 31) {
     return true;
   }
+  // 169.254.0.0/16 (link-local/APIPA) is deliberately NOT treated as local:
+  // it is unrouted and typically signals a misconfigured interface rather
+  // than an intentional LAN sync server, so self-hosted endpoints on it stay
+  // https-required (fail closed) instead of silently allowing plaintext HTTP.
   return false;
 }

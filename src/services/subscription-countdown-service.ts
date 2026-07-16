@@ -44,14 +44,16 @@ export function describeSubscriptionCountdown(
 
   if (Number.isNaN(endMs) || Number.isNaN(nowMs)) {
     // Unparseable timestamps: surface the plan status without a countdown
-    // rather than inventing a day count. cancelAtPeriodEnd takes priority
-    // over trialing so that a canceling subscription is never misreported
-    // as active.
-    const kind = subscription.cancelAtPeriodEnd
-      ? "canceling"
-      : subscription.status === "trialing"
+    // rather than inventing a day count. Ordering mirrors the live-countdown
+    // branch below: trialing takes priority over cancelAtPeriodEnd so a
+    // trial that will not renew is still reported as "trialing", not
+    // "canceling" (reserved for paid plans set not to auto-renew).
+    const kind =
+      subscription.status === "trialing"
         ? "trialing"
-        : "active";
+        : subscription.cancelAtPeriodEnd
+          ? "canceling"
+          : "active";
     return {
       kind,
       daysRemaining: null,

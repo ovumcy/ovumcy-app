@@ -124,6 +124,20 @@ describe("describeSubscriptionCountdown", () => {
     expect(result.willRenew).toBe(true);
   });
 
+  it("prioritizes trialing over cancelAtPeriodEnd when timestamps are unparseable (matches the live-countdown branch)", () => {
+    // Regression: the unparseable-date fallback used to order
+    // cancelAtPeriodEnd above trialing, contradicting the live-countdown
+    // branch's "trial kind takes priority" rule above. A trialing plan set
+    // not to renew must report kind="trialing" here too.
+    const result = describeSubscriptionCountdown(
+      sub({ status: "trialing", currentPeriodEndsAt: "not-a-date", cancelAtPeriodEnd: true }),
+      "2026-06-01T00:00:00.000Z",
+    );
+    expect(result.kind).toBe("trialing");
+    expect(result.daysRemaining).toBeNull();
+    expect(result.willRenew).toBe(false);
+  });
+
   it("preserves kind='canceling' with null days when timestamps are unparseable and cancelAtPeriodEnd=true", () => {
     // Previously this collapsed to kind="active"; now cancelAtPeriodEnd is respected
     // even when the period end timestamp is unparseable.
