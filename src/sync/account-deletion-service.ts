@@ -42,11 +42,21 @@ export type AccountDeletionViewModel = {
   // in self-hosted mode). When false, deletion is local-only: no network
   // call happens and the flow reduces to the local wipe.
   hasConnectedSession: boolean;
-  // requiresSubscriptionWarning is true when the managed billing snapshot
-  // reports a non-expired paid/trial state (trialing, active, or canceling —
-  // i.e. anything describeSubscriptionCountdown does NOT classify as "none"
-  // or "ended"). The UI must show the Play Store cancellation warning and
-  // require a distinct, deliberate acknowledgment before deleting.
+  // requiresSubscriptionWarning is true only when the managed billing
+  // snapshot reports a subscription still on the hook for real charges —
+  // describeSubscriptionCountdown kind "active" or "canceling". Pure
+  // "trialing" is deliberately EXCLUDED even though describeSubscriptionCountdown
+  // treats it as a live, non-"none"/"ended" state: the managed backend starts
+  // every account on a 30-day trial with no payment method, and in-app
+  // purchase is not possible on-device until Google Play Billing (the first
+  // planned IAP channel — see README.md's "Public Alpha Expectations")
+  // lands, so a trial can never actually be store/paid-backed today.
+  // ManagedCloudActiveSubscription.source is parsed off the wire but has no
+  // documented store/payment-source meaning and nothing else in the app
+  // branches on it — once Play Billing ships a real store-source signal,
+  // revisit whether a store-backed trial should also warn. The UI must show
+  // the store-neutral cancellation warning and require a distinct,
+  // deliberate acknowledgment before deleting.
   requiresSubscriptionWarning: boolean;
 };
 
@@ -75,9 +85,7 @@ export function buildAccountDeletionViewModel(input: {
     mode: input.preferences.mode,
     hasConnectedSession: input.hasConnectedSession,
     requiresSubscriptionWarning:
-      countdown.kind === "trialing" ||
-      countdown.kind === "active" ||
-      countdown.kind === "canceling",
+      countdown.kind === "active" || countdown.kind === "canceling",
   };
 }
 

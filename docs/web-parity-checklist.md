@@ -348,7 +348,7 @@ that owns the canonical web UX).
     account and all its server data, then wipes local data the same way the
     danger-zone `Clear all local data` flow does; a live managed subscription
     still requires a separate, distinctly-worded acknowledgment that deleting
-    the account does not cancel Google Play billing;
+    the account does not cancel an active Ovumcy Cloud subscription;
   - free offline JSON import (`src/services/import-service.ts` + the settings
     `Restore from backup` section) mirrors web's `POST /api/v1/imports/json`
     settings-import capability with the same strictly additive semantics; the

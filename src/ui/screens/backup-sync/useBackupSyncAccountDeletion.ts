@@ -11,10 +11,13 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 
 /**
  * handleDeleteAccount drives the irreversible "Delete account" flow:
- * device-auth challenge -> standard destructive confirm -> (only when a
- * subscription is active) a SECOND, distinctly-worded confirm that must be
- * read and accepted separately, warning that deleting the account does not
- * cancel the Google Play subscription. A dismissal at any step is the safe
+ * device-auth challenge -> standard destructive confirm -> (only when the
+ * subscription is store/paid-backed, i.e. active or canceling — a pure
+ * trial never triggers this, see `buildAccountDeletionViewModel`) a SECOND,
+ * distinctly-worded confirm that must be read and accepted separately,
+ * warning that deleting the account does not cancel an active Ovumcy Cloud
+ * subscription. The copy stays store-neutral until Google Play Billing (the
+ * first planned IAP channel) lands. A dismissal at any step is the safe
  * answer and aborts with nothing changed, matching the confirm-dialog
  * invariant used everywhere else in this screen. The actual network call +
  * secrets/local-data teardown is delegated to `deleteOvumcyAccount`, which

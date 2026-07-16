@@ -65,19 +65,17 @@ function createManagedClientMock(
 }
 
 describe("buildAccountDeletionViewModel", () => {
-  it("requires the subscription warning while trialing, active, or canceling", () => {
+  it("requires the subscription warning only for a store/paid-backed subscription (active or canceling)", () => {
     const now = new Date("2026-06-01T00:00:00.000Z");
     const preferences = { ...createDefaultSyncPreferencesRecord(), mode: "managed" as const };
 
-    for (const status of ["trialing", "active"] as const) {
-      const viewModel = buildAccountDeletionViewModel({
-        hasConnectedSession: true,
-        preferences,
-        activeSubscription: createActiveSubscriptionFixture({ status }),
-        now,
-      });
-      expect(viewModel.requiresSubscriptionWarning).toBe(true);
-    }
+    const activeViewModel = buildAccountDeletionViewModel({
+      hasConnectedSession: true,
+      preferences,
+      activeSubscription: createActiveSubscriptionFixture({ status: "active" }),
+      now,
+    });
+    expect(activeViewModel.requiresSubscriptionWarning).toBe(true);
 
     // cancelAtPeriodEnd on a paid plan classifies as "canceling", which still
     // requires the warning: the subscription remains billable until period end.
@@ -92,8 +90,27 @@ describe("buildAccountDeletionViewModel", () => {
     expect(cancelingViewModel.requiresSubscriptionWarning).toBe(true);
   });
 
-  it("does not require the subscription warning with no subscription, an ended one, or self-hosted/local-only mode", () => {
+  // Trigger matrix (none/trialing/active/canceling/ended) below. "trialing" is
+  // deliberately a "false" case even though describeSubscriptionCountdown
+  // classifies it as a live, non-"none"/"ended" state: the managed backend
+  // starts every account on a 30-day trial with no payment method, and
+  // in-app purchase is not possible on-device until Google Play Billing (the
+  // first planned IAP channel — see README.md's "Public Alpha Expectations")
+  // lands, so a trial can never actually be store/paid-backed today. See the
+  // `requiresSubscriptionWarning` doc comment on `AccountDeletionViewModel`
+  // for why `ManagedCloudActiveSubscription.source` isn't used to distinguish
+  // a store-backed trial from a plain one.
+  it("does not require the subscription warning for a pure trial, no subscription, an ended one, or self-hosted/local-only mode", () => {
     const now = new Date("2026-06-01T00:00:00.000Z");
+
+    expect(
+      buildAccountDeletionViewModel({
+        hasConnectedSession: true,
+        preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+        activeSubscription: createActiveSubscriptionFixture({ status: "trialing" }),
+        now,
+      }).requiresSubscriptionWarning,
+    ).toBe(false);
 
     expect(
       buildAccountDeletionViewModel({
