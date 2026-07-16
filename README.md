@@ -154,7 +154,7 @@ What is already true on `main`:
 What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
-- App Store or Google Play in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot (premium UI is wired, the purchase path is not);
+- in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot — the decided monetization channel order is Google Play Billing first, then Lemon Squeezy web checkout, then App Store (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); premium UI is wired, but in-app premium purchase is **not possible** on-device until Google Play Billing lands;
 - a no-account guest landing for partner sharing — today the partner still needs an Ovumcy Cloud sign-in step before the read-only shared view opens;
 - release-store readiness for broad end-user distribution;
 - a standalone sync server in this repository.
@@ -295,7 +295,7 @@ Done on `main`:
 
 Near-term:
 
-- App Store and Google Play in-app purchase integration so a real subscription drives the managed billing snapshot;
+- Google Play Billing integration (the decided first monetization channel — see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)) so a real subscription drives the managed billing snapshot, with in-app premium purchase not possible until this lands; Lemon Squeezy web checkout (already built server-side, second channel, not active in production) and App Store integration (third channel) follow in later phases;
 - finishing the no-account guest acceptance flow so a partner can install the app and redeem an invite link straight into the read-only shared view without an Ovumcy Cloud sign-in step;
 - TestFlight and Google Play internal-testing readiness so end-to-end premium can be validated on real devices with sandbox purchases;
 - expanding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
