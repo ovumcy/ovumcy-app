@@ -154,3 +154,35 @@ export const spacing = {
   lg: 24,
   xl: 32,
 };
+
+/**
+ * Dynamic Type (OS font-scaling) policy — single source of truth.
+ *
+ * OS font scaling stays ENABLED everywhere. React Native's `allowFontScaling`
+ * default (`true`) is never turned off in this app, so reading/body text
+ * honours the user's system font-size preference in full and takes no cap at
+ * all. These constants are the *only* exception: dense or fixed-geometry
+ * surfaces cap `maxFontSizeMultiplier` so that a very large system font
+ * degrades gracefully (shrinks/wraps inside its own box) instead of
+ * overlapping neighbours or breaking a fixed grid. Caps are kept as generous
+ * as each layout allows.
+ *
+ * Apply via `maxFontSizeMultiplier={fontScale.<tier>}` on the constrained
+ * <Text>. Never disable `allowFontScaling` to "fix" a layout — cap it here
+ * instead so the choice is visible, named, and consistent.
+ */
+export const fontScale = {
+  /**
+   * Fixed-geometry grids and focal figures whose container cannot grow with the
+   * text: the calendar month-grid cells and weekday/today chrome, the stats bar
+   * chart columns, and the dashboard cycle-hero number. Tight, but still allows
+   * a meaningful bump on top of the shrink-to-fit these surfaces already use.
+   */
+  dense: 1.3,
+  /**
+   * Compact single-line chrome — status/badge pills, toggle state chips, slider
+   * value read-outs, and small secondary captions — that must stay on one line
+   * without overlapping. Grows more than `dense` surfaces but stays bounded.
+   */
+  compact: 1.5,
+} as const;

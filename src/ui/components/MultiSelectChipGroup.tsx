@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type MultiSelectChipGroupProps<T extends string> = {
@@ -71,8 +71,18 @@ export function MultiSelectChipGroup<T extends string>({
             ]}
             testID={testIDPrefix ? `${testIDPrefix}-${option.value}` : undefined}
           >
-            {option.icon ? <Text style={styles.icon}>{option.icon}</Text> : null}
-            <Text style={[styles.label, isActive ? styles.labelActive : null]}>
+            {option.icon ? (
+              <Text
+                maxFontSizeMultiplier={fontScale.compact}
+                style={styles.icon}
+              >
+                {option.icon}
+              </Text>
+            ) : null}
+            <Text
+              maxFontSizeMultiplier={fontScale.compact}
+              style={[styles.label, isActive ? styles.labelActive : null]}
+            >
               {option.label}
             </Text>
           </Pressable>

@@ -203,6 +203,7 @@ export function SettingsSyncSetupSection({
           <View style={styles.formGroup}>
             <Text style={styles.fieldLabel}>{viewData.endpointLabel}</Text>
             <AppTextInput
+              accessibilityLabel={viewData.endpointLabel}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!presentation.accountActionsDisabled}
@@ -225,6 +226,7 @@ export function SettingsSyncSetupSection({
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.deviceLabel}</Text>
           <AppTextInput
+            accessibilityLabel={viewData.deviceLabel}
             autoCapitalize="words"
             autoCorrect={false}
             editable={!presentation.accountActionsDisabled}
@@ -360,6 +362,7 @@ export function SettingsSyncSetupSection({
                 <View style={styles.formGroup}>
                   <Text style={styles.fieldLabel}>{viewData.loginLabel}</Text>
                   <AppTextInput
+                    accessibilityLabel={viewData.loginLabel}
                     autoCapitalize="none"
                     autoComplete="username"
                     autoCorrect={false}
@@ -381,6 +384,7 @@ export function SettingsSyncSetupSection({
                 <View style={styles.formGroup}>
                   <Text style={styles.fieldLabel}>{viewData.passwordLabel}</Text>
                   <AppTextInput
+                    accessibilityLabel={viewData.passwordLabel}
                     autoCapitalize="none"
                     autoComplete="current-password"
                     autoCorrect={false}
@@ -414,6 +418,7 @@ export function SettingsSyncSetupSection({
                         {viewData.recoveryPhraseInputLabel}
                       </Text>
                       <AppTextInput
+                        accessibilityLabel={viewData.recoveryPhraseInputLabel}
                         autoCapitalize="none"
                         autoCorrect={false}
                         editable={!presentation.accountActionsDisabled}

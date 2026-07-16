@@ -2,7 +2,7 @@ import Slider from "@react-native-community/slider";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 type LabeledSliderFieldProps = {
@@ -39,7 +39,11 @@ export function LabeledSliderField({
         <Text style={[styles.label, compact ? styles.labelCompact : null]}>
           {label}
         </Text>
-        <Text style={[styles.inlineValue, compact ? styles.inlineValueCompact : null]}>
+        <Text
+          maxFontSizeMultiplier={fontScale.compact}
+          numberOfLines={1}
+          style={[styles.inlineValue, compact ? styles.inlineValueCompact : null]}
+        >
           {value}
           {valueSuffix}
         </Text>
@@ -59,11 +63,19 @@ export function LabeledSliderField({
       />
       {showRange ? (
         <View style={styles.rangeRow}>
-          <Text style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}>
+          <Text
+            maxFontSizeMultiplier={fontScale.compact}
+            numberOfLines={1}
+            style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}
+          >
             {minimumValue}
             {valueSuffix}
           </Text>
-          <Text style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}>
+          <Text
+            maxFontSizeMultiplier={fontScale.compact}
+            numberOfLines={1}
+            style={[styles.rangeLabel, compact ? styles.rangeLabelCompact : null]}
+          >
             {maximumValue}
             {valueSuffix}
           </Text>

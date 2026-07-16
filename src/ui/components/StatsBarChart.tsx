@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 
 export type StatsBarChartPoint = {
@@ -84,7 +84,11 @@ export function StatsBarChart({
 
             return (
               <View key={point.key} style={styles.column}>
-                <Text style={styles.valueLabel}>
+                <Text
+                  maxFontSizeMultiplier={fontScale.dense}
+                  numberOfLines={1}
+                  style={styles.valueLabel}
+                >
                   {formatValue(point.value, valueDecimals, valueSuffix)}
                 </Text>
                 <View style={styles.barTrack}>
@@ -98,7 +102,12 @@ export function StatsBarChart({
                     ]}
                   />
                 </View>
-                <Text style={styles.axisLabel}>{point.label}</Text>
+                <Text
+                  maxFontSizeMultiplier={fontScale.dense}
+                  style={styles.axisLabel}
+                >
+                  {point.label}
+                </Text>
               </View>
             );
           })}

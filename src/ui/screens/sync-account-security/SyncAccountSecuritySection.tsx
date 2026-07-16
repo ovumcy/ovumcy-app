@@ -176,6 +176,7 @@ export function SyncAccountSecuritySection({
           {copy.changePassword.currentPasswordLabel}
         </Text>
         <AppTextInput
+          accessibilityLabel={copy.changePassword.currentPasswordLabel}
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onChangeCurrentPasswordChange}
@@ -188,6 +189,7 @@ export function SyncAccountSecuritySection({
           {copy.changePassword.newPasswordLabel}
         </Text>
         <AppTextInput
+          accessibilityLabel={copy.changePassword.newPasswordLabel}
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onChangeNewPasswordChange}
@@ -226,6 +228,7 @@ export function SyncAccountSecuritySection({
               {copy.forgotPassword.loginLabel}
             </Text>
             <AppTextInput
+              accessibilityLabel={copy.forgotPassword.loginLabel}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
@@ -238,6 +241,7 @@ export function SyncAccountSecuritySection({
               {copy.forgotPassword.recoveryCodeLabel}
             </Text>
             <AppTextInput
+              accessibilityLabel={copy.forgotPassword.recoveryCodeLabel}
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={onForgotRecoveryCodeChange}
@@ -278,6 +282,7 @@ export function SyncAccountSecuritySection({
               {copy.forgotPassword.newPasswordLabel}
             </Text>
             <AppTextInput
+              accessibilityLabel={copy.forgotPassword.newPasswordLabel}
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={onForgotNewPasswordChange}
@@ -332,6 +337,7 @@ export function SyncAccountSecuritySection({
           {copy.regenerate.currentPasswordLabel}
         </Text>
         <AppTextInput
+          accessibilityLabel={copy.regenerate.currentPasswordLabel}
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={onRegeneratePasswordChange}
@@ -393,6 +399,7 @@ export function SyncAccountSecuritySection({
                 {totpCopy.enroll.currentPasswordLabel}
               </Text>
               <AppTextInput
+                accessibilityLabel={totpCopy.enroll.currentPasswordLabel}
                 autoCapitalize="none"
                 autoCorrect={false}
                 onChangeText={onTOTPEnrollPasswordChange}
@@ -449,6 +456,7 @@ export function SyncAccountSecuritySection({
               </View>
               <Text style={styles.fieldLabel}>{totpCopy.enroll.codeLabel}</Text>
               <AppTextInput
+                accessibilityLabel={totpCopy.enroll.codeLabel}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="number-pad"
@@ -498,6 +506,7 @@ export function SyncAccountSecuritySection({
               {totpCopy.disable.currentPasswordLabel}
             </Text>
             <AppTextInput
+              accessibilityLabel={totpCopy.disable.currentPasswordLabel}
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={onTOTPDisablePasswordChange}
@@ -508,6 +517,7 @@ export function SyncAccountSecuritySection({
             />
             <Text style={styles.fieldLabel}>{totpCopy.disable.codeLabel}</Text>
             <AppTextInput
+              accessibilityLabel={totpCopy.disable.codeLabel}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="number-pad"

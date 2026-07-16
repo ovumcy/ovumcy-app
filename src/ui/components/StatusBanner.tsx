@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { getStatusBannerCopy } from "../../i18n/status-banner-copy";
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
@@ -69,6 +69,8 @@ export function StatusBanner({
     >
       <View style={styles.headerRow}>
         <Text
+          maxFontSizeMultiplier={fontScale.compact}
+          numberOfLines={1}
           style={[
             styles.badge,
             tone === "success"
@@ -92,7 +94,12 @@ export function StatusBanner({
             style={styles.dismissButton}
             testID={testID ? `${testID}-dismiss` : undefined}
           >
-            <Text style={styles.dismissButtonLabel}>×</Text>
+            <Text
+              maxFontSizeMultiplier={fontScale.dense}
+              style={styles.dismissButtonLabel}
+            >
+              ×
+            </Text>
           </Pressable>
         ) : null}
       </View>

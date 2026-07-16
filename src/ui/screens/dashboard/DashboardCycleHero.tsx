@@ -4,7 +4,7 @@ import Svg, { Circle, Path } from "react-native-svg";
 
 import type { DashboardCycleHeroViewData } from "../../../services/dashboard-view-service";
 import type { AppThemeColors } from "../../theme/tokens";
-import { spacing } from "../../theme/tokens";
+import { fontScale, spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
 
 type DashboardCycleHeroProps = {
@@ -141,6 +141,7 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
         >
           <Text
             adjustsFontSizeToFit
+            maxFontSizeMultiplier={fontScale.dense}
             minimumFontScale={0.85}
             numberOfLines={1}
             style={styles.centerTitle}
@@ -148,11 +149,17 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
           >
             {viewData.title}
           </Text>
-          <Text style={styles.centerValue} testID="dashboard-cycle-hero-value">
+          <Text
+            maxFontSizeMultiplier={fontScale.dense}
+            style={styles.centerValue}
+            testID="dashboard-cycle-hero-value"
+          >
             {viewData.value}
           </Text>
           {emphasizedPhaseLabel ? (
             <Text
+              maxFontSizeMultiplier={fontScale.dense}
+              numberOfLines={1}
               style={[
                 styles.centerPhaseLabel,
                 viewData.currentTone === "ovulation"
@@ -163,7 +170,11 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
               {emphasizedPhaseLabel}
             </Text>
           ) : null}
-          <Text style={styles.centerDetail} testID="dashboard-cycle-hero-detail">
+          <Text
+            maxFontSizeMultiplier={fontScale.dense}
+            style={styles.centerDetail}
+            testID="dashboard-cycle-hero-detail"
+          >
             {viewData.detail}
           </Text>
         </View>
@@ -189,6 +200,7 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
                 <View style={resolvePhaseDotStyle(styles, phaseCard.tone)} />
                 <Text
                   adjustsFontSizeToFit
+                  maxFontSizeMultiplier={fontScale.dense}
                   minimumFontScale={0.85}
                   numberOfLines={1}
                   style={[
@@ -199,7 +211,13 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
                   {phaseCard.label}
                 </Text>
               </View>
-              <Text style={styles.phaseCardRange}>{phaseCard.rangeLabel}</Text>
+              <Text
+                maxFontSizeMultiplier={fontScale.dense}
+                numberOfLines={1}
+                style={styles.phaseCardRange}
+              >
+                {phaseCard.rangeLabel}
+              </Text>
             </View>
           ))}
         </View>

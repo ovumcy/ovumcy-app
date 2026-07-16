@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type BinaryToggleCardProps = {
@@ -52,7 +52,15 @@ export function BinaryToggleCard({
               {icon ? `${icon} ` : ""}
               {label}
             </Text>
-            {stateText ? <Text style={styles.stateBadge}>{stateText}</Text> : null}
+            {stateText ? (
+              <Text
+                maxFontSizeMultiplier={fontScale.compact}
+                numberOfLines={1}
+                style={styles.stateBadge}
+              >
+                {stateText}
+              </Text>
+            ) : null}
           </View>
           {showDescriptionInside && showDescription ? (
             <Text style={[styles.description, compact ? styles.descriptionCompact : null]}>

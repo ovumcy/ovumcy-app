@@ -45,6 +45,7 @@ export function SettingsDangerZoneSection({
         <View style={styles.formGroup}>
           <Text style={styles.label}>{viewData.confirmationLabel}</Text>
           <AppTextInput
+            accessibilityLabel={viewData.confirmationLabel}
             autoCapitalize="characters"
             autoCorrect={false}
             onChangeText={onChangeConfirmationValue}
