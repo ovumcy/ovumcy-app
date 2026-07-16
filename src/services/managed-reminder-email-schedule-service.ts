@@ -135,6 +135,7 @@ function normalizeReminderLocale(locale: string | undefined): string {
     case "es":
     case "de":
     case "fr":
+    case "it":
       return subtag;
     default:
       return "en";
