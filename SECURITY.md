@@ -207,6 +207,17 @@ follows from that:
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
+- **Partner invite links are delivered over a squattable custom scheme (planned
+  migration).** Invite URLs are currently minted on the `ovumcy://` custom scheme,
+  which any Android app can also register, so the delivery path (not the token
+  handling) is interceptable. The blast radius is bounded: the invite token is a
+  one-time, 7-day-TTL redemption coupon that only works when POSTed with a valid
+  managed session, is scrubbed from the URL/route on capture and never logged or
+  persisted, and even a successful wrong-party redemption yields only a
+  minimized, read-only projection (pregnancy-test stripped) that the owner sees
+  and can revoke. Migrating invite links to platform-verified Android App Links /
+  iOS Universal Links closes the interception gap; the threat analysis and the
+  ready-to-apply Android/iOS/managed plan are in `docs/deep-links.md`.
 
 ## Test Enforcement Matrix
 
