@@ -316,6 +316,15 @@ that owns the canonical web UX).
   explicit, not silent.
 - Mobile bottom tabs remain a platform-specific navigation deviation from the
   web nav chrome.
+- The app's projected-period-as-menstrual window (the "still bleeding" phase read
+  for an unlogged early-cycle day in `detectCurrentPhase`,
+  `src/services/cycle-history-service.ts`) uses the profile-configured
+  `periodLength`, whereas web uses `stats.AveragePeriodLength` — a rolling average
+  of the last six observed period lengths — with the configured value only as a
+  bootstrap fallback. For owners whose observed period length varies, the
+  menstrual→follicular boundary may differ by a day or two. Porting the rolling
+  period-length average is a possible future parity task, deliberately not done
+  here because it would be new prediction math beyond this change's scope.
 
 ## Current App State
 
@@ -355,7 +364,32 @@ that owns the canonical web UX).
     app adds a two-phase preview → confirm step on top of web's one-shot form,
     and additionally restores the backup's profile when the local profile is
     still pristine (untouched defaults);
-  - mobile bottom tabs remain platform-native chrome.
+  - mobile bottom tabs remain platform-native chrome;
+  - Stats "Current phase" detection (`detectCurrentPhase` in
+    `src/services/cycle-history-service.ts`) now matches web's phase
+    precedence (`resolveCyclePhase` / owner-surface `DetectCurrentPhase` in
+    `ovumcy-web/internal/services/cycles.go` and `cycle_baseline.go`):
+    `StatsPhase` gained a `fertile` member covering the fertility window
+    excluding the ovulation day itself, and an unlogged day still inside the
+    projected period window (cycle day within the period length of the
+    current anchor) now reads as `menstrual` instead of falling through to
+    `follicular`/`unknown`. `phaseLabels.fertile` / `phaseIcons.fertile`
+    (already shipped in all six locales) are reachable from the Stats screen.
+  - Dashboard cycle projection (`buildCurrentCycleProjection` in
+    `src/services/cycle-history-service.ts`) now mirrors web's
+    `DashboardUpcomingPredictions` forward-roll. After projecting the logged
+    anchor forward to the current cycle (`ProjectCycleStart`), the ovulation is
+    rolled forward by whole cycles (`ShiftCycleStartToFutureOvulation`) into a
+    separate `upcomingOvulationDate`, so a "next ovulation" value never resolves
+    to a past date. The current-cycle `ovulationDate` (phase ring, calendar and
+    doctor-PDF markers) and the logged anchor stay untouched — web keeps
+    `stats.OvulationDate` and `stats.LastPeriodStart` the same way. Pinned by the
+    shared golden-vector fixture's additive `projection` section
+    (`cycle-projection-reference.test.ts` ↔ web
+    `cycle_projection_reference_test.go`). Surfacing the upcoming-ovulation
+    **date** on the dashboard hero (web shows `DisplayOvulationDate`; the app hero
+    currently shows ovulation only as a phase-ring segment) remains a display-layer
+    follow-up — the value is now computed and pinned, not yet rendered as a date.
 
 ## Remaining Product Gaps
 

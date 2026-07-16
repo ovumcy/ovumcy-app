@@ -183,7 +183,10 @@ describe("cycle-history-service", () => {
     // > 28 (stale) and > 35 (looks long). Web computes DashboardCycleDayLooksLong
     // from the RAW day from the original anchor, so looksLong always implies
     // stale. The rolled anchor is still 2026-03-01 (day 10), next period
-    // 2026-03-29.
+    // 2026-03-29. Ovulation day 14 (2026-03-14) puts the fertility window on
+    // days 9-13, so rolled day 10 is inside it -> "fertile" (this test predates
+    // the fertile phase; day 10 was never actually "follicular", the pre-fix
+    // detectCurrentPhase just had no fertile branch to return instead).
     const profile = createProfileRecord({
       lastPeriodStart: "2026-02-01",
     });
@@ -195,7 +198,7 @@ describe("cycle-history-service", () => {
       expect.objectContaining({
         cycleAnchorDate: "2026-02-01",
         currentCycleDay: 10,
-        currentPhase: "follicular",
+        currentPhase: "fertile",
         isPredictionStale: true,
         cycleDayLooksLong: true,
         nextPeriodDate: "2026-03-29",
@@ -255,6 +258,120 @@ describe("cycle-history-service", () => {
         ovulationDate: null,
       }),
     );
+  });
+
+  describe("upcoming ovulation forward-roll (web DashboardUpcomingPredictions parity)", () => {
+    it("rolls the upcoming ovulation into the next cycle once the current cycle's ovulation has passed", () => {
+      // Anchor 2026-02-01, len 28, today 2026-03-25. The rolled current cycle is
+      // 2026-03-01..2026-03-29 with ovulation 2026-03-14 — already in the past
+      // (today is cycle day 25, luteal). ovulationDate stays the current-cycle
+      // date (2026-03-14) for the phase ring and the calendar/PDF markers, while
+      // upcomingOvulationDate rolls one whole cycle forward to 2026-04-11
+      // (2026-03-29 + 13), never surfacing a past date. Web parity:
+      // stats.OvulationDate vs DashboardUpcomingPredictions().OvulationDate.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+      const now = new Date(2026, 2, 25);
+      const history = buildCycleHistorySummary(profile, [], now);
+      const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+      expect(projection.currentPhase).toBe("luteal");
+      expect(projection.ovulationDate).toBe("2026-03-14");
+      expect(projection.upcomingOvulationDate).toBe("2026-04-11");
+    });
+
+    it("leaves the upcoming ovulation equal to the current cycle's ovulation while it is still in the future", () => {
+      // Anchor 2026-03-01, len 28, today 2026-03-05 (cycle day 5). Ovulation
+      // 2026-03-14 is still ahead of today, so no roll happens and the two
+      // ovulation values agree.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+      const now = new Date(2026, 2, 5);
+      const history = buildCycleHistorySummary(profile, [], now);
+      const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+      expect(projection.currentCycleDay).toBe(5);
+      expect(projection.ovulationDate).toBe("2026-03-14");
+      expect(projection.upcomingOvulationDate).toBe("2026-03-14");
+    });
+
+    it("surfaces no upcoming ovulation while predictions are paused by a positive pregnancy test", () => {
+      // Medical-safety invariant: the pregnancy pause blanks every prediction
+      // surface, upcomingOvulationDate included.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-05"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-02-10"),
+          pregnancyTest: "positive" as const,
+        },
+      ];
+      const now = new Date(2026, 1, 12);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.ovulationDate).toBeNull();
+      expect(projection.upcomingOvulationDate).toBeNull();
+    });
+  });
+
+  describe("detectCurrentPhase precedence (web resolveCyclePhase parity, cycles.go:419-446)", () => {
+    // Shared cycle: anchor 2026-03-01, default 28-day cycle / 5-day period,
+    // no completed cycles yet -> predictionCycleLength falls back to
+    // profile.cycleLength (28), ovulation day 14 (2026-03-14 = anchor + 13),
+    // fertility window starts day 9 (ovulation - 5 = 2026-03-09).
+    const anchor = "2026-03-01";
+
+    function projectForCycleDay(cycleDay: number) {
+      const profile = createProfileRecord({ lastPeriodStart: anchor });
+      const now = new Date(2026, 2, cycleDay);
+      const history = buildCycleHistorySummary(profile, [], now);
+      return buildCurrentCycleProjection(profile, history, [], now);
+    }
+
+    it("returns menstrual for a projected-but-unlogged period day (day 3, no log yet)", () => {
+      // No isPeriod record exists for today, but cycle day 3 <= periodLength
+      // (5), so web's includeProjectedPeriod branch (LastPeriodStart +
+      // AveragePeriodLength) still reads menstrual instead of following
+      // through to follicular the way the pre-fix app did.
+      const projection = projectForCycleDay(3);
+      expect(projection.currentCycleDay).toBe(3);
+      expect(projection.currentPhase).toBe("menstrual");
+    });
+
+    it("returns follicular after the period window and before the fertility window", () => {
+      // Cycle day 7: past the 5-day projected period window, before the
+      // fertility window opens on day 9.
+      const projection = projectForCycleDay(7);
+      expect(projection.currentCycleDay).toBe(7);
+      expect(projection.currentPhase).toBe("follicular");
+    });
+
+    it("returns fertile inside the fertility window, excluding the ovulation day", () => {
+      // Cycle day 11 sits inside [fertilityStart=day9, ovulation=day14) but
+      // is not the ovulation day itself.
+      const projection = projectForCycleDay(11);
+      expect(projection.currentCycleDay).toBe(11);
+      expect(projection.currentPhase).toBe("fertile");
+    });
+
+    it("returns ovulation exactly on the ovulation day, taking precedence over fertile", () => {
+      // Cycle day 14 is both inside the fertility window and the ovulation
+      // date itself; web's tie-break picks "ovulation" over "fertile".
+      const projection = projectForCycleDay(14);
+      expect(projection.currentCycleDay).toBe(14);
+      expect(projection.currentPhase).toBe("ovulation");
+    });
+
+    it("returns luteal after ovulation", () => {
+      // Cycle day 20: past ovulation (day 14) and past the fertility window.
+      const projection = projectForCycleDay(20);
+      expect(projection.currentCycleDay).toBe(20);
+      expect(projection.currentPhase).toBe("luteal");
+    });
   });
 
   describe("data-driven prediction span", () => {
@@ -592,6 +709,33 @@ describe("cycle-history-service", () => {
       );
 
       expect(projection.isPregnancyPaused).toBe(false);
+    });
+
+    it("keeps the phase unknown while paused even on a date that would otherwise be fertile", () => {
+      // Anchor 2026-01-05, default 28-day cycle -> ovulation day 14
+      // (2026-01-18), fertility window 2026-01-13..2026-01-17. 2026-01-16
+      // sits inside that window, so absent the pause this date would resolve
+      // to "fertile". Security constitution: every prediction surface honors
+      // the pregnancy pause, so currentPhase must stay "unknown", never leak
+      // "fertile" (or a projected-period "menstrual").
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-05"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-01-15"),
+          pregnancyTest: "positive" as const,
+        },
+      ];
+      const now = new Date(2026, 0, 16);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.currentPhase).toBe("unknown");
     });
   });
 });

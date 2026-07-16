@@ -3,10 +3,11 @@ import {
   type DayCycleFactorKey,
   type DayLogRecord,
 } from "../models/day-log";
-import type { ProfileRecord } from "../models/profile";
+import type { LocalDateISO, ProfileRecord } from "../models/profile";
 import {
   predictCycleWindow,
   resolveLutealPhase,
+  type PredictedCycleWindow,
 } from "./cycle-prediction-policy";
 import { inferObservedOvulationDate } from "./observed-ovulation-service";
 import {
@@ -175,6 +176,7 @@ export function buildCurrentCycleProjection(
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
       ovulationDate: null,
+      upcomingOvulationDate: null,
       predictionCycleLength: profile.cycleLength,
     };
   }
@@ -232,7 +234,9 @@ export function buildCurrentCycleProjection(
   if (profile.unpredictableCycle) {
     // Unpredictable (facts-only) mode mirrors web DashboardPredictionDisabled:
     // no projected next-period date or window is surfaced — only the recorded
-    // current cycle day. Forward-roll must not resurrect a next-period date here.
+    // current cycle day. Neither forward-roll must resurrect a prediction here:
+    // no next-period date (cycle-start roll) and no upcoming ovulation date
+    // (ovulation roll).
     return {
       cycleAnchorDate,
       currentCycleDay,
@@ -246,6 +250,7 @@ export function buildCurrentCycleProjection(
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
       ovulationDate: null,
+      upcomingOvulationDate: null,
       predictionCycleLength,
     };
   }
@@ -322,6 +327,22 @@ export function buildCurrentCycleProjection(
     profile,
     predictionCycleLength,
   );
+  // Second (ovulation) forward-roll, layered on top of the cycle-start roll.
+  // `rolledWindow.ovulationDate` is the CURRENT projected cycle's ovulation and
+  // may already be in the past (the owner is mid/late luteal). The dashboard
+  // "upcoming ovulation" surface must never show a past date, so roll it forward
+  // to the next cycle whose ovulation is on/after today — exactly web
+  // DashboardUpcomingPredictions (dashboard_cycle.go:215-219). Kept SEPARATE from
+  // `ovulationDate` (below), which stays the current-cycle date the phase ring and
+  // the history-bounded calendar/PDF markers consume, mirroring how web keeps
+  // stats.OvulationDate distinct from the dashboard upcoming-prediction date.
+  const upcomingOvulationDate = rollOvulationToFutureWindow(
+    rolledStart,
+    rolledWindow,
+    predictionCycleLength,
+    lutealPhase,
+    today,
+  );
 
   return {
     cycleAnchorDate,
@@ -330,6 +351,9 @@ export function buildCurrentCycleProjection(
       records,
       todayValue,
       today,
+      rolledCycleDay,
+      profile.periodLength,
+      rolledWindow.fertilityStart ? parseLocalDate(rolledWindow.fertilityStart) : null,
       rolledWindow.ovulationDate
         ? (parseLocalDate(rolledWindow.ovulationDate) ?? ovulationDate)
         : ovulationDate,
@@ -343,6 +367,7 @@ export function buildCurrentCycleProjection(
     nextPeriodWindowStartDate: rolledNextPeriodWindow?.startDate ?? null,
     nextPeriodWindowEndDate: rolledNextPeriodWindow?.endDate ?? null,
     ovulationDate: rolledWindow.ovulationDate,
+    upcomingOvulationDate,
     predictionCycleLength,
   };
 }
@@ -411,7 +436,7 @@ export function inferUserLutealPhase(
  * the anchor is returned unchanged, so the regular (non-stale) path degenerates
  * to the original anchor and predictions are unaffected.
  */
-function projectCycleStartForward(
+export function projectCycleStartForward(
   cycleAnchor: Date,
   cycleLength: number,
   today: Date,
@@ -425,6 +450,70 @@ function projectCycleStartForward(
   }
   const cyclesElapsed = Math.floor(elapsedDays / cycleLength);
   return addDays(cycleAnchor, cyclesElapsed * cycleLength);
+}
+
+/**
+ * App analog of web's services.ShiftCycleStartToFutureOvulation
+ * (cycle_baseline.go:142-149). Rolls a projected cycle start forward by whole
+ * cycle lengths so the cycle's ovulation lands on/after `today`. Only rolls when
+ * the given ovulation is strictly before today; otherwise the start is returned
+ * unchanged (web's `!ovulationDate.Before(today)` guard). Calendar-day based, so
+ * it is DST-immune like the rest of the prediction math. Exported for the
+ * projection reference test (cycle-projection-reference.test.ts), which replays
+ * this primitive against the shared golden vectors exactly as ovumcy-web's
+ * TestCycleProjection_GoldenVectors does.
+ */
+export function shiftCycleStartToFutureOvulation(
+  cycleStart: Date,
+  ovulationDate: Date,
+  cycleLength: number,
+  today: Date,
+): Date {
+  if (cycleLength <= 0 || ovulationDate >= today) {
+    return cycleStart;
+  }
+  const lagDays = diffCalendarDays(ovulationDate, today);
+  const shiftCycles = Math.floor(lagDays / cycleLength) + 1;
+  return addDays(cycleStart, shiftCycles * cycleLength);
+}
+
+/**
+ * Resolves the dashboard "upcoming ovulation" date for the current projected
+ * cycle, mirroring the ovulation forward-roll inside web
+ * DashboardUpcomingPredictions (dashboard_cycle.go:215-219). `rolledWindow` is
+ * the window for the forward-projected (cycle-start-rolled) anchor; if its
+ * ovulation has already passed `today`, roll the anchor forward via
+ * shiftCycleStartToFutureOvulation and recompute the window so the returned date
+ * is the NEXT ovulation on/after today. Returns the (possibly rolled) ovulation
+ * date, or null when the window is not calculable. Does not touch the logged
+ * anchor or any history-bounded consumer — this is a display-only value.
+ */
+function rollOvulationToFutureWindow(
+  rolledStart: Date,
+  rolledWindow: PredictedCycleWindow,
+  cycleLength: number,
+  lutealPhase: number,
+  today: Date,
+): LocalDateISO | null {
+  if (!rolledWindow.calculable || !rolledWindow.ovulationDate) {
+    return null;
+  }
+  const rolledOvulation = parseLocalDate(rolledWindow.ovulationDate);
+  if (!rolledOvulation || rolledOvulation >= today) {
+    return rolledWindow.ovulationDate;
+  }
+  const shiftedStart = shiftCycleStartToFutureOvulation(
+    rolledStart,
+    rolledOvulation,
+    cycleLength,
+    today,
+  );
+  const shiftedWindow = predictCycleWindow(
+    formatLocalDate(shiftedStart),
+    cycleLength,
+    lutealPhase,
+  );
+  return shiftedWindow.ovulationDate ?? rolledWindow.ovulationDate;
 }
 
 /**
@@ -871,6 +960,26 @@ function buildInclusiveCycleEndDate(nextStartDate: string): string {
   return formatLocalDate(addDays(nextStart, -1));
 }
 
+/**
+ * App analog of web's predictedCycleLength (cycles.go:359-372): median-first
+ * cycle-length selection. The median is robust to a single missed-log merge that
+ * would drag the mean by ~10 days and push every downstream date late; the mean
+ * is only a degenerate fallback, and 0 when neither statistic exists (the caller
+ * then bootstraps from the configured cycle length). Shared by
+ * resolvePredictionCycleLength and the projection reference test
+ * (cycle-projection-reference.test.ts), so the median-vs-mean pin stays parallel
+ * with ovumcy-web's TestCycleProjection_GoldenVectors.
+ */
+export function predictedCycleLength(median: number, average: number): number {
+  if (median > 0) {
+    return median;
+  }
+  if (average > 0) {
+    return Math.round(average);
+  }
+  return 0;
+}
+
 function resolvePredictionCycleLength(
   profile: ProfileRecord,
   history: StatsCycleHistorySummary,
@@ -879,23 +988,21 @@ function resolvePredictionCycleLength(
   // merges two cycles skews the mean but not the median. The mean is only a
   // degenerate fallback; profile.cycleLength bootstraps when no statistic exists.
   //
-  // INTENTIONAL divergence from web predictedCycleLength (cycles.go:339-353):
-  // web uses the observed median from the FIRST completed cycle, but a median of
-  // one element offers no merge protection — a single 48-day merged-log cycle
+  // INTENTIONAL divergence from web predictedCycleLength (cycles.go:359-372):
+  // web trusts the observed median from the FIRST completed cycle, but a median
+  // of one element offers no merge protection — a single 48-day merged-log cycle
   // would drive a 48-day prediction. We require >=2 completed cycles before
   // trusting observed data and fall back to the owner's configured cycle length
-  // until then. This is strictly safer than web for the single-merged-cycle case.
-  if (
-    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
-    history.medianCycleLength > 0
-  ) {
-    return history.medianCycleLength;
-  }
-  if (
-    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
-    history.averageCycleLength > 0
-  ) {
-    return Math.round(history.averageCycleLength);
+  // until then (strictly safer than web for the single-merged-cycle case). Above
+  // that gate the median-first choice itself is the shared predictedCycleLength.
+  if (history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES) {
+    const observed = predictedCycleLength(
+      history.medianCycleLength,
+      history.averageCycleLength,
+    );
+    if (observed > 0) {
+      return observed;
+    }
   }
   return profile.cycleLength;
 }
@@ -919,18 +1026,45 @@ export function resolveLatestCycleStartAnchorBeforeOrOn(
   return starts.length > 0 ? (starts[starts.length - 1] ?? null) : null;
 }
 
+/**
+ * Mirrors web's resolveCyclePhase (cycles.go:419-446), called with
+ * includeProjectedPeriod=true as web's owner-surface DetectCurrentPhase does
+ * (cycle_baseline.go:120-125): a logged period OR a day still inside the
+ * projected period window -> menstrual; the ovulation day itself ->
+ * ovulation; inside the fertility window but not the ovulation day ->
+ * fertile; before ovulation -> follicular; otherwise -> luteal.
+ * currentCycleDay / ovulationDate / fertilityStartDate all come from the SAME
+ * (possibly forward-rolled) window the caller already computed via
+ * predictCycleWindow — this function does no prediction math of its own.
+ * There is no separate fertilityEnd parameter: predictCycleWindow always sets
+ * fertilityEnd equal to ovulationDate (app and web alike), so the ovulation-day
+ * check below already covers the fertility window's upper bound.
+ * periodLength uses profile.periodLength (not an average-of-recent-cycles
+ * statistic like web's stats.AveragePeriodLength) — the app does not track a
+ * rolling period-length average, and deriving one here would be new prediction
+ * math the caller's projection does not already carry.
+ */
 function detectCurrentPhase(
   records: DayLogRecord[],
   todayValue: string,
   today: Date,
+  currentCycleDay: number,
+  periodLength: number,
+  fertilityStartDate: Date | null,
   ovulationDate: Date,
 ): StatsCycleProjection["currentPhase"] {
   if (isPeriodLoggedOnDate(records, todayValue)) {
     return "menstrual";
   }
+  if (currentCycleDay >= 1 && currentCycleDay <= periodLength) {
+    return "menstrual";
+  }
 
   if (sameLocalDay(today, ovulationDate)) {
     return "ovulation";
+  }
+  if (fertilityStartDate && today >= fertilityStartDate && today < ovulationDate) {
+    return "fertile";
   }
   if (today < ovulationDate) {
     return "follicular";
@@ -975,14 +1109,19 @@ function statsInsightProgress(completedCycleCount: number): number {
   );
 }
 
-function tailInts(values: number[], limit: number): number[] {
+// tailInts / averageInts / medianInt mirror the identically named web helpers
+// (cycles.go:510-576). Exported so the projection reference test can select the
+// recent-window prediction length exactly as ovumcy-web's
+// TestCycleProjection_GoldenVectors does (predictedCycleLength(medianInt(recent),
+// averageInts(recent))); they remain in use internally for the history summary.
+export function tailInts(values: number[], limit: number): number[] {
   if (values.length <= limit) {
     return values;
   }
   return values.slice(values.length - limit);
 }
 
-function averageInts(values: number[]): number {
+export function averageInts(values: number[]): number {
   if (values.length === 0) {
     return 0;
   }
@@ -991,7 +1130,7 @@ function averageInts(values: number[]): number {
   return total / values.length;
 }
 
-function medianInt(values: number[]): number {
+export function medianInt(values: number[]): number {
   if (values.length === 0) {
     return 0;
   }

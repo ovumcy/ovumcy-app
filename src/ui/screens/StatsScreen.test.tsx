@@ -394,4 +394,47 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-extended-reports")).toBeTruthy();
     expect(screen.getByText("Extended reports")).toBeTruthy();
   });
+
+  it("renders the fertile current-phase card (web resolveCyclePhase parity)", async () => {
+    // Two completed 28-day cycles (2026-01-01 -> 2026-01-29 -> 2026-02-26)
+    // clear the insights gate. "now" = 2026-03-08 is cycle day 11 of the
+    // ongoing cycle anchored on 2026-02-26: ovulation falls on day 14
+    // (2026-03-11), so day 11 sits inside the fertility window but is not
+    // the ovulation day itself -> "fertile".
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-02-26",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+      ]),
+    });
+
+    render(
+      <AppPreferencesTestProvider>
+        <StatsScreen
+          now={new Date(2026, 2, 8)}
+          storage={storage}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("stats-trend-section");
+    expect(screen.getByLabelText(/Current phase\. ✨ Fertile/)).toBeTruthy();
+  });
 });
