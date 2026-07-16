@@ -88,17 +88,25 @@ follows from that:
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
   cannot execute on open, with RFC 4180 quoting preserved.
-- **Cleartext HTTP blocked by default (Android).** The committed Android network
-  security config (`android/app/src/main/res/xml/network_security_config.xml`,
-  generated in prebuild by `plugins/withAndroidNetworkSecurityConfig.js`) sets
-  `cleartextTrafficPermitted="false"` app-wide and permits cleartext only for the
-  emulator-host/loopback dev addresses (`10.0.2.2`, `127.0.0.1`, `localhost`) that
-  serve Metro and local sync stacks in debug builds. Production traffic is
-  HTTPS-only at the OS layer. On top of that, `src/sync/sync-endpoint-policy.ts`
-  rejects `http://` to any non-private host (parsing the host as a literal IPv4
-  and bucketing by octet, never prefix-matching the hostname) as defense in
-  depth, so an `http://` sync/managed endpoint is refused before a request goes
-  out regardless of the OS layer.
+- **Cleartext HTTP blocked by default (Android).** The Android network security
+  config (`android/app/src/main/res/xml/network_security_config.xml`) is generated
+  at prebuild by the committed `plugins/withAndroidNetworkSecurityConfig.js` —
+  `android/` itself is gitignored, so the plugin is the real committed source of
+  truth — and sets `cleartextTrafficPermitted="false"` app-wide and permits
+  cleartext only for the emulator-host/loopback dev addresses (`10.0.2.2`,
+  `127.0.0.1`, `localhost`) that serve Metro and local sync stacks in debug builds.
+  Production traffic is HTTPS-only at the OS layer. On top of that,
+  `src/sync/sync-endpoint-policy.ts` rejects `http://` to any non-private host
+  (parsing the host as a literal IPv4 and bucketing by octet, never
+  prefix-matching the hostname) as defense in depth, so an `http://` sync/managed
+  endpoint is refused before a request goes out regardless of the OS layer.
+- **No OS-level backup or remote-delivery channels (Android).** `app.json` sets
+  `android.allowBackup=false`, so Android's OS-managed Auto Backup, cloud backup,
+  and device-transfer flows never copy this app's on-device data (encrypted
+  SQLite, SecureStore-backed material) off the device. The app also ships no
+  Firebase Cloud Messaging integration and no over-the-air update channel (no
+  `expo-updates` dependency, no `updates` config in `app.json`) — there is no
+  push-delivery or remote-code-update surface to secure or audit.
 
 ### Out of scope
 
@@ -144,6 +152,22 @@ follows from that:
   production artifact cannot ship it silently. The
   authoritative gate for any *server-side* premium capability (e.g. managed sync)
   remains enforced on the backend, not by this token.
+- **Managed billing snapshot cache is a bounded 72h offline-grace exception, not a
+  second source of truth.** `loadManagedBillingSnapshot` persists the last-known-good
+  billing snapshot — only `hasActivePlan` and `premiumFeatures`; server-driven
+  affordances like renewal management and offers are deliberately excluded so they
+  fail closed from cache — to the encrypted `managed_billing_cache` table after every
+  successful fetch (`MANAGED_BILLING_CACHE_TTL_MS`,
+  `src/services/managed-premium-features-service.ts`). If a live fetch then fails,
+  the cache is served only while it is at most 72 hours old **and** a managed session
+  token is still present on-device; a signed-out or never-connected device gets no
+  grace. Past 72 hours, or with nothing ever cached, the gate fails closed exactly as
+  it did before this cache existed. Server-checked operations (sync upload/restore,
+  partner projections, renewal) never read this cache — the server remains their sole
+  authority. The trade-off is deliberate: a network blip or managed outage should not
+  instantly re-lock all six premium gates on a paying device, at the cost of a revoked
+  plan keeping its local unlocks for up to 72 hours while the device cannot reach
+  billing truth.
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
@@ -277,6 +301,17 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | With no token gate the premium snapshot is returned verbatim and the token endpoint is never called (rollout fallback preserves today's behaviour) | `returns the snapshot premiumFeatures verbatim when no gate is supplied`, `does not call the entitlements/token endpoint at all when no gate is supplied` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | When the issuance endpoint 503s (signing key absent) with nothing cached, the gate falls back to the snapshot booleans (no regression) | `falls back to snapshot booleans when the endpoint is 503 and nothing is cached (no regression)` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A verified token overlays the two local features (and only those); an expired cached token re-locks and falls back to the snapshot | `overlays a verified token: the two local features become true, server-gated stay from the snapshot`, `re-locks when the cached token is expired and falls back to the snapshot booleans` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+
+### Managed billing snapshot offline-grace cache
+
+| Claim | Enforced by |
+| --- | --- |
+| A successful billing fetch refreshes the persisted last-known-good snapshot | `refreshes the persisted last-known-good snapshot on a successful fetch` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A failed fetch serves the cached snapshot while it is within the 72h TTL | `serves the cached snapshot within the 72h TTL when the billing fetch fails` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| Once the cache exceeds 72h, a failed fetch fails closed exactly as it did before the cache existed | `fails closed exactly as before once the cache is older than 72h` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A failed fetch with nothing ever cached fails closed | `fails closed when the fetch fails and no snapshot was ever cached` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| The cache is never served without a still-present managed session token | `never serves the cache without a managed session token` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` instead of instantly re-locking | `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 
 ### Policy / Planned (human-reviewed, not in the matrix)
 
