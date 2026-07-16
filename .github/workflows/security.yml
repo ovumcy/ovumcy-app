@@ -15,7 +15,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   npm-audit-production:
@@ -39,6 +38,9 @@ jobs:
 
   trivy-fs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout
