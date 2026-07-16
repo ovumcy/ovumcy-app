@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { Platform } from "react-native";
 
 import { getDeviceCopy } from "../../i18n/device-copy";
+import { getSettingsCopy } from "../../i18n/settings-copy";
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { clearManagedPartnerInviteToken } from "../../security/managed-partner-invite-token-buffer";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
@@ -1930,6 +1931,152 @@ describe("BackupSyncScreen", () => {
       expect(screen.queryByTestId("settings-sync-offer-promo-1")).toBeNull(),
     );
   });
+
+  it("shows a distinct subscription-warning dialog for an active managed subscription, and a dismissal keeps the account untouched", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedDeletionFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: {},
+        active_subscription: {
+          status: "active",
+          current_period_ends_at: "2026-04-20T00:00:00.000Z",
+          cancel_at_period_end: false,
+        },
+      },
+    });
+    const settingsCopy = getSettingsCopy("en");
+    // Accept the standard destructive confirm, then dismiss the distinct
+    // subscription warning that follows it.
+    mockOpenConfirmation.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
+    expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
+      1,
+      settingsCopy.account.deleteAccountPrompt,
+      settingsCopy.account.deleteAccountAccept,
+    );
+    expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
+      2,
+      `${settingsCopy.account.deleteAccountSubscriptionWarningTitle}\n\n${settingsCopy.account.deleteAccountSubscriptionWarningMessage}`,
+      settingsCopy.account.deleteAccountSubscriptionWarningAccept,
+    );
+
+    // A dismissal is the safe answer, exactly like every other destructive
+    // confirm in this screen: nothing about the account is touched.
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+    await expect(syncSecretStore.readSyncSecrets()).resolves.not.toBeNull();
+  });
+
+  it("proceeds with the destructive deletion only once both the standard confirm and the subscription warning are explicitly accepted", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedDeletionFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: {},
+        active_subscription: {
+          status: "active",
+          current_period_ends_at: "2026-04-20T00:00:00.000Z",
+          cancel_at_period_end: false,
+        },
+      },
+    });
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
+    );
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.stringContaining("/onboarding?reset="),
+    );
+    await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+
+  it("skips the subscription warning for a pure trial (no store billing to cancel) and deletes after the single confirm", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedDeletionFetchMock({
+      billing: {
+        has_active_plan: true,
+        premium_features: {},
+        active_subscription: {
+          status: "trialing",
+          current_period_ends_at: "2026-04-20T00:00:00.000Z",
+          cancel_at_period_end: false,
+        },
+      },
+    });
+    const settingsCopy = getSettingsCopy("en");
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+
+    await waitFor(() =>
+      expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
+    );
+    // Only the standard destructive confirm ever shows for a pure trial: no
+    // store/paid-backed subscription is on the hook for real charges, so the
+    // second, distinctly-worded warning never appears (bae1ddf regression:
+    // trials used to wrongly trigger this warning for every trialing user).
+    expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+    expect(mockOpenConfirmation).toHaveBeenCalledWith(
+      settingsCopy.account.deleteAccountPrompt,
+      settingsCopy.account.deleteAccountAccept,
+    );
+    expect(mockReplace).toHaveBeenCalledWith(
+      expect.stringContaining("/onboarding?reset="),
+    );
+  });
 });
 
 function createConnectedManagedPreferences() {
@@ -2003,5 +2150,45 @@ function createManagedBillingFetchMock(options: {
       });
     }
     throw new Error(`Unexpected fetch in test: ${url}`);
+  }) as unknown as typeof fetch;
+}
+
+// createManagedDeletionFetchMock extends the createManagedBillingFetchMock
+// fixture with the DELETE /account endpoint the "Delete account" flow calls
+// once both confirms are accepted, so account-deletion tests can exercise
+// the real ManagedCloudAPIClient instead of injecting a factory mock.
+function createManagedDeletionFetchMock(options: {
+  billing: Record<string, unknown>;
+}): typeof fetch {
+  return jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = init?.method ?? "GET";
+    if (method === "DELETE" && url.endsWith("/account")) {
+      return createJSONResponse({ status: "deleted" });
+    }
+    if (url.includes("/auth/session")) {
+      return createJSONResponse({
+        account_id: "managed-account-1",
+        email: "alice@example.com",
+        session_expires_at: "2026-03-21T08:00:00.000Z",
+        sync_entitlement: {
+          sync_allowed: true,
+          source: "billing_subscription",
+          updated_at: "2026-03-20T08:05:00.000Z",
+          effective_at: "2026-03-20T08:05:00.000Z",
+          explanation: "plan active",
+        },
+      });
+    }
+    if (url.includes("/account/billing")) {
+      return createJSONResponse(options.billing);
+    }
+    if (url.includes("/account/partner/access")) {
+      return createJSONResponse({
+        owned: { invites: [], grants: [] },
+        shared_with_me: [],
+      });
+    }
+    throw new Error(`Unexpected fetch in test: ${method} ${url}`);
   }) as unknown as typeof fetch;
 }
