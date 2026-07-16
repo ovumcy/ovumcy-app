@@ -131,6 +131,61 @@ reproduces them because it runs the identical constants and steps.
   the sample standard deviation) computed over the same recent-cycle window as
   the median, so an old outlier stops affecting them once it ages out.
 
+## Projection and anchor layer
+
+The section above is the pure *window* math for a single known cycle start.
+Production layers a small **projection** step on top of it, so a dashboard that
+opens weeks after the last logged period still shows a sensible current cycle
+instead of a stale or blank one. This layer lives in
+[`src/services/cycle-history-service.ts`](../src/services/cycle-history-service.ts)
+(`buildCurrentCycleProjection`) and mirrors `ovumcy-web`'s
+`DashboardUpcomingPredictions` step for step.
+
+1. **Prediction length (median-first).** The cycle length used to project is the
+   median of the recent observed cycles (`predictedCycleLength`), falling back to
+   the mean only when no median exists, and to the owner's configured value until
+   there are enough completed cycles. The median is deliberately chosen so that a
+   single missed-log gap — which merges two real cycles into one ~60–90 day
+   pseudo-cycle and would drag the mean ~10 days late — does not skew the
+   estimate.
+2. **Project the current-cycle start forward.** From the logged anchor
+   (`profile.lastPeriodStart` / the latest logged period start) the anchor is
+   rolled forward by whole cycle lengths until it contains `today`
+   (`projectCycleStartForward`, web `ProjectCycleStart`), yielding the projected
+   current-cycle start and a 1-based current cycle day. The **logged anchor
+   itself is preserved** — calendar, stats, reminders and the doctor PDF stay
+   bound to the real logged history, exactly as web keeps `stats.LastPeriodStart`.
+3. **Displayed next period.** Derived from the *un-shifted* projected start plus
+   the prediction length, so the ovulation roll in step 4 can never disturb it.
+4. **Roll the ovulation forward (upcoming ovulation).** The ovulation for the
+   projected cycle may already be in the past (the owner is mid/late luteal). For
+   a "next ovulation" surface this is rolled forward by whole cycles until it
+   lands on or after `today` (`shiftCycleStartToFutureOvulation`, web
+   `ShiftCycleStartToFutureOvulation`). This rolled **upcoming ovulation** is kept
+   separate from the current cycle's ovulation date: the current-cycle date still
+   drives the phase (follicular / fertile / ovulation / luteal) and the
+   history-bounded calendar and PDF markers, mirroring how web keeps
+   `stats.OvulationDate` distinct from the dashboard upcoming prediction.
+
+All of this arithmetic is calendar-day based and therefore DST-immune: the
+Europe/Berlin spring-forward case below projects identically to a UTC run.
+
+### Worked examples (projection)
+
+Recent cycle lengths are newest-last; `today` and the anchor are calendar dates.
+
+| recent cycle lengths | lastPeriodStart | today | prediction length | projected start (cycle day) | displayed next period | upcoming ovulation |
+|----------------------|-----------------|-------|-------------------|-----------------------------|-----------------------|--------------------|
+| 28, 28, 28, 28, 60 | 2026-01-01 | 2026-01-19 | 28 (median, not mean 34) | 2026-01-01 (day 19) | 2026-01-29 | 2026-02-11 |
+| 28, 28, 28 | 2026-03-15 | 2026-04-12 (Europe/Berlin) | 28 | 2026-04-12 (day 1) | 2026-05-10 | 2026-04-25 |
+| 30, 30 | 2026-06-01 | 2026-07-01 | 30 | 2026-07-01 (day 1) | 2026-07-31 | 2026-07-16 |
+
+In the first row the projected cycle's own ovulation (2026-01-14, cycle day 14)
+has already passed `today`, so the upcoming ovulation rolls one whole cycle
+forward to 2026-02-11 while the displayed next period stays anchored on the
+un-shifted start. In the other two rows `today` lands on cycle day 1, so the
+first ovulation is already in the future and no roll is needed.
+
 ## Pregnancy pause (app-specific)
 
 Independently of the math above, a positive pregnancy test more recent than every
@@ -175,3 +230,13 @@ test (`internal/services/cycles_reference_test.go`), so any change to either the
 Go (`cycles.go`) or TypeScript (`cycle-prediction-policy.ts`) implementation that
 breaks parity fails CI on both sides. If you change the math, update the fixture,
 this document, and both reference tests in the same change.
+
+The same fixture carries an additive `projection` section that pins the
+projection/anchor layer (median-first length, forward-projected start, displayed
+next period, and the upcoming-ovulation roll). It is consumed by
+[`src/services/cycle-projection-reference.test.ts`](../src/services/cycle-projection-reference.test.ts)
+here and by `ovumcy-web`'s `internal/services/cycle_projection_reference_test.go`,
+which replay the identical projection sequence against the same numbers. The file
+is vendored **byte-identical** between the repositories, so a projection-math
+change must likewise update the fixture, this document, and both projection
+reference tests together.

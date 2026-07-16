@@ -313,7 +313,7 @@ const settingsCopyEn = {
       "Confirm with device security to permanently delete your account.",
     deleteAccountSubscriptionWarningTitle: "Your subscription will keep billing",
     deleteAccountSubscriptionWarningMessage:
-      "Deleting your account does NOT cancel your Google Play subscription. You must cancel it separately in the Play Store, or you will keep being charged. Confirm below only if you understand this and still want to permanently delete your account.",
+      "Deleting your account does NOT cancel an active Ovumcy Cloud subscription. If you subscribed through a store or website, cancel it there, or you may keep being charged. Confirm below only if you understand this and still want to permanently delete your account.",
     deleteAccountSubscriptionWarningAccept: "I understand, delete anyway",
     recoveryTitle: "Recovery phrase for this device",
     recoveryHint:
@@ -873,7 +873,7 @@ const settingsCopyDe: SettingsCopy = {
       "Bestätigen Sie mit Geräteschutz, um Ihr Konto dauerhaft zu löschen.",
     deleteAccountSubscriptionWarningTitle: "Ihr Abo wird weiter abgerechnet",
     deleteAccountSubscriptionWarningMessage:
-      "Das Löschen Ihres Kontos kündigt NICHT Ihr Google-Play-Abo. Sie müssen es separat im Play Store kündigen, sonst werden Sie weiterhin belastet. Bestätigen Sie unten nur, wenn Sie das verstanden haben und Ihr Konto trotzdem dauerhaft löschen möchten.",
+      "Das Löschen Ihres Kontos kündigt NICHT ein aktives Ovumcy-Cloud-Abo. Wenn Sie über einen Store oder eine Website abonniert haben, kündigen Sie es dort, sonst werden Sie möglicherweise weiterhin belastet. Bestätigen Sie unten nur, wenn Sie das verstanden haben und Ihr Konto trotzdem dauerhaft löschen möchten.",
     deleteAccountSubscriptionWarningAccept: "Verstanden, trotzdem löschen",
     recoveryTitle: "Wiederherstellungsphrase für dieses Gerät",
     recoveryHint:
@@ -1472,7 +1472,7 @@ const settingsCopyFr: SettingsCopy = {
     deleteAccountSubscriptionWarningTitle:
       "Votre abonnement continuera d'être facturé",
     deleteAccountSubscriptionWarningMessage:
-      "Supprimer votre compte n'annule PAS votre abonnement Google Play. Vous devez l'annuler séparément dans le Play Store, sinon vous continuerez à être facturé. Ne confirmez ci-dessous que si vous avez compris et que vous souhaitez quand même supprimer définitivement votre compte.",
+      "Supprimer votre compte n'annule PAS un abonnement Ovumcy Cloud actif. Si vous êtes abonné via une boutique ou un site web, annulez-le à cet endroit, sinon vous pourriez continuer à être facturé. Ne confirmez ci-dessous que si vous avez compris et que vous souhaitez quand même supprimer définitivement votre compte.",
     deleteAccountSubscriptionWarningAccept: "J'ai compris, supprimer quand même",
     recoveryTitle: "Phrase de récupération pour cet appareil",
     recoveryHint:
@@ -2064,7 +2064,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Подтвердите защитой устройства безвозвратное удаление вашего аккаунта.",
       deleteAccountSubscriptionWarningTitle: "Подписка продолжит списывать средства",
       deleteAccountSubscriptionWarningMessage:
-        "Удаление аккаунта НЕ отменяет вашу подписку Google Play. Отменить её нужно отдельно в Play Store, иначе списания продолжатся. Подтверждайте ниже, только если вы это понимаете и всё равно хотите безвозвратно удалить аккаунт.",
+        "Удаление аккаунта НЕ отменяет активную подписку Ovumcy Cloud. Если вы оформили её через магазин приложений или сайт, отмените её там — иначе списания могут продолжиться. Подтверждайте ниже, только если вы это понимаете и всё равно хотите безвозвратно удалить аккаунт.",
       deleteAccountSubscriptionWarningAccept: "Понимаю, всё равно удалить",
       recoveryTitle: "Фраза восстановления для этого устройства",
       recoveryHint:
@@ -2624,7 +2624,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deleteAccountSubscriptionWarningTitle:
         "Tu suscripción seguirá cobrándose",
       deleteAccountSubscriptionWarningMessage:
-        "Eliminar tu cuenta NO cancela tu suscripción de Google Play. Debes cancelarla por separado en Play Store, o se te seguirá cobrando. Confirma abajo solo si entiendes esto y aun así quieres eliminar permanentemente tu cuenta.",
+        "Eliminar tu cuenta NO cancela una suscripción activa de Ovumcy Cloud. Si te suscribiste a través de una tienda o un sitio web, cancélala ahí, o es posible que se te siga cobrando. Confirma abajo solo si entiendes esto y aun así quieres eliminar permanentemente tu cuenta.",
       deleteAccountSubscriptionWarningAccept: "Entiendo, eliminar de todos modos",
       recoveryTitle: "Frase de recuperación de este dispositivo",
       recoveryHint:
@@ -3193,7 +3193,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       deleteAccountSubscriptionWarningTitle:
         "Il tuo abbonamento continuerà a essere addebitato",
       deleteAccountSubscriptionWarningMessage:
-        "L'eliminazione del tuo account NON annulla il tuo abbonamento Google Play. Devi annullarlo separatamente nel Play Store, altrimenti continuerai a essere addebitata. Conferma qui sotto solo se hai capito e vuoi comunque eliminare definitivamente il tuo account.",
+        "L'eliminazione del tuo account NON annulla un abbonamento Ovumcy Cloud attivo. Se ti sei abbonata tramite uno store o un sito web, annullalo lì, altrimenti potresti continuare a essere addebitata. Conferma qui sotto solo se hai capito e vuoi comunque eliminare definitivamente il tuo account.",
       deleteAccountSubscriptionWarningAccept: "Ho capito, elimina comunque",
       recoveryTitle: "Frase di recupero di questo dispositivo",
       recoveryHint:

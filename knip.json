@@ -22,9 +22,7 @@
   "ignore": [
     "dist/**",
     "android/**",
-    ".expo/**",
-    "src/**/*.native.ts",
-    "src/**/*.web.ts"
+    ".expo/**"
   ],
   "ignoreExportsUsedInFile": true,
   "ignoreDependencies": [

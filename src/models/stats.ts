@@ -24,6 +24,7 @@ export type StatsPhase =
   | "unknown"
   | "menstrual"
   | "follicular"
+  | "fertile"
   | "ovulation"
   | "luteal";
 
@@ -104,7 +105,20 @@ export type StatsCycleProjection = {
   nextPeriodDate: LocalDateISO | null;
   nextPeriodWindowStartDate: LocalDateISO | null;
   nextPeriodWindowEndDate: LocalDateISO | null;
+  // The CURRENT projected cycle's ovulation date (from the forward-projected
+  // start). May be in the past when the owner is mid/late luteal. Feeds the
+  // dashboard phase ring and the history-bounded calendar/PDF ovulation markers —
+  // the web parity of stats.OvulationDate.
   ovulationDate: LocalDateISO | null;
+  // Web DashboardUpcomingPredictions().OvulationDate parity: the same ovulation
+  // rolled forward by whole cycles (ShiftCycleStartToFutureOvulation) until it is
+  // on/after `today`, so a dashboard "upcoming ovulation" surface never shows a
+  // past date. Distinct from `ovulationDate` above (which stays the current-cycle
+  // date), exactly as web keeps the dashboard upcoming prediction separate from
+  // the baseline stats.OvulationDate. null in prediction-disabled states
+  // (pregnancy pause, facts-only/unpredictable). Optional so existing projection
+  // literals stay valid; the producer sets it on every predictable path.
+  upcomingOvulationDate?: LocalDateISO | null;
   predictionCycleLength: number;
 };
 

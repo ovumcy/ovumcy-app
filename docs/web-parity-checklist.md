@@ -316,6 +316,24 @@ that owns the canonical web UX).
   explicit, not silent.
 - Mobile bottom tabs remain a platform-specific navigation deviation from the
   web nav chrome.
+- The app's projected-period-as-menstrual window (the "still bleeding" phase read
+  for an unlogged early-cycle day in `detectCurrentPhase`,
+  `src/services/cycle-history-service.ts`) uses the profile-configured
+  `periodLength`, whereas web uses `stats.AveragePeriodLength` — a rolling average
+  of the last six observed period lengths — with the configured value only as a
+  bootstrap fallback. For owners whose observed period length varies, the
+  menstrual→follicular boundary may differ by a day or two. Porting the rolling
+  period-length average is a possible future parity task, deliberately not done
+  here because it would be new prediction math beyond this change's scope.
+- The app's JSON export format (`ExportBackupEnvelope` in `src/models/export.ts:76`,
+  with structure `{app, formatVersion, exportedAt, preset, range, summary, profile,
+  symptoms, dayLogs}`) is intentionally not interchangeable with web's flat
+  snake_case JSON export (`ExportJSONEntry`). The app format is structured and
+  self-describing for backup/restore and multi-platform portability; web's format
+  is optimized for sheet-software interoperability. Both CSV and JSON remain
+  Free-tier local-first exports; an owner may export from app and import to web
+  by hand-processing the structured app JSON or re-exporting as CSV for web,
+  never the reverse — web JSON does not round-trip into the app.
 
 ## Current App State
 
@@ -348,14 +366,55 @@ that owns the canonical web UX).
     account and all its server data, then wipes local data the same way the
     danger-zone `Clear all local data` flow does; a live managed subscription
     still requires a separate, distinctly-worded acknowledgment that deleting
-    the account does not cancel Google Play billing;
+    the account does not cancel an active Ovumcy Cloud subscription;
   - free offline JSON import (`src/services/import-service.ts` + the settings
     `Restore from backup` section) mirrors web's `POST /api/v1/imports/json`
     settings-import capability with the same strictly additive semantics; the
     app adds a two-phase preview → confirm step on top of web's one-shot form,
     and additionally restores the backup's profile when the local profile is
     still pristine (untouched defaults);
-  - mobile bottom tabs remain platform-native chrome.
+  - mobile bottom tabs remain platform-native chrome;
+  - Stats "Current phase" detection (`detectCurrentPhase` in
+    `src/services/cycle-history-service.ts`) now matches web's phase
+    precedence (`resolveCyclePhase` / owner-surface `DetectCurrentPhase` in
+    `ovumcy-web/internal/services/cycles.go` and `cycle_baseline.go`):
+    `StatsPhase` gained a `fertile` member covering the fertility window
+    excluding the ovulation day itself, and an unlogged day still inside the
+    projected period window (cycle day within the period length of the
+    current anchor) now reads as `menstrual` instead of falling through to
+    `follicular`/`unknown`. `phaseLabels.fertile` / `phaseIcons.fertile`
+    (already shipped in all six locales) are reachable from the Stats screen.
+  - Dashboard cycle projection (`buildCurrentCycleProjection` in
+    `src/services/cycle-history-service.ts`) now mirrors web's
+    `DashboardUpcomingPredictions` forward-roll. After projecting the logged
+    anchor forward to the current cycle (`ProjectCycleStart`), the ovulation is
+    rolled forward by whole cycles (`ShiftCycleStartToFutureOvulation`) into a
+    separate `upcomingOvulationDate`, so a "next ovulation" value never resolves
+    to a past date. The current-cycle `ovulationDate` (phase ring, calendar and
+    doctor-PDF markers) and the logged anchor stay untouched — web keeps
+    `stats.OvulationDate` and `stats.LastPeriodStart` the same way. Pinned by the
+    shared golden-vector fixture's additive `projection` section
+    (`cycle-projection-reference.test.ts` ↔ web
+    `cycle_projection_reference_test.go`). The upcoming-ovulation **date** (web
+    `DisplayOvulationDate`, `dashboard.html:122`) now renders on the dashboard
+    hero next to the existing next-period line
+    (`DashboardCycleHeroViewData.upcomingOvulationLabel`,
+    `src/services/dashboard-view-service.ts`, rendered by
+    `src/ui/screens/dashboard/DashboardCycleHero.tsx`), reusing the
+    already-present `dashboardCopy.ovulation` label and the hero's existing
+    `formatDisplayDate` helper: present whenever `upcomingOvulationDate` is
+    non-null, absent entirely under the pregnancy-pause and unpredictable-cycle
+    branches (and any other null-producing path), never a separate "unavailable"
+    string. Deviation: web further splits `DisplayOvulationDate` into
+    use-range / needs-more-cycles / impossible sub-states
+    (`dashboardNeedsOvulationData`, `DashboardOvulationRange`,
+    `dashboard_cycle.go:169-341`) that the app's single nullable field does not
+    model, so the app always shows one concrete date (or nothing); this also
+    means the app keeps showing the date in the rolled-forward "stale" hero
+    state, where web's analogous irregular/low-reliability path blanks
+    ovulation specifically while still showing an approximate next-period date.
+    Porting that finer-grained branching is a possible future parity task, not
+    done here since it is new gating logic beyond this change's scope.
 
 ## Remaining Product Gaps
 

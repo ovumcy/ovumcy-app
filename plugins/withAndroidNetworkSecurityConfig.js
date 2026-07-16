@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Keeps `expo prebuild` output in parity with the committed native config:
+ * Generates the Android native network-security config at `expo prebuild` time.
+ * `android/` is gitignored (nothing under it is committed), so this plugin —
+ * not a checked-in native file — is the actual committed source of truth:
  * 1. writes android/app/src/main/res/xml/network_security_config.xml;
  * 2. sets android:networkSecurityConfig="@xml/network_security_config" on the
  *    <application> tag of the main AndroidManifest.xml.

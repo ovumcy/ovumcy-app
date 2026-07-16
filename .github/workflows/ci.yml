@@ -42,6 +42,9 @@ jobs:
       - name: Entitlement pubkey guard self-test
         run: node scripts/verify-entitlement-pubkeys.mjs --self-test
 
+      - name: Base URL guard self-test
+        run: node scripts/verify-base-urls.mjs --self-test
+
       - name: Tests (with coverage)
         run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=text-summary
 

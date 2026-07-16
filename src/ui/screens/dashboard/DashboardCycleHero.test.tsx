@@ -11,6 +11,7 @@ const baseViewData: DashboardCycleHeroViewData = {
   value: "8",
   detail: "Cycle 28 days",
   caption: "Next period: Apr 22",
+  upcomingOvulationLabel: null,
   progressPercent: 7 / 28,
   currentTone: "period" as const,
   phaseSegments: [
@@ -137,5 +138,24 @@ describe("DashboardCycleHero", () => {
     expect(
       screen.getByTestId("dashboard-cycle-hero-phase-card-ovulation").props.accessibilityState,
     ).toEqual(expect.objectContaining({ selected: true }));
+  });
+
+  it("renders the upcoming-ovulation line next to the next-period caption", () => {
+    renderHero({ upcomingOvulationLabel: "Ovulation: Apr 24" });
+
+    expect(
+      screen.getByTestId("dashboard-cycle-hero-upcoming-ovulation").props.children,
+    ).toBe("Ovulation: Apr 24");
+    expect(
+      screen.getByLabelText(
+        "Day 8. Period. Cycle 28 days. Next period: Apr 22. Ovulation: Apr 24",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("omits the upcoming-ovulation line entirely when the projection has no upcoming date", () => {
+    renderHero({ upcomingOvulationLabel: null });
+
+    expect(screen.queryByTestId("dashboard-cycle-hero-upcoming-ovulation")).toBeNull();
   });
 });

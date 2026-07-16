@@ -181,7 +181,7 @@ describe("export-pdf-service", () => {
   });
 
   it("exposes the logged-period-length footnote in all supported locales", () => {
-    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
       const copy = getExportPDFCopy(locale);
       expect(typeof copy.summaryLoggedPeriodLengthFootnote).toBe("string");
       expect(copy.summaryLoggedPeriodLengthFootnote.length).toBeGreaterThan(0);
@@ -189,7 +189,7 @@ describe("export-pdf-service", () => {
   });
 
   it("exposes the fertile-window assumption footnote in all supported locales", () => {
-    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
       const copy = getExportPDFCopy(locale);
       expect(typeof copy.fertileWindowAssumptionFootnote).toBe("string");
       expect(copy.fertileWindowAssumptionFootnote.length).toBeGreaterThan(0);
@@ -197,7 +197,7 @@ describe("export-pdf-service", () => {
   });
 
   it("summary section label no longer calls it 'Average period length' (honesty relabel)", () => {
-    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
       const copy = getExportPDFCopy(locale);
       // Label should reference logged/recorded days, not a bare average
       expect(copy.summaryAveragePeriodLengthLabel).not.toBe("Average period length");
@@ -227,8 +227,9 @@ describe("export-pdf-service", () => {
       fr: "Suivi clinique recommandé",
       ru: "Рекомендуется клиническая консультация",
       es: "Se sugiere seguimiento clínico",
+      it: "Si consiglia un consulto clinico",
     };
-    for (const locale of ["en", "ru", "de", "fr", "es"] as const) {
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
       const copy = getExportPDFCopy(locale);
       const desc = copy.shortLutealWarningDescription(10.5, 3);
       expect(desc).not.toContain(directives[locale]);

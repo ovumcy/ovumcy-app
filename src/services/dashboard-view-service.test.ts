@@ -632,4 +632,115 @@ describe("dashboard-view-service", () => {
       }),
     );
   });
+
+  it("shows the upcoming ovulation date next to the next-period line", () => {
+    // Same fixture as "uses a date-only journal header...": anchor 2026-03-10,
+    // cycle 29, ovulation day 15 (2026-03-24) is still ahead of today
+    // (2026-03-17, cycle day 8), so no forward-roll is needed.
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 29,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: true,
+      temperatureUnit: "f",
+      trackCervicalMucus: true,
+      hideSexChip: true,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const todayEntry: DayLogRecord = {
+      date: "2026-03-17",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 0,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      lhTest: "none",
+      pregnancyTest: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    };
+    const historyRecords = [todayEntry];
+
+    const viewData = buildDashboardViewData(
+      profile,
+      historyRecords,
+      buildCycleHistorySummary(profile, historyRecords, new Date(2026, 2, 17)),
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData.cycleHero.upcomingOvulationLabel).toBe("Ovulation: Mar 24");
+  });
+
+  it("hides the upcoming ovulation date once predictions pause after a positive pregnancy test", () => {
+    // Medical-safety invariant (mirrors cycle-history-service.test.ts's "surfaces
+    // no upcoming ovulation while predictions are paused..."): the pause blanks
+    // every dashboard prediction surface, this new line included.
+    const profile: ProfileRecord = {
+      lastPeriodStart: "2026-01-05",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+    };
+    const historyRecords: DayLogRecord[] = [
+      {
+        date: "2026-01-05",
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: false,
+        flow: "medium",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        pregnancyTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+      {
+        date: "2026-02-10",
+        isPeriod: false,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "none",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        pregnancyTest: "positive",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      },
+    ];
+    const now = new Date(2026, 1, 12);
+
+    const history = buildCycleHistorySummary(profile, historyRecords, now);
+    const viewData = buildDashboardViewData(profile, historyRecords, history, now);
+
+    expect(viewData.cycleHero.state).toBe("unknown");
+    expect(viewData.cycleHero.upcomingOvulationLabel).toBeNull();
+  });
 });

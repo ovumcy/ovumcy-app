@@ -81,6 +81,7 @@ describe("managed-reminder-email-schedule-service", () => {
       ["de-AT", "de"],
       ["fr_CA", "fr"],
       ["ru-RU", "ru"],
+      ["it-IT", "it"],
       ["pt-BR", "en"],
       [undefined, "en"],
       ["", "en"],
@@ -114,7 +115,7 @@ describe("managed-reminder-email-schedule-service", () => {
       {
         kind: "daily_log",
         scheduleType: "daily",
-        locale: "en",
+        locale: "it",
         timeZone: "UTC",
         dailyHour: 21,
         dailyMinute: 30,

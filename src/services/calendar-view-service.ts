@@ -22,6 +22,7 @@ import {
 import {
   addDays,
   atLocalDay,
+  diffCalendarDays,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -905,7 +906,7 @@ function appendFertilityWindow(
 
   for (let day = fertilityStart; day <= fertilityEnd; day = addDays(day, 1)) {
     const value = formatLocalDate(day);
-    const offset = Math.round((ovulation.getTime() - day.getTime()) / 86400000);
+    const offset = diffCalendarDays(day, ovulation);
     if (offset >= 0 && offset <= 2) {
       fertilityPeak.add(value);
       continue;

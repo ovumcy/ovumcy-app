@@ -83,6 +83,7 @@ Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended repo
 What this means in practice:
 
 - premium feature flags arrive over an authenticated managed cloud channel and are never persisted to broad key/value storage on the device;
+- the app persists a bounded 72-hour offline-grace cache of the last-known-good billing snapshot (`hasActivePlan` + `premiumFeatures` only) in the encrypted `managed_billing_cache` table, served only while fresh and only under a still-present managed session whose live fetch failed — it is not a second source of truth, and server-checked operations (sync upload/restore, partner projections, renewal) never read it;
 - the encrypted snapshot envelope on the sync transport is opaque to the server; new payload fields like `pregnancyTest` ride inside the same ciphertext and require no server schema awareness;
 - legacy snapshots that predate a field continue to decode; the storage layer defaults missing values when restoring on a newer client;
 - the doctor PDF is generated entirely on-device from canonical local repositories — the server never sees the PDF, only the encrypted day-log records that feed it.
@@ -110,7 +111,7 @@ The `payload-crypto.encryptPayload` / `decryptPayload` primitive requires AAD as
 
 ## Local Data Key Lifecycle
 
-When SecureStore returns a key that no longer authenticates the on-disk ciphertext (Android Auto Backup restoring SQLite without the SecureStore key, key truncation during migration), `resolveLocalDataKey` must canary-decrypt a singleton row before trusting the key. On auth-tag failure it wipes and reseeds with a fresh key, never returning the mismatched key to callers. This is the deterministic-reset behavior promised by the broader security invariants — the alternative (propagating the wrong key) bricks the app on every read.
+When SecureStore returns a key that no longer authenticates the on-disk ciphertext (a manually restored or copied SQLite file — e.g. `adb pull`/`adb push`, a device-to-device file copy, or a stale emulator/CI snapshot — landing next to a freshly generated SecureStore key, or key truncation during migration), `resolveLocalDataKey` must canary-decrypt a singleton row before trusting the key. On auth-tag failure it wipes and reseeds with a fresh key, never returning the mismatched key to callers. This is the deterministic-reset behavior promised by the broader security invariants — the alternative (propagating the wrong key) bricks the app on every read.
 
 ## Partner-Share Token Floor
 

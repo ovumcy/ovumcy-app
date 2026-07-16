@@ -1,3 +1,4 @@
+import { resolveCopyLanguage } from "../i18n/runtime";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import {
   createManagedCloudAPIClient,
@@ -126,19 +127,10 @@ export function buildManagedReminderEmailSchedules(
 }
 
 function normalizeReminderLocale(locale: string | undefined): string {
-  const subtag = String(locale ?? "")
-    .toLowerCase()
-    .replace(/_/g, "-")
-    .split("-")[0];
-  switch (subtag) {
-    case "ru":
-    case "es":
-    case "de":
-    case "fr":
-      return subtag;
-    default:
-      return "en";
-  }
+  // Delegates to the canonical resolver (`resolveCopyLanguage`) instead of a
+  // local subtag switch so this surface can't drift from the six supported
+  // interface locales documented in docs/web-parity-checklist.md.
+  return resolveCopyLanguage(locale);
 }
 
 function nextDailyReminderDeliveryAt(

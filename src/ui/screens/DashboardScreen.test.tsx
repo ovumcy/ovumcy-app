@@ -276,9 +276,12 @@ describe("DashboardScreen", () => {
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
       expect(
         screen.getByLabelText(
-          "Day 8. Follicular. Cycle 28 days. Next period: Apr 7",
+          "Day 8. Follicular. Cycle 28 days. Next period: Apr 7. Ovulation: Mar 23",
         ),
       ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-cycle-hero-upcoming-ovulation").props.children,
+      ).toBe("Ovulation: Mar 23");
       expect(screen.getByTestId("dashboard-cycle-hero-title").props.children).toBe("Day");
       expect(screen.getByTestId("dashboard-cycle-hero-value").props.children).toBe(
         "8",
@@ -419,6 +422,11 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-cycle-hero-detail").props.children).toBe(
       "Predictions off",
     );
+    // Medical-safety invariant: unpredictable (facts-only) mode never
+    // resurrects an upcoming-ovulation prediction on the dashboard hero.
+    expect(
+      screen.queryByTestId("dashboard-cycle-hero-upcoming-ovulation"),
+    ).toBeNull();
   });
 
   it("renders custom symptom options from the shared symptom catalog", async () => {

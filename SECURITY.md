@@ -57,15 +57,18 @@ follows from that:
 - **No telemetry.** The app ships no analytics, advertising, crash-attribution,
   or third-party tracking SDKs. Nothing about the user's health data or usage is
   reported off-device by default.
-- **Premium is gated by a managed billing snapshot, with signed tokens for the
-  purely-local features.** Most premium features (advanced fertility, extended
-  reports, partner access, reminder emails) are unlocked by a boolean
+- **Premium is gated by the managed billing snapshot; the signed-token overlay
+  for the purely-local features is shipped but dormant.** All premium features
+  (advanced fertility, extended reports, partner access, reminder emails,
+  doctor PDF, advanced insights) are unlocked by a boolean
   entitlement / `has_active_plan` snapshot read from the managed cloud. Local
   device reminder notifications are a free-tier feature derived entirely from
-  on-device data and read no billing state. The two purely-local
-  compute features (doctor PDF, advanced insights) additionally prefer a signed
-  EdDSA entitlement token when one verifies, falling back to the snapshot
-  boolean otherwise (see Accepted Residual Risks). Gating is **additive**: a free
+  on-device data and read no billing state. For the two purely-local
+  compute features (doctor PDF, advanced insights) a signed EdDSA
+  entitlement-token overlay is implemented and test-covered, but no production
+  caller constructs the token gate yet, so today those gates too read only the
+  snapshot boolean; switching them to the token is a later activation step
+  (see Accepted Residual Risks). Gating is **additive**: a free
   or expired account keeps full core cycle-tracking and renders an explicit lock
   card; no health feature is taken away.
 
@@ -88,17 +91,25 @@ follows from that:
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
   cannot execute on open, with RFC 4180 quoting preserved.
-- **Cleartext HTTP blocked by default (Android).** The committed Android network
-  security config (`android/app/src/main/res/xml/network_security_config.xml`,
-  generated in prebuild by `plugins/withAndroidNetworkSecurityConfig.js`) sets
-  `cleartextTrafficPermitted="false"` app-wide and permits cleartext only for the
-  emulator-host/loopback dev addresses (`10.0.2.2`, `127.0.0.1`, `localhost`) that
-  serve Metro and local sync stacks in debug builds. Production traffic is
-  HTTPS-only at the OS layer. On top of that, `src/sync/sync-endpoint-policy.ts`
-  rejects `http://` to any non-private host (parsing the host as a literal IPv4
-  and bucketing by octet, never prefix-matching the hostname) as defense in
-  depth, so an `http://` sync/managed endpoint is refused before a request goes
-  out regardless of the OS layer.
+- **Cleartext HTTP blocked by default (Android).** The Android network security
+  config (`android/app/src/main/res/xml/network_security_config.xml`) is generated
+  at prebuild by the committed `plugins/withAndroidNetworkSecurityConfig.js` —
+  `android/` itself is gitignored, so the plugin is the real committed source of
+  truth — and sets `cleartextTrafficPermitted="false"` app-wide and permits
+  cleartext only for the emulator-host/loopback dev addresses (`10.0.2.2`,
+  `127.0.0.1`, `localhost`) that serve Metro and local sync stacks in debug builds.
+  Production traffic is HTTPS-only at the OS layer. On top of that,
+  `src/sync/sync-endpoint-policy.ts` rejects `http://` to any non-private host
+  (parsing the host as a literal IPv4 and bucketing by octet, never
+  prefix-matching the hostname) as defense in depth, so an `http://` sync/managed
+  endpoint is refused before a request goes out regardless of the OS layer.
+- **No OS-level backup or remote-delivery channels (Android).** `app.json` sets
+  `android.allowBackup=false`, so Android's OS-managed Auto Backup, cloud backup,
+  and device-transfer flows never copy this app's on-device data (encrypted
+  SQLite, SecureStore-backed material) off the device. The app also ships no
+  Firebase Cloud Messaging integration and no over-the-air update channel (no
+  `expo-updates` dependency, no `updates` config in `app.json`) — there is no
+  push-delivery or remote-code-update surface to secure or audit.
 
 ### Out of scope
 
@@ -120,22 +131,28 @@ follows from that:
   (`react-native-ssl-public-key-pinning`) is **not installed or registered**, so
   TLS today relies on standard CA-chain trust. The JS policy is defense-in-depth
   for when native pinning is enabled.
-- **Signed entitlement tokens are verified, but verification is bypassable by a
-  forked client (honest non-DRM scope).** The two *purely-local* premium
-  features (doctor PDF, advanced insights) are now gated by a signed
-  EdDSA/Ed25519 token (`src/security/entitlement-token.ts`): the app verifies the
-  signature against an embedded public key keyed by `kid`, checks
-  `iss`/`aud`/`exp`/`sub`, and trusts the token's `entitlements` over the plain
-  snapshot boolean when a valid token is present. This raises casual
+- **Signed entitlement tokens are implemented but dormant; verification, once
+  activated, is bypassable by a forked client (honest non-DRM scope).** A signed
+  EdDSA/Ed25519 token overlay for the two *purely-local* premium features
+  (doctor PDF, advanced insights) is implemented and test-covered
+  (`src/security/entitlement-token.ts`): the verifier checks the signature
+  against an embedded public key keyed by `kid`, checks `iss`/`aud`/`exp`/`sub`,
+  and the premium loader trusts a valid token's `entitlements` over the plain
+  snapshot boolean. It is **not activated**: no production screen or service
+  constructs the token gate yet, so today both features are decided purely by
+  the managed billing-snapshot boolean, exactly as before the token landed —
+  the cross-repo contract memo (`docs/signed-entitlements.md` in the managed
+  cloud repo) records the feature as IMPLEMENTED / NOT ACTIVATED, with
+  activation as its rollout step 3. Once live, the token raises casual
   circumvention from "flip a boolean" to "patch out signature verification or
   reimplement the managed signer" — and that is the entire claim. It is **not**
   DRM: a determined forker can still patch out the verifier or reimplement the
-  signer, and doing so only exposes the user's own data. During rollout phase 1
-  the gate **falls back to the billing-snapshot boolean** whenever no valid token
-  is present (no endpoint, offline with an expired cache, unknown `kid`, tamper),
-  so older managed servers and the pre-rollout state behave exactly as before.
-  The embedded public key shipped today is a documented placeholder; until the
-  operator installs the production key (and managed ships the issuance endpoint)
+  signer, and doing so only exposes the user's own data. The gate **falls back
+  to the billing-snapshot boolean** whenever no valid token is present (no gate
+  constructed — today's state — no endpoint, offline with an expired cache,
+  unknown `kid`, tamper), so older managed servers and the pre-rollout state
+  behave exactly as before. The embedded public key shipped today is a
+  documented placeholder; until the operator installs the production key,
   no production token verifies and every gate uses the snapshot. A release
   guard (`scripts/verify-entitlement-pubkeys.mjs`, run as the
   `eas-build-pre-install` hook on the production EAS profile and at the start
@@ -144,6 +161,34 @@ follows from that:
   production artifact cannot ship it silently. The
   authoritative gate for any *server-side* premium capability (e.g. managed sync)
   remains enforced on the backend, not by this token.
+- **Managed billing snapshot cache is a bounded 72h offline-grace exception, not a
+  second source of truth.** `loadManagedBillingSnapshot` persists the last-known-good
+  billing snapshot — only `hasActivePlan` and `premiumFeatures`; server-driven
+  affordances like renewal management and offers are deliberately excluded so they
+  fail closed from cache — to the encrypted `managed_billing_cache` table after every
+  successful fetch (`MANAGED_BILLING_CACHE_TTL_MS`,
+  `src/services/managed-premium-features-service.ts`). If a live fetch then fails,
+  the cache is served only while it is at most 72 hours old **and** a managed session
+  token is still present on-device; a signed-out or never-connected device gets no
+  grace. Past 72 hours, or with nothing ever cached, the gate fails closed exactly as
+  it did before this cache existed. Server-checked operations (sync upload/restore,
+  partner projections, renewal) never read this cache — the server remains their sole
+  authority. The trade-off is deliberate: a network blip or managed outage should not
+  instantly re-lock all six premium gates on a paying device, at the cost of a revoked
+  plan keeping its local unlocks for up to 72 hours while the device cannot reach
+  billing truth.
+- **Compile-time sync/managed base-URL overrides are dev-only and release-guarded.**
+  `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` / `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL` let a
+  local build point at a self-hosted dev stack. A release guard
+  (`scripts/verify-base-urls.mjs`, run as the `eas-build-pre-install` hook on the
+  production EAS profile and at the start of `npm run deploy`) fails the build
+  unless both are unset or exactly the canonical `sync.ovumcy.cloud` /
+  `managed.ovumcy.cloud` defaults in the ambient process environment, and the
+  deploy web export itself runs through `scripts/export-web.mjs`, which disables
+  Expo's dotenv loading (`EXPO_NO_DOTENV=1`) and clears the bundler cache (a
+  stale Metro cache can re-inject values inlined under an earlier environment)
+  — so a stray `.env.local` override on the deploying machine cannot leak into
+  the exported web artifact either.
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
@@ -278,6 +323,17 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | When the issuance endpoint 503s (signing key absent) with nothing cached, the gate falls back to the snapshot booleans (no regression) | `falls back to snapshot booleans when the endpoint is 503 and nothing is cached (no regression)` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A verified token overlays the two local features (and only those); an expired cached token re-locks and falls back to the snapshot | `overlays a verified token: the two local features become true, server-gated stay from the snapshot`, `re-locks when the cached token is expired and falls back to the snapshot booleans` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 
+### Managed billing snapshot offline-grace cache
+
+| Claim | Enforced by |
+| --- | --- |
+| A successful billing fetch refreshes the persisted last-known-good snapshot | `refreshes the persisted last-known-good snapshot on a successful fetch` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A failed fetch serves the cached snapshot while it is within the 72h TTL | `serves the cached snapshot within the 72h TTL when the billing fetch fails` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| Once the cache exceeds 72h, a failed fetch fails closed exactly as it did before the cache existed | `fails closed exactly as before once the cache is older than 72h` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A failed fetch with nothing ever cached fails closed | `fails closed when the fetch fails and no snapshot was ever cached` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| The cache is never served without a still-present managed session token | `never serves the cache without a managed session token` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` instead of instantly re-locking | `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+
 ### Policy / Planned (human-reviewed, not in the matrix)
 
 - **No telemetry.** The absence of analytics/ad/tracking SDKs is a dependency-
@@ -290,12 +346,15 @@ items) are intentionally excluded — they are reviewed by humans, not by
   (`react-native-ssl-public-key-pinning`) is not yet wired, so the
   observed-fingerprint comparison cannot be exercised against a real handshake in
   the app test suite; only the pure policy and store are tested today. Planned.
-- **Signed premium entitlement tokens (honest non-DRM scope).** The two
-  purely-local premium features are now verified against a signed EdDSA token
-  (matrix rows above); the remaining policy note is that verification is
-  *bypassable by a forked client* by design. This is not asserted by a single
-  test — it is the explicit non-goal recorded in the Accepted-Residual note
-  above, reviewed by humans. The token is treated as a hardened UX control over the
+- **Signed premium entitlement tokens (honest non-DRM scope).** The
+  entitlement-token verifier and its snapshot-fallback overlay are implemented
+  and pinned by the matrix rows above, but remain dormant: no production caller
+  constructs the token gate, so the two purely-local premium features are still
+  decided by the billing-snapshot boolean until the activation rollout step.
+  The remaining policy note is that verification, once live, is *bypassable by
+  a forked client* by design. This is not asserted by a single test — it is the
+  explicit non-goal recorded in the Accepted-Residual note above, reviewed by
+  humans. The token is treated as a hardened UX control over the
   user's own local data, not a DRM trust boundary.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore

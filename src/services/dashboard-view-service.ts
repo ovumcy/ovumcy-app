@@ -35,6 +35,15 @@ export type DashboardCycleHeroViewData = {
   value: string;
   detail: string;
   caption: string;
+  // Web parity (dashboard.html:122, DisplayOvulationDate): the upcoming-ovulation
+  // line the dashboard shows next to the next-period caption. Precomputed and
+  // formatted here (never parsed by UI) — null hides the element entirely.
+  // `projection.upcomingOvulationDate` is null/undefined on every
+  // non-predictable path (pregnancy pause, unpredictable-cycle mode, no
+  // resolvable anchor, or an uncalculable window) — see the doc comment on
+  // that field in src/models/stats.ts — so hiding on that one falsy check is
+  // sufficient and needs no separate gating here.
+  upcomingOvulationLabel: string | null;
   progressPercent: number | null;
   currentTone: DashboardCycleHeroPhaseKey | "neutral";
   phaseSegments: {
@@ -201,6 +210,11 @@ function buildDashboardCycleHero(
       ? String(projection.currentCycleDay)
       : statsCopy.phaseLabels.unknown;
   const heroTitle = dashboardCopy.cycleHeroDayLabel;
+  const upcomingOvulationLabel = buildDashboardUpcomingOvulationLabel(
+    projection,
+    dashboardCopy,
+    locale,
+  );
 
   if (projection.isPredictionStale) {
     // Web parity (canRenderDashboardCycleHero=false when CycleDataStale): the
@@ -224,6 +238,7 @@ function buildDashboardCycleHero(
       value: staleDayValue,
       detail: dashboardCopy.cycleHeroStale,
       caption: staleCaption,
+      upcomingOvulationLabel,
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
@@ -238,6 +253,7 @@ function buildDashboardCycleHero(
       value: cycleDayValue,
       detail: dashboardCopy.cycleHeroFactsOnly,
       caption: "",
+      upcomingOvulationLabel,
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
@@ -252,6 +268,7 @@ function buildDashboardCycleHero(
       value: statsCopy.phaseLabels.unknown,
       detail: dashboardCopy.cycleHeroWaiting,
       caption: dashboardCopy.nextPeriodPrompt,
+      upcomingOvulationLabel,
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
@@ -271,6 +288,7 @@ function buildDashboardCycleHero(
       value: cycleDayValue,
       detail: dashboardCopy.cycleHeroApproximate,
       caption: buildDashboardCycleHeroCaption(profile, projection, history, locale),
+      upcomingOvulationLabel,
       progressPercent: null,
       currentTone: "neutral",
       phaseSegments: [],
@@ -291,6 +309,7 @@ function buildDashboardCycleHero(
       ? dashboardCopy.cycleHeroApproximate
       : dashboardCopy.cycleHeroRegular(projection.predictionCycleLength),
     caption: buildDashboardCycleHeroCaption(profile, projection, history, locale),
+    upcomingOvulationLabel,
     progressPercent: resolveDashboardCycleHeroProgressPercent(projection),
     currentTone,
     phaseSegments: cyclePhases.map((phase) => ({
@@ -339,6 +358,21 @@ function buildDashboardCycleHeroCaption(
       : "";
 
   return `${dashboardCopy.nextPeriod}: ${nextPeriodValue}${suffix}`;
+}
+
+function buildDashboardUpcomingOvulationLabel(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  dashboardCopy: ReturnType<typeof getDashboardCopy>,
+  locale: string,
+): string | null {
+  if (!projection.upcomingOvulationDate) {
+    return null;
+  }
+
+  return `${dashboardCopy.ovulation}: ${formatDisplayDate(
+    projection.upcomingOvulationDate,
+    locale,
+  )}`;
 }
 
 function buildDashboardCycleHeroDateRange(
