@@ -14,6 +14,7 @@
         }
       ],
       "./plugins/withAndroidNetworkSecurityConfig",
+      "./plugins/withIosExcludeDataFromICloudBackup",
       "expo-font"
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
@@ -30,6 +31,12 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/ovumcy-icon-512-maskable.png",
         "backgroundColor": "#f7f0e6"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "app.ovumcy.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Ovumcy asks for Face ID to confirm it's you before revealing your recovery phrase or making sensitive account and data changes."
       }
     },
     "web": {

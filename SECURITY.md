@@ -110,6 +110,21 @@ follows from that:
   Firebase Cloud Messaging integration and no over-the-air update channel (no
   `expo-updates` dependency, no `updates` config in `app.json`) — there is no
   push-delivery or remote-code-update surface to secure or audit.
+- **No OS-level backup channels (iOS).** iOS has no `allowBackup` switch and no
+  Info.plist equivalent, so the committed config plugin
+  `plugins/withIosExcludeDataFromICloudBackup.js` injects a launch-time
+  `AppDelegate` hook that sets `NSURLIsExcludedFromBackupKey` on the app's
+  `Documents` and `Library/Application Support` directories. That keeps both
+  on-device data stores — the encrypted SQLite database in `Documents/SQLite`
+  (`ovumcy-local.db` plus its `-wal`/`-shm` sidecars) and the AsyncStorage backend
+  under `Application Support/<bundleId>` — out of iCloud backups and encrypted
+  Finder/iTunes (local) backups, the same backup-exclusion posture Android gets
+  from `allowBackup=false`. Excluding the directories also covers files created
+  after launch; the hook is idempotent and never fatal, and `ios/` is gitignored so
+  the plugin (not a checked-in `AppDelegate`) is the committed source of truth.
+  Keychain secrets are governed separately (`expo-secure-store` with
+  `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), an accessibility class iOS already keeps
+  out of cross-device Keychain sync and restore.
 
 ### Out of scope
 
