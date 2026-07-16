@@ -395,10 +395,26 @@ that owns the canonical web UX).
     `stats.OvulationDate` and `stats.LastPeriodStart` the same way. Pinned by the
     shared golden-vector fixture's additive `projection` section
     (`cycle-projection-reference.test.ts` ↔ web
-    `cycle_projection_reference_test.go`). Surfacing the upcoming-ovulation
-    **date** on the dashboard hero (web shows `DisplayOvulationDate`; the app hero
-    currently shows ovulation only as a phase-ring segment) remains a display-layer
-    follow-up — the value is now computed and pinned, not yet rendered as a date.
+    `cycle_projection_reference_test.go`). The upcoming-ovulation **date** (web
+    `DisplayOvulationDate`, `dashboard.html:122`) now renders on the dashboard
+    hero next to the existing next-period line
+    (`DashboardCycleHeroViewData.upcomingOvulationLabel`,
+    `src/services/dashboard-view-service.ts`, rendered by
+    `src/ui/screens/dashboard/DashboardCycleHero.tsx`), reusing the
+    already-present `dashboardCopy.ovulation` label and the hero's existing
+    `formatDisplayDate` helper: present whenever `upcomingOvulationDate` is
+    non-null, absent entirely under the pregnancy-pause and unpredictable-cycle
+    branches (and any other null-producing path), never a separate "unavailable"
+    string. Deviation: web further splits `DisplayOvulationDate` into
+    use-range / needs-more-cycles / impossible sub-states
+    (`dashboardNeedsOvulationData`, `DashboardOvulationRange`,
+    `dashboard_cycle.go:169-341`) that the app's single nullable field does not
+    model, so the app always shows one concrete date (or nothing); this also
+    means the app keeps showing the date in the rolled-forward "stale" hero
+    state, where web's analogous irregular/low-reliability path blanks
+    ovulation specifically while still showing an approximate next-period date.
+    Porting that finer-grained branching is a possible future parity task, not
+    done here since it is new gating logic beyond this change's scope.
 
 ## Remaining Product Gaps
 

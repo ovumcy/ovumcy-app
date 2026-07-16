@@ -210,6 +210,15 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
           {viewData.caption}
         </Text>
       ) : null}
+
+      {viewData.upcomingOvulationLabel ? (
+        <Text
+          style={styles.caption}
+          testID="dashboard-cycle-hero-upcoming-ovulation"
+        >
+          {viewData.upcomingOvulationLabel}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -224,6 +233,7 @@ function buildDashboardCycleHeroAccessibilityLabel(
     activePhase,
     viewData.detail,
     viewData.caption,
+    viewData.upcomingOvulationLabel ?? "",
   ]
     .filter((value) => value.trim().length > 0)
     .join(". ");
