@@ -159,12 +159,19 @@ function redactDayLogForPartner(
   profile: ProfileRecord,
   accessLevel: PartnerShareAccessLevel,
 ): DayLogRecord {
+  // Built by explicit field-picking, never `...record` spread: the return type
+  // is the full DayLogRecord, so the TS compiler forces every field to be
+  // listed here. A future additive field on DayLogRecord fails typecheck in
+  // this function instead of silently reaching a partner projection.
   if (accessLevel === "summary") {
     // Summary projection: share only coarse period/cycle markers.
     // Data minimisation: flow is not rendered in the summary UI, so drop it.
     // pregnancyTest is owner-only per the canonical privacy rule.
     return {
-      ...record,
+      date: record.date,
+      isPeriod: record.isPeriod,
+      cycleStart: record.cycleStart,
+      isUncertain: record.isUncertain,
       flow: "none",
       mood: 0,
       sexActivity: "none",
@@ -181,12 +188,20 @@ function redactDayLogForPartner(
   // Full projection: respect owner privacy toggles.
   // pregnancyTest is owner-only unconditionally — no opt-in exists.
   return {
-    ...record,
+    date: record.date,
+    isPeriod: record.isPeriod,
+    cycleStart: record.cycleStart,
+    isUncertain: record.isUncertain,
+    flow: record.flow,
+    mood: record.mood,
     sexActivity: profile.hideSexChip ? "none" : record.sexActivity,
     bbt: profile.trackBBT ? record.bbt : 0,
     cervicalMucus: profile.trackCervicalMucus ? record.cervicalMucus : "none",
-    notes: profile.hideNotes === true ? "" : record.notes,
+    lhTest: record.lhTest,
     pregnancyTest: "none",
+    cycleFactorKeys: record.cycleFactorKeys,
+    symptomIDs: record.symptomIDs,
+    notes: profile.hideNotes === true ? "" : record.notes,
   };
 }
 
