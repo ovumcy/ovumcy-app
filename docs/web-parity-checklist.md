@@ -325,6 +325,15 @@ that owns the canonical web UX).
   menstrual→follicular boundary may differ by a day or two. Porting the rolling
   period-length average is a possible future parity task, deliberately not done
   here because it would be new prediction math beyond this change's scope.
+- The app's JSON export format (`ExportBackupEnvelope` in `src/models/export.ts:76`,
+  with structure `{app, formatVersion, exportedAt, preset, range, summary, profile,
+  symptoms, dayLogs}`) is intentionally not interchangeable with web's flat
+  snake_case JSON export (`ExportJSONEntry`). The app format is structured and
+  self-describing for backup/restore and multi-platform portability; web's format
+  is optimized for sheet-software interoperability. Both CSV and JSON remain
+  Free-tier local-first exports; an owner may export from app and import to web
+  by hand-processing the structured app JSON or re-exporting as CSV for web,
+  never the reverse — web JSON does not round-trip into the app.
 
 ## Current App State
 
