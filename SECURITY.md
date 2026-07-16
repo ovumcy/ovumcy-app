@@ -57,15 +57,18 @@ follows from that:
 - **No telemetry.** The app ships no analytics, advertising, crash-attribution,
   or third-party tracking SDKs. Nothing about the user's health data or usage is
   reported off-device by default.
-- **Premium is gated by a managed billing snapshot, with signed tokens for the
-  purely-local features.** Most premium features (advanced fertility, extended
-  reports, partner access, reminder emails) are unlocked by a boolean
+- **Premium is gated by the managed billing snapshot; the signed-token overlay
+  for the purely-local features is shipped but dormant.** All premium features
+  (advanced fertility, extended reports, partner access, reminder emails,
+  doctor PDF, advanced insights) are unlocked by a boolean
   entitlement / `has_active_plan` snapshot read from the managed cloud. Local
   device reminder notifications are a free-tier feature derived entirely from
-  on-device data and read no billing state. The two purely-local
-  compute features (doctor PDF, advanced insights) additionally prefer a signed
-  EdDSA entitlement token when one verifies, falling back to the snapshot
-  boolean otherwise (see Accepted Residual Risks). Gating is **additive**: a free
+  on-device data and read no billing state. For the two purely-local
+  compute features (doctor PDF, advanced insights) a signed EdDSA
+  entitlement-token overlay is implemented and test-covered, but no production
+  caller constructs the token gate yet, so today those gates too read only the
+  snapshot boolean; switching them to the token is a later activation step
+  (see Accepted Residual Risks). Gating is **additive**: a free
   or expired account keeps full core cycle-tracking and renders an explicit lock
   card; no health feature is taken away.
 
@@ -128,22 +131,28 @@ follows from that:
   (`react-native-ssl-public-key-pinning`) is **not installed or registered**, so
   TLS today relies on standard CA-chain trust. The JS policy is defense-in-depth
   for when native pinning is enabled.
-- **Signed entitlement tokens are verified, but verification is bypassable by a
-  forked client (honest non-DRM scope).** The two *purely-local* premium
-  features (doctor PDF, advanced insights) are now gated by a signed
-  EdDSA/Ed25519 token (`src/security/entitlement-token.ts`): the app verifies the
-  signature against an embedded public key keyed by `kid`, checks
-  `iss`/`aud`/`exp`/`sub`, and trusts the token's `entitlements` over the plain
-  snapshot boolean when a valid token is present. This raises casual
+- **Signed entitlement tokens are implemented but dormant; verification, once
+  activated, is bypassable by a forked client (honest non-DRM scope).** A signed
+  EdDSA/Ed25519 token overlay for the two *purely-local* premium features
+  (doctor PDF, advanced insights) is implemented and test-covered
+  (`src/security/entitlement-token.ts`): the verifier checks the signature
+  against an embedded public key keyed by `kid`, checks `iss`/`aud`/`exp`/`sub`,
+  and the premium loader trusts a valid token's `entitlements` over the plain
+  snapshot boolean. It is **not activated**: no production screen or service
+  constructs the token gate yet, so today both features are decided purely by
+  the managed billing-snapshot boolean, exactly as before the token landed —
+  the cross-repo contract memo (`docs/signed-entitlements.md` in the managed
+  cloud repo) records the feature as IMPLEMENTED / NOT ACTIVATED, with
+  activation as its rollout step 3. Once live, the token raises casual
   circumvention from "flip a boolean" to "patch out signature verification or
   reimplement the managed signer" — and that is the entire claim. It is **not**
   DRM: a determined forker can still patch out the verifier or reimplement the
-  signer, and doing so only exposes the user's own data. During rollout phase 1
-  the gate **falls back to the billing-snapshot boolean** whenever no valid token
-  is present (no endpoint, offline with an expired cache, unknown `kid`, tamper),
-  so older managed servers and the pre-rollout state behave exactly as before.
-  The embedded public key shipped today is a documented placeholder; until the
-  operator installs the production key (and managed ships the issuance endpoint)
+  signer, and doing so only exposes the user's own data. The gate **falls back
+  to the billing-snapshot boolean** whenever no valid token is present (no gate
+  constructed — today's state — no endpoint, offline with an expired cache,
+  unknown `kid`, tamper), so older managed servers and the pre-rollout state
+  behave exactly as before. The embedded public key shipped today is a
+  documented placeholder; until the operator installs the production key,
   no production token verifies and every gate uses the snapshot. A release
   guard (`scripts/verify-entitlement-pubkeys.mjs`, run as the
   `eas-build-pre-install` hook on the production EAS profile and at the start
@@ -337,12 +346,15 @@ items) are intentionally excluded — they are reviewed by humans, not by
   (`react-native-ssl-public-key-pinning`) is not yet wired, so the
   observed-fingerprint comparison cannot be exercised against a real handshake in
   the app test suite; only the pure policy and store are tested today. Planned.
-- **Signed premium entitlement tokens (honest non-DRM scope).** The two
-  purely-local premium features are now verified against a signed EdDSA token
-  (matrix rows above); the remaining policy note is that verification is
-  *bypassable by a forked client* by design. This is not asserted by a single
-  test — it is the explicit non-goal recorded in the Accepted-Residual note
-  above, reviewed by humans. The token is treated as a hardened UX control over the
+- **Signed premium entitlement tokens (honest non-DRM scope).** The
+  entitlement-token verifier and its snapshot-fallback overlay are implemented
+  and pinned by the matrix rows above, but remain dormant: no production caller
+  constructs the token gate, so the two purely-local premium features are still
+  decided by the billing-snapshot boolean until the activation rollout step.
+  The remaining policy note is that verification, once live, is *bypassable by
+  a forked client* by design. This is not asserted by a single test — it is the
+  explicit non-goal recorded in the Accepted-Residual note above, reviewed by
+  humans. The token is treated as a hardened UX control over the
   user's own local data, not a DRM trust boundary.
 - **Secure-storage backing for keys/secrets.** Keys and sync/partner secrets are
   placed in `expo-secure-store` with device-only accessibility; the OS keystore
