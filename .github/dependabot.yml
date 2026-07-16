@@ -18,6 +18,10 @@ updates:
       - dependency-name: "react-native"
       - dependency-name: "react-native-worklets"
       - dependency-name: "react-test-renderer"
+      # react-navigation is version-pinned by the Expo SDK too (expo-doctor
+      # rejects specs ahead of the SDK's, e.g. bottom-tabs ^7.4.0); track it in
+      # the same SDK-aligned pass rather than via standalone patch bumps.
+      - dependency-name: "@react-navigation/*"
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
