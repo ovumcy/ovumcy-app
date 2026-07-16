@@ -622,10 +622,15 @@ describe("dashboard-view-service", () => {
         // With <3 completed cycles the data-driven range is no longer emitted —
         // dashboard falls back to a single date.
         caption: "Next period: Apr 22",
-        currentTone: "period",
+        // Period phase now spans the rolling AveragePeriodLength, not the
+        // configured 5 (web parity, dashboard_cycle_hero.go:54): both logged
+        // cycles are single-day period markers (2026-02-05, 2026-03-25), so the
+        // last-6 observed average — including the current cycle — is 1 day.
+        // Day 2 therefore reads follicular, not period.
+        currentTone: "follicular",
         phaseCards: [
-          expect.objectContaining({ key: "period", rangeLabel: "Days 1-5", active: true }),
-          expect.objectContaining({ key: "follicular", rangeLabel: "Days 6-13", active: false }),
+          expect.objectContaining({ key: "period", rangeLabel: "Day 1", active: false }),
+          expect.objectContaining({ key: "follicular", rangeLabel: "Days 2-13", active: true }),
           expect.objectContaining({ key: "ovulation", rangeLabel: "Day 14", active: false }),
           expect.objectContaining({ key: "luteal", rangeLabel: "Days 15-28", active: false }),
         ],

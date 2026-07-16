@@ -7,7 +7,6 @@ import {
   type DayLogRecord,
 } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
-import { STATS_CYCLE_PREDICTION_WINDOW } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildCycleHistorySummary,
@@ -666,7 +665,14 @@ function buildCalendarPredictionMaps(
   }
 
   const gridEnd = endOfWeek(endOfMonth(monthStart));
-  const predictedPeriodLength = resolvePredictedPeriodLength(profile, history);
+  // Web parity: the projected period length is the single rolling
+  // predictedPeriodLength(stats.AveragePeriodLength) computed once by the
+  // projection (cycle-history-service.resolveProjectedPeriodLength), so the
+  // calendar's predicted-period painting, the dashboard hero, and the current
+  // phase all agree. The ?? fallback only guards hand-built projection literals;
+  // the real producer always sets projectedPeriodLength.
+  const predictedPeriodLength =
+    projection.projectedPeriodLength ?? profile.periodLength;
 
   if (projection.cycleAnchorDate) {
     // Web parity (calendar_days.go appendCurrentBaselinePeriod/PreFertile): the
@@ -978,28 +984,6 @@ function appendPreFertile(
   }
 }
 
-function resolvePredictedPeriodLength(
-  profile: ProfileRecord,
-  history: ReturnType<typeof buildCycleHistorySummary>,
-): number {
-  if (history.completedCycles.length === 0) {
-    return profile.periodLength;
-  }
-
-  const observed = history.completedCycles
-    .slice(-STATS_CYCLE_PREDICTION_WINDOW)
-    .map((cycle) => cycle.observedPeriodLength)
-    .filter((value): value is number => value !== null);
-
-  if (observed.length === 0) {
-    return profile.periodLength;
-  }
-
-  const average =
-    observed.reduce((sum, value) => sum + value, 0) / observed.length;
-
-  return Math.max(1, Math.round(average));
-}
 
 function parseMonthValue(value?: string): Date | null {
   if (!value) {

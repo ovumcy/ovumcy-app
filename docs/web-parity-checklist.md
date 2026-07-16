@@ -316,15 +316,6 @@ that owns the canonical web UX).
   explicit, not silent.
 - Mobile bottom tabs remain a platform-specific navigation deviation from the
   web nav chrome.
-- The app's projected-period-as-menstrual window (the "still bleeding" phase read
-  for an unlogged early-cycle day in `detectCurrentPhase`,
-  `src/services/cycle-history-service.ts`) uses the profile-configured
-  `periodLength`, whereas web uses `stats.AveragePeriodLength` — a rolling average
-  of the last six observed period lengths — with the configured value only as a
-  bootstrap fallback. For owners whose observed period length varies, the
-  menstrual→follicular boundary may differ by a day or two. Porting the rolling
-  period-length average is a possible future parity task, deliberately not done
-  here because it would be new prediction math beyond this change's scope.
 - Cross-product backup portability between the app and web is an intentional
   non-goal, not a discovered gap (app #104): JSON export/backup schemas are
   deliberately separate, and neither product's import path accepts the
@@ -434,6 +425,27 @@ that owns the canonical web UX).
     ovulation specifically while still showing an approximate next-period date.
     Porting that finer-grained branching is a possible future parity task, not
     done here since it is new gating logic beyond this change's scope.
+  - Projected period length now matches web's rolling `AveragePeriodLength`
+    instead of the profile-configured `periodLength`, closing the former allowed
+    deviation. `cycle-history-service.resolveProjectedPeriodLength` averages the
+    logged period-day counts of the last six observed cycles — including the
+    current in-progress cycle, exactly as web `buildCycles(observedStarts)` spans
+    every observed start (`cycles.go` `populateObservedCycleStats` /
+    `recentPositivePeriodLengths`) — folds the mean through `predictedPeriodLength`
+    (round-half-up, default 5), and falls back to the configured period length
+    only until the first cycle completes (web `ApplyUserCycleBaseline` bootstrap,
+    `cycle_baseline.go:49-63`). The figure is computed once and carried on
+    `StatsCycleProjection.projectedPeriodLength`, so the `detectCurrentPhase`
+    menstrual boundary (web `resolveCyclePhase`, `cycles.go:424`), the calendar
+    current/predicted/historical period painting (web `calendar_days.go`), and
+    the dashboard cycle-hero menstrual phase card (web `dashboard_cycle_hero.go:54`)
+    all read one value. Residual pre-existing app behaviors, unchanged by this
+    port: cycle starts derive from the app's observed-cluster detection plus
+    `profile.lastPeriodStart` (web's bootstrap gate uses log-only
+    `DetectCycleStarts`), and consecutive period-day counting caps at 10 days vs
+    web's 11 — both differ only on clinically extreme inputs. Regression:
+    `cycle-history-service.test.ts` ("projected period length" suite) plus the
+    updated dashboard hero phase-card expectation.
 
 ## Remaining Product Gaps
 

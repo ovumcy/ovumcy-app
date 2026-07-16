@@ -5,6 +5,8 @@ import {
   buildCycleHistorySummary,
   collectCycleStartDates,
   hasDataDrivenPredictionSpan,
+  predictedPeriodLength,
+  resolveProjectedPeriodLength,
   shouldShowAgeVariabilityHint,
   shouldShowIrregularityNotice,
 } from "./cycle-history-service";
@@ -736,6 +738,191 @@ describe("cycle-history-service", () => {
 
       expect(projection.isPregnancyPaused).toBe(true);
       expect(projection.currentPhase).toBe("unknown");
+    });
+  });
+
+  describe("projected period length (web AveragePeriodLength parity, cycles.go:300-333 + cycle_baseline.go:49-63)", () => {
+    // Builds `periodLengths.length` cycles spaced `spacingDays` apart, each with
+    // `len` consecutive logged period days (first day marked cycleStart). Mirrors
+    // web buildCycles: one detected cycle per observed start, PeriodLength = the
+    // count of consecutive logged period days from the start.
+    function cyclesWithPeriodLengths(
+      firstStart: Date,
+      periodLengths: number[],
+      spacingDays = 28,
+    ): { records: ReturnType<typeof createEmptyDayLogRecord>[]; lastStart: Date } {
+      const records: ReturnType<typeof createEmptyDayLogRecord>[] = [];
+      let cursor = firstStart;
+      for (const len of periodLengths) {
+        for (let day = 0; day < len; day += 1) {
+          const date = new Date(
+            cursor.getFullYear(),
+            cursor.getMonth(),
+            cursor.getDate() + day,
+          );
+          records.push({
+            ...createEmptyDayLogRecord(isoDate(date)),
+            isPeriod: true,
+            cycleStart: day === 0,
+          });
+        }
+        cursor = new Date(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          cursor.getDate() + spacingDays,
+        );
+      }
+      const lastStart = new Date(
+        firstStart.getFullYear(),
+        firstStart.getMonth(),
+        firstStart.getDate() + spacingDays * (periodLengths.length - 1),
+      );
+      return { records, lastStart };
+    }
+
+    it("rounds an average half up and defaults a non-positive average (web predictedPeriodLength, cycles.go:375-381)", () => {
+      expect(predictedPeriodLength(4)).toBe(4);
+      expect(predictedPeriodLength(4.5)).toBe(5); // web int(4.5 + 0.5) = 5
+      expect(predictedPeriodLength(2.5)).toBe(3); // web int(2.5 + 0.5) = 3
+      expect(predictedPeriodLength(3.4)).toBe(3);
+      expect(predictedPeriodLength(0)).toBe(5); // DEFAULT_PERIOD_LENGTH
+    });
+
+    it("averages the last observed cycles' logged period lengths (web TestBuildCycleStats: 3x4-day -> 4)", () => {
+      // Web cycles_test.go TestBuildCycleStats: three cycles, four logged period
+      // days each -> AveragePeriodLength 4.
+      const { records } = cyclesWithPeriodLengths(new Date(2026, 0, 1), [4, 4, 4]);
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-26" });
+      const now = new Date(2026, 2, 5);
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(2);
+      expect(
+        resolveProjectedPeriodLength(profile, history, records, isoDate(now)),
+      ).toBe(4);
+    });
+
+    it("uses the observed average, not the configured value, once a cycle completes (web cycle_baseline_test: configured 6 -> observed 1)", () => {
+      // Web TestApplyUserCycleBaselineUsesSettingsFallback...: configured
+      // PeriodLength 6, but two single-day period clusters give
+      // AveragePeriodLength 1 — observed wins the moment one cycle completes.
+      const profile = createProfileRecord({
+        lastPeriodStart: "2026-02-07",
+        periodLength: 6,
+      });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-02-07"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-16"), isPeriod: true },
+      ];
+      const now = new Date(2026, 1, 17);
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(1);
+      expect(
+        resolveProjectedPeriodLength(profile, history, records, isoDate(now)),
+      ).toBe(1);
+    });
+
+    it("bootstraps to the configured period length with no completed cycle yet (web !hasObservedCycleLengths)", () => {
+      const profile = createProfileRecord({
+        lastPeriodStart: "2026-02-07",
+        periodLength: 6,
+      });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-02-07"), isPeriod: true, cycleStart: true },
+      ];
+      const now = new Date(2026, 1, 10);
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(0);
+      expect(
+        resolveProjectedPeriodLength(profile, history, records, isoDate(now)),
+      ).toBe(6);
+    });
+
+    it("includes the current in-progress cycle's logged period (web buildCycles spans every observed start)", () => {
+      // One completed 5-day cycle + a current cycle with 3 logged period days ->
+      // average(5, 3) = 4. Excluding the current cycle would give 5, so this pins
+      // the web-exact inclusion of the in-progress cycle.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+      const records = [
+        ...cyclesWithPeriodLengths(new Date(2026, 1, 1), [5]).records, // 2026-02-01..05
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-02"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-03"), isPeriod: true },
+      ];
+      const now = new Date(2026, 2, 4); // current cycle day 4 (04th unlogged)
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(1);
+      expect(
+        resolveProjectedPeriodLength(profile, history, records, isoDate(now)),
+      ).toBe(4);
+    });
+
+    it("excludes an anchor with no logged period days (web recentPositivePeriodLengths drops PeriodLength 0)", () => {
+      // profile.lastPeriodStart 2026-03-20 has no logged period record, so it
+      // contributes 0 and is dropped; the two logged 5-day cycles average to 5.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-20" });
+      const { records } = cyclesWithPeriodLengths(new Date(2026, 0, 5), [5, 5]);
+      const now = new Date(2026, 2, 25);
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(2);
+      expect(
+        resolveProjectedPeriodLength(profile, history, records, isoDate(now)),
+      ).toBe(5);
+    });
+
+    it("caps the window at the six most recent cycles (5 vs 6 completed cycles boundary)", () => {
+      // 6 total cycles (5 completed): the oldest 1-day period is still inside the
+      // 6-window -> average([1,5,5,5,5,5]) = 4.33 -> 4.
+      const six = cyclesWithPeriodLengths(new Date(2025, 0, 1), [1, 5, 5, 5, 5, 5]);
+      const profileSix = createProfileRecord({ lastPeriodStart: isoDate(six.lastStart) });
+      const nowSix = new Date(
+        six.lastStart.getFullYear(),
+        six.lastStart.getMonth(),
+        six.lastStart.getDate() + 6,
+      );
+      const historySix = buildCycleHistorySummary(profileSix, six.records, nowSix);
+      expect(historySix.completedCycleCount).toBe(5);
+      expect(
+        resolveProjectedPeriodLength(profileSix, historySix, six.records, isoDate(nowSix)),
+      ).toBe(4);
+
+      // 7 total cycles (6 completed): the oldest 1-day period ages out of the
+      // 6-window -> average([5,5,5,5,5,5]) = 5.
+      const seven = cyclesWithPeriodLengths(new Date(2025, 0, 1), [1, 5, 5, 5, 5, 5, 5]);
+      const profileSeven = createProfileRecord({ lastPeriodStart: isoDate(seven.lastStart) });
+      const nowSeven = new Date(
+        seven.lastStart.getFullYear(),
+        seven.lastStart.getMonth(),
+        seven.lastStart.getDate() + 6,
+      );
+      const historySeven = buildCycleHistorySummary(profileSeven, seven.records, nowSeven);
+      expect(historySeven.completedCycleCount).toBe(6);
+      expect(
+        resolveProjectedPeriodLength(profileSeven, historySeven, seven.records, isoDate(nowSeven)),
+      ).toBe(5);
+    });
+
+    it("drives the projected-period-as-menstrual boundary in detectCurrentPhase (deviation now closed)", () => {
+      // Observed periods are 2 days, configured is 5. On unlogged cycle day 3 the
+      // phase is now follicular (day 3 > rolling period 2), where the pre-port app
+      // read menstrual (day 3 <= configured 5). Web resolveCyclePhase parity.
+      const profile = createProfileRecord({
+        lastPeriodStart: "2026-02-26",
+        periodLength: 5,
+      });
+      const { records } = cyclesWithPeriodLengths(new Date(2026, 0, 1), [2, 2, 2]);
+      const now = new Date(2026, 1, 28); // cycle day 3 of the 2026-02-26 cycle, unlogged
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.completedCycleCount).toBe(2);
+      expect(projection.projectedPeriodLength).toBe(2);
+      expect(projection.currentCycleDay).toBe(3);
+      expect(projection.currentPhase).toBe("follicular");
     });
   });
 });

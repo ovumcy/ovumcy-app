@@ -120,6 +120,14 @@ export type StatsCycleProjection = {
   // literals stay valid; the producer sets it on every predictable path.
   upcomingOvulationDate?: LocalDateISO | null;
   predictionCycleLength: number;
+  // Web parity: predictedPeriodLength(stats.AveragePeriodLength) — the rolling
+  // average of the last six observed period lengths (INCLUDING the current
+  // in-progress cycle), with the configured value only as a bootstrap fallback.
+  // The projected-period-as-menstrual boundary (cycles.go resolveCyclePhase), the
+  // calendar predicted-period painting (calendar_days.go), and the dashboard hero
+  // menstrual phase card (dashboard_cycle_hero.go) all read this single value.
+  // Optional so existing projection literals stay valid; the producer always sets it.
+  projectedPeriodLength?: number;
 };
 
 export type StatsTrendPoint = {
