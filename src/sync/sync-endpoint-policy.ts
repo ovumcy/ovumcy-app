@@ -157,7 +157,22 @@ function ensureEndpointScheme(input: string): string {
 
 function extractHostCandidate(input: string): string {
   const [hostWithMaybePath] = input.split("/", 1);
-  const [host] = (hostWithMaybePath ?? "").split(":", 1);
+  const candidate = (hostWithMaybePath ?? "").trim();
+
+  // A bracketed IPv6 literal (`[::1]:8080`) carries its own internal colons,
+  // so splitting on the first `:` truncates it to `[` and the port is never
+  // separated correctly. Strip the port after the closing bracket instead.
+  // An unterminated bracket (no `]`) is unparseable — fail closed by
+  // returning an empty host, which `isLocalNetworkHost` treats as non-local
+  // so the caller defaults to https rather than guessing http.
+  if (candidate.startsWith("[")) {
+    const closingBracketIndex = candidate.indexOf("]");
+    return closingBracketIndex === -1
+      ? ""
+      : candidate.slice(0, closingBracketIndex + 1).toLowerCase();
+  }
+
+  const [host] = candidate.split(":", 1);
   return (host ?? "").trim().toLowerCase();
 }
 

@@ -140,6 +140,38 @@ describe("sync-endpoint-policy", () => {
     });
   });
 
+  // Regression: a bracketed IPv6 literal typed without a scheme used to be
+  // mis-split on its internal colons (`extractHostCandidate` truncated
+  // "[::1]:8080" to "["), so the loopback check missed and the endpoint
+  // defaulted to https instead of matching the schemed form above.
+  it("defaults a bare bracketed IPv6 loopback host with a port to http", () => {
+    const result = normalizeSyncEndpoint("self_hosted", "[::1]:8080");
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        baseURL: "http://[::1]:8080",
+        host: "[::1]",
+        isLocalNetwork: true,
+        isSecure: false,
+      }),
+    });
+  });
+
+  it("defaults a bare bracketed IPv6 loopback host without a port to http", () => {
+    const result = normalizeSyncEndpoint("self_hosted", "[::1]");
+
+    expect(result).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        baseURL: "http://[::1]",
+        host: "[::1]",
+        isLocalNetwork: true,
+        isSecure: false,
+      }),
+    });
+  });
+
   it("rejects insecure public http for link-local (169.254.0.0/16) addresses", () => {
     // 169.254.0.0/16 is deliberately not classified as local-network — see
     // the comment on isPrivateIPv4. Pin the fail-closed behavior.
