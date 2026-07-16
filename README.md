@@ -290,7 +290,7 @@ Done on `main`:
 - Ovumcy Cloud premium tier wired client-side with paywall UX and six gated feature surfaces;
 - pregnancy test logging with prediction pause across dashboard, calendar, and stats;
 - doctor PDF with colored calendar and premium analytic sections (advanced fertility, cycle comparison, short luteal warning);
-- partner sharing with summary and full access levels and 48-hour invite token TTL;
+- partner sharing with summary and full access levels and 7-day invite token TTL;
 - community and managed sync transports validated end-to-end with the new fields.
 
 Near-term:
