@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
@@ -185,6 +185,26 @@ export function BackupSyncFlowScreen({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const totpCopy = selectTOTPCopy(language);
   const deviceCopy = getDeviceCopy(language);
+  // A buffered partner invite token means the partner arrived via the invite
+  // link and needs the accept UI immediately — it must not sit behind the
+  // same manual "Advanced" toggle as the unrelated account-security link and
+  // device list. This is sticky rather than a live read of
+  // pendingPartnerInviteToken: accepting clears the token as its very first
+  // step (see useBackupSyncPartnerAccess), and the section must stay open
+  // afterward to show the success banner and the newly visible grant instead
+  // of collapsing the moment accept succeeds. With no buffered token this
+  // never latches, so every other reason the section might want to render
+  // (owner controls, an issued invite link, invite/grant history) still
+  // stays behind the toggle exactly as before.
+  const [hasShownPartnerSectionForToken, setHasShownPartnerSectionForToken] =
+    useState(() => pendingPartnerInviteToken.length > 0);
+  useEffect(() => {
+    if (pendingPartnerInviteToken.length > 0) {
+      setHasShownPartnerSectionForToken(true);
+    }
+  }, [pendingPartnerInviteToken]);
+  const shouldShowPartnerSection =
+    showPartnerSection && (advancedOpen || hasShownPartnerSectionForToken);
   return (
     <ScreenScaffold
       description={viewData.subtitle}
@@ -275,30 +295,30 @@ export function BackupSyncFlowScreen({
               statusMessage={deviceStatusMessage}
             />
           ) : null}
-          {showPartnerSection ? (
-            <SettingsPartnerAccessSection
-              copy={partnerCopy}
-              errorMessage={partnerErrorMessage}
-              hasManagedSession={hasSyncSession && presentation.isManaged}
-              inviteAccessLevel={partnerInviteAccessLevel}
-              inviteLink={partnerInviteLink}
-              isBusy={isPartnerBusy}
-              locale={partnerLocale}
-              onAcceptInvite={onPartnerAcceptInvite}
-              onAcceptInviteAsGuest={onPartnerAcceptInviteAsGuest}
-              onAccessLevelChange={onPartnerAccessLevelChange}
-              onChooseSignIn={onPartnerChooseSignIn}
-              onIssueInvite={onIssuePartnerInvite}
-              onOpenGrant={onPartnerOpenGrant}
-              onRevokeGrant={onPartnerRevokeGrant}
-              onRevokeInvite={onPartnerRevokeInvite}
-              overview={partnerOverview}
-              pendingInviteToken={pendingPartnerInviteToken}
-              showOwnerControls={showPartnerOwnerControls}
-              statusMessage={partnerStatusMessage}
-            />
-          ) : null}
         </>
+      ) : null}
+      {shouldShowPartnerSection ? (
+        <SettingsPartnerAccessSection
+          copy={partnerCopy}
+          errorMessage={partnerErrorMessage}
+          hasManagedSession={hasSyncSession && presentation.isManaged}
+          inviteAccessLevel={partnerInviteAccessLevel}
+          inviteLink={partnerInviteLink}
+          isBusy={isPartnerBusy}
+          locale={partnerLocale}
+          onAcceptInvite={onPartnerAcceptInvite}
+          onAcceptInviteAsGuest={onPartnerAcceptInviteAsGuest}
+          onAccessLevelChange={onPartnerAccessLevelChange}
+          onChooseSignIn={onPartnerChooseSignIn}
+          onIssueInvite={onIssuePartnerInvite}
+          onOpenGrant={onPartnerOpenGrant}
+          onRevokeGrant={onPartnerRevokeGrant}
+          onRevokeInvite={onPartnerRevokeInvite}
+          overview={partnerOverview}
+          pendingInviteToken={pendingPartnerInviteToken}
+          showOwnerControls={showPartnerOwnerControls}
+          statusMessage={partnerStatusMessage}
+        />
       ) : null}
     </ScreenScaffold>
   );
