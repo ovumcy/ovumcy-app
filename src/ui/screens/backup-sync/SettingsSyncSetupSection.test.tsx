@@ -217,6 +217,12 @@ describe("SettingsSyncSetupSection", () => {
 
     expect(await screen.findByTestId("settings-sync-login-input")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
+    expect(
+      screen.getByTestId("settings-sync-login-input").props.accessibilityLabel,
+    ).toBe(viewData.loginLabel);
+    expect(
+      screen.getByTestId("settings-sync-password-input").props.accessibilityLabel,
+    ).toBe(viewData.passwordLabel);
     expect(screen.queryByTestId("settings-sync-recovery-import-block")).toBeNull();
     expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });

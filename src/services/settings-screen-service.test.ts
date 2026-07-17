@@ -243,6 +243,127 @@ describe("settings services", () => {
     );
   });
 
+  // Regression barrier for #100 (Google Play Billing plan-vs-sync-entitlement
+  // separation): a future Play purchase must flip premium access by changing
+  // `has_active_plan` / `premium_features` on the managed billing snapshot
+  // (`/account/billing`) — never by riding in on `sync_entitlement.sync_allowed`
+  // from the session response. This pins a managed account where sync is
+  // allowed (as granted on registration, independent of any purchase) while
+  // the billing plan is inactive, and asserts premium stays locked and sync
+  // stays usable, so the two signals cannot silently drift back together.
+  it("keeps premium locked to the billing snapshot while sync stays available when sync entitlement is on but no plan is active", async () => {
+    const storage = createStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305",
+        kdf: "bip39_seed_hkdf_sha256",
+        mnemonicWordCount: 12,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "alice@example.com",
+            session_expires_at: "2026-03-21T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "default_register",
+              updated_at: "2026-03-20T08:05:00.000Z",
+              effective_at: "2026-03-20T08:05:00.000Z",
+              explanation: "sync enabled by default on registration",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            has_active_plan: false,
+            premium_features: {
+              doctor_pdf: false,
+              advanced_insights: false,
+              reminders: false,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      ) as typeof fetch;
+
+    const state = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 2, 18),
+    );
+
+    // Premium (Ovumcy Cloud tier) stays locked: doctor PDF / reminders / plan
+    // status must track the billing snapshot only, never the fact that sync
+    // is currently allowed.
+    expect(state.managedPremiumAccess).toEqual({
+      ...createEmptySettingsManagedPremiumAccess(),
+      planStatus: "inactive",
+    });
+    expect(state.managedPremiumAccess.doctorPDF).toBe(false);
+    expect(state.managedPremiumAccess.reminders).toBe(false);
+
+    // Sync (Community Sync tier) stays available: it is decided solely by
+    // `sync_entitlement.sync_allowed`, unaffected by the inactive plan above.
+    expect(state.hasSyncSession).toBe(true);
+    expect(state.syncCapabilities).toEqual(
+      expect.objectContaining({
+        mode: "managed",
+        syncEnabled: true,
+      }),
+    );
+
+    // End-to-end proof the lock is enforced and not just an inert flag:
+    // doctor PDF export reads exactly this state and must still refuse.
+    await expect(
+      prepareSettingsExportArtifact(
+        storage,
+        state,
+        "pdf",
+        new Date("2026-03-18T10:00:00.000Z"),
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      errorCode: "pdf_locked",
+      state,
+    });
+  });
+
   it("loads managed cloud capabilities for a signed-in managed device before sync upload is used", async () => {
     const storage = createStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

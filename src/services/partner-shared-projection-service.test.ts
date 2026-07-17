@@ -6,7 +6,78 @@ import { createDefaultProfileRecord } from "../models/profile";
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultSymptomRecords } from "../models/symptom";
 
+// Canonical DayLogRecord field set (src/models/day-log.ts), sorted. Kept as an
+// explicit literal (not derived from the source type) so this pin fails the
+// moment DayLogRecord grows a field that redactDayLogForPartner does not yet
+// allow-list for a given access level.
+const PARTNER_DAY_LOG_FIELDS = [
+  "bbt",
+  "cervicalMucus",
+  "cycleFactorKeys",
+  "cycleStart",
+  "date",
+  "flow",
+  "isPeriod",
+  "isUncertain",
+  "lhTest",
+  "mood",
+  "notes",
+  "pregnancyTest",
+  "sexActivity",
+  "symptomIDs",
+];
+
 describe("partner-shared-projection-service", () => {
+  it("summary projection day-log entries expose exactly the known field set (regression pin)", () => {
+    const profile = createDefaultProfileRecord();
+    const record = {
+      ...createEmptyDayLogRecord("2026-04-05"),
+      isPeriod: true,
+      flow: "medium" as const,
+      symptomIDs: ["cramps"],
+      notes: "private note",
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "summary",
+      dayLogs: [record],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    expect(projection.dayLogs).toHaveLength(1);
+    expect(Object.keys(projection.dayLogs[0]!).sort()).toEqual(PARTNER_DAY_LOG_FIELDS);
+  });
+
+  it("full projection day-log entries expose exactly the known field set (regression pin)", () => {
+    const profile = createDefaultProfileRecord();
+    const record = {
+      ...createEmptyDayLogRecord("2026-04-05"),
+      isPeriod: true,
+      flow: "medium" as const,
+      symptomIDs: ["cramps"],
+      notes: "private note",
+    };
+
+    const projection = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [record],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    expect(projection.dayLogs).toHaveLength(1);
+    expect(Object.keys(projection.dayLogs[0]!).sort()).toEqual(PARTNER_DAY_LOG_FIELDS);
+  });
+
   it("redacts detailed day fields for summary access", () => {
     const profile = {
       ...createDefaultProfileRecord(),

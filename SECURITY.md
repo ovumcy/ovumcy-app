@@ -110,6 +110,21 @@ follows from that:
   Firebase Cloud Messaging integration and no over-the-air update channel (no
   `expo-updates` dependency, no `updates` config in `app.json`) — there is no
   push-delivery or remote-code-update surface to secure or audit.
+- **No OS-level backup channels (iOS).** iOS has no `allowBackup` switch and no
+  Info.plist equivalent, so the committed config plugin
+  `plugins/withIosExcludeDataFromICloudBackup.js` injects a launch-time
+  `AppDelegate` hook that sets `NSURLIsExcludedFromBackupKey` on the app's
+  `Documents` and `Library/Application Support` directories. That keeps both
+  on-device data stores — the encrypted SQLite database in `Documents/SQLite`
+  (`ovumcy-local.db` plus its `-wal`/`-shm` sidecars) and the AsyncStorage backend
+  under `Application Support/<bundleId>` — out of iCloud backups and encrypted
+  Finder/iTunes (local) backups, the same backup-exclusion posture Android gets
+  from `allowBackup=false`. Excluding the directories also covers files created
+  after launch; the hook is idempotent and never fatal, and `ios/` is gitignored so
+  the plugin (not a checked-in `AppDelegate`) is the committed source of truth.
+  Keychain secrets are governed separately (`expo-secure-store` with
+  `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), an accessibility class iOS already keeps
+  out of cross-device Keychain sync and restore.
 
 ### Out of scope
 
@@ -192,6 +207,72 @@ follows from that:
 - **Server-side rate limiting is in-memory.** The sync/managed backends rate-limit
   per process and reset on restart (see their own `SECURITY.md`). The app does
   not add a second client-side limiter.
+- **Partner invite links are delivered over a squattable custom scheme (planned
+  migration).** Invite URLs are currently minted on the `ovumcy://` custom scheme,
+  which any Android app can also register, so the delivery path (not the token
+  handling) is interceptable. The blast radius is bounded: the invite token is a
+  one-time, 7-day-TTL redemption coupon that only works when POSTed with a valid
+  managed session, is scrubbed from the URL/route on capture and never logged or
+  persisted, and even a successful wrong-party redemption yields only a
+  minimized, read-only projection (pregnancy-test stripped) that the owner sees
+  and can revoke. Migrating invite links to platform-verified Android App Links /
+  iOS Universal Links closes the interception gap; the threat analysis and the
+  ready-to-apply Android/iOS/managed plan are in `docs/deep-links.md`.
+
+### Device-clock trust
+
+- **Signed entitlement-token expiry trusts the device clock.** `verifyEntitlementToken`
+  (`src/security/entitlement-token.ts`) rejects a token unless `payload.exp > opts.now`,
+  where `now` is unix-seconds supplied by the caller — there is no secondary,
+  clock-independent freshness check, and the verifier must stay fully offline-capable
+  (it is also the code path that checks the cached token during the offline grace in
+  `src/services/entitlement-token-service.ts`). As documented above, no production
+  caller constructs the token gate yet, so this comparison runs only in tests today;
+  once activated, the sole realistic source for `now` is the device clock. A clock set
+  behind real time makes an already-issued token keep verifying as unexpired for
+  longer than its issuer intended; a clock set ahead of real time only expires a token
+  sooner (fails closed). Both directions stay bounded to the two purely-local premium
+  features (doctor PDF, advanced insights) behind an already-authenticated managed
+  session.
+- **The 72h managed-billing-cache grace window trusts the device clock.**
+  `isManagedBillingCacheFresh` (`MANAGED_BILLING_CACHE_TTL_MS`,
+  `src/services/managed-premium-features-service.ts`) computes
+  `ageMs = now.getTime() - fetchedAtMs` and serves the cache only while
+  `0 <= ageMs <= 72h`; the real call site (`loadManagedBillingSnapshot`) defaults
+  `now` to `new Date()`, the device clock at the moment a live fetch fails. A
+  fast-forward clock only shortens the effective grace (fails closed sooner than 72
+  real-world hours). A clock set earlier than the recorded fetch instant is rejected
+  outright (`ageMs >= 0` fails closed immediately), but a smaller backward adjustment
+  that still lands inside the fetch-to-72h window can make an already-expired cache
+  read as fresh again — the ceiling is measured in device-clock time, not verified
+  elapsed time. This stays within the bounds the cache itself already accepts above:
+  only the two purely-local gates, only under a still-present managed session token,
+  never a server-checked operation.
+- **Local reminder scheduling assumes an approximately correct clock.**
+  `buildLocalReminderPlans` (`src/services/local-reminder-plan-service.ts`) resolves
+  "today" and the one-time `upcoming_period`/`fertile_window` trigger instants from a
+  caller-supplied `now`; the Dashboard and Calendar screens and the settings save path
+  all default it to `new Date()` when the schedule is (re)built. The native adapter
+  (`platform-local-reminder-scheduler.native.ts`) hands the resolved plan to
+  `expo-notifications` as either an absolute one-time `Date` trigger or an hour/minute
+  daily-repeat trigger, and firing itself is then driven by the OS's own system clock,
+  outside this app's control. A device clock that is wrong when a plan is built bakes
+  an incorrect instant into a one-time trigger, and — since there is no background
+  resync — that only self-corrects the next time a screen mount or settings save
+  rebuilds the schedule. The web adapter never schedules a real reminder
+  (`"unavailable"`), so the exposure is native-only, and the worst case is a missed or
+  mistimed local notification, never a data or entitlement exposure.
+- **Accepted as a standard mobile-client baseline.** None of the above cross-checks
+  wall-clock time against a network time source: doing so would need either an
+  always-available trusted time service (in tension with the local-first,
+  no-account-required baseline) or on-device secure-time infrastructure that neither
+  this app nor `ovumcy-sync-community`/the managed cloud provide today. A clock that
+  is wrong or adversarially set is a property of the device, not a gap in this app's
+  validation logic, and is covered by the Out of scope note above (device compromise,
+  jailbreak, OS/system tampering). Every case above is either fail-closed in the risky
+  direction (a fast-forward clock only locks features sooner) or bounded to
+  already-accepted, low-severity surfaces — never a server-checked capability or a
+  health-data confidentiality boundary.
 
 ## Test Enforcement Matrix
 

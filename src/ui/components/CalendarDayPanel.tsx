@@ -139,7 +139,11 @@ export function CalendarDayPanel({
         <Text style={styles.summaryValue}>{summaryViewData.stateSummary.value}</Text>
         <Text style={styles.summaryHint}>{summaryViewData.stateSummary.hint}</Text>
         {summaryViewData.markerSummary ? (
-          <View style={styles.markerSummary}>
+          <View
+            accessibilityLabel={`${summaryViewData.markerSummary.label}. ${summaryViewData.markerSummary.value}.`}
+            accessible
+            style={styles.markerSummary}
+          >
             <Text style={styles.summaryLabel}>
               {summaryViewData.markerSummary.label}
             </Text>
@@ -154,14 +158,23 @@ export function CalendarDayPanel({
         <>
           <View style={styles.summaryCard}>
             {summaryViewData.summaryRows.map((row) => (
-              <View key={row.key} style={styles.summaryRow}>
+              <View
+                accessibilityLabel={`${row.label}. ${row.value}.`}
+                accessible
+                key={row.key}
+                style={styles.summaryRow}
+              >
                 <Text style={styles.summaryLabel}>{row.label}</Text>
                 <Text style={styles.summaryValue}>{row.value}</Text>
               </View>
             ))}
           </View>
 
-          <View style={styles.summarySection}>
+          <View
+            accessibilityLabel={`${summaryViewData.symptomsLabel}. ${summaryViewData.symptomsValue}.`}
+            accessible
+            style={styles.summarySection}
+          >
             <Text style={styles.summaryLabel}>{summaryViewData.symptomsLabel}</Text>
             <Text style={styles.summaryValue}>{summaryViewData.symptomsValue}</Text>
           </View>

@@ -80,6 +80,14 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByTestId("account-security-change-submit")).toBeTruthy();
     expect(screen.getByTestId("account-security-forgot-submit")).toBeTruthy();
     expect(screen.getByTestId("account-security-regenerate-submit")).toBeTruthy();
+    expect(
+      screen.getByTestId("account-security-change-current-password").props
+        .accessibilityLabel,
+    ).toBe(copy.changePassword.currentPasswordLabel);
+    expect(
+      screen.getByTestId("account-security-change-new-password").props
+        .accessibilityLabel,
+    ).toBe(copy.changePassword.newPasswordLabel);
     expect(screen.queryByTestId("account-security-recovery-code-modal")).toBeNull();
     expect(screen.queryByTestId("account-security-forgot-cancel")).toBeNull();
   });

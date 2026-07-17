@@ -1,0 +1,55 @@
+name: Cross-repo contracts
+
+# Guards the shared contracts between ovumcy-app and its peer repos (ovumcy-web,
+# ovumcy-managed, ovumcy-sync-community) against silent drift. Runs
+# scripts/check-cross-repo-contracts.mjs in remote mode, which fetches each
+# peer's authoritative artifact from the GitHub Contents API and compares it to
+# the copy in this checkout. See docs/cross-repo-contracts.md for the contract
+# register and the required read-only token secret.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-repo-check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  cross-repo-contracts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # No `npm ci`: the guard uses only Node built-ins (node:crypto, node:fs,
+      # global fetch), so it runs without installing dependencies.
+      - name: Check cross-repo contracts
+        run: node scripts/check-cross-repo-contracts.mjs
+        env:
+          # Read-only fine-grained PAT with Contents: Read on the peer repos.
+          # Required because ovumcy-managed is private; the public peers
+          # (ovumcy-web, ovumcy-sync-community) also work through it. Documented
+          # in docs/cross-repo-contracts.md. Fork PRs do not receive this
+          # secret, so the private-peer contracts are covered by the push-to-main
+          # and weekly-cron runs instead.
+          OVUMCY_CONTRACTS_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}

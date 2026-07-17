@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type ChoiceGroupProps<T extends string | number> = {
@@ -101,6 +101,7 @@ export function ChoiceGroup<T extends string | number>({
           </Text>
           {option.secondaryLabel ? (
             <Text
+              maxFontSizeMultiplier={fontScale.compact}
               style={[
                 styles.secondaryLabel,
                 contentAlign === "center" ? styles.labelCentered : null,

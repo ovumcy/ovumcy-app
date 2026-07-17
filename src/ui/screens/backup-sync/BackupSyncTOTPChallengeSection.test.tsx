@@ -26,6 +26,10 @@ describe("BackupSyncTOTPChallengeSection", () => {
 
     expect(screen.getByText(copy.challenge.title)).toBeTruthy();
     expect(screen.getByTestId("backup-sync-totp-challenge-code")).toBeTruthy();
+    expect(
+      screen.getByTestId("backup-sync-totp-challenge-code").props
+        .accessibilityLabel,
+    ).toBe(copy.challenge.codeLabel);
     expect(screen.getByTestId("backup-sync-totp-challenge-submit")).toBeTruthy();
     expect(screen.getByTestId("backup-sync-totp-challenge-cancel")).toBeTruthy();
     expect(

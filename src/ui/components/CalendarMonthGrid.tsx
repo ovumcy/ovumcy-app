@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { CalendarDayCellViewData } from "../../services/calendar-view-service";
 import type { AppThemeColors } from "../theme/tokens";
-import { spacing } from "../theme/tokens";
+import { fontScale, spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { CalendarStateDecor } from "./CalendarStateDecor";
 
@@ -50,7 +50,12 @@ export function CalendarMonthGrid({
     <View style={styles.wrapper}>
       <View style={styles.weekdayRow}>
         {weekdayLabels.map((label) => (
-          <Text key={label} style={styles.weekdayLabel}>
+          <Text
+            key={label}
+            maxFontSizeMultiplier={fontScale.dense}
+            numberOfLines={1}
+            style={styles.weekdayLabel}
+          >
             {label}
           </Text>
         ))}
@@ -99,6 +104,7 @@ export function CalendarMonthGrid({
                   <View style={styles.cellHeader}>
                     <Text
                       adjustsFontSizeToFit
+                      maxFontSizeMultiplier={fontScale.dense}
                       minimumFontScale={0.9}
                       numberOfLines={1}
                       style={[
@@ -111,7 +117,13 @@ export function CalendarMonthGrid({
                     </Text>
                     {day.isToday && metrics.showTodayPill ? (
                       <View style={styles.todayPill}>
-                        <Text style={styles.todayPillText}>{todayLabel}</Text>
+                        <Text
+                          maxFontSizeMultiplier={fontScale.dense}
+                          numberOfLines={1}
+                          style={styles.todayPillText}
+                        >
+                          {todayLabel}
+                        </Text>
                       </View>
                     ) : null}
                   </View>

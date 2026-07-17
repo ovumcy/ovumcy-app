@@ -325,15 +325,34 @@ that owns the canonical web UX).
   menstrual→follicular boundary may differ by a day or two. Porting the rolling
   period-length average is a possible future parity task, deliberately not done
   here because it would be new prediction math beyond this change's scope.
-- The app's JSON export format (`ExportBackupEnvelope` in `src/models/export.ts:76`,
-  with structure `{app, formatVersion, exportedAt, preset, range, summary, profile,
-  symptoms, dayLogs}`) is intentionally not interchangeable with web's flat
-  snake_case JSON export (`ExportJSONEntry`). The app format is structured and
-  self-describing for backup/restore and multi-platform portability; web's format
-  is optimized for sheet-software interoperability. Both CSV and JSON remain
-  Free-tier local-first exports; an owner may export from app and import to web
-  by hand-processing the structured app JSON or re-exporting as CSV for web,
-  never the reverse — web JSON does not round-trip into the app.
+- Cross-product backup portability between the app and web is an intentional
+  non-goal, not a discovered gap (app #104): JSON export/backup schemas are
+  deliberately separate, and neither product's import path accepts the
+  other's export file, in either direction, CSV included (web exposes no CSV
+  import route). The app's JSON export format (`ExportBackupEnvelope` in
+  `src/models/export.ts:76`, with structure `{app, formatVersion, exportedAt,
+  preset, range, summary, profile, symptoms, dayLogs}`) is the app-canonical
+  backup/restore format; `parseImportEnvelope`
+  (`src/services/import-service.ts`) restores only this shape, explicitly
+  rejecting any file whose `app`/`formatVersion` fields don't match
+  (`unrecognized_format`) so a wrong-product file fails closed instead of
+  partially applying. Web's JSON export (`ExportJSONEntry` in
+  `ovumcy-web/internal/services/export_service.go`) is a flat snake_case
+  `{entries: [...]}` list of per-day records with no profile/settings and no
+  envelope metadata; web's own `POST /api/v1/imports/json`
+  (`ovumcy-web/internal/api/handlers_import_json.go`) likewise restores only
+  an owner's own prior web export back into their own account. Business
+  reason: web is the Free-tier reference implementation, built around its own
+  server-side storage model and single-owner request/response import; the app
+  is the mobile-first, local-first baseline, and its structured envelope
+  exists for the app's own backup/restore, not cross-product migration. Both
+  CSV and JSON remain Free-tier local-first exports on each side, but a CSV or
+  JSON file produced by one product is not a supported input to the other's
+  import flow. Review rule: a future feature must not add a web-compatible
+  export output, a converter, or an import path that accepts the other
+  product's file — that would silently re-open this gap; revisiting the
+  decision (Option B/C in app #104) requires an explicit product call, not an
+  incidental parity change.
 
 ## Current App State
 

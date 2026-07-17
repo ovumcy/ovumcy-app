@@ -47,6 +47,7 @@ export function BackupSyncTOTPChallengeSection({
       ) : null}
       <Text style={styles.fieldLabel}>{copy.challenge.codeLabel}</Text>
       <AppTextInput
+        accessibilityLabel={copy.challenge.codeLabel}
         autoCapitalize="none"
         autoCorrect={false}
         keyboardType="number-pad"

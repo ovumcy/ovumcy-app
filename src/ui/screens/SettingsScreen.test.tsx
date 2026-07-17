@@ -995,7 +995,16 @@ describe("SettingsScreen", () => {
     fireEvent.press(screen.getByTestId("settings-clear-data-button"));
 
     expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-clear-data-confirmation-input")).toBeTruthy();
+    const confirmationInput = screen.getByTestId(
+      "settings-clear-data-confirmation-input",
+    );
+    expect(confirmationInput).toBeTruthy();
+    // The confirmation field is announced via the visible label (screen readers
+    // do not auto-associate a sibling <Text> with a TextInput).
+    expect(confirmationInput.props.accessibilityLabel).toBeTruthy();
+    expect(
+      screen.getByText(confirmationInput.props.accessibilityLabel),
+    ).toBeTruthy();
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
   });
