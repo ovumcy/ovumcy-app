@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["REPLACE_WITH_TEAM_ID.app.ovumcy.mobile"],
+        "components": [
+          {
+            "/": "/backup-sync",
+            "?": { "invite_token": "?*" },
+            "comment": "Partner invite links"
+          }
+        ]
+      }
+    ]
+  }
+}

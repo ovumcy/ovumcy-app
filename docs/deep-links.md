@@ -1,10 +1,12 @@
 # Deep-Link Safety Plan — Android App Links & iOS Universal Links
 
-Status: **planning** (implementation not yet applied). This document is the design
-of record for migrating partner-invite links off the squattable `ovumcy://`
-custom scheme and onto platform-verified deep links. It is written so the later
-implementation is mechanical: apply the config snippets, host the two well-known
-files, and flip one managed-side setting.
+Status: **in progress** — the app-side config is applied in `app.json` (Android
+intent filter §2.2, iOS associated domains §3.2). Remaining: host the two
+well-known files (ready-to-upload templates in `docs/deep-link-hosting/`),
+reconcile signing fingerprints / Team ID (§7 step 4), and — last — flip the
+managed-side invite base URL (§7 step 5). This document is the design of record
+for migrating partner-invite links off the squattable `ovumcy://` custom scheme
+and onto platform-verified deep links.
 
 Related work:
 
@@ -175,7 +177,7 @@ Android will verify against; multiple entries are allowed:
   `keytool -list -v -keystore <keystore>`) — needed for internal-track / direct
   APK / dev-client installs signed with the upload key.
 
-### 2.2 `app.json` intent filter (ready-to-apply)
+### 2.2 `app.json` intent filter (applied)
 
 Add an `intentFilters` array under `expo.android`. Keep the existing `expo.scheme`
 (`ovumcy`) — App Links are *added* alongside the custom scheme, not a replacement;
@@ -272,16 +274,15 @@ Modern form (iOS 13+, `components`):
 If support for iOS < 13 is required, also include the legacy `paths` array in the
 same detail entry: `"paths": ["/backup-sync", "/backup-sync?*"]`.
 
-### 3.2 `app.json` associated-domains config (ready-to-apply)
+### 3.2 `app.json` associated-domains config (applied)
 
-The `ios` section does not exist in `app.json` yet — **it arrives with issue #99**
-(bundle id + privacy usage strings + iCloud-backup exclusion). This plan
-contributes only the `associatedDomains` key; land it together with, or after, #99
-so the `bundleIdentifier` is authoritative:
+The `ios` section landed with issue #99 (bundle id + privacy usage strings +
+iCloud-backup exclusion), and the `associatedDomains` key below is now applied
+in `app.json`:
 
 ```jsonc
 "ios": {
-  "bundleIdentifier": "app.ovumcy.mobile",  // placeholder — confirmed by issue #99
+  "bundleIdentifier": "app.ovumcy.mobile",  // confirmed by issue #99
   "associatedDomains": ["applinks:invite.ovumcy.cloud"]
 }
 ```
