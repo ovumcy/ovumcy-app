@@ -305,6 +305,12 @@ export function useBackupSyncScreenController(
       onPartnerAcceptInvite: () => {
         void partner.handleAcceptPartnerInvite();
       },
+      onPartnerAcceptInviteAsGuest: () => {
+        void partner.handleAcceptPartnerInviteAsGuest();
+      },
+      onPartnerChooseSignIn: () => {
+        partner.handleChoosePartnerSignIn();
+      },
       onPartnerAccessLevelChange: (value) => {
         resetPartnerFeedback();
         partner.setPartnerInviteAccessLevel(value);

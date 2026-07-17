@@ -993,6 +993,190 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-partner-shared-grant-grant-1")).toBeTruthy();
   });
 
+  it("shows an explicit guest-vs-sign-in choice when a pending invite arrives with no managed session, and never auto-redeems on render", async () => {
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+
+    const storage = createSettingsStorageMock();
+    // A brand-new device: no local sync secrets and no managed session at
+    // all — the default mode from createDefaultSyncPreferencesRecord is
+    // already "managed", so this is the realistic first-open shape.
+    const syncSecretStore = createSyncSecretStoreMock();
+    const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await screen.findByTestId("settings-partner-accept-card");
+
+    expect(screen.getByTestId("settings-partner-accept-guest-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-signin-to-accept-button")).toBeTruthy();
+    // The single ready-to-accept button is a with-session-only affordance —
+    // it must not render at all while there is no managed session.
+    expect(screen.queryByTestId("settings-partner-accept-button")).toBeNull();
+    // Landing on the screen and revealing the choice must never itself
+    // redeem the single-use token.
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a partner invite as a guest with one tap and shows the shared grant", async () => {
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const fetchMock = jest
+      .fn()
+      // POST /auth/partner/invites/accept (guest, unauthenticated)
+      .mockResolvedValueOnce(
+        createJSONResponse(
+          {
+            account_id: "guest-account-1",
+            session_token: "guest-session-1",
+            session_expires_at: "2026-04-12T00:00:00.000Z",
+            grant: {
+              id: "grant-9",
+              owner_account_id: "owner-1",
+              partner_account_id: "guest-account-1",
+              access_level: "full",
+              source_invite_id: "invite-9",
+              accepted_at: "2026-04-05T08:00:00.000Z",
+              last_seen_at: "2026-04-05T08:00:00.000Z",
+              created_at: "2026-04-05T08:00:00.000Z",
+              updated_at: "2026-04-05T08:00:00.000Z",
+            },
+            invite: {
+              id: "invite-9",
+              owner_account_id: "owner-1",
+              access_level: "full",
+              status: "accepted",
+              expires_at: "2026-04-10T00:00:00.000Z",
+              accepted_at: "2026-04-05T08:00:00.000Z",
+              accepted_account_id: "guest-account-1",
+              created_by: "owner-1",
+              created_at: "2026-04-01T00:00:00.000Z",
+              updated_at: "2026-04-05T08:00:00.000Z",
+            },
+          },
+          201,
+        ),
+      )
+      // GET /account/billing — resolveManagedPremiumAccessAfterConnect,
+      // called inside acceptBackupSyncPartnerInviteAsGuest.
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          has_active_plan: false,
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: false,
+          },
+        }),
+      )
+      // GET /account/billing — loadPartnerState's own loadManagedPremiumFeatures
+      // call during the post-accept reloadPartnerAccess.
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          has_active_plan: false,
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: false,
+            extended_reports: false,
+            partner_access: false,
+          },
+        }),
+      )
+      // GET /account/partner/access — loadPartnerState's loadManagedPartnerAccess.
+      .mockResolvedValueOnce(
+        createJSONResponse({
+          owned: { invites: [], grants: [] },
+          shared_with_me: [
+            {
+              id: "grant-9",
+              owner_account_id: "owner-1",
+              partner_account_id: "guest-account-1",
+              access_level: "full",
+              source_invite_id: "invite-9",
+              accepted_at: "2026-04-05T08:00:00.000Z",
+              last_seen_at: "2026-04-05T08:00:00.000Z",
+              created_at: "2026-04-05T08:00:00.000Z",
+              updated_at: "2026-04-05T08:00:00.000Z",
+            },
+          ],
+        }),
+      );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await screen.findByTestId("settings-partner-accept-guest-button");
+
+    fireEvent.press(screen.getByTestId("settings-partner-accept-guest-button"));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/backup-sync"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("settings-partner-accept-card")).toBeNull(),
+    );
+    expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-shared-grant-grant-9")).toBeTruthy();
+
+    // The guest-accept call specifically must never carry a bearer token.
+    const guestAcceptCall = fetchMock.mock.calls[0];
+    expect(String(guestAcceptCall[0])).toContain("/auth/partner/invites/accept");
+    expect((guestAcceptCall[1]?.headers as Headers).has("Authorization")).toBe(
+      false,
+    );
+
+    await expect(syncSecretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ managedAuthSessionToken: "guest-session-1" }),
+    );
+  });
+
+  it("choosing sign in instead of guest accept leaves the pending invite token untouched", async () => {
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
+    global.fetch = fetchMock as typeof fetch;
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await screen.findByTestId("settings-partner-signin-to-accept-button");
+
+    fireEvent.press(screen.getByTestId("settings-partner-signin-to-accept-button"));
+
+    // The card and both choice buttons must stay exactly as they were: the
+    // token is single-use, and choosing "sign in instead" must not spend it
+    // (the owner can still tap "Accept as guest" afterward).
+    expect(screen.getByTestId("settings-partner-accept-card")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-accept-guest-button")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-signin-to-accept-button")).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("formats partner last seen values and explains access levels in the partner section", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

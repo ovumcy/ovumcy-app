@@ -1,6 +1,7 @@
 import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIErrorCode,
+  type ManagedCloudGuestPartnerAcceptResult,
   type ManagedCloudPartnerAccessLevel,
   type ManagedCloudPartnerAccessOverview,
   type ManagedCloudPartnerAccessGrant,
@@ -80,6 +81,37 @@ export async function acceptManagedPartnerInvite(
           grant: result.grant,
         },
       }
+    : { ok: false, errorCode: result.errorCode };
+}
+
+/**
+ * acceptManagedPartnerInviteAsGuest redeems a pending invite through the
+ * unauthenticated guest endpoint — unlike every other function in this file,
+ * it takes no `secretStore`/`syncMode` because there is no existing managed
+ * session to read; the whole point is that a device with none can still
+ * accept in one tap. The server atomically provisions a fresh guest account
+ * and issues it a session, so the returned session token is the caller's cue
+ * to persist it exactly like a normal managed login (see
+ * `persistGuestPartnerSession` in `src/sync/sync-client-service.ts`).
+ *
+ * Error keys mirror `acceptManagedPartnerInvite` exactly
+ * (`partner_invite_not_found`, `partner_invite_expired`,
+ * `partner_access_unavailable`, `invalid_partner_invite`, `rate_limited`) —
+ * there is no `not_connected` variant because this call has no session
+ * precondition to fail.
+ */
+export async function acceptManagedPartnerInviteAsGuest(
+  inviteToken: string,
+): Promise<
+  | { ok: true; value: ManagedCloudGuestPartnerAcceptResult }
+  | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+> {
+  const result = await createManagedCloudAPIClient(
+    MANAGED_CLOUD_AUTH_BASE_URL,
+  ).acceptPartnerInviteAsGuest(inviteToken);
+
+  return result.ok
+    ? { ok: true, value: result.result }
     : { ok: false, errorCode: result.errorCode };
 }
 

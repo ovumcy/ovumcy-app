@@ -21,6 +21,7 @@ import {
   finalizeSyncSessionAfterTOTP,
   listSyncDevices,
   loadConnectedSyncCapabilities,
+  persistGuestPartnerSession,
   recoverSyncAccess,
   removeSyncDevice,
   requiresUploadOverBackupConfirmation,
@@ -1392,6 +1393,81 @@ describe("finalizeSyncSessionAfterTOTP", () => {
     );
 
     expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+});
+
+describe("persistGuestPartnerSession", () => {
+  it("generates a fresh SyncSecretsRecord on a device with no prior secrets and forces managed/connected preferences", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+
+    const result = await persistGuestPartnerSession(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+      },
+      { sessionToken: "guest-session-1" },
+      new Date("2026-04-05T08:00:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      capabilities: expect.objectContaining({
+        mode: "managed",
+        syncEnabled: false,
+      }),
+      preferences: expect.objectContaining({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        setupStatus: "connected",
+      }),
+    });
+
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets).toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: "guest-session-1",
+      }),
+    );
+    // A fresh device gets real device/master-key material — the same shape
+    // prepareSyncSetup would have produced — not a degenerate placeholder.
+    expect(storedSecrets?.masterKeyHex.length).toBeGreaterThan(0);
+    expect(storedSecrets?.device.deviceID.length).toBeGreaterThan(0);
+
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "managed", setupStatus: "connected" }),
+    );
+    // New account boundary: the billing cache is reset exactly like a normal
+    // managed connect resets it.
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an already-prepared device's master key and device identity untouched", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+
+    await persistGuestPartnerSession(
+      storage,
+      secretStore,
+      { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      { sessionToken: "guest-session-2" },
+      new Date("2026-04-05T08:00:00.000Z"),
+    );
+
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets).toEqual({
+      ...preparedSecrets.record,
+      authSessionToken: null,
+      managedAuthSessionToken: "guest-session-2",
+    });
   });
 });
 

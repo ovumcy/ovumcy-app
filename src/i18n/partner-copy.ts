@@ -43,6 +43,10 @@ const partnerCopyEn = {
   acceptSignInHint:
     "Sign in to your Ovumcy Cloud account first, then accept this partner invite on this device.",
   acceptActionLabel: "Accept invite",
+  acceptChoiceHint:
+    "Accept this invite as a guest on this device, or sign in to your Ovumcy Cloud account first.",
+  acceptAsGuestActionLabel: "Accept as guest",
+  acceptSignInActionLabel: "Sign in to accept",
   statusInviteIssued: "Partner invite link created.",
   statusInviteAccepted: "Partner invite accepted on this device.",
   statusInviteRevoked: "Pending partner invite revoked.",
@@ -133,6 +137,10 @@ const partnerCopyDe = {
   acceptSignInHint:
     "Melden Sie sich zuerst bei Ihrem Ovumcy-Cloud-Konto an und nehmen Sie dann diese Partnereinladung auf diesem Gerät an.",
   acceptActionLabel: "Einladung annehmen",
+  acceptChoiceHint:
+    "Nimm diese Einladung als Gast auf diesem Gerät an oder melde dich zuerst bei deinem Ovumcy-Cloud-Konto an.",
+  acceptAsGuestActionLabel: "Als Gast annehmen",
+  acceptSignInActionLabel: "Zum Annehmen anmelden",
   statusInviteIssued: "Partner-Einladungslink erstellt.",
   statusInviteAccepted: "Partnereinladung auf diesem Gerät angenommen.",
   statusInviteRevoked: "Ausstehende Partnereinladung widerrufen.",
@@ -223,6 +231,10 @@ const partnerCopyFr = {
   acceptSignInHint:
     "Connectez-vous d’abord à votre compte Ovumcy Cloud, puis acceptez cette invitation partenaire sur cet appareil.",
   acceptActionLabel: "Accepter l’invitation",
+  acceptChoiceHint:
+    "Acceptez cette invitation en tant qu’invité sur cet appareil, ou connectez-vous d’abord à votre compte Ovumcy Cloud.",
+  acceptAsGuestActionLabel: "Accepter en tant qu’invité",
+  acceptSignInActionLabel: "Se connecter pour accepter",
   statusInviteIssued: "Lien d’invitation partenaire créé.",
   statusInviteAccepted: "Invitation partenaire acceptée sur cet appareil.",
   statusInviteRevoked: "Invitation partenaire en attente retirée.",
@@ -313,6 +325,10 @@ const partnerCopyRu = {
   acceptSignInHint:
     "Сначала войди в свой аккаунт Ovumcy Cloud, а потом прими это приглашение партнёра на этом устройстве.",
   acceptActionLabel: "Принять приглашение",
+  acceptChoiceHint:
+    "Прими это приглашение как гость на этом устройстве или сначала войди в свой аккаунт Ovumcy Cloud.",
+  acceptAsGuestActionLabel: "Принять как гость",
+  acceptSignInActionLabel: "Войти, чтобы принять",
   statusInviteIssued: "Ссылка-приглашение для партнёра создана.",
   statusInviteAccepted: "Приглашение партнёра принято на этом устройстве.",
   statusInviteRevoked: "Ожидающее приглашение партнёра отозвано.",
@@ -403,6 +419,10 @@ const partnerCopyEs = {
   acceptSignInHint:
     "Primero inicia sesión en tu cuenta de Ovumcy Cloud y después acepta esta invitación de pareja en este dispositivo.",
   acceptActionLabel: "Aceptar invitación",
+  acceptChoiceHint:
+    "Acepta esta invitación como invitado en este dispositivo, o inicia sesión primero en tu cuenta de Ovumcy Cloud.",
+  acceptAsGuestActionLabel: "Aceptar como invitado",
+  acceptSignInActionLabel: "Iniciar sesión para aceptar",
   statusInviteIssued: "Se creó el enlace de invitación de pareja.",
   statusInviteAccepted: "La invitación de pareja se aceptó en este dispositivo.",
   statusInviteRevoked: "Se revocó la invitación de pareja pendiente.",
@@ -493,6 +513,10 @@ const partnerCopyIt = {
   acceptSignInHint:
     "Accedi prima al tuo account Ovumcy Cloud, poi accetta questo invito partner su questo dispositivo.",
   acceptActionLabel: "Accetta invito",
+  acceptChoiceHint:
+    "Accetta questo invito come ospite su questo dispositivo, oppure accedi prima al tuo account Ovumcy Cloud.",
+  acceptAsGuestActionLabel: "Accetta come ospite",
+  acceptSignInActionLabel: "Accedi per accettare",
   statusInviteIssued: "Link di invito partner creato.",
   statusInviteAccepted: "Invito partner accettato su questo dispositivo.",
   statusInviteRevoked: "Invito partner in sospeso revocato.",

@@ -26,7 +26,9 @@ type SettingsPartnerAccessSectionProps = {
   isBusy: boolean;
   locale?: string | undefined;
   onAcceptInvite: () => void | Promise<void>;
+  onAcceptInviteAsGuest: () => void | Promise<void>;
   onAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
+  onChooseSignIn: () => void;
   onIssueInvite: () => void | Promise<void>;
   onOpenGrant: (grantID: string) => void | Promise<void>;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
@@ -46,7 +48,9 @@ export function SettingsPartnerAccessSection({
   isBusy,
   locale,
   onAcceptInvite,
+  onAcceptInviteAsGuest,
   onAccessLevelChange,
+  onChooseSignIn,
   onIssueInvite,
   onOpenGrant,
   onRevokeGrant,
@@ -101,15 +105,41 @@ export function SettingsPartnerAccessSection({
         {pendingInviteToken ? (
           <View style={styles.card} testID="settings-partner-accept-card">
             <Text style={styles.sectionTitle}>{copy.acceptTitle}</Text>
-            <Text style={styles.helperText}>
-              {hasManagedSession ? copy.acceptReadyHint : copy.acceptSignInHint}
-            </Text>
-            <AppButton
-              disabled={!hasManagedSession || isBusy}
-              label={copy.acceptActionLabel}
-              onPress={onAcceptInvite}
-              testID="settings-partner-accept-button"
-            />
+            {hasManagedSession ? (
+              <>
+                <Text style={styles.helperText}>{copy.acceptReadyHint}</Text>
+                <AppButton
+                  disabled={isBusy}
+                  label={copy.acceptActionLabel}
+                  onPress={onAcceptInvite}
+                  testID="settings-partner-accept-button"
+                />
+              </>
+            ) : (
+              // No managed session yet on this device: the invite is
+              // single-use, so neither option here may fire automatically —
+              // both require an explicit tap. "Accept as guest" redeems the
+              // invite in one tap with no form; "Sign in to accept" leaves
+              // the token untouched so whoever is accepting can instead sign
+              // in with the account fields on this screen and then use the
+              // ready-to-accept button above.
+              <>
+                <Text style={styles.helperText}>{copy.acceptChoiceHint}</Text>
+                <AppButton
+                  disabled={isBusy}
+                  label={copy.acceptAsGuestActionLabel}
+                  onPress={onAcceptInviteAsGuest}
+                  testID="settings-partner-accept-guest-button"
+                />
+                <AppButton
+                  disabled={isBusy}
+                  label={copy.acceptSignInActionLabel}
+                  onPress={onChooseSignIn}
+                  testID="settings-partner-signin-to-accept-button"
+                  variant="secondary"
+                />
+              </>
+            )}
           </View>
         ) : null}
 

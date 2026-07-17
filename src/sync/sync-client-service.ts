@@ -5,6 +5,7 @@ import { fromByteArray, toByteArray } from "base64-js";
 import {
   buildSyncPayloadAad,
   createRecoveredSyncSecretsRecord,
+  createSyncSecretsRecord,
   decryptSyncPayload,
   encryptSyncPayload,
   isValidRecoveryPhrase,
@@ -29,6 +30,7 @@ import type {
 } from "./sync-contract";
 import {
   MANAGED_CLOUD_AUTH_BASE_URL,
+  MANAGED_SYNC_BASE_URL,
   createDefaultSyncPreferencesRecord,
 } from "./sync-contract";
 import {
@@ -490,6 +492,74 @@ export async function finalizeSyncSessionAfterTOTP(
   return {
     ok: true,
     capabilities: capabilitiesResult.capabilities,
+    preferences: nextPreferences,
+  };
+}
+
+/**
+ * persistGuestPartnerSession persists the session minted by the
+ * unauthenticated guest-partner-accept endpoint using the same mechanics as
+ * a normal managed connect (see the managed branch of `connectSyncAccount`
+ * above): the session token replaces `managedAuthSessionToken` in the
+ * secure-storage-backed `SyncSecretsRecord` (never `authSessionToken`, which
+ * is reserved for self-hosted community sync), preferences are forced to
+ * managed/connected, and the managed-billing cache is reset for the new
+ * account boundary — identical to what a fresh managed register/login does.
+ *
+ * Unlike `connectSyncAccount`, there is no prior "prepare local sync" step to
+ * require here: a guest account is reachable only through a single-use
+ * invite link and must accept in one tap with no form, so when the device
+ * has no local sync secrets yet this generates a fresh `SyncSecretsRecord`
+ * (the same generator `prepareSyncSetup` uses internally) instead of failing
+ * closed with `sync_not_prepared`. A device that already prepared local sync
+ * (or is already managed-connected) keeps its existing device/master-key
+ * material untouched — this only ever overwrites the auth-session fields on
+ * top of an existing record, so it can never silently regenerate keys out
+ * from under an already-set-up device.
+ */
+export async function persistGuestPartnerSession(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  input: { sessionToken: string },
+  now: Date,
+): Promise<{
+  capabilities: SyncCapabilityDocument;
+  preferences: SyncPreferencesRecord;
+}> {
+  const existingSecrets = await secretStore.readSyncSecrets();
+  const baseSecrets: SyncSecretsRecord =
+    existingSecrets ?? createSyncSecretsRecord("", now).record;
+
+  await secretStore.writeSyncSecrets({
+    ...baseSecrets,
+    authSessionToken: null,
+    managedAuthSessionToken: input.sessionToken,
+  });
+
+  const nextPreferences: SyncPreferencesRecord = {
+    ...preferences,
+    mode: "managed",
+    endpointInput: "",
+    normalizedEndpoint: MANAGED_SYNC_BASE_URL,
+    setupStatus: "connected",
+  };
+  await storage.writeSyncPreferencesRecord(nextPreferences);
+
+  // New account boundary (a guest account is always freshly minted): drop
+  // any billing-cache state derived under a previous session, same as a
+  // normal managed connect.
+  await storage.writeManagedBillingCacheRecord(
+    createDefaultManagedBillingCacheRecord(),
+  );
+
+  return {
+    // Guest partner accounts carry no sync entitlement by construction
+    // (server-side SyncEntitlement.SyncAllowed=false — see
+    // PartnerService.AcceptInviteAsGuest in the managed cloud) — never
+    // inferred from a client guess, and the guest endpoint's response has no
+    // entitlement field to read one from anyway.
+    capabilities: buildManagedCapabilitiesDocument(false),
     preferences: nextPreferences,
   };
 }

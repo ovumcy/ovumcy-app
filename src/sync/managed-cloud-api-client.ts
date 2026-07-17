@@ -238,6 +238,20 @@ export type ManagedCloudAuthResult = {
   totpChallenge?: SyncTOTPChallengeHandoff;
 };
 
+// ManagedCloudGuestPartnerAcceptResult is the response shape of the
+// unauthenticated guest-partner-accept endpoint. It deliberately does NOT
+// mirror ManagedCloudAuthResult: a guest account has no email/password, so
+// the server returns no `email`, no `sync_entitlement` (guest accounts carry
+// none — see PartnerService.AcceptInviteAsGuest in the managed cloud), and no
+// TOTP challenge (a brand-new guest account can never have TOTP enabled).
+export type ManagedCloudGuestPartnerAcceptResult = {
+  accountID: string;
+  sessionToken: string;
+  sessionExpiresAt: string;
+  grant: ManagedCloudPartnerAccessGrant;
+  invite: ManagedCloudPartnerInvite;
+};
+
 export type ManagedCloudForgotPasswordResult = {
   resetToken: string;
   resetTokenExpiresAt: string;
@@ -411,6 +425,18 @@ export type ManagedCloudAPIClient = {
         invite: ManagedCloudPartnerInvite;
         grant: ManagedCloudPartnerAccessGrant;
       }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  // acceptPartnerInviteAsGuest redeems a pending invite WITHOUT an existing
+  // session (POST /auth/partner/invites/accept, no Authorization header sent):
+  // the managed cloud atomically provisions a brand-new guest account and
+  // issues it a session in the same call. Reachable only with a valid pending
+  // invite token — an unknown/expired/already-used token yields the same
+  // error keys acceptPartnerInvite returns and creates no account.
+  acceptPartnerInviteAsGuest(
+    inviteToken: string,
+  ): Promise<
+    | { ok: true; result: ManagedCloudGuestPartnerAcceptResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   revokePartnerInvite(
@@ -613,6 +639,14 @@ type RawManagedCloudPartnerInviteIssueResult = {
 type RawManagedCloudPartnerInviteAcceptResult = {
   invite: RawManagedCloudPartnerInvite;
   grant: RawManagedCloudPartnerAccessGrant;
+};
+
+type RawManagedCloudGuestPartnerAcceptResult = {
+  account_id: string;
+  session_token: string;
+  session_expires_at: string;
+  grant: RawManagedCloudPartnerAccessGrant;
+  invite: RawManagedCloudPartnerInvite;
 };
 
 type RawManagedCloudPartnerProjection = {
@@ -1046,6 +1080,27 @@ export function createManagedCloudAPIClient(
               invite: mapPartnerInvite(result.payload.invite),
               grant: mapPartnerAccessGrant(result.payload.grant),
             }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async acceptPartnerInviteAsGuest(inviteToken) {
+      // Deliberately no `sessionToken` in the request options: performFetch
+      // only sets an Authorization header when one is supplied, so this call
+      // reaches the unauthenticated /auth/... endpoint with no bearer, the
+      // same way register/login do.
+      return requestJSON<RawManagedCloudGuestPartnerAcceptResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/partner/invites/accept",
+        {
+          method: "POST",
+          body: { invite_token: inviteToken },
+        },
+        isRawManagedCloudGuestPartnerAcceptResult,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, result: mapGuestPartnerAcceptResult(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -1610,6 +1665,19 @@ function isRawManagedCloudPartnerInviteAcceptResult(
   );
 }
 
+function isRawManagedCloudGuestPartnerAcceptResult(
+  value: unknown,
+): value is RawManagedCloudGuestPartnerAcceptResult {
+  return (
+    isObject(value) &&
+    typeof value.account_id === "string" &&
+    typeof value.session_token === "string" &&
+    typeof value.session_expires_at === "string" &&
+    isRawManagedCloudPartnerAccessGrant(value.grant) &&
+    isRawManagedCloudPartnerInvite(value.invite)
+  );
+}
+
 function isRawSyncAuthResult(value: unknown): value is RawSyncAuthResult {
   return (
     isObject(value) &&
@@ -1899,6 +1967,18 @@ function mapPartnerInviteIssueResult(
   return {
     invite: mapPartnerInvite(raw.invite),
     inviteURL: raw.invite_url,
+  };
+}
+
+function mapGuestPartnerAcceptResult(
+  raw: RawManagedCloudGuestPartnerAcceptResult,
+): ManagedCloudGuestPartnerAcceptResult {
+  return {
+    accountID: raw.account_id,
+    sessionToken: raw.session_token,
+    sessionExpiresAt: raw.session_expires_at,
+    grant: mapPartnerAccessGrant(raw.grant),
+    invite: mapPartnerInvite(raw.invite),
   };
 }
 
