@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ovumcy — open your invite in the app</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: #f7f0e6;
+        color: #3d3229;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+      }
+      main {
+        max-width: 26rem;
+        padding: 2rem;
+      }
+      h1 {
+        font-size: 1.4rem;
+      }
+      p {
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Static fallback for https://invite.ovumcy.cloud/backup-sync when the app
+      is not installed or link verification has not completed. This page must
+      stay fully static: never log, echo, forward, or persist the invite_token
+      query value (see docs/deep-links.md section 5 in the ovumcy-app repo).
+      Add app-store links here once the app is published.
+    -->
+    <main>
+      <h1>Open this invite in the Ovumcy app</h1>
+      <p>
+        This link is a partner invite for the Ovumcy app. Install or open
+        Ovumcy on this device, then tap the invite link again.
+      </p>
+      <p>An invite stays valid for 7 days and can be used once.</p>
+    </main>
+  </body>
+</html>
