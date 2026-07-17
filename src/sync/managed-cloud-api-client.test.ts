@@ -627,6 +627,131 @@ describe("managed-cloud-api-client", () => {
     });
   });
 
+  it("accepts a partner invite as a guest with no Authorization header and maps the session + grant + invite", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "guest-account-1",
+          session_token: "guest-session-1",
+          session_expires_at: "2026-04-12T00:00:00.000Z",
+          grant: {
+            id: "grant-9",
+            owner_account_id: "owner-1",
+            partner_account_id: "guest-account-1",
+            access_level: "full",
+            source_invite_id: "invite-9",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            last_seen_at: "2026-04-05T08:00:00.000Z",
+            created_at: "2026-04-05T08:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          },
+          invite: {
+            id: "invite-9",
+            owner_account_id: "owner-1",
+            access_level: "full",
+            status: "accepted",
+            expires_at: "2026-04-10T00:00:00.000Z",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            accepted_account_id: "guest-account-1",
+            created_by: "owner-1",
+            created_at: "2026-04-01T00:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          },
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.acceptPartnerInviteAsGuest("invite-token-9-fixture-padding"),
+    ).resolves.toEqual({
+      ok: true,
+      result: {
+        accountID: "guest-account-1",
+        sessionToken: "guest-session-1",
+        sessionExpiresAt: "2026-04-12T00:00:00.000Z",
+        grant: expect.objectContaining({
+          id: "grant-9",
+          partnerAccountID: "guest-account-1",
+          accessLevel: "full",
+        }),
+        invite: expect.objectContaining({
+          id: "invite-9",
+          status: "accepted",
+        }),
+      },
+    });
+
+    const call = fetch.mock.calls[0];
+    expect(call?.[0]).toBe("https://managed.example/auth/partner/invites/accept");
+    expect(call?.[1]?.method).toBe("POST");
+    // The whole point of the guest endpoint is that it is unauthenticated:
+    // no Authorization header is ever sent, unlike every other partner call.
+    expect((call?.[1]?.headers as Headers).has("Authorization")).toBe(false);
+    expect(call?.[1]?.body).toBe(
+      JSON.stringify({ invite_token: "invite-token-9-fixture-padding" }),
+    );
+  });
+
+  it("maps guest-accept error keys identically to the logged-in accept path", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "partner_invite_not_found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "partner_invite_expired" }), {
+          status: 410,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_partner_invite" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "partner_access_unavailable" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.acceptPartnerInviteAsGuest("unknown-token"),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_invite_not_found" });
+    await expect(
+      client.acceptPartnerInviteAsGuest("expired-token"),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_invite_expired" });
+    await expect(
+      client.acceptPartnerInviteAsGuest("already-used-token"),
+    ).resolves.toEqual({ ok: false, errorCode: "invalid_partner_invite" });
+    await expect(
+      client.acceptPartnerInviteAsGuest("unentitled-owner-token"),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_access_unavailable" });
+    await expect(
+      client.acceptPartnerInviteAsGuest("rate-limited-token"),
+    ).resolves.toEqual({ ok: false, errorCode: "rate_limited" });
+  });
+
   it("maps reminder email schedule responses", async () => {
     const fetch = jest
       .fn()

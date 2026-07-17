@@ -5,6 +5,7 @@ import {
   connectSyncAccount,
   disconnectSyncAccount,
   finalizeSyncSessionAfterTOTP,
+  persistGuestPartnerSession,
   recoverSyncAccess,
   runSyncRestore,
   runSyncUpload,
@@ -20,6 +21,7 @@ import {
 import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIErrorCode,
+  type ManagedCloudPartnerAccessGrant,
 } from "../sync/managed-cloud-api-client";
 import {
   completeTOTPChallenge,
@@ -32,6 +34,7 @@ import {
   type SaveSyncPreferencesDraftErrorCode,
 } from "../sync/sync-setup-service";
 import { loadLocalExportState } from "./export-service";
+import { acceptManagedPartnerInviteAsGuest } from "./managed-partner-access-service";
 import {
   loadManagedBillingSnapshot,
   persistManagedBillingSnapshotCache,
@@ -246,6 +249,73 @@ export async function connectBackupSyncAccount(
     success.recoveryCode = result.recoveryCode;
   }
   return success;
+}
+
+/**
+ * acceptBackupSyncPartnerInviteAsGuest redeems a pending partner invite
+ * through the unauthenticated guest endpoint and, on success, persists the
+ * returned session exactly the way `connectBackupSyncAccount` persists a
+ * normal managed register/login (`persistGuestPartnerSession` mirrors the
+ * managed branch of `connectSyncAccount`) and refreshes the managed-plan
+ * status the same way. The caller (the partner-access screen hook) is
+ * responsible for the rest of the shared post-accept path — partner-share key
+ * derivation/rotation and pending-invite-buffer clearing — via the SAME
+ * `storeAcceptedManagedPartnerGrantKey` the logged-in accept flow already
+ * uses; this function stays scoped to "redeem the invite + persist the
+ * session" so that shared path is never duplicated.
+ */
+export async function acceptBackupSyncPartnerInviteAsGuest(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  inviteToken: string,
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      grant: ManagedCloudPartnerAccessGrant;
+    }
+  | {
+      ok: false;
+      errorCode: ManagedCloudAPIErrorCode;
+    }
+> {
+  const acceptResult = await acceptManagedPartnerInviteAsGuest(inviteToken);
+  if (!acceptResult.ok) {
+    return acceptResult;
+  }
+
+  const persisted = await persistGuestPartnerSession(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    { sessionToken: acceptResult.value.sessionToken },
+    now,
+  );
+
+  const managedPremiumAccess = await resolveManagedPremiumAccessAfterConnect(
+    storage,
+    secretStore,
+    persisted.preferences,
+    currentState.managedPremiumAccess,
+  );
+
+  return {
+    ok: true,
+    grant: acceptResult.value.grant,
+    state: createLoadedSettingsState(
+      currentState.profile,
+      persisted.preferences,
+      true,
+      true,
+      currentState.symptomRecords,
+      currentState.exportState,
+      persisted.preferences,
+      persisted.capabilities,
+      managedPremiumAccess,
+    ),
+  };
 }
 
 /**

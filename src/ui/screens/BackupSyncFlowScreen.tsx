@@ -61,6 +61,8 @@ export type BackupSyncFlowScreenProps = {
   onResumeRenewal: () => void | Promise<void>;
   onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onPartnerAcceptInvite: () => void | Promise<void>;
+  onPartnerAcceptInviteAsGuest: () => void | Promise<void>;
+  onPartnerChooseSignIn: () => void;
   onPartnerRevokeGrant: (grantID: string) => void | Promise<void>;
   onPartnerRevokeInvite: (inviteID: string) => void | Promise<void>;
   onPartnerOpenGrant: (grantID: string) => void | Promise<void>;
@@ -139,6 +141,8 @@ export function BackupSyncFlowScreen({
   onResumeRenewal,
   onPartnerAccessLevelChange,
   onPartnerAcceptInvite,
+  onPartnerAcceptInviteAsGuest,
+  onPartnerChooseSignIn,
   onPartnerOpenGrant,
   onPartnerRevokeGrant,
   onPartnerRevokeInvite,
@@ -281,7 +285,9 @@ export function BackupSyncFlowScreen({
               isBusy={isPartnerBusy}
               locale={partnerLocale}
               onAcceptInvite={onPartnerAcceptInvite}
+              onAcceptInviteAsGuest={onPartnerAcceptInviteAsGuest}
               onAccessLevelChange={onPartnerAccessLevelChange}
+              onChooseSignIn={onPartnerChooseSignIn}
               onIssueInvite={onIssuePartnerInvite}
               onOpenGrant={onPartnerOpenGrant}
               onRevokeGrant={onPartnerRevokeGrant}

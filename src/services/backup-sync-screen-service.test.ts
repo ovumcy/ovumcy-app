@@ -2,6 +2,7 @@ import type { SyncSecretsRecord } from "../sync/sync-contract";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
+  acceptBackupSyncPartnerInviteAsGuest,
   connectBackupSyncAccount,
   updateBackupSyncRenewal,
 } from "./backup-sync-screen-service";
@@ -307,5 +308,151 @@ describe("updateBackupSyncRenewal", () => {
       ok: false,
       errorCode: "billing_management_unavailable",
     });
+  });
+});
+
+describe("acceptBackupSyncPartnerInviteAsGuest", () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const GUEST_ACCEPT_RESPONSE = {
+    account_id: "guest-account-1",
+    session_token: "guest-session-1",
+    session_expires_at: "2026-04-12T00:00:00.000Z",
+    grant: {
+      id: "grant-9",
+      owner_account_id: "owner-1",
+      partner_account_id: "guest-account-1",
+      access_level: "full",
+      source_invite_id: "invite-9",
+      accepted_at: "2026-04-05T08:00:00.000Z",
+      last_seen_at: "2026-04-05T08:00:00.000Z",
+      created_at: "2026-04-05T08:00:00.000Z",
+      updated_at: "2026-04-05T08:00:00.000Z",
+    },
+    invite: {
+      id: "invite-9",
+      owner_account_id: "owner-1",
+      access_level: "full",
+      status: "accepted",
+      expires_at: "2026-04-10T00:00:00.000Z",
+      accepted_at: "2026-04-05T08:00:00.000Z",
+      accepted_account_id: "guest-account-1",
+      created_by: "owner-1",
+      created_at: "2026-04-01T00:00:00.000Z",
+      updated_at: "2026-04-05T08:00:00.000Z",
+    },
+  };
+
+  it("redeems the invite with no bearer, persists the session on a brand-new device, and returns a connected managed state + grant", async () => {
+    const storage = createLocalAppStorageMock();
+    // A brand-new device: no local sync secrets prepared at all. The guest
+    // accept must not require the "prepare local sync" step a normal
+    // register/login does.
+    const secretStore = createSyncSecretStoreMock();
+
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+    expect(initialState.hasSyncSession).toBe(false);
+    expect(initialState.hasStoredSyncSecrets).toBe(false);
+
+    global.fetch = jest
+      .fn()
+      // POST /auth/partner/invites/accept (unauthenticated guest accept)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(GUEST_ACCEPT_RESPONSE), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      // GET /account/billing (managed-premium refresh under the new session)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ) as typeof fetch;
+
+    const result = await acceptBackupSyncPartnerInviteAsGuest(
+      storage,
+      secretStore,
+      initialState,
+      "invite-token-9-fixture-padding",
+      new Date(2026, 3, 5),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected a successful guest-accept result");
+    }
+    expect(result.grant).toEqual(expect.objectContaining({ id: "grant-9" }));
+    expect(result.state.hasSyncSession).toBe(true);
+    expect(result.state.syncPreferences.mode).toBe("managed");
+    expect(result.state.syncPreferences.setupStatus).toBe("connected");
+
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets?.managedAuthSessionToken).toBe("guest-session-1");
+    expect(storedSecrets?.authSessionToken).toBeNull();
+
+    const guestAcceptCall = (global.fetch as jest.Mock).mock.calls[0];
+    expect(String(guestAcceptCall[0])).toContain("/auth/partner/invites/accept");
+    expect((guestAcceptCall[1]?.headers as Headers).has("Authorization")).toBe(
+      false,
+    );
+  });
+
+  it("forwards each mapped error key and persists no session", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+
+    const errorCodes = [
+      "partner_invite_not_found",
+      "partner_invite_expired",
+      "invalid_partner_invite",
+      "partner_access_unavailable",
+      "rate_limited",
+    ] as const;
+
+    for (const errorCode of errorCodes) {
+      global.fetch = jest.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: errorCode }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ) as typeof fetch;
+
+      const result = await acceptBackupSyncPartnerInviteAsGuest(
+        storage,
+        secretStore,
+        initialState,
+        "some-token",
+        new Date(2026, 3, 5),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode });
+    }
+
+    // None of the rejected attempts wrote a session.
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,7 @@ import {
   revokeManagedPartnerGrant,
   revokeManagedPartnerInvite,
 } from "../../../services/managed-partner-access-service";
+import { acceptBackupSyncPartnerInviteAsGuest } from "../../../services/backup-sync-screen-service";
 import {
   clearManagedPartnerGrantKey,
   storeAcceptedManagedPartnerGrantKey,
@@ -36,7 +37,9 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     setPartnerErrorMessage,
     setPartnerStatusMessage,
     setPendingPartnerInviteToken,
+    setState,
     state,
+    storage,
     syncSecretStore,
     viewData,
   } = core;
@@ -123,6 +126,74 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     router.replace("/backup-sync");
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
+  }
+
+  /**
+   * Guest-accept path: reachable only when a pending invite token is buffered
+   * and there is no managed session yet (the choice card in
+   * SettingsPartnerAccessSection never renders this action otherwise). One
+   * explicit tap redeems the invite through the unauthenticated guest
+   * endpoint, persists the freshly minted session, and then continues through
+   * the exact same post-accept path as `handleAcceptPartnerInvite` above
+   * (partner-share key rotation, buffer clearing, reload) so the two entry
+   * points can never drift.
+   */
+  async function handleAcceptPartnerInviteAsGuest() {
+    if (!state || pendingPartnerInviteToken.length === 0) {
+      return;
+    }
+
+    resetPartnerFeedback();
+    setIsPartnerBusy(true);
+
+    const result = await acceptBackupSyncPartnerInviteAsGuest(
+      storage,
+      syncSecretStore,
+      state,
+      pendingPartnerInviteToken,
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setPartnerErrorMessage(resolvePartnerErrorMessage(result.errorCode, partnerCopy));
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    try {
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        result.grant,
+        pendingPartnerInviteToken,
+        effectiveNow,
+      );
+    } catch {
+      setPartnerErrorMessage(partnerCopy.errors.generic);
+      setIsPartnerBusy(false);
+      return;
+    }
+
+    setState(result.state);
+    setPartnerStatusMessage(partnerCopy.statusInviteAccepted);
+    clearManagedPartnerInviteToken();
+    setPendingPartnerInviteToken("");
+    router.replace("/backup-sync");
+    await reloadPartnerAccess(result.state);
+    setIsPartnerBusy(false);
+  }
+
+  /**
+   * The explicit "sign in instead" side of the no-session choice. It is
+   * intentionally inert with respect to the invite: it never touches
+   * `pendingPartnerInviteToken` or calls any accept endpoint, since the
+   * token is single-use and must survive this choice untouched (whoever is
+   * accepting can still tap "Accept as guest" afterward, or sign in using
+   * the account fields already on this screen and then use the
+   * ready-to-accept path). It only clears stale partner feedback so a
+   * previous guest-accept error does not linger once they choose to sign in
+   * instead.
+   */
+  function handleChoosePartnerSignIn() {
+    resetPartnerFeedback();
   }
 
   async function handleRevokePartnerInvite(inviteID: string) {
@@ -219,6 +290,8 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     isPartnerBusy,
     handleIssuePartnerInvite,
     handleAcceptPartnerInvite,
+    handleAcceptPartnerInviteAsGuest,
+    handleChoosePartnerSignIn,
     handleRevokePartnerInvite,
     handleRevokePartnerGrant,
     handleOpenPartnerGrant,
