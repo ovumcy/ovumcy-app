@@ -429,6 +429,12 @@ function buildDashboardCycleHeroPhases(
     return [];
   }
 
+  // Web parity (dashboard_cycle_hero.go:54): the menstrual phase card spans the
+  // rolling predictedPeriodLength(stats.AveragePeriodLength), not the configured
+  // period length. The projection computes it once; the ?? fallback only guards
+  // hand-built projection literals.
+  const periodLength = projection.projectedPeriodLength ?? profile.periodLength;
+
   const phaseRanges: {
     key: DashboardCycleHeroPhaseKey;
     label: string;
@@ -439,12 +445,12 @@ function buildDashboardCycleHeroPhases(
       key: "period",
       label: dashboardCopy.cycleHeroPhaseCards.period,
       startDay: 1,
-      endDay: Math.min(profile.periodLength, cycleLength),
+      endDay: Math.min(periodLength, cycleLength),
     },
     {
       key: "follicular",
       label: dashboardCopy.cycleHeroPhaseCards.follicular,
-      startDay: Math.min(profile.periodLength + 1, cycleLength),
+      startDay: Math.min(periodLength + 1, cycleLength),
       endDay: Math.max(ovulationDay - 1, 0),
     },
     {

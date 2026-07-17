@@ -3,6 +3,7 @@ import {
   type DayCycleFactorKey,
   type DayLogRecord,
 } from "../models/day-log";
+import { DEFAULT_PERIOD_LENGTH } from "../models/profile";
 import type { LocalDateISO, ProfileRecord } from "../models/profile";
 import {
   predictCycleWindow,
@@ -162,6 +163,12 @@ export function buildCurrentCycleProjection(
   const lutealPhase = resolveLutealPhase(
     inferUserLutealPhase(profile, records, todayValue) ?? 0,
   );
+  const projectedPeriodLength = resolveProjectedPeriodLength(
+    profile,
+    history,
+    records,
+    todayValue,
+  );
 
   if (pregnancyPause) {
     return {
@@ -172,6 +179,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: true,
       pregnancyTestDate: pregnancyPause,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -190,6 +198,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -208,6 +217,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -246,6 +256,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate: null,
       nextPeriodWindowStartDate: null,
       nextPeriodWindowEndDate: null,
@@ -264,6 +275,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate,
       nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
       nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
@@ -282,6 +294,7 @@ export function buildCurrentCycleProjection(
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
+      projectedPeriodLength,
       nextPeriodDate,
       nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
       nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
@@ -352,7 +365,7 @@ export function buildCurrentCycleProjection(
       todayValue,
       today,
       rolledCycleDay,
-      profile.periodLength,
+      projectedPeriodLength,
       rolledWindow.fertilityStart ? parseLocalDate(rolledWindow.fertilityStart) : null,
       rolledWindow.ovulationDate
         ? (parseLocalDate(rolledWindow.ovulationDate) ?? ovulationDate)
@@ -363,6 +376,7 @@ export function buildCurrentCycleProjection(
     isPregnancyPaused: false,
     pregnancyTestDate: null,
     lutealPhase,
+    projectedPeriodLength,
     nextPeriodDate: rolledNextPeriodDate,
     nextPeriodWindowStartDate: rolledNextPeriodWindow?.startDate ?? null,
     nextPeriodWindowEndDate: rolledNextPeriodWindow?.endDate ?? null,
@@ -1007,6 +1021,69 @@ function resolvePredictionCycleLength(
   return profile.cycleLength;
 }
 
+/**
+ * App analog of web's predictedPeriodLength (cycles.go:375-381): rounds an
+ * average period length to whole days and falls back to the default when the
+ * average is non-positive. `Math.round(x)` equals web's `int(x + 0.5)` for the
+ * non-negative averages this ever sees, so the two implementations agree on the
+ * half-up boundary (e.g. 4.5 -> 5, 2.5 -> 3). Exported for the projected-period
+ * unit tests that mirror ovumcy-web's own predictedPeriodLength cases.
+ */
+export function predictedPeriodLength(average: number): number {
+  const length = Math.round(average);
+  return length > 0 ? length : DEFAULT_PERIOD_LENGTH;
+}
+
+/**
+ * App analog of web's owner-surface projected period length:
+ * predictedPeriodLength(stats.AveragePeriodLength). AveragePeriodLength is the
+ * rolling mean of the last STATS_CYCLE_PREDICTION_WINDOW (6) observed cycles'
+ * logged period lengths (web populateObservedCycleStats +
+ * recentPositivePeriodLengths, cycles.go:300-333), folded through
+ * predictedPeriodLength at every consuming surface (resolveCyclePhase
+ * cycles.go:424, dashboard_cycle_hero.go:54, calendar_days.go:103) and seeded by
+ * the ApplyUserCycleBaseline bootstrap (cycle_baseline.go:49-63).
+ *
+ * Semantics mirrored exactly:
+ * - Bootstrap: with no completed cycle yet (web !hasObservedCycleLengths) the
+ *   configured period length is the projected length. profile.periodLength is
+ *   always clamped to [MIN_PERIOD_LENGTH, MAX_PERIOD_LENGTH] === web's valid
+ *   IsValidOnboardingPeriodLength range, so it is exactly the value web's
+ *   resolveUserCycleLengths would resolve to.
+ * - Observed: once at least one completed cycle exists, average the last six
+ *   observed cycles — INCLUDING the current in-progress cycle, exactly as web's
+ *   buildCycles(observedStarts) spans every observed start — each contributing
+ *   its logged consecutive period-day count. Only positive lengths are averaged
+ *   (web recentPositivePeriodLengths drops PeriodLength == 0), then rounded.
+ *
+ * collectCycleStartDates is the app's canonical port of web's ObservedCycleStarts
+ * (the same source buildCycles consumes) and countLoggedPeriodLength counts the
+ * same consecutive logged period days as web's buildCycles PeriodLength loop, so
+ * the window and per-cycle lengths line up with web row-for-row.
+ */
+export function resolveProjectedPeriodLength(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  records: DayLogRecord[],
+  todayValue: string,
+): number {
+  if (history.completedCycleCount < 1) {
+    return predictedPeriodLength(profile.periodLength);
+  }
+
+  const recordsByDate = new Map(records.map((record) => [record.date, record]));
+  const starts = collectCycleStartDates(profile, records, todayValue);
+  const periodLengths: number[] = [];
+  for (const start of starts.slice(-STATS_CYCLE_PREDICTION_WINDOW)) {
+    const length = countLoggedPeriodLength(recordsByDate, start);
+    if (length > 0) {
+      periodLengths.push(length);
+    }
+  }
+
+  return predictedPeriodLength(averageInts(periodLengths));
+}
+
 function resolveCurrentCycleAnchorDate(
   profile: ProfileRecord,
   records: DayLogRecord[],
@@ -1039,10 +1116,10 @@ export function resolveLatestCycleStartAnchorBeforeOrOn(
  * There is no separate fertilityEnd parameter: predictCycleWindow always sets
  * fertilityEnd equal to ovulationDate (app and web alike), so the ovulation-day
  * check below already covers the fertility window's upper bound.
- * periodLength uses profile.periodLength (not an average-of-recent-cycles
- * statistic like web's stats.AveragePeriodLength) — the app does not track a
- * rolling period-length average, and deriving one here would be new prediction
- * math the caller's projection does not already carry.
+ * periodLength is the caller's resolveProjectedPeriodLength result — web parity
+ * for predictedPeriodLength(stats.AveragePeriodLength): the rolling average of
+ * the last six observed period lengths (including the current cycle), with the
+ * configured period length only as the pre-first-completed-cycle bootstrap.
  */
 function detectCurrentPhase(
   records: DayLogRecord[],
