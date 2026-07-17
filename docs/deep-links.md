@@ -194,7 +194,7 @@ the custom scheme stays for existing non-invite deep links and as a fallback.
       "data": [
         {
           "scheme": "https",
-          "host": "invite.ovumcy.com",
+          "host": "invite.ovumcy.cloud",
           "pathPrefix": "/backup-sync"
         }
       ],
@@ -221,7 +221,7 @@ Notes:
 
 - **Verification succeeds** (fingerprint in `assetlinks.json` matches the
   installed signature, file reachable over HTTPS with the right content-type): the
-  app becomes the **default, exclusive** handler for `https://invite.ovumcy.com/backup-sync…`.
+  app becomes the **default, exclusive** handler for `https://invite.ovumcy.cloud/backup-sync…`.
   Taps open Ovumcy directly, no chooser, and — critically — a squatting app can
   **never** claim these HTTPS links, because it cannot satisfy the asset-links
   proof for a domain it does not control.
@@ -282,7 +282,7 @@ so the `bundleIdentifier` is authoritative:
 ```jsonc
 "ios": {
   "bundleIdentifier": "app.ovumcy.mobile",  // placeholder — confirmed by issue #99
-  "associatedDomains": ["applinks:invite.ovumcy.com"]
+  "associatedDomains": ["applinks:invite.ovumcy.cloud"]
 }
 ```
 
@@ -297,15 +297,16 @@ Notes:
 
 ---
 
-## 4. Domain recommendation for invite URLs — OWNER DECISION
+## 4. Domain for invite URLs — DECIDED: `invite.ovumcy.cloud`
 
-**Recommendation (decide first): use a dedicated subdomain, `invite.ovumcy.com`.**
+**Decision (owner, 2026-07-17): a dedicated subdomain, `invite.ovumcy.cloud`.**
+User-facing links live in the `.cloud` zone alongside the service hosts (see the
+resolved zone question below); the dedicated-subdomain rationale is unchanged.
 
-This is an owner decision because it commits DNS/TLS/hosting and the managed-side
-`PARTNER_INVITE_BASE_URL`. Recommended choice and rationale first, alternatives
-after.
+This commits DNS/TLS/hosting and the managed-side `PARTNER_INVITE_BASE_URL`.
+Chosen option and rationale first, rejected alternatives after.
 
-**Recommended — dedicated `invite.ovumcy.com`:**
+**Decided — dedicated `invite.ovumcy.cloud`:**
 
 - **Smallest blast radius.** The verified-link domain is isolated from the apex
   marketing site and from the API origins (`managed.ovumcy.cloud`,
@@ -315,13 +316,13 @@ after.
 - **Least-privilege hosting.** The invite host only needs to serve two static
   well-known files plus a static fallback page — no app secrets, no API. It can be
   a locked-down static bucket/CDN, separate from the dynamic managed service.
-- **Clean association scope.** `applinks:invite.ovumcy.com` and the Android
+- **Clean association scope.** `applinks:invite.ovumcy.cloud` and the Android
   `host` bind the app to exactly one host that does nothing else, so the
   `handle_all_urls` / associated-domains grant is narrowly scoped.
 - **Cost:** one extra DNS record + TLS cert (both trivial with modern ACME/CDN).
 
-**Alternative A — reuse the apex `ovumcy.com`** (as literally written in the issue
-acceptance criteria):
+**Alternative A (rejected) — reuse the apex `ovumcy.com`** (as literally written
+in the issue acceptance criteria):
 
 - Pro: no new subdomain; the well-known files sit alongside the existing
   marketing/fallback site.
@@ -330,21 +331,21 @@ acceptance criteria):
   `/.well-known/*` or open-redirect there now sits on the same host that owns the
   app-link grant. Rejected in favor of isolation.
 
-**Alternative B — reuse a service subdomain (`managed.ovumcy.cloud`)** or a new
-`link.ovumcy.cloud`:
+**Alternative B (rejected) — reuse the API service subdomain
+(`managed.ovumcy.cloud`):**
 
-- Pro: reuses the existing `.cloud` service zone and its ops tooling.
+- Pro: reuses an existing host and its ops tooling.
 - Con: co-locates the verified-link host with the token-bearing API origin;
   a redirect/misconfig on the API host would now also carry the app-link grant.
   Mixing the invite delivery host with the bearer-token API surface is the exact
-  coupling §1 warns about. Prefer a purpose-built host on the brand domain.
+  coupling §1 warns about. Prefer a purpose-built host — the decided
+  `invite.ovumcy.cloud` (a new, static-only host in the same zone, not the API
+  origin).
 
-**Note for the owner:** the issue text names `ovumcy.com`, but the app's services
-already live under `.cloud` (`managed.ovumcy.cloud`, `sync.ovumcy.cloud`). Confirm
-which zone owns user-facing brand links. The recommendation assumes `ovumcy.com`
-is the brand zone and `invite.` is a new host under it; if brand links live under
-`.cloud`, use `invite.ovumcy.cloud` with the same reasoning. Whatever host is
-chosen, it must be identical across: managed `PARTNER_INVITE_BASE_URL`, the two
+**Zone question — resolved (owner, 2026-07-17):** the issue text named
+`ovumcy.com`, but user-facing links live under `.cloud`, alongside
+`managed.ovumcy.cloud` / `sync.ovumcy.cloud` — hence `invite.ovumcy.cloud`. The
+host must be identical across: managed `PARTNER_INVITE_BASE_URL`, the two
 well-known files' host, `app.json` Android `host`, and iOS `associatedDomains`.
 
 ---
@@ -360,7 +361,7 @@ Scenarios:
    the `backup-sync` route; token captured + scrubbed as today.
 2. **App installed, verification not yet complete / failed** (offline at verify
    time, CDN propagation lag, transient mis-serve). The HTTPS link opens in the
-   **browser** at `https://invite.ovumcy.com/backup-sync?invite_token=…`. Serve a
+   **browser** at `https://invite.ovumcy.cloud/backup-sync?invite_token=…`. Serve a
    minimal static fallback page there ("Open this invite in the Ovumcy app").
    - If the web SPA is deployed on that host, the existing web scrub
      (`web-invite-token-scrub-bootstrap.ts`) strips the token from the URL bar on
@@ -389,8 +390,8 @@ persistence of the query string), which the guidance above enforces.
 
 ## 6. Companion infrastructure checklist (managed / domain team)
 
-Lift into the managed/domain repo. `<INVITE_HOST>` = the host chosen in §4
-(recommended `invite.ovumcy.com`).
+Lift into the managed/domain repo. `<INVITE_HOST>` = the host decided in §4:
+`invite.ovumcy.cloud`.
 
 **DNS & TLS**
 
