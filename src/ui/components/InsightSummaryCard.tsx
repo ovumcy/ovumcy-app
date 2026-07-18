@@ -23,7 +23,12 @@ export function InsightSummaryCard({
       : styles.infoValue;
 
   return (
-    <View style={[styles.card, toneStyles]} testID={testID}>
+    <View
+      accessibilityLabel={buildInsightSummaryAccessibilityLabel(viewData)}
+      accessible
+      style={[styles.card, toneStyles]}
+      testID={testID}
+    >
       <Text style={styles.title} testID={`${testID}-title`}>
         {viewData.title}
       </Text>
@@ -41,6 +46,20 @@ export function InsightSummaryCard({
       </Text>
     </View>
   );
+}
+
+function buildInsightSummaryAccessibilityLabel(
+  viewData: CurrentCycleAdvancedFertilitySummaryViewData,
+): string {
+  return [
+    viewData.title,
+    viewData.signalLabel,
+    viewData.value,
+    viewData.detail,
+    viewData.hint,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
 }
 
 const createStyles = (colors: AppThemeColors) =>

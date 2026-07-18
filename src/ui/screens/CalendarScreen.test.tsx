@@ -436,6 +436,25 @@ describe("CalendarScreen", () => {
     expect(screen.getByTestId("calendar-advanced-fertility-summary-hint").props.children).toBe(
       "This usually means ovulation likely happened recently and the fertile window may be closing.",
     );
+
+    // The whole insight card is one composed accessibility label (title,
+    // signal, value, detail, hint) so a screen reader announces it as a
+    // single phrase instead of five separate stops.
+    const detailText = screen.getByTestId(
+      "calendar-advanced-fertility-summary-detail",
+    ).props.children;
+    expect(
+      screen.getByTestId("calendar-advanced-fertility-summary").props
+        .accessibilityLabel,
+    ).toBe(
+      [
+        "Advanced fertility",
+        "Ovulation confirmation",
+        "Signals aligned",
+        detailText,
+        "This usually means ovulation likely happened recently and the fertile window may be closing.",
+      ].join(". "),
+    );
   });
 
   it("shows an approximate prediction notice when irregular cycle mode is enabled", async () => {
