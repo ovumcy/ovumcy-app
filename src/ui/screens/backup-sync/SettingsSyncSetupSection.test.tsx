@@ -148,6 +148,51 @@ describe("SettingsSyncSetupSection", () => {
     expect((await screen.findAllByTestId("settings-sync-step-done")).length).toBeGreaterThan(0);
   });
 
+  it("hides the local-step prepare/regenerate button for a guest session even though local secrets already exist", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          preferences={{
+            ...props.preferences,
+            guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+          }}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: {
+              ...props.preferences,
+              mode: "managed",
+              guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+            },
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    // Local secrets already exist (guest accept silently created them), so
+    // step 1 still legitimately shows done...
+    expect((await screen.findAllByTestId("settings-sync-step-done")).length).toBeGreaterThan(0);
+    // ...but the affordance that would mint and reveal a NEW, real recovery
+    // phrase must never render for a guest session (docs/sync-trust-model.md
+    // "Guest Partner Access": guests never see a recovery phrase).
+    expect(screen.queryByTestId("settings-sync-prepare-button")).toBeNull();
+  });
+
   it("offers a retry action on the cloud plan step when signed in without a confirmed plan", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);

@@ -1,5 +1,13 @@
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import { createSyncSecretsRecord } from "../security/sync-crypto";
+// isGuestPartnerAccount is a pure predicate over SyncPreferencesRecord (see
+// its doc comment in backup-sync-view-service.ts for why presence of
+// guestSessionExpiresAt is the single source of truth for guest mode).
+// Reusing it here — rather than re-deriving the same check locally — keeps
+// this refusal from silently drifting out of sync with the guest-status
+// check every other guest-aware surface uses. account-deletion-service.ts
+// already imports a pure services-layer helper the same way.
+import { isGuestPartnerAccount } from "../services/backup-sync-view-service";
 import {
   createDefaultManagedBillingCacheRecord,
   type LocalAppStorage,
@@ -27,6 +35,14 @@ export type PrepareSyncSetupErrorCode =
   | "unsupported_scheme"
   | "insecure_public_http"
   | "device_label_required"
+  // Defense-in-depth: a guest partner session must never receive a real
+  // recovery phrase (docs/sync-trust-model.md "Guest Partner Access" —
+  // "Guests never see a recovery phrase"). The UI already hides the
+  // prepare/regenerate affordance for a guest session
+  // (SettingsSyncSetupSection via buildBackupSyncSetupPresentation's
+  // shouldShowPrepareAction), but this is the function that actually mints
+  // and returns the phrase, so it refuses independently of the caller.
+  | "guest_recovery_phrase_blocked"
   | "generic";
 
 export type SaveSyncPreferencesDraftErrorCode =
@@ -68,6 +84,13 @@ export async function prepareSyncSetup(
       errorCode: PrepareSyncSetupErrorCode;
     }
 > {
+  if (isGuestPartnerAccount(currentPreferences)) {
+    return {
+      ok: false,
+      errorCode: "guest_recovery_phrase_blocked",
+    };
+  }
+
   const nextLabel = currentPreferences.deviceLabel.trim();
   if (nextLabel.length === 0) {
     return {

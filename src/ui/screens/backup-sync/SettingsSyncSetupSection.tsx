@@ -306,13 +306,15 @@ export function SettingsSyncSetupSection({
             )}
           </View>
 
-          <AppButton
-            disabled={presentation.accountActionsDisabled}
-            label={presentation.actionLabel}
-            onPress={onPrepare}
-            testID="settings-sync-prepare-button"
-            variant="secondary"
-          />
+          {presentation.shouldShowPrepareAction ? (
+            <AppButton
+              disabled={presentation.accountActionsDisabled}
+              label={presentation.actionLabel}
+              onPress={onPrepare}
+              testID="settings-sync-prepare-button"
+              variant="secondary"
+            />
+          ) : null}
         </View>
 
         <View style={styles.stepCard} testID="settings-sync-account-step">

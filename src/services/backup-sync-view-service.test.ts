@@ -44,6 +44,18 @@ describe("backup sync view service", () => {
     expect(
       resolveBackupSyncErrorMessage("unknown_code", viewData.account),
     ).toBe(viewData.account.errors.saveFailed);
+    // guest_recovery_phrase_blocked (prepareSyncSetup's defense-in-depth
+    // refusal for a guest session) has no dedicated copy: the UI already
+    // hides the affordance that would produce this error for a guest, so it
+    // deliberately reuses the generic "try again" message rather than adding
+    // a new string across all six locales for a state a real guest should
+    // never reach.
+    expect(
+      resolveBackupSyncErrorMessage(
+        "guest_recovery_phrase_blocked",
+        viewData.account,
+      ),
+    ).toBe(viewData.account.errors.saveFailed);
   });
 
   it("detects and reverts unsaved sync preference drafts", () => {
@@ -225,6 +237,44 @@ describe("backup sync view service", () => {
     expect(presentation.endpointSummary).toBe("192.168.1.20:8080");
     expect(presentation.syncStepTitle).toBe("3. Sync this backup");
     expect(presentation.lastSyncValue).not.toBe("2026-03-20T08:10:00.000Z");
+  });
+
+  it("hides the local-step prepare/regenerate action for a guest session but not for a normal managed session (docs/sync-trust-model.md: guests never see a recovery phrase)", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const basePresentationInput = {
+      hasStoredSyncSecrets: true,
+      hasSyncSession: true,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      managedPlanStatus: "unknown" as const,
+      notSetLabel: "Not set",
+      syncCapabilities: null,
+      viewData: viewData.account,
+    };
+
+    const guestPresentation = buildBackupSyncSetupPresentation({
+      ...basePresentationInput,
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+      },
+    });
+    expect(guestPresentation.shouldShowPrepareAction).toBe(false);
+
+    const ownerPresentation = buildBackupSyncSetupPresentation({
+      ...basePresentationInput,
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        guestSessionExpiresAt: null,
+      },
+    });
+    expect(ownerPresentation.shouldShowPrepareAction).toBe(true);
   });
 
   it("builds device list items with formatted last-seen and a current-device flag", () => {

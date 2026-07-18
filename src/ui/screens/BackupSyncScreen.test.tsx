@@ -2803,6 +2803,184 @@ describe("BackupSyncScreen", () => {
       expect(screen.queryByTestId("backup-sync-guest-upgrade-nudge")).toBeNull();
     });
   });
+
+  // Trust-model gap found incidentally during the #118 guest-upgrade work
+  // (predates it): docs/sync-trust-model.md's "Guest Partner Access" section
+  // states "Guests never see a recovery phrase." Guest accept
+  // (persistGuestPartnerSession) silently generates local sync secrets so
+  // state.hasStoredSyncSecrets is true for a guest, which used to make the
+  // local-step "Create a new recovery phrase" affordance in
+  // SettingsSyncSetupSection render for a guest exactly like it does for an
+  // owner -- reachable end-to-end through the same confirm + device-auth
+  // gate, ending in a REAL freshly generated phrase in the reveal modal.
+  describe("guest local-step recovery-phrase regenerate gap (docs/sync-trust-model.md Guest Partner Access)", () => {
+    function createGuestSecretsWithMasterKey() {
+      return {
+        device: {
+          deviceID: "guest-device-1",
+          deviceLabel: "",
+          createdAt: "2026-04-05T08:00:00.000Z",
+        },
+        masterKeyHex: "aa",
+        deviceSecretHex: "bb",
+        wrappedKey: {
+          algorithm: "xchacha20poly1305" as const,
+          kdf: "bip39_seed_hkdf_sha256" as const,
+          mnemonicWordCount: 12 as const,
+          wrapNonceHex: "cc",
+          wrappedMasterKeyHex: "dd",
+          phraseFingerprintHex: "ee",
+        },
+        authSessionToken: null,
+        managedAuthSessionToken: "guest-session-1",
+      };
+    }
+
+    function createGuestRegenerateFetchMock(): typeof fetch {
+      return jest.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/auth/session")) {
+          return createJSONResponse({
+            account_id: "guest-account-1",
+            email: "guest+guest-account-1@guest.invalid",
+            session_expires_at: "2026-05-05T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "guest_partner",
+              updated_at: "2026-04-05T08:00:00.000Z",
+              effective_at: "2026-04-05T08:00:00.000Z",
+              explanation: "guest partner",
+            },
+          });
+        }
+        if (url.includes("/account/billing")) {
+          return createJSONResponse({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          });
+        }
+        if (url.includes("/account/partner/access")) {
+          return createJSONResponse({
+            owned: { invites: [], grants: [] },
+            shared_with_me: [],
+          });
+        }
+        throw new Error(`Unexpected fetch in test: ${url}`);
+      }) as typeof fetch;
+    }
+
+    async function renderGuestScreenForRegenerate() {
+      const storage = createSettingsStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "managed",
+          deviceLabel: "Pixel 7",
+          setupStatus: "connected",
+          guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+        }),
+      });
+      const syncSecretStore = createSyncSecretStoreMock();
+      await syncSecretStore.writeSyncSecrets(createGuestSecretsWithMasterKey());
+      global.fetch = createGuestRegenerateFetchMock();
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 3, 5)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+      await screen.findByTestId("settings-sync-section");
+      return { storage, syncSecretStore };
+    }
+
+    it("hides the local-step regenerate affordance for a guest session, leaving the rest of that step intact", async () => {
+      await renderGuestScreenForRegenerate();
+
+      // The affordance that would mint and reveal a NEW, real recovery
+      // phrase must be gone for a guest...
+      expect(screen.queryByTestId("settings-sync-prepare-button")).toBeNull();
+      // ...but this is a targeted hide, not a wholesale collapse of the
+      // step: local secrets already exist (silently, from guest accept), so
+      // step 1 still legitimately shows done, and the generic notice text
+      // (which never mentions the button) still renders.
+      expect(
+        (await screen.findAllByTestId("settings-sync-step-done")).length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.getByText(
+          "This screen shows the recovery phrase only when you prepare or recreate local sync keys.",
+        ),
+      ).toBeTruthy();
+      // No path to the reveal modal exists either.
+      expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
+    });
+
+    it("still lets a non-guest complete the local-step regenerate flow and reveal a fresh phrase (owner path pinned unchanged)", async () => {
+      const settingsCopy = getSettingsCopy("en");
+      const ownerStorage = createSettingsStorageMock({
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(createConnectedManagedPreferences()),
+      });
+      const ownerSecretStore = createSyncSecretStoreMock();
+      await ownerSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+      global.fetch = createManagedBillingFetchMock({
+        billing: {
+          has_active_plan: true,
+          premium_features: {
+            advanced_fertility: true,
+            advanced_insights: true,
+            doctor_pdf: true,
+            extended_reports: true,
+            partner_access: true,
+            reminders: true,
+          },
+        },
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={ownerStorage}
+          syncSecretStore={ownerSecretStore}
+        />,
+      );
+      await screen.findByTestId("settings-sync-section");
+
+      const prepareButton = screen.getByTestId("settings-sync-prepare-button");
+      expect(prepareButton).toBeTruthy();
+      fireEvent.press(prepareButton);
+
+      await waitFor(() =>
+        expect(mockOpenConfirmation).toHaveBeenCalledWith(
+          settingsCopy.account.regeneratePrompt,
+          settingsCopy.account.regenerateAccept,
+        ),
+      );
+      await waitFor(() =>
+        expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
+          settingsCopy.account.regenerateDeviceAuthPrompt,
+        ),
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("settings-sync-recovery-phrase").props.children)
+          .toEqual(expect.any(String)),
+      );
+      const phrase = screen.getByTestId("settings-sync-recovery-phrase")
+        .props.children as string;
+      expect(phrase.split(" ")).toHaveLength(12);
+    });
+  });
 });
 
 function createConnectedManagedPreferences() {

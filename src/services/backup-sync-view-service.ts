@@ -53,6 +53,15 @@ export type BackupSyncSetupPresentation = {
   selectedModeLabel: string;
   shouldShowDisconnectOnly: boolean;
   shouldShowEndpointSummary: boolean;
+  // shouldShowPrepareAction gates the local-step "create/regenerate recovery
+  // phrase" affordance. False for a guest session (isGuestPartnerAccount):
+  // guest accept already silently created local secrets purely to satisfy
+  // the storage contract, so hasStoredSyncSecrets is true and this control
+  // would otherwise render as REGENERATE and hand a guest a real, freshly
+  // generated recovery phrase — contradicting docs/sync-trust-model.md's
+  // "Guests never see a recovery phrase" invariant. See also the
+  // defense-in-depth refusal in sync-setup-service.prepareSyncSetup.
+  shouldShowPrepareAction: boolean;
   // Renewal management is driven STRICTLY by the server's billing_management
   // flags: both false (signed out, trial, cached billing truth, self-hosted)
   // renders no renewal row at all.
@@ -270,6 +279,7 @@ export function buildBackupSyncSetupPresentation({
     shouldShowDisconnectOnly:
       !canShowSyncActions && hasStoredSyncSecrets && hasSyncSession,
     shouldShowEndpointSummary: preferences.mode === "self_hosted",
+    shouldShowPrepareAction: !isGuestPartnerAccount(preferences),
     showCancelRenewal,
     showResumeRenewal,
     showRenewalManagement: showCancelRenewal || showResumeRenewal,

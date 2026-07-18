@@ -117,6 +117,8 @@ The one thing guest accept does differently from a normal accept is the local st
 
 Generating a `SyncSecretsRecord` internally wraps a freshly generated recovery phrase around the master key (the same `createRecoveryPhrase` + `wrapMasterKeyWithRecoveryPhrase` path prepare uses) — but the phrase itself is never returned, stored, or surfaced. `persistGuestPartnerSession` and `acceptBackupSyncPartnerInviteAsGuest` both discard it, and the guest-accept UI path never calls the screen's recovery-phrase reveal. **Guests never see a recovery phrase.**
 
+That invariant has to hold outside guest accept too. Because guest accept leaves `hasStoredSyncSecrets` true, the backup-sync screen's local step ("Protect this device") would otherwise offer its normal "Create a new recovery phrase" / regenerate affordance to a guest exactly like it does to an owner — reachable through the same confirm-dialog + device-auth gate, and ending in a real, freshly generated phrase. `SettingsSyncSetupSection` hides that affordance for a guest session (`buildBackupSyncSetupPresentation`'s `shouldShowPrepareAction`, gated on `isGuestPartnerAccount`), and `prepareSyncSetup` (`src/sync/sync-setup-service.ts`) independently refuses to run for a guest session as a second gate at the boundary that actually mints the phrase, so a caller that bypassed the hidden UI control still cannot obtain one.
+
 ### Web
 
 Guest sessions on web go through the existing session-only in-memory secret store (`platform-sync-secret-store.web.ts`'s module-level `Map`) — the same non-durable store every web sync secret already uses. Nothing new or guest-specific is added to browser storage; the guest session, like every other web sync session, ends when the tab closes.
