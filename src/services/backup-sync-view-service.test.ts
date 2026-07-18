@@ -1,7 +1,10 @@
 import { getDeviceCopy } from "../i18n/device-copy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
-import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncPreferencesRecord,
+} from "../sync/sync-contract";
 import {
   buildSettingsViewData,
   createEmptySettingsManagedPremiumAccess,
@@ -11,10 +14,12 @@ import {
   buildBackupSyncDeviceListView,
   buildBackupSyncDirtyState,
   buildBackupSyncSetupPresentation,
+  formatBackupSyncLastSeen,
   isGuestPartnerAccount,
   resolveBackupSyncConnectedStatusMessage,
   resolveBackupSyncDeviceErrorMessage,
   resolveBackupSyncErrorMessage,
+  resolveBackupSyncErrorPresentation,
   resolveGuestSessionExpiryNudgeDays,
   revertBackupSyncDraftState,
 } from "./backup-sync-view-service";
@@ -277,6 +282,139 @@ describe("backup sync view service", () => {
     expect(ownerPresentation.shouldShowPrepareAction).toBe(true);
   });
 
+  it("shows the self-hosted account-step hint before a sync session exists", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const presentation = buildBackupSyncSetupPresentation({
+      hasStoredSyncSecrets: true,
+      hasSyncSession: false,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      managedPlanStatus: "unknown",
+      notSetLabel: "Not set",
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+      },
+      syncCapabilities: null,
+      viewData: viewData.account,
+    });
+
+    // Self-hosted (isManaged: false) takes the accountStepHintSelfHosted arm
+    // of the ternary — the managed arm is already covered elsewhere.
+    expect(presentation.guidanceStepNumber).toBe(2);
+    expect(presentation.guidanceMessage).toBe(
+      viewData.account.accountStepHintSelfHosted,
+    );
+    expect(presentation.guidanceComplete).toBe(false);
+  });
+
+  it("falls back to a disconnect-only guidance state when the server reports sync disabled for an otherwise fully connected account", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const presentation = buildBackupSyncSetupPresentation({
+      hasStoredSyncSecrets: true,
+      hasSyncSession: true,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      managedPlanStatus: "unknown",
+      notSetLabel: "Not set",
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+      },
+      // Locally "connected" (secrets + session), but the server-reported
+      // capability document has sync disabled — canShowSyncActions is false
+      // even though every other guidance gate already passed.
+      syncCapabilities: {
+        mode: "self_hosted",
+        syncEnabled: false,
+        recoverySupported: true,
+        pushSupported: false,
+        portalSupported: false,
+        advancedCloudInsights: false,
+        maxDevices: 5,
+        maxBlobBytes: 1024,
+      },
+      viewData: viewData.account,
+    });
+
+    expect(presentation.canShowSyncActions).toBe(false);
+    expect(presentation.shouldShowDisconnectOnly).toBe(true);
+    expect(presentation.guidanceComplete).toBe(false);
+    expect(presentation.guidanceMessage).toBe(viewData.account.status.connected);
+    expect(presentation.guidanceStepNumber).toBe(3);
+  });
+
+  it("falls back to the raw preference mode when it is not among the selectable mode options", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const presentation = buildBackupSyncSetupPresentation({
+      hasStoredSyncSecrets: false,
+      hasSyncSession: false,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      managedPlanStatus: "unknown",
+      notSetLabel: "Not set",
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        // A legacy/unrecognized mode value (e.g. from a pre-migration cached
+        // fixture) that does not match any option in viewData.modeOptions.
+        mode: "legacy_direct" as unknown as SyncPreferencesRecord["mode"],
+      },
+      syncCapabilities: null,
+      viewData: viewData.account,
+    });
+
+    expect(presentation.selectedModeLabel).toBe("legacy_direct");
+  });
+
+  it("resolves the managed plan message for both the active and inactive statuses", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const basePresentationInput = {
+      hasStoredSyncSecrets: true,
+      hasSyncSession: true,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      notSetLabel: "Not set",
+      preferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed" as const,
+      },
+      syncCapabilities: null,
+      viewData: viewData.account,
+    };
+
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...basePresentationInput,
+        managedPlanStatus: "active",
+      }).planMessage,
+    ).toBe(viewData.account.planActive);
+
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...basePresentationInput,
+        managedPlanStatus: "inactive",
+      }).planMessage,
+    ).toBe(viewData.account.planInactive);
+  });
+
   it("builds device list items with formatted last-seen and a current-device flag", () => {
     const copy = getDeviceCopy("en");
     const items = buildBackupSyncDeviceListView(
@@ -324,6 +462,9 @@ describe("backup sync view service", () => {
   it("maps device management error codes through device copy", () => {
     const copy = getDeviceCopy("en");
 
+    expect(resolveBackupSyncDeviceErrorMessage("sync_not_prepared", copy)).toBe(
+      copy.errors.notConnected,
+    );
     expect(resolveBackupSyncDeviceErrorMessage("not_connected", copy)).toBe(
       copy.errors.notConnected,
     );
@@ -427,6 +568,216 @@ describe("backup sync view service", () => {
           "2026-04-05T12:00:00.000Z",
         ),
       ).toBeNull();
+    });
+  });
+
+  describe("formatBackupSyncLastSeen", () => {
+    it("falls back to the never label for a null or empty value", () => {
+      expect(formatBackupSyncLastSeen(null, "en", "Never")).toBe("Never");
+      expect(formatBackupSyncLastSeen("", "en", "Never")).toBe("Never");
+    });
+
+    it("formats a real timestamp through the shared last-sync formatter", () => {
+      const formatted = formatBackupSyncLastSeen(
+        "2026-03-20T08:10:00.000Z",
+        "en",
+        "Never",
+      );
+
+      // Raw ISO timestamps never leak into the rendered line, and the never-
+      // seen fallback must not be shown when a real value is present.
+      expect(formatted).not.toBe("2026-03-20T08:10:00.000Z");
+      expect(formatted).not.toBe("Never");
+      expect(formatted.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("maps every remaining sync/account error code through shared account copy", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const cases: [string, string][] = [
+      ["login_required", viewData.account.errors.loginRequired],
+      ["password_required", viewData.account.errors.passwordRequired],
+      ["device_label_required", viewData.account.errors.deviceLabelRequired],
+      ["endpoint_required", viewData.account.errors.endpointRequired],
+      ["unsupported_scheme", viewData.account.errors.unsupportedScheme],
+      ["insecure_public_http", viewData.account.errors.insecurePublicHttp],
+      [
+        "invalid_registration_input",
+        viewData.account.errors.invalidRegistrationInput,
+      ],
+      ["registration_failed", viewData.account.errors.registrationFailed],
+      ["invalid_credentials", viewData.account.errors.invalidCredentials],
+      [
+        "invalid_recovery_phrase",
+        viewData.account.errors.invalidRecoveryPhrase,
+      ],
+      ["recovery_not_available", viewData.account.errors.recoveryNotAvailable],
+      ["too_many_devices", viewData.account.errors.tooManyDevices],
+      ["sync_not_prepared", viewData.account.errors.syncNotPrepared],
+      ["not_connected", viewData.account.errors.notConnected],
+      ["blob_not_found", viewData.account.errors.blobNotFound],
+      ["invalid_payload", viewData.account.errors.invalidPayload],
+      ["network_failed", viewData.account.errors.networkFailed],
+      ["deviceAuthUnavailable", viewData.account.errors.deviceAuthUnavailable],
+      [
+        "device_auth_unavailable",
+        viewData.account.errors.deviceAuthUnavailable,
+      ],
+      ["deviceAuthFailed", viewData.account.errors.deviceAuthFailed],
+      ["device_auth_failed", viewData.account.errors.deviceAuthFailed],
+      [
+        "recovery_export_unavailable",
+        viewData.account.errors.recoveryExportUnavailable,
+      ],
+      ["recovery_export_failed", viewData.account.errors.recoveryExportFailed],
+      ["stale_generation", viewData.account.errors.syncFailed],
+      [
+        "billing_management_unavailable",
+        viewData.account.errors.renewalUnavailable,
+      ],
+      [
+        "billing_subscription_conflict",
+        viewData.account.errors.renewalUpdateFailed,
+      ],
+      [
+        "billing_provider_unavailable",
+        viewData.account.errors.renewalUpdateFailed,
+      ],
+    ];
+
+    for (const [errorCode, expected] of cases) {
+      expect(resolveBackupSyncErrorMessage(errorCode, viewData.account)).toBe(
+        expected,
+      );
+    }
+  });
+
+  describe("resolveBackupSyncErrorPresentation", () => {
+    it("returns the empty presentation for a null or undefined error code", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+      const empty = {
+        accountMessage: "",
+        deleteAccountMessage: "",
+        deviceLabelMessage: "",
+        endpointMessage: "",
+        localMessage: "",
+        loginMessage: "",
+        passwordMessage: "",
+        recoveryPhraseMessage: "",
+        syncMessage: "",
+      };
+
+      expect(
+        resolveBackupSyncErrorPresentation(null, "account", viewData.account),
+      ).toEqual(empty);
+      expect(
+        resolveBackupSyncErrorPresentation(undefined, "sync", viewData.account),
+      ).toEqual(empty);
+    });
+
+    it("reuses the mapped message in the delete-account banner only for the three connection-loss codes", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+      for (const errorCode of [
+        "not_connected",
+        "unauthorized",
+        "network_failed",
+      ]) {
+        const presentation = resolveBackupSyncErrorPresentation(
+          errorCode,
+          "delete_account",
+          viewData.account,
+        );
+        expect(presentation.deleteAccountMessage).toBe(
+          resolveBackupSyncErrorMessage(errorCode, viewData.account),
+        );
+      }
+    });
+
+    it("falls back to the generic delete-account failure message for any other code", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+      const presentation = resolveBackupSyncErrorPresentation(
+        "billing_provider_unavailable",
+        "delete_account",
+        viewData.account,
+      );
+
+      expect(presentation.deleteAccountMessage).toBe(
+        viewData.account.errors.deleteAccountFailed,
+      );
+    });
+
+    it("routes device-label, endpoint, login, password, and recovery-phrase codes to their dedicated fields", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+      expect(
+        resolveBackupSyncErrorPresentation(
+          "device_label_required",
+          "account",
+          viewData.account,
+        ).deviceLabelMessage,
+      ).toBe(viewData.account.errors.deviceLabelRequired);
+
+      for (const errorCode of [
+        "endpoint_required",
+        "invalid_endpoint",
+        "unsupported_scheme",
+        "insecure_public_http",
+      ]) {
+        expect(
+          resolveBackupSyncErrorPresentation(errorCode, "account", viewData.account)
+            .endpointMessage,
+        ).toBe(resolveBackupSyncErrorMessage(errorCode, viewData.account));
+      }
+
+      expect(
+        resolveBackupSyncErrorPresentation(
+          "login_required",
+          "account",
+          viewData.account,
+        ).loginMessage,
+      ).toBe(viewData.account.errors.loginRequired);
+
+      expect(
+        resolveBackupSyncErrorPresentation(
+          "password_required",
+          "account",
+          viewData.account,
+        ).passwordMessage,
+      ).toBe(viewData.account.errors.passwordRequired);
+
+      for (const errorCode of [
+        "recovery_phrase_required",
+        "invalid_recovery_phrase",
+      ]) {
+        expect(
+          resolveBackupSyncErrorPresentation(errorCode, "account", viewData.account)
+            .recoveryPhraseMessage,
+        ).toBe(resolveBackupSyncErrorMessage(errorCode, viewData.account));
+      }
+    });
+
+    it("routes an unmapped code to the local/account/sync banner matching the caller's scope", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+      const expected = resolveBackupSyncErrorMessage("generic", viewData.account);
+
+      expect(
+        resolveBackupSyncErrorPresentation("generic", "local", viewData.account)
+          .localMessage,
+      ).toBe(expected);
+      expect(
+        resolveBackupSyncErrorPresentation("generic", "account", viewData.account)
+          .accountMessage,
+      ).toBe(expected);
+      expect(
+        resolveBackupSyncErrorPresentation("generic", "sync", viewData.account)
+          .syncMessage,
+      ).toBe(expected);
+      expect(
+        resolveBackupSyncErrorPresentation("generic", null, viewData.account)
+          .syncMessage,
+      ).toBe(expected);
     });
   });
 });
