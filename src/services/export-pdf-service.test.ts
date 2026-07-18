@@ -124,6 +124,46 @@ describe("export-pdf-service", () => {
     ]);
   });
 
+  it("degrades gracefully to empty optional sections when there is no day-log history", () => {
+    const report = buildExportPDFReport({
+      now: new Date("2026-03-18T10:00:00.000Z"),
+      profile: {
+        lastPeriodStart: null,
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: null,
+      },
+      symptomRecords: [],
+      dayLogs: [],
+    });
+
+    expect(report.cycles).toEqual([]);
+    expect(report.calendarDays).toEqual([]);
+    expect(report.advancedFertility).toEqual([]);
+    expect(report.extendedReportRows).toEqual([]);
+    expect(report.shortLutealWarning).toBeNull();
+    expect(report.summary).toEqual({
+      loggedDays: 0,
+      completedCycles: 0,
+      averageCycleLength: 0,
+      averagePeriodLength: 0,
+      averageMood: 0,
+      hasAverageMood: false,
+      rangeStart: "",
+      rangeEnd: "",
+    });
+  });
+
   it("renders a binary PDF document with embedded fonts", async () => {
     const symptoms = createDefaultSymptomRecords();
     const [regularFont, boldFont] = await Promise.all([

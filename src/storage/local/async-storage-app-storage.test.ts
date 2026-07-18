@@ -1,7 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultProfileRecord } from "../../models/profile";
-import { createAsyncStorageAppStorage } from "./async-storage-app-storage";
+import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
+import {
+  createAsyncStorageAppStorage,
+  hasAsyncStorageLocalAppData,
+  ONBOARDING_RECORD_KEY,
+  PROFILE_RECORD_KEY,
+  SYMPTOM_RECORDS_KEY,
+} from "./async-storage-app-storage";
 
 describe("async-storage-app-storage", () => {
   beforeEach(async () => {
@@ -271,6 +279,147 @@ describe("async-storage-app-storage", () => {
     });
   });
 
+  it("round-trips sync preferences through the legacy async-storage adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await expect(storage.readSyncPreferencesRecord()).resolves.toEqual(
+      createDefaultSyncPreferencesRecord(),
+    );
+
+    await storage.writeSyncPreferencesRecord({
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted",
+      endpointInput: "192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected",
+    });
+
+    await expect(storage.readSyncPreferencesRecord()).resolves.toEqual(
+      expect.objectContaining({
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      }),
+    );
+  });
+
+  it("deletes a day log record from the legacy async-storage adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-18"),
+      isPeriod: true,
+      notes: "delete me",
+    });
+
+    await storage.deleteDayLogRecord("2026-03-18");
+
+    await expect(
+      storage.listDayLogRecordsInRange("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual([]);
+  });
+
+  it("returns an inert default managed-billing cache and treats writes as a no-op", async () => {
+    // The legacy AsyncStorage adapter deliberately never caches managed
+    // billing state in a plaintext store (see SECURITY.md); the active
+    // backends (encrypted SQLite, volatile web) carry the real cache.
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeManagedBillingCacheRecord({
+      snapshot: {
+        hasActivePlan: true,
+        premiumFeatures: {
+          advancedFertility: true,
+          advancedInsights: true,
+          doctorPDF: true,
+          extendedReports: true,
+          partnerAccess: true,
+          reminders: true,
+        },
+        fetchedAt: "2026-03-18T00:00:00.000Z",
+      },
+      dismissedOfferIDs: ["winback_2026"],
+    });
+
+    await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+      snapshot: null,
+      dismissedOfferIDs: [],
+    });
+  });
+
+  it("migrates a legacy onboarding-only record into the canonical profile on first read", async () => {
+    // Before the canonical profile-record key existed, onboarding state
+    // lived under ONBOARDING_RECORD_KEY alone. readProfileRecord must
+    // recognize that one-time shape and fold it into a full ProfileRecord
+    // rather than silently dropping the pre-migration data.
+    await AsyncStorage.setItem(
+      ONBOARDING_RECORD_KEY,
+      JSON.stringify({
+        lastPeriodStart: "2026-02-01",
+        cycleLength: 27,
+        periodLength: 4,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "age_20_35",
+        usageGoal: "avoid_pregnancy",
+      }),
+    );
+
+    const storage = createAsyncStorageAppStorage();
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({
+        lastPeriodStart: "2026-02-01",
+        cycleLength: 27,
+        periodLength: 4,
+        usageGoal: "avoid_pregnancy",
+      }),
+    );
+  });
+
+  it("reports whether any legacy local data is present", async () => {
+    await expect(hasAsyncStorageLocalAppData()).resolves.toBe(false);
+
+    await AsyncStorage.setItem(
+      PROFILE_RECORD_KEY,
+      JSON.stringify(createDefaultProfileRecord()),
+    );
+
+    await expect(hasAsyncStorageLocalAppData()).resolves.toBe(true);
+  });
+
+  it("falls back to defaults when a stored record is corrupted JSON", async () => {
+    // safeParse must never let a corrupted legacy value throw out of the
+    // storage layer; it degrades to defaults exactly like a missing key.
+    await AsyncStorage.setItem(PROFILE_RECORD_KEY, "{not valid json");
+
+    const storage = createAsyncStorageAppStorage();
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
+  });
+
+  it("falls back to default symptoms when the stored record is not an array", async () => {
+    await AsyncStorage.setItem(SYMPTOM_RECORDS_KEY, JSON.stringify({}));
+
+    const storage = createAsyncStorageAppStorage();
+
+    await expect(storage.listSymptomRecords()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "cramps", isDefault: true }),
+      ]),
+    );
+  });
+
+  // NOTE: keep this test last in the file. jest.spyOn(AsyncStorage, "multiSet")
+  // below spies on a method that the official async-storage jest mock already
+  // exposes as a jest.fn(); mockRestore() on a spy layered over a pre-existing
+  // jest.fn() resets it to a bare no-op mock rather than the real
+  // implementation (a quirk of that mock package, not of this repo's code),
+  // which would silently break every AsyncStorage write in any test that runs
+  // afterward. Confirmed by isolated repro against the same mock package.
   it("overwrites legacy plaintext keys before removing them", async () => {
     // Purge-hardening for #57: `multiRemove` alone unlinks keys but leaves the
     // old plaintext in the store's freed pages. The clear path first overwrites

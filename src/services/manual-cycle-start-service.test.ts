@@ -268,4 +268,144 @@ describe("manual-cycle-start-service", () => {
       errorMessage: "A new cycle start can be marked only for today or past days.",
     });
   });
+
+  it("returns null view data for a date outside the allowed manual-cycle-start window", () => {
+    const profile = createProfileRecord();
+    // MANUAL_CYCLE_START_FUTURE_DAYS is 2, so 3 days ahead is disallowed.
+    const draftRecord = createEmptyDayLogRecord("2026-03-20");
+
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData).toBeNull();
+  });
+
+  it("rejects an unparseable manual-cycle-start date", () => {
+    const profile = createProfileRecord();
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      date: "not-a-date" as never,
+    };
+
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData).toBeNull();
+  });
+
+  it("blocks a conflicting cycle start until the caller explicitly confirms replacement", async () => {
+    const profile = createProfileRecord();
+    const storage = createLocalAppStorageMock();
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-10"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-09"),
+      isPeriod: true,
+    };
+
+    const result = await applyManualCycleStart(
+      storage,
+      profile,
+      records,
+      draftRecord,
+      new Date(2026, 2, 17),
+      "en",
+      { markUncertain: false, replaceExisting: false },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: "Confirm replacing the already marked cycle start.",
+    });
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("blocks a short-gap cycle start until the caller explicitly confirms the warning", async () => {
+    const profile = createProfileRecord();
+    const storage = createLocalAppStorageMock();
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-09"),
+      isPeriod: true,
+    };
+
+    const result = await applyManualCycleStart(
+      storage,
+      profile,
+      records,
+      draftRecord,
+      new Date(2026, 2, 17),
+      "en",
+      { markUncertain: false, replaceExisting: false },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: "Confirm marking a cycle start with a short gap.",
+    });
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure message when the storage write throws mid-commit", async () => {
+    const profile = createProfileRecord({ lastPeriodStart: null });
+    const storage = createLocalAppStorageMock();
+    (storage.writeDayLogRecord as jest.Mock).mockRejectedValueOnce(
+      new Error("simulated write failure"),
+    );
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-09"),
+      isPeriod: true,
+    };
+
+    const result = await applyManualCycleStart(
+      storage,
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+      "en",
+      { markUncertain: false, replaceExisting: false },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: "Unable to mark a new cycle start. Please try again.",
+    });
+  });
+
+  it("does not suggest a manual cycle start when there is no prior cycle-start anchor", () => {
+    const profile = createProfileRecord({ lastPeriodStart: null });
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+    };
+
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      [],
+      draftRecord,
+      new Date(2026, 2, 17),
+    );
+
+    expect(viewData?.notices.suggestion).toBeUndefined();
+  });
 });

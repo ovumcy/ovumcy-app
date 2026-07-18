@@ -71,7 +71,9 @@ function connectedSecrets() {
   };
 }
 
-function selfHostedPreferences(): SyncPreferencesRecord {
+function selfHostedPreferences(
+  overrides: Partial<SyncPreferencesRecord> = {},
+): SyncPreferencesRecord {
   return {
     ...createDefaultSyncPreferencesRecord(),
     mode: "self_hosted",
@@ -79,6 +81,7 @@ function selfHostedPreferences(): SyncPreferencesRecord {
     deviceLabel: "Pixel 7",
     setupStatus: "connected",
     preparedAt: "2026-05-17T08:00:00.000Z",
+    ...overrides,
   };
 }
 
@@ -209,6 +212,76 @@ describe("sync-totp-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "totp_not_configured" });
     });
+
+    it("returns not_connected when the device has never connected to sync", async () => {
+      const secretStore = createSyncSecretStoreMock(null);
+
+      const result = await startTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "very secure password" },
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await startTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { currentPassword: "very secure password" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for self-hosted mode when the community session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        authSessionToken: null,
+      });
+      const apiFactory = jest.fn();
+
+      const result = await startTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "very secure password" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      // The community allowlist must not leak provider-specific error codes
+      // outside the known StartTOTPEnrollmentErrorCode set.
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          startTOTPEnrollment: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await startTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "very secure password" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+    });
   });
 
   describe("verifyTOTPEnrollment", () => {
@@ -280,6 +353,93 @@ describe("sync-totp-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
     });
+
+    it("returns not_connected when the device has never connected to sync", async () => {
+      const secretStore = createSyncSecretStoreMock(null);
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { code: "123456" },
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for self-hosted mode when the community session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        authSessionToken: null,
+      });
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        jest.fn(),
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          verifyTOTPEnrollment: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "totp_replayed" }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "totp_replayed" });
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          verifyTOTPEnrollment: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+    });
   });
 
   describe("disableTOTP", () => {
@@ -333,6 +493,114 @@ describe("sync-totp-service", () => {
 
       expect(result).toEqual({ ok: true });
       expect(disable).toHaveBeenCalledWith("managed-session-1", {
+        currentPassword: "very secure password",
+        code: "123456",
+      });
+    });
+
+    it("returns not_connected when the device has never connected to sync", async () => {
+      const secretStore = createSyncSecretStoreMock(null);
+
+      const result = await disableTOTP(secretStore, managedPreferences(), {
+        currentPassword: "very secure password",
+        code: "123456",
+      });
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("returns not_connected for managed mode when the managed session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        managedAuthSessionToken: null,
+      });
+      const managedFactory = jest.fn();
+
+      const result = await disableTOTP(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "very secure password", code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await disableTOTP(
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { currentPassword: "very secure password", code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for self-hosted mode when the community session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        authSessionToken: null,
+      });
+
+      const result = await disableTOTP(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "very secure password", code: "123456" },
+        jest.fn(),
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          disableTOTP: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" }),
+        }),
+      );
+
+      const result = await disableTOTP(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "wrong password", code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "invalid_current_password" });
+    });
+
+    it("dispatches the community client and maps an unrecognized error code to generic", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const disable = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "server_on_fire" });
+      const apiFactory = jest
+        .fn()
+        .mockReturnValue(communityClientMock({ disableTOTP: disable }));
+
+      const result = await disableTOTP(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "very secure password", code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+      expect(disable).toHaveBeenCalledWith("community-session-1", {
         currentPassword: "very secure password",
         code: "123456",
       });
@@ -425,6 +693,58 @@ describe("sync-totp-service", () => {
         ok: false,
         errorCode: "totp_challenge_invalid",
       });
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const apiFactory = jest.fn();
+
+      const result = await completeTOTPChallenge(
+        selfHostedPreferences({ endpointInput: "  " }),
+        { challengeID: "challenge-1", code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          completeTOTPChallenge: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "totp_secret_failed" }),
+        }),
+      );
+
+      const result = await completeTOTPChallenge(
+        managedPreferences(),
+        { challengeID: "challenge-1", code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "totp_secret_failed" });
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          completeTOTPChallenge: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await completeTOTPChallenge(
+        selfHostedPreferences(),
+        { challengeID: "challenge-1", code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
     });
   });
 });
