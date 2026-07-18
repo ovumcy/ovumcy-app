@@ -52,12 +52,21 @@ jobs:
         run: npm run doctor
 
       - name: Upload coverage to Codecov
+        id: codecov
+        # A failed ingest must fail a PR (the patch gate in codecov.yml is
+        # load-bearing), but pushes to main tolerate a codecov outage with a
+        # warning instead of a red main.
+        continue-on-error: ${{ github.event_name == 'push' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: coverage/lcov.info
           use_oidc: true
-          fail_ci_if_error: false
+          fail_ci_if_error: true
           use_pypi: true
+
+      - name: Warn on non-blocking Codecov failure
+        if: ${{ github.event_name == 'push' && steps.codecov.outcome == 'failure' }}
+        run: echo "::warning::Codecov upload failed on push. Coverage was generated locally, but Codecov ingest returned an external error."
 
   web-smoke:
     runs-on: ubuntu-latest
