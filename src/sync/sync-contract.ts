@@ -88,6 +88,16 @@ export type SyncPreferencesRecord = {
   preparedAt: string | null;
   lastRemoteGeneration: number | null;
   lastSyncedAt: string | null;
+  // guestSessionExpiresAt is the ONLY local marker of "this device's managed
+  // session was established via guest-partner accept" (see
+  // `persistGuestPartnerSession`). Null for every non-guest session. Doubles
+  // as the expiry-nudge data source: the guest-partner session dies with no
+  // renewal path (single-use invite, no password), so the client surfaces a
+  // "save your access" nudge as this approaches. Cleared back to null the
+  // moment the account stops being a guest — a real register/login/recover,
+  // a disconnect, or a successful `/account/upgrade` — so it can never
+  // survive onto a non-guest session.
+  guestSessionExpiresAt: string | null;
 };
 
 export type SyncAuthResult = {
@@ -222,5 +232,6 @@ export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {
     preparedAt: null,
     lastRemoteGeneration: null,
     lastSyncedAt: null,
+    guestSessionExpiresAt: null,
   };
 }

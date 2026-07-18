@@ -1304,6 +1304,7 @@ describe("sqlite-app-storage", () => {
       preparedAt: "2026-03-17T10:00:00.000Z",
       lastRemoteGeneration: 123,
       lastSyncedAt: "2026-03-17T10:05:00.000Z",
+      guestSessionExpiresAt: null,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-17",
@@ -1463,6 +1464,7 @@ describe("sqlite-app-storage", () => {
       preparedAt: "2026-03-20T08:00:00.000Z",
       lastRemoteGeneration: null,
       lastSyncedAt: null,
+      guestSessionExpiresAt: null,
     });
     expect(inspected.state.syncPreferencesColumns).toEqual(
       expect.arrayContaining(["last_remote_generation", "last_synced_at"]),

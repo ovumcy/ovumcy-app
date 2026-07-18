@@ -27,6 +27,7 @@ import {
   requiresUploadOverBackupConfirmation,
   runSyncRestore,
   runSyncUpload,
+  upgradeGuestPartnerAccount,
 } from "./sync-client-service";
 import {
   decodeSyncSnapshot,
@@ -1409,7 +1410,10 @@ describe("persistGuestPartnerSession", () => {
         mode: "self_hosted",
         endpointInput: "192.168.1.20:8080",
       },
-      { sessionToken: "guest-session-1" },
+      {
+        sessionToken: "guest-session-1",
+        sessionExpiresAt: "2026-05-05T08:00:00.000Z",
+      },
       new Date("2026-04-05T08:00:00.000Z"),
     );
 
@@ -1423,6 +1427,10 @@ describe("persistGuestPartnerSession", () => {
         endpointInput: "",
         normalizedEndpoint: "https://sync.ovumcy.cloud",
         setupStatus: "connected",
+        // The ONLY local guest-partner marker: persisted verbatim from the
+        // guest-accept response so the client can detect guest mode and
+        // surface the expiry nudge without any extra network round trip.
+        guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
       }),
     });
 
@@ -1458,7 +1466,10 @@ describe("persistGuestPartnerSession", () => {
       storage,
       secretStore,
       { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
-      { sessionToken: "guest-session-2" },
+      {
+        sessionToken: "guest-session-2",
+        sessionExpiresAt: "2026-05-05T08:00:00.000Z",
+      },
       new Date("2026-04-05T08:00:00.000Z"),
     );
 
@@ -1469,6 +1480,167 @@ describe("persistGuestPartnerSession", () => {
       managedAuthSessionToken: "guest-session-2",
     });
   });
+});
+
+describe("upgradeGuestPartnerAccount", () => {
+  const guestPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    setupStatus: "connected" as const,
+    guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+  };
+
+  it("returns unauthorized and makes no network call when the device has no managed session", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+    const managedClientFactory = jest.fn();
+
+    const result = await upgradeGuestPartnerAccount(
+      storage,
+      secretStore,
+      guestPreferences,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "unauthorized",
+      preferences: guestPreferences,
+    });
+    expect(managedClientFactory).not.toHaveBeenCalled();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("on success clears the local guest marker and surfaces the account/email/recovery code", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-04-05T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "guest-session-1",
+    });
+    const upgradeGuestAccount = jest.fn().mockResolvedValue({
+      ok: true,
+      result: {
+        accountID: "guest-account-1",
+        email: "owner@example.com",
+        recoveryCode: "fresh1234fresh1234fresh1234fresh",
+      },
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({ upgradeGuestAccount }),
+    );
+
+    const result = await upgradeGuestPartnerAccount(
+      storage,
+      secretStore,
+      guestPreferences,
+      { email: "  owner@example.com  ", password: "very secure password 12345" },
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      accountID: "guest-account-1",
+      email: "owner@example.com",
+      recoveryCode: "fresh1234fresh1234fresh1234fresh",
+      preferences: { ...guestPreferences, guestSessionExpiresAt: null },
+    });
+    // The email is trimmed before it reaches the server, and auth uses the
+    // guest's CURRENT session token — upgrade never mints or reads a new one.
+    expect(upgradeGuestAccount).toHaveBeenCalledWith("guest-session-1", {
+      email: "owner@example.com",
+      password: "very secure password 12345",
+    });
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith({
+      ...guestPreferences,
+      guestSessionExpiresAt: null,
+    });
+    // No secrets write: the session token that already authenticated this
+    // call keeps authenticating every subsequent one, and the master
+    // key/device identity stay exactly as prepared.
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "guest-session-1",
+    });
+  });
+
+  it("clears the local guest marker on account_not_guest even though the call failed", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock({
+      ...createSyncSecretsRecord("Pixel 7", new Date("2026-04-05T08:00:00.000Z")).record,
+      managedAuthSessionToken: "guest-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        upgradeGuestAccount: jest
+          .fn()
+          .mockResolvedValue({ ok: false, errorCode: "account_not_guest" }),
+      }),
+    );
+
+    const result = await upgradeGuestPartnerAccount(
+      storage,
+      secretStore,
+      guestPreferences,
+      { email: "owner@example.com", password: "very secure password 12345" },
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "account_not_guest",
+      preferences: { ...guestPreferences, guestSessionExpiresAt: null },
+    });
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith({
+      ...guestPreferences,
+      guestSessionExpiresAt: null,
+    });
+  });
+
+  it.each([
+    ["invalid_registration_input", "invalid_registration_input"],
+    ["registration_failed", "registration_failed"],
+    ["rate_limited", "rate_limited"],
+    ["network_failed", "network_failed"],
+    ["unauthorized", "unauthorized"],
+    ["totp_not_configured", "generic"],
+  ])(
+    "maps API error %s to %s and leaves local state untouched",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock({
+        ...createSyncSecretsRecord("Pixel 7", new Date("2026-04-05T08:00:00.000Z")).record,
+        managedAuthSessionToken: "guest-session-1",
+      });
+      const managedClientFactory = jest.fn().mockReturnValue(
+        createManagedClientMock({
+          upgradeGuestAccount: jest.fn().mockResolvedValue({
+            ok: false,
+            errorCode: apiErrorCode,
+          }),
+        }),
+      );
+
+      const result = await upgradeGuestPartnerAccount(
+        storage,
+        secretStore,
+        guestPreferences,
+        { email: "owner@example.com", password: "very secure password 12345" },
+        managedClientFactory,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: expectedErrorCode,
+        preferences: guestPreferences,
+      });
+      expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("sync device management", () => {

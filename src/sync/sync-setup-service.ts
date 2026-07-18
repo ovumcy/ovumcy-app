@@ -180,6 +180,13 @@ export async function saveSyncPreferencesDraft(
       ? null
       : savedPreferences.lastRemoteGeneration,
     lastSyncedAt: shouldResetPreparedState ? null : savedPreferences.lastSyncedAt,
+    // A materially-changed draft (mode/label/endpoint) with existing secrets
+    // clears local secrets below, ending any guest session context along
+    // with them; otherwise this is a local-only save (device label, etc.)
+    // that must not disturb an unrelated guest marker.
+    guestSessionExpiresAt: shouldResetPreparedState
+      ? null
+      : savedPreferences.guestSessionExpiresAt,
   };
 
   try {

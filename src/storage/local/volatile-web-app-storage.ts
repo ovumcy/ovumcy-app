@@ -294,6 +294,10 @@ function mergeSyncPreferencesRecord(
         : null,
     lastSyncedAt:
       typeof record.lastSyncedAt === "string" ? record.lastSyncedAt : null,
+    guestSessionExpiresAt:
+      typeof record.guestSessionExpiresAt === "string"
+        ? record.guestSessionExpiresAt
+        : null,
   };
 }
 

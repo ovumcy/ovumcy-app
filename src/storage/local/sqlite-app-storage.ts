@@ -1526,6 +1526,10 @@ function mapNormalizedSyncPreferencesRecord(
         : null,
     lastSyncedAt: record.lastSyncedAt ?? null,
     preparedAt: record.preparedAt ?? null,
+    guestSessionExpiresAt:
+      typeof record.guestSessionExpiresAt === "string"
+        ? record.guestSessionExpiresAt
+        : null,
   };
 }
 

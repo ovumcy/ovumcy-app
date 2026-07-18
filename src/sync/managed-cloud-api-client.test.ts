@@ -752,6 +752,126 @@ describe("managed-cloud-api-client", () => {
     ).resolves.toEqual({ ok: false, errorCode: "rate_limited" });
   });
 
+  it("upgrades a guest account with the caller's existing bearer session and maps the response", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "guest-account-1",
+          email: "owner@example.com",
+          recovery_code: "fresh1234fresh1234fresh1234fresh",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upgradeGuestAccount("guest-session-1", {
+        email: "owner@example.com",
+        password: "very secure password 12345",
+      }),
+    ).resolves.toEqual({
+      ok: true,
+      result: {
+        accountID: "guest-account-1",
+        email: "owner@example.com",
+        recoveryCode: "fresh1234fresh1234fresh1234fresh",
+      },
+    });
+
+    const call = fetch.mock.calls[0];
+    expect(call?.[0]).toBe("https://managed.example/account/upgrade");
+    expect(call?.[1]?.method).toBe("POST");
+    // Unlike the guest-accept endpoint, upgrade authenticates with the
+    // guest's EXISTING session — the bearer header must be present.
+    expect((call?.[1]?.headers as Headers).get("Authorization")).toBe(
+      "Bearer guest-session-1",
+    );
+    expect(call?.[1]?.body).toBe(
+      JSON.stringify({
+        email: "owner@example.com",
+        password: "very secure password 12345",
+      }),
+    );
+  });
+
+  it("maps account-upgrade error keys, including an unrecognized code falling back to generic", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "account_not_guest" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_registration_input" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "registration_failed" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        // A code this app version does not recognize (e.g. from a newer
+        // server) must collapse to "generic" rather than leaking an
+        // arbitrary string into ManagedCloudAPIErrorCode.
+        new Response(JSON.stringify({ error: "some_future_unmapped_code" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example",
+      fetch as unknown as typeof global.fetch,
+    );
+    const input = { email: "owner@example.com", password: "very secure password 12345" };
+
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "unauthorized",
+    });
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "account_not_guest",
+    });
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "invalid_registration_input",
+    });
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "registration_failed",
+    });
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "rate_limited",
+    });
+    await expect(client.upgradeGuestAccount("session-1", input)).resolves.toEqual({
+      ok: false,
+      errorCode: "generic",
+    });
+  });
+
   it("maps reminder email schedule responses", async () => {
     const fetch = jest
       .fn()

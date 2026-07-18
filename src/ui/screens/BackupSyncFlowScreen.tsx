@@ -19,6 +19,7 @@ import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
 import { SettingsSyncDevicesSection } from "./backup-sync/SettingsSyncDevicesSection";
 import { BackupSyncTOTPChallengeSection } from "./backup-sync/BackupSyncTOTPChallengeSection";
+import { GuestUpgradeSection } from "./backup-sync/GuestUpgradeSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { PartnerCopy } from "../../i18n/partner-copy";
 import type {
@@ -41,8 +42,16 @@ export type BackupSyncFlowScreenProps = {
   hasStoredSyncSecrets: boolean;
   isDeviceBusy: boolean;
   isExportingRecoveryPhrase: boolean;
+  isGuestPartner: boolean;
   isPartnerBusy: boolean;
   isPreparing: boolean;
+  guestUpgradeEmailValue: string;
+  guestUpgradeFormErrorMessage: string;
+  guestUpgradeGeneratedRecoveryCode: string;
+  guestUpgradeIsFormOpen: boolean;
+  guestUpgradeIsSubmitting: boolean;
+  guestUpgradeNudgeMessage: string;
+  guestUpgradePasswordValue: string;
   onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
@@ -53,6 +62,12 @@ export type BackupSyncFlowScreenProps = {
   onDismissOffer: (offerID: string) => void | Promise<void>;
   onEndpointChange: (value: string) => void;
   onExportRecoveryPhrase: () => void | Promise<void>;
+  onGuestUpgradeAcknowledgeRecoveryCode: () => void;
+  onGuestUpgradeCancelForm: () => void;
+  onGuestUpgradeEmailChange: (value: string) => void;
+  onGuestUpgradePasswordChange: (value: string) => void;
+  onGuestUpgradeSubmitForm: () => void | Promise<void>;
+  onGuestUpgradeTapKeepAccess: () => void | Promise<void>;
   onIssuePartnerInvite: () => void | Promise<void>;
   onLoadDevices: () => void | Promise<void>;
   onLogin: () => void | Promise<void>;
@@ -121,8 +136,16 @@ export function BackupSyncFlowScreen({
   hasStoredSyncSecrets,
   isDeviceBusy,
   isExportingRecoveryPhrase,
+  isGuestPartner,
   isPartnerBusy,
   isPreparing,
+  guestUpgradeEmailValue,
+  guestUpgradeFormErrorMessage,
+  guestUpgradeGeneratedRecoveryCode,
+  guestUpgradeIsFormOpen,
+  guestUpgradeIsSubmitting,
+  guestUpgradeNudgeMessage,
+  guestUpgradePasswordValue,
   onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
@@ -133,6 +156,12 @@ export function BackupSyncFlowScreen({
   onDismissOffer,
   onEndpointChange,
   onExportRecoveryPhrase,
+  onGuestUpgradeAcknowledgeRecoveryCode,
+  onGuestUpgradeCancelForm,
+  onGuestUpgradeEmailChange,
+  onGuestUpgradePasswordChange,
+  onGuestUpgradeSubmitForm,
+  onGuestUpgradeTapKeepAccess,
   onIssuePartnerInvite,
   onLoadDevices,
   onLogin,
@@ -269,6 +298,23 @@ export function BackupSyncFlowScreen({
         showCardHeader={!showStandaloneHeader}
         statusMessage={statusMessage}
         viewData={viewData}
+      />
+      <GuestUpgradeSection
+        copy={partnerCopy}
+        emailValue={guestUpgradeEmailValue}
+        formErrorMessage={guestUpgradeFormErrorMessage}
+        generatedRecoveryCode={guestUpgradeGeneratedRecoveryCode}
+        isFormOpen={guestUpgradeIsFormOpen}
+        isGuestPartner={isGuestPartner}
+        isSubmitting={guestUpgradeIsSubmitting}
+        nudgeMessage={guestUpgradeNudgeMessage}
+        onAcknowledgeRecoveryCode={onGuestUpgradeAcknowledgeRecoveryCode}
+        onCancelForm={onGuestUpgradeCancelForm}
+        onEmailChange={onGuestUpgradeEmailChange}
+        onPasswordChange={onGuestUpgradePasswordChange}
+        onSubmitForm={onGuestUpgradeSubmitForm}
+        onTapKeepAccess={onGuestUpgradeTapKeepAccess}
+        passwordValue={guestUpgradePasswordValue}
       />
       <AppButton
         label={`${viewData.advancedSectionLabel}  ${advancedOpen ? "▾" : "▸"}`}
