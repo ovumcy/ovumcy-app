@@ -38,11 +38,25 @@ import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
+import { loadSyncSetupState } from "../../../sync/sync-setup-service";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type {
   ManagedCloudPartnerAccessOverview,
 } from "../../../sync/managed-cloud-api-client";
 import { resolvePartnerErrorMessage } from "./backup-sync-partner-errors";
+
+// A route param that expo-router may hand back as a single string or (if the
+// query key ever repeats) as an array — both the token-capture effect below
+// and the onboarding-bypass check in the focus-load effect need the same
+// single trimmed value.
+function resolveRouteInviteToken(
+  rawInviteToken: string | string[] | undefined,
+): string {
+  const value = Array.isArray(rawInviteToken)
+    ? rawInviteToken[0] ?? ""
+    : rawInviteToken ?? "";
+  return String(value).trim();
+}
 
 export type BackupSyncSessionCoreOptions = {
   exportDeliveryClient?: ExportDeliveryClient | undefined;
@@ -103,11 +117,7 @@ export function useBackupSyncSessionCore({
   const isSyncDirty = buildBackupSyncDirtyState(state);
 
   useEffect(() => {
-    const rawInviteToken = searchParams.invite_token;
-    const nextInviteToken = Array.isArray(rawInviteToken)
-      ? rawInviteToken[0] ?? ""
-      : rawInviteToken ?? "";
-    const trimmedInviteToken = String(nextInviteToken).trim();
+    const trimmedInviteToken = resolveRouteInviteToken(searchParams.invite_token);
     if (trimmedInviteToken.length === 0) {
       return;
     }
@@ -190,8 +200,36 @@ export function useBackupSyncSessionCore({
         }
 
         if (!hasCompletedOnboarding) {
-          router.replace("/onboarding");
-          return;
+          // A guest partner (issue #118) never runs the owner's cycle-tracking
+          // wizard — `hasCompletedOnboarding` stays false for them by design
+          // (docs/sync-trust-model.md, "Guest Partner Access"). Two arrivals
+          // must both reach the accept/shared UI instead of the wizard:
+          // - carrying a token to redeem right now (buffered on web via the
+          //   pre-render URL scrub, or still in the route param on native
+          //   before the sibling effect above has stashed it — check both,
+          //   the buffer alone would race the capture effect on native);
+          // - refocusing this screen after already redeeming one earlier in
+          //   the same visit (e.g. back from the read-only shared view, or a
+          //   web reload while sitting on that view) — by then the
+          //   single-use token is spent and cleared, so the only signal left
+          //   is the live guest session `persistGuestPartnerSession` created.
+          const hasPendingInviteToken =
+            readManagedPartnerInviteToken().length > 0 ||
+            resolveRouteInviteToken(searchParams.invite_token).length > 0;
+
+          let hasExistingSyncSession = false;
+          if (!hasPendingInviteToken) {
+            const syncSetupState = await loadSyncSetupState(storage, syncSecretStore);
+            if (!isMounted) {
+              return;
+            }
+            hasExistingSyncSession = syncSetupState.hasAuthSession;
+          }
+
+          if (!hasPendingInviteToken && !hasExistingSyncSession) {
+            router.replace("/onboarding");
+            return;
+          }
         }
 
         const loadedState = await loadSettingsScreenState(
@@ -228,6 +266,15 @@ export function useBackupSyncSessionCore({
       return () => {
         isMounted = false;
       };
+      // searchParams.invite_token is intentionally left out below: the
+      // sibling capture effect above strips it from the URL via
+      // router.replace("/backup-sync") moments after mount, and reacting to
+      // that change would re-run this entire load a second time for that
+      // alone. The onboarding-bypass check inside load() also falls back to
+      // the still-buffered token and, once it is redeemed, the live sync
+      // session — so the decision stays correct without depending on this
+      // array.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
       effectiveNow,
       loadPartnerState,
