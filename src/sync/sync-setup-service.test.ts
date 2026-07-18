@@ -128,6 +128,59 @@ describe("sync-setup-service", () => {
     );
   });
 
+  // Defense-in-depth for docs/sync-trust-model.md "Guest Partner Access":
+  // "Guests never see a recovery phrase." The UI hides the prepare/regenerate
+  // affordance for a guest session (buildBackupSyncSetupPresentation's
+  // shouldShowPrepareAction), but prepareSyncSetup is the function that
+  // actually mints and returns the phrase, so it refuses independently of
+  // the caller/UI state.
+  it("refuses to prepare or regenerate sync secrets for a guest session, leaving existing guest secrets untouched", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const existingGuestSecrets = {
+      device: {
+        deviceID: "guest-device-1",
+        deviceLabel: "",
+        createdAt: "2026-03-18T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305" as const,
+        kdf: "bip39_seed_hkdf_sha256" as const,
+        mnemonicWordCount: 12 as const,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: "guest-session-1",
+    };
+    await secretStore.writeSyncSecrets(existingGuestSecrets);
+
+    const result = await prepareSyncSetup(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+        guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+      },
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "guest_recovery_phrase_blocked",
+    });
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    // No key rotation happened out from under the guest session either.
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      existingGuestSecrets,
+    );
+  });
+
   it("rejects missing device labels before generating any secrets", async () => {
     const storage = createLocalAppStorageMock();
     const secretStore = createSyncSecretStoreMock();
