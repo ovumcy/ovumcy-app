@@ -1855,3 +1855,2304 @@ describe("sync device management", () => {
     expect(apiClientFactory).not.toHaveBeenCalled();
   });
 });
+
+describe("connectSyncAccount input validation", () => {
+  it("requires a non-empty login before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(
+      createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z")).record,
+    );
+    const apiClientFactory = jest.fn();
+    const managedClientFactory = jest.fn();
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "   ", password: "correct horse battery staple" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "login_required" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("requires a non-empty password before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(
+      createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z")).record,
+    );
+    const managedClientFactory = jest.fn();
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice@example.com", password: "" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "password_required" });
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("passes through a self-hosted endpoint normalization failure before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(
+      createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z")).record,
+    );
+    const apiClientFactory = jest.fn();
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "   ",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice", password: "correct horse battery staple" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("returns sync_not_prepared when local sync secrets are missing", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+    const apiClientFactory = jest.fn();
+    const managedClientFactory = jest.fn();
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+});
+
+describe("connectSyncAccount TOTP challenge handoff", () => {
+  it("returns totpChallengeRequired for managed login without persisting a session", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+            totpChallenge: {
+              challengeID: "challenge-1",
+              challengeExpiresAt: "2026-03-20T08:15:00.000Z",
+            },
+          },
+        }),
+      }),
+    );
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      deviceLabel: "Pixel 7",
+    };
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      preferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      totpChallengeRequired: true,
+      challengeID: "challenge-1",
+      challengeExpiresAt: "2026-03-20T08:15:00.000Z",
+      accountID: "managed-account-1",
+      preferences,
+    });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(preparedSecrets.record);
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("returns totpChallengeRequired for self-hosted login without persisting a session", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            totpChallenge: {
+              challengeID: "challenge-2",
+              challengeExpiresAt: "2026-03-20T08:15:00.000Z",
+            },
+          },
+        }),
+      }),
+    );
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted" as const,
+      endpointInput: "192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+    };
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      preferences,
+      { login: "alice", password: "correct horse battery staple" },
+      "login",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      totpChallengeRequired: true,
+      challengeID: "challenge-2",
+      challengeExpiresAt: "2026-03-20T08:15:00.000Z",
+      accountID: "account-1",
+      preferences,
+    });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(preparedSecrets.record);
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe("connectSyncAccount self-hosted handshake failures", () => {
+  it("maps a getCapabilities failure during connect", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice", password: "correct horse battery staple" },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+
+  it("maps an attachDevice failure during connect", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice", password: "correct horse battery staple" },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "too_many_devices" });
+  });
+
+  it("maps a recovery-key sync failure during connect", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        attachDevice: jest.fn().mockResolvedValue({
+          ok: true,
+          device: {
+            deviceID: preparedSecrets.record.device.deviceID,
+            deviceLabel: "Pixel 7",
+            createdAt: "2026-03-20T08:00:00.000Z",
+            lastSeenAt: "2026-03-20T08:00:00.000Z",
+          },
+        }),
+        putRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice", password: "correct horse battery staple" },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("surfaces the recovery code returned by self-hosted register", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        register: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            recoveryCode: "self1234self1234self1234self1234",
+          },
+        }),
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        attachDevice: jest.fn().mockResolvedValue({
+          ok: true,
+          device: {
+            deviceID: preparedSecrets.record.device.deviceID,
+            deviceLabel: "Pixel 7",
+            createdAt: "2026-03-20T08:00:00.000Z",
+            lastSeenAt: "2026-03-20T08:00:00.000Z",
+          },
+        }),
+      }),
+    );
+
+    const result = await connectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { login: "alice", password: "correct horse battery staple" },
+      "register",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok && !("totpChallengeRequired" in result)) {
+      expect(result.recoveryCode).toBe("self1234self1234self1234self1234");
+    }
+  });
+});
+
+describe("connectSyncAccount error mapping", () => {
+  it.each([
+    ["invalid_registration_input", "invalid_registration_input"],
+    ["registration_failed", "registration_failed"],
+    ["invalid_credentials", "invalid_credentials"],
+    ["unauthorized", "unauthorized"],
+    ["too_many_devices", "too_many_devices"],
+    ["network_failed", "network_failed"],
+    ["rate_limited", "generic"],
+  ])(
+    "maps self-hosted register API error %s to %s",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          register: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await connectSyncAccount(
+        storage,
+        secretStore,
+        {
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "self_hosted",
+          endpointInput: "192.168.1.20:8080",
+          deviceLabel: "Pixel 7",
+        },
+        { login: "alice", password: "correct horse battery staple" },
+        "register",
+        new Date("2026-03-20T08:05:00.000Z"),
+        apiClientFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+
+  it.each([
+    ["invalid_registration_input", "invalid_registration_input"],
+    ["registration_failed", "registration_failed"],
+    ["invalid_credentials", "invalid_credentials"],
+    ["unauthorized", "unauthorized"],
+    ["sync_not_allowed", "sync_not_allowed"],
+    ["network_failed", "network_failed"],
+    ["sync_bridge_unavailable", "network_failed"],
+    ["totp_not_configured", "generic"],
+  ])(
+    "maps managed register API error %s to %s",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+      const managedClientFactory = jest.fn().mockReturnValue(
+        createManagedClientMock({
+          register: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await connectSyncAccount(
+        storage,
+        secretStore,
+        {
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "managed",
+          deviceLabel: "Pixel 7",
+        },
+        { login: "alice@example.com", password: "correct horse battery staple" },
+        "register",
+        new Date("2026-03-20T08:05:00.000Z"),
+        jest.fn(),
+        managedClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+});
+
+describe("finalizeSyncSessionAfterTOTP additional branches", () => {
+  it("passes through a self-hosted endpoint normalization failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn();
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "   ",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "community-session-after-totp" },
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("returns sync_not_prepared when local sync secrets are missing", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "managed-session-after-totp" },
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+  });
+
+  it("maps a managed getSession failure during finalize", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "managed-session-after-totp" },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+
+  it("maps a self-hosted getCapabilities failure during finalize", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "community-session-after-totp" },
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("maps a self-hosted attachDevice failure during finalize", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
+      }),
+    );
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "community-session-after-totp" },
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "too_many_devices" });
+  });
+
+  it("maps a self-hosted recovery-key sync failure during finalize", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-05-17T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        attachDevice: jest.fn().mockResolvedValue({
+          ok: true,
+          device: {
+            deviceID: preparedSecrets.record.device.deviceID,
+            deviceLabel: "Pixel 7",
+            createdAt: "2026-05-17T08:00:00.000Z",
+            lastSeenAt: "2026-05-17T08:00:00.000Z",
+          },
+        }),
+        putRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await finalizeSyncSessionAfterTOTP(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      { sessionToken: "community-session-after-totp" },
+      apiClientFactory,
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+});
+
+describe("loadConnectedSyncCapabilities additional branches", () => {
+  it("returns unauthorized without any network call when the managed session token is missing", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn();
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("maps a self-hosted prepared-context failure to sync_not_prepared", async () => {
+    const secretStore = createSyncSecretStoreMock(null);
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+  });
+
+  it("collapses a self-hosted not_connected prepared-context failure to generic", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "generic" });
+  });
+
+  it("maps a self-hosted getCapabilities failure", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("keeps the community sync-bridge token when the managed refresh still confirms entitlement", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "bridged-sync-session",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({
+          ok: true,
+          session: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+      }),
+    );
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      capabilities: expect.objectContaining({ mode: "managed", syncEnabled: true }),
+    });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: "bridged-sync-session" }),
+    );
+  });
+
+  it("returns capabilities for a successful self-hosted lookup", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+      }),
+    );
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      capabilities: expect.objectContaining({ mode: "self_hosted", syncEnabled: true }),
+    });
+  });
+
+  it("clears local session tokens and returns unauthorized when the managed session is invalid", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "stale-session",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null, managedAuthSessionToken: null }),
+    );
+  });
+
+  it("maps a managed getSession failure without clearing local secrets for other error codes", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    const result = await loadConnectedSyncCapabilities(
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "managed",
+        deviceLabel: "Pixel 7",
+      },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ managedAuthSessionToken: "managed-session-1" }),
+    );
+  });
+});
+
+describe("recoverSyncAccess input validation", () => {
+  it("requires a non-empty login before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const apiClientFactory = jest.fn();
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Recovered Pixel",
+      },
+      { login: "   ", password: "correct horse battery staple" },
+      "",
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "login_required" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("requires a non-empty password before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Recovered Pixel",
+      },
+      { login: "alice@example.com", password: "" },
+      "",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "password_required" });
+  });
+
+  it("requires a non-empty device label before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "   ",
+      },
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      "",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "device_label_required" });
+  });
+
+  it("requires a non-empty recovery phrase before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Recovered Pixel",
+      },
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      "   ",
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "recovery_phrase_required" });
+  });
+
+  it("passes through a self-hosted endpoint normalization failure before any network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+    const apiClientFactory = jest.fn();
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "   ",
+        deviceLabel: "Recovered Pixel",
+      },
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+});
+
+describe("recoverSyncAccess managed failures", () => {
+  const managedRecoverPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    deviceLabel: "Recovered Pixel",
+  };
+
+  function managedLoginAndSyncSessionSuccessFactory() {
+    return jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+        createSyncSession: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            sessionToken: "sync-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+      }),
+    );
+  }
+
+  it.each([
+    ["invalid_credentials", "invalid_credentials"],
+    ["unauthorized", "unauthorized"],
+    ["sync_not_allowed", "sync_not_allowed"],
+    ["network_failed", "network_failed"],
+    ["sync_bridge_unavailable", "network_failed"],
+    ["totp_not_configured", "generic"],
+  ])(
+    "maps managed login failure %s to %s",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock();
+      const validPhrase = createSyncSecretsRecord(
+        "Original device",
+        new Date("2026-03-20T08:00:00.000Z"),
+      ).recoveryPhrase;
+      const managedClientFactory = jest.fn().mockReturnValue(
+        createManagedClientMock({
+          login: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await recoverSyncAccess(
+        storage,
+        secretStore,
+        managedRecoverPreferences,
+        { login: "alice@example.com", password: "correct horse battery staple" },
+        validPhrase,
+        new Date("2026-03-20T08:05:00.000Z"),
+        jest.fn(),
+        managedClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+
+  it("returns sync_not_allowed without minting a sync session when the managed account has no sync entitlement", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+    const createSyncSession = jest.fn();
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: false,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "plan inactive",
+            },
+          },
+        }),
+        createSyncSession,
+      }),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      managedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_allowed" });
+    expect(createSyncSession).not.toHaveBeenCalled();
+  });
+
+  it("maps a managed createSyncSession failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionToken: "managed-session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+        createSyncSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      managedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("maps a managed getRecoveryKey failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getRecoveryKey: jest
+          .fn()
+          .mockResolvedValue({ ok: false, errorCode: "recovery_package_not_found" }),
+      }),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      managedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedLoginAndSyncSessionSuccessFactory(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "recovery_package_not_found" });
+  });
+
+  it("returns invalid_recovery_phrase when the phrase does not match the account's wrapped key", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const wrongAccountSecrets = createSyncSecretsRecord(
+      "Some other device",
+      new Date("2026-03-19T08:00:00.000Z"),
+    );
+    const wrappedKeyOnServer = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).record.wrappedKey;
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getRecoveryKey: jest.fn().mockResolvedValue({ ok: true, recoveryKey: wrappedKeyOnServer }),
+      }),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      managedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      wrongAccountSecrets.recoveryPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedLoginAndSyncSessionSuccessFactory(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_recovery_phrase" });
+  });
+
+  it("maps a managed attachDevice failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const originalSecrets = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getRecoveryKey: jest
+          .fn()
+          .mockResolvedValue({ ok: true, recoveryKey: originalSecrets.record.wrappedKey }),
+        attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
+      }),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      managedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      originalSecrets.recoveryPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      apiClientFactory,
+      managedLoginAndSyncSessionSuccessFactory(),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "too_many_devices" });
+  });
+});
+
+describe("recoverSyncAccess self-hosted failures", () => {
+  const selfHostedRecoverPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted" as const,
+    endpointInput: "192.168.1.20:8080",
+    deviceLabel: "Recovered Pixel",
+  };
+
+  function selfHostedLoginSuccessFactory(overrides: Partial<SyncAPIClient> = {}) {
+    return jest.fn().mockReturnValue(
+      createAPIClientMock({
+        login: jest.fn().mockResolvedValue({
+          ok: true,
+          auth: {
+            accountID: "account-1",
+            sessionToken: "session-1",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+          },
+        }),
+        ...overrides,
+      }),
+    );
+  }
+
+  it.each([
+    ["invalid_credentials", "invalid_credentials"],
+    ["unauthorized", "unauthorized"],
+    ["too_many_devices", "too_many_devices"],
+    ["network_failed", "network_failed"],
+    ["recovery_package_not_found", "recovery_package_not_found"],
+    ["rate_limited", "generic"],
+  ])(
+    "maps self-hosted login failure %s to %s",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock();
+      const validPhrase = createSyncSecretsRecord(
+        "Original device",
+        new Date("2026-03-20T08:00:00.000Z"),
+      ).recoveryPhrase;
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          login: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await recoverSyncAccess(
+        storage,
+        secretStore,
+        selfHostedRecoverPreferences,
+        { login: "alice@example.com", password: "correct horse battery staple" },
+        validPhrase,
+        new Date("2026-03-20T08:05:00.000Z"),
+        apiClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+
+  it("maps a self-hosted getCapabilities failure during recovery", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      selfHostedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      selfHostedLoginSuccessFactory({
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+
+  it("returns recovery_not_available when the self-hosted server does not support recovery", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      selfHostedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      selfHostedLoginSuccessFactory({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "recovery_not_available" });
+  });
+
+  it("maps a self-hosted getRecoveryKey failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const validPhrase = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).recoveryPhrase;
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      selfHostedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      validPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      selfHostedLoginSuccessFactory({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        getRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("returns invalid_recovery_phrase when the phrase does not match the account's wrapped key", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const wrongAccountSecrets = createSyncSecretsRecord(
+      "Some other device",
+      new Date("2026-03-19T08:00:00.000Z"),
+    );
+    const wrappedKeyOnServer = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    ).record.wrappedKey;
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      selfHostedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      wrongAccountSecrets.recoveryPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      selfHostedLoginSuccessFactory({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        getRecoveryKey: jest.fn().mockResolvedValue({ ok: true, recoveryKey: wrappedKeyOnServer }),
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_recovery_phrase" });
+  });
+
+  it("maps a self-hosted attachDevice failure during recovery", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const originalSecrets = createSyncSecretsRecord(
+      "Original device",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+
+    const result = await recoverSyncAccess(
+      storage,
+      secretStore,
+      selfHostedRecoverPreferences,
+      { login: "alice@example.com", password: "correct horse battery staple" },
+      originalSecrets.recoveryPhrase,
+      new Date("2026-03-20T08:05:00.000Z"),
+      selfHostedLoginSuccessFactory({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: true,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        getRecoveryKey: jest
+          .fn()
+          .mockResolvedValue({ ok: true, recoveryKey: originalSecrets.record.wrappedKey }),
+        attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "too_many_devices" });
+  });
+});
+
+describe("runSyncUpload additional branches", () => {
+  it("returns the prepared-context failure without attempting an upload", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+    const apiClientFactory = jest.fn();
+
+    const result = await runSyncUpload(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      new Date("2026-03-20T08:10:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("returns unauthorized without uploading when getCapabilities is unauthorized", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const putBlob = jest.fn();
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+        putBlob,
+      }),
+    );
+
+    const result = await runSyncUpload(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        lastRemoteGeneration: 100,
+      },
+      new Date("2026-03-20T08:10:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+    expect(putBlob).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["unauthorized", "unauthorized"],
+    ["invalid_blob", "invalid_blob"],
+    ["stale_generation", "stale_generation"],
+    ["blob_not_found", "blob_not_found"],
+    ["network_failed", "network_failed"],
+    ["rate_limited", "generic"],
+  ])(
+    "maps a recovery-key sync failure %s to %s during upload",
+    async (apiErrorCode, expectedErrorCode) => {
+      const storage = createLocalAppStorageMock();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock({
+        ...preparedSecrets.record,
+        authSessionToken: "session-1",
+      });
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          getCapabilities: jest.fn().mockResolvedValue({
+            ok: true,
+            capabilities: {
+              mode: "self_hosted",
+              syncEnabled: true,
+              recoverySupported: true,
+              pushSupported: false,
+              portalSupported: false,
+              advancedCloudInsights: false,
+              maxDevices: 5,
+              maxBlobBytes: 1024,
+            },
+          }),
+          putRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await runSyncUpload(
+        storage,
+        secretStore,
+        {
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "self_hosted",
+          endpointInput: "192.168.1.20:8080",
+          normalizedEndpoint: "http://192.168.1.20:8080",
+          deviceLabel: "Pixel 7",
+          setupStatus: "connected",
+          lastRemoteGeneration: 100,
+        },
+        new Date("2026-03-20T08:10:00.000Z"),
+        apiClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+
+  it("maps a putBlob failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({
+          ok: true,
+          capabilities: {
+            mode: "self_hosted",
+            syncEnabled: true,
+            recoverySupported: false,
+            pushSupported: false,
+            portalSupported: false,
+            advancedCloudInsights: false,
+            maxDevices: 5,
+            maxBlobBytes: 1024,
+          },
+        }),
+        putBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "stale_generation" }),
+      }),
+    );
+
+    const result = await runSyncUpload(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        lastRemoteGeneration: 100,
+      },
+      new Date("2026-03-20T08:10:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "stale_generation" });
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("proceeds with the upload when getCapabilities fails with a non-unauthorized error", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const putRecoveryKey = jest.fn();
+    const putBlob = jest.fn().mockImplementation(async (_token, input) => ({
+      ok: true,
+      blob: {
+        schemaVersion: input.schemaVersion,
+        generation: input.generation,
+        checksumSHA256: input.checksumSHA256,
+        ciphertextBase64: input.ciphertextBase64,
+        ciphertextSize: 10,
+        updatedAt: "2026-03-20T08:10:00.000Z",
+      },
+    }));
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getCapabilities: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+        putRecoveryKey,
+        putBlob,
+      }),
+    );
+
+    const result = await runSyncUpload(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        lastRemoteGeneration: 100,
+      },
+      new Date("2026-03-20T08:10:00.000Z"),
+      apiClientFactory,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(putRecoveryKey).not.toHaveBeenCalled();
+    expect(putBlob).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("runSyncRestore additional branches", () => {
+  it("returns the prepared-context failure without attempting a restore", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+    const apiClientFactory = jest.fn();
+
+    const result = await runSyncRestore(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  it("maps a getBlob failure", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "blob_not_found" }),
+      }),
+    );
+
+    const result = await runSyncRestore(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "blob_not_found" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid_payload when the stored envelope has the wrong shape", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const malformedEnvelopeBytes = new TextEncoder().encode(
+      JSON.stringify({ not: "an envelope" }),
+    );
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getBlob: jest.fn().mockResolvedValue({
+          ok: true,
+          blob: {
+            schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+            generation: 1,
+            checksumSHA256: "aa",
+            ciphertextBase64: fromByteArray(malformedEnvelopeBytes),
+            ciphertextSize: malformedEnvelopeBytes.byteLength,
+            updatedAt: "2026-03-20T08:12:00.000Z",
+          },
+        }),
+      }),
+    );
+
+    const result = await runSyncRestore(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid_payload when the decrypted payload is not a valid sync snapshot", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const garbagePayload = new TextEncoder().encode(JSON.stringify({ not: "a snapshot" }));
+    const encryptedEnvelope = encryptSyncPayload(
+      preparedSecrets.record.masterKeyHex,
+      garbagePayload,
+      buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+    );
+    const ciphertextBytes = new TextEncoder().encode(JSON.stringify(encryptedEnvelope));
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        getBlob: jest.fn().mockResolvedValue({
+          ok: true,
+          blob: {
+            schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+            generation: 1,
+            checksumSHA256: "aa",
+            ciphertextBase64: fromByteArray(ciphertextBytes),
+            ciphertextSize: ciphertextBytes.byteLength,
+            updatedAt: "2026-03-20T08:12:00.000Z",
+          },
+        }),
+      }),
+    );
+
+    const result = await runSyncRestore(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+});
+
+describe("sync device management additional branches", () => {
+  const selfHostedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted" as const,
+    endpointInput: "192.168.1.20:8080",
+    normalizedEndpoint: "http://192.168.1.20:8080",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+  };
+  const managedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    normalizedEndpoint: "https://sync.ovumcy.cloud",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+  };
+
+  it("maps a listDevices API failure", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn().mockReturnValue(
+      createAPIClientMock({
+        listDevices: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await listSyncDevices(secretStore, selfHostedPreferences, apiClientFactory);
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+
+  it("returns sync_not_prepared for a self-hosted endpoint normalization failure before any network call", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn();
+
+    const result = await listSyncDevices(
+      secretStore,
+      { ...selfHostedPreferences, endpointInput: "   " },
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("returns sync_not_prepared when there are no local sync secrets at all", async () => {
+    const secretStore = createSyncSecretStoreMock(null);
+    const apiClientFactory = jest.fn();
+
+    const result = await listSyncDevices(secretStore, selfHostedPreferences, apiClientFactory);
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("returns not_connected in managed mode when there is no managed session token", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const managedClientFactory = jest.fn();
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    expect(managedClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("clears local session tokens and returns unauthorized when the managed session is invalid", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "stale-session",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null, managedAuthSessionToken: null }),
+    );
+  });
+
+  it.each([
+    ["sync_not_allowed", "sync_not_allowed"],
+    ["network_failed", "network_failed"],
+    ["sync_bridge_unavailable", "network_failed"],
+    ["totp_not_configured", "generic"],
+  ])(
+    "maps a managed getSession failure %s to %s",
+    async (apiErrorCode, expectedErrorCode) => {
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock({
+        ...preparedSecrets.record,
+        managedAuthSessionToken: "managed-session-1",
+      });
+      const managedClientFactory = jest.fn().mockReturnValue(
+        createManagedClientMock({
+          getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
+        }),
+      );
+
+      const result = await listSyncDevices(
+        secretStore,
+        managedPreferences,
+        jest.fn(),
+        managedClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: expectedErrorCode });
+    },
+  );
+
+  it("clears the sync session and returns sync_not_allowed when managed entitlement is lost", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "stale-sync-session",
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({
+          ok: true,
+          session: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: false,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "plan inactive",
+            },
+          },
+        }),
+      }),
+    );
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "sync_not_allowed" });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: "managed-session-1",
+      }),
+    );
+  });
+
+  it("maps a managed createSyncSession failure", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({
+          ok: true,
+          session: {
+            accountID: "managed-account-1",
+            email: "alice@example.com",
+            sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            entitlement: {
+              syncAllowed: true,
+              source: "manual",
+              updatedAt: "2026-03-20T08:05:00.000Z",
+              effectiveAt: "2026-03-20T08:05:00.000Z",
+              explanation: "beta access",
+            },
+          },
+        }),
+        createSyncSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "unauthorized" }),
+      }),
+    );
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+  });
+
+  it("removeSyncDevice returns the prepared-context failure without calling the API", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+    const apiClientFactory = jest.fn();
+
+    const result = await removeSyncDevice(
+      secretStore,
+      selfHostedPreferences,
+      "device-2",
+      apiClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+  });
+
+  it("removeSyncDevice collapses an unrecognized prepared-context error to generic", async () => {
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({
+        getSession: jest.fn().mockResolvedValue({ ok: false, errorCode: "totp_not_configured" }),
+      }),
+    );
+
+    const result = await removeSyncDevice(
+      secretStore,
+      managedPreferences,
+      "device-2",
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "generic" });
+  });
+});
+
+describe("disconnectSyncAccount and clearLocalSyncSession additional branches", () => {
+  it("skips the community logout call when the self-hosted endpoint fails to normalize, but still clears local state", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      authSessionToken: "session-1",
+    });
+    const apiClientFactory = jest.fn();
+
+    const result = await disconnectSyncAccount(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "   ",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+      },
+      apiClientFactory,
+    );
+
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      ok: true,
+      preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+    });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null }),
+    );
+  });
+
+  it("clearLocalSyncSession leaves setupStatus not_configured and writes no secrets when none exist locally", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+
+    const result = await clearLocalSyncSession(storage, secretStore, {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted",
+      endpointInput: "192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected",
+    });
+
+    expect(result.setupStatus).toBe("not_configured");
+    // No secrets existed, so there is nothing to wipe — readSyncSecrets still
+    // resolves null afterward, proving writeSyncSecrets was never reached.
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+});
