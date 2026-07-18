@@ -1,0 +1,42 @@
+# Validate changes before merge:
+# curl -X POST --data-binary @codecov.yml https://codecov.io/validate
+#
+# Mirrors ovumcy-managed / ovumcy-web so coverage gating is uniform across the
+# org. Make codecov/patch a required status check on main once the first gated
+# report lands; until then it reports without blocking.
+
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  status:
+    project:
+      default:
+        # Hold the line: total coverage must not drop below the base commit's
+        # (auto). Rising is always fine; legacy uncovered code is not
+        # retro-gated by this — only regressions are.
+        target: auto
+        threshold: 0%
+        informational: false
+    patch:
+      default:
+        # Every modified, coverable line in a PR must be covered by tests
+        # ("All modified and coverable lines are covered by tests"). The
+        # ~21% legacy-uncovered baseline is untouched; only the diff is held
+        # to 100%.
+        target: 100%
+        threshold: 0%
+        informational: false
+
+# Excluded from coverage reporting — tooling and surfaces whose behavior is
+# deliberately tested elsewhere:
+ignore:
+  - "scripts" # build/deploy tooling, not product code
+  - "e2e" # Playwright specs drive the app; they are not run by jest
+  - "plugins" # Expo prebuild config plugins, executed only at prebuild
+  # Expo Router route files are transport-only wrappers by the architecture
+  # contract; their screens are tested from src/ui/screens instead.
+  - "app"
+
+github_checks:
+  annotations: true
