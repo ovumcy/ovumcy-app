@@ -394,6 +394,9 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-reminder-lead-days-slider")).toBeTruthy();
     expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
+    expect(
+      screen.getByTestId("settings-sync-summary-details").props.accessibilityLabel,
+    ).toBe("Destination. Ovumcy Cloud. Last sync. Not synced yet.");
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
     expect(screen.getByTestId("settings-export-section")).toBeTruthy();
     expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();

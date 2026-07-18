@@ -379,6 +379,25 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-advanced-fertility-summary-hint").props.children).toBe(
       "This usually means ovulation likely happened recently and the fertile window may be closing.",
     );
+
+    // The whole insight card is one composed accessibility label (title,
+    // signal, value, detail, hint) so a screen reader announces it as a
+    // single phrase instead of five separate stops.
+    const detailText = screen.getByTestId(
+      "dashboard-advanced-fertility-summary-detail",
+    ).props.children;
+    expect(
+      screen.getByTestId("dashboard-advanced-fertility-summary").props
+        .accessibilityLabel,
+    ).toBe(
+      [
+        "Advanced fertility",
+        "Ovulation confirmation",
+        "Signals aligned",
+        detailText,
+        "This usually means ovulation likely happened recently and the fertile window may be closing.",
+      ].join(". "),
+    );
   });
 
   it("keeps the advanced fertility summary locked without the premium entitlement", async () => {

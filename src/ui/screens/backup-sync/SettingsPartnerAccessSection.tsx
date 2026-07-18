@@ -258,12 +258,19 @@ function PartnerInviteList({
             style={styles.itemCard}
             testID={`settings-partner-invite-${invite.id}`}
           >
-            <Text style={styles.itemTitle}>{copy.pendingInviteLabel}</Text>
-            <Text style={styles.helperText}>
-              {invite.accessLevel === "full"
-                ? copy.accessLevelFull
-                : copy.accessLevelSummary}
-            </Text>
+            <View
+              accessibilityLabel={buildPartnerInviteAccessibilityLabel(invite, copy)}
+              accessible
+              style={styles.itemInfo}
+              testID={`settings-partner-invite-info-${invite.id}`}
+            >
+              <Text style={styles.itemTitle}>{copy.pendingInviteLabel}</Text>
+              <Text style={styles.helperText}>
+                {invite.accessLevel === "full"
+                  ? copy.accessLevelFull
+                  : copy.accessLevelSummary}
+              </Text>
+            </View>
             <AppButton
               label={copy.revokeInviteLabel}
               onPress={() => {
@@ -306,21 +313,32 @@ function PartnerGrantList({
             style={styles.itemCard}
             testID={`settings-partner-grant-${grant.id}`}
           >
-            <Text style={styles.itemTitle}>{copy.activePartnerLabel}</Text>
-            <Text style={styles.helperText}>
-              {grant.accessLevel === "full"
-                ? copy.accessLevelFull
-                : copy.accessLevelSummary}
-            </Text>
-            <Text style={styles.helperText}>
-              {grant.accessLevel === "full"
-                ? copy.accessLevelFullHint
-                : copy.accessLevelSummaryHint}
-            </Text>
-            <Text style={styles.helperText}>
-              {copy.lastSeenLabel}:{" "}
-              {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
-            </Text>
+            <View
+              accessibilityLabel={buildPartnerGrantAccessibilityLabel(
+                grant,
+                copy,
+                locale,
+              )}
+              accessible
+              style={styles.itemInfo}
+              testID={`settings-partner-grant-info-${grant.id}`}
+            >
+              <Text style={styles.itemTitle}>{copy.activePartnerLabel}</Text>
+              <Text style={styles.helperText}>
+                {grant.accessLevel === "full"
+                  ? copy.accessLevelFull
+                  : copy.accessLevelSummary}
+              </Text>
+              <Text style={styles.helperText}>
+                {grant.accessLevel === "full"
+                  ? copy.accessLevelFullHint
+                  : copy.accessLevelSummaryHint}
+              </Text>
+              <Text style={styles.helperText}>
+                {copy.lastSeenLabel}:{" "}
+                {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
+              </Text>
+            </View>
             <AppButton
               label={copy.openSharedViewLabel}
               onPress={() => {
@@ -368,18 +386,29 @@ function PartnerSharedGrantList({
             style={styles.itemCard}
             testID={`settings-partner-shared-grant-${grant.id}`}
           >
-            <Text style={styles.itemTitle}>
-              {copy.sharedGrantLabel}
-            </Text>
-            <Text style={styles.helperText}>
-              {grant.accessLevel === "full"
-                ? copy.accessLevelFullHint
-                : copy.accessLevelSummaryHint}
-            </Text>
-            <Text style={styles.helperText}>
-              {copy.lastSeenLabel}:{" "}
-              {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
-            </Text>
+            <View
+              accessibilityLabel={buildPartnerSharedGrantAccessibilityLabel(
+                grant,
+                copy,
+                locale,
+              )}
+              accessible
+              style={styles.itemInfo}
+              testID={`settings-partner-shared-grant-info-${grant.id}`}
+            >
+              <Text style={styles.itemTitle}>
+                {copy.sharedGrantLabel}
+              </Text>
+              <Text style={styles.helperText}>
+                {grant.accessLevel === "full"
+                  ? copy.accessLevelFullHint
+                  : copy.accessLevelSummaryHint}
+              </Text>
+              <Text style={styles.helperText}>
+                {copy.lastSeenLabel}:{" "}
+                {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
+              </Text>
+            </View>
             <AppButton
               label={copy.openSharedViewLabel}
               onPress={() => {
@@ -393,6 +422,55 @@ function PartnerSharedGrantList({
       )}
     </View>
   );
+}
+
+function buildPartnerInviteAccessibilityLabel(
+  invite: ManagedCloudPartnerInvite,
+  copy: PartnerCopy,
+): string {
+  const accessLevelLabel =
+    invite.accessLevel === "full" ? copy.accessLevelFull : copy.accessLevelSummary;
+
+  return [copy.pendingInviteLabel, accessLevelLabel]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
+}
+
+function buildPartnerGrantAccessibilityLabel(
+  grant: ManagedCloudPartnerAccessGrant,
+  copy: PartnerCopy,
+  locale: string | undefined,
+): string {
+  const accessLevelLabel =
+    grant.accessLevel === "full" ? copy.accessLevelFull : copy.accessLevelSummary;
+  const accessLevelHint =
+    grant.accessLevel === "full" ? copy.accessLevelFullHint : copy.accessLevelSummaryHint;
+
+  return [
+    copy.activePartnerLabel,
+    accessLevelLabel,
+    accessLevelHint,
+    `${copy.lastSeenLabel}: ${formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}`,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
+}
+
+function buildPartnerSharedGrantAccessibilityLabel(
+  grant: ManagedCloudPartnerAccessGrant,
+  copy: PartnerCopy,
+  locale: string | undefined,
+): string {
+  const accessLevelHint =
+    grant.accessLevel === "full" ? copy.accessLevelFullHint : copy.accessLevelSummaryHint;
+
+  return [
+    copy.sharedGrantLabel,
+    accessLevelHint,
+    `${copy.lastSeenLabel}: ${formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}`,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
 }
 
 const createStyles = (colors: AppThemeColors) =>
@@ -449,6 +527,9 @@ const createStyles = (colors: AppThemeColors) =>
       borderWidth: 1,
       gap: spacing.sm,
       padding: spacing.md,
+    },
+    itemInfo: {
+      gap: spacing.sm,
     },
     itemTitle: {
       color: colors.text,
