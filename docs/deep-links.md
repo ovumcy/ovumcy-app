@@ -143,6 +143,21 @@ health data; the worst case is a detectable, revocable wrong-party grant of a
 minimized read-only projection. Verified deep links close that last gap by making
 the OS route the link only to the real Ovumcy app.
 
+**Guest-accept forward note.** `docs/sync-trust-model.md` (§ Guest Partner
+Access) adds a second, unauthenticated redemption path: a partner with no
+prior managed account can accept an invite in one tap, provisioning a guest
+account atomically with the accept. That removes precondition (b) above
+("already holds a managed account") from the race-to-redeem analysis — an
+interceptor no longer needs an existing account to redeem a captured token.
+The compensating controls are unchanged (TTL, single-use, server-side-gated
+redemption — now including the guest endpoint's own session-minting gate —
+key rotation, projection minimization, owner visibility + revoke), so the
+worst case stays the same detectable, revocable, minimized wrong-party grant
+described above; guest accept just widens who can reach that worst case.
+Because of that, **guest accept must not be enabled in production ahead of
+step 5 below** (flipping `PARTNER_INVITE_BASE_URL` to the verified HTTPS
+host) — see the sequencing note in `docs/sync-trust-model.md`.
+
 ---
 
 ## 2. Android plan (App Links)

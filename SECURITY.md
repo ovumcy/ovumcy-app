@@ -54,6 +54,24 @@ follows from that:
   owner's privacy toggles, and the **pregnancy-test field is stripped at every
   access level**. The projection is encrypted under a per-grant subkey before it
   leaves the device.
+- **Guest partner access provisions no credential.** A partner can redeem an
+  invite with no prior Ovumcy Cloud account: the managed cloud atomically
+  provisions a guest account (no password, no recovery code, marked by the
+  reserved, non-issuable `guest+<accountID>@guest.invalid` address, RFC 2606)
+  and issues it a normal, server-revocable session bound to that device, in
+  the same call that accepts the invite. Every existing invariant — single-use
+  + 7-day TTL, owner-entitlement gating on every operation, access-level
+  minimization, pregnancy-test stripping, owner visibility + permanent revoke
+  — applies to a guest identically, because guest accept reuses the same
+  invite row and the same entitlement gate. On a device with no prior local
+  sync secrets, accepting as a guest silently prepares one (the same
+  generator normal setup uses) purely to satisfy the local storage contract;
+  it is inert, since guests always carry `syncEnabled: false` and no recovery
+  phrase is ever surfaced. See `docs/sync-trust-model.md` (Guest Partner
+  Access) for the full model, the threat-model delta this creates for the
+  invite-interception analysis in `docs/deep-links.md` §1.3, and the
+  sequencing requirement that guest accept must not ship to production before
+  the #101 verified invite links are live.
 - **No telemetry.** The app ships no analytics, advertising, crash-attribution,
   or third-party tracking SDKs. Nothing about the user's health data or usage is
   reported off-device by default.
@@ -211,13 +229,20 @@ follows from that:
   migration).** Invite URLs are currently minted on the `ovumcy://` custom scheme,
   which any Android app can also register, so the delivery path (not the token
   handling) is interceptable. The blast radius is bounded: the invite token is a
-  one-time, 7-day-TTL redemption coupon that only works when POSTed with a valid
-  managed session, is scrubbed from the URL/route on capture and never logged or
-  persisted, and even a successful wrong-party redemption yields only a
-  minimized, read-only projection (pregnancy-test stripped) that the owner sees
-  and can revoke. Migrating invite links to platform-verified Android App Links /
-  iOS Universal Links closes the interception gap; the threat analysis and the
-  ready-to-apply Android/iOS/managed plan are in `docs/deep-links.md`.
+  one-time, 7-day-TTL redemption coupon that only works when POSTed to the
+  managed accept endpoint — under an existing managed session, or, once guest
+  accept ships (see Guest partner access provisions no credential, above), via
+  the dedicated unauthenticated guest-accept endpoint, which mints its own
+  minimal session as part of redemption — is scrubbed from the URL/route on
+  capture and never logged or persisted, and even a successful wrong-party
+  redemption yields only a minimized, read-only projection (pregnancy-test
+  stripped) that the owner sees and can revoke. Guest accept removes the
+  "attacker needs a pre-existing managed account" precondition from this
+  analysis (`docs/deep-links.md` §1.3) — exactly why it must not ship to
+  production before the migration below lands. Migrating invite links to
+  platform-verified Android App Links / iOS Universal Links closes the
+  interception gap; the threat analysis and the ready-to-apply Android/iOS/managed
+  plan are in `docs/deep-links.md`.
 
 ### Device-clock trust
 
@@ -316,6 +341,18 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | An `invite_token` query param is stashed and stripped from `window.location`, preserving other params, hash, and history state | `stashes the invite_token and strips it from window.location`, `preserves the URL hash fragment`, `removes the trailing question mark when invite_token was the only parameter`, `trims surrounding whitespace from the stashed token` in [src/security/web-invite-token-scrub.test.ts](src/security/web-invite-token-scrub.test.ts) |
 | Empty / whitespace-only tokens are stripped without stashing; a tokenless URL is a no-op | `strips a whitespace-only token without stashing it`, `strips an empty invite_token parameter without stashing it`, `is a no-op when the URL has no invite_token` in [src/security/web-invite-token-scrub.test.ts](src/security/web-invite-token-scrub.test.ts) |
 | The token is gone from the address bar by the time the SPA bundle has executed (runtime) | `F9: partner invite_token is scrubbed from the URL by the time the SPA bundle has executed` in [e2e/web-smoke.spec.ts](e2e/web-smoke.spec.ts) |
+
+### Guest partner access
+
+| Claim | Enforced by |
+| --- | --- |
+| The guest-accept API call carries no Authorization/session header and posts only the invite token to the unauthenticated endpoint | `accepts a partner invite as a guest with no Authorization header and maps the session + grant + invite` in [src/sync/managed-cloud-api-client.test.ts](src/sync/managed-cloud-api-client.test.ts) |
+| The service-layer guest-accept function takes no session-store/mode argument at all — there is no session to read, by construction — and forwards the same no-bearer call | `redeems the invite with no session precondition and no bearer, returning the session + grant + invite` in [src/services/managed-partner-access-service.test.ts](src/services/managed-partner-access-service.test.ts) |
+| Guest-accept error keys (`partner_invite_not_found`, `partner_invite_expired`, `invalid_partner_invite`, `partner_access_unavailable`, `rate_limited`) map identically to the logged-in accept path, so the invite-lifecycle and owner-entitlement checks are not weakened for guests | `maps guest-accept error keys identically to the logged-in accept path` in [src/sync/managed-cloud-api-client.test.ts](src/sync/managed-cloud-api-client.test.ts); `maps each guest-accept error key the same way the logged-in accept path does` in [src/services/managed-partner-access-service.test.ts](src/services/managed-partner-access-service.test.ts) |
+| A device with no prior local sync secrets gets a freshly generated `SyncSecretsRecord` on guest accept, forced into managed/connected preferences, with capabilities always reporting `syncEnabled: false` | `generates a fresh SyncSecretsRecord on a device with no prior secrets and forces managed/connected preferences` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| An already-prepared device's master key and device identity are left untouched by guest accept — only the auth-session fields change | `keeps an already-prepared device's master key and device identity untouched` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| A rejected guest-accept attempt (any mapped error) persists no session and writes no preferences | `forwards each mapped error key and persists no session` in [src/services/backup-sync-screen-service.test.ts](src/services/backup-sync-screen-service.test.ts) |
+| End-to-end: a brand-new device (no stored secrets, no session) redeems the invite through the unauthenticated endpoint in one call and ends in a connected managed state with the grant | `redeems the invite with no bearer, persists the session on a brand-new device, and returns a connected managed state + grant` in [src/services/backup-sync-screen-service.test.ts](src/services/backup-sync-screen-service.test.ts) |
 
 ### CSV formula-injection neutralization
 

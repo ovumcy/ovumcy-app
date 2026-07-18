@@ -795,7 +795,12 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    // No pending invite token: the partner section stays behind "Advanced"
+    // exactly like every other advanced-only control, unchanged.
+    await screen.findByTestId("backup-sync-advanced-toggle");
+    expect(screen.queryByTestId("settings-partner-section")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-section");
     expect(screen.queryByTestId("settings-partner-plan-lock")).toBeNull();
 
@@ -975,8 +980,10 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    // A buffered invite token surfaces the ready-to-accept button immediately
+    // — no tap on "Advanced" required.
     await screen.findByTestId("settings-partner-accept-card");
+    expect(screen.getByTestId("settings-partner-accept-button")).toBeTruthy();
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
     );
@@ -1012,7 +1019,8 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    // A buffered invite token surfaces the guest-vs-sign-in choice
+    // immediately — no tap on "Advanced" required.
     await screen.findByTestId("settings-partner-accept-card");
 
     expect(screen.getByTestId("settings-partner-accept-guest-button")).toBeTruthy();
@@ -1123,7 +1131,8 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    // Visible immediately: no tap on "Advanced" before the guest button
+    // appears.
     await screen.findByTestId("settings-partner-accept-guest-button");
 
     fireEvent.press(screen.getByTestId("settings-partner-accept-guest-button"));
@@ -1163,7 +1172,7 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    // Visible immediately: no tap on "Advanced" before the choice appears.
     await screen.findByTestId("settings-partner-signin-to-accept-button");
 
     fireEvent.press(screen.getByTestId("settings-partner-signin-to-accept-button"));
