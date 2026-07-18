@@ -64,7 +64,9 @@ function connectedSecrets() {
   };
 }
 
-function selfHostedPreferences(): SyncPreferencesRecord {
+function selfHostedPreferences(
+  overrides: Partial<SyncPreferencesRecord> = {},
+): SyncPreferencesRecord {
   return {
     ...createDefaultSyncPreferencesRecord(),
     mode: "self_hosted",
@@ -72,6 +74,7 @@ function selfHostedPreferences(): SyncPreferencesRecord {
     deviceLabel: "Pixel 7",
     setupStatus: "connected",
     preparedAt: "2026-03-20T08:00:00.000Z",
+    ...overrides,
   };
 }
 
@@ -242,6 +245,79 @@ describe("sync-account-recovery-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "new_password_required" });
     });
+
+    it("returns not_connected for managed mode when the managed session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        managedAuthSessionToken: null,
+      });
+      const managedFactory = jest.fn();
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "new password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { currentPassword: "old password 12345", newPassword: "new password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for self-hosted mode when the community session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        authSessionToken: null,
+      });
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "new password 12345" },
+        jest.fn(),
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          changePassword: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "new_password_must_differ" }),
+        }),
+      );
+
+      const result = await changeSyncAccountPassword(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "old password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "new_password_must_differ" });
+    });
   });
 
   describe("requestSyncPasswordReset", () => {
@@ -334,6 +410,88 @@ describe("sync-account-recovery-service", () => {
         ok: false,
         errorCode: "invalid_recovery_credentials",
       });
+    });
+
+    it("validates the login and recovery-code inputs before any network call", async () => {
+      const apiFactory = jest.fn();
+
+      const withoutLogin = await requestSyncPasswordReset(
+        selfHostedPreferences(),
+        { loginOrEmail: "   ", recoveryCode: "abcd1234abcd1234abcd1234abcd1234" },
+        apiFactory,
+        jest.fn(),
+      );
+      const withoutCode = await requestSyncPasswordReset(
+        selfHostedPreferences(),
+        { loginOrEmail: "owner@example.com", recoveryCode: "  " },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(withoutLogin).toEqual({ ok: false, errorCode: "login_required" });
+      expect(withoutCode).toEqual({ ok: false, errorCode: "recovery_code_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const apiFactory = jest.fn();
+
+      const result = await requestSyncPasswordReset(
+        selfHostedPreferences({ endpointInput: "  " }),
+        {
+          loginOrEmail: "owner@example.com",
+          recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          forgotPassword: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "rate_limited" }),
+        }),
+      );
+
+      const result = await requestSyncPasswordReset(
+        managedPreferences(),
+        {
+          loginOrEmail: "owner@example.com",
+          recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "rate_limited" });
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          forgotPassword: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await requestSyncPasswordReset(
+        selfHostedPreferences(),
+        {
+          loginOrEmail: "owner@example.com",
+          recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+        },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
     });
   });
 
@@ -469,6 +627,125 @@ describe("sync-account-recovery-service", () => {
       expect(apiFactory).not.toHaveBeenCalled();
       expect(managedFactory).not.toHaveBeenCalled();
     });
+
+    it("requires a non-blank reset token before any network call", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        selfHostedPreferences(),
+        { resetToken: "   ", newPassword: "new password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "reset_token_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { resetToken: "reset-token-1", newPassword: "new password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("dispatches to the managed client and clears session tokens on success", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const resetPassword = jest.fn().mockResolvedValue({
+        ok: true,
+        result: { recoveryCode: "rotated1234rotated1234rotated123" },
+      });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ resetPassword }));
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        managedPreferences(),
+        { resetToken: "reset-token-1", newPassword: "new password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "rotated1234rotated1234rotated123",
+        preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+      });
+      expect(resetPassword).toHaveBeenCalledWith({
+        resetToken: "reset-token-1",
+        newPassword: "new password 12345",
+      });
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({
+          authSessionToken: null,
+          managedAuthSessionToken: null,
+        }),
+      );
+    });
+
+    it("maps a managed backend failure to its allowlisted error code", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          resetPassword: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "invalid_reset_token" }),
+        }),
+      );
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        managedPreferences(),
+        { resetToken: "bad-token", newPassword: "new password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "invalid_reset_token" });
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      const storage = createLocalAppStorageMock();
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          resetPassword: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await resetSyncAccountPassword(
+        storage,
+        secretStore,
+        selfHostedPreferences(),
+        { resetToken: "reset-token-1", newPassword: "new password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+    });
   });
 
   describe("regenerateSyncAccountRecoveryCode", () => {
@@ -540,6 +817,122 @@ describe("sync-account-recovery-service", () => {
       expect(result).toEqual({ ok: false, errorCode: "not_connected" });
       expect(apiFactory).not.toHaveBeenCalled();
       expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("requires a non-empty current password before any network call", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "current_password_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for managed mode when the managed session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        managedAuthSessionToken: null,
+      });
+      const managedFactory = jest.fn();
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "current password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("passes through a self-hosted endpoint normalization failure", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn();
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences({ endpointInput: "  " }),
+        { currentPassword: "current password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "endpoint_required" });
+      expect(apiFactory).not.toHaveBeenCalled();
+    });
+
+    it("returns not_connected for self-hosted mode when the community session token is missing", async () => {
+      const secretStore = createSyncSecretStoreMock({
+        ...connectedSecrets(),
+        authSessionToken: null,
+      });
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "current password 12345" },
+        jest.fn(),
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    });
+
+    it("dispatches to the managed client using the managed session token", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const regenerateRecoveryCode = jest.fn().mockResolvedValue({
+        ok: true,
+        result: { recoveryCode: "fresh1234fresh1234fresh1234fresh" },
+      });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ regenerateRecoveryCode }));
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "current password 12345" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "fresh1234fresh1234fresh1234fresh",
+      });
+      expect(regenerateRecoveryCode).toHaveBeenCalledWith("managed-session-1", {
+        currentPassword: "current password 12345",
+      });
+    });
+
+    it("maps an unrecognized community error code to generic", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          regenerateRecoveryCode: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "server_on_fire" }),
+        }),
+      );
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "current password 12345" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
     });
   });
 });

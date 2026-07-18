@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import {
   createSQLiteAppStorage,
   type LocalAppDatabase,
@@ -1127,6 +1129,137 @@ describe("sqlite-app-storage", () => {
       symptomIDs: [],
       notes: "",
     });
+  });
+
+  it("returns multiple day logs sorted by date and filters the summary to explicit bounds", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    // Write out of date order so the read path's own sort is what produces
+    // ascending output, not insertion order.
+    for (const date of ["2026-03-20", "2026-03-05", "2026-03-12"]) {
+      await storage.writeDayLogRecord({
+        date,
+        isPeriod: true,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "light",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        pregnancyTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "",
+      });
+    }
+
+    await expect(
+      storage.listDayLogRecordsInRange("2026-03-01", "2026-03-31"),
+    ).resolves.toEqual([
+      expect.objectContaining({ date: "2026-03-05" }),
+      expect.objectContaining({ date: "2026-03-12" }),
+      expect.objectContaining({ date: "2026-03-20" }),
+    ]);
+
+    // Explicit bounds narrower than the full written range exclude the
+    // out-of-window entries from both the count and the from/to markers.
+    await expect(
+      storage.readDayLogSummary("2026-03-06", "2026-03-15"),
+    ).resolves.toEqual({
+      totalEntries: 1,
+      hasData: true,
+      dateFrom: "2026-03-12",
+      dateTo: "2026-03-12",
+    });
+  });
+
+  it("breaks a tied symptom sort order alphabetically by id", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    for (const id of ["custom_zeta", "custom_alpha"]) {
+      await storage.writeSymptomRecord({
+        id,
+        slug: id,
+        label: id,
+        icon: "✨",
+        color: "#E8799F",
+        isArchived: false,
+        sortOrder: 999,
+        isDefault: false,
+      });
+    }
+
+    const records = await storage.listSymptomRecords();
+    const customOrder = records
+      .filter((record) => record.sortOrder === 999)
+      .map((record) => record.id);
+
+    expect(customOrder).toEqual(["custom_alpha", "custom_zeta"]);
+  });
+
+  it("wires the default legacy AsyncStorage source when none is injected", async () => {
+    // Exercises the production defaultLegacyStorageSource wiring (not a test
+    // double for it): a fresh SQLite storage created with no
+    // legacyStorageSource override must still migrate real legacy
+    // AsyncStorage data and clear it afterward.
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      "ovumcy/bootstrap-state",
+      JSON.stringify({
+        hasCompletedOnboarding: true,
+        profileVersion: 2,
+        incompleteOnboardingStep: null,
+      }),
+    );
+    await AsyncStorage.setItem(
+      "ovumcy/profile-record",
+      JSON.stringify({
+        lastPeriodStart: "2026-03-14",
+        cycleLength: 30,
+        periodLength: 6,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+      }),
+    );
+
+    const storage = createSQLiteAppStorage({
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ lastPeriodStart: "2026-03-14", cycleLength: 30 }),
+    );
+    // The default source clears the legacy plaintext keys after migrating.
+    await expect(AsyncStorage.getItem("ovumcy/profile-record")).resolves.toBeNull();
+
+    await AsyncStorage.clear();
   });
 
   it("stores sensitive local records in encrypted payload columns instead of plaintext", async () => {
