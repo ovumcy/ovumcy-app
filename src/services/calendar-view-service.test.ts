@@ -737,4 +737,292 @@ describe("calendar-view-service", () => {
     expect(predictedDay).toBeUndefined();
     expect(tentativeDay).toBeUndefined();
   });
+
+  // Shared literal for the storage-backed (loadCalendarScreenState) tests below,
+  // mirroring the inline profile objects used throughout this file but factored
+  // out because this block exercises many small variations of it.
+  function baseStorageProfile(overrides: Record<string, unknown> = {}) {
+    return {
+      lastPeriodStart: null as string | null,
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: false,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+      ...overrides,
+    };
+  }
+
+  describe("selected-day summary hints per state key (loadCalendarScreenState, previously only asserted via day cells)", () => {
+    it("surfaces the fertility-edge, fertility-peak, and ovulation hints on the selected day summary", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(
+        baseStorageProfile({ lastPeriodStart: "2026-03-14" }),
+      );
+      for (const date of ["2026-01-17", "2026-02-14", "2026-03-14"]) {
+        await storage.writeDayLogRecord({
+          ...createEmptyDayLogRecord(date),
+          isPeriod: true,
+          flow: "medium",
+        });
+      }
+
+      const edge = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 17),
+        "2026-03",
+        "2026-03-24",
+      );
+      expect(edge.selectedDaySummary.stateSummary).toEqual({
+        hint: "This day sits inside the likely fertile window.",
+        label: "What this day means",
+        value: "Higher fertility",
+      });
+
+      const peak = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 17),
+        "2026-03",
+        "2026-03-26",
+      );
+      expect(peak.selectedDaySummary.stateSummary).toEqual({
+        hint: "This day sits inside the highest-likelihood part of the fertile window.",
+        label: "What this day means",
+        value: "Peak fertility",
+      });
+
+      const ovulation = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 17),
+        "2026-03",
+        "2026-03-27",
+      );
+      expect(ovulation.selectedDaySummary.stateSummary).toEqual({
+        hint: "This is the predicted ovulation day based on the current cycle model.",
+        label: "What this day means",
+        value: "Ovulation day",
+      });
+    });
+
+    it("surfaces the tentative-ovulation hint when BBT shows no thermal shift", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(
+        baseStorageProfile({ lastPeriodStart: "2026-03-10", trackBBT: true }),
+      );
+      for (let offset = 0; offset < 14; offset += 1) {
+        const date = `2026-03-${String(10 + offset).padStart(2, "0")}`;
+        await storage.writeDayLogRecord({
+          ...createEmptyDayLogRecord(date),
+          bbt: 36.4,
+          ...(offset === 0
+            ? { isPeriod: true, cycleStart: true, flow: "medium" as const }
+            : {}),
+        });
+      }
+
+      const state = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 25),
+        "2026-03",
+        "2026-03-23",
+      );
+      expect(state.selectedDaySummary.stateSummary).toEqual({
+        hint: "This is a possible ovulation day without temperature confirmation.",
+        label: "What this day means",
+        value: "Possible ovulation day",
+      });
+    });
+
+    it("falls back to the logged-entry hint for a plain data day with no special prediction state", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(
+        baseStorageProfile({ lastPeriodStart: "2026-03-14" }),
+      );
+      // 2026-04-05 sits in the luteal gap after ovulation (03-27) and before the
+      // next predicted period (04-11 = anchor + 28) -- no period/fertile/
+      // ovulation markers apply, but the day still has logged data (a mood entry).
+      await storage.writeDayLogRecord({
+        ...createEmptyDayLogRecord("2026-04-05"),
+        mood: 3,
+      });
+
+      const state = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 3, 5),
+        "2026-04",
+        "2026-04-05",
+      );
+      expect(state.selectedDaySummary.stateSummary).toEqual({
+        hint: "You already saved a local entry for this day.",
+        label: "What this day means",
+        value: "Logged entry",
+      });
+    });
+
+    it("returns a neutral, no-data summary and an empty synthetic record when the selected date is outside the rendered grid", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(
+        baseStorageProfile({ lastPeriodStart: "2026-03-14" }),
+      );
+
+      const state = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 17),
+        "2026-03",
+        "2026-09-15",
+      );
+      expect(state.selectedDaySummary.markerSummary).toBeNull();
+      expect(state.selectedDaySummary.stateSummary).toEqual({
+        hint: "No recorded or predicted event is attached to this day yet.",
+        label: "What this day means",
+        value: "-",
+      });
+      // resolveCalendarVisibleRecord falls back to an empty synthetic record
+      // (no stored day-log row for a date this far outside the loaded range).
+      expect(state.selectedRecord).toEqual(
+        expect.objectContaining({ date: "2026-09-15", isPeriod: false, mood: 0 }),
+      );
+    });
+
+    it("falls back to the raw string as the date label when selectedDate is not a valid calendar date", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(
+        baseStorageProfile({ lastPeriodStart: "2026-03-14" }),
+      );
+
+      const state = await loadCalendarScreenState(
+        storage,
+        new Date(2026, 2, 17),
+        "2026-03",
+        "not-a-real-date",
+      );
+      expect(state.selectedDaySummary.dateLabel).toBe("not-a-real-date");
+    });
+  });
+
+  describe("loadCalendarScreenState defaults when monthValue/selectedDate are omitted or malformed", () => {
+    it("falls back to the current month and today's date when monthValue/selectedDate are omitted", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(baseStorageProfile());
+
+      const state = await loadCalendarScreenState(storage, new Date(2026, 5, 15));
+      expect(state.viewData.monthValue).toBe("2026-06");
+      expect(state.viewData.selectedDate).toBe("2026-06-15");
+    });
+
+    it("falls back to the current month for a syntactically malformed or a semantically invalid monthValue", async () => {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord(baseStorageProfile());
+      const now = new Date(2026, 5, 15);
+
+      const malformed = await loadCalendarScreenState(storage, now, "not-a-month");
+      expect(malformed.viewData.monthValue).toBe("2026-06");
+
+      // "2026-13" matches the YYYY-MM shape but month 13 does not exist; the
+      // rolled-over Date disagrees with the requested year/month and is rejected.
+      const invalidMonth = await loadCalendarScreenState(storage, now, "2026-13");
+      expect(invalidMonth.viewData.monthValue).toBe("2026-06");
+    });
+  });
+
+  describe("empty/degenerate cycle-math edge cases in calendar prediction painting", () => {
+    it("shows no predicted, fertile, or ovulation markers for a brand-new profile with no logged periods", () => {
+      const viewData = buildCalendarViewData(
+        baseStorageProfile({ lastPeriodStart: null }),
+        [],
+        new Date(2026, 2, 17),
+        new Date(2026, 2, 1),
+        "2026-03-17",
+      );
+
+      const predictionStates: string[] = [
+        "predicted",
+        "pre_fertile",
+        "fertility_edge",
+        "fertility_peak",
+        "ovulation",
+        "ovulation_tentative",
+      ];
+      expect(viewData.days.every((day) => !predictionStates.includes(day.stateKey))).toBe(
+        true,
+      );
+      expect(
+        viewData.days.every(
+          (day) => !day.hasOvulationMarker && !day.hasTentativeOvulationMarker,
+        ),
+      ).toBe(true);
+    });
+
+    it("paints only the recorded period -- no fertility or ovulation markers -- when the cycle length is too short to place ovulation", () => {
+      const profile = baseStorageProfile({
+        lastPeriodStart: "2026-01-21",
+        cycleLength: 10,
+      });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-21"),
+          isPeriod: true,
+          cycleStart: true,
+          flow: "medium" as const,
+        },
+      ];
+
+      const viewData = buildCalendarViewData(
+        profile,
+        records,
+        new Date(2026, 0, 25),
+        new Date(2026, 0, 1),
+        "2026-01-25",
+      );
+
+      const fertilityStates: string[] = [
+        "pre_fertile",
+        "fertility_edge",
+        "fertility_peak",
+        "ovulation",
+        "ovulation_tentative",
+      ];
+      expect(viewData.days.some((day) => fertilityStates.includes(day.stateKey))).toBe(
+        false,
+      );
+      expect(viewData.days.find((day) => day.date === "2026-01-21")).toEqual(
+        expect.objectContaining({ stateKey: "period", isPeriod: true }),
+      );
+    });
+
+    it("paints no pre-fertile gap when the logged period consumes every day before the fertility window opens", () => {
+      const profile = baseStorageProfile({
+        lastPeriodStart: "2026-01-01",
+        cycleLength: 20,
+        periodLength: 10,
+      });
+      const records = [
+        {
+          ...createEmptyDayLogRecord("2026-01-01"),
+          isPeriod: true,
+          cycleStart: true,
+          flow: "medium" as const,
+        },
+      ];
+
+      const viewData = buildCalendarViewData(
+        profile,
+        records,
+        new Date(2026, 0, 5),
+        new Date(2026, 0, 1),
+        "2026-01-05",
+      );
+
+      expect(viewData.days.some((day) => day.stateKey === "pre_fertile")).toBe(false);
+    });
+  });
 });

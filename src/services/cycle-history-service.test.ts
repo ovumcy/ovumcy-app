@@ -3,10 +3,15 @@ import type { ProfileRecord } from "../models/profile";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
+  buildStatsFactorContext,
+  buildStatsReliability,
   collectCycleStartDates,
   hasDataDrivenPredictionSpan,
+  predictedCycleLength,
   predictedPeriodLength,
+  projectCycleStartForward,
   resolveProjectedPeriodLength,
+  shiftCycleStartToFutureOvulation,
   shouldShowAgeVariabilityHint,
   shouldShowIrregularityNotice,
 } from "./cycle-history-service";
@@ -923,6 +928,235 @@ describe("cycle-history-service", () => {
       expect(projection.projectedPeriodLength).toBe(2);
       expect(projection.currentCycleDay).toBe(3);
       expect(projection.currentPhase).toBe("follicular");
+    });
+  });
+
+  describe("buildStatsReliability recent-window cap (web stats reliability parity)", () => {
+    it("caps the sample count to the recent prediction window and reports 'stable' beyond it", () => {
+      // 8 starts -> 7 completed cycles, all length 28 (non-variable pattern).
+      // Existing fixtures only ever exercise completedCycleCount <= 6, so the
+      // "> STATS_CYCLE_PREDICTION_WINDOW" cap (usesRecentWindow=true) and the
+      // "stable" switch case were previously unreached.
+      const profile = createProfileRecord({ lastPeriodStart: "2025-01-01" });
+      const { records, lastStart } = periodMarkersFromGaps(new Date(2025, 0, 1), [
+        28, 28, 28, 28, 28, 28, 28,
+      ]);
+      const now = new Date(lastStart.getFullYear(), lastStart.getMonth(), lastStart.getDate() + 5);
+      const history = buildCycleHistorySummary(profile, records, now);
+
+      expect(history.completedCycleCount).toBe(7);
+      expect(buildStatsReliability(profile, history)).toEqual({
+        sampleCount: 6,
+        usesRecentWindow: true,
+        kind: "stable",
+        hintKind: "default",
+      });
+    });
+  });
+
+  describe("buildCurrentCycleProjection when the observed cycle length cannot place ovulation", () => {
+    // A cycle length below MIN_CYCLE_LENGTH (15) makes calcOvulationDay
+    // non-calculable (cycle-prediction-policy.ts). The projection must still
+    // surface the raw cycle day and next-period date without an ovulation date
+    // or fertile window -- previously untested (predictedWindow was always
+    // calculable in every other fixture in this file).
+    it("surfaces 'unknown' phase and a null prediction-range window with fewer than 3 completed cycles", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-21" });
+      const records = ["2026-01-01", "2026-01-11", "2026-01-21"].map((date) => ({
+        ...createEmptyDayLogRecord(date),
+        isPeriod: true,
+      }));
+      const now = new Date(2026, 0, 25);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.completedCycleCount).toBe(2);
+      expect(projection).toEqual(
+        expect.objectContaining({
+          cycleAnchorDate: "2026-01-21",
+          currentCycleDay: 5,
+          currentPhase: "unknown",
+          isPredictionStale: false,
+          nextPeriodDate: "2026-01-31",
+          nextPeriodWindowStartDate: null,
+          nextPeriodWindowEndDate: null,
+          ovulationDate: null,
+          predictionCycleLength: 10,
+        }),
+      );
+    });
+
+    it("surfaces 'menstrual' phase and a data-driven prediction-range window with >=3 completed cycles", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-03" });
+      const records = [
+        ...["2026-01-01", "2026-01-11", "2026-01-23", "2026-02-03"].map((date) => ({
+          ...createEmptyDayLogRecord(date),
+          isPeriod: true,
+        })),
+        // Extends the anchor cluster (gap 1 day) without becoming a new start,
+        // so today itself is a logged period day.
+        { ...createEmptyDayLogRecord("2026-02-04"), isPeriod: true },
+      ];
+      const now = new Date(2026, 1, 4);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.completedCycleCount).toBe(3);
+      expect(projection).toEqual(
+        expect.objectContaining({
+          cycleAnchorDate: "2026-02-03",
+          currentCycleDay: 2,
+          currentPhase: "menstrual",
+          isPredictionStale: false,
+          nextPeriodDate: "2026-02-14",
+          nextPeriodWindowStartDate: "2026-02-13",
+          nextPeriodWindowEndDate: "2026-02-15",
+          ovulationDate: null,
+          predictionCycleLength: 11,
+        }),
+      );
+    });
+  });
+
+  describe("facts-only (unpredictable) mode still classifies today as menstrual when logged", () => {
+    it("reads menstrual, not unknown, when today itself is a logged period day", () => {
+      const profile = createProfileRecord({
+        lastPeriodStart: "2026-03-01",
+        unpredictableCycle: true,
+      });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      ];
+      const now = new Date(2026, 2, 1);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(projection.currentPhase).toBe("menstrual");
+      expect(projection.nextPeriodDate).toBeNull();
+    });
+  });
+
+  describe("pregnancy pause tracks the LATEST positive test (web resolvePregnancyPause parity)", () => {
+    it("keeps the latest positive date across out-of-order positive tests, ignoring earlier ones", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-05"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-10"), pregnancyTest: "positive" as const },
+        { ...createEmptyDayLogRecord("2026-03-01"), pregnancyTest: "positive" as const },
+        { ...createEmptyDayLogRecord("2026-01-20"), pregnancyTest: "positive" as const },
+      ];
+      const now = new Date(2026, 2, 5);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.pregnancyTestDate).toBe("2026-03-01");
+    });
+  });
+
+  describe("collectCycleStartDates and uncertain-only clusters (no fallback to the first observed day)", () => {
+    it("excludes a cluster whose only cycle-start flag is marked uncertain on the FIRST day of the cluster", () => {
+      const profile = createProfileRecord({ lastPeriodStart: null });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, cycleStart: true, isUncertain: true },
+        { ...createEmptyDayLogRecord("2026-01-11"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-15"), isPeriod: true, cycleStart: true },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-02-15")).toEqual(["2026-02-15"]);
+    });
+
+    it("excludes a cluster whose only cycle-start flag is marked uncertain on a LATER (non-first) day", () => {
+      const profile = createProfileRecord({ lastPeriodStart: null });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true },
+        {
+          ...createEmptyDayLogRecord("2026-01-11"),
+          isPeriod: true,
+          cycleStart: true,
+          isUncertain: true,
+        },
+        { ...createEmptyDayLogRecord("2026-02-15"), isPeriod: true, cycleStart: true },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-02-15")).toEqual(["2026-02-15"]);
+    });
+
+    it("silently excludes a malformed lastPeriodStart date (Feb 30 does not exist) from cycle-start detection", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-30" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-03-05")).toEqual(["2026-03-01"]);
+    });
+  });
+
+  describe("buildStatsFactorContext sorts recent factors and recent cycles (previously untested)", () => {
+    it("sorts recent factor counts descending and recent cycles by most-recent-first, once the pattern is variable", () => {
+      // Irregular-mode profile forces isVariablePattern regardless of spread, so
+      // shouldBuildFactorContext is satisfied with just 3 completed cycles.
+      const profile = createProfileRecord({
+        lastPeriodStart: "2026-03-26",
+        irregularCycle: true,
+      });
+      const records = [
+        ...["2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26"].map((date) => ({
+          ...createEmptyDayLogRecord(date),
+          isPeriod: true,
+        })),
+        // "stress" logged on 2 different days inside cycle 0 (2026-01-01..28).
+        { ...createEmptyDayLogRecord("2026-01-05"), cycleFactorKeys: ["stress" as const] },
+        { ...createEmptyDayLogRecord("2026-01-15"), cycleFactorKeys: ["stress" as const] },
+        // "travel" logged once inside cycle 1 (2026-01-29..02-25).
+        { ...createEmptyDayLogRecord("2026-02-05"), cycleFactorKeys: ["travel" as const] },
+      ];
+      const now = new Date(2026, 2, 30);
+
+      const history = buildCycleHistorySummary(profile, records, now);
+      const context = buildStatsFactorContext(profile, history, records, now);
+
+      expect(context?.recentFactors).toEqual([
+        { key: "stress", count: 2 },
+        { key: "travel", count: 1 },
+      ]);
+      expect(context?.recentCycles.map((cycle) => cycle.startDate)).toEqual([
+        "2026-01-29",
+        "2026-01-01",
+      ]);
+    });
+  });
+
+  describe("projectCycleStartForward / shiftCycleStartToFutureOvulation guard clauses (direct, web parity helpers)", () => {
+    it("projectCycleStartForward returns the anchor unchanged for a non-positive cycle length", () => {
+      const anchor = new Date(2026, 2, 1);
+      const today = new Date(2026, 3, 15);
+
+      expect(projectCycleStartForward(anchor, 0, today)).toBe(anchor);
+      expect(projectCycleStartForward(anchor, -5, today)).toBe(anchor);
+    });
+
+    it("shiftCycleStartToFutureOvulation returns the start unchanged for a non-positive cycle length or a not-yet-past ovulation", () => {
+      const start = new Date(2026, 2, 1);
+      const ovulation = new Date(2026, 2, 15);
+      const today = new Date(2026, 2, 10);
+
+      expect(shiftCycleStartToFutureOvulation(start, ovulation, 0, today)).toBe(start);
+      // ovulation (03-15) is still on/after today (03-10) -- no shift yet.
+      expect(shiftCycleStartToFutureOvulation(start, ovulation, 28, today)).toBe(start);
+    });
+  });
+
+  describe("predictedCycleLength fallbacks (web predictedCycleLength, cycles.go:359-372)", () => {
+    it("falls back to the rounded average when there is no positive median", () => {
+      expect(predictedCycleLength(0, 27.6)).toBe(28);
+      expect(predictedCycleLength(-1, 27.4)).toBe(27);
+    });
+
+    it("returns 0 when neither a median nor an average is available", () => {
+      expect(predictedCycleLength(0, 0)).toBe(0);
     });
   });
 });

@@ -1,11 +1,17 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
-import type { StatsCycleProjection, StatsPhase } from "../models/stats";
+import type { StatsCycleHistorySummary, StatsCycleProjection, StatsPhase } from "../models/stats";
 import { MIN_CURRENT_CYCLE_BBT_POINTS } from "../models/stats";
+import { createDefaultSymptomRecords } from "../models/symptom";
 import { buildCycleHistorySummary } from "./cycle-history-service";
 import {
+  buildLastCycleSymptomFrequency,
   buildStatsPhaseMoodInsights,
+  buildStatsPhaseSymptomInsights,
   buildStatsBBTSeries,
+  buildStatsSymptomFrequency,
+  buildStatsSymptomPatterns,
+  buildStatsTrendPoints,
   detectGapBasedCycleStarts,
 } from "./stats-insights-service";
 
@@ -338,5 +344,163 @@ describe("phase insights use gap-based cycle detection (web DetectCycleStarts)",
         periodMarker("2026-01-06"),
       ]),
     ).toEqual(["2026-01-01"]);
+  });
+
+  it("treats an unparseable period-day date as a zero-day gap instead of throwing", () => {
+    // "1000-99-99" matches the YYYY-MM-DD shape but is not a real calendar date
+    // (month 99), so it fails parseLocalDate. It sorts first lexicographically
+    // and is unconditionally pushed as the first start; the gap check against
+    // the next (valid) day then fails to parse it and treats the gap as 0,
+    // so the valid day is NOT registered as a second start.
+    const records = [
+      { ...createEmptyDayLogRecord("1000-99-99"), isPeriod: true },
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
+    ];
+
+    expect(() => detectGapBasedCycleStarts(records)).not.toThrow();
+    expect(detectGapBasedCycleStarts(records)).toEqual(["1000-99-99"]);
+  });
+});
+
+describe("buildLastCycleSymptomFrequency", () => {
+  it("returns an empty list when there are no completed cycles yet", () => {
+    const profile = createPhaseProfile();
+    const history = buildCycleHistorySummary(profile, [], new Date(2026, 0, 10));
+
+    expect(history.completedCycleCount).toBe(0);
+    expect(
+      buildLastCycleSymptomFrequency(history, [], createDefaultSymptomRecords()),
+    ).toEqual([]);
+  });
+});
+
+describe("buildStatsSymptomFrequency", () => {
+  it("excludes unknown symptom IDs and sorts by descending count, then alphabetically on a tie", () => {
+    const symptomRecords = createDefaultSymptomRecords();
+    const records = [
+      { ...createEmptyDayLogRecord("2026-01-01"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-02"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-03"), symptomIDs: ["headache"] },
+      // "bloating" ties headache's count (1) -- alphabetical tie-break puts it first.
+      { ...createEmptyDayLogRecord("2026-01-05"), symptomIDs: ["bloating"] },
+      { ...createEmptyDayLogRecord("2026-01-04"), symptomIDs: ["ghost_symptom"] },
+    ];
+
+    const result = buildStatsSymptomFrequency(records, symptomRecords);
+
+    expect(result.map((item) => item.id)).toEqual(["cramps", "bloating", "headache"]);
+    expect(result[0]).toEqual(expect.objectContaining({ id: "cramps", count: 2 }));
+  });
+});
+
+describe("buildStatsTrendPoints", () => {
+  it("maps completed cycles to trend points in order", () => {
+    const profile = createPhaseProfile({ lastPeriodStart: "2026-01-01" });
+    const history = buildCycleHistorySummary(
+      profile,
+      [periodMarker("2026-01-01"), periodMarker("2026-01-29")],
+      new Date(2026, 1, 2),
+    );
+
+    const points = buildStatsTrendPoints(history);
+
+    expect(points).toEqual([
+      { key: "2026-01-01", label: expect.any(String), value: 28 },
+    ]);
+  });
+
+  it("falls back to the raw start date string when it is not a valid calendar date", () => {
+    const history: StatsCycleHistorySummary = {
+      completedCycles: [
+        {
+          startDate: "not-a-date",
+          nextStartDate: "2026-02-01",
+          cycleLength: 10,
+          periodLength: 5,
+          observedPeriodLength: null,
+          factorKeys: [],
+          comparisonKind: "variable",
+        },
+      ],
+      completedCycleCount: 1,
+      insightProgress: 50,
+      hasInsights: false,
+      hasReliableTrend: false,
+      recentCycleLengths: [10],
+      averageCycleLength: 10,
+      medianCycleLength: 10,
+      minCycleLength: 10,
+      maxCycleLength: 10,
+      cycleLengthSpread: 0,
+      lastCycleLength: 10,
+      lastPeriodLength: 5,
+    };
+
+    expect(buildStatsTrendPoints(history)).toEqual([
+      { key: "not-a-date", label: "not-a-date", value: 10 },
+    ]);
+  });
+});
+
+describe("buildStatsSymptomPatterns (previously untested)", () => {
+  it("excludes an unknown symptom ID and sorts recurring patterns by count, then alphabetically on a tie", () => {
+    const profile = createPhaseProfile({ lastPeriodStart: "2026-03-26" });
+    const symptomRecords = createDefaultSymptomRecords();
+    const records = [
+      ...["2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26"].map((date) =>
+        periodMarker(date),
+      ),
+      // cramps: 2 days in cycle 0, 1 day in cycle 1 -> occurrenceCount 3.
+      { ...createEmptyDayLogRecord("2026-01-05"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-10"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-02-01"), symptomIDs: ["cramps"] },
+      // headache: 1 day each in cycles 0, 1, 2 -> occurrenceCount 3 (tied with cramps).
+      { ...createEmptyDayLogRecord("2026-01-15"), symptomIDs: ["headache"] },
+      { ...createEmptyDayLogRecord("2026-02-10"), symptomIDs: ["headache"] },
+      { ...createEmptyDayLogRecord("2026-03-01"), symptomIDs: ["headache"] },
+      // nausea: 1 day each in cycles 0, 1 -> occurrenceCount 2 (fewer, sorts last).
+      { ...createEmptyDayLogRecord("2026-01-20"), symptomIDs: ["nausea"] },
+      { ...createEmptyDayLogRecord("2026-02-15"), symptomIDs: ["nausea"] },
+      // Unknown symptom ID inside a bucket -- must be silently skipped.
+      { ...createEmptyDayLogRecord("2026-01-25"), symptomIDs: ["ghost_symptom"] },
+    ];
+    const now = new Date(2026, 2, 30);
+
+    const history = buildCycleHistorySummary(profile, records, now);
+    expect(history.completedCycleCount).toBe(3);
+
+    const patterns = buildStatsSymptomPatterns(history, records, symptomRecords);
+
+    // STATS_SYMPTOM_PATTERN_LIMIT caps the result at 2: cramps and headache are
+    // tied at occurrenceCount 3 and sort alphabetically ahead of nausea (2).
+    expect(patterns).toEqual([
+      expect.objectContaining({ id: "cramps", occurrenceCount: 3 }),
+      expect.objectContaining({ id: "headache", occurrenceCount: 3 }),
+    ]);
+  });
+});
+
+describe("buildStatsPhaseSymptomInsights (previously untested)", () => {
+  it("excludes an unknown symptom ID and sorts same-phase items by percentage, then alphabetically on a tie", () => {
+    const records = [
+      periodMarker("2026-01-01"),
+      periodMarker("2026-01-29"),
+      // Follicular-phase days (period length 1, ovulation day 14): 3-11.
+      { ...createEmptyDayLogRecord("2026-01-03"), symptomIDs: ["headache"] },
+      { ...createEmptyDayLogRecord("2026-01-05"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-07"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-09"), symptomIDs: ["nausea"] },
+      { ...createEmptyDayLogRecord("2026-01-11"), symptomIDs: ["ghost_symptom"] },
+    ];
+
+    const insights = buildStatsPhaseSymptomInsights(records, createDefaultSymptomRecords());
+    const follicular = insights.find((item) => item.phase === "follicular");
+
+    expect(follicular?.totalDays).toBe(5);
+    expect(follicular?.items).toEqual([
+      expect.objectContaining({ id: "cramps", count: 2, percentage: 40 }),
+      expect.objectContaining({ id: "headache", count: 1, percentage: 20 }),
+      expect.objectContaining({ id: "nausea", count: 1, percentage: 20 }),
+    ]);
   });
 });
