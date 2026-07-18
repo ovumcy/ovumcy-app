@@ -4,6 +4,11 @@ Ready-to-upload files for the verified invite host. Full rationale, checklist, a
 implementation order live in [`docs/deep-links.md`](../deep-links.md) (§6–§7); this folder only
 packages the artifacts so deploying them is copy-paste.
 
+The [`site/`](site/) subfolder is the same content pre-arranged in upload-ready shape — the
+fallback page placed at `backup-sync/index.html` plus a `_headers` file (Cloudflare
+Pages/Netlify) forcing `Content-Type: application/json` on both well-known files. Fill in the
+placeholders below, then drag `site/` to the static host as-is.
+
 | File | Serve at | Requirements |
 | --- | --- | --- |
 | `assetlinks.json` | `https://invite.ovumcy.cloud/.well-known/assetlinks.json` | `Content-Type: application/json`, HTTP 200, no redirect |
