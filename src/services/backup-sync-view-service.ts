@@ -75,8 +75,64 @@ export function areSyncPreferencesEqual(
     left.setupStatus === right.setupStatus &&
     left.preparedAt === right.preparedAt &&
     left.lastRemoteGeneration === right.lastRemoteGeneration &&
-    left.lastSyncedAt === right.lastSyncedAt
+    left.lastSyncedAt === right.lastSyncedAt &&
+    left.guestSessionExpiresAt === right.guestSessionExpiresAt
   );
+}
+
+// isGuestPartnerAccount is the single source of truth for "is this device's
+// managed session a guest-partner one" — see
+// SyncPreferencesRecord.guestSessionExpiresAt for why presence alone is a
+// safe and sufficient marker (it is set only by persistGuestPartnerSession
+// and cleared by every path that establishes or ends a non-guest session).
+// Checks for a non-empty string rather than `!== null`: a record that never
+// passed through the storage-layer normalizers (an older cached fixture, a
+// hand-built test object, a pre-#118 persisted blob read some other way)
+// can carry `undefined` here instead of `null`, and `undefined !== null` is
+// true in JS — a strict-null check would misread that as guest mode.
+export function isGuestPartnerAccount(
+  preferences: SyncPreferencesRecord,
+): boolean {
+  return (
+    typeof preferences.guestSessionExpiresAt === "string" &&
+    preferences.guestSessionExpiresAt.length > 0
+  );
+}
+
+const GUEST_SESSION_EXPIRY_NUDGE_THRESHOLD_DAYS = 7;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// resolveGuestSessionExpiryNudgeDays reduces the guest session's expiry
+// timestamp plus the current time into a whole-day countdown the UI can
+// render as a nudge, or null when no nudge should show: not a guest session,
+// an unparseable timestamp, already expired (the nudge is moot once the
+// session is dead — the natural "unauthorized" error path on the next
+// attempt already communicates that), or still further than the threshold
+// out. Days remaining rounds UP, matching describeSubscriptionCountdown's
+// convention (a session expiring in 2h still reads as "1 day left").
+export function resolveGuestSessionExpiryNudgeDays(
+  guestSessionExpiresAt: string | null,
+  nowISO: string,
+): number | null {
+  if (!guestSessionExpiresAt) {
+    return null;
+  }
+
+  const expiresAtMs = Date.parse(guestSessionExpiresAt);
+  const nowMs = Date.parse(nowISO);
+  if (Number.isNaN(expiresAtMs) || Number.isNaN(nowMs)) {
+    return null;
+  }
+
+  const remainingMs = expiresAtMs - nowMs;
+  if (remainingMs <= 0) {
+    return null;
+  }
+
+  const daysRemaining = Math.ceil(remainingMs / MS_PER_DAY);
+  return daysRemaining <= GUEST_SESSION_EXPIRY_NUDGE_THRESHOLD_DAYS
+    ? daysRemaining
+    : null;
 }
 
 export function buildBackupSyncDirtyState(

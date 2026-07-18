@@ -240,6 +240,10 @@ export async function connectSyncAccount(
       ...preferences,
       normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
       setupStatus: "connected",
+      // A real register/login/TOTP-finalized session is never a guest —
+      // clear any stale marker left by an earlier guest-partner session on
+      // this device (see SyncPreferencesRecord.guestSessionExpiresAt).
+      guestSessionExpiresAt: null,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -335,6 +339,9 @@ export async function connectSyncAccount(
     ...preferences,
     normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
     setupStatus: "connected",
+    // Self-hosted community sync has no guest-partner concept; clear any
+    // stale marker carried over from a prior managed guest session.
+    guestSessionExpiresAt: null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -427,6 +434,10 @@ export async function finalizeSyncSessionAfterTOTP(
       ...preferences,
       normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
       setupStatus: "connected",
+      // A real register/login/TOTP-finalized session is never a guest —
+      // clear any stale marker left by an earlier guest-partner session on
+      // this device (see SyncPreferencesRecord.guestSessionExpiresAt).
+      guestSessionExpiresAt: null,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -486,6 +497,9 @@ export async function finalizeSyncSessionAfterTOTP(
     ...preferences,
     normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
     setupStatus: "connected",
+    // Self-hosted community sync has no guest-partner concept; clear any
+    // stale marker carried over from a prior managed guest session.
+    guestSessionExpiresAt: null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -516,12 +530,19 @@ export async function finalizeSyncSessionAfterTOTP(
  * material untouched — this only ever overwrites the auth-session fields on
  * top of an existing record, so it can never silently regenerate keys out
  * from under an already-set-up device.
+ *
+ * `input.sessionExpiresAt` is persisted verbatim into the new
+ * `guestSessionExpiresAt` preference field — the ONLY local marker that this
+ * device's managed session is a guest one (see the field's doc comment on
+ * `SyncPreferencesRecord`). It doubles as the data source for the client's
+ * "save your access before it expires" nudge, since a guest session has no
+ * renewal path.
  */
 export async function persistGuestPartnerSession(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { sessionToken: string },
+  input: { sessionToken: string; sessionExpiresAt: string },
   now: Date,
 ): Promise<{
   capabilities: SyncCapabilityDocument;
@@ -543,6 +564,7 @@ export async function persistGuestPartnerSession(
     endpointInput: "",
     normalizedEndpoint: MANAGED_SYNC_BASE_URL,
     setupStatus: "connected",
+    guestSessionExpiresAt: input.sessionExpiresAt,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -562,6 +584,124 @@ export async function persistGuestPartnerSession(
     capabilities: buildManagedCapabilitiesDocument(false),
     preferences: nextPreferences,
   };
+}
+
+export type UpgradeGuestPartnerAccountErrorCode =
+  | "unauthorized"
+  | "account_not_guest"
+  | "invalid_registration_input"
+  | "registration_failed"
+  | "rate_limited"
+  | "network_failed"
+  | "generic";
+
+export type UpgradeGuestPartnerAccountResult =
+  | {
+      ok: true;
+      accountID: string;
+      email: string;
+      // recoveryCode is the plaintext account-level recovery code, returned
+      // exactly once by the server (same contract as the register-flow
+      // code) and never re-fetchable. The caller must surface it once and
+      // then forget it.
+      recoveryCode: string;
+      preferences: SyncPreferencesRecord;
+    }
+  | {
+      ok: false;
+      errorCode: UpgradeGuestPartnerAccountErrorCode;
+      // preferences is always returned (even on failure) so the caller can
+      // refresh its state in one place: it differs from the input only when
+      // errorCode is "account_not_guest", where guestSessionExpiresAt has
+      // just been cleared — see below.
+      preferences: SyncPreferencesRecord;
+    };
+
+/**
+ * upgradeGuestPartnerAccount converts the guest-partner account behind this
+ * device's CURRENT managed session into a normal email+password account
+ * (POST /account/upgrade). Bearer auth is the existing session token read
+ * from secure storage; unlike connectSyncAccount/persistGuestPartnerSession
+ * the server never issues or revokes a session here, so there is no secrets
+ * write — the same managedAuthSessionToken keeps authenticating every
+ * subsequent call after this succeeds.
+ *
+ * On success the local `guestSessionExpiresAt` marker is cleared so the
+ * "Keep your access" CTA and expiry nudge disappear immediately, without
+ * waiting for the next getSession() focus-load to notice. The same clear
+ * also happens on `account_not_guest` (409): that code means the account
+ * was already upgraded (on this device or another one) or was never a
+ * guest in the first place — a benign convergence with server truth, not a
+ * failure worth retrying, so the local marker is brought in line with it
+ * right away instead of lingering until the next reload.
+ */
+export async function upgradeGuestPartnerAccount(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  input: { email: string; password: string },
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<UpgradeGuestPartnerAccountResult> {
+  const secrets = await secretStore.readSyncSecrets();
+  if (!secrets?.managedAuthSessionToken) {
+    return { ok: false, errorCode: "unauthorized", preferences };
+  }
+
+  const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+  const result = await managedClient.upgradeGuestAccount(
+    secrets.managedAuthSessionToken,
+    { email: input.email.trim(), password: input.password },
+  );
+
+  if (!result.ok) {
+    if (result.errorCode === "account_not_guest") {
+      const clearedPreferences: SyncPreferencesRecord = {
+        ...preferences,
+        guestSessionExpiresAt: null,
+      };
+      await storage.writeSyncPreferencesRecord(clearedPreferences);
+      return {
+        ok: false,
+        errorCode: "account_not_guest",
+        preferences: clearedPreferences,
+      };
+    }
+
+    return {
+      ok: false,
+      errorCode: mapUpgradeGuestPartnerAccountAPIError(result.errorCode),
+      preferences,
+    };
+  }
+
+  const nextPreferences: SyncPreferencesRecord = {
+    ...preferences,
+    guestSessionExpiresAt: null,
+  };
+  await storage.writeSyncPreferencesRecord(nextPreferences);
+
+  return {
+    ok: true,
+    accountID: result.result.accountID,
+    email: result.result.email,
+    recoveryCode: result.result.recoveryCode,
+    preferences: nextPreferences,
+  };
+}
+
+function mapUpgradeGuestPartnerAccountAPIError(
+  errorCode: ManagedCloudAPIErrorCode,
+): UpgradeGuestPartnerAccountErrorCode {
+  switch (errorCode) {
+    case "unauthorized":
+    case "invalid_registration_input":
+    case "registration_failed":
+    case "rate_limited":
+    case "network_failed":
+      return errorCode;
+    default:
+      return "generic";
+  }
 }
 
 export async function loadConnectedSyncCapabilities(
@@ -786,6 +926,12 @@ export async function recoverSyncAccess(
       preparedAt: now.toISOString(),
       lastRemoteGeneration: null,
       lastSyncedAt: null,
+      // Recovery authenticates with a real password (managedClient.login
+      // above) — a guest account has none, so this path can never actually
+      // be reached for a guest. Clear defensively so a stale marker carried
+      // in `...preferences` can never survive onto this freshly recovered
+      // session.
+      guestSessionExpiresAt: null,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -877,6 +1023,10 @@ export async function recoverSyncAccess(
     preparedAt: now.toISOString(),
     lastRemoteGeneration: null,
     lastSyncedAt: null,
+    // Community-sync recovery authenticates with a real password; a guest
+    // account has none, so clear defensively (same reasoning as the managed
+    // recovery branch above).
+    guestSessionExpiresAt: null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -1267,6 +1417,11 @@ export async function clearLocalSyncSession(
       : secrets
         ? "local_ready"
         : "not_configured",
+    // Disconnect/unauthorized-clear ends the session boundary; a later
+    // reconnect on this device always goes through connect/recover/guest
+    // accept, each of which sets this field to its own correct value. Clear
+    // it here so a stale guest marker never survives past this boundary.
+    guestSessionExpiresAt: null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 

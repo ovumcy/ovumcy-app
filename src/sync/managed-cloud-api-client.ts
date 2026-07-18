@@ -7,6 +7,7 @@ import type {
 export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
   | "registration_failed"
+  | "account_not_guest"
   | "invalid_credentials"
   | "invalid_current_password"
   | "new_password_must_differ"
@@ -265,6 +266,18 @@ export type ManagedCloudRegenerateRecoveryCodeResult = {
   recoveryCode: string;
 };
 
+// ManagedCloudAccountUpgradeResult is the response shape of
+// POST /account/upgrade (guest partner -> normal account). Bearer auth is
+// the guest's EXISTING managed session — success never issues or revokes a
+// session token, so unlike register/login there is no sessionToken field
+// here. recoveryCode is plaintext and returned exactly once, never
+// re-fetchable (mirrors the register-flow recovery code contract).
+export type ManagedCloudAccountUpgradeResult = {
+  accountID: string;
+  email: string;
+  recoveryCode: string;
+};
+
 export type ManagedCloudAPIClient = {
   createSyncSession(
     sessionToken: string,
@@ -437,6 +450,19 @@ export type ManagedCloudAPIClient = {
     inviteToken: string,
   ): Promise<
     | { ok: true; result: ManagedCloudGuestPartnerAcceptResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
+  // upgradeGuestAccount converts the caller's existing guest-partner account
+  // into a normal one (POST /account/upgrade). Bearer auth is the guest's
+  // CURRENT session token — unlike register/login this never issues a new
+  // session; the existing one stays valid. `account_not_guest` (409) means
+  // the account was already upgraded (or was never a guest); the caller
+  // hides the upgrade affordance when it sees that code.
+  upgradeGuestAccount(
+    sessionToken: string,
+    input: { email: string; password: string },
+  ): Promise<
+    | { ok: true; result: ManagedCloudAccountUpgradeResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   revokePartnerInvite(
@@ -647,6 +673,12 @@ type RawManagedCloudGuestPartnerAcceptResult = {
   session_expires_at: string;
   grant: RawManagedCloudPartnerAccessGrant;
   invite: RawManagedCloudPartnerInvite;
+};
+
+type RawManagedCloudAccountUpgradeResult = {
+  account_id: string;
+  email: string;
+  recovery_code: string;
 };
 
 type RawManagedCloudPartnerProjection = {
@@ -1105,6 +1137,34 @@ export function createManagedCloudAPIClient(
       );
     },
 
+    async upgradeGuestAccount(sessionToken, input) {
+      return requestJSON<RawManagedCloudAccountUpgradeResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/upgrade",
+        {
+          method: "POST",
+          sessionToken,
+          body: {
+            email: input.email,
+            password: input.password,
+          },
+        },
+        isRawManagedCloudAccountUpgradeResult,
+      ).then((result) =>
+        result.ok
+          ? {
+              ok: true,
+              result: {
+                accountID: result.payload.account_id,
+                email: result.payload.email,
+                recoveryCode: result.payload.recovery_code,
+              },
+            }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
     async revokePartnerInvite(sessionToken, inviteID) {
       return requestJSON<RawManagedCloudPartnerInvite>(
         fetchImpl,
@@ -1312,6 +1372,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
     switch (payload?.error) {
       case "invalid_registration_input":
       case "registration_failed":
+      case "account_not_guest":
       case "invalid_credentials":
       case "invalid_current_password":
       case "new_password_must_differ":
@@ -1675,6 +1736,17 @@ function isRawManagedCloudGuestPartnerAcceptResult(
     typeof value.session_expires_at === "string" &&
     isRawManagedCloudPartnerAccessGrant(value.grant) &&
     isRawManagedCloudPartnerInvite(value.invite)
+  );
+}
+
+function isRawManagedCloudAccountUpgradeResult(
+  value: unknown,
+): value is RawManagedCloudAccountUpgradeResult {
+  return (
+    isObject(value) &&
+    typeof value.account_id === "string" &&
+    typeof value.email === "string" &&
+    typeof value.recovery_code === "string"
   );
 }
 

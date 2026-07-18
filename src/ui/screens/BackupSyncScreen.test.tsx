@@ -1898,6 +1898,7 @@ describe("BackupSyncScreen", () => {
       preparedAt: "2026-05-17T08:00:00.000Z",
       lastRemoteGeneration: null,
       lastSyncedAt: null,
+      guestSessionExpiresAt: null,
     };
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest
@@ -2080,6 +2081,7 @@ describe("BackupSyncScreen", () => {
       preparedAt: "2026-05-17T08:00:00.000Z",
       lastRemoteGeneration: null,
       lastSyncedAt: null,
+      guestSessionExpiresAt: null,
     };
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest
@@ -2482,6 +2484,324 @@ describe("BackupSyncScreen", () => {
     expect(mockReplace).toHaveBeenCalledWith(
       expect.stringContaining("/onboarding?reset="),
     );
+  });
+
+  describe("guest account upgrade (ovumcy-app#118)", () => {
+    const partnerCopy = getPartnerCopy("en");
+
+    function createGuestSecrets() {
+      return {
+        device: {
+          deviceID: "guest-device-1",
+          deviceLabel: "",
+          createdAt: "2026-04-05T08:00:00.000Z",
+        },
+        masterKeyHex: "aa",
+        deviceSecretHex: "bb",
+        wrappedKey: {
+          algorithm: "xchacha20poly1305" as const,
+          kdf: "bip39_seed_hkdf_sha256" as const,
+          mnemonicWordCount: 12 as const,
+          wrapNonceHex: "cc",
+          wrappedMasterKeyHex: "dd",
+          phraseFingerprintHex: "ee",
+        },
+        authSessionToken: null,
+        managedAuthSessionToken: "guest-session-1",
+      };
+    }
+
+    // Fetch mock for the initial focus-load only (getSession, billing,
+    // partner access) — matches the "does not bounce a guest back to
+    // onboarding" fixture above. Each test that submits the upgrade form
+    // swaps global.fetch to a dedicated single-call mock afterward, since
+    // POST /account/upgrade is the only network call the submit path makes.
+    function createGuestLoadFetchMock(guestSessionExpiresAt: string): typeof fetch {
+      return jest.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/auth/session")) {
+          return createJSONResponse({
+            account_id: "guest-account-1",
+            email: "guest+guest-account-1@guest.invalid",
+            session_expires_at: guestSessionExpiresAt,
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "guest_partner",
+              updated_at: "2026-04-05T08:00:00.000Z",
+              effective_at: "2026-04-05T08:00:00.000Z",
+              explanation: "guest partner",
+            },
+          });
+        }
+        if (url.includes("/account/billing")) {
+          return createJSONResponse({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          });
+        }
+        if (url.includes("/account/partner/access")) {
+          return createJSONResponse({
+            owned: { invites: [], grants: [] },
+            shared_with_me: [
+              {
+                id: "grant-9",
+                owner_account_id: "owner-1",
+                partner_account_id: "guest-account-1",
+                access_level: "full",
+                source_invite_id: "invite-9",
+                accepted_at: "2026-04-05T08:00:00.000Z",
+                last_seen_at: "2026-04-05T08:00:00.000Z",
+                created_at: "2026-04-05T08:00:00.000Z",
+                updated_at: "2026-04-05T08:00:00.000Z",
+              },
+            ],
+          });
+        }
+        throw new Error(`Unexpected fetch in test: ${url}`);
+      }) as typeof fetch;
+    }
+
+    async function renderGuestScreen(options: {
+      guestSessionExpiresAt: string;
+      now?: Date;
+    }) {
+      const storage = createSettingsStorageMock({
+        readBootstrapState: jest.fn().mockResolvedValue({
+          hasCompletedOnboarding: false,
+          profileVersion: 2,
+          incompleteOnboardingStep: null,
+        }),
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "managed",
+          setupStatus: "connected",
+          guestSessionExpiresAt: options.guestSessionExpiresAt,
+        }),
+      });
+      const syncSecretStore = createSyncSecretStoreMock();
+      await syncSecretStore.writeSyncSecrets(createGuestSecrets());
+      global.fetch = createGuestLoadFetchMock(options.guestSessionExpiresAt);
+
+      render(
+        <BackupSyncScreen
+          now={options.now ?? new Date(2026, 3, 5)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+      await screen.findByTestId("backup-sync-guest-upgrade-cta");
+      return { storage, syncSecretStore };
+    }
+
+    it("shows the Keep-your-access CTA immediately for a guest session, with no Advanced tap needed", async () => {
+      await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
+      // Immediately visible with no invite token buffered and "Advanced"
+      // never tapped — proving this CTA does NOT ride the same
+      // advancedOpen/hasShownPartnerSectionForToken gate
+      // SettingsPartnerAccessSection sits behind (that section stays
+      // collapsed here, confirming the two are independent).
+      expect(screen.queryByTestId("settings-partner-section")).toBeNull();
+    });
+
+    it("never shows the Keep-your-access CTA for a full (non-guest) managed session", async () => {
+      const ownerStorage = createSettingsStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(
+          createConnectedManagedPreferences(),
+        ),
+      });
+      const ownerSecretStore = createSyncSecretStoreMock();
+      await ownerSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+      global.fetch = createManagedBillingFetchMock({
+        billing: {
+          has_active_plan: true,
+          premium_features: {
+            advanced_fertility: true,
+            advanced_insights: true,
+            doctor_pdf: true,
+            extended_reports: true,
+            partner_access: true,
+            reminders: true,
+          },
+        },
+      });
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={ownerStorage}
+          syncSecretStore={ownerSecretStore}
+        />,
+      );
+      await screen.findByTestId("settings-sync-section");
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-cta")).toBeNull();
+    });
+
+    it("gates the form behind device security, and shows the unavailable message when the gate fails", async () => {
+      await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
+
+      mockRequestSensitiveActionChallenge.mockResolvedValueOnce({
+        ok: false,
+        reason: "unavailable",
+      });
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+
+      await waitFor(() =>
+        expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
+          partnerCopy.guestUpgrade.deviceAuthPrompt,
+        ),
+      );
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-form-modal")).toBeNull();
+      expect(
+        await screen.findByText(partnerCopy.guestUpgrade.errors.deviceAuthUnavailable),
+      ).toBeTruthy();
+
+      // A second tap that passes the gate opens the form.
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
+    });
+
+    it("validates email and password before submitting, with no network call", async () => {
+      await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
+
+      const fetchSpy = jest.fn();
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      expect(
+        await screen.findByText(partnerCopy.guestUpgrade.errors.emailRequired),
+      ).toBeTruthy();
+
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
+        "owner@example.com",
+      );
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      expect(
+        await screen.findByText(partnerCopy.guestUpgrade.errors.passwordRequired),
+      ).toBeTruthy();
+
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-password-input"),
+        "short",
+      );
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      expect(
+        await screen.findByText(partnerCopy.guestUpgrade.errors.passwordTooShort),
+      ).toBeTruthy();
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it("on success shows the one-time recovery code, hides it on acknowledgement, and the CTA disappears", async () => {
+      await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
+
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
+        "owner@example.com",
+      );
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-password-input"),
+        "very secure password 12345",
+      );
+
+      global.fetch = jest.fn().mockResolvedValueOnce(
+        createJSONResponse({
+          account_id: "guest-account-1",
+          email: "owner@example.com",
+          recovery_code: "fresh1234fresh1234fresh1234fresh",
+        }),
+      ) as unknown as typeof fetch;
+
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+
+      const codeNode = await screen.findByTestId(
+        "backup-sync-guest-upgrade-recovery-code-value",
+      );
+      expect(codeNode.props.children).toBe("fresh1234fresh1234fresh1234fresh");
+      expect(codeNode.props.selectable).toBe(true);
+      // The form itself is gone once the reveal is up.
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-form-modal")).toBeNull();
+      // The CTA/nudge card is gone too — the account is no longer a guest —
+      // but the reveal must stay visible regardless (see GuestUpgradeSection).
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-cta")).toBeNull();
+
+      const upgradeCall = (global.fetch as jest.Mock).mock.calls[0];
+      expect(String(upgradeCall[0])).toContain("/account/upgrade");
+      expect((upgradeCall[1]?.headers as Headers).get("Authorization")).toBe(
+        "Bearer guest-session-1",
+      );
+
+      fireEvent.press(
+        screen.getByTestId("backup-sync-guest-upgrade-recovery-code-confirm-button"),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("backup-sync-guest-upgrade-recovery-code-modal"),
+        ).toBeNull(),
+      );
+    });
+
+    it("hides the CTA on account_not_guest without leaving the form open", async () => {
+      await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
+
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-email-input"),
+        "owner@example.com",
+      );
+      fireEvent.changeText(
+        screen.getByTestId("backup-sync-guest-upgrade-password-input"),
+        "very secure password 12345",
+      );
+
+      global.fetch = jest.fn().mockResolvedValueOnce(
+        createJSONResponse({ error: "account_not_guest" }, 409),
+      ) as unknown as typeof fetch;
+
+      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+
+      await waitFor(
+        () =>
+          expect(screen.queryByTestId("backup-sync-guest-upgrade-cta")).toBeNull(),
+        { timeout: 5000 },
+      );
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-form-modal")).toBeNull();
+      expect(
+        screen.queryByTestId("backup-sync-guest-upgrade-recovery-code-modal"),
+      ).toBeNull();
+    });
+
+    it("shows the expiry nudge when the guest session is close to expiring, and not when it is far out", async () => {
+      // now = 2026-04-05T12:00:00.000Z, expires = 2026-04-08T00:00:00.000Z:
+      // 2.5 days remaining rounds up to 3 — inside the 7-day nudge window.
+      await renderGuestScreen({
+        guestSessionExpiresAt: "2026-04-08T00:00:00.000Z",
+        now: new Date("2026-04-05T12:00:00.000Z"),
+      });
+      expect(
+        await screen.findByText(partnerCopy.guestUpgrade.nudgeMessage(3)),
+      ).toBeTruthy();
+    });
+
+    it("does not show the expiry nudge when the guest session is not close to expiring", async () => {
+      await renderGuestScreen({
+        guestSessionExpiresAt: "2026-06-05T00:00:00.000Z",
+        now: new Date("2026-04-05T12:00:00.000Z"),
+      });
+      expect(screen.queryByTestId("backup-sync-guest-upgrade-nudge")).toBeNull();
+    });
   });
 });
 

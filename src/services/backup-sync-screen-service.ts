@@ -9,9 +9,11 @@ import {
   recoverSyncAccess,
   runSyncRestore,
   runSyncUpload,
+  upgradeGuestPartnerAccount,
   type SyncConnectErrorCode,
   type SyncRecoverErrorCode,
   type SyncRunErrorCode,
+  type UpgradeGuestPartnerAccountErrorCode,
   type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
 import {
@@ -290,7 +292,10 @@ export async function acceptBackupSyncPartnerInviteAsGuest(
     storage,
     secretStore,
     currentState.savedSyncPreferences,
-    { sessionToken: acceptResult.value.sessionToken },
+    {
+      sessionToken: acceptResult.value.sessionToken,
+      sessionExpiresAt: acceptResult.value.sessionExpiresAt,
+    },
     now,
   );
 
@@ -315,6 +320,65 @@ export async function acceptBackupSyncPartnerInviteAsGuest(
       persisted.capabilities,
       managedPremiumAccess,
     ),
+  };
+}
+
+/**
+ * upgradeBackupSyncGuestAccount wraps `upgradeGuestPartnerAccount` for the
+ * screen: it always rebuilds `state` from the returned preferences, whether
+ * the call succeeded or failed, because a failure can still legitimately
+ * change local state (the `account_not_guest` race clears the local guest
+ * marker exactly like success does — see `upgradeGuestPartnerAccount`). This
+ * lets the caller apply `result.state` unconditionally and the "Keep your
+ * access" affordance disappears the instant either outcome lands, without a
+ * special case for that one error code.
+ */
+export async function upgradeBackupSyncGuestAccount(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  input: { email: string; password: string },
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+      email: string;
+      recoveryCode: string;
+    }
+  | {
+      ok: false;
+      errorCode: UpgradeGuestPartnerAccountErrorCode;
+      state: LoadedSettingsState;
+    }
+> {
+  const result = await upgradeGuestPartnerAccount(
+    storage,
+    secretStore,
+    currentState.savedSyncPreferences,
+    input,
+  );
+
+  const nextState = createLoadedSettingsState(
+    currentState.profile,
+    result.preferences,
+    currentState.hasStoredSyncSecrets,
+    currentState.hasSyncSession,
+    currentState.symptomRecords,
+    currentState.exportState,
+    result.preferences,
+    currentState.syncCapabilities,
+    currentState.managedPremiumAccess,
+  );
+
+  if (!result.ok) {
+    return { ok: false, errorCode: result.errorCode, state: nextState };
+  }
+
+  return {
+    ok: true,
+    state: nextState,
+    email: result.email,
+    recoveryCode: result.recoveryCode,
   };
 }
 

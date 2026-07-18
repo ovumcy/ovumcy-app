@@ -11,9 +11,11 @@ import {
   buildBackupSyncDeviceListView,
   buildBackupSyncDirtyState,
   buildBackupSyncSetupPresentation,
+  isGuestPartnerAccount,
   resolveBackupSyncConnectedStatusMessage,
   resolveBackupSyncDeviceErrorMessage,
   resolveBackupSyncErrorMessage,
+  resolveGuestSessionExpiryNudgeDays,
   revertBackupSyncDraftState,
 } from "./backup-sync-view-service";
 
@@ -290,5 +292,91 @@ describe("backup sync view service", () => {
     expect(resolveBackupSyncDeviceErrorMessage("generic", copy)).toBe(
       copy.errors.generic,
     );
+  });
+
+  describe("isGuestPartnerAccount", () => {
+    it("is true only for a non-empty guestSessionExpiresAt string", () => {
+      expect(
+        isGuestPartnerAccount({
+          ...createDefaultSyncPreferencesRecord(),
+          guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+        }),
+      ).toBe(true);
+      expect(
+        isGuestPartnerAccount({
+          ...createDefaultSyncPreferencesRecord(),
+          guestSessionExpiresAt: null,
+        }),
+      ).toBe(false);
+      expect(isGuestPartnerAccount(createDefaultSyncPreferencesRecord())).toBe(
+        false,
+      );
+      // A record that never passed through the storage-layer normalizers
+      // (e.g. a hand-built fixture predating this field, or a partial mock
+      // return value in a test) can carry `undefined` here — this must not
+      // be misread as guest mode via a naive `!== null` check.
+      expect(
+        isGuestPartnerAccount({
+          ...createDefaultSyncPreferencesRecord(),
+          guestSessionExpiresAt: undefined as unknown as null,
+        }),
+      ).toBe(false);
+      expect(
+        isGuestPartnerAccount({
+          ...createDefaultSyncPreferencesRecord(),
+          guestSessionExpiresAt: "",
+        }),
+      ).toBe(false);
+    });
+  });
+
+  describe("resolveGuestSessionExpiryNudgeDays", () => {
+    it("returns null when there is no guest session", () => {
+      expect(resolveGuestSessionExpiryNudgeDays(null, "2026-04-05T12:00:00.000Z")).toBeNull();
+    });
+
+    it("returns null for an unparseable timestamp on either side", () => {
+      expect(
+        resolveGuestSessionExpiryNudgeDays("not-a-date", "2026-04-05T12:00:00.000Z"),
+      ).toBeNull();
+      expect(
+        resolveGuestSessionExpiryNudgeDays("2026-04-08T00:00:00.000Z", "not-a-date"),
+      ).toBeNull();
+    });
+
+    it("returns null once the session has already expired", () => {
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-01T00:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+        ),
+      ).toBeNull();
+    });
+
+    it("rounds the remaining time up to whole days, within the 7-day window", () => {
+      // 2.5 days remaining rounds up to 3.
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-08T00:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+        ),
+      ).toBe(3);
+      // Exactly on the 7-day boundary still shows.
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-12T12:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+        ),
+      ).toBe(7);
+    });
+
+    it("returns null once expiry is further than 7 days out", () => {
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-13T00:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+        ),
+      ).toBeNull();
+    });
   });
 });

@@ -1,5 +1,6 @@
 import type { InterfaceLanguage } from "../models/profile";
 import { resolveCopyLanguage } from "./runtime";
+import { ruDayWord } from "./ru-plural";
 
 const partnerCopyEn = {
   title: "Partner access",
@@ -93,6 +94,45 @@ const partnerCopyEn = {
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Partner invitations",
+  guestUpgrade: {
+    ctaLabel: "Keep your access",
+    ctaHint:
+      "Add an email and password so this shared access keeps working even after this device's guest session expires.",
+    formTitle: "Keep your access",
+    formHint:
+      "This turns your guest access into a normal Ovumcy Cloud account. You'll get a one-time recovery code — save it somewhere safe.",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Enter password",
+    submitLabel: "Keep access",
+    cancelLabel: "Cancel",
+    deviceAuthPrompt:
+      "Confirm with device security to keep access to this shared account.",
+    successMessage:
+      "Your access is saved. Save the recovery code below — it won't be shown again.",
+    alreadyUpgradedMessage: "This account has already been upgraded.",
+    revealTitle: "Save your recovery code",
+    revealHint:
+      "Shown only once. Use it if you ever forget this account's password.",
+    revealConfirmLabel: "I have saved it",
+    nudgeMessage: (days: number) =>
+      `Your guest access expires in ${days} ${days === 1 ? "day" : "days"} — keep it before then.`,
+    errors: {
+      emailRequired: "Email is required.",
+      passwordRequired: "Password is required.",
+      passwordTooShort: "Password must be at least 12 characters.",
+      invalidRegistrationInput: "Use a valid email and a stronger password.",
+      emailTaken:
+        "This email is already registered. Try a different email or sign in on another device instead.",
+      unauthorized: "This session has expired. Ask the owner for a new invite link.",
+      rateLimited: "Too many attempts. Please wait a moment before trying again.",
+      deviceAuthUnavailable:
+        "Set up a device passcode or biometrics before keeping this shared access.",
+      deviceAuthFailed: "Unable to confirm device security right now. Please try again.",
+      generic: "Unable to save your access right now. Please try again.",
+    },
+  },
 } as const;
 
 const partnerCopyDe = {
@@ -187,6 +227,50 @@ const partnerCopyDe = {
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Partner-Einladungen",
+  guestUpgrade: {
+    ctaLabel: "Zugriff sichern",
+    ctaHint:
+      "Fügen Sie eine E-Mail-Adresse und ein Passwort hinzu, damit dieser geteilte Zugriff auch nach Ablauf der Gastsitzung auf diesem Gerät weiter funktioniert.",
+    formTitle: "Zugriff sichern",
+    formHint:
+      "Dadurch wird Ihr Gastzugriff in ein normales Ovumcy-Cloud-Konto umgewandelt. Sie erhalten einen einmaligen Wiederherstellungscode — bewahren Sie ihn sicher auf.",
+    emailLabel: "E-Mail",
+    emailPlaceholder: "sie@example.com",
+    passwordLabel: "Passwort",
+    passwordPlaceholder: "Passwort eingeben",
+    submitLabel: "Zugriff sichern",
+    cancelLabel: "Abbrechen",
+    deviceAuthPrompt:
+      "Bestätigen Sie mit der Gerätesicherheit, um diesen geteilten Zugriff zu sichern.",
+    successMessage:
+      "Ihr Zugriff ist gesichert. Speichern Sie den Wiederherstellungscode unten — er wird nicht erneut angezeigt.",
+    alreadyUpgradedMessage: "Dieses Konto wurde bereits aktualisiert.",
+    revealTitle: "Wiederherstellungscode speichern",
+    revealHint:
+      "Wird nur einmal angezeigt. Verwenden Sie ihn, falls Sie das Passwort dieses Kontos vergessen.",
+    revealConfirmLabel: "Ich habe ihn gespeichert",
+    nudgeMessage: (days: number) =>
+      `Ihr Gastzugriff läuft in ${days} ${days === 1 ? "Tag" : "Tagen"} ab — sichern Sie ihn vorher.`,
+    errors: {
+      emailRequired: "E-Mail ist erforderlich.",
+      passwordRequired: "Passwort ist erforderlich.",
+      passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
+      invalidRegistrationInput:
+        "Verwenden Sie eine gültige E-Mail-Adresse und ein stärkeres Passwort.",
+      emailTaken:
+        "Diese E-Mail-Adresse ist bereits registriert. Verwenden Sie eine andere E-Mail-Adresse oder melden Sie sich stattdessen auf einem anderen Gerät an.",
+      unauthorized:
+        "Diese Sitzung ist abgelaufen. Bitten Sie den Besitzer um einen neuen Einladungslink.",
+      rateLimited:
+        "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
+      deviceAuthUnavailable:
+        "Richten Sie auf diesem Gerät zuerst einen Code oder Biometrie ein, bevor Sie diesen geteilten Zugriff sichern.",
+      deviceAuthFailed:
+        "Der Geräteschutz konnte gerade nicht bestätigt werden. Bitte versuchen Sie es erneut.",
+      generic:
+        "Ihr Zugriff konnte gerade nicht gesichert werden. Bitte versuchen Sie es erneut.",
+    },
+  },
 } as const;
 
 const partnerCopyFr = {
@@ -281,6 +365,49 @@ const partnerCopyFr = {
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Invitations partenaires",
+  guestUpgrade: {
+    ctaLabel: "Conserver votre accès",
+    ctaHint:
+      "Ajoutez un e-mail et un mot de passe pour que cet accès partagé continue de fonctionner même après l’expiration de la session invité sur cet appareil.",
+    formTitle: "Conserver votre accès",
+    formHint:
+      "Cela transforme votre accès invité en compte Ovumcy Cloud normal. Vous recevrez un code de récupération à usage unique — conservez-le en lieu sûr.",
+    emailLabel: "E-mail",
+    emailPlaceholder: "vous@example.com",
+    passwordLabel: "Mot de passe",
+    passwordPlaceholder: "Saisir le mot de passe",
+    submitLabel: "Conserver l’accès",
+    cancelLabel: "Annuler",
+    deviceAuthPrompt:
+      "Confirmez avec la sécurité de l’appareil pour conserver cet accès partagé.",
+    successMessage:
+      "Votre accès est enregistré. Sauvegardez le code de récupération ci-dessous — il ne sera plus affiché.",
+    alreadyUpgradedMessage: "Ce compte a déjà été mis à niveau.",
+    revealTitle: "Sauvegardez votre code de récupération",
+    revealHint:
+      "Affiché une seule fois. Utilisez-le si vous oubliez le mot de passe de ce compte.",
+    revealConfirmLabel: "Je l’ai sauvegardé",
+    nudgeMessage: (days: number) =>
+      `Votre accès invité expire dans ${days} ${days === 1 ? "jour" : "jours"} — conservez-le avant.`,
+    errors: {
+      emailRequired: "L’e-mail est requis.",
+      passwordRequired: "Le mot de passe est requis.",
+      passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
+      invalidRegistrationInput:
+        "Utilisez un e-mail valide et un mot de passe plus robuste.",
+      emailTaken:
+        "Cet e-mail est déjà enregistré. Utilisez un autre e-mail ou connectez-vous plutôt sur un autre appareil.",
+      unauthorized:
+        "Cette session a expiré. Demandez un nouveau lien d’invitation au propriétaire.",
+      rateLimited:
+        "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
+      deviceAuthUnavailable:
+        "Configurez un code ou la biométrie sur cet appareil avant de conserver cet accès partagé.",
+      deviceAuthFailed:
+        "Impossible de confirmer la sécurité de l’appareil pour le moment. Réessayez.",
+      generic: "Impossible d’enregistrer votre accès pour le moment. Réessayez.",
+    },
+  },
 } as const;
 
 const partnerCopyRu = {
@@ -375,6 +502,45 @@ const partnerCopyRu = {
   },
   premiumEyebrowLabel: "Премиум",
   premiumLockTitle: "Приглашения партнёра",
+  guestUpgrade: {
+    ctaLabel: "Сохранить доступ",
+    ctaHint:
+      "Добавь email и пароль, чтобы этот общий доступ продолжал работать даже после истечения гостевой сессии на этом устройстве.",
+    formTitle: "Сохранить доступ",
+    formHint:
+      "Это превратит твой гостевой доступ в обычный аккаунт Ovumcy Cloud. Ты получишь одноразовый код восстановления — сохрани его в надёжном месте.",
+    emailLabel: "Email",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Пароль",
+    passwordPlaceholder: "Введите пароль",
+    submitLabel: "Сохранить доступ",
+    cancelLabel: "Отмена",
+    deviceAuthPrompt:
+      "Подтверди защитой устройства, чтобы сохранить этот общий доступ.",
+    successMessage:
+      "Доступ сохранён. Сохрани код восстановления ниже — он больше не будет показан.",
+    alreadyUpgradedMessage: "Этот аккаунт уже был обновлён.",
+    revealTitle: "Сохрани код восстановления",
+    revealHint:
+      "Показывается только один раз. Понадобится, если забудешь пароль этого аккаунта.",
+    revealConfirmLabel: "Я сохранил(а)",
+    nudgeMessage: (days: number) =>
+      `Гостевой доступ истекает через ${days} ${ruDayWord(days)} — сохрани его заранее.`,
+    errors: {
+      emailRequired: "Укажите email.",
+      passwordRequired: "Введите пароль.",
+      passwordTooShort: "Пароль должен содержать не менее 12 символов.",
+      invalidRegistrationInput: "Укажите корректный email и более надёжный пароль.",
+      emailTaken:
+        "Этот email уже зарегистрирован. Используй другой email или войди на другом устройстве.",
+      unauthorized: "Сессия истекла. Попроси у владельца новую ссылку-приглашение.",
+      rateLimited: "Слишком много попыток. Пожалуйста, подожди немного, прежде чем повторить.",
+      deviceAuthUnavailable:
+        "Перед сохранением этого общего доступа настройте код-пароль или биометрию на устройстве.",
+      deviceAuthFailed: "Сейчас не удалось подтвердить защиту устройства. Попробуйте ещё раз.",
+      generic: "Сейчас не удалось сохранить доступ. Попробуйте ещё раз.",
+    },
+  },
 } as const;
 
 const partnerCopyEs = {
@@ -469,6 +635,47 @@ const partnerCopyEs = {
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Invitaciones de pareja",
+  guestUpgrade: {
+    ctaLabel: "Conservar tu acceso",
+    ctaHint:
+      "Añade un correo y una contraseña para que este acceso compartido siga funcionando incluso después de que expire la sesión de invitado en este dispositivo.",
+    formTitle: "Conservar tu acceso",
+    formHint:
+      "Esto convierte tu acceso de invitado en una cuenta normal de Ovumcy Cloud. Recibirás un código de recuperación de un solo uso — guárdalo en un lugar seguro.",
+    emailLabel: "Correo electrónico",
+    emailPlaceholder: "tu@example.com",
+    passwordLabel: "Contraseña",
+    passwordPlaceholder: "Introduce la contraseña",
+    submitLabel: "Conservar acceso",
+    cancelLabel: "Cancelar",
+    deviceAuthPrompt:
+      "Confirma con la seguridad del dispositivo para conservar este acceso compartido.",
+    successMessage:
+      "Tu acceso está guardado. Guarda el código de recuperación de abajo — no volverá a mostrarse.",
+    alreadyUpgradedMessage: "Esta cuenta ya se ha actualizado.",
+    revealTitle: "Guarda tu código de recuperación",
+    revealHint:
+      "Se muestra solo una vez. Úsalo si alguna vez olvidas la contraseña de esta cuenta.",
+    revealConfirmLabel: "Lo he guardado",
+    nudgeMessage: (days: number) =>
+      `Tu acceso de invitado caduca en ${days} ${days === 1 ? "día" : "días"} — consérvalo antes de que ocurra.`,
+    errors: {
+      emailRequired: "El correo electrónico es obligatorio.",
+      passwordRequired: "La contraseña es obligatoria.",
+      passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
+      invalidRegistrationInput: "Usa un correo válido y una contraseña más segura.",
+      emailTaken:
+        "Este correo ya está registrado. Prueba con otro correo o inicia sesión en otro dispositivo.",
+      unauthorized:
+        "Esta sesión ha caducado. Pide a la persona propietaria un nuevo enlace de invitación.",
+      rateLimited: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
+      deviceAuthUnavailable:
+        "Configura un código o biometría en este dispositivo antes de conservar este acceso compartido.",
+      deviceAuthFailed:
+        "No se pudo confirmar la seguridad del dispositivo ahora mismo. Inténtalo de nuevo.",
+      generic: "No se pudo guardar tu acceso ahora mismo. Inténtalo de nuevo.",
+    },
+  },
 } as const;
 
 const partnerCopyIt = {
@@ -563,6 +770,46 @@ const partnerCopyIt = {
   },
   premiumEyebrowLabel: "Premium",
   premiumLockTitle: "Inviti partner",
+  guestUpgrade: {
+    ctaLabel: "Mantieni il tuo accesso",
+    ctaHint:
+      "Aggiungi un'email e una password in modo che questo accesso condiviso continui a funzionare anche dopo la scadenza della sessione ospite su questo dispositivo.",
+    formTitle: "Mantieni il tuo accesso",
+    formHint:
+      "Questo trasforma il tuo accesso ospite in un normale account Ovumcy Cloud. Riceverai un codice di recupero monouso — conservalo in un luogo sicuro.",
+    emailLabel: "Email",
+    emailPlaceholder: "tu@example.com",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Inserisci la password",
+    submitLabel: "Mantieni l'accesso",
+    cancelLabel: "Annulla",
+    deviceAuthPrompt:
+      "Conferma con la sicurezza del dispositivo per mantenere questo accesso condiviso.",
+    successMessage:
+      "Il tuo accesso è stato salvato. Salva il codice di recupero qui sotto — non verrà mostrato di nuovo.",
+    alreadyUpgradedMessage: "Questo account è già stato aggiornato.",
+    revealTitle: "Salva il tuo codice di recupero",
+    revealHint:
+      "Mostrato solo una volta. Usalo se dovessi dimenticare la password di questo account.",
+    revealConfirmLabel: "L'ho salvato",
+    nudgeMessage: (days: number) =>
+      `Il tuo accesso ospite scade tra ${days} ${days === 1 ? "giorno" : "giorni"} — mantienilo prima che accada.`,
+    errors: {
+      emailRequired: "L'email è obbligatoria.",
+      passwordRequired: "La password è obbligatoria.",
+      passwordTooShort: "La password deve contenere almeno 12 caratteri.",
+      invalidRegistrationInput: "Usa un'email valida e una password più sicura.",
+      emailTaken:
+        "Questa email è già registrata. Prova un'altra email oppure accedi da un altro dispositivo.",
+      unauthorized: "Questa sessione è scaduta. Chiedi al proprietario un nuovo link di invito.",
+      rateLimited: "Troppi tentativi. Attendi un momento prima di riprovare.",
+      deviceAuthUnavailable:
+        "Imposta un codice o la biometria su questo dispositivo prima di mantenere questo accesso condiviso.",
+      deviceAuthFailed:
+        "Impossibile confermare la sicurezza del dispositivo in questo momento. Riprova.",
+      generic: "Impossibile salvare il tuo accesso in questo momento. Riprova.",
+    },
+  },
 } as const;
 
 const catalogs = {

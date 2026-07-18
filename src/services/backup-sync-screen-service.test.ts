@@ -1,10 +1,14 @@
-import type { SyncSecretsRecord } from "../sync/sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncSecretsRecord,
+} from "../sync/sync-contract";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   acceptBackupSyncPartnerInviteAsGuest,
   connectBackupSyncAccount,
   updateBackupSyncRenewal,
+  upgradeBackupSyncGuestAccount,
 } from "./backup-sync-screen-service";
 import { loadSettingsScreenState } from "./settings-state-service";
 
@@ -454,5 +458,186 @@ describe("acceptBackupSyncPartnerInviteAsGuest", () => {
     // None of the rejected attempts wrote a session.
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+});
+
+describe("upgradeBackupSyncGuestAccount", () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const GUEST_SYNC_PREFERENCES = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    setupStatus: "connected" as const,
+    guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+  };
+
+  // Loads a realistic guest-session LoadedSettingsState through the same
+  // loadSettingsScreenState path the screen uses on focus, so the test
+  // exercises upgradeBackupSyncGuestAccount against the same state shape the
+  // real controller would pass it (rather than a hand-built stand-in).
+  async function loadGuestState() {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue(GUEST_SYNC_PREFERENCES),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      ...PREPARED_MANAGED_SECRETS,
+      managedAuthSessionToken: "guest-session-1",
+    });
+
+    global.fetch = jest
+      .fn()
+      // GET /auth/session (loadConnectedSyncCapabilities)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "guest-account-1",
+            email: "guest+guest-account-1@guest.invalid",
+            session_expires_at: "2026-05-05T08:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "guest_partner",
+              updated_at: "2026-04-05T08:00:00.000Z",
+              effective_at: "2026-04-05T08:00:00.000Z",
+              explanation: "guest partner",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      // GET /account/billing
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ) as typeof fetch;
+
+    const state = await loadSettingsScreenState(storage, secretStore, new Date(2026, 3, 5));
+    expect(state.syncPreferences.guestSessionExpiresAt).toBe(
+      "2026-05-05T08:00:00.000Z",
+    );
+    return { storage, secretStore, state };
+  }
+
+  it("returns unauthorized with no managed session and does not touch storage", async () => {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue(GUEST_SYNC_PREFERENCES),
+    });
+    const secretStore = createSyncSecretStoreMock();
+    const state = await loadSettingsScreenState(storage, secretStore, new Date(2026, 3, 5));
+
+    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+      email: "owner@example.com",
+      password: "very secure password 12345",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected an unauthorized failure");
+    }
+    expect(result.errorCode).toBe("unauthorized");
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("on success clears the guest marker in the returned state and surfaces the recovery code once", async () => {
+    const { storage, secretStore, state } = await loadGuestState();
+
+    global.fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "guest-account-1",
+          email: "owner@example.com",
+          recovery_code: "fresh1234fresh1234fresh1234fresh",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    ) as typeof fetch;
+
+    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+      email: "owner@example.com",
+      password: "very secure password 12345",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      throw new Error("expected a successful upgrade result");
+    }
+    expect(result.email).toBe("owner@example.com");
+    expect(result.recoveryCode).toBe("fresh1234fresh1234fresh1234fresh");
+    // The one and only local side effect on success: the guest marker is
+    // gone from BOTH the draft and saved preferences on the returned state,
+    // so the "Keep your access" CTA disappears immediately.
+    expect(result.state.syncPreferences.guestSessionExpiresAt).toBeNull();
+    expect(result.state.savedSyncPreferences.guestSessionExpiresAt).toBeNull();
+    // Still connected — upgrade never revokes or reissues the session.
+    expect(result.state.hasSyncSession).toBe(true);
+
+    const upgradeCall = (global.fetch as jest.Mock).mock.calls[0];
+    expect(String(upgradeCall[0])).toContain("/account/upgrade");
+    expect((upgradeCall[1]?.headers as Headers).get("Authorization")).toBe(
+      "Bearer guest-session-1",
+    );
+  });
+
+  it("clears the guest marker on account_not_guest so the CTA hides even though the call failed", async () => {
+    const { storage, secretStore, state } = await loadGuestState();
+
+    global.fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "account_not_guest" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as typeof fetch;
+
+    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+      email: "owner@example.com",
+      password: "very secure password 12345",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected an account_not_guest failure");
+    }
+    expect(result.errorCode).toBe("account_not_guest");
+    expect(result.state.syncPreferences.guestSessionExpiresAt).toBeNull();
+  });
+
+  it("leaves the guest marker untouched on a retryable error (invalid_registration_input)", async () => {
+    const { storage, secretStore, state } = await loadGuestState();
+
+    global.fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "invalid_registration_input" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as typeof fetch;
+
+    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+      email: "owner@example.com",
+      password: "short",
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      throw new Error("expected an invalid_registration_input failure");
+    }
+    expect(result.errorCode).toBe("invalid_registration_input");
+    // Retryable: the guest is still a guest, so the CTA and form must stay
+    // exactly as they were for a retry.
+    expect(result.state.syncPreferences.guestSessionExpiresAt).toBe(
+      "2026-05-05T08:00:00.000Z",
+    );
   });
 });

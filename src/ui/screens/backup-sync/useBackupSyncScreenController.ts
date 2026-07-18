@@ -28,6 +28,7 @@ import { useBackupSyncManagedPlan } from "./useBackupSyncManagedPlan";
 import { useBackupSyncPartnerAccess } from "./useBackupSyncPartnerAccess";
 import { useBackupSyncAccountDeletion } from "./useBackupSyncAccountDeletion";
 import { useBackupSyncDeviceManagement } from "./useBackupSyncDeviceManagement";
+import { useBackupSyncGuestUpgrade } from "./useBackupSyncGuestUpgrade";
 
 type BackupSyncScreenControllerOptions = BackupSyncSessionCoreOptions;
 
@@ -58,6 +59,7 @@ export function useBackupSyncScreenController(
   const partner = useBackupSyncPartnerAccess(core);
   const deletion = useBackupSyncAccountDeletion(core);
   const deviceManagement = useBackupSyncDeviceManagement(core);
+  const guestUpgrade = useBackupSyncGuestUpgrade(core);
 
   const {
     accountStatusMessage,
@@ -352,6 +354,17 @@ export function useBackupSyncScreenController(
       onSyncNow: () => {
         void actions.handleSyncNow();
       },
+      onGuestUpgradeAcknowledgeRecoveryCode:
+        guestUpgrade.handleAcknowledgeUpgradeRecoveryCode,
+      onGuestUpgradeCancelForm: guestUpgrade.handleCancelForm,
+      onGuestUpgradeEmailChange: guestUpgrade.setEmailValue,
+      onGuestUpgradePasswordChange: guestUpgrade.setPasswordValue,
+      onGuestUpgradeSubmitForm: () => {
+        void guestUpgrade.handleSubmitUpgrade();
+      },
+      onGuestUpgradeTapKeepAccess: () => {
+        void guestUpgrade.handleTapKeepAccess();
+      },
       partnerCopy,
       partnerErrorMessage,
       partnerInviteAccessLevel: partner.partnerInviteAccessLevel,
@@ -362,6 +375,14 @@ export function useBackupSyncScreenController(
       pendingPartnerInviteToken,
       presentation,
       preferences: state.syncPreferences,
+      guestUpgradeEmailValue: guestUpgrade.emailValue,
+      guestUpgradeFormErrorMessage: guestUpgrade.formErrorMessage,
+      guestUpgradeGeneratedRecoveryCode: guestUpgrade.generatedRecoveryCode,
+      guestUpgradeIsFormOpen: guestUpgrade.isFormOpen,
+      guestUpgradeIsSubmitting: guestUpgrade.isSubmitting,
+      guestUpgradeNudgeMessage: guestUpgrade.nudgeMessage,
+      guestUpgradePasswordValue: guestUpgrade.passwordValue,
+      isGuestPartner: guestUpgrade.isGuestPartner,
       recoveryPhraseValue: recoveryPhraseInputValue,
       // Device management needs a live sync session on the sync server (in
       // managed mode that additionally means an active plan), which is exactly
