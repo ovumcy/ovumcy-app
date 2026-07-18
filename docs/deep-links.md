@@ -315,7 +315,7 @@ Notes:
 
 ## 4. Domain for invite URLs — DECIDED: `invite.ovumcy.cloud`
 
-**Decision (owner, 2026-07-17): a dedicated subdomain, `invite.ovumcy.cloud`.**
+**Decision (2026-07-17): a dedicated subdomain, `invite.ovumcy.cloud`.**
 User-facing links live in the `.cloud` zone alongside the service hosts (see the
 resolved zone question below); the dedicated-subdomain rationale is unchanged.
 
@@ -358,7 +358,7 @@ in the issue acceptance criteria):
   `invite.ovumcy.cloud` (a new, static-only host in the same zone, not the API
   origin).
 
-**Zone question — resolved (owner, 2026-07-17):** the issue text named
+**Zone question — resolved (2026-07-17):** the issue text named
 `ovumcy.com`, but user-facing links live under `.cloud`, alongside
 `managed.ovumcy.cloud` / `sync.ovumcy.cloud` — hence `invite.ovumcy.cloud`. The
 host must be identical across: managed `PARTNER_INVITE_BASE_URL`, the two
