@@ -1186,6 +1186,153 @@ describe("BackupSyncScreen", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  describe("onboarding bypass for a guest partner invite (issue #118)", () => {
+    function createUnonboardedStorage(overrides: Parameters<typeof createSettingsStorageMock>[0] = {}) {
+      return createSettingsStorageMock({
+        readBootstrapState: jest.fn().mockResolvedValue({
+          hasCompletedOnboarding: false,
+          profileVersion: 2,
+          incompleteOnboardingStep: 1,
+        }),
+        ...overrides,
+      });
+    }
+
+    it("reaches the accept card directly on a brand-new device with a buffered invite token, without the onboarding wizard", async () => {
+      mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+
+      const storage = createUnonboardedStorage();
+      const syncSecretStore = createSyncSecretStoreMock();
+      const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
+      global.fetch = fetchMock as typeof fetch;
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+
+      // The guest-vs-sign-in choice is reachable directly — no detour through
+      // "/onboarding" for a device that never completed the owner's
+      // cycle-tracking wizard.
+      await screen.findByTestId("settings-partner-accept-card");
+      expect(screen.getByTestId("settings-partner-accept-guest-button")).toBeTruthy();
+      expect(screen.getByTestId("settings-partner-signin-to-accept-button")).toBeTruthy();
+      expect(mockReplace).not.toHaveBeenCalledWith("/onboarding");
+      // Landing on the screen must never itself redeem the single-use token.
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("still routes a brand-new device with no buffered token to onboarding, unchanged", async () => {
+      const storage = createUnonboardedStorage();
+      const syncSecretStore = createSyncSecretStoreMock();
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+
+      await waitFor(() =>
+        expect(mockReplace).toHaveBeenCalledWith("/onboarding"),
+      );
+    });
+
+    it("does not bounce a guest back to onboarding when refocusing after the single-use token is already spent", async () => {
+      // No invite_token in the URL this time — the token was already
+      // redeemed earlier in the same visit (e.g. the guest tapped "view
+      // shared data", then navigated back). The only remaining signal that
+      // this is a legitimate guest, not a fresh unauthenticated device, is
+      // the live session persistGuestPartnerSession left behind.
+      const storage = createUnonboardedStorage();
+      const syncSecretStore = createSyncSecretStoreMock();
+      await syncSecretStore.writeSyncSecrets({
+        device: {
+          deviceID: "guest-device-1",
+          deviceLabel: "",
+          createdAt: "2026-04-05T08:00:00.000Z",
+        },
+        masterKeyHex: "aa",
+        deviceSecretHex: "bb",
+        wrappedKey: {
+          algorithm: "xchacha20poly1305",
+          kdf: "bip39_seed_hkdf_sha256",
+          mnemonicWordCount: 12,
+          wrapNonceHex: "cc",
+          wrappedMasterKeyHex: "dd",
+          phraseFingerprintHex: "ee",
+        },
+        authSessionToken: null,
+        managedAuthSessionToken: "guest-session-1",
+      });
+
+      global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/auth/session")) {
+          return createJSONResponse({
+            account_id: "guest-account-1",
+            email: "guest+guest-account-1@guest.invalid",
+            session_expires_at: "2026-04-12T00:00:00.000Z",
+            sync_entitlement: {
+              sync_allowed: false,
+              source: "guest_partner",
+              updated_at: "2026-04-05T08:00:00.000Z",
+              effective_at: "2026-04-05T08:00:00.000Z",
+              explanation: "guest partner",
+            },
+          });
+        }
+        if (url.includes("/account/billing")) {
+          return createJSONResponse({
+            has_active_plan: false,
+            premium_features: {
+              advanced_fertility: false,
+              advanced_insights: false,
+              doctor_pdf: false,
+              extended_reports: false,
+              partner_access: false,
+              reminders: false,
+            },
+          });
+        }
+        if (url.includes("/account/partner/access")) {
+          return createJSONResponse({
+            owned: { invites: [], grants: [] },
+            shared_with_me: [
+              {
+                id: "grant-9",
+                owner_account_id: "owner-1",
+                partner_account_id: "guest-account-1",
+                access_level: "full",
+                source_invite_id: "invite-9",
+                accepted_at: "2026-04-05T08:00:00.000Z",
+                last_seen_at: "2026-04-05T08:00:00.000Z",
+                created_at: "2026-04-05T08:00:00.000Z",
+                updated_at: "2026-04-05T08:00:00.000Z",
+              },
+            ],
+          });
+        }
+        throw new Error(`Unexpected fetch in test: ${url}`);
+      }) as typeof fetch;
+
+      render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+
+      await screen.findByTestId("settings-sync-section");
+      expect(mockReplace).not.toHaveBeenCalledWith("/onboarding");
+    });
+  });
+
   it("formats partner last seen values and explains access levels in the partner section", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
