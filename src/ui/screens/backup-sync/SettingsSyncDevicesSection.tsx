@@ -6,7 +6,7 @@ import { AppButton } from "../../components/AppButton";
 import { FeatureCard } from "../../components/FeatureCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
-import { spacing } from "../../theme/tokens";
+import { fontScale, spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
 
 type SettingsSyncDevicesSectionProps = {
@@ -64,20 +64,32 @@ export function SettingsSyncDevicesSection({
                 style={styles.itemCard}
                 testID={`settings-sync-device-${device.deviceID}`}
               >
-                <View style={styles.itemHeader}>
-                  <Text style={styles.itemTitle}>{device.label}</Text>
-                  {device.isCurrentDevice ? (
-                    <Text
-                      style={styles.currentBadge}
-                      testID={`settings-sync-device-current-${device.deviceID}`}
-                    >
-                      {copy.thisDeviceBadge}
-                    </Text>
-                  ) : null}
+                <View
+                  accessibilityLabel={buildDeviceRowAccessibilityLabel(device, copy)}
+                  accessible
+                  style={styles.itemInfo}
+                  testID={`settings-sync-device-info-${device.deviceID}`}
+                >
+                  <View style={styles.itemHeader}>
+                    <Text style={styles.itemTitle}>{device.label}</Text>
+                    {device.isCurrentDevice ? (
+                      <Text
+                        maxFontSizeMultiplier={fontScale.compact}
+                        numberOfLines={1}
+                        style={styles.currentBadge}
+                        testID={`settings-sync-device-current-${device.deviceID}`}
+                      >
+                        {copy.thisDeviceBadge}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Text
+                    style={styles.helperText}
+                    testID={`settings-sync-device-last-seen-${device.deviceID}`}
+                  >
+                    {copy.lastSeenLabel}: {device.lastSeenText}
+                  </Text>
                 </View>
-                <Text style={styles.helperText}>
-                  {copy.lastSeenLabel}: {device.lastSeenText}
-                </Text>
                 <AppButton
                   disabled={isBusy}
                   label={copy.removeLabel}
@@ -104,6 +116,19 @@ export function SettingsSyncDevicesSection({
   );
 }
 
+function buildDeviceRowAccessibilityLabel(
+  device: BackupSyncDeviceListItemView,
+  copy: DeviceCopy,
+): string {
+  return [
+    device.label,
+    device.isCurrentDevice ? copy.thisDeviceBadge : "",
+    `${copy.lastSeenLabel}: ${device.lastSeenText}`,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
+}
+
 const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     stack: {
@@ -121,6 +146,9 @@ const createStyles = (colors: AppThemeColors) =>
       borderWidth: 1,
       gap: spacing.sm,
       padding: spacing.md,
+    },
+    itemInfo: {
+      gap: spacing.sm,
     },
     itemHeader: {
       alignItems: "center",

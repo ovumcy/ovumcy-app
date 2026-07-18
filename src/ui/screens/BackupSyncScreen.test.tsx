@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { Platform } from "react-native";
 
 import { getDeviceCopy } from "../../i18n/device-copy";
+import { getPartnerCopy } from "../../i18n/partner-copy";
 import { getSettingsCopy } from "../../i18n/settings-copy";
 import { createSyncSecretsRecord } from "../../security/sync-crypto";
 import { clearManagedPartnerInviteToken } from "../../security/managed-partner-invite-token-buffer";
@@ -474,6 +475,29 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByText("Old tablet")).toBeTruthy();
     // The raw timestamp never renders; the line is locale-formatted.
     expect(screen.queryByText(/2026-03-20T09:30:00/)).toBeNull();
+
+    // Each device row groups its label, this-device badge, and last-seen
+    // line into one composed accessibility label so a screen reader
+    // announces the row as a single phrase, independent of the (untouched)
+    // Remove button next to it.
+    const deviceCopy = getDeviceCopy("en");
+    const device1LastSeen = (
+      screen.getByTestId("settings-sync-device-last-seen-device-1").props
+        .children as string[]
+    ).join("");
+    expect(
+      screen.getByTestId("settings-sync-device-info-device-1").props
+        .accessibilityLabel,
+    ).toBe(`Pixel 7. ${deviceCopy.thisDeviceBadge}. ${device1LastSeen}`);
+
+    const device2LastSeen = (
+      screen.getByTestId("settings-sync-device-last-seen-device-2").props
+        .children as string[]
+    ).join("");
+    expect(
+      screen.getByTestId("settings-sync-device-info-device-2").props
+        .accessibilityLabel,
+    ).toBe(`Old tablet. ${device2LastSeen}`);
   });
 
   it("removes another device only after an explicit confirm and refreshes the list", async () => {
@@ -812,6 +836,16 @@ describe("BackupSyncScreen", () => {
       "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
+    // The pending-invite row groups its label and access level into one
+    // composed accessibility label; the Revoke button next to it stays a
+    // separate, independently reachable element.
+    const partnerCopy = getPartnerCopy("en");
+    expect(
+      screen.getByTestId("settings-partner-invite-info-invite-1").props
+        .accessibilityLabel,
+    ).toBe(
+      [partnerCopy.pendingInviteLabel, partnerCopy.accessLevelFull].join(". "),
+    );
     expect(screen.getByText("Partner invite link created.")).toBeTruthy();
     const issueInviteCall = fetchMock.mock.calls.find(
       ([url, init]: [unknown, unknown?]) =>
@@ -1144,6 +1178,22 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-partner-status-banner")).toBeTruthy();
     expect(screen.getByTestId("settings-partner-shared-grant-grant-9")).toBeTruthy();
 
+    // The shared-with-me row for this guest-accepted grant groups its label,
+    // access hint, and last-seen line into one composed accessibility label,
+    // the same as any other shared grant row — guest acceptance does not
+    // change the row shape.
+    const partnerCopy = getPartnerCopy("en");
+    expect(
+      screen.getByTestId("settings-partner-shared-grant-info-grant-9").props
+        .accessibilityLabel,
+    ).toBe(
+      [
+        partnerCopy.sharedGrantLabel,
+        partnerCopy.accessLevelFullHint,
+        `${partnerCopy.lastSeenLabel}: ${formatBackupSyncLastSeen("2026-04-05T08:00:00.000Z", "en", partnerCopy.lastSeenNever)}`,
+      ].join(". "),
+    );
+
     // The guest-accept call specifically must never carry a bearer token.
     const guestAcceptCall = fetchMock.mock.calls[0];
     expect(String(guestAcceptCall[0])).toContain("/auth/partner/invites/accept");
@@ -1444,6 +1494,22 @@ describe("BackupSyncScreen", () => {
         `Last seen: ${formatBackupSyncLastSeen(rawLastSeen, "en", "Not opened yet.")}`,
       ),
     ).toBeTruthy();
+
+    // The active-grant row groups its label, access level, hint, and
+    // last-seen line into one composed accessibility label; the Open/Revoke
+    // buttons next to it stay separate, independently reachable elements.
+    const partnerCopy = getPartnerCopy("en");
+    expect(
+      screen.getByTestId("settings-partner-grant-info-grant-1").props
+        .accessibilityLabel,
+    ).toBe(
+      [
+        partnerCopy.activePartnerLabel,
+        partnerCopy.accessLevelSummary,
+        partnerCopy.accessLevelSummaryHint,
+        `${partnerCopy.lastSeenLabel}: ${formatBackupSyncLastSeen(rawLastSeen, "en", partnerCopy.lastSeenNever)}`,
+      ].join(". "),
+    );
   });
 
   it("shows managed cloud account fields on the dedicated backup and sync screen", async () => {

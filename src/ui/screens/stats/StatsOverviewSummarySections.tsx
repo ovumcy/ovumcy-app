@@ -2,6 +2,7 @@ import { type DimensionValue, Text, View } from "react-native";
 
 import type { StatsViewData } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
+import { fontScale } from "../../theme/tokens";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewSummarySectionsProps = {
@@ -75,7 +76,10 @@ export function StatsOverviewSummarySections({
           <View style={styles.chipRow} testID="stats-factor-context">
             {viewData.factorContext.recentFactors.map((item) => (
               <View key={item.key} style={styles.factorChip}>
-                <Text style={styles.factorChipText}>
+                <Text
+                  maxFontSizeMultiplier={fontScale.compact}
+                  style={styles.factorChipText}
+                >
                   {item.icon} {item.label} · {item.count}
                 </Text>
               </View>
@@ -90,7 +94,10 @@ export function StatsOverviewSummarySections({
                   <View style={styles.chipRow}>
                     {summary.items.map((item) => (
                       <View key={item.key} style={styles.factorChip}>
-                        <Text style={styles.factorChipText}>
+                        <Text
+                          maxFontSizeMultiplier={fontScale.compact}
+                          style={styles.factorChipText}
+                        >
                           {item.icon} {item.label} · {item.count}
                         </Text>
                       </View>
@@ -115,7 +122,10 @@ export function StatsOverviewSummarySections({
                   <View style={styles.chipRow}>
                     {cycle.factors.map((item) => (
                       <View key={item.key} style={styles.factorChip}>
-                        <Text style={styles.factorChipText}>
+                        <Text
+                          maxFontSizeMultiplier={fontScale.compact}
+                          style={styles.factorChipText}
+                        >
                           {item.icon} {item.label}
                         </Text>
                       </View>

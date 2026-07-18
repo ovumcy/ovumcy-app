@@ -31,7 +31,12 @@ export function SettingsSyncSummaryCard({
         tone={summary.statusTone}
       />
 
-      <View style={styles.detailStack}>
+      <View
+        accessibilityLabel={buildSyncSummaryDetailsAccessibilityLabel(summary)}
+        accessible
+        style={styles.detailStack}
+        testID="settings-sync-summary-details"
+      >
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>{summary.destinationLabel}</Text>
           <Text style={styles.detailValue}>{summary.destinationValue}</Text>
@@ -49,6 +54,19 @@ export function SettingsSyncSummaryCard({
       />
     </FeatureCard>
   );
+}
+
+function buildSyncSummaryDetailsAccessibilityLabel(
+  summary: SettingsSyncSummaryViewData,
+): string {
+  return [
+    summary.destinationLabel,
+    summary.destinationValue,
+    summary.lastSyncLabel,
+    summary.lastSyncValue,
+  ]
+    .filter((value) => value.trim().length > 0)
+    .join(". ");
 }
 
 const createStyles = (colors: AppThemeColors) =>

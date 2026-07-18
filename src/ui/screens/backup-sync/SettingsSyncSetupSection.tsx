@@ -26,7 +26,7 @@ import { FeatureCard } from "../../components/FeatureCard";
 import { OfferCard } from "../../components/OfferCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { AppThemeColors } from "../../theme/tokens";
-import { spacing } from "../../theme/tokens";
+import { fontScale, spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
 
 type SettingsSyncSetupSectionProps = {
@@ -157,7 +157,12 @@ export function SettingsSyncSetupSection({
     <View style={styles.stepTitleRow}>
       <Text style={styles.stepTitle}>{title}</Text>
       {done ? (
-        <Text style={styles.stepDoneBadge} testID="settings-sync-step-done">
+        <Text
+          maxFontSizeMultiplier={fontScale.compact}
+          numberOfLines={1}
+          style={styles.stepDoneBadge}
+          testID="settings-sync-step-done"
+        >
           ✓
         </Text>
       ) : null}
