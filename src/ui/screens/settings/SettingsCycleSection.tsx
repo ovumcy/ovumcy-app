@@ -129,7 +129,11 @@ export function SettingsCycleSection({
             </Text>
             {state.cycleValues.lastPeriodStart ? (
               <View style={styles.dateActionRow}>
-                <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
+                <Pressable
+                  onPress={onClearLastPeriodStart}
+                  style={styles.inlineAction}
+                  testID="settings-cycle-clear-date-button"
+                >
                   <Text style={styles.inlineActionText}>{viewData.common.clearDate}</Text>
                 </Pressable>
               </View>
@@ -157,7 +161,11 @@ export function SettingsCycleSection({
                   <Text style={styles.inlineActionText}>{viewData.common.changeDate}</Text>
                 </Pressable>
                 {state.cycleValues.lastPeriodStart ? (
-                  <Pressable onPress={onClearLastPeriodStart} style={styles.inlineAction}>
+                  <Pressable
+                    onPress={onClearLastPeriodStart}
+                    style={styles.inlineAction}
+                    testID="settings-cycle-clear-date-button"
+                  >
                     <Text style={styles.inlineActionText}>{viewData.common.clearDate}</Text>
                   </Pressable>
                 ) : null}

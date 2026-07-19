@@ -11,6 +11,7 @@ import { BackHandler, Platform } from "react-native";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultProfileRecord } from "../../models/profile";
+import * as importService from "../../services/import-service";
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
 import { createSettingsStorageMock } from "../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
@@ -1061,11 +1062,46 @@ describe("SettingsScreen", () => {
     await expect(syncSecretStore.readSyncSecrets()).resolves.toBeNull();
   });
 
-  it("requires device security before clearing all local data", async () => {
+  it.each([
+    [
+      "unavailable",
+      "Set up a device passcode or biometrics before clearing local data.",
+    ],
+    [
+      "failed",
+      "Unable to confirm device security right now. Please try again.",
+    ],
+  ] as const)(
+    "blocks clearing local data when device security reports %s",
+    async (reason, expectedMessage) => {
+      const storage = createSettingsStorageMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({
+        ok: false,
+        reason,
+      });
+
+      render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+      await screen.findByTestId("settings-cycle-section");
+
+      fireEvent.changeText(
+        screen.getByTestId("settings-clear-data-confirmation-input"),
+        "CLEAR",
+      );
+      fireEvent.press(screen.getByTestId("settings-clear-data-button"));
+
+      await screen.findByTestId("settings-danger-error-banner");
+      expect(screen.getByText(expectedMessage)).toBeTruthy();
+      expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalled();
+    },
+  );
+
+  it("silently aborts (no error banner) when the device-auth prompt is simply cancelled", async () => {
     const storage = createSettingsStorageMock();
     mockRequestSensitiveActionChallenge.mockResolvedValue({
       ok: false,
-      reason: "unavailable",
+      reason: "cancelled",
     });
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
@@ -1081,7 +1117,31 @@ describe("SettingsScreen", () => {
     await waitFor(() =>
       expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
     );
+    // A user-dismissed prompt is not an error worth alarming over — unlike
+    // "unavailable"/"failed", it maps to no banner at all.
+    expect(screen.queryByTestId("settings-danger-error-banner")).toBeNull();
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure and stops when the storage wipe itself throws", async () => {
+    const storage = createSettingsStorageMock({
+      clearAllLocalData: jest.fn().mockRejectedValue(new Error("disk error")),
+    });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-clear-data-confirmation-input"),
+      "CLEAR",
+    );
+    fireEvent.press(screen.getByTestId("settings-clear-data-button"));
+
+    await screen.findByTestId("settings-danger-error-banner");
+    expect(
+      screen.getByText("Unable to clear local data right now. Please try again."),
+    ).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -1332,5 +1392,791 @@ describe("SettingsScreen", () => {
         "Restored 2 days (0 already present, 0 ignored). Cycle settings were restored from the backup.",
       ),
     ).toBeTruthy();
+  });
+
+  it("maps a picker rejection to the generic restore-failed message", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = {
+      pick: jest.fn().mockRejectedValue(new Error("boom")),
+    };
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-error-banner");
+    expect(screen.getByText("Restore failed. Please try again.")).toBeTruthy();
+    expect(screen.queryByTestId("settings-import-preview")).toBeNull();
+  });
+
+  it("keeps the preview visible and reports restore-failed when applying a confirmed import throws", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
+    const importBackupEnvelopeSpy = jest
+      .spyOn(importService, "importBackupEnvelope")
+      .mockRejectedValue(new Error("boom"));
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+    await screen.findByTestId("settings-import-preview");
+
+    fireEvent.press(screen.getByTestId("settings-import-confirm-button"));
+
+    await screen.findByTestId("settings-import-error-banner");
+    expect(screen.getByText("Restore failed. Please try again.")).toBeTruthy();
+    // Unlike a successful confirm, a thrown exception leaves the preview in
+    // place (only the success path clears it) so the user can retry.
+    expect(screen.getByTestId("settings-import-preview")).toBeTruthy();
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+
+    importBackupEnvelopeSpy.mockRestore();
+  });
+
+  it("saves the selected age-group and usage-goal choices", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-age-group-under_40"));
+    fireEvent.press(screen.getByTestId("settings-usage-goal-avoid_pregnancy"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ageGroup: "under_40",
+          usageGoal: "avoid_pregnancy",
+        }),
+      ),
+    );
+  });
+
+  it("saves the auto-period-fill toggle and the period-length slider", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-auto-period-fill"));
+    fireEvent(
+      screen.getByTestId("settings-period-length-slider"),
+      "valueChange",
+      7,
+    );
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ autoPeriodFill: false, periodLength: 7 }),
+      ),
+    );
+  });
+
+  it("clears the last period start date", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-cycle-clear-date-button"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastPeriodStart: null }),
+      ),
+    );
+  });
+
+  it("opens the native cycle date picker, ignores a dismiss, then confirms a new date", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+    await screen.findByTestId("mock-date-picker");
+
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("mock-date-picker"),
+        "onChange",
+        { type: "dismissed" },
+        undefined,
+      );
+    });
+    expect(screen.queryByTestId("mock-date-picker")).toBeNull();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("mock-date-picker"),
+        "onChange",
+        { type: "set" },
+        new Date(2026, 2, 12),
+      );
+    });
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastPeriodStart: "2026-03-12" }),
+      ),
+    );
+  });
+
+  it("cancels the web date input without changing the saved date", async () => {
+    const storage = createSettingsStorageMock();
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+    const dateInput = await screen.findByTestId("settings-cycle-date-input");
+    fireEvent.changeText(dateInput, "20260312");
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-cycle-date-input").props.value).toBe(
+        "2026-03-12",
+      ),
+    );
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-cancel-button"));
+
+    expect(screen.queryByTestId("settings-cycle-date-input")).toBeNull();
+
+    // Reopening shows the still-persisted original date, proving the typed
+    // draft was discarded rather than carried over.
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+    expect(screen.getByTestId("settings-cycle-date-input").props.value).toBe(
+      "2026-03-10",
+    );
+  });
+
+  it("shows an inline error for an out-of-bounds typed date instead of saving it", async () => {
+    const storage = createSettingsStorageMock();
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-field-button"));
+    const dateInput = await screen.findByTestId("settings-cycle-date-input");
+    fireEvent.changeText(dateInput, "20260401");
+    await waitFor(() =>
+      expect(screen.getByTestId("settings-cycle-date-input").props.value).toBe(
+        "2026-04-01",
+      ),
+    );
+
+    fireEvent.press(screen.getByTestId("settings-cycle-date-confirm-button"));
+
+    await screen.findByTestId("settings-cycle-error-banner");
+    expect(
+      screen.getByText(
+        "Please enter a valid last period start date that is not in the future.",
+      ),
+    ).toBeTruthy();
+    // The picker stays open so the user can correct the typed value.
+    expect(screen.getByTestId("settings-cycle-date-input")).toBeTruthy();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: "2026-04-01" }),
+    );
+  });
+
+  it("blocks saving and shows the incompatibility banner for an impossible cycle/period combination", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    // A 15-day cycle cannot contain a 14-day period.
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      15,
+    );
+    fireEvent(
+      screen.getByTestId("settings-period-length-slider"),
+      "valueChange",
+      14,
+    );
+
+    await screen.findByTestId("settings-cycle-error-banner");
+    expect(
+      screen.getByText(
+        "Period duration is incompatible with cycle length. Menstruation cannot take up almost the whole cycle.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("settings-save-all-button").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+  });
+
+  it("shows the long-cycle informational hint without blocking the save", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    // 50 days is over the 45-day "less common" guidance threshold but still
+    // comfortably compatible with the default 5-day period.
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      50,
+    );
+
+    expect(
+      screen.getByText(
+        "A cycle longer than 45 days is less common; please discuss with a doctor.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("settings-cycle-error-banner")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ cycleLength: 50 }),
+      ),
+    );
+  });
+
+  it("prepares a CSV export through the settings flow and hands it to the delivery client", async () => {
+    const storage = createSettingsStorageMock();
+    const exportDeliveryClient = {
+      deliver: jest.fn().mockResolvedValue({ ok: true }),
+    };
+
+    render(
+      <SettingsScreen
+        exportDeliveryClient={exportDeliveryClient}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-export-csv-button"));
+
+    await waitFor(() =>
+      expect(exportDeliveryClient.deliver).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filename: "ovumcy-export-2026-03-17.csv",
+          mimeType: "text/csv",
+        }),
+      ),
+    );
+  });
+
+  it("closes the native export date picker without changing the range when dismissed or given no value", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+    const originalFromValue = screen.getByTestId("settings-export-from-value")
+      .props.children;
+
+    fireEvent.press(screen.getByTestId("settings-export-from-button"));
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("settings-export-date-picker"),
+        "onChange",
+        { type: "dismissed" },
+        undefined,
+      );
+    });
+    expect(screen.queryByTestId("settings-export-date-picker")).toBeNull();
+    expect(
+      screen.getByTestId("settings-export-from-value").props.children,
+    ).toBe(originalFromValue);
+
+    fireEvent.press(screen.getByTestId("settings-export-from-button"));
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("settings-export-date-picker"),
+        "onChange",
+        { type: "set" },
+        undefined,
+      );
+    });
+    expect(screen.queryByTestId("settings-export-date-picker")).toBeNull();
+    expect(
+      screen.getByTestId("settings-export-from-value").props.children,
+    ).toBe(originalFromValue);
+
+    // The "to" button opens the same picker through its own independent
+    // press handler (onExportToDatePress).
+    const originalToValue = screen.getByTestId("settings-export-to-value")
+      .props.children;
+    fireEvent.press(screen.getByTestId("settings-export-to-button"));
+    await act(async () => {
+      fireEvent(
+        screen.getByTestId("settings-export-date-picker"),
+        "onChange",
+        { type: "dismissed" },
+        undefined,
+      );
+    });
+    expect(screen.queryByTestId("settings-export-date-picker")).toBeNull();
+    expect(
+      screen.getByTestId("settings-export-to-value").props.children,
+    ).toBe(originalToValue);
+  });
+
+  it("refreshes the export range when a preset is selected", async () => {
+    // Recorded data spans over a year so the "30 days" preset resolves to a
+    // narrower window than "All time" instead of collapsing back to it.
+    const storage = createSettingsStorageMock({
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: 40,
+        hasData: true,
+        dateFrom: "2024-01-01",
+        dateTo: "2026-03-15",
+      }),
+    });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+    expect(
+      screen.getByTestId("settings-export-preset-all").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("settings-export-preset-30"));
+    });
+
+    expect(
+      screen.getByTestId("settings-export-preset-30").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+    expect(
+      screen.getByTestId("settings-export-preset-all").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: false }));
+  });
+
+  it("refreshes the export range from free-text input only once the typed date is complete", async () => {
+    const storage = createSettingsStorageMock();
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+    // The default range (from existing data) starts fully populated.
+    expect(screen.getByTestId("settings-export-from-input").props.value).toBe(
+      "2026-03-10",
+    );
+    const readDayLogSummaryMock = storage.readDayLogSummary as jest.Mock;
+    const baselineCalls = readDayLogSummaryMock.mock.calls.length;
+
+    // A partial re-type (still mid-edit, digit-by-digit) sanitizes to fewer
+    // than 10 characters — hasCompleteExportDates must hold off the refresh.
+    fireEvent.changeText(
+      screen.getByTestId("settings-export-from-input"),
+      "202603",
+    );
+    expect(screen.getByTestId("settings-export-from-input").props.value).toBe(
+      "2026-03",
+    );
+    expect(readDayLogSummaryMock.mock.calls.length).toBe(baselineCalls);
+
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByTestId("settings-export-from-input"),
+        "20260301",
+      );
+    });
+
+    await waitFor(() =>
+      expect(readDayLogSummaryMock.mock.calls.length).toBeGreaterThan(
+        baselineCalls,
+      ),
+    );
+    expect(screen.getByTestId("settings-export-from-input").props.value).toBe(
+      "2026-03-01",
+    );
+
+    // The "to" field is gated by the identical hasCompleteExportDates check
+    // on its own independent handler (onExportToDateChange).
+    const callsAfterFrom = readDayLogSummaryMock.mock.calls.length;
+    fireEvent.changeText(
+      screen.getByTestId("settings-export-to-input"),
+      "202603",
+    );
+    expect(screen.getByTestId("settings-export-to-input").props.value).toBe(
+      "2026-03",
+    );
+    expect(readDayLogSummaryMock.mock.calls.length).toBe(callsAfterFrom);
+
+    await act(async () => {
+      fireEvent.changeText(
+        screen.getByTestId("settings-export-to-input"),
+        "20260317",
+      );
+    });
+
+    await waitFor(() =>
+      expect(readDayLogSummaryMock.mock.calls.length).toBeGreaterThan(
+        callsAfterFrom,
+      ),
+    );
+    expect(screen.getByTestId("settings-export-to-input").props.value).toBe(
+      "2026-03-17",
+    );
+  });
+
+  it("opens backup and sync from either premium-lock CTA (reminders email, export PDF)", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-reminders-lock");
+
+    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
+    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+
+    mockPush.mockClear();
+    fireEvent.press(screen.getByTestId("settings-export-pdf-lock"));
+    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+  });
+
+  it("saves the remaining tracking toggles (sex-chip visibility, cycle factors, historical phases, cervical mucus)", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-hide-sex-chip"));
+    fireEvent.press(screen.getByTestId("settings-toggle-hide-cycle-factors"));
+    fireEvent.press(screen.getByTestId("settings-toggle-show-historical-phases"));
+    fireEvent.press(screen.getByTestId("settings-toggle-track-cervical-mucus"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hideSexChip: true,
+          hideCycleFactors: true,
+          showHistoricalPhases: true,
+          trackCervicalMucus: true,
+        }),
+      ),
+    );
+  });
+
+  it("saves the upcoming-period, fertile-window, and managed email-delivery reminder toggles", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-reminders-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-upcoming-period"));
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-fertile-window"));
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-email-delivery"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          upcomingPeriodReminderEnabled: true,
+          fertileWindowReminderEnabled: true,
+          managedReminderEmailsEnabled: true,
+        }),
+      ),
+    );
+  });
+
+  it("saves the selected interface language", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-interface-language-de"));
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ languageOverride: "de" }),
+      ),
+    );
+  });
+
+  it("updates an existing custom symptom's label", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-symptom-create-name-input"),
+      "Jaw pain",
+    );
+    fireEvent.press(screen.getByTestId("settings-symptom-create-action-button"));
+
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ label: "Jaw pain" }),
+      ),
+    );
+    const createdRecord = (storage.writeSymptomRecord as jest.Mock).mock
+      .calls[0][0];
+    (storage.writeSymptomRecord as jest.Mock).mockClear();
+
+    fireEvent.changeText(
+      screen.getByTestId(`settings-symptom-${createdRecord.id}-name-input`),
+      "Jaw tension",
+    );
+    fireEvent.press(
+      screen.getByTestId(`settings-symptom-${createdRecord.id}-action-button`),
+    );
+
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: createdRecord.id, label: "Jaw tension" }),
+      ),
+    );
+    expect(
+      screen.getByTestId(`settings-symptom-${createdRecord.id}-status-banner`),
+    ).toBeTruthy();
+  });
+
+  it("restores a previously archived custom symptom", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.changeText(
+      screen.getByTestId("settings-symptom-create-name-input"),
+      "Jaw pain",
+    );
+    fireEvent.press(screen.getByTestId("settings-symptom-create-action-button"));
+    await waitFor(() => expect(storage.writeSymptomRecord).toHaveBeenCalled());
+    const createdRecord = (storage.writeSymptomRecord as jest.Mock).mock
+      .calls[0][0];
+
+    fireEvent.press(
+      screen.getByTestId(`settings-symptom-archive-${createdRecord.id}`),
+    );
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: createdRecord.id, isArchived: true }),
+      ),
+    );
+
+    fireEvent.press(
+      screen.getByTestId(`settings-symptom-restore-${createdRecord.id}`),
+    );
+
+    await waitFor(() =>
+      expect(storage.writeSymptomRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: createdRecord.id, isArchived: false }),
+      ),
+    );
+  });
+
+  it("never renders a built-in symptom as an editable/archivable row", async () => {
+    // Built-ins are filtered out of both the active and archived lists by
+    // settings-view-service's splitCustomSymptoms (record.isDefault is
+    // skipped entirely), so there is no update/archive control to press —
+    // the service-layer builtin_edit_forbidden guard this relies on is
+    // covered directly in settings-screen-symptom-actions.test.ts.
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-symptoms-section");
+
+    expect(
+      screen.queryByTestId("settings-symptom-cramps-action-button"),
+    ).toBeNull();
+    expect(screen.queryByTestId("settings-symptom-archive-cramps")).toBeNull();
+  });
+
+  it("discards changes and stays on settings when the tab-switch guard is dismissed", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    expect(tabPressCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      tabPressCallback?.({ preventDefault: jest.fn(), target: "calendar-key" });
+    });
+
+    await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
+    expect(mockParentNavigate).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-cycle-length-slider").props.value).toBe(
+      35,
+    );
+  });
+
+  it("discards changes when the tab-switch guard rejects saving, then switches tabs", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("reject");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    await act(async () => {
+      tabPressCallback?.({ preventDefault: jest.fn(), target: "calendar-key" });
+    });
+
+    await waitFor(() =>
+      expect(mockParentNavigate).toHaveBeenCalledWith("calendar", undefined),
+    );
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({ cycleLength: 35 }),
+    );
+  });
+
+  it("stays in settings and keeps changes when Android back is dismissed", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    expect(hardwareBackPressCallback).toEqual(expect.any(Function));
+
+    await act(async () => {
+      hardwareBackPressCallback?.();
+    });
+
+    await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
+    expect(exitAppSpy).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-cycle-length-slider").props.value).toBe(
+      35,
+    );
+  });
+
+  it("saves before Android back exits the app when the guard accepts saving", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("accept");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+
+    await act(async () => {
+      hardwareBackPressCallback?.();
+    });
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ cycleLength: 35 }),
+      ),
+    );
+    await waitFor(() => expect(exitAppSpy).toHaveBeenCalledTimes(1));
+  });
+
+  it("stays on settings and keeps changes when the backup-sync guard is dismissed", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-cycle-length-slider").props.value).toBe(
+      35,
+    );
+  });
+
+  it("discards changes when the backup-sync guard rejects saving, then navigates", async () => {
+    const storage = createSettingsStorageMock();
+    mockOpenLeaveConfirmation.mockResolvedValue("reject");
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent(
+      screen.getByTestId("settings-cycle-length-slider"),
+      "valueChange",
+      35,
+    );
+    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({ cycleLength: 35 }),
+    );
   });
 });
