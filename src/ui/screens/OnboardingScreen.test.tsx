@@ -241,4 +241,55 @@ describe("OnboardingFlowScreen", () => {
       screen.queryByText("Failed to save onboarding data. Please try again."),
     ).toBeNull();
   });
+
+  it("shows long-cycle and long-period guidance hints together", () => {
+    const now = new Date(2026, 2, 17);
+    const record = createOnboardingRecord({ lastPeriodStart: "2026-03-17" });
+
+    renderFlow(
+      createState({
+        record,
+        selectedDate: "2026-03-17",
+        step: 2,
+        stepTwoValues: {
+          cycleLength: 50,
+          periodLength: 9,
+          autoPeriodFill: true,
+          predictionMode: "regular",
+          ageGroup: "under_40",
+          usageGoal: "health",
+        },
+      }),
+    );
+
+    const viewData = buildOnboardingViewData(record, now, "en");
+    expect(screen.getByText(viewData.stepTwo.messages.infoCycleLong)).toBeTruthy();
+    expect(screen.getByText(viewData.stepTwo.messages.infoPeriodLong)).toBeTruthy();
+    expect(screen.queryByText(viewData.stepTwo.messages.infoCycleShort)).toBeNull();
+  });
+
+  it("shows the short-cycle guidance hint", () => {
+    const now = new Date(2026, 2, 17);
+    const record = createOnboardingRecord({ lastPeriodStart: "2026-03-17" });
+
+    renderFlow(
+      createState({
+        record,
+        selectedDate: "2026-03-17",
+        step: 2,
+        stepTwoValues: {
+          cycleLength: 20,
+          periodLength: 5,
+          autoPeriodFill: true,
+          predictionMode: "regular",
+          ageGroup: "under_40",
+          usageGoal: "health",
+        },
+      }),
+    );
+
+    const viewData = buildOnboardingViewData(record, now, "en");
+    expect(screen.getByText(viewData.stepTwo.messages.infoCycleShort)).toBeTruthy();
+    expect(screen.queryByText(viewData.stepTwo.messages.infoCycleLong)).toBeNull();
+  });
 });
