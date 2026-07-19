@@ -1181,6 +1181,15 @@ describe("sqlite-app-storage", () => {
       dateFrom: "2026-03-12",
       dateTo: "2026-03-12",
     });
+
+    // No bounds at all spans the full written range; the summary's own sort
+    // (not insertion order) must produce the earliest/latest markers.
+    await expect(storage.readDayLogSummary()).resolves.toEqual({
+      totalEntries: 3,
+      hasData: true,
+      dateFrom: "2026-03-05",
+      dateTo: "2026-03-20",
+    });
   });
 
   it("breaks a tied symptom sort order alphabetically by id", async () => {
@@ -2316,5 +2325,272 @@ describe("sqlite-app-storage", () => {
     // The store should now hold a freshly minted key (not "b"*64) since
     // the canary failed and resolveLocalDataKey reseeded.
     expect(wrongKeyStore.writeLocalDataKey).toHaveBeenCalled();
+  });
+
+  it("round-trips the onboarding record through the canonical profile repository", async () => {
+    // Onboarding reads/writes merge into the SAME canonical profile row, not
+    // a second onboarding-only store (architecture.md: one canonical profile
+    // repository shared by onboarding/settings/dashboard).
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeOnboardingRecord({
+      lastPeriodStart: "2026-04-01",
+      cycleLength: 30,
+      periodLength: 6,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "under_40",
+      usageGoal: "avoid_pregnancy",
+    });
+
+    await expect(storage.readOnboardingRecord()).resolves.toEqual({
+      lastPeriodStart: "2026-04-01",
+      cycleLength: 30,
+      periodLength: 6,
+      autoPeriodFill: true,
+      irregularCycle: true,
+      unpredictableCycle: false,
+      ageGroup: "under_40",
+      usageGoal: "avoid_pregnancy",
+    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({
+        lastPeriodStart: "2026-04-01",
+        cycleLength: 30,
+        periodLength: 6,
+        ageGroup: "under_40",
+        usageGoal: "avoid_pregnancy",
+      }),
+    );
+  });
+
+  it("resets the cached database and key so a retry re-hydrates from scratch when clearAllLocalData fails partway through", async () => {
+    let openDatabaseCallCount = 0;
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => {
+        openDatabaseCallCount += 1;
+        const database = createFakeDatabase();
+        return {
+          ...database,
+          async runAsync(source: string, ...params: unknown[]) {
+            if (source === "DELETE FROM day_logs;" && params.length === 0) {
+              throw new Error("simulated wipe failure");
+            }
+            return database.runAsync(source, ...params);
+          },
+        };
+      },
+    });
+
+    await storage.readBootstrapState();
+    expect(openDatabaseCallCount).toBe(1);
+
+    await expect(storage.clearAllLocalData()).rejects.toThrow("simulated wipe failure");
+
+    // A failed reset must not leave a poisoned cached connection behind: the
+    // next operation re-opens the database rather than reusing a half-wiped
+    // handle (security-constitution.md: deterministic reset, never a silent
+    // partial state).
+    await storage.readBootstrapState();
+    expect(openDatabaseCallCount).toBe(2);
+  });
+
+  it("retries hydration once after a retryable native SQLite open error and succeeds on the second attempt", async () => {
+    let openDatabaseCallCount = 0;
+    let runAsyncCallCount = 0;
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => {
+        openDatabaseCallCount += 1;
+        const database = createFakeDatabase();
+        return {
+          ...database,
+          async runAsync(source: string, ...params: unknown[]) {
+            runAsyncCallCount += 1;
+            if (runAsyncCallCount === 1) {
+              // Matches isRetryableNativeSQLiteOpenError's pattern: touches
+              // NativeDatabase.execAsync AND indicates a rejected/invalid
+              // handle.
+              throw new Error("NativeDatabase.execAsync has been rejected");
+            }
+            return database.runAsync(source, ...params);
+          },
+        };
+      },
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual({
+      hasCompletedOnboarding: false,
+      profileVersion: 2,
+      incompleteOnboardingStep: 1,
+    });
+    // The first hydration attempt failed with a retryable native-handle
+    // error; a fresh second attempt (a second openDatabase call) succeeded.
+    expect(openDatabaseCallCount).toBe(2);
+  });
+
+  it("returns the default managed billing cache when the row exists but its encrypted payload is empty", async () => {
+    // Defensive-degradation case distinct from "no row at all": a
+    // migrated/partially-written row that carries no payload must still
+    // degrade to the safe default instead of surfacing a null/undefined
+    // snapshot shape.
+    const inspected = createInspectableFakeDatabase({
+      hasManagedBillingCacheTable: true,
+      userVersion: 13,
+      managedBillingCacheRow: { encrypted_payload: null },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+      snapshot: null,
+      dismissedOfferIDs: [],
+    });
+  });
+
+  it("migrates a legacy plaintext symptom row into the encrypted catalog during hydration", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () =>
+        createFakeDatabase({
+          symptomRows: [
+            {
+              id: "legacy_glow",
+              slug: "legacy-glow",
+              label: "Legacy Glow",
+              icon: "✨",
+              color: "#123456",
+              is_default: 0,
+              is_archived: 0,
+              sort_order: 42,
+              encrypted_payload: null,
+            },
+          ],
+        }),
+    });
+
+    // No built-in catalog is seeded alongside it: ensureSeedRows only seeds
+    // defaults when the table is empty, and the migrated row already counts
+    // as one row by the time seeding runs.
+    await expect(storage.listSymptomRecords()).resolves.toEqual([
+      {
+        id: "legacy_glow",
+        slug: "legacy-glow",
+        label: "Legacy Glow",
+        icon: "✨",
+        color: "#123456",
+        isDefault: false,
+        isArchived: false,
+        sortOrder: 42,
+      },
+    ]);
+  });
+
+  it("migrates legacy plaintext day-log rows into the encrypted table during hydration, tolerating malformed stored JSON arrays", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () =>
+        createFakeDatabase({
+          dayLogRows: [
+            {
+              day: "2026-06-01",
+              is_period: 1,
+              cycle_start: 0,
+              is_uncertain: 0,
+              flow: "medium",
+              mood: 3,
+              sex_activity: "none",
+              bbt: 0,
+              cervical_mucus: "none",
+              lh_test: "none",
+              pregnancy_test: "none",
+              // Valid JSON array: exercises the normal parse-and-filter path.
+              cycle_factor_keys: '["stress"]',
+              // Malformed (not valid JSON): must degrade to [] rather than throw.
+              symptom_ids: "not-json",
+              notes: "legacy plaintext note",
+              encrypted_payload: null,
+            },
+            {
+              day: "2026-06-02",
+              is_period: 0,
+              cycle_start: 0,
+              is_uncertain: 0,
+              flow: "none",
+              mood: 0,
+              sex_activity: "none",
+              bbt: 0,
+              cervical_mucus: "none",
+              lh_test: "none",
+              pregnancy_test: "none",
+              // Valid JSON but not an array: must also degrade to [].
+              cycle_factor_keys: "{}",
+              symptom_ids: "[]",
+              notes: "",
+              encrypted_payload: null,
+            },
+          ],
+        }),
+    });
+
+    await expect(storage.readDayLogRecord("2026-06-01")).resolves.toEqual({
+      date: "2026-06-01",
+      isPeriod: true,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "medium",
+      mood: 3,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      lhTest: "none",
+      pregnancyTest: "none",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: [],
+      notes: "legacy plaintext note",
+    });
+    await expect(storage.readDayLogRecord("2026-06-02")).resolves.toEqual(
+      expect.objectContaining({
+        cycleFactorKeys: [],
+        symptomIDs: [],
+      }),
+    );
   });
 });
