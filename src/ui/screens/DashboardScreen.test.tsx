@@ -1,11 +1,13 @@
 import * as React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
+import { openConfirmation } from "../confirm/open-confirmation";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
@@ -15,6 +17,12 @@ jest.mock("expo-router", () => {
     useFocusEffect: (effect: () => void | (() => void)) => {
       mockUseEffect(effect, [effect]);
     },
+  };
+});
+
+jest.mock("../confirm/open-confirmation", () => {
+  return {
+    openConfirmation: jest.fn(),
   };
 });
 
@@ -31,6 +39,7 @@ jest.mock("../../services/managed-premium-features-service", () => {
   };
 });
 
+const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockLoadManagedPremiumFeaturesForCurrentSession = jest.mocked(
   loadManagedPremiumFeaturesForCurrentSession,
 );
@@ -245,6 +254,11 @@ async function createAdvancedFertilityStorage() {
 }
 
 describe("DashboardScreen", () => {
+  beforeEach(() => {
+    mockOpenConfirmation.mockReset();
+    mockOpenConfirmation.mockResolvedValue(true);
+  });
+
   afterEach(() => {
     jest.useRealTimers();
     mockLoadManagedPremiumFeaturesForCurrentSession.mockReset();
@@ -697,5 +711,169 @@ describe("DashboardScreen", () => {
         }),
       ),
     );
+  });
+
+  it("shows a success status after marking a manual cycle start", async () => {
+    const storage = createStorageMock();
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("dashboard-manual-cycle-start-button");
+    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastPeriodStart: "2026-03-17" }),
+      ),
+    );
+    expect(
+      await screen.findByText("Cycle start updated locally."),
+    ).toBeTruthy();
+  });
+
+  it("cancels a manual cycle start when the owner declines the confirmation prompt", async () => {
+    const storage = createStorageMock();
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("dashboard-manual-cycle-start-button");
+    mockOpenConfirmation.mockResolvedValueOnce(false);
+    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: "2026-03-17" }),
+    );
+  });
+
+  it("shows an error status when marking a manual cycle start fails to persist", async () => {
+    const storage = createStorageMock();
+    storage.writeProfileRecord = jest.fn().mockRejectedValue(new Error("boom"));
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("dashboard-manual-cycle-start-button");
+    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+
+    expect(
+      await screen.findByText(
+        "Unable to mark a new cycle start. Please try again.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("cancels deleting a persisted entry when the owner declines the confirmation prompt", async () => {
+    const persistedToday = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      mood: 4,
+      notes: "Existing note",
+    };
+    const storage = createStorageMock({
+      readDayLogRecord: jest.fn().mockResolvedValue(persistedToday),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([persistedToday]),
+    });
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("day-log-delete-button");
+    mockOpenConfirmation.mockResolvedValueOnce(false);
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.deleteDayLogRecord).not.toHaveBeenCalled();
+    // A dismissed confirmation is never the destructive answer — the entry
+    // (and its delete action) is still there.
+    expect(screen.getByTestId("day-log-delete-button")).toBeTruthy();
+  });
+
+  it("shows an error status when deleting a persisted entry fails to persist", async () => {
+    const persistedToday = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      mood: 4,
+      notes: "Existing note",
+    };
+    const storage = createStorageMock({
+      readDayLogRecord: jest.fn().mockResolvedValue(persistedToday),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([persistedToday]),
+      deleteDayLogRecord: jest.fn().mockRejectedValue(new Error("boom")),
+    });
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("day-log-delete-button");
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    expect(
+      await screen.findByText("Unable to clear this entry. Please try again."),
+    ).toBeTruthy();
+  });
+
+  it("shows the pregnancy-pause hint and suppresses the upcoming-ovulation prediction, without blocking logging", async () => {
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-03-11"),
+          pregnancyTest: "positive",
+        },
+      ]),
+    });
+
+    renderDashboard(storage);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("dashboard-prediction-explanation")).toBeTruthy(),
+    );
+    expect(
+      screen.getByTestId("dashboard-prediction-explanation").props.children,
+    ).toBe(
+      "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+    );
+    // Medical-safety invariant: a pregnancy pause never resurrects an
+    // upcoming-ovulation prediction on the dashboard hero.
+    expect(
+      screen.queryByTestId("dashboard-cycle-hero-upcoming-ovulation"),
+    ).toBeNull();
+
+    // The pause never blocks logging today's entry.
+    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
+  });
+
+  it("shows the stale cycle-data state with no phase ring once the predicted cycle is long overdue", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-01-01",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+    });
+
+    // 2026-03-15 is 73 raw days past the 2026-01-01 anchor — well past the
+    // 28-day cycle length with no new period logged, so the projection
+    // reports stale cycle data.
+    renderDashboard(storage, new Date(2026, 2, 15));
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    expect(screen.getByTestId("dashboard-cycle-hero-detail").props.children).toBe(
+      "Cycle data may be outdated. Log your period when it starts.",
+    );
+    // An overdue prediction degrades to an explicit "may be outdated" status
+    // rather than a falsely precise phase ring.
+    expect(screen.queryByTestId("dashboard-cycle-hero-phase-grid")).toBeNull();
+    expect(
+      screen.queryByTestId("dashboard-cycle-hero-phase-card-period"),
+    ).toBeNull();
   });
 });

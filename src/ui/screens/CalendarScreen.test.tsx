@@ -719,5 +719,188 @@ describe("CalendarScreen", () => {
     expect(await storage.readDayLogRecord("2026-03-14")).toEqual(
       createEmptyDayLogRecord("2026-03-14"),
     );
+
+    // The add button (view mode, no entry) reopens the editor directly.
+    fireEvent.press(screen.getByTestId("calendar-day-add-button"));
+    await screen.findByTestId("day-log-period-toggle");
+  });
+
+  it("cancels an edit without discarding the persisted entry", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
+    );
+    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await screen.findByTestId("day-log-cancel-button");
+
+    fireEvent.press(screen.getByTestId("day-log-cancel-button"));
+
+    // Back to the read-only summary; the entry itself was never touched.
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
+    );
+    expect(storage.deleteDayLogRecord).not.toHaveBeenCalled();
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("navigates forward a month then back to today via the today shortcut", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-next-button"));
+
+    await waitFor(() =>
+      expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-04-01"),
+    );
+
+    fireEvent.press(screen.getByTestId("calendar-today-button"));
+
+    await waitFor(() =>
+      expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-17"),
+    );
+  });
+
+  it("cancels deleting a persisted entry when the owner declines the confirmation prompt", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
+    );
+    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await screen.findByTestId("day-log-delete-button");
+
+    mockOpenConfirmation.mockResolvedValueOnce(false);
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.deleteDayLogRecord).not.toHaveBeenCalled();
+    // Still editing the untouched entry — a dismissed confirmation keeps the
+    // owner exactly where they were, never the destructive answer.
+    expect(screen.getByTestId("day-log-delete-button")).toBeTruthy();
+  });
+
+  it("shows an error status when deleting an entry fails to persist", async () => {
+    const storage = createStorageMock();
+    storage.deleteDayLogRecord = jest.fn().mockRejectedValue(new Error("boom"));
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
+    );
+    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await screen.findByTestId("day-log-delete-button");
+    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    expect(
+      await screen.findByText("Unable to clear this entry. Please try again."),
+    ).toBeTruthy();
+  });
+
+  it("shows a success status after marking a manual cycle start", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
+    );
+
+    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastPeriodStart: "2026-03-14" }),
+      ),
+    );
+    expect(
+      await screen.findByText("Cycle start updated locally."),
+    ).toBeTruthy();
+  });
+
+  it("cancels a manual cycle start when the owner declines the confirmation prompt", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
+    );
+
+    mockOpenConfirmation.mockResolvedValueOnce(false);
+    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
+    expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: "2026-03-14" }),
+    );
+  });
+
+  it("shows an error status when marking a manual cycle start fails to persist", async () => {
+    const storage = createStorageMock();
+    storage.writeProfileRecord = jest.fn().mockRejectedValue(new Error("boom"));
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
+    );
+
+    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+
+    expect(
+      await screen.findByText(
+        "Unable to mark a new cycle start. Please try again.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("suppresses predicted, fertile, and ovulation markers after a positive pregnancy test, while keeping the medical disclaimer", async () => {
+    const storage = createStorageMock();
+    storage.listDayLogRecordsInRange = jest.fn().mockResolvedValue([
+      {
+        ...createEmptyDayLogRecord("2026-03-11"),
+        pregnancyTest: "positive",
+      },
+    ]);
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+
+    // Without the pause this profile (last period 2026-03-10, 28-day cycle)
+    // predicts ovulation around 2026-03-23 with a fertile window and
+    // predicted-period days painted on the grid; a positive pregnancy test
+    // must blank all of that instead of showing a stale prediction.
+    expect(screen.queryByLabelText(/Ovulation day/)).toBeNull();
+    expect(screen.queryByLabelText(/Predicted period/)).toBeNull();
+    expect(
+      await screen.findByTestId("calendar-prediction-disclaimer"),
+    ).toBeTruthy();
   });
 });

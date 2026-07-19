@@ -437,4 +437,91 @@ describe("StatsScreen", () => {
     await screen.findByTestId("stats-trend-section");
     expect(screen.getByLabelText(/Current phase\. ✨ Fertile/)).toBeTruthy();
   });
+
+  it("renders premium lock cards (never silent-hides) and wires the CTA to backup-sync once insights unlock", async () => {
+    // Same two-completed-cycle fixture as the fertile-phase case above; no
+    // syncSecretStore is passed, so every managed premium feature stays
+    // false and every premium section must render as a locked card instead
+    // of disappearing.
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-02-26",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+      ]),
+    });
+
+    render(
+      <AppPreferencesTestProvider>
+        <StatsScreen now={new Date(2026, 2, 8)} storage={storage} />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("stats-advanced-insights-lock");
+    expect(screen.getByTestId("stats-advanced-fertility-lock")).toBeTruthy();
+    expect(screen.getByTestId("stats-extended-reports-lock")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("stats-extended-reports-lock"));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
+  });
+
+  it("shows the pregnancy-pause hint once insights unlock, after a positive pregnancy test", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-02-26",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          pregnancyTest: "positive",
+        },
+      ]),
+    });
+
+    render(
+      <AppPreferencesTestProvider>
+        <StatsScreen now={new Date(2026, 2, 8)} storage={storage} />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("stats-trend-section");
+    expect(
+      screen.getByText(
+        "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+      ),
+    ).toBeTruthy();
+  });
 });
