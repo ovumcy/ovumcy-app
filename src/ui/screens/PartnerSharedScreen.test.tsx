@@ -1,6 +1,13 @@
 import * as React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { createEmptyDayLogRecord } from "../../models/day-log";
+import type {
+  DayCervicalMucus,
+  DayCycleFactorKey,
+  DayFlow,
+  DayLHTest,
+} from "../../models/day-log";
 import type { InterfaceLanguage } from "../../models/profile";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { PartnerSharedScreen } from "./PartnerSharedScreen";
@@ -322,6 +329,12 @@ describe("PartnerSharedScreen", () => {
         "This read-only view is available only through Ovumcy Cloud partner sharing.",
       ),
     ).toBeTruthy();
+    // Full access shows the detailed hint (contrast: summary-access test below).
+    expect(
+      screen.getByText(
+        "Full access includes the shared summary and the detailed day-by-day history that the owner allowed.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Top symptoms: Cramps")).toBeTruthy();
     expect(screen.getByTestId("partner-shared-row-2026-04-04")).toBeTruthy();
     expect(screen.getByText("Shared note")).toBeTruthy();
@@ -520,5 +533,389 @@ describe("PartnerSharedScreen", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("Спазмы")).toBeTruthy();
+  });
+});
+
+describe("PartnerSharedScreen state orchestration", () => {
+  beforeEach(() => {
+    mockBack.mockReset();
+    mockSearchParams = { grant_id: "grant-1" };
+    mockLoadManagedPartnerAccess.mockReset();
+    mockLoadManagedPartnerProjection.mockReset();
+  });
+
+  it("shows the loading state before the shared view resolves, and back navigation still works", () => {
+    // Never resolves within this test: proves the loading branch renders
+    // (title/subtitle/back button) independent of any service response.
+    mockLoadManagedPartnerAccess.mockReturnValue(new Promise(() => {}));
+
+    renderPartnerSharedScreen();
+
+    expect(screen.getByText("Loading shared view")).toBeTruthy();
+    expect(
+      screen.getByText("Decrypting the shared partner view on this device."),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("partner-shared-back-button"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to the current wall-clock time when no now override is provided", () => {
+    // Never resolves: only the synchronous initial render matters here,
+    // proving `now ?? new Date()` in the component doesn't throw or hang
+    // when the optional `now` prop is omitted (the real app call site).
+    mockLoadManagedPartnerAccess.mockReturnValue(new Promise(() => {}));
+
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PartnerSharedScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText("Loading shared view")).toBeTruthy();
+  });
+
+  it.each<[string, string | string[] | undefined]>([
+    ["missing", undefined],
+    ["whitespace-only", "   "],
+    ["an empty array", []],
+  ])(
+    "shows a not-found error when the grant id is %s, without calling the access service",
+    async (_label, grantID) => {
+      mockSearchParams = grantID === undefined ? {} : { grant_id: grantID };
+
+      renderPartnerSharedScreen();
+
+      await waitFor(() =>
+        expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
+      );
+      expect(
+        screen.getByText("This partner access record could not be found."),
+      ).toBeTruthy();
+      expect(mockLoadManagedPartnerAccess).not.toHaveBeenCalled();
+    },
+  );
+
+  it("shows a not-found error when the grant id matches neither an owned nor a shared grant, and the empty-card back button navigates back", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({
+      ok: true,
+      value: { owned: { invites: [], grants: [] }, sharedWithMe: [] },
+    });
+
+    renderPartnerSharedScreen();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
+    );
+    expect(
+      screen.getByText("This partner access record could not be found."),
+    ).toBeTruthy();
+    expect(mockLoadManagedPartnerProjection).not.toHaveBeenCalled();
+
+    // readState stayed null, so the empty-state card (with its own back
+    // button, separate from the top InlineBackButton) also renders.
+    fireEvent.press(screen.getByTestId("partner-shared-empty-back-button"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("finds the grant among the caller's own owned grants when it is absent from sharedWithMe", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({
+      ok: true,
+      value: {
+        owned: {
+          invites: [],
+          grants: [
+            {
+              id: "grant-1",
+              ownerAccountID: "owner-1",
+              partnerAccountID: "partner-1",
+              accessLevel: "full",
+              sourceInviteID: "invite-1",
+              acceptedAt: "2026-04-05T08:00:00.000Z",
+              lastSeenAt: "2026-04-05T08:05:00.000Z",
+              revokedAt: null,
+              revokedReason: "",
+              createdAt: "2026-04-05T08:00:00.000Z",
+              updatedAt: "2026-04-05T08:05:00.000Z",
+            },
+          ],
+        },
+        sharedWithMe: [],
+      },
+    });
+    mockLoadManagedPartnerProjection.mockResolvedValue({
+      ok: true,
+      value: createProjectionPayload(),
+    });
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(mockLoadManagedPartnerProjection).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves a route param delivered as an array of grant ids", async () => {
+    mockSearchParams = { grant_id: ["grant-1"] };
+    setupMocksWithPayload(createProjectionPayload());
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-summary-card");
+  });
+
+  it("maps a not-connected access error to its sign-in message", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({ ok: false, errorCode: "not_connected" });
+
+    renderPartnerSharedScreen();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
+    );
+    expect(screen.getByText("Sign in to Ovumcy Cloud first.")).toBeTruthy();
+  });
+
+  it("maps an unrecognized access error code to the generic retry message", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({ ok: false, errorCode: "rate_limited" });
+
+    renderPartnerSharedScreen();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
+    );
+    expect(
+      screen.getByText("Unable to update partner access right now. Please try again."),
+    ).toBeTruthy();
+  });
+
+  it("maps an invalid-projection error to the generic retry message", async () => {
+    mockLoadManagedPartnerAccess.mockResolvedValue({
+      ok: true,
+      value: {
+        owned: { invites: [], grants: [] },
+        sharedWithMe: [
+          {
+            id: "grant-1",
+            ownerAccountID: "owner-1",
+            partnerAccountID: "partner-1",
+            accessLevel: "full",
+            sourceInviteID: "invite-1",
+            acceptedAt: "2026-04-05T08:00:00.000Z",
+            lastSeenAt: null,
+            revokedAt: null,
+            revokedReason: "",
+            createdAt: "2026-04-05T08:00:00.000Z",
+            updatedAt: "2026-04-05T08:05:00.000Z",
+          },
+        ],
+      },
+    });
+    mockLoadManagedPartnerProjection.mockResolvedValue({
+      ok: false,
+      errorCode: "invalid_partner_projection",
+    });
+
+    renderPartnerSharedScreen();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
+    );
+    expect(
+      screen.getByText("Unable to update partner access right now. Please try again."),
+    ).toBeTruthy();
+  });
+
+  it("shows the summary-access hint instead of the full-access hint for a summary grant", async () => {
+    const payload: PartnerSharedProjectionPayload = {
+      ...createProjectionPayload(),
+      accessLevel: "summary",
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(
+      screen.getByText(
+        "Summary access keeps the lighter shared overview without detailed day-by-day history.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByText(
+        "Full access includes the shared summary and the detailed day-by-day history that the owner allowed.",
+      ),
+    ).toBeNull();
+  });
+
+  it("shows placeholder dashes for cycle day and next period window when there is no cycle anchor yet", async () => {
+    const base = createProjectionPayload();
+    const payload: PartnerSharedProjectionPayload = {
+      ...base,
+      dayLogs: [],
+      symptomRecords: [],
+      profile: { ...base.profile, lastPeriodStart: null },
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(screen.getByText("Cycle day")).toBeTruthy();
+    expect(screen.getByText("Next period window")).toBeTruthy();
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows a projected next-period date range once three completed cycles exist", async () => {
+    const base = createProjectionPayload();
+    const payload: PartnerSharedProjectionPayload = {
+      ...base,
+      generatedAt: "2026-04-05T09:00:00.000Z",
+      profile: { ...base.profile, lastPeriodStart: "2026-03-30", irregularCycle: false },
+      dayLogs: [
+        { ...createEmptyDayLogRecord("2026-01-05"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-02"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-30"), isPeriod: true, cycleStart: true },
+      ],
+      symptomRecords: [],
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-summary-card");
+    // "Mon D - Mon D" — a real range, not the "—" placeholder.
+    expect(screen.getByText(/^[A-Za-z]{3} \d{1,2} - [A-Za-z]{3} \d{1,2}$/)).toBeTruthy();
+  });
+
+  it("collapses the next-period window to a single date when the irregular-cycle spread is zero", async () => {
+    // Three completed cycles of the *same* length give an irregular-cycle
+    // window with an identical start and end date (min == max spread), so
+    // formatDateRange's range-vs-single-date fallback resolves to one label
+    // instead of a "Mon D - Mon D" span.
+    const base = createProjectionPayload();
+    const payload: PartnerSharedProjectionPayload = {
+      ...base,
+      generatedAt: "2026-04-05T09:00:00.000Z",
+      profile: { ...base.profile, lastPeriodStart: "2026-03-30", irregularCycle: true },
+      dayLogs: [
+        { ...createEmptyDayLogRecord("2026-01-05"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-02"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-02"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-30"), isPeriod: true, cycleStart: true },
+      ],
+      symptomRecords: [],
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(screen.getByText(/^[A-Za-z]{3} \d{1,2}$/)).toBeTruthy();
+    expect(screen.queryByText(/^[A-Za-z]{3} \d{1,2} - [A-Za-z]{3} \d{1,2}$/)).toBeNull();
+  });
+
+  it("guards against a state update after the screen unmounts while the shared view is loading", async () => {
+    setupMocksWithPayload(createProjectionPayload());
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const { unmount } = renderPartnerSharedScreen();
+    unmount();
+
+    await waitFor(() => expect(mockLoadManagedPartnerProjection).toHaveBeenCalledTimes(1));
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+});
+
+describe("PartnerSharedScreen privacy invariants and row rendering", () => {
+  beforeEach(() => {
+    mockBack.mockReset();
+    mockSearchParams = { grant_id: "grant-1" };
+    mockLoadManagedPartnerAccess.mockReset();
+    mockLoadManagedPartnerProjection.mockReset();
+  });
+
+  it("never renders the pregnancy-test field on the read-only shared view, even if a row carries a value", async () => {
+    const payload: PartnerSharedProjectionPayload = {
+      ...createProjectionPayload(),
+      dayLogs: [
+        {
+          ...createEmptyDayLogRecord("2026-04-04"),
+          isPeriod: true,
+          // Defense in depth: the owner-side projection builder
+          // (partner-shared-projection-service.ts) always zeroes
+          // pregnancyTest before upload. The read-only history row must
+          // never surface it even if a legacy or corrupted payload carried
+          // a real value — buildHistoryDetailText has no pregnancyTest
+          // branch at all, unlike every other day-log field.
+          pregnancyTest: "positive",
+        },
+      ],
+      symptomRecords: [],
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-history-card");
+    // The row's detail line is exactly "Period day" — no pregnancy-test
+    // label is ever appended, unlike flow/mood/sex/bbt/cervicalMucus/lhTest.
+    expect(screen.getByText("Period day")).toBeTruthy();
+    expect(screen.queryByText("Positive")).toBeNull();
+    // Note (out of this UI-only tranche's scope, not fixed here): a leaked
+    // pregnancyTest also feeds the *shared* buildCurrentCycleProjection /
+    // buildPredictionExplanation pipeline this screen reuses from the owner
+    // surfaces, so the generic "predictions paused" explanation text can
+    // still indirectly reflect a pause even though the field itself is
+    // never labeled. In real operation this is unreachable because
+    // partner-shared-projection-service.redactDayLogForPartner always zeroes
+    // pregnancyTest before a projection is ever uploaded — the redaction
+    // boundary is the projection builder, not this screen, per
+    // architecture.md ("access-level filtering lives in shared projection
+    // services").
+  });
+
+  it("falls back to raw option values, lists cycle factors outside the known catalog, and hides the detail line when a row has no notable fields", async () => {
+    const base = createProjectionPayload();
+    const payload: PartnerSharedProjectionPayload = {
+      ...base,
+      // Exercises the Fahrenheit display branch (the other fixtures in this
+      // file are all Celsius).
+      profile: { ...base.profile, temperatureUnit: "f" },
+      dayLogs: [
+        {
+          ...createEmptyDayLogRecord("2026-04-03"),
+          isPeriod: true,
+          // Simulates forward/backward-compat: an option value or cycle
+          // factor this reader's copy catalog does not recognize (e.g. a
+          // newer owner-app version, or a removed/renamed factor key).
+          flow: "unusual_flow" as DayFlow,
+          bbt: 37,
+          cervicalMucus: "unusual_cm" as DayCervicalMucus,
+          lhTest: "unusual_lh" as DayLHTest,
+          cycleFactorKeys: ["travel", "legacy_removed_factor" as DayCycleFactorKey],
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-02"),
+          notes: "Quiet day, nothing notable",
+        },
+      ],
+      symptomRecords: [],
+    };
+    setupMocksWithPayload(payload);
+
+    renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-row-2026-04-03");
+    expect(
+      screen.getByText(
+        "Period day · Flow: unusual_flow · BBT: 98.60 °F · Cervical mucus: unusual_cm · LH test: unusual_lh",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("Travel, legacy_removed_factor")).toBeTruthy();
+
+    expect(screen.getByTestId("partner-shared-row-2026-04-02")).toBeTruthy();
+    expect(screen.getByText("Quiet day, nothing notable")).toBeTruthy();
   });
 });
