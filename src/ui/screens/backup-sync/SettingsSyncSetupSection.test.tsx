@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { Modal, Platform } from "react-native";
 
+import type { ResolvedBillingOffer } from "../../../services/offers-service";
 import { buildBackupSyncSetupPresentation } from "../../../services/backup-sync-view-service";
 import { buildSettingsViewData } from "../../../services/settings-view-service";
 import { createDefaultSyncPreferencesRecord } from "../../../sync/sync-contract";
@@ -537,5 +539,423 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     expect(screen.queryByTestId("settings-sync-recovery-code-modal")).toBeNull();
+  });
+
+  it("ignores a submit from the password field once already signed in", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onLogin = jest.fn();
+    const onRecoverAccess = jest.fn();
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          hasSyncSession
+          onLogin={onLogin}
+          onRecoverAccess={onRecoverAccess}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+
+    expect(onLogin).not.toHaveBeenCalled();
+    expect(onRecoverAccess).not.toHaveBeenCalled();
+  });
+
+  it("blocks an auth submit until local secrets are prepared", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onLogin = jest.fn();
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} onLogin={onLogin} />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+
+    expect(onLogin).not.toHaveBeenCalled();
+  });
+
+  it("wires the sync-mode picker to onModeSelect, guarded while account actions are disabled", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onModeSelect = jest.fn();
+
+    const { rerender } = render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} onModeSelect={onModeSelect} />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
+    expect(onModeSelect).toHaveBeenCalledWith("self_hosted");
+
+    onModeSelect.mockClear();
+    rerender(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          onModeSelect={onModeSelect}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: false,
+            hasSyncSession: false,
+            isAuthenticating: true,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
+    expect(onModeSelect).not.toHaveBeenCalled();
+  });
+
+  it("shows the endpoint validation error inline in self-hosted mode", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const selfHostedPreferences = { ...props.preferences, mode: "self_hosted" as const };
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          errorPresentation={{
+            ...props.errorPresentation,
+            endpointMessage: viewData.errors.invalidEndpoint,
+          }}
+          preferences={selfHostedPreferences}
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: false,
+            hasSyncSession: false,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: selfHostedPreferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.errors.invalidEndpoint)).toBeTruthy();
+  });
+
+  it("shows the device-label validation error inline", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          errorPresentation={{
+            ...props.errorPresentation,
+            deviceLabelMessage: viewData.errors.deviceLabelRequired,
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.errors.deviceLabelRequired)).toBeTruthy();
+  });
+
+  it("hides the login-vs-restore pane picker once local secrets already exist", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          presentation={buildBackupSyncSetupPresentation({
+            hasStoredSyncSecrets: true,
+            hasSyncSession: false,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "unknown",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByTestId("settings-sync-login-input")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-account-pane-restore")).toBeNull();
+    expect(screen.queryByTestId("settings-sync-account-pane-auth")).toBeNull();
+  });
+
+  it("shows the login and password validation errors inline", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          errorPresentation={{
+            ...props.errorPresentation,
+            loginMessage: viewData.errors.loginRequired,
+            passwordMessage: viewData.errors.passwordRequired,
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.errors.loginRequired)).toBeTruthy();
+    expect(screen.getByText(viewData.errors.passwordRequired)).toBeTruthy();
+  });
+
+  it("shows the recovery-phrase validation error inline on the restore pane", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          errorPresentation={{
+            ...props.errorPresentation,
+            recoveryPhraseMessage: viewData.errors.invalidRecoveryPhrase,
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+
+    expect(
+      await screen.findByText(viewData.errors.invalidRecoveryPhrase),
+    ).toBeTruthy();
+  });
+
+  it("does not crash pressing renewal-management buttons when no handler is wired", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          hasStoredSyncSecrets
+          hasSyncSession
+          onCancelRenewal={undefined}
+          onResumeRenewal={undefined}
+          presentation={buildBackupSyncSetupPresentation({
+            billingManagement: {
+              canManageRenewal: true,
+              canCancelAtPeriodEnd: true,
+              canResumeRenewal: true,
+            },
+            hasStoredSyncSecrets: true,
+            hasSyncSession: true,
+            isAuthenticating: false,
+            isPreparing: false,
+            isRecovering: false,
+            isRestoring: false,
+            isSyncing: false,
+            locale: "en",
+            managedPlanStatus: "active",
+            notSetLabel: "Not set",
+            preferences: props.preferences,
+            syncCapabilities: null,
+            viewData,
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const cancelButton = await screen.findByTestId(
+      "settings-sync-renewal-cancel-button",
+    );
+    const resumeButton = screen.getByTestId("settings-sync-renewal-resume-button");
+
+    expect(() => {
+      fireEvent.press(cancelButton);
+      fireEvent.press(resumeButton);
+    }).not.toThrow();
+  });
+
+  it("shows the announcement eyebrow for a non-promo offer and wires a screen-action CTA", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onOfferCTAPress = jest.fn();
+    const announcementOffer: ResolvedBillingOffer = {
+      id: "offer-announcement",
+      kind: "announcement",
+      title: "New in Ovumcy Cloud",
+      body: "Reminders are here.",
+      cta: "Learn more",
+      action: {
+        type: "play_checkout",
+        productId: null,
+        basePlanId: null,
+        offerId: null,
+      },
+    };
+    const screenOffer: ResolvedBillingOffer = {
+      id: "offer-screen",
+      kind: "subscription_promo",
+      title: "Extend your plan",
+      body: "Keep syncing without interruption.",
+      cta: "Open",
+      action: { type: "screen", screen: "backup-sync" },
+    };
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          billingOffers={[announcementOffer, screenOffer]}
+          onOfferCTAPress={onOfferCTAPress}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByText(viewData.offerAnnouncementEyebrow)).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("settings-sync-offer-offer-screen-cta"));
+    expect(onOfferCTAPress).toHaveBeenCalledWith(screenOffer);
+  });
+
+  it("closes the recovery-phrase reveal modal from the confirm button", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryPhrase="alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("settings-sync-recovery-modal");
+    fireEvent.press(
+      screen.getByTestId("settings-sync-recovery-modal-confirm-button"),
+    );
+
+    expect(screen.queryByTestId("settings-sync-recovery-modal")).toBeNull();
+  });
+
+  it("closes the recovery-phrase reveal modal when dismissed via the system back gesture", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryPhrase="alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("settings-sync-recovery-modal");
+    const phraseModal = screen
+      .UNSAFE_getAllByType(Modal)
+      .find((modal) => modal.props.visible);
+
+    act(() => {
+      phraseModal?.props.onRequestClose();
+    });
+
+    expect(screen.queryByTestId("settings-sync-recovery-modal")).toBeNull();
+  });
+
+  it("submits the account form through the native web form element", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+    const onLogin = jest.fn();
+    const originalPlatformOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", {
+      configurable: true,
+      value: "web",
+    });
+
+    try {
+      render(
+        <AppPreferencesTestProvider>
+          <SettingsSyncSetupSection
+            {...props}
+            hasStoredSyncSecrets
+            onLogin={onLogin}
+            presentation={buildBackupSyncSetupPresentation({
+              hasStoredSyncSecrets: true,
+              hasSyncSession: false,
+              isAuthenticating: false,
+              isPreparing: false,
+              isRecovering: false,
+              isRestoring: false,
+              isSyncing: false,
+              locale: "en",
+              managedPlanStatus: "unknown",
+              notSetLabel: "Not set",
+              preferences: props.preferences,
+              syncCapabilities: null,
+              viewData,
+            })}
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      const form = screen
+        .UNSAFE_getAllByProps({ "data-testid": "settings-sync-account-form" })
+        .find((node) => typeof node.props.onSubmit === "function");
+
+      act(() => {
+        form?.props.onSubmit({ preventDefault: jest.fn() });
+      });
+
+      expect(onLogin).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        configurable: true,
+        value: originalPlatformOS,
+      });
+    }
   });
 });

@@ -85,4 +85,22 @@ describe("BackupSyncTOTPChallengeSection", () => {
 
     expect(screen.getByText(copy.errors.totpInvalidCode)).toBeTruthy();
   });
+
+  it("hides the expiry text when no challengeExpiresAt is given", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <BackupSyncTOTPChallengeSection
+          challengeExpiresAt=""
+          code=""
+          copy={copy}
+          errorMessage=""
+          onCancel={noop}
+          onCodeChange={noop}
+          onSubmit={noop}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("backup-sync-totp-expires")).toBeNull();
+  });
 });
