@@ -220,6 +220,20 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.queryByTestId("account-security-forgot-submit")).toBeNull();
   });
 
+  it("shows the reset-token expiry hint on the new-password stage when provided", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          forgotStage="new_password"
+          forgotResetTokenExpiresAt="Expires in 15 minutes"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText("Expires in 15 minutes")).toBeTruthy();
+  });
+
   it("shows the completed banner when the reset flow finishes", () => {
     render(
       <AppPreferencesTestProvider>
@@ -466,5 +480,182 @@ describe("SyncAccountSecuritySection", () => {
     expect(
       screen.queryByTestId("account-security-totp-current-status"),
     ).toBeNull();
+  });
+
+  it("dispatches onTOTPModeChange when pressing the enable/disable tabs", () => {
+    const onTOTPModeChange = jest.fn();
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          onTOTPModeChange={onTOTPModeChange}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId("account-security-totp-tab-disable"));
+    expect(onTOTPModeChange).toHaveBeenNthCalledWith(1, "disable");
+
+    fireEvent.press(screen.getByTestId("account-security-totp-tab-enable"));
+    expect(onTOTPModeChange).toHaveBeenNthCalledWith(2, "enable");
+  });
+
+  // resolveErrorMessage (change-password surface): the remaining
+  // ChangeSyncPasswordErrorCode branches not already covered above.
+  describe("remaining change-password error mappings", () => {
+    it.each([
+      ["current_password_required", () => copy.errors.currentPasswordRequired],
+      ["new_password_required", () => copy.errors.newPasswordRequired],
+      ["new_password_must_differ", () => copy.errors.newPasswordMustDiffer],
+      ["unauthorized", () => copy.errors.unauthorized],
+    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} changeErrorCode={errorCode} />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(expected())).toBeTruthy();
+    });
+
+    it("falls back to the generic message for an endpoint-policy error code", () => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            changeErrorCode="endpoint_required"
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(copy.errors.generic)).toBeTruthy();
+    });
+  });
+
+  // resolveErrorMessage (forgot-password credentials stage): the remaining
+  // RequestSyncPasswordResetErrorCode branches.
+  describe("remaining forgot-password credentials-stage error mappings", () => {
+    it.each([
+      ["login_required", () => copy.errors.loginRequired],
+      ["recovery_code_required", () => copy.errors.recoveryCodeRequired],
+      ["network_failed", () => copy.errors.networkFailed],
+    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} forgotErrorCode={errorCode} />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(expected())).toBeTruthy();
+    });
+  });
+
+  // resolveErrorMessage (forgot-password new-password stage): the remaining
+  // ResetSyncPasswordErrorCode branches.
+  describe("remaining forgot-password reset-stage error mappings", () => {
+    it.each([
+      ["reset_token_required", () => copy.errors.resetTokenRequired],
+      ["invalid_reset_token", () => copy.errors.invalidResetToken],
+      ["weak_new_password", () => copy.errors.weakNewPassword],
+    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            forgotStage="new_password"
+            forgotErrorCode={errorCode}
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(expected())).toBeTruthy();
+    });
+  });
+
+  it("maps regenerate not_connected to its localized copy", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          regenerateErrorCode="not_connected"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(copy.errors.notConnected)).toBeTruthy();
+  });
+
+  // resolveTOTPErrorMessage (enable/start stage): the remaining
+  // StartTOTPEnrollmentErrorCode branches, plus the generic fallback.
+  describe("remaining TOTP enroll-stage error mappings", () => {
+    it.each([
+      ["current_password_required", () => totpCopy.errors.currentPasswordRequired],
+      ["invalid_current_password", () => totpCopy.errors.invalidCurrentPassword],
+      ["totp_not_configured", () => totpCopy.errors.totpNotConfigured],
+      ["totp_already_enabled", () => totpCopy.errors.totpAlreadyEnabled],
+      ["network_failed", () => totpCopy.errors.networkFailed],
+    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection {...baseProps()} totpErrorCode={errorCode} />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(expected())).toBeTruthy();
+    });
+
+    it("falls back to the generic message for an endpoint-policy error code", () => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            totpErrorCode="endpoint_required"
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(totpCopy.errors.generic)).toBeTruthy();
+    });
+  });
+
+  // resolveTOTPErrorMessage (disable stage): the remaining DisableTOTPErrorCode
+  // branches.
+  describe("remaining TOTP disable-stage error mappings", () => {
+    it.each([
+      ["totp_replayed", () => totpCopy.errors.totpReplayed],
+      ["totp_secret_failed", () => totpCopy.errors.totpSecretFailed],
+      ["not_connected", () => totpCopy.errors.notConnected],
+      ["unauthorized", () => totpCopy.errors.unauthorized],
+    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            totpMode="disable"
+            totpErrorCode={errorCode}
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(expected())).toBeTruthy();
+    });
+
+    it("shows the distinct rate-limited message and disables the disable-TOTP submit", () => {
+      render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            totpMode="disable"
+            totpErrorCode="rate_limited"
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(screen.getByText(totpCopy.errors.rateLimited)).toBeTruthy();
+      expect(
+        screen.getByTestId("account-security-totp-disable-submit").props
+          .accessibilityState?.disabled,
+      ).toBe(true);
+    });
   });
 });
