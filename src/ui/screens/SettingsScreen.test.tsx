@@ -265,6 +265,27 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("persists a first-day-of-week change through Save all", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(
+      screen.getByTestId("settings-interface-first-day-of-week-1"),
+    );
+    fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          firstDayOfWeek: 1,
+        }),
+      ),
+    );
+  });
+
   it("toggles tracking cards through the shared binary toggle control", async () => {
     const storage = createSettingsStorageMock();
 
