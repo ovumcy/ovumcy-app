@@ -1,7 +1,14 @@
-import type { DayLogRecord } from "../models/day-log";
-import type { ProfileRecord } from "../models/profile";
-import { buildCycleHistorySummary } from "./cycle-history-service";
-import { buildDashboardViewData } from "./dashboard-view-service";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import {
+  buildCurrentCycleProjection,
+  buildCycleHistorySummary,
+} from "./cycle-history-service";
+import { predictCycleWindow } from "./cycle-prediction-policy";
+import {
+  buildDashboardViewData,
+  resolveDaySaveMessageKey,
+} from "./dashboard-view-service";
 
 describe("dashboard-view-service", () => {
   it("switches to facts-only mode for unpredictable cycles", () => {
@@ -57,6 +64,8 @@ describe("dashboard-view-service", () => {
         currentTone: "neutral",
       }),
     );
+    // Unpredictable-cycle mode keeps the day-save message neutral.
+    expect(viewData.daySaveMessage).toBe("Saved.");
     expect(viewData.predictionExplanation).toBe(
       "Predictions are off in unpredictable cycle mode. Ovumcy shows recorded facts only.",
     );
@@ -747,5 +756,88 @@ describe("dashboard-view-service", () => {
 
     expect(viewData.cycleHero.state).toBe("unknown");
     expect(viewData.cycleHero.upcomingOvulationLabel).toBeNull();
+  });
+
+  describe("resolveDaySaveMessageKey (day-feedback policy port)", () => {
+    const cycleStart = "2026-03-10";
+    const now = new Date(2026, 2, 24);
+
+    function makeProjection(
+      profile: ProfileRecord,
+      records: DayLogRecord[],
+    ): ReturnType<typeof buildCurrentCycleProjection> {
+      const history = buildCycleHistorySummary(profile, records, now);
+      return buildCurrentCycleProjection(profile, history, records, now);
+    }
+
+    function regularProfile(
+      overrides: Partial<ProfileRecord> = {},
+    ): ProfileRecord {
+      return {
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: cycleStart,
+        cycleLength: 28,
+        periodLength: 5,
+        ...overrides,
+      };
+    }
+
+    const cycleStartRecords: DayLogRecord[] = [
+      { ...createEmptyDayLogRecord(cycleStart), isPeriod: true, cycleStart: true },
+    ];
+
+    it("offers a self-care message on cycle days 1 to 3", () => {
+      const profile = regularProfile();
+      const projection = makeProjection(profile, cycleStartRecords);
+      expect(resolveDaySaveMessageKey("2026-03-10", profile, projection)).toBe(
+        "self_care",
+      );
+      expect(resolveDaySaveMessageKey("2026-03-12", profile, projection)).toBe(
+        "self_care",
+      );
+      // Cycle day 4 is past the self-care window.
+      expect(resolveDaySaveMessageKey("2026-03-13", profile, projection)).toBe(
+        "neutral",
+      );
+    });
+
+    it("offers a fertile message inside the predicted fertile window", () => {
+      const profile = regularProfile();
+      const projection = makeProjection(profile, cycleStartRecords);
+      const window = predictCycleWindow(
+        cycleStart,
+        projection.predictionCycleLength,
+        projection.lutealPhase,
+      );
+      expect(window.fertilityStart).not.toBeNull();
+      expect(
+        resolveDaySaveMessageKey(window.fertilityStart ?? "", profile, projection),
+      ).toBe("fertile");
+    });
+
+    it("stays neutral in unpredictable-cycle mode even on cycle day 1", () => {
+      const profile = regularProfile({ unpredictableCycle: true });
+      const projection = makeProjection(profile, cycleStartRecords);
+      expect(resolveDaySaveMessageKey(cycleStart, profile, projection)).toBe(
+        "neutral",
+      );
+    });
+
+    it("lets a positive-pregnancy pause win over every other message", () => {
+      const profile = regularProfile();
+      const records: DayLogRecord[] = [
+        ...cycleStartRecords,
+        {
+          ...createEmptyDayLogRecord("2026-03-15"),
+          pregnancyTest: "positive",
+        },
+      ];
+      const projection = makeProjection(profile, records);
+      expect(projection.isPregnancyPaused).toBe(true);
+      // Even on cycle day 1 (which would otherwise be self-care), the pause wins.
+      expect(resolveDaySaveMessageKey(cycleStart, profile, projection)).toBe(
+        "pregnancy_paused",
+      );
+    });
   });
 });

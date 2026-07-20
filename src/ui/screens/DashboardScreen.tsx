@@ -140,7 +140,10 @@ export function DashboardScreen({
     labels: state
       ? {
           saveFailedLabel: state.editorViewData.actions.saveFailedLabel,
-          savedLabel: state.editorViewData.actions.savedLabel,
+          // Contextual day-save feedback (ovumcy-web day-feedback policy): the
+          // generic "Saved" is replaced by the phase-aware message, including
+          // the pregnancy-pause red-flag when predictions are paused.
+          savedLabel: state.viewData.daySaveMessage,
           savingLabel: state.editorViewData.actions.savingLabel,
         }
       : null,
