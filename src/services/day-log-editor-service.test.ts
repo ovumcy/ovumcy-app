@@ -320,6 +320,19 @@ describe("resolveBleedingSafetyHint", () => {
       getDayLogCopy("ru").bleedingSafetyHint,
     );
   });
+
+  it("fails safe to no hint when the edited day's date is unparseable", () => {
+    // 2026-03-32 is a well-formed string but not a real calendar day, so the
+    // consecutive-run walk cannot anchor on it. The safety-hint computation
+    // must degrade to run length 0 (no hint) rather than throw on the bad date.
+    const history = [
+      periodDay("2026-03-30", "heavy"),
+      periodDay("2026-03-31", "heavy"),
+    ];
+    const record = periodDay("2026-03-32", "heavy");
+
+    expect(resolveBleedingSafetyHint(record, history)).toBeNull();
+  });
 });
 
 function createStorageMock(overrides = {}) {
