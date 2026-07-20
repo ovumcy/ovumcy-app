@@ -1,3 +1,4 @@
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
@@ -407,5 +408,52 @@ describe("manual-cycle-start-service", () => {
     );
 
     expect(viewData?.notices.suggestion).toBeUndefined();
+  });
+});
+
+describe("early-bleeding notice structure (medical safety)", () => {
+  // The notice fires when a marked early bleed falls 6-12 days after the
+  // ESTIMATED ovulation (previous start + [cycleLength - luteal]). That estimate
+  // inherits the prediction's error, so the surface must NOT imply a precise
+  // implantation window — it stays a hedged "may not be a new cycle" nudge.
+  function earlyBleedViewData(targetDate: string, now: Date) {
+    const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-01"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const draftRecord = {
+      ...createEmptyDayLogRecord(targetDate),
+      isPeriod: true,
+    };
+    return buildManualCycleStartViewData(profile, records, draftRecord, now);
+  }
+
+  it("fires the hedged notice for a bleed inside the 6-12 day post-ovulation window", () => {
+    // Estimated ovulation = 2026-03-01 + (28 - 14) = 2026-03-15; target 2026-03-23
+    // is +8 days, inside [6, 12].
+    const viewData = earlyBleedViewData("2026-03-23", new Date(2026, 2, 23));
+
+    const notice = viewData?.notices.implantation;
+    expect(notice).toBe(getDashboardCopy("en").implantationWarning);
+    // Uncertainty is explicit: timing alone cannot decide.
+    expect(notice).toContain("may not be");
+    expect(notice).toContain("timing alone cannot tell");
+    // The surface must never imply a precise implantation event/window: it does
+    // not name "implantation", nor expose the estimated ovulation date or a
+    // day-count, so the estimate's error is not dressed up as precision.
+    expect(notice).not.toMatch(/implantation/i);
+    expect(notice).not.toMatch(/\b\d/);
+    expect(notice).not.toContain("2026-03-15");
+  });
+
+  it("stays silent for an early bleed too soon after the estimated ovulation", () => {
+    // Target 2026-03-19 is only +4 days after the estimated 2026-03-15 ovulation.
+    const viewData = earlyBleedViewData("2026-03-19", new Date(2026, 2, 19));
+
+    expect(viewData?.notices.implantation).toBeUndefined();
   });
 });
