@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -275,6 +276,197 @@ function extractWebLocales(text) {
   return locales;
 }
 
+// -- route-table extractors -------------------------------------------------
+
+/**
+ * Normalises a route path so an app template-literal segment and a managed
+ * net/http wildcard segment compare equal: `${encodeURIComponent(grantID)}` and
+ * `{grant_id}` both collapse to `{}`. Method and the fixed segments are what the
+ * contract turns on; the parameter name is not.
+ */
+function normalizeRoutePath(rawPath) {
+  return rawPath
+    .replace(/\$\{[^}]*\}/g, "{}") // app template-literal params
+    .replace(/\{[^}]*\}/g, "{}"); // managed net/http wildcard params
+}
+
+/**
+ * The set of managed routes the app client actually calls. Every request goes
+ * through one of the request* helpers shaped
+ * `request<Kind>(fetchImpl, <baseURL>, <path>, <opts-or-input>)`: the path is a
+ * string or template literal, and the method is the `{ method: "..." }` of the
+ * options object, or POST for the `requestAuthResult` wrapper (register/login),
+ * whose fourth argument is the bare `input`. The `requestAuthResult` body itself
+ * calls `requestJSON(..., path, ...)` with a non-literal `path`, so it is
+ * skipped and each endpoint is captured exactly once at its literal call site.
+ * Returns a Set of "METHOD /normalized/path".
+ */
+function extractAppManagedRoutes(text) {
+  const routes = new Set();
+  const callRe =
+    /request(?:AuthResult|JSON|NoPayload)\s*(?:<[^>]*>)?\s*\(\s*fetchImpl\s*,\s*(?:normalizedBaseURL|baseURL)\s*,\s*(`[^`]*`|"[^"]*")\s*,\s*(input\b|\{\s*method\s*:\s*"(GET|POST|PUT|DELETE)")/g;
+  for (const match of text.matchAll(callRe)) {
+    const rawPath = match[1].slice(1, -1); // strip the surrounding quote/backtick
+    const method = match[3] ?? "POST"; // the requestAuthResult (input) wrapper is always POST
+    routes.add(`${method} ${normalizeRoutePath(rawPath)}`);
+  }
+  if (routes.size === 0) {
+    throw new Error(
+      "no request*(fetchImpl, baseURL, path, ...) calls found in the managed client",
+    );
+  }
+  return routes;
+}
+
+/** The set of routes the managed server registers in its mux (method + path). */
+function extractManagedServerRoutes(text) {
+  const routes = new Set();
+  for (const match of text.matchAll(
+    /HandleFunc\(\s*"(GET|POST|PUT|DELETE)\s+([^"]+)"/g,
+  )) {
+    routes.add(`${match[1]} ${normalizeRoutePath(match[2])}`);
+  }
+  if (routes.size === 0) {
+    throw new Error(
+      'no s.mux.HandleFunc("METHOD /path", ...) registrations found in server.go',
+    );
+  }
+  return routes;
+}
+
+// -- BBT detector-rule extractors -------------------------------------------
+
+/**
+ * The governing constants of the app's "3-over-6" observed-ovulation detector:
+ * the coverline window, the elevated-streak length, the third-day margin, and
+ * the set of cycle factors that remove a day from the detection series.
+ */
+function extractAppBBTRuleConstants(text) {
+  const window = /BBT_COVERLINE_WINDOW\s*=\s*(\d+)/.exec(text);
+  const streak = /BBT_ELEVATED_STREAK_DAYS\s*=\s*(\d+)/.exec(text);
+  const margin = /BBT_THIRD_DAY_MARGIN_CELSIUS\s*=\s*([\d.]+)/.exec(text);
+  const factorsDecl = /BBT_DISTURBANCE_FACTORS[^=]*=\s*\[([^\]]*)\]/.exec(text);
+  if (!window || !streak || !margin || !factorsDecl) {
+    throw new Error("app BBT detector-rule constants not found");
+  }
+  const disturbanceFactors = new Set();
+  for (const m of factorsDecl[1].matchAll(/"([a-z_]+)"/g)) {
+    disturbanceFactors.add(m[1]);
+  }
+  return {
+    coverlineWindow: Number(window[1]),
+    streakDays: Number(streak[1]),
+    thirdDayMargin: Number(margin[1]),
+    disturbanceFactors,
+  };
+}
+
+/**
+ * The same governing constants on ovumcy-web's detector. The disturbance set is
+ * expressed in `isBBTDisturbedLog` as `models.CycleFactor*` names, so each name
+ * is resolved to its string value from `internal/models/cycle_factor.go`
+ * (mirroring how the locale contract resolves web's `Lang*` constants).
+ */
+function extractWebBBTRuleConstants(signalsText, factorText) {
+  const window = /bbtCoverlineWindow\s*=\s*(\d+)/.exec(signalsText);
+  const streak = /bbtElevatedStreakDays\s*=\s*(\d+)/.exec(signalsText);
+  const margin = /bbtThirdDayMarginCelsius\s*=\s*([\d.]+)/.exec(signalsText);
+  if (!window || !streak || !margin) {
+    throw new Error("web BBT detector-rule constants not found");
+  }
+  const disturbedFn = /func isBBTDisturbedLog[\s\S]*?\n\}/.exec(signalsText);
+  const scope = disturbedFn ? disturbedFn[0] : signalsText;
+  const factorNames = new Set();
+  for (const m of scope.matchAll(/models\.(CycleFactor[A-Za-z]+)/g)) {
+    factorNames.add(m[1]);
+  }
+  if (factorNames.size === 0) {
+    throw new Error("web isBBTDisturbedLog references no models.CycleFactor* constants");
+  }
+  const disturbanceFactors = new Set();
+  for (const name of factorNames) {
+    const decl = new RegExp(`${name}\\s*=\\s*"([a-z_]+)"`).exec(factorText);
+    if (!decl) {
+      throw new Error(`web cycle-factor constant ${name} not found in cycle_factor.go`);
+    }
+    disturbanceFactors.add(decl[1]);
+  }
+  return {
+    coverlineWindow: Number(window[1]),
+    streakDays: Number(streak[1]),
+    thirdDayMargin: Number(margin[1]),
+    disturbanceFactors,
+  };
+}
+
+// -- entitlement-token extractors -------------------------------------------
+
+/**
+ * The app side of the signed-entitlement contract: the fixed iss/aud/alg the
+ * verifier enforces, the two token-gated feature keys it overlays, and the
+ * embedded kid -> public-key map (for the kid-derivation self-check).
+ */
+function extractAppEntitlementContract(tokenText, featuresText) {
+  const iss = /ENTITLEMENT_TOKEN_ISSUER\s*=\s*"([^"]+)"/.exec(tokenText);
+  const aud = /ENTITLEMENT_TOKEN_AUDIENCE\s*=\s*"([^"]+)"/.exec(tokenText);
+  // The accepted algorithm is the one the verifier rejects everything else
+  // against (`header.alg !== "EdDSA"`). Skip the earlier structural guard
+  // `typeof header.alg !== "string"`, which is not the algorithm comparison.
+  const alg = /(?<!typeof\s{0,8})header\.alg\s*!==\s*"([^"]+)"/.exec(tokenText);
+  if (!iss || !aud || !alg) {
+    throw new Error("app entitlement iss/aud/alg constants not found");
+  }
+  const featuresDecl =
+    /TOKEN_GATED_FEATURE_BY_ENTITLEMENT[\s\S]*?\{([\s\S]*?)\}/.exec(featuresText);
+  if (!featuresDecl) {
+    throw new Error("app TOKEN_GATED_FEATURE_BY_ENTITLEMENT map not found");
+  }
+  const features = new Set();
+  for (const m of featuresDecl[1].matchAll(/([a-z_]+)\s*:/g)) {
+    features.add(m[1]);
+  }
+  const keys = new Map();
+  for (const m of tokenText.matchAll(/"([0-9a-f]{16})"\s*:\s*"([0-9a-f]{64})"/g)) {
+    keys.set(m[1], m[2]);
+  }
+  return { iss: iss[1], aud: aud[1], alg: alg[1], features, keys };
+}
+
+/**
+ * The managed (issuer) side: the fixed iss/aud/alg the signer stamps, and the
+ * ordered token-gated feature keys `localPremiumEntitlements` mints. `key:` only
+ * appears in that slice literal (the struct field is `key<spaces>string`), so a
+ * whole-file scan is unambiguous.
+ */
+function extractManagedEntitlementContract(securityText, serviceText) {
+  const iss = /EntitlementTokenIssuer\s*=\s*"([^"]+)"/.exec(securityText);
+  const aud = /EntitlementTokenAudience\s*=\s*"([^"]+)"/.exec(securityText);
+  const alg = /entitlementTokenAlg\s*=\s*"([^"]+)"/.exec(securityText);
+  if (!iss || !aud || !alg) {
+    throw new Error("managed entitlement iss/aud/alg constants not found");
+  }
+  const features = new Set();
+  for (const m of serviceText.matchAll(/\bkey:\s*"([a-z_]+)"/g)) {
+    features.add(m[1]);
+  }
+  if (features.size === 0) {
+    throw new Error("managed localPremiumEntitlements keys not found");
+  }
+  return { iss: iss[1], aud: aud[1], alg: alg[1], features };
+}
+
+/**
+ * Managed's kid derivation (security.KidForPublicKey): the lowercase hex of the
+ * first 8 bytes of sha256(pubkey32). The app embeds (kid -> pubkey) pairs, so
+ * re-deriving the kid from each embedded pubkey proves the app's map follows the
+ * managed rule — the exact formula a mis-built EXPO_PUBLIC_ENTITLEMENT_PUBKEYS
+ * would get wrong (unknown_kid at runtime; see print_entitlement_kid.go).
+ */
+function deriveEntitlementKid(pubkeyHex) {
+  const digest = createHash("sha256").update(Buffer.from(pubkeyHex, "hex")).digest();
+  return digest.subarray(0, 8).toString("hex");
+}
+
 // -- set-parity comparison --------------------------------------------------
 
 /**
@@ -430,7 +622,281 @@ const CONTRACTS = [
       return { status: inSync ? "in-sync" : "drift", lines };
     },
   },
+  {
+    id: "client-routes-vs-server",
+    title: "Managed client routes vs server route table (app calls vs managed exposes)",
+    impact:
+      "an app call to a method+path the managed server does not register is a runtime 404 on a live account flow — the exact defect class this guard was widened to catch.",
+    async evaluate(load) {
+      const appRef = { repo: APP_REPO, path: "src/sync/managed-cloud-api-client.ts" };
+      const managedRef = { repo: "ovumcy-managed", path: "internal/api/server.go" };
+      const app = await load(appRef);
+      const managed = await load(managedRef);
+      const appRoutes = extractAppManagedRoutes(app.text);
+      const managedRoutes = extractManagedServerRoutes(managed.text);
+      const missing = sortedList(
+        [...appRoutes].filter((route) => !managedRoutes.has(route)),
+      );
+      const inSync = missing.length === 0;
+      const lines = [
+        `    app client:  ${locate(appRef, app.text, /request(?:AuthResult|JSON|NoPayload)/)} calls ${appRoutes.size} managed route(s)`,
+        `    managed mux: ${locate(managedRef, managed.text, /HandleFunc\(/)} registers ${managedRoutes.size} route(s)`,
+      ];
+      if (inSync) {
+        lines.push(`    all client routes are served: ${sortedList(appRoutes).join(", ")}`);
+      } else {
+        lines.push(`    -> app calls ${missing.length} route(s) managed does NOT expose:`);
+        for (const route of missing) {
+          lines.push(`         ${route}`);
+        }
+      }
+      return { status: inSync ? "in-sync" : "drift", lines };
+    },
+  },
+  {
+    id: "bbt-observed-ovulation-rule",
+    title: "Observed-ovulation detector rule (app observed-ovulation-service vs ovumcy-web cycle_signals)",
+    impact:
+      "the '3-over-6' constants drifting on one side means the app and ovumcy-web infer a different observed-ovulation date from the same BBT/mucus log — the shared bbt-observed-ovulation-vectors fixture would no longer hold on both sides.",
+    async evaluate(load) {
+      const appRef = {
+        repo: APP_REPO,
+        path: "src/services/observed-ovulation-service.ts",
+      };
+      const webSignalsRef = {
+        repo: "ovumcy-web",
+        path: "internal/services/cycle_signals.go",
+      };
+      const webFactorRef = {
+        repo: "ovumcy-web",
+        path: "internal/models/cycle_factor.go",
+      };
+      const [app, webSignals, webFactor] = await Promise.all([
+        load(appRef),
+        load(webSignalsRef),
+        load(webFactorRef),
+      ]);
+      const appRule = extractAppBBTRuleConstants(app.text);
+      const webRule = extractWebBBTRuleConstants(webSignals.text, webFactor.text);
+      const diffs = [];
+      if (appRule.coverlineWindow !== webRule.coverlineWindow) {
+        diffs.push(`coverline window: app ${appRule.coverlineWindow} vs web ${webRule.coverlineWindow}`);
+      }
+      if (appRule.streakDays !== webRule.streakDays) {
+        diffs.push(`elevated-streak days: app ${appRule.streakDays} vs web ${webRule.streakDays}`);
+      }
+      if (appRule.thirdDayMargin !== webRule.thirdDayMargin) {
+        diffs.push(`third-day margin: app ${appRule.thirdDayMargin} vs web ${webRule.thirdDayMargin}`);
+      }
+      if (!setsEqual(appRule.disturbanceFactors, webRule.disturbanceFactors)) {
+        diffs.push(
+          `disturbance factors: app {${sortedList(appRule.disturbanceFactors).join(", ")}} vs web {${sortedList(webRule.disturbanceFactors).join(", ")}}`,
+        );
+      }
+      const inSync = diffs.length === 0;
+      const lines = [
+        `    app rule: ${locate(appRef, app.text, /BBT_COVERLINE_WINDOW/)} = coverline ${appRule.coverlineWindow} / streak ${appRule.streakDays} / margin ${appRule.thirdDayMargin} / exclude {${sortedList(appRule.disturbanceFactors).join(", ")}}`,
+        `    web rule: ${locate(webSignalsRef, webSignals.text, /bbtCoverlineWindow/)} = coverline ${webRule.coverlineWindow} / streak ${webRule.streakDays} / margin ${webRule.thirdDayMargin} / exclude {${sortedList(webRule.disturbanceFactors).join(", ")}}`,
+      ];
+      if (inSync) {
+        lines.push(
+          "    both detectors share the rule; the shared bbt-observed-ovulation-vectors fixture (app reference test) holds on both sides.",
+        );
+      } else {
+        for (const diff of diffs) {
+          lines.push(`    -> ${diff}`);
+        }
+      }
+      return { status: inSync ? "in-sync" : "drift", lines };
+    },
+  },
+  {
+    id: "entitlement-token-lifecycle",
+    title: "Signed-entitlement token contract (app verifier vs managed issuer)",
+    impact:
+      "a divergence in iss/aud/alg, the token-gated feature set, or the kid-derivation rule means the app either rejects every managed-issued token (premium silently stays locked) or trusts a token the issuer never mints.",
+    async evaluate(load) {
+      const appTokenRef = { repo: APP_REPO, path: "src/security/entitlement-token.ts" };
+      const appFeaturesRef = {
+        repo: APP_REPO,
+        path: "src/services/managed-premium-features-service.ts",
+      };
+      const managedSecurityRef = {
+        repo: "ovumcy-managed",
+        path: "internal/security/entitlement_token.go",
+      };
+      const managedServiceRef = {
+        repo: "ovumcy-managed",
+        path: "internal/services/entitlement_token_service.go",
+      };
+      const [appToken, appFeatures, managedSecurity, managedService] =
+        await Promise.all([
+          load(appTokenRef),
+          load(appFeaturesRef),
+          load(managedSecurityRef),
+          load(managedServiceRef),
+        ]);
+      const appContract = extractAppEntitlementContract(
+        appToken.text,
+        appFeatures.text,
+      );
+      const managedContract = extractManagedEntitlementContract(
+        managedSecurity.text,
+        managedService.text,
+      );
+
+      const diffs = [];
+      if (appContract.iss !== managedContract.iss) {
+        diffs.push(`issuer (iss): app "${appContract.iss}" vs managed "${managedContract.iss}"`);
+      }
+      if (appContract.aud !== managedContract.aud) {
+        diffs.push(`audience (aud): app "${appContract.aud}" vs managed "${managedContract.aud}"`);
+      }
+      if (appContract.alg !== managedContract.alg) {
+        diffs.push(`algorithm (alg): app "${appContract.alg}" vs managed "${managedContract.alg}"`);
+      }
+      if (!setsEqual(appContract.features, managedContract.features)) {
+        diffs.push(
+          `token-gated features: app {${sortedList(appContract.features).join(", ")}} vs managed {${sortedList(managedContract.features).join(", ")}}`,
+        );
+      }
+      // kid-derivation self-check: every embedded (kid -> pubkey) pair must
+      // satisfy managed's KidForPublicKey rule (sha256(pubkey)[:8]).
+      const kidErrors = [];
+      for (const [kid, pubkeyHex] of appContract.keys) {
+        const derived = deriveEntitlementKid(pubkeyHex);
+        if (derived !== kid) {
+          kidErrors.push(`embedded kid ${kid} != sha256(pubkey)[:8] ${derived}`);
+        }
+      }
+      if (appContract.keys.size === 0) {
+        kidErrors.push("no embedded (kid -> pubkey) pairs found to verify");
+      }
+
+      const inSync = diffs.length === 0 && kidErrors.length === 0;
+      const lines = [
+        `    app verifier: ${locate(appTokenRef, appToken.text, /ENTITLEMENT_TOKEN_ISSUER/)} iss="${appContract.iss}" aud="${appContract.aud}" alg="${appContract.alg}" gated {${sortedList(appContract.features).join(", ")}}`,
+        `    managed issuer: ${locate(managedSecurityRef, managedSecurity.text, /EntitlementTokenIssuer/)} iss="${managedContract.iss}" aud="${managedContract.aud}" alg="${managedContract.alg}" mints {${sortedList(managedContract.features).join(", ")}}`,
+        `    kid derivation: ${appContract.keys.size} embedded key(s) checked against sha256(pubkey)[:8]`,
+      ];
+      if (inSync) {
+        lines.push("    verifier and issuer agree on the full token contract.");
+      } else {
+        for (const diff of diffs) {
+          lines.push(`    -> ${diff}`);
+        }
+        for (const kidError of kidErrors) {
+          lines.push(`    -> ${kidError}`);
+        }
+      }
+      return { status: inSync ? "in-sync" : "drift", lines };
+    },
+  },
 ];
+
+// -- compatibility manifest -------------------------------------------------
+
+const MANIFEST_PATH = path.join(REPO_ROOT, "cross-repo-manifest.json");
+
+/** Reads a repo's current HEAD, or null when git/the repo is unavailable. */
+function gitHead(repoDir) {
+  try {
+    return execFileSync("git", ["-C", repoDir, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+/** True when `ancestor` is an ancestor of (or equal to) `head` in repoDir. */
+function gitIsAncestor(repoDir, ancestor, head) {
+  try {
+    execFileSync(
+      "git",
+      ["-C", repoDir, "merge-base", "--is-ancestor", ancestor, head],
+      { stdio: "ignore" },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Release lock: validate the four local checkouts against the recorded
+ * known-compatible SHAs in cross-repo-manifest.json. Peers are pinned EXACTLY
+ * (a peer on any other commit is drift); the app is pinned by ANCESTRY (the
+ * recorded base must be an ancestor of, or equal to, the app HEAD) so ongoing
+ * app development on the same line still validates.
+ *
+ * Needs local checkouts: peers are read from `${OVUMCY_PEER_ROOT}/<repo>` when
+ * set, else from siblings of this checkout (`../<repo>`). Fail-closed: any repo
+ * whose HEAD cannot be read is an ERROR, not a silent pass. Returns 0 when every
+ * repo matches, 1 on any drift or unreadable repo.
+ */
+async function validateManifest() {
+  let manifest;
+  try {
+    const raw = await readFile(MANIFEST_PATH, "utf8");
+    manifest = JSON.parse(raw);
+  } catch (cause) {
+    console.error(`${LOG_PREFIX} cannot read ${MANIFEST_PATH}: ${cause.message}`);
+    return 1;
+  }
+
+  const peerBase = PEER_ROOT ?? path.resolve(REPO_ROOT, "..");
+  console.log(`${LOG_PREFIX} validating workspace against ${path.basename(MANIFEST_PATH)}`);
+  console.log(`${LOG_PREFIX} app root=${REPO_ROOT}  peer base=${peerBase}`);
+  console.log("");
+
+  const repos = manifest.repos ?? {};
+  const rows = [];
+  for (const [repo, entry] of Object.entries(repos)) {
+    const isApp = repo === APP_REPO;
+    const repoDir = isApp ? REPO_ROOT : path.join(peerBase, repo);
+    const recorded = String(entry.commit ?? "");
+    const head = gitHead(repoDir);
+    let status;
+    let detail;
+    if (!head) {
+      status = "error";
+      detail = `HEAD unreadable at ${repoDir}`;
+    } else if (isApp) {
+      const ok = head === recorded || gitIsAncestor(repoDir, recorded, head);
+      status = ok ? "match" : "drift";
+      detail = ok
+        ? `HEAD ${head.slice(0, 12)} is at/after locked base ${recorded.slice(0, 12)}`
+        : `HEAD ${head.slice(0, 12)} is NOT a descendant of locked base ${recorded.slice(0, 12)}`;
+    } else {
+      const ok = head === recorded;
+      status = ok ? "match" : "drift";
+      detail = ok
+        ? `HEAD ${head.slice(0, 12)} == pinned ${recorded.slice(0, 12)}`
+        : `HEAD ${head.slice(0, 12)} != pinned ${recorded.slice(0, 12)}`;
+    }
+    rows.push({ repo, status, detail, pin: isApp ? "ancestor" : "exact" });
+  }
+
+  for (const row of rows) {
+    const badge = row.status === "match" ? "MATCH" : row.status === "drift" ? "DRIFT" : "ERROR";
+    console.log(`[${badge}] ${row.repo} (pin: ${row.pin})`);
+    console.log(`    ${row.detail}`);
+  }
+  console.log("");
+
+  const drift = rows.filter((row) => row.status !== "match");
+  if (drift.length === 0) {
+    console.log(`${LOG_PREFIX} workspace matches the compatibility manifest (${rows.length} repos).`);
+    return 0;
+  }
+  console.log(`${LOG_PREFIX} ${drift.length} repo(s) diverge from the manifest:`);
+  for (const row of drift) {
+    console.log(`${LOG_PREFIX}   ${row.status.toUpperCase()} ${row.repo}`);
+  }
+  return 1;
+}
 
 // -- runner -----------------------------------------------------------------
 
@@ -481,7 +947,11 @@ async function main() {
   return drifted.length === 0 && errored.length === 0 ? 0 : 1;
 }
 
-main()
+const VALIDATE_MANIFEST =
+  process.argv.includes("--validate-manifest") ||
+  /^(1|true)$/i.test(process.env.OVUMCY_VALIDATE_MANIFEST?.trim() ?? "");
+
+(VALIDATE_MANIFEST ? validateManifest() : main())
   .then((code) => {
     process.exitCode = code;
   })
