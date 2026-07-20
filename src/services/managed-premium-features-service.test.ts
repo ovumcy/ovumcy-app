@@ -2,12 +2,16 @@ import {
   createEntitlementTokenStore,
   type EntitlementTokenStore,
 } from "../security/entitlement-token-store";
-import type { SyncSecretsRecord } from "../sync/sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncSecretsRecord,
+} from "../sync/sync-contract";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   loadManagedBillingSnapshot,
   loadManagedPremiumFeatures,
+  loadManagedPremiumFeaturesForCurrentSession,
   type EntitlementTokenGate,
 } from "./managed-premium-features-service";
 
@@ -144,6 +148,49 @@ describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchan
     expect(
       calledUrls.some((url) => url.endsWith("/account/entitlements/token")),
     ).toBe(false);
+  });
+});
+
+describe("loadManagedPremiumFeaturesForCurrentSession — gate built from the live session", () => {
+  it("constructs the signed-token gate for the active managed session when none is injected", async () => {
+    // No tokenGate argument, so the current managed session must drive gate
+    // construction (buildEntitlementTokenGate). The session-view refresh is
+    // unauthorized here, so the builder returns no gate and premium features
+    // fall back to the billing snapshot (fail-to-snapshot, never crash).
+    global.fetch = jest.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/auth/session")) {
+        return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      if (url.endsWith("/account/billing")) {
+        return jsonResponse({
+          has_active_plan: true,
+          premium_features: {
+            advanced_fertility: false,
+            advanced_insights: false,
+            doctor_pdf: true,
+            extended_reports: false,
+            partner_access: false,
+            reminders: false,
+          },
+        });
+      }
+      throw new Error(`unexpected fetch to ${url}`);
+    }) as unknown as typeof fetch;
+
+    const storage = createLocalAppStorageMock();
+    (storage.readSyncPreferencesRecord as jest.Mock).mockResolvedValue({
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed",
+    });
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+
+    const features = await loadManagedPremiumFeaturesForCurrentSession(
+      storage,
+      secretStore,
+    );
+
+    expect(features).toEqual({ ...FULL_FALSE_FEATURES, doctorPDF: true });
   });
 });
 

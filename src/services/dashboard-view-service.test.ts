@@ -1,3 +1,4 @@
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import {
@@ -881,6 +882,38 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
     );
 
     expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 30 — Apr 1");
+  });
+
+  it("renders the ovulation range through each interface language's copy", () => {
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      irregularCycle: true,
+      lastPeriodStart: "2026-03-16",
+    };
+    const records = [
+      cycleStart("2025-12-20"),
+      cycleStart("2026-01-17"),
+      cycleStart("2026-02-14"),
+      cycleStart("2026-03-16"),
+    ];
+    const now = new Date(2026, 2, 26);
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    // The active language is passed to the view builder as the locale; every
+    // catalog must format the ovulation as an explicit start—end range (never a
+    // single false-precision day) behind its own localized "ovulation" prefix.
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
+      const hero = buildDashboardViewData(
+        profile,
+        records,
+        history,
+        now,
+        locale,
+      ).cycleHero;
+      const copy = getDashboardCopy(locale);
+      expect(hero.upcomingOvulationLabel).toContain(`${copy.ovulation}: `);
+      expect(hero.upcomingOvulationLabel).toContain(" — ");
+    }
   });
 
   it("keeps a single concrete ovulation date for a regular cycle", () => {

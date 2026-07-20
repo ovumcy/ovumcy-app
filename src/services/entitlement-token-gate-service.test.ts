@@ -2,6 +2,7 @@ import {
   createEntitlementTokenStore,
   type EntitlementTokenStore,
 } from "../security/entitlement-token-store";
+import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { ManagedCloudAPIClient } from "../sync/managed-cloud-api-client";
 import type { SyncSecretsRecord } from "../sync/sync-contract";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
@@ -85,6 +86,25 @@ describe("buildEntitlementTokenGate", () => {
       "self_hosted",
       { managedClient: client, tokenStore: createMemoryEntitlementTokenStore() },
     );
+
+    expect(gate).toBeUndefined();
+    expect(client.getSession).not.toHaveBeenCalled();
+  });
+
+  it("returns undefined (fail to snapshot) when the secure-store read throws, without touching the network", async () => {
+    // A throwing secret store (secure storage unavailable) must degrade to no
+    // gate and never reach the session-view fetch — fail-to-snapshot, not crash.
+    const throwingSecretStore = {
+      readSyncSecrets: jest.fn(async () => {
+        throw new Error("secure store unavailable");
+      }),
+    } as unknown as SyncSecretStore;
+    const client = sessionClient({ ok: true, accountID: "acct-1" });
+
+    const gate = await buildEntitlementTokenGate(throwingSecretStore, "managed", {
+      managedClient: client,
+      tokenStore: createMemoryEntitlementTokenStore(),
+    });
 
     expect(gate).toBeUndefined();
     expect(client.getSession).not.toHaveBeenCalled();
