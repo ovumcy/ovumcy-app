@@ -130,6 +130,7 @@ export function SettingsCycleSection({
             {state.cycleValues.lastPeriodStart ? (
               <View style={styles.dateActionRow}>
                 <Pressable
+                  accessibilityRole="button"
                   onPress={onClearLastPeriodStart}
                   style={styles.inlineAction}
                   testID="settings-cycle-clear-date-button"
@@ -154,6 +155,7 @@ export function SettingsCycleSection({
               </Text>
               <View style={styles.dateActionRow}>
                 <Pressable
+                  accessibilityRole="button"
                   onPress={onDatePickerToggle}
                   style={styles.inlineAction}
                   testID="settings-cycle-date-field-button"
@@ -162,6 +164,7 @@ export function SettingsCycleSection({
                 </Pressable>
                 {state.cycleValues.lastPeriodStart ? (
                   <Pressable
+                    accessibilityRole="button"
                     onPress={onClearLastPeriodStart}
                     style={styles.inlineAction}
                     testID="settings-cycle-clear-date-button"

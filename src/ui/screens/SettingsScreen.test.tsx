@@ -1524,6 +1524,42 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("announces the native cycle date controls as buttons for screen readers", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    // Native variant (Platform.OS defaults to android in this suite): the date
+    // field opener and the nested clear control must both expose a button role.
+    expect(
+      screen.getByTestId("settings-cycle-date-field-button").props.accessibilityRole,
+    ).toBe("button");
+    expect(
+      screen.getByTestId("settings-cycle-clear-date-button").props.accessibilityRole,
+    ).toBe("button");
+  });
+
+  it("announces the web fallback cycle date controls as buttons for screen readers", async () => {
+    const storage = createSettingsStorageMock();
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    // Web fallback variant renders focusable Pressables in place of a native
+    // date picker; both the change-date and clear-date controls must expose a
+    // button role so screen readers announce them as buttons.
+    expect(
+      screen.getByTestId("settings-cycle-date-field-button").props.accessibilityRole,
+    ).toBe("button");
+    expect(
+      screen.getByTestId("settings-cycle-clear-date-button").props.accessibilityRole,
+    ).toBe("button");
+  });
+
   it("opens the native cycle date picker, ignores a dismiss, then confirms a new date", async () => {
     const storage = createSettingsStorageMock();
 
