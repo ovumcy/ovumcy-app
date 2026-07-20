@@ -8,6 +8,7 @@ import {
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   buildDashboardViewData,
+  resolveDaySaveMessage,
   resolveDaySaveMessageKey,
 } from "./dashboard-view-service";
 
@@ -840,6 +841,29 @@ describe("dashboard-view-service", () => {
         "pregnancy_paused",
       );
     });
+
+    it("falls back to neutral when the projection has no cycle anchor", () => {
+      const profile = regularProfile({ lastPeriodStart: null });
+      const projection = makeProjection(profile, []);
+
+      // No anchor date (and not paused / not unpredictable) exercises the
+      // anchor-absent path, which yields the neutral default.
+      expect(projection.cycleAnchorDate).toBeNull();
+      expect(resolveDaySaveMessageKey("2026-03-10", profile, projection)).toBe(
+        "neutral",
+      );
+    });
+
+    it("resolves the save message with the default English locale when none is passed", () => {
+      const profile = regularProfile();
+      const projection = makeProjection(profile, cycleStartRecords);
+
+      // Omitting the locale argument exercises the default-parameter path; the
+      // resolved copy must match an explicit "en" request.
+      expect(resolveDaySaveMessage("2026-03-10", profile, projection)).toBe(
+        resolveDaySaveMessage("2026-03-10", profile, projection, "en"),
+      );
+    });
   });
 });
 
@@ -924,5 +948,20 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
     );
 
     expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 14");
+  });
+
+  it("appends the approximate qualifier when a short cycle clamps the ovulation date", () => {
+    // cycleLength 17 with the default 14-day luteal phase exceeds the supported
+    // luteal span, so predictCycleWindow clamps and marks the date inexact; the
+    // concrete ovulation label must then carry the "(approximate)" qualifier.
+    const hero = heroFor(
+      { lastPeriodStart: "2026-03-10", cycleLength: 17 },
+      [cycleStart("2026-03-10")],
+      new Date(2026, 2, 12),
+    );
+
+    expect(hero.upcomingOvulationLabel).toContain(
+      getDashboardCopy("en").ovulationApproximate,
+    );
   });
 });

@@ -1073,7 +1073,7 @@ function addMonth(value: Date, amount: number): Date {
 
 function buildWeekdayLabels(
   locale: string,
-  firstDayOfWeek: WeekStartDay = DEFAULT_WEEK_START_DAY,
+  firstDayOfWeek: WeekStartDay,
 ): string[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
   const sundayReference = new Date(2026, 0, 4);
