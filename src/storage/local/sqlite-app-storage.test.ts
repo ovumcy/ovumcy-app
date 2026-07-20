@@ -1011,6 +1011,27 @@ describe("sqlite-app-storage", () => {
     );
   });
 
+  it("round-trips the Monday first-day-of-week preference through the encrypted profile row", async () => {
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => createFakeDatabase(),
+    });
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      firstDayOfWeek: 1,
+    });
+
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ firstDayOfWeek: 1 }),
+    );
+  });
+
   it("degrades an unknown persisted theme override to null on read", async () => {
     // A legacy plaintext row (pre-encryption) or a forward-migrated profile can
     // carry a theme value this build does not know. It must sanitize to null

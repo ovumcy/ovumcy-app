@@ -4,7 +4,7 @@ import type {
   StatsComparisonKind,
   StatsCycleHistorySummary,
 } from "../models/stats";
-import { detectSustainedThermalShift } from "./observed-ovulation-service";
+import { inferBBTOvulationDate } from "./observed-ovulation-service";
 import { diffLocalDays } from "./profile-settings-policy";
 
 // These tuning constants intentionally diverge from the original Lvl3 spec
@@ -294,20 +294,21 @@ export function buildShortLutealHint(
       continue;
     }
 
-    // Clinical short-luteal anchor (review 2.1): inferred ovulation DAY from
-    // the canonical sustained thermal shift, else LH peak (a true ovulation
-    // proxy). The mucus-only fallback is dropped for this clinical warning —
-    // last egg-white alone overstates luteal length and would mis-fire the
-    // highest-stakes alert.
-    const shiftDate = detectSustainedThermalShift(
+    // Clinical short-luteal anchor (review 2.1): the inferred ovulation DAY from
+    // the canonical "3-over-6" thermal shift (the day BEFORE the first elevated
+    // day, matching ovumcy-web's luteal inference), else the LH peak (a true
+    // ovulation proxy). The mucus-only fallback is dropped for this clinical
+    // warning — last egg-white alone overstates luteal length and would mis-fire
+    // the highest-stakes alert.
+    const bbtOvulationDate = inferBBTOvulationDate(
       cycleRecords,
       cycle.startDate,
       cycle.nextStartDate,
-    )?.shiftStartDate;
+    );
     const lastLHPeak = [...cycleRecords]
       .reverse()
       .find((record) => record.lhTest === "peak");
-    const anchorDate = shiftDate ?? lastLHPeak?.date;
+    const anchorDate = bbtOvulationDate ?? lastLHPeak?.date;
     if (!anchorDate) {
       continue;
     }

@@ -169,29 +169,44 @@ describe("StatsScreen", () => {
           cycleFactorKeys: ["travel"],
         },
         {
+          // Current cycle start doubles as the first flat coverline day so a
+          // full "3-over-6" shift (03-20..03-22) forms by "today".
           ...createEmptyDayLogRecord("2026-03-14"),
           isPeriod: true,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-03-15"),
-          bbt: 36.48,
+          bbt: 36.35,
           symptomIDs: ["headache"],
         },
         {
           ...createEmptyDayLogRecord("2026-03-16"),
-          bbt: 36.52,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-03-17"),
-          bbt: 36.55,
+          bbt: 36.4,
         },
         {
           ...createEmptyDayLogRecord("2026-03-18"),
-          bbt: 36.61,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-03-19"),
-          bbt: 36.66,
+          bbt: 36.35,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-20"),
+          bbt: 36.6,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-21"),
+          bbt: 36.65,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-03-22"),
+          bbt: 36.7,
         },
       ]),
     });
@@ -199,7 +214,7 @@ describe("StatsScreen", () => {
     render(
       <AppPreferencesTestProvider>
         <StatsScreen
-          now={new Date(2026, 2, 19)}
+          now={new Date(2026, 2, 23)}
           storage={storage}
         />
       </AppPreferencesTestProvider>,
@@ -214,6 +229,11 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-last-cycle-symptoms")).toBeTruthy();
     expect(screen.getByTestId("stats-phase-mood")).toBeTruthy();
     expect(screen.getByTestId("stats-bbt-trend")).toBeTruthy();
+    // Free-tier baseline: the coverline + probable-ovulation caption surface
+    // once a sustained shift is confirmed, without any premium entitlement.
+    expect(
+      screen.getByTestId("stats-bbt-probable-ovulation").props.children,
+    ).toContain("Probable ovulation");
     expect(screen.getByTestId("stats-factor-context")).toBeTruthy();
     expect(screen.getByLabelText(/Cycle trend/)).toBeTruthy();
     expect(screen.getByLabelText(/Prediction reliability\. Variable pattern\./)).toBeTruthy();

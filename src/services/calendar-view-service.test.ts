@@ -68,6 +68,81 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("renders a saved future period day as a fact, not a prediction (injected clock)", () => {
+    // Future-period invariant: a period row the owner saved for a date after
+    // today is a recorded FACT, so the calendar paints it as a period cell with
+    // no date guard. Uses an injected clock so it never depends on wall time.
+    const now = new Date(2026, 2, 15);
+    const futureDate = "2026-03-25";
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-10",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "" as const,
+        usageGoal: "health" as const,
+        trackBBT: false,
+        temperatureUnit: "c" as const,
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+      },
+      [{ ...createEmptyDayLogRecord(futureDate), isPeriod: true }],
+      now,
+      new Date(2026, 2, 1),
+      "2026-03-15",
+    );
+
+    const futureCell = viewData.days.find((day) => day.date === futureDate);
+    expect(futureCell?.isPeriod).toBe(true);
+    expect(futureCell?.hasData).toBe(true);
+  });
+
+  it("starts the calendar week on the configured first day of the week", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: false,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    };
+    const sunday = buildCalendarViewData(
+      { ...profile, firstDayOfWeek: 0 },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+    const monday = buildCalendarViewData(
+      { ...profile, firstDayOfWeek: 1 },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+
+    expect(sunday.weekdayLabels[0]).toBe("Sun");
+    expect(monday.weekdayLabels[0]).toBe("Mon");
+    expect(monday.weekdayLabels[6]).toBe("Sun");
+    // The grid's first cell shifts to the configured week start.
+    expect(sunday.days[0]?.date).not.toBe(monday.days[0]?.date);
+  });
+
   it("paints fertile markers on past completed cycles only when showHistoricalPhases is on", () => {
     const baseProfile = {
       lastPeriodStart: "2026-02-26",
@@ -397,6 +472,9 @@ describe("calendar-view-service", () => {
       themeOverride: null,
       dismissedCalendarPredictionNoticeKey: null,
     } as const;
+    // A canonical "3-over-6" shift: six coverline days at 36.4 then a 3-day
+    // elevated streak 03-16..03-18. The detected shift keeps the predicted
+    // ovulation day firm (not demoted to tentative).
     const records = [
       {
         ...createEmptyDayLogRecord("2026-03-10"),
@@ -409,9 +487,10 @@ describe("calendar-view-service", () => {
       { ...createEmptyDayLogRecord("2026-03-12"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-13"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-14"), bbt: 36.4 },
-      { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-16"), bbt: 36.7 },
       { ...createEmptyDayLogRecord("2026-03-17"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-18"), bbt: 36.7 },
     ];
 
     const viewData = buildCalendarViewData(

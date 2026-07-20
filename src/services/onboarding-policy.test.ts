@@ -10,6 +10,7 @@ import {
   sanitizeStepTwoValues,
   validateStepOneStartDate,
 } from "./onboarding-policy";
+import { resolveDisplayedAgeGroup } from "./profile-settings-policy";
 
 describe("onboarding-policy", () => {
   it("uses the later of year start and 60-day lookback for onboarding bounds", () => {
@@ -86,6 +87,13 @@ describe("onboarding-policy", () => {
       "2 days ago",
     ]);
     expect(options[0]?.secondaryLabel).toContain("Mar");
+  });
+
+  it("keeps an unspecified age as unspecified instead of coercing to under_40", () => {
+    // Mirrors web's optional age: unknown age stays "" ("Prefer not to say").
+    expect(resolveDisplayedAgeGroup("")).toBe("");
+    expect(resolveDisplayedAgeGroup("under_40")).toBe("under_40");
+    expect(resolveDisplayedAgeGroup("age_45_plus")).toBe("age_45_plus");
   });
 
   it("normalizes preference inputs and onboarding step selection", () => {

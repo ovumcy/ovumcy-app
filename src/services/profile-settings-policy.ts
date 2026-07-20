@@ -12,7 +12,6 @@ import {
   MIN_PERIOD_LENGTH,
   MIN_REMINDER_LEAD_DAYS,
   type AgeGroup,
-  type AgeGroupOption,
   type CycleSettingsValues,
   type InterfaceSettingsValues,
   type LocalDateISO,
@@ -22,6 +21,7 @@ import {
   type UsageGoal,
   normalizeInterfaceLanguage,
   normalizeThemePreference,
+  normalizeWeekStartDay,
 } from "../models/profile";
 
 export type CycleGuidanceState = {
@@ -70,8 +70,11 @@ export function normalizeTemperatureUnit(value: string): TemperatureUnit {
   return value.trim().toLowerCase() === "f" ? "f" : DEFAULT_TEMPERATURE_UNIT;
 }
 
-export function resolveDisplayedAgeGroup(ageGroup: AgeGroup): AgeGroupOption {
-  return normalizeAgeGroup(ageGroup) || "under_40";
+// Mirrors web's optional age: an unknown/legacy age stays "" ("Prefer not to
+// say") rather than being coerced to a concrete group. Age never alters the
+// prediction algorithm — only the age-variability hint (45+) and UI display.
+export function resolveDisplayedAgeGroup(ageGroup: AgeGroup): AgeGroup {
+  return normalizeAgeGroup(ageGroup);
 }
 
 export function clampCycleLength(value: number): number {
@@ -194,6 +197,7 @@ export function sanitizeInterfaceSettingsValues(
   return {
     languageOverride: normalizeInterfaceLanguage(values.languageOverride),
     themeOverride: normalizeThemePreference(values.themeOverride),
+    firstDayOfWeek: normalizeWeekStartDay(values.firstDayOfWeek),
     screenCaptureProtectionEnabled: values.screenCaptureProtectionEnabled !== false,
   };
 }

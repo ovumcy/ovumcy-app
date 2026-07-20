@@ -54,6 +54,7 @@ const settingsCopyEn = {
   ageGroup: {
     title: "Age group",
     hint: "Optional. Stored with your profile; predictions use only your own cycle history.",
+    unspecified: "Prefer not to say",
     under40: "Under 40",
     age40to45: "40-45",
     age45plus: "45+",
@@ -194,6 +195,11 @@ const settingsCopyEn = {
     themeLight: "Light",
     themeDark: "Dark",
     themeSystem: "System",
+    firstDayOfWeekLabel: "First day of the week",
+    firstDayOfWeekHint:
+      "Sets which day the calendar week begins on.",
+    firstDayOfWeekSunday: "Sunday",
+    firstDayOfWeekMonday: "Monday",
     saved: "Interface settings updated for this device.",
     languageSaved: "Language updated for this device.",
     themeSaved: "Theme updated for this device.",
@@ -602,6 +608,7 @@ const settingsCopyDe: SettingsCopy = {
     ...settingsCopyEn.ageGroup,
     title: "Altersgruppe",
     hint: "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
+    unspecified: "Keine Angabe",
     under40: "Unter 40",
   },
   goal: {
@@ -750,6 +757,11 @@ const settingsCopyDe: SettingsCopy = {
     themeLight: "Hell",
     themeDark: "Dunkel",
     themeSystem: "System",
+    firstDayOfWeekLabel: "Erster Tag der Woche",
+    firstDayOfWeekHint:
+      "Legt fest, mit welchem Tag die Kalenderwoche beginnt.",
+    firstDayOfWeekSunday: "Sonntag",
+    firstDayOfWeekMonday: "Montag",
     saved: "Oberflächeneinstellungen für dieses Gerät aktualisiert.",
     languageSaved: "Sprache für dieses Gerät aktualisiert.",
     themeSaved: "Design für dieses Gerät aktualisiert.",
@@ -1197,6 +1209,7 @@ const settingsCopyFr: SettingsCopy = {
     ...settingsCopyEn.ageGroup,
     title: "Tranche d'âge",
     hint: "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
+    unspecified: "Préfère ne pas répondre",
     under40: "Moins de 40 ans",
   },
   goal: {
@@ -1346,6 +1359,11 @@ const settingsCopyFr: SettingsCopy = {
     themeLight: "Clair",
     themeDark: "Sombre",
     themeSystem: "Système",
+    firstDayOfWeekLabel: "Premier jour de la semaine",
+    firstDayOfWeekHint:
+      "Définit le jour où commence la semaine du calendrier.",
+    firstDayOfWeekSunday: "Dimanche",
+    firstDayOfWeekMonday: "Lundi",
     saved: "Les réglages d'interface ont été mis à jour sur cet appareil.",
     languageSaved: "Langue mise à jour sur cet appareil.",
     themeSaved: "Thème mis à jour sur cet appareil.",
@@ -1797,6 +1815,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Возрастная группа",
       hint: "Необязательно. Сохраняется в профиле; прогнозы строятся только по вашей истории циклов.",
+      unspecified: "Не указывать",
       under40: "Младше 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -1944,6 +1963,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       themeLight: "Светлая",
       themeDark: "Тёмная",
       themeSystem: "Системная",
+      firstDayOfWeekLabel: "Первый день недели",
+      firstDayOfWeekHint:
+        "Задаёт, с какого дня начинается неделя в календаре.",
+      firstDayOfWeekSunday: "Воскресенье",
+      firstDayOfWeekMonday: "Понедельник",
       saved: "Настройки интерфейса обновлены для этого устройства.",
       languageSaved: "Язык обновлён для этого устройства.",
       themeSaved: "Тема обновлена для этого устройства.",
@@ -2356,6 +2380,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Grupo de edad",
       hint: "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
+      unspecified: "Prefiero no decirlo",
       under40: "Menos de 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -2503,6 +2528,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       themeLight: "Claro",
       themeDark: "Oscuro",
       themeSystem: "Sistema",
+      firstDayOfWeekLabel: "Primer día de la semana",
+      firstDayOfWeekHint:
+        "Define con qué día empieza la semana del calendario.",
+      firstDayOfWeekSunday: "Domingo",
+      firstDayOfWeekMonday: "Lunes",
       saved: "La interfaz se actualizó para este dispositivo.",
       languageSaved: "Idioma actualizado para este dispositivo.",
       themeSaved: "Tema actualizado para este dispositivo.",
@@ -2925,6 +2955,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Fascia d'età",
       hint: "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
+      unspecified: "Preferisco non indicarlo",
       under40: "Sotto i 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -3072,6 +3103,11 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       themeLight: "Chiaro",
       themeDark: "Scuro",
       themeSystem: "Sistema",
+      firstDayOfWeekLabel: "Primo giorno della settimana",
+      firstDayOfWeekHint:
+        "Definisce con quale giorno inizia la settimana del calendario.",
+      firstDayOfWeekSunday: "Domenica",
+      firstDayOfWeekMonday: "Lunedì",
       saved: "L'interfaccia è stata aggiornata per questo dispositivo.",
       languageSaved: "Lingua aggiornata per questo dispositivo.",
       themeSaved: "Tema aggiornato per questo dispositivo.",

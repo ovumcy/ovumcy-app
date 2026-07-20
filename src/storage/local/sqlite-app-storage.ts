@@ -22,6 +22,7 @@ import {
   normalizeInterfaceLanguage,
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
+  normalizeWeekStartDay,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -1347,6 +1348,7 @@ function mapProfileSettingsRow(
       temperatureUnit: normalizeTemperatureUnit(record.temperatureUnit),
       languageOverride: normalizeInterfaceLanguage(record.languageOverride),
         themeOverride: normalizeThemePreference(record.themeOverride),
+        firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
         dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
           record.dismissedCalendarPredictionNoticeKey,
         ) ?? null,

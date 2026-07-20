@@ -124,12 +124,43 @@ reproduces them because it runs the identical constants and steps.
   (`detectSustainedThermalShift`) or cervical-mucus entries let the app infer the
   ovulation-to-next-period length across several cycles, that observed luteal
   length (lower-clamped at 10 days) replaces the default. With little or no such
-  data the fixed 14-day default stands. Individual luteal phases vary (commonly
-  11–17 days), which is one reason predictions remain estimates.
+  data the fixed 14-day default stands — a population default estimate, never a
+  personal truth. Individual luteal phases vary (commonly 11–17 days), which is
+  one reason predictions remain estimates.
 - For irregular cycles the app widens the prediction into a range rather than a
   single date, and surfaces variability statistics (shortest/longest cycle and
   the sample standard deviation) computed over the same recent-cycle window as
   the median, so an old outlier stops affecting them once it ages out.
+
+## Observed-ovulation signals (retrospective, indicative)
+
+Logged basal body temperature (BBT) and cervical mucus never predict a *future*
+ovulation — they only refine the luteal phase and mark a *past* ovulation
+retrospectively. Both mirror ovumcy-web (`internal/services/cycle_signals.go`).
+
+- **BBT — the "3-over-6" coverline rule** (`detectSustainedThermalShift`). The
+  detection series is one undisturbed reading per calendar day; days tagged
+  `illness` or `sleep_disruption` are excluded entirely, so a fever neither
+  inflates the coverline nor fakes a rise. The sliding coverline is the
+  **maximum** (not the mean) of the 6 immediately preceding recorded
+  temperatures. A shift is three calendar-consecutive recorded days: the first
+  two strictly above the coverline and the third at least **0.2 °C** above it.
+  Because basal temperature rises the day *after* ovulation, the estimated
+  ovulation date is the calendar day **before** the first elevated day
+  (`inferBBTOvulationDate` = first-elevated − 1). Even a detected shift is a
+  **probable retrospective signal**, accurate only to **±1–2 days** — treat the
+  marker as *indicative, not diagnostic*: prospective studies find BBT alone
+  identifies the exact ovulation day imperfectly.
+- **Cervical mucus — the peak-day heuristic** (`inferEggWhiteOvulationDate`). The
+  last day of fertile-quality (egg-white) mucus is the peak signal; ovulation
+  most commonly follows it by about a day, so the estimate is the **day after
+  the last egg-white day** (clamped to stay before the next cycle start). This is
+  a coarse, probable signal, weaker than the BBT shift, and is only a fallback
+  when no sustained thermal shift is present.
+
+Neither signal is a *confirmation* of ovulation. The free stats BBT chart draws
+the coverline and a "probable ovulation" marker only once a shift is detected;
+until then there is nothing physiologically meaningful to draw.
 
 ## Projection and anchor layer
 
@@ -196,11 +227,13 @@ is a cross-cutting **Medical safety** invariant of the security constitution.
 
 ## Assumptions and limitations
 
-- Luteal phase defaults to a constant 14 days and is only refined when enough
-  logged BBT / cervical-mucus signal exists; in reality it varies between people
-  and cycles.
-- Predictions are **calendar-based** and cannot observe the body. They do not by
-  themselves confirm ovulation from temperature, LH tests, or symptoms.
+- Luteal phase defaults to a constant 14-day estimate and is only refined when
+  enough logged BBT / cervical-mucus signal exists; in reality it varies between
+  people and cycles, so the default is never a personal truth.
+- Predictions are **calendar-based** and cannot observe the body. Logged BBT /
+  cervical-mucus signals only refine the luteal phase and mark past ovulation as
+  a **probable retrospective signal (±1–2 days, indicative, not diagnostic)** —
+  they never confirm ovulation, and never predict a future one.
 - Accuracy degrades sharply for irregular or very short/long cycles.
 - The model is **not** a fertility-awareness contraceptive method (which require
   trained tracking of multiple biomarkers).
@@ -230,6 +263,13 @@ test (`internal/services/cycles_reference_test.go`), so any change to either the
 Go (`cycles.go`) or TypeScript (`cycle-prediction-policy.ts`) implementation that
 breaks parity fails CI on both sides. If you change the math, update the fixture,
 this document, and both reference tests in the same change.
+
+The retrospective observed-ovulation signals (the "3-over-6" BBT detector and
+the cervical-mucus peak-day heuristic) are guarded by
+[`src/services/observed-ovulation-service.test.ts`](../src/services/observed-ovulation-service.test.ts),
+including the illness / sleep_disruption exclusion, the max-coverline behavior,
+the ovulation = day-before-first-elevated anchor, and the egg-white day-after
+clamp.
 
 The same fixture carries an additive `projection` section that pins the
 projection/anchor layer (median-first length, forward-projected start, displayed

@@ -6,7 +6,12 @@ import {
   hasDayLogSex,
   type DayLogRecord,
 } from "../models/day-log";
-import type { ProfileRecord } from "../models/profile";
+import {
+  DEFAULT_WEEK_START_DAY,
+  normalizeWeekStartDay,
+  type ProfileRecord,
+  type WeekStartDay,
+} from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildCycleHistorySummary,
@@ -265,8 +270,9 @@ export function buildCalendarViewData(
     monthStart,
   );
   const recordsByDay = buildCalendarRecordsByDay(profile, records);
-  const gridStart = startOfWeek(startOfMonth(monthStart));
-  const gridEnd = endOfWeek(endOfMonth(monthStart));
+  const firstDayOfWeek = normalizeWeekStartDay(profile.firstDayOfWeek);
+  const gridStart = startOfWeek(startOfMonth(monthStart), firstDayOfWeek);
+  const gridEnd = endOfWeek(endOfMonth(monthStart), firstDayOfWeek);
   const todayValue = formatLocalDate(today);
   const predictionNotice = buildCalendarPredictionNotice(profile, locale);
   const days: CalendarDayCellViewData[] = [];
@@ -318,7 +324,7 @@ export function buildCalendarViewData(
     selectedDate,
     prevMonthValue: formatMonthValue(addMonth(monthStart, -1)),
     nextMonthValue: formatMonthValue(addMonth(monthStart, 1)),
-    weekdayLabels: buildWeekdayLabels(locale),
+    weekdayLabels: buildWeekdayLabels(locale, firstDayOfWeek),
     usageGoal: profile.usageGoal,
     isPredictionDisabled: profile.unpredictableCycle,
     predictionNotice,
@@ -664,7 +670,10 @@ function buildCalendarPredictionMaps(
     };
   }
 
-  const gridEnd = endOfWeek(endOfMonth(monthStart));
+  const gridEnd = endOfWeek(
+    endOfMonth(monthStart),
+    normalizeWeekStartDay(profile.firstDayOfWeek),
+  );
   // Web parity: the projected period length is the single rolling
   // predictedPeriodLength(stats.AveragePeriodLength) computed once by the
   // projection (cycle-history-service.resolveProjectedPeriodLength), so the
@@ -1034,12 +1043,23 @@ function endOfMonth(value: Date): Date {
   return new Date(value.getFullYear(), value.getMonth() + 1, 0);
 }
 
-function startOfWeek(value: Date): Date {
-  return addCalendarDays(value, -value.getDay());
+// Days from `firstDayOfWeek` (0 = Sunday, 1 = Monday) back to `value`'s weekday.
+function weekdayOffset(value: Date, firstDayOfWeek: WeekStartDay): number {
+  return (value.getDay() - firstDayOfWeek + 7) % 7;
 }
 
-function endOfWeek(value: Date): Date {
-  return addCalendarDays(value, 6 - value.getDay());
+function startOfWeek(
+  value: Date,
+  firstDayOfWeek: WeekStartDay = DEFAULT_WEEK_START_DAY,
+): Date {
+  return addCalendarDays(value, -weekdayOffset(value, firstDayOfWeek));
+}
+
+function endOfWeek(
+  value: Date,
+  firstDayOfWeek: WeekStartDay = DEFAULT_WEEK_START_DAY,
+): Date {
+  return addCalendarDays(value, 6 - weekdayOffset(value, firstDayOfWeek));
 }
 
 function addCalendarDays(value: Date, days: number): Date {
@@ -1051,12 +1071,17 @@ function addMonth(value: Date, amount: number): Date {
 }
 
 
-function buildWeekdayLabels(locale: string): string[] {
+function buildWeekdayLabels(
+  locale: string,
+  firstDayOfWeek: WeekStartDay,
+): string[] {
   const formatter = new Intl.DateTimeFormat(locale, { weekday: "short" });
   const sundayReference = new Date(2026, 0, 4);
 
   return Array.from({ length: 7 }, (_, index) =>
-    formatter.format(addCalendarDays(sundayReference, index)).replace(".", ""),
+    formatter
+      .format(addCalendarDays(sundayReference, firstDayOfWeek + index))
+      .replace(".", ""),
   );
 }
 

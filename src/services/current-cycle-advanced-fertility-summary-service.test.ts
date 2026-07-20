@@ -50,8 +50,9 @@ function createHistory(): StatsCycleHistorySummary {
 
 describe("buildCurrentCycleAdvancedFertilitySummary", () => {
   it("prefers ovulation confirmation over lower-priority fertility signals", () => {
-    // Baseline window 03-29..04-02 stays flat; the sustained streak starts on
-    // 04-03, so the canonical detector anchors the shift after the baseline.
+    // Coverline window 03-29..04-03 stays flat; the sustained streak starts on
+    // 04-04, so the canonical "3-over-6" detector anchors the shift after the
+    // full 6-day coverline window.
     const records = [
       {
         ...createEmptyDayLogRecord("2026-03-29"),
@@ -78,14 +79,18 @@ describe("buildCurrentCycleAdvancedFertilitySummary", () => {
       },
       {
         ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.55,
+        bbt: 36.3,
       },
       {
         ...createEmptyDayLogRecord("2026-04-04"),
-        bbt: 36.56,
+        bbt: 36.55,
       },
       {
         ...createEmptyDayLogRecord("2026-04-05"),
+        bbt: 36.56,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-06"),
         bbt: 36.57,
       },
     ];
@@ -132,14 +137,18 @@ describe("buildCurrentCycleAdvancedFertilitySummary", () => {
       },
       {
         ...createEmptyDayLogRecord("2026-04-03"),
-        bbt: 36.55,
+        bbt: 36.3,
       },
       {
         ...createEmptyDayLogRecord("2026-04-04"),
-        bbt: 36.56,
+        bbt: 36.55,
       },
       {
         ...createEmptyDayLogRecord("2026-04-05"),
+        bbt: 36.56,
+      },
+      {
+        ...createEmptyDayLogRecord("2026-04-06"),
         bbt: 36.57,
       },
     ];

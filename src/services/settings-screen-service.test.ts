@@ -612,6 +612,7 @@ describe("settings services", () => {
     const result = await saveInterfaceSettings(storage, state, {
       languageOverride: "en",
       themeOverride: "light",
+      firstDayOfWeek: 1,
       screenCaptureProtectionEnabled: false,
     });
 
@@ -619,12 +620,14 @@ describe("settings services", () => {
       ok: true,
       state: expect.objectContaining({
         profile: expect.objectContaining({
+          firstDayOfWeek: 1,
           screenCaptureProtectionEnabled: false,
         }),
       }),
     });
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
+        firstDayOfWeek: 1,
         screenCaptureProtectionEnabled: false,
       }),
     );

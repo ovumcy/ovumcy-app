@@ -67,13 +67,26 @@ export function StatsOverviewTrendSections({
               testID="stats-bbt-trend"
               title={viewData.bbtTrend.title}
             >
+              {viewData.bbtTrend.coverlineValue !== null ? (
+                <View style={styles.legendRow}>
+                  <View style={styles.legendItem}>
+                    <View style={styles.legendLine} />
+                    <Text style={styles.helperText}>
+                      {viewData.bbtTrend.coverlineLabel}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
               <StatsBarChart
                 accentColor={colors.accentSecondary}
                 accessibilityLabel={buildChartAccessibilityLabel(
                   viewData.bbtTrend.title,
                   viewData.bbtTrend.points,
                   ` ${viewData.bbtTrend.unitLabel}`,
+                  viewData.bbtTrend.coverlineValue,
+                  viewData.bbtTrend.coverlineLabel,
                 )}
+                baselineValue={viewData.bbtTrend.coverlineValue}
                 emptyLabel={viewData.trendChart?.emptyLabel ?? ""}
                 points={viewData.bbtTrend.points}
                 scaleMode="range"
@@ -81,6 +94,14 @@ export function StatsOverviewTrendSections({
                 valueDecimals={1}
                 valueSuffix={` ${viewData.bbtTrend.unitLabel}`}
               />
+              {viewData.bbtTrend.probableOvulationLabel ? (
+                <Text
+                  style={styles.helperText}
+                  testID="stats-bbt-probable-ovulation"
+                >
+                  {viewData.bbtTrend.probableOvulationLabel}
+                </Text>
+              ) : null}
             </FeatureCard>
           </View>
         ) : null}

@@ -77,6 +77,10 @@ function buildRichExportHistoryDayLogs(): DayLogRecord[] {
       bbt: 36.4,
     },
     { ...createEmptyDayLogRecord("2026-02-18"), cervicalMucus: "eggwhite" },
+    // The observed marker for this egg-white-only cycle is the day AFTER the
+    // last egg-white day (web peak-day rule): 2026-02-19. A logged row on that
+    // day lets the doctor-PDF calendar (which renders logged days only) show it.
+    { ...createEmptyDayLogRecord("2026-02-19"), mood: 3 },
     { ...createEmptyDayLogRecord("2026-02-20"), lhTest: "peak" },
     // Cycle 2: 2026-03-01 -> 2026-03-29 (completed, 28 days, luteal 9 days).
     {
@@ -94,8 +98,9 @@ function buildRichExportHistoryDayLogs(): DayLogRecord[] {
       flow: "medium",
     },
     { ...createEmptyDayLogRecord("2026-04-17"), lhTest: "peak" },
-    // Current/open cycle from 2026-04-26 with an 8-point sustained BBT
-    // thermal shift (5-day baseline 36.20C, 3-day streak >= 36.40C).
+    // Current/open cycle from 2026-04-26 with a canonical "3-over-6" sustained
+    // BBT thermal shift: six coverline days at 36.20C then a 3-day elevated
+    // streak 05-02..05-04, so the shift (first elevated) day is 2026-05-02.
     {
       ...createEmptyDayLogRecord("2026-04-26"),
       cycleStart: true,
@@ -105,7 +110,7 @@ function buildRichExportHistoryDayLogs(): DayLogRecord[] {
     },
     { ...createEmptyDayLogRecord("2026-04-27"), bbt: 36.2 },
     { ...createEmptyDayLogRecord("2026-04-28"), bbt: 36.2 },
-    // An LH peak 2 days before the thermal-shift day (within the 4-day
+    // An LH peak 3 days before the thermal-shift day (within the 4-day
     // alignment window) upgrades the LH-peak signal from "logged" to
     // "aligned".
     { ...createEmptyDayLogRecord("2026-04-29"), bbt: 36.2, lhTest: "peak" },
@@ -114,9 +119,10 @@ function buildRichExportHistoryDayLogs(): DayLogRecord[] {
       bbt: 36.2,
       cervicalMucus: "eggwhite",
     },
-    { ...createEmptyDayLogRecord("2026-05-01"), bbt: 36.55 },
+    { ...createEmptyDayLogRecord("2026-05-01"), bbt: 36.2 },
     { ...createEmptyDayLogRecord("2026-05-02"), bbt: 36.55 },
-    { ...createEmptyDayLogRecord("2026-05-03"), bbt: 36.6 },
+    { ...createEmptyDayLogRecord("2026-05-03"), bbt: 36.55 },
+    { ...createEmptyDayLogRecord("2026-05-04"), bbt: 36.6 },
     // Stray corrupted-sync row: an unparseable date must not crash report
     // assembly or PDF rendering, and must not appear in any cycle's table.
     { ...createEmptyDayLogRecord("not-a-date"), notes: "corrupted sync row" },
@@ -451,9 +457,9 @@ describe("export-pdf-service", () => {
       key: "ovulation-confirmation",
       title: pdfCopy.advancedFertilityOvulationTitle,
       value: pdfCopy.advancedFertilityOvulationConfirmedValue,
-      description: pdfCopy.advancedFertilityOvulationDescription("2026-04-30", 1),
+      description: pdfCopy.advancedFertilityOvulationDescription("2026-04-30", 2),
     });
-    // The LH peak on 2026-04-29 sits 2 days before the thermal-shift day
+    // The LH peak on 2026-04-29 sits 3 days before the thermal-shift day
     // (within the 4-day alignment window), upgrading the signal to
     // "aligned" instead of the bare "logged" tier.
     expect(report.advancedFertility).toContainEqual({
@@ -472,7 +478,9 @@ describe("export-pdf-service", () => {
     // short-luteal threshold), so the warning fires with all 3 observations.
     expect(report.shortLutealWarning).toEqual({ averageDays: 9, observationCount: 3 });
 
-    const observedDay = report.calendarDays.find((day) => day.date === "2026-02-18");
+    // Cycle 1 has only egg-white (2026-02-18) and no BBT shift, so the observed
+    // marker falls on the day AFTER the last egg-white day (web peak-day rule).
+    const observedDay = report.calendarDays.find((day) => day.date === "2026-02-19");
     expect(observedDay).toEqual(
       expect.objectContaining({ isOvulation: true, isTentativeOvulation: false }),
     );

@@ -148,6 +148,62 @@ describe("buildStatsViewData", () => {
     expect(viewData.bbtTrend?.points).toHaveLength(5);
   });
 
+  it("surfaces the free-tier BBT coverline and probable-ovulation caption once a shift is confirmed (no premium entitlement)", () => {
+    // A canonical "3-over-6" shift in the current cycle (start 2026-03-14): six
+    // coverline days then a 3-day streak 03-20..03-22, so the coverline (36.4 C)
+    // and probable ovulation (day before the first elevated day, 2026-03-19) are
+    // exposed for FREE — no premiumFeatures arg.
+    const viewData = buildStatsViewData(
+      createProfileRecord({ trackBBT: true }),
+      [
+        createPeriodRecord("2025-12-20"),
+        createPeriodRecord("2026-01-17"),
+        createPeriodRecord("2026-02-14"),
+        createPeriodRecord("2026-03-14", { bbt: 36.3 }),
+        { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.35 },
+        { ...createEmptyDayLogRecord("2026-03-16"), bbt: 36.3 },
+        { ...createEmptyDayLogRecord("2026-03-17"), bbt: 36.4 },
+        { ...createEmptyDayLogRecord("2026-03-18"), bbt: 36.3 },
+        { ...createEmptyDayLogRecord("2026-03-19"), bbt: 36.35 },
+        { ...createEmptyDayLogRecord("2026-03-20"), bbt: 36.6 },
+        { ...createEmptyDayLogRecord("2026-03-21"), bbt: 36.65 },
+        { ...createEmptyDayLogRecord("2026-03-22"), bbt: 36.7 },
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 23),
+    );
+
+    expect(viewData.bbtTrend?.coverlineValue).toBeCloseTo(36.4, 5);
+    expect(viewData.bbtTrend?.coverlineLabel).toBe("Coverline");
+    expect(viewData.bbtTrend?.probableOvulationLabel).toContain(
+      "Probable ovulation",
+    );
+    // The advanced-fertility premium section stays absent without the entitlement.
+    expect(viewData.advancedFertility).toBeUndefined();
+  });
+
+  it("omits the BBT coverline and probable-ovulation caption when no shift is confirmed", () => {
+    const viewData = buildStatsViewData(
+      createProfileRecord({ trackBBT: true }),
+      [
+        createPeriodRecord("2025-12-20"),
+        createPeriodRecord("2026-01-17"),
+        createPeriodRecord("2026-02-14"),
+        createPeriodRecord("2026-03-14", { bbt: 36.3 }),
+        { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.3 },
+        { ...createEmptyDayLogRecord("2026-03-16"), bbt: 36.31 },
+        { ...createEmptyDayLogRecord("2026-03-17"), bbt: 36.3 },
+        { ...createEmptyDayLogRecord("2026-03-18"), bbt: 36.29 },
+      ],
+      createDefaultSymptomRecords(),
+      new Date(2026, 2, 19),
+    );
+
+    expect(viewData.bbtTrend?.points.length).toBeGreaterThan(0);
+    expect(viewData.bbtTrend?.coverlineValue).toBeNull();
+    expect(viewData.bbtTrend?.probableOvulationLabel).toBeNull();
+  });
+
   it("adds a mucus-based fertility insight when egg-white mucus is logged in the current cycle", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({
@@ -374,8 +430,9 @@ describe("buildStatsViewData", () => {
           cervicalMucus: "eggwhite",
           lhTest: "peak",
         },
-        // Current cycle: 5 flat baseline BBT days, then a 3-day sustained
-        // streak so the canonical detector anchors the shift on 2026-04-02.
+        // Current cycle: six flat coverline BBT days, then a 3-day sustained
+        // "3-over-6" streak so the canonical detector anchors the shift on
+        // 2026-04-03 (ovulation 2026-04-02).
         createPeriodRecord("2026-03-28", { bbt: 36.3 }),
         {
           ...createEmptyDayLogRecord("2026-03-29"),
@@ -398,19 +455,23 @@ describe("buildStatsViewData", () => {
         },
         {
           ...createEmptyDayLogRecord("2026-04-02"),
-          bbt: 36.55,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-04-03"),
-          bbt: 36.56,
+          bbt: 36.55,
         },
         {
           ...createEmptyDayLogRecord("2026-04-04"),
+          bbt: 36.56,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-05"),
           bbt: 36.57,
         },
       ],
       createDefaultSymptomRecords(),
-      new Date(2026, 3, 4),
+      new Date(2026, 3, 6),
       "en",
       {
         advancedFertility: true,
@@ -482,7 +543,7 @@ describe("buildStatsViewData", () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: "Headache",
-          value: "In 3 days",
+          value: "In 1 day",
         }),
       ]),
     );

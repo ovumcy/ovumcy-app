@@ -19,10 +19,12 @@ import type {
   ThemePreference,
   TrackingSettingsValues,
   UsageGoal,
+  WeekStartDay,
 } from "../models/profile";
 import {
   DEFAULT_REMINDER_LEAD_DAYS,
   DEFAULT_REMINDER_TIME,
+  normalizeWeekStartDay,
   resolvePredictionMode,
   resolveScreenCaptureProtectionEnabled,
 } from "../models/profile";
@@ -188,6 +190,9 @@ export type SettingsViewData = {
     themeLabel: string;
     themeHint: string;
     themeOptions: { value: ThemePreference; label: string }[];
+    firstDayOfWeekLabel: string;
+    firstDayOfWeekHint: string;
+    firstDayOfWeekOptions: { value: WeekStartDay; label: string }[];
     screenCaptureProtectionLabel: string;
     screenCaptureProtectionHint: string;
     screenCaptureProtectionStateOn: string;
@@ -592,6 +597,7 @@ export function buildSettingsViewData(
       label: settingsCopy.ageGroup.title,
       hint: settingsCopy.ageGroup.hint,
       options: [
+        { value: "", label: settingsCopy.ageGroup.unspecified },
         { value: "under_40", label: settingsCopy.ageGroup.under40 },
         { value: "age_40_45", label: settingsCopy.ageGroup.age40to45 },
         { value: "age_45_plus", label: settingsCopy.ageGroup.age45plus },
@@ -721,6 +727,12 @@ export function buildSettingsViewData(
         { value: "light", label: settingsCopy.interface.themeLight },
         { value: "dark", label: settingsCopy.interface.themeDark },
         { value: "system", label: settingsCopy.interface.themeSystem },
+      ],
+      firstDayOfWeekLabel: settingsCopy.interface.firstDayOfWeekLabel,
+      firstDayOfWeekHint: settingsCopy.interface.firstDayOfWeekHint,
+      firstDayOfWeekOptions: [
+        { value: 0, label: settingsCopy.interface.firstDayOfWeekSunday },
+        { value: 1, label: settingsCopy.interface.firstDayOfWeekMonday },
       ],
       screenCaptureProtectionLabel:
         settingsCopy.interface.screenCaptureProtectionLabel,
@@ -1016,6 +1028,7 @@ export function createLoadedSettingsState(
     interfaceValues: {
       languageOverride: profile.languageOverride,
       themeOverride: profile.themeOverride,
+      firstDayOfWeek: normalizeWeekStartDay(profile.firstDayOfWeek),
       screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
         profile.screenCaptureProtectionEnabled,
       ),
@@ -1107,6 +1120,7 @@ export function extractPersistedInterfaceValues(
   return {
     languageOverride: profile.languageOverride,
     themeOverride: profile.themeOverride,
+    firstDayOfWeek: normalizeWeekStartDay(profile.firstDayOfWeek),
     screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
       profile.screenCaptureProtectionEnabled,
     ),

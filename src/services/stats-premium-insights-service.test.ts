@@ -322,11 +322,12 @@ describe("buildShortLutealHint", () => {
     expect(result?.averageDays).toBeCloseTo(13 / 3, 5);
   });
 
-  it("prefers the BBT thermal-shift day over the LH peak as the luteal anchor", () => {
-    // Each cycle has a clean shift on day 8 (relative) -> short luteal, plus a
-    // LATER LH peak that would give a LONGER (>= 10) luteal if it were used.
-    // The warning fires only because the shift day is the anchor; if the late
-    // LH peak were used, no cycle would be short and the result would be null.
+  it("prefers the BBT thermal-shift ovulation day over the LH peak as the luteal anchor", () => {
+    // Each cycle has a clean "3-over-6" shift (six coverline days then a 3-day
+    // elevated streak). The luteal anchor is the ovulation DAY (the day before
+    // the first elevated day), which gives a short luteal, plus an early LH peak
+    // that would give a LONGER (>= 10) luteal if it were used. The warning fires
+    // only because the BBT ovulation day takes precedence over the LH peak.
     const history = createHistory(
       [25, 25, 25],
       ["2026-01-01", "2026-01-22", "2026-02-12", "2026-03-05"],
@@ -340,62 +341,64 @@ describe("buildShortLutealHint", () => {
       { ...createEmptyDayLogRecord(base[2] ?? ""), bbt: 36.3 },
       { ...createEmptyDayLogRecord(base[3] ?? ""), bbt: 36.3 },
       { ...createEmptyDayLogRecord(base[4] ?? ""), bbt: 36.3 },
-      { ...createEmptyDayLogRecord(base[5] ?? ""), bbt: 36.55 },
-      { ...createEmptyDayLogRecord(base[6] ?? ""), bbt: 36.56 },
-      { ...createEmptyDayLogRecord(base[7] ?? ""), bbt: 36.57 },
+      { ...createEmptyDayLogRecord(base[5] ?? ""), bbt: 36.3 },
+      { ...createEmptyDayLogRecord(base[6] ?? ""), bbt: 36.55 },
+      { ...createEmptyDayLogRecord(base[7] ?? ""), bbt: 36.56 },
+      { ...createEmptyDayLogRecord(base[8] ?? ""), bbt: 36.57 },
       lhPeakRecord(lhDate),
     ];
     const records: DayLogRecord[] = [
-      // C1: shift day 2026-01-13 -> next 2026-01-22 = 9 (short). LH peak
-      // 2026-01-20 -> would be 2 (also short) so use a LATER cycle to separate;
-      // here LH 2026-01-13 coincides — instead place LH at start to force a
-      // long luteal if used.
+      // C1: shift day 2026-01-14, ovulation 2026-01-13 -> next 2026-01-22 = 9
+      // (short). Early LH peak 2026-01-01 -> 21 days if it were the anchor.
       ...shiftCycle(
         [
-          "2026-01-06",
-          "2026-01-07",
           "2026-01-08",
           "2026-01-09",
           "2026-01-10",
+          "2026-01-11",
+          "2026-01-12",
           "2026-01-13",
           "2026-01-14",
           "2026-01-15",
+          "2026-01-16",
         ],
-        "2026-01-06", // LH at cycle start -> luteal 16 (>= 10) if used
+        "2026-01-01",
       ),
-      // C2: shift day 2026-02-03 -> next 2026-02-12 = 9.
+      // C2: shift day 2026-02-04, ovulation 2026-02-03 -> next 2026-02-12 = 9.
       ...shiftCycle(
         [
-          "2026-01-27",
-          "2026-01-28",
           "2026-01-29",
           "2026-01-30",
           "2026-01-31",
+          "2026-02-01",
+          "2026-02-02",
           "2026-02-03",
           "2026-02-04",
           "2026-02-05",
+          "2026-02-06",
         ],
-        "2026-01-27", // luteal 16 if used
+        "2026-01-22",
       ),
-      // C3: shift day 2026-02-24 -> next 2026-03-05 = 9.
+      // C3: shift day 2026-02-25, ovulation 2026-02-24 -> next 2026-03-05 = 9.
       ...shiftCycle(
         [
-          "2026-02-17",
-          "2026-02-18",
           "2026-02-19",
           "2026-02-20",
           "2026-02-21",
+          "2026-02-22",
+          "2026-02-23",
           "2026-02-24",
           "2026-02-25",
           "2026-02-26",
+          "2026-02-27",
         ],
-        "2026-02-17", // luteal 16 if used
+        "2026-02-12",
       ),
     ];
 
     const result = buildShortLutealHint(history, records);
-    // shift day -> 9-day luteal in every cycle -> fires; the early LH peaks
-    // (16-day luteal) are ignored because the shift takes precedence.
+    // BBT ovulation day -> 9-day luteal in every cycle -> fires; the early LH
+    // peaks (>= 10-day luteal) are ignored because the BBT shift takes precedence.
     expect(result?.observationCount).toBe(3);
     expect(result?.averageDays).toBe(9);
   });

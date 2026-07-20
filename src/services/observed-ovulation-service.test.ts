@@ -1,4 +1,8 @@
-import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import {
+  createEmptyDayLogRecord,
+  type DayCycleFactorKey,
+  type DayLogRecord,
+} from "../models/day-log";
 import {
   detectSustainedThermalShift,
   inferBBTOvulationDate,
@@ -6,264 +10,295 @@ import {
   inferObservedOvulationDate,
 } from "./observed-ovulation-service";
 
-function buildBBTRecord(date: string, bbt: number): DayLogRecord {
-  return { ...createEmptyDayLogRecord(date), bbt };
+function buildBBTRecord(
+  date: string,
+  bbt: number,
+  cycleFactorKeys: DayCycleFactorKey[] = [],
+): DayLogRecord {
+  return { ...createEmptyDayLogRecord(date), bbt, cycleFactorKeys };
 }
 
 function buildEggWhiteRecord(date: string): DayLogRecord {
   return { ...createEmptyDayLogRecord(date), cervicalMucus: "eggwhite" };
 }
 
+// Canonical "3-over-6" series ported from ovumcy-web cycle_signals.go: six
+// undisturbed coverline days (max 36.40) then a 3-day elevated streak
+// 03-07..03-09 clearing the coverline and the +0.2 third-day margin. First
+// elevated day 03-07; ovulation is the day before (03-06).
+function buildGoldenShiftRecords(): DayLogRecord[] {
+  return [
+    buildBBTRecord("2026-03-01", 36.3),
+    buildBBTRecord("2026-03-02", 36.35),
+    buildBBTRecord("2026-03-03", 36.3),
+    buildBBTRecord("2026-03-04", 36.4),
+    buildBBTRecord("2026-03-05", 36.3),
+    buildBBTRecord("2026-03-06", 36.35),
+    buildBBTRecord("2026-03-07", 36.6),
+    buildBBTRecord("2026-03-08", 36.65),
+    buildBBTRecord("2026-03-09", 36.7),
+  ];
+}
+
 describe("observed-ovulation-service", () => {
-  describe("inferBBTOvulationDate", () => {
-    it("returns null when fewer than 5 BBT points are recorded in the cycle", () => {
+  describe("detectSustainedThermalShift (3-over-6)", () => {
+    it("returns the first elevated day, the MAX coverline, rise over it, and sample count", () => {
+      const shift = detectSustainedThermalShift(
+        buildGoldenShiftRecords(),
+        "2026-03-01",
+        "2026-03-29",
+      );
+      expect(shift?.shiftStartDate).toBe("2026-03-07");
+      expect(shift?.coverline).toBeCloseTo(36.4, 5);
+      // rise = mean(36.6, 36.65, 36.7) - coverline 36.4 = 36.65 - 36.4 = 0.25.
+      expect(shift?.rise).toBeCloseTo(0.25, 5);
+      expect(shift?.sampleCount).toBe(9);
+    });
+
+    it("uses the MAX of the 6 preceding temps as the coverline, so an early spike suppresses the shift", () => {
+      // 03-03 carries a follicular-noise spike (36.70). The sliding coverline is
+      // the MAX (not the mean) of the six preceding readings, so the later
+      // elevated run never clears it. A mean-of-5 baseline would have fired here.
       const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.5),
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.7),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.55),
+        buildBBTRecord("2026-03-08", 36.6),
+        buildBBTRecord("2026-03-09", 36.65),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
+        detectSustainedThermalShift(records, "2026-03-01", "2026-03-29"),
       ).toBeNull();
     });
 
-    it("returns the first day of a 3-day sustained shift above baseline + 0.2 celsius", () => {
+    it("requires the third elevated day to clear the coverline by the 0.2 celsius margin", () => {
       const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.5),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.45),
+        buildBBTRecord("2026-03-08", 36.45),
+        // Third day only 0.15 above coverline 36.30 (< 0.20 margin).
+        buildBBTRecord("2026-03-09", 36.45),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-15");
-    });
-
-    it("returns null when no sustained shift is observed (anovulatory pattern)", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.5),
-        buildBBTRecord("2026-03-16", 36.4),
-        buildBBTRecord("2026-03-17", 36.5),
-      ];
-      expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
+        detectSustainedThermalShift(records, "2026-03-01", "2026-03-29"),
       ).toBeNull();
     });
 
-    it("ignores BBT records outside the cycle range", () => {
+    it("returns null below the 9-recorded-day minimum (6 coverline + 3 streak)", () => {
       const records = [
-        buildBBTRecord("2026-02-28", 36.4),
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
-        buildBBTRecord("2026-04-10", 36.4),
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.7),
+        buildBBTRecord("2026-03-07", 36.7),
+        buildBBTRecord("2026-03-08", 36.8),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-15");
+        detectSustainedThermalShift(records, "2026-03-01", "2026-03-29"),
+      ).toBeNull();
     });
 
-    it("returns null when BBT is already elevated within the first 5 days (non-rolling baseline limitation)", () => {
-      // The shift happened on or before the first logged day, so the elevated
-      // plateau is absorbed into the fixed first-5-day baseline. The baseline
-      // (36.70) + 0.2 threshold (36.90) is never exceeded by the same plateau,
-      // so no shift is detected. This documents the known non-rolling-baseline
-      // limitation of the canonical detector.
+    it("requires the elevated streak on strictly consecutive calendar days", () => {
       const records = [
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.6),
+        buildBBTRecord("2026-03-08", 36.65),
+        // Gap on 03-09: the third elevated reading is on 03-10, not adjacent.
         buildBBTRecord("2026-03-10", 36.7),
-        buildBBTRecord("2026-03-11", 36.7),
-        buildBBTRecord("2026-03-12", 36.7),
-        buildBBTRecord("2026-03-13", 36.7),
-        buildBBTRecord("2026-03-14", 36.7),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.7),
       ];
       expect(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
+        detectSustainedThermalShift(records, "2026-03-01", "2026-03-29"),
+      ).toBeNull();
+    });
+
+    it("supports an open-ended (current, in-progress) cycle when no end date is given", () => {
+      expect(
+        detectSustainedThermalShift(buildGoldenShiftRecords(), "2026-03-01")
+          ?.shiftStartDate,
+      ).toBe("2026-03-07");
+    });
+
+    it("keeps the latest undisturbed reading when a calendar day has duplicates", () => {
+      const records = [
+        ...buildGoldenShiftRecords(),
+        // A second same-day reading for 03-07 must not add a duplicate point.
+        buildBBTRecord("2026-03-07", 36.62),
+      ];
+      const shift = detectSustainedThermalShift(
+        records,
+        "2026-03-01",
+        "2026-03-29",
+      );
+      expect(shift?.sampleCount).toBe(9);
+      expect(shift?.shiftStartDate).toBe("2026-03-07");
+    });
+
+    it("treats a calendar-invalid streak date as non-consecutive rather than a shift", () => {
+      // 2026-03-32 is a well-formed string that string-sorts as the latest
+      // reading but is not a real calendar day, so parseLocalDate rejects it.
+      // The consecutiveness check must then fail safe (calendarDaysApart -> 0),
+      // never fabricating a thermal shift from an unparseable date.
+      const records = [
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.6),
+        buildBBTRecord("2026-03-08", 36.65),
+        buildBBTRecord("2026-03-32", 36.7),
+      ];
+      expect(
+        detectSustainedThermalShift(records, "2026-03-01", "2026-04-07"),
       ).toBeNull();
     });
   });
 
-  describe("detectSustainedThermalShift", () => {
-    it("returns the shift start day, rise over the first-5-day baseline, and sample count", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.5),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
+  describe("illness / sleep_disruption exclusion", () => {
+    // A fever on 03-04 (36.90) would otherwise become the coverline MAX and mask
+    // the real 03-08..03-10 shift. Tagging it illness / sleep_disruption removes
+    // the day from the series entirely, so the shift is detected.
+    function buildMaskedShiftRecords(
+      disturbanceFactor: DayCycleFactorKey | null,
+    ): DayLogRecord[] {
+      return [
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord(
+          "2026-03-04",
+          36.9,
+          disturbanceFactor ? [disturbanceFactor] : [],
+        ),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.3),
+        buildBBTRecord("2026-03-08", 36.55),
+        buildBBTRecord("2026-03-09", 36.6),
+        buildBBTRecord("2026-03-10", 36.65),
       ];
-      const shift = detectSustainedThermalShift(
-        records,
-        "2026-03-10",
-        "2026-04-07",
-      );
-      // baseline = mean(36.4,36.4,36.5,36.4,36.4) = 36.42; threshold 36.62.
-      // streak 03-15..03-17 (36.7,36.7,36.8) -> shift start 03-15.
-      // rise = mean(36.7,36.7,36.8) - 36.42 = 36.733... - 36.42 = 0.313...
-      expect(shift?.shiftStartDate).toBe("2026-03-15");
-      expect(shift?.sampleCount).toBe(8);
-      expect(shift?.rise).toBeCloseTo(0.3133, 3);
-    });
+    }
 
-    it("agrees with inferBBTOvulationDate on the shift day", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
-      ];
-      const shift = detectSustainedThermalShift(
-        records,
-        "2026-03-10",
-        "2026-04-07",
-      );
-      expect(shift?.shiftStartDate).toBe(
-        inferBBTOvulationDate(records, "2026-03-10", "2026-04-07"),
-      );
-    });
-
-    it("supports an open-ended (current, in-progress) cycle when no end date is given", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
-      ];
+    it("without exclusion the fever spike masks the shift", () => {
       expect(
-        detectSustainedThermalShift(records, "2026-03-10")?.shiftStartDate,
-      ).toBe("2026-03-15");
-    });
-
-    it("returns null below the canonical 5-reading minimum", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.7),
-        buildBBTRecord("2026-03-13", 36.7),
-      ];
-      expect(
-        detectSustainedThermalShift(records, "2026-03-10", "2026-04-07"),
+        detectSustainedThermalShift(
+          buildMaskedShiftRecords(null),
+          "2026-03-01",
+          "2026-03-29",
+        ),
       ).toBeNull();
     });
 
-    it("does not fabricate a shift from an isolated spike on non-adjacent days", () => {
-      // Elevated readings on 03-23, 03-27, 03-28: three points >= threshold but
-      // with unlogged gaps between 03-23 and 03-27. The plateau is not on
-      // consecutive calendar days, so no sustained shift may be declared.
+    it("excludes an illness-tagged day from the coverline, revealing the shift", () => {
+      const shift = detectSustainedThermalShift(
+        buildMaskedShiftRecords("illness"),
+        "2026-03-01",
+        "2026-03-29",
+      );
+      expect(shift?.shiftStartDate).toBe("2026-03-08");
+      expect(shift?.coverline).toBeCloseTo(36.3, 5);
+      expect(shift?.sampleCount).toBe(9);
+    });
+
+    it("excludes a sleep_disruption-tagged day the same way", () => {
+      expect(
+        detectSustainedThermalShift(
+          buildMaskedShiftRecords("sleep_disruption"),
+          "2026-03-01",
+          "2026-03-29",
+        )?.shiftStartDate,
+      ).toBe("2026-03-08");
+    });
+  });
+
+  describe("inferBBTOvulationDate", () => {
+    it("estimates ovulation as the day BEFORE the first elevated day", () => {
+      expect(
+        inferBBTOvulationDate(
+          buildGoldenShiftRecords(),
+          "2026-03-01",
+          "2026-03-29",
+        ),
+      ).toBe("2026-03-06");
+    });
+
+    it("agrees with the detector: ovulation is one day before the shift start", () => {
+      const shift = detectSustainedThermalShift(
+        buildGoldenShiftRecords(),
+        "2026-03-01",
+        "2026-03-29",
+      );
+      // shift start 03-07 -> ovulation 03-06.
+      expect(shift?.shiftStartDate).toBe("2026-03-07");
+      expect(
+        inferBBTOvulationDate(
+          buildGoldenShiftRecords(),
+          "2026-03-01",
+          "2026-03-29",
+        ),
+      ).toBe("2026-03-06");
+    });
+
+    it("ignores BBT records outside the cycle range", () => {
       const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-23", 36.7),
-        buildBBTRecord("2026-03-27", 36.7),
-        buildBBTRecord("2026-03-28", 36.8),
+        buildBBTRecord("2026-02-20", 36.9),
+        ...buildGoldenShiftRecords(),
+        buildBBTRecord("2026-04-10", 36.4),
       ];
       expect(
-        detectSustainedThermalShift(records, "2026-03-10", "2026-04-07"),
+        inferBBTOvulationDate(records, "2026-03-01", "2026-03-29"),
+      ).toBe("2026-03-06");
+    });
+
+    it("returns null when no sustained shift is observed (anovulatory pattern)", () => {
+      const records = [
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.4),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.4),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.4),
+        buildBBTRecord("2026-03-07", 36.3),
+        buildBBTRecord("2026-03-08", 36.4),
+        buildBBTRecord("2026-03-09", 36.3),
+      ];
+      expect(
+        inferBBTOvulationDate(records, "2026-03-01", "2026-03-29"),
       ).toBeNull();
-    });
-
-    it("detects a shift on three strictly consecutive elevated days", () => {
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-23", 36.7),
-        buildBBTRecord("2026-03-24", 36.7),
-        buildBBTRecord("2026-03-25", 36.8),
-      ];
-      expect(
-        detectSustainedThermalShift(records, "2026-03-10", "2026-04-07")
-          ?.shiftStartDate,
-      ).toBe("2026-03-23");
-    });
-
-    it("anchors on the consecutive run, not an earlier broken run", () => {
-      // 03-23,03-24 are elevated but the run breaks (gap to 03-27). The first
-      // 3-day contiguous elevated run is 03-27..03-29, so the anchor is 03-27.
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-23", 36.7),
-        buildBBTRecord("2026-03-24", 36.7),
-        buildBBTRecord("2026-03-27", 36.7),
-        buildBBTRecord("2026-03-28", 36.7),
-        buildBBTRecord("2026-03-29", 36.8),
-      ];
-      expect(
-        detectSustainedThermalShift(records, "2026-03-10", "2026-04-07")
-          ?.shiftStartDate,
-      ).toBe("2026-03-27");
-    });
-
-    it("tolerates logging gaps before the run as long as the 3-day run is contiguous", () => {
-      // Pre-shift phase is logged sparsely (gaps on 03-12, 03-14, 03-16), but
-      // the first-5-day baseline is built from the low readings 03-10..03-15 and
-      // the sustained run 03-20..03-22 is contiguous, so detection succeeds and
-      // anchors on 03-20. Gaps before the run must not block detection.
-      const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-15", 36.4),
-        buildBBTRecord("2026-03-17", 36.4),
-        buildBBTRecord("2026-03-20", 36.7),
-        buildBBTRecord("2026-03-21", 36.7),
-        buildBBTRecord("2026-03-22", 36.8),
-      ];
-      expect(
-        detectSustainedThermalShift(records, "2026-03-10", "2026-04-07")
-          ?.shiftStartDate,
-      ).toBe("2026-03-20");
     });
   });
 
   describe("inferEggWhiteOvulationDate", () => {
     it("returns null when no eggwhite mucus is recorded in the cycle", () => {
       const records = [
-        { ...createEmptyDayLogRecord("2026-03-13"), cervicalMucus: "creamy" as const },
+        {
+          ...createEmptyDayLogRecord("2026-03-13"),
+          cervicalMucus: "creamy" as const,
+        },
       ];
       expect(
         inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBeNull();
     });
 
-    it("returns the last eggwhite mucus date in the cycle range", () => {
+    it("estimates ovulation as the day AFTER the last eggwhite day (web peak-day rule)", () => {
       const records = [
         buildEggWhiteRecord("2026-03-12"),
         buildEggWhiteRecord("2026-03-14"),
@@ -271,7 +306,14 @@ describe("observed-ovulation-service", () => {
       ];
       expect(
         inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-15");
+      ).toBe("2026-03-16");
+    });
+
+    it("clamps to the peak day itself when the day after would reach the next cycle start", () => {
+      const records = [buildEggWhiteRecord("2026-04-06")];
+      expect(
+        inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
+      ).toBe("2026-04-06");
     });
 
     it("ignores eggwhite records outside the cycle range", () => {
@@ -282,29 +324,32 @@ describe("observed-ovulation-service", () => {
       ];
       expect(
         inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-15");
+      ).toBe("2026-03-16");
+    });
+
+    it("returns a calendar-invalid peak date verbatim instead of crashing", () => {
+      // 2026-03-32 string-sorts inside the cycle window but is not a real day,
+      // so the day-after estimate cannot be computed; the peak date degrades
+      // gracefully to itself rather than throwing on the unparseable input.
+      const records = [buildEggWhiteRecord("2026-03-32")];
+      expect(
+        inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
+      ).toBe("2026-03-32");
     });
   });
 
   describe("inferObservedOvulationDate", () => {
-    it("prefers BBT-derived date over eggwhite date when both are present", () => {
+    it("prefers the BBT-derived date over the eggwhite date when both are present", () => {
       const records = [
-        buildBBTRecord("2026-03-10", 36.4),
-        buildBBTRecord("2026-03-11", 36.4),
-        buildBBTRecord("2026-03-12", 36.4),
-        buildBBTRecord("2026-03-13", 36.4),
-        buildBBTRecord("2026-03-14", 36.4),
-        buildBBTRecord("2026-03-15", 36.7),
-        buildBBTRecord("2026-03-16", 36.7),
-        buildBBTRecord("2026-03-17", 36.8),
-        buildEggWhiteRecord("2026-03-13"),
+        ...buildGoldenShiftRecords(),
+        buildEggWhiteRecord("2026-03-04"),
       ];
       expect(
-        inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-15");
+        inferObservedOvulationDate(records, "2026-03-01", "2026-03-29"),
+      ).toBe("2026-03-06");
     });
 
-    it("falls back to eggwhite date when BBT signal is insufficient", () => {
+    it("falls back to the eggwhite estimate when the BBT signal is insufficient", () => {
       const records = [
         buildBBTRecord("2026-03-10", 36.4),
         buildBBTRecord("2026-03-11", 36.4),
@@ -312,13 +357,11 @@ describe("observed-ovulation-service", () => {
       ];
       expect(
         inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
-      ).toBe("2026-03-14");
+      ).toBe("2026-03-15");
     });
 
     it("returns null when neither BBT nor eggwhite signals exist", () => {
-      const records = [
-        { ...createEmptyDayLogRecord("2026-03-13"), mood: 4 },
-      ];
+      const records = [{ ...createEmptyDayLogRecord("2026-03-13"), mood: 4 }];
       expect(
         inferObservedOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBeNull();

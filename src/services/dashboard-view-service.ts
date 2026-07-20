@@ -11,10 +11,11 @@ import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
 } from "./cycle-history-service";
-import { calcOvulationDay } from "./cycle-prediction-policy";
+import { calcOvulationDay, predictCycleWindow } from "./cycle-prediction-policy";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { filterKnownSymptomIDs } from "./symptom-policy";
 import {
+  diffLocalDays,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -81,7 +82,78 @@ export type DashboardViewData = {
     title: string;
     dateLabel: string;
   };
+  // Contextual day-save confirmation shown after the today-journal autosaves,
+  // ported from ovumcy-web's day-feedback policy. Computed for today from the
+  // canonical projection (pregnancy pause included) — see resolveDaySaveMessage.
+  daySaveMessage: string;
 };
+
+export type DaySaveMessageKey =
+  | "pregnancy_paused"
+  | "self_care"
+  | "fertile"
+  | "neutral";
+
+const DAY_SAVE_SELF_CARE_MAX_CYCLE_DAY = 3;
+
+// Port of ovumcy-web's resolveDaySaveMessageKey (day_feedback_policy.go): the
+// contextual save-confirmation message key. Priority: a positive-pregnancy pause
+// wins over everything, then unpredictable-cycle mode stays neutral, then the
+// first three cycle days offer a self-care nudge, then the fertile window, else
+// neutral. The pregnancy pause is resolved once in buildCurrentCycleProjection
+// and only READ here — never re-derived in the screen (SECURITY.md medical
+// safety: every prediction surface honors the pause through the projection).
+export function resolveDaySaveMessageKey(
+  day: string,
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+): DaySaveMessageKey {
+  if (projection.isPregnancyPaused) {
+    return "pregnancy_paused";
+  }
+  if (profile.unpredictableCycle) {
+    return "neutral";
+  }
+  if (projection.cycleAnchorDate) {
+    const cycleDay = diffLocalDays(projection.cycleAnchorDate, day) + 1;
+    if (cycleDay >= 1 && cycleDay <= DAY_SAVE_SELF_CARE_MAX_CYCLE_DAY) {
+      return "self_care";
+    }
+    const window = predictCycleWindow(
+      projection.cycleAnchorDate,
+      projection.predictionCycleLength,
+      projection.lutealPhase,
+    );
+    if (
+      window.fertilityStart &&
+      window.fertilityEnd &&
+      day >= window.fertilityStart &&
+      day <= window.fertilityEnd
+    ) {
+      return "fertile";
+    }
+  }
+  return "neutral";
+}
+
+export function resolveDaySaveMessage(
+  day: string,
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  locale = "en",
+): string {
+  const dashboardCopy = getDashboardCopy(locale);
+  switch (resolveDaySaveMessageKey(day, profile, projection)) {
+    case "pregnancy_paused":
+      return dashboardCopy.saveMessagePregnancyPaused;
+    case "self_care":
+      return dashboardCopy.saveMessageSelfCare;
+    case "fertile":
+      return dashboardCopy.saveMessageFertile;
+    default:
+      return dashboardCopy.saveMessageNeutral;
+  }
+}
 
 export type LoadedDashboardState = {
   historyRecords: DayLogRecord[];
@@ -194,6 +266,12 @@ export function buildDashboardViewData(
         year: "numeric",
       }).format(today),
     },
+    daySaveMessage: resolveDaySaveMessage(
+      formatLocalDate(now),
+      profile,
+      projectedCycle,
+      locale,
+    ),
   };
 }
 

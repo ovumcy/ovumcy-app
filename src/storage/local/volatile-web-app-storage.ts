@@ -9,6 +9,7 @@ import {
   normalizeInterfaceLanguage,
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
+  normalizeWeekStartDay,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -254,6 +255,7 @@ function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {
     ageGroup: normalizeAgeGroup(record.ageGroup ?? ""),
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
+    firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
     dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
       record.dismissedCalendarPredictionNoticeKey,
     ) ?? null,

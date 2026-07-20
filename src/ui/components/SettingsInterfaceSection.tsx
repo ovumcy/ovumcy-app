@@ -4,6 +4,7 @@ import type {
   InterfaceSettingsValues,
   InterfaceLanguage,
   ThemePreference,
+  WeekStartDay,
 } from "../../models/profile";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type { AppThemeColors } from "../theme/tokens";
@@ -16,6 +17,7 @@ import { StatusBanner } from "./StatusBanner";
 
 type SettingsInterfaceSectionProps = {
   errorMessage: string;
+  onFirstDayOfWeekSelect: (value: WeekStartDay) => void;
   onLanguageSelect: (value: InterfaceLanguage) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
   onThemeSelect: (value: ThemePreference) => void;
@@ -26,6 +28,7 @@ type SettingsInterfaceSectionProps = {
 
 export function SettingsInterfaceSection({
   errorMessage,
+  onFirstDayOfWeekSelect,
   onLanguageSelect,
   onScreenCaptureProtectionChange,
   onThemeSelect,
@@ -62,6 +65,18 @@ export function SettingsInterfaceSection({
           options={viewData.themeOptions}
           selectedValue={value.themeOverride ?? "light"}
           testIDPrefix="settings-interface-theme"
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.fieldLabel}>{viewData.firstDayOfWeekLabel}</Text>
+        <Text style={styles.helperText}>{viewData.firstDayOfWeekHint}</Text>
+        <ChoiceGroup
+          layout="grid2"
+          onSelect={onFirstDayOfWeekSelect}
+          options={viewData.firstDayOfWeekOptions}
+          selectedValue={value.firstDayOfWeek}
+          testIDPrefix="settings-interface-first-day-of-week"
         />
       </View>
 

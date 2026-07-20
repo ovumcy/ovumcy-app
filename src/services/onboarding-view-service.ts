@@ -137,6 +137,7 @@ export function buildOnboardingViewData(
         infoCycleShort: onboardingCopy.step2.infoCycleShort,
       },
       ageOptions: [
+        { value: "", label: onboardingCopy.ageGroup.unspecified },
         { value: "under_40", label: onboardingCopy.ageGroup.under40 },
         { value: "age_40_45", label: onboardingCopy.ageGroup.age40to45 },
         { value: "age_45_plus", label: onboardingCopy.ageGroup.age45plus },

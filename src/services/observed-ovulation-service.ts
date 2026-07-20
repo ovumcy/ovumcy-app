@@ -1,90 +1,169 @@
-import type { DayLogRecord } from "../models/day-log";
+import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { LocalDateISO } from "../models/profile";
-import { diffLocalDays } from "./profile-settings-policy";
+import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
-const MIN_BBT_POINTS_FOR_OVULATION = 5;
-const BBT_BASELINE_WINDOW = 5;
-const BBT_SHIFT_STREAK_LENGTH = 3;
-const BBT_SHIFT_THRESHOLD_CELSIUS = 0.2;
+// "3-over-6" coverline rule ported from ovumcy-web
+// (internal/services/cycle_signals.go): the sliding coverline is the MAX of the
+// 6 immediately preceding undisturbed recorded temperatures; a shift is 3
+// calendar-consecutive recorded days, the first two strictly above the
+// coverline and the third at least the third-day margin above it. Max, not
+// mean, so ordinary follicular noise cannot slip past. See
+// docs/cycle-prediction.md.
+const BBT_COVERLINE_WINDOW = 6;
+const BBT_ELEVATED_STREAK_DAYS = 3;
+const BBT_THIRD_DAY_MARGIN_CELSIUS = 0.2;
+
+// Cycle factors that distort basal temperature independently of ovulation and
+// remove a day from the detection series entirely: a fever or short-sleep
+// reading must neither inflate the coverline (masking a real shift) nor confirm
+// an elevated streak (faking one). This is the only case where daily cycle
+// factors influence a computation.
+const BBT_DISTURBANCE_FACTORS: readonly DayCycleFactorKey[] = [
+  "illness",
+  "sleep_disruption",
+];
 
 export type SustainedThermalShift = {
-  // First day of the sustained shift (streak start), i.e. the observed
-  // ovulation/thermal-shift day. Same anchor inferBBTOvulationDate returns.
+  // First elevated cycle day of the sustained shift (the streak start), i.e. the
+  // thermal-shift day. inferBBTOvulationDate subtracts one day from this to
+  // estimate ovulation (temperature rises the day after ovulation).
   shiftStartDate: LocalDateISO;
-  // Average rise of the 3-day sustained streak above the first-5-day baseline.
+  // Sliding coverline in effect for the detected shift: the MAX of the 6
+  // immediately preceding undisturbed recorded temperatures (Celsius).
+  coverline: number;
+  // Average rise of the 3-day elevated streak above the coverline (Celsius).
   rise: number;
-  // Total in-cycle BBT points considered (>= MIN_BBT_POINTS_FOR_OVULATION).
+  // Total undisturbed in-cycle BBT points considered.
   sampleCount: number;
 };
 
-// Canonical thermal-shift detector: first-5-day baseline + 0.2C threshold +
-// 3-day sustained streak. The shift day is the streak start. This is the single
-// source of truth for both the calendar's observed-ovulation marker
-// (inferBBTOvulationDate) and the advanced-fertility thermal-shift panel.
+type BBTPoint = { date: LocalDateISO; bbt: number };
+
+function isBBTDisturbed(record: DayLogRecord): boolean {
+  return record.cycleFactorKeys.some((key) =>
+    BBT_DISTURBANCE_FACTORS.includes(key),
+  );
+}
+
+// Detection series: one undisturbed reading per calendar day within the cycle,
+// excluding illness / sleep_disruption days entirely. The latest same-day
+// reading wins (matching the chart series). cycleEndDate is exclusive; omit it
+// for the open-ended current, in-progress cycle.
+function collectCycleBBTPoints(
+  records: readonly DayLogRecord[],
+  cycleStartDate: LocalDateISO,
+  cycleEndDate?: LocalDateISO,
+): BBTPoint[] {
+  const bbtByDay = new Map<LocalDateISO, number>();
+  const sorted = [...records].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
+  for (const record of sorted) {
+    if (
+      record.bbt <= 0 ||
+      record.date < cycleStartDate ||
+      (cycleEndDate !== undefined && record.date >= cycleEndDate) ||
+      isBBTDisturbed(record)
+    ) {
+      continue;
+    }
+    bbtByDay.set(record.date, record.bbt);
+  }
+  return [...bbtByDay.entries()]
+    .map(([date, bbt]) => ({ date, bbt }))
+    .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function calendarDaysApart(from: LocalDateISO, to: LocalDateISO): number {
+  const start = parseLocalDate(from);
+  const end = parseLocalDate(to);
+  if (!start || !end) {
+    return 0;
+  }
+  return Math.round(
+    (Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+      Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
+      86400000,
+  );
+}
+
+// Canonical "3-over-6" thermal-shift detector — the single source of truth for
+// the calendar's observed-ovulation marker (via inferBBTOvulationDate), the
+// premium advanced-fertility thermal-shift panel, and the doctor PDF. Returns
+// the first elevated cycle day and the coverline in effect; ovulation itself is
+// the day before (inferBBTOvulationDate).
 //
-// The 3-day streak must fall on strictly consecutive calendar days: a point
-// continues the streak only when it is exactly 1 day after the previous logged
-// point, so sparse logging cannot fabricate a shift from an isolated spike.
-//
-// cycleEndDate is optional and exclusive: when omitted the window is
-// open-ended (used by the current, in-progress cycle which has no next start).
+// The first candidate first-elevated day is the 7th recorded day: a full
+// 6-value coverline window must precede it, and a 3-day elevated streak must
+// follow, so at least 9 undisturbed recorded days are required for any shift.
 export function detectSustainedThermalShift(
   records: readonly DayLogRecord[],
   cycleStartDate: LocalDateISO,
   cycleEndDate?: LocalDateISO,
 ): SustainedThermalShift | null {
-  const points = records
-    .filter(
-      (record) =>
-        record.bbt > 0 &&
-        record.date >= cycleStartDate &&
-        (cycleEndDate === undefined || record.date < cycleEndDate),
-    )
-    .sort((left, right) => left.date.localeCompare(right.date));
+  const points = collectCycleBBTPoints(records, cycleStartDate, cycleEndDate);
 
-  if (points.length < MIN_BBT_POINTS_FOR_OVULATION) {
-    return null;
-  }
-
-  const baselineTotal = points
-    .slice(0, BBT_BASELINE_WINDOW)
-    .reduce((sum, point) => sum + point.bbt, 0);
-  const baseline = baselineTotal / BBT_BASELINE_WINDOW;
-  const threshold = baseline + BBT_SHIFT_THRESHOLD_CELSIUS;
-
-  let streak = 0;
-  for (let index = BBT_BASELINE_WINDOW; index < points.length; index += 1) {
-    const point = points[index];
-    if (!point) {
+  for (
+    let index = BBT_COVERLINE_WINDOW;
+    index + BBT_ELEVATED_STREAK_DAYS - 1 < points.length;
+    index += 1
+  ) {
+    const dayOne = points[index];
+    const dayTwo = points[index + 1];
+    const dayThree = points[index + 2];
+    /* istanbul ignore next -- unreachable: the loop bound guarantees index+2 is
+       an in-range index of the dense points array, so all three are defined;
+       the guard exists only to satisfy noUncheckedIndexedAccess. */
+    if (!dayOne || !dayTwo || !dayThree) {
       continue;
     }
-    if (point.bbt >= threshold) {
-      const previous = points[index - 1];
-      const isAdjacent =
-        previous !== undefined &&
-        diffLocalDays(previous.date, point.date) === 1;
-      streak = isAdjacent ? streak + 1 : 1;
-    } else {
-      streak = 0;
+
+    // The elevated streak must fall on strictly consecutive calendar days, so
+    // sparse logging cannot fabricate a shift from an isolated spike.
+    if (
+      calendarDaysApart(dayOne.date, dayTwo.date) !== 1 ||
+      calendarDaysApart(dayTwo.date, dayThree.date) !== 1
+    ) {
+      continue;
     }
-    if (streak >= BBT_SHIFT_STREAK_LENGTH) {
-      const shiftStart = points[index - 2];
-      if (!shiftStart) {
-        return null;
+
+    // Sliding coverline = MAX of the 6 immediately preceding recorded temps.
+    /* istanbul ignore next -- the ?./?? fallbacks are unreachable: index >=
+       BBT_COVERLINE_WINDOW keeps this index in range of the dense array and
+       collectCycleBBTPoints only admits bbt > 0, so neither the optional chain
+       nor the ?? 0 ever fires; both are compiler-only (noUncheckedIndexedAccess). */
+    let coverline = points[index - BBT_COVERLINE_WINDOW]?.bbt ?? 0;
+    for (
+      let windowIndex = index - BBT_COVERLINE_WINDOW + 1;
+      windowIndex < index;
+      windowIndex += 1
+    ) {
+      /* istanbul ignore next -- windowIndex stays within [index-5, index-1],
+         all in-range indices of the dense array whose bbt is > 0, so the ?./??
+         fallbacks never fire (compiler-only, noUncheckedIndexedAccess). */
+      const value = points[windowIndex]?.bbt ?? 0;
+      if (value > coverline) {
+        coverline = value;
       }
-      const streakPoints = points.slice(
-        index - 2,
-        index + 1,
-      );
-      const streakAverage =
-        streakPoints.reduce((sum, streakPoint) => sum + streakPoint.bbt, 0) /
-        streakPoints.length;
-      return {
-        shiftStartDate: shiftStart.date,
-        rise: streakAverage - baseline,
-        sampleCount: points.length,
-      };
     }
+
+    // First two elevated days strictly above the coverline; the third at least
+    // the third-day margin above it.
+    if (dayOne.bbt <= coverline || dayTwo.bbt <= coverline) {
+      continue;
+    }
+    if (dayThree.bbt < coverline + BBT_THIRD_DAY_MARGIN_CELSIUS) {
+      continue;
+    }
+
+    const streakAverage =
+      (dayOne.bbt + dayTwo.bbt + dayThree.bbt) / BBT_ELEVATED_STREAK_DAYS;
+    return {
+      shiftStartDate: dayOne.date,
+      coverline,
+      rise: streakAverage - coverline,
+      sampleCount: points.length,
+    };
   }
 
   return null;
@@ -95,10 +174,28 @@ export function inferBBTOvulationDate(
   cycleStartDate: LocalDateISO,
   cycleEndDate: LocalDateISO,
 ): LocalDateISO | null {
-  return (
-    detectSustainedThermalShift(records, cycleStartDate, cycleEndDate)
-      ?.shiftStartDate ?? null
+  const shift = detectSustainedThermalShift(
+    records,
+    cycleStartDate,
+    cycleEndDate,
   );
+  if (!shift) {
+    return null;
+  }
+
+  // Ovulation precedes the sustained thermal shift: basal temperature rises the
+  // day after ovulation, so the estimate is the calendar day before the first
+  // elevated day. The detector requires a full 6-value coverline window, so the
+  // first elevated day is always well after the cycle start and this stays
+  // inside the cycle.
+  const shiftStart = parseLocalDate(shift.shiftStartDate);
+  /* istanbul ignore next -- unreachable: detectSustainedThermalShift only
+     returns a shift once calendarDaysApart(shiftStartDate, …) === 1, which is
+     impossible unless shiftStartDate parses; kept as a defensive fallback. */
+  if (!shiftStart) {
+    return shift.shiftStartDate;
+  }
+  return formatLocalDate(addDays(shiftStart, -1));
 }
 
 export function inferEggWhiteOvulationDate(
@@ -115,7 +212,25 @@ export function inferEggWhiteOvulationDate(
     )
     .sort((left, right) => left.date.localeCompare(right.date));
 
-  return eggwhite[eggwhite.length - 1]?.date ?? null;
+  const lastEggWhite = eggwhite[eggwhite.length - 1]?.date ?? null;
+  if (!lastEggWhite) {
+    return null;
+  }
+
+  // Peak-day rule ported from ovumcy-web (inferEggWhiteOvulationDate): the last
+  // fertile-quality (egg-white) day is the peak signal and ovulation most
+  // commonly follows it by about a day. Estimate ovulation as the day after the
+  // peak, clamped to stay before the next cycle start (a peak on the final
+  // cycle day keeps the peak day itself).
+  const parsed = parseLocalDate(lastEggWhite);
+  if (!parsed) {
+    return lastEggWhite;
+  }
+  const estimated = formatLocalDate(addDays(parsed, 1));
+  if (estimated >= cycleEndDate) {
+    return lastEggWhite;
+  }
+  return estimated;
 }
 
 export function inferObservedOvulationDate(

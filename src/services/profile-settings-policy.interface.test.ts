@@ -27,11 +27,13 @@ describe("theme preference sanitization", () => {
       sanitizeInterfaceSettingsValues({
         languageOverride: "en",
         themeOverride: "system",
+        firstDayOfWeek: 1,
         screenCaptureProtectionEnabled: true,
       }),
     ).toEqual({
       languageOverride: "en",
       themeOverride: "system",
+      firstDayOfWeek: 1,
       screenCaptureProtectionEnabled: true,
     });
   });
@@ -43,11 +45,14 @@ describe("theme preference sanitization", () => {
         // Simulate a legacy/synced profile carrying a value this build does
         // not recognize; it must not survive sanitize as-is.
         themeOverride: "midnight" as never,
+        // An out-of-range week start normalizes back to Sunday (0).
+        firstDayOfWeek: 3 as never,
         screenCaptureProtectionEnabled: false,
       }),
     ).toEqual({
       languageOverride: null,
       themeOverride: null,
+      firstDayOfWeek: 0,
       screenCaptureProtectionEnabled: false,
     });
   });
