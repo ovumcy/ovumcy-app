@@ -435,12 +435,18 @@ export function buildStatsViewData(
   // probable-ovulation marker are baseline local analytics shown for free,
   // matching ovumcy-web's owner BBT chart — never gated behind managed premium.
   // Reuse the canonical "3-over-6" detector on the current cycle up to today.
-  const bbtCurrentCycleShift = projection.cycleAnchorDate
-    ? detectSustainedThermalShift(
-        records.filter((record) => record.date <= formatLocalDate(now)),
-        projection.cycleAnchorDate,
-      )
-    : null;
+  let bbtCurrentCycleShift: ReturnType<typeof detectSustainedThermalShift> =
+    null;
+  /* istanbul ignore else -- unreachable: reaching this point requires
+     history.hasInsights (checked above), which needs a completed cycle whose
+     next start is strictly before today, so a real cycleAnchorDate always
+     exists here; the guard only narrows the null-typed anchor for detect(). */
+  if (projection.cycleAnchorDate) {
+    bbtCurrentCycleShift = detectSustainedThermalShift(
+      records.filter((record) => record.date <= formatLocalDate(now)),
+      projection.cycleAnchorDate,
+    );
+  }
   const bbtCoverlineValue = bbtCurrentCycleShift
     ? roundTemperature(
         celsiusToUnit(bbtCurrentCycleShift.coverline, profile.temperatureUnit),
@@ -449,6 +455,9 @@ export function buildStatsViewData(
   let bbtProbableOvulationLabel: string | null = null;
   if (bbtCurrentCycleShift) {
     const shiftStart = parseLocalDate(bbtCurrentCycleShift.shiftStartDate);
+    /* istanbul ignore else -- unreachable: detectSustainedThermalShift only
+       returns a shift whose shiftStartDate is a real, parseable calendar day
+       (its consecutiveness check requires it), so shiftStart is never null. */
     if (shiftStart) {
       // Probable ovulation is the calendar day before the first elevated day.
       const probableOvulationDate = formatLocalDate(addDays(shiftStart, -1));
