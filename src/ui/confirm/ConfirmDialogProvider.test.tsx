@@ -108,25 +108,24 @@ describe("ConfirmDialogProvider", () => {
     expect(getModal().props.visible).toBe(false);
   });
 
-  it("ignores a concurrent request without disturbing the visible dialog or auto-resolving anything", async () => {
+  it("resolves a concurrent request to the safe dismiss outcome without disturbing the visible dialog", async () => {
     renderProvider();
     let firstPromise!: Promise<boolean>;
-    let secondPromise!: Promise<boolean>;
-    let secondSettled = false;
+    let secondPromise!: Promise<ConfirmationOutcome>;
 
     act(() => {
       firstPromise = requestConfirmation("first?", "Yes", "No");
     });
     act(() => {
-      secondPromise = requestConfirmation("second?", "Yes2", "No2");
-    });
-    void secondPromise.then(() => {
-      secondSettled = true;
+      secondPromise = requestConfirmationOutcome("second?", "Yes2", "No2");
     });
 
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(secondSettled).toBe(false);
+    // The second concurrent request must settle deterministically (dismiss)
+    // rather than dangle forever — a hung promise would block whatever awaits
+    // it. "dismiss" is the safe, non-destructive keep-editing answer.
+    await expect(secondPromise).resolves.toBe("dismiss");
+
+    // The already-visible first dialog is untouched by the concurrent request.
     expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
       "first?",
     );
@@ -136,10 +135,39 @@ describe("ConfirmDialogProvider", () => {
       fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
     await expect(firstPromise).resolves.toBe(true);
-
-    await Promise.resolve();
-    expect(secondSettled).toBe(false);
     expect(getModal().props.visible).toBe(false);
+  });
+
+  it("accepts a fresh confirmation after a concurrent request was auto-dismissed", async () => {
+    renderProvider();
+    let firstPromise!: Promise<boolean>;
+
+    act(() => {
+      firstPromise = requestConfirmation("first?", "Yes", "No");
+    });
+    act(() => {
+      // Concurrent request is auto-dismissed; it must not leave isPending stuck.
+      void requestConfirmation("second?", "Yes2", "No2");
+    });
+
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    });
+    await expect(firstPromise).resolves.toBe(true);
+
+    // A brand-new confirmation after the first fully resolved still works.
+    let thirdPromise!: Promise<boolean>;
+    act(() => {
+      thirdPromise = requestConfirmation("third?", "Yes3", "No3");
+    });
+    expect(getModal().props.visible).toBe(true);
+    expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
+      "third?",
+    );
+    act(() => {
+      fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
+    });
+    await expect(thirdPromise).resolves.toBe(false);
   });
 
   it("renders a neutral button and resolves dismiss for three-way prompts", async () => {
