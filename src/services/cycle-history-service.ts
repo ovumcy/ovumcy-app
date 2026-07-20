@@ -356,6 +356,20 @@ export function buildCurrentCycleProjection(
     lutealPhase,
     today,
   );
+  // Web low-reliability ovulation softening (dashboardNeedsOvulationData /
+  // DashboardOvulationRange): an irregular cycle either hides the concrete
+  // upcoming-ovulation date (too few cycles) or presents it as a range, so the
+  // dashboard never shows a falsely precise ovulation day for a sparse/irregular
+  // history. Kept in this shared projection so every prediction surface reads one
+  // decision.
+  const upcomingOvulation = resolveUpcomingOvulationDisplay(
+    profile,
+    history,
+    upcomingOvulationDate,
+    rolledWindow.isExact,
+    rolledNextPeriodWindow,
+    lutealPhase,
+  );
 
   return {
     cycleAnchorDate,
@@ -381,8 +395,85 @@ export function buildCurrentCycleProjection(
     nextPeriodWindowStartDate: rolledNextPeriodWindow?.startDate ?? null,
     nextPeriodWindowEndDate: rolledNextPeriodWindow?.endDate ?? null,
     ovulationDate: rolledWindow.ovulationDate,
-    upcomingOvulationDate,
+    upcomingOvulationDate: upcomingOvulation.date,
+    upcomingOvulationExact: upcomingOvulation.exact,
+    upcomingOvulationNeedsMoreCycles: upcomingOvulation.needsMoreCycles,
+    upcomingOvulationWindowStartDate: upcomingOvulation.windowStartDate,
+    upcomingOvulationWindowEndDate: upcomingOvulation.windowEndDate,
     predictionCycleLength,
+  };
+}
+
+/**
+ * App analog of web's dashboard ovulation display resolution
+ * (dashboardNeedsOvulationData + DashboardOvulationRange, dashboard_cycle.go).
+ * The concrete upcoming-ovulation date is only shown when the history supports
+ * it; for an irregular cycle it is either hidden (too few cycles) or replaced by
+ * a range so the dashboard never presents a falsely precise ovulation day.
+ *
+ * - Irregular cycle, fewer than STATS_RELIABLE_TREND_CYCLES completed cycles
+ *   (web dashboardNeedsOvulationData): hide the concrete date, flag needsMoreCycles.
+ * - Irregular cycle with a reliable trend and a next-period range
+ *   (web DashboardOvulationRange): present the next-period range shifted back by
+ *   the (already resolved) luteal phase as the ovulation range; hide the date.
+ * - Otherwise: keep the concrete date and its exactness (web keeps a single
+ *   ovulation date for regular cycles, appending "(approximate)" when not exact).
+ */
+function resolveUpcomingOvulationDisplay(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  concreteDate: LocalDateISO | null,
+  isExact: boolean,
+  nextPeriodWindow: { endDate: string; startDate: string } | null,
+  lutealPhase: number,
+): {
+  date: LocalDateISO | null;
+  exact: boolean;
+  needsMoreCycles: boolean;
+  windowStartDate: LocalDateISO | null;
+  windowEndDate: LocalDateISO | null;
+} {
+  if (profile.irregularCycle && !history.hasReliableTrend) {
+    return {
+      date: null,
+      exact: false,
+      needsMoreCycles: true,
+      windowStartDate: null,
+      windowEndDate: null,
+    };
+  }
+
+  if (
+    profile.irregularCycle &&
+    history.hasReliableTrend &&
+    nextPeriodWindow &&
+    history.recentCycleLengths.length > 0
+  ) {
+    const rangeStart = parseLocalDate(nextPeriodWindow.startDate);
+    const rangeEnd = parseLocalDate(nextPeriodWindow.endDate);
+    if (rangeStart && rangeEnd) {
+      // lutealPhase is already resolveLutealPhase()'d by the caller, matching
+      // web DashboardOvulationRange's ResolveLutealPhase (idempotent).
+      const ovulationStart = addDays(rangeStart, -lutealPhase);
+      const ovulationEnd = addDays(rangeEnd, -lutealPhase);
+      if (ovulationEnd >= ovulationStart) {
+        return {
+          date: null,
+          exact: false,
+          needsMoreCycles: false,
+          windowStartDate: formatLocalDate(ovulationStart),
+          windowEndDate: formatLocalDate(ovulationEnd),
+        };
+      }
+    }
+  }
+
+  return {
+    date: concreteDate,
+    exact: isExact,
+    needsMoreCycles: false,
+    windowStartDate: null,
+    windowEndDate: null,
   };
 }
 

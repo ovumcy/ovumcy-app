@@ -443,14 +443,39 @@ function buildDashboardUpcomingOvulationLabel(
   dashboardCopy: ReturnType<typeof getDashboardCopy>,
   locale: string,
 ): string | null {
+  // Web DashboardOvulationRange: an irregular cycle with a reliable trend shows
+  // the ovulation as an explicit range instead of a single (false-precision) day.
+  if (
+    projection.upcomingOvulationWindowStartDate &&
+    projection.upcomingOvulationWindowEndDate
+  ) {
+    return `${dashboardCopy.ovulation}: ${dashboardCopy.ovulationRange(
+      formatDisplayDate(projection.upcomingOvulationWindowStartDate, locale),
+      formatDisplayDate(projection.upcomingOvulationWindowEndDate, locale),
+    )}`;
+  }
+
+  // Web dashboardNeedsOvulationData: too few cycles for a trustworthy ovulation
+  // date, so surface the needs-more-cycles note rather than a concrete day.
+  if (projection.upcomingOvulationNeedsMoreCycles) {
+    return `${dashboardCopy.ovulation}: ${dashboardCopy.ovulationNeedsMoreCycles}`;
+  }
+
   if (!projection.upcomingOvulationDate) {
     return null;
   }
 
+  // Web DisplayOvulationExact: a short-cycle luteal clamp makes the date only
+  // approximate, so append the "(approximate)" qualifier.
+  const suffix =
+    projection.upcomingOvulationExact === false
+      ? ` ${dashboardCopy.ovulationApproximate}`
+      : "";
+
   return `${dashboardCopy.ovulation}: ${formatDisplayDate(
     projection.upcomingOvulationDate,
     locale,
-  )}`;
+  )}${suffix}`;
 }
 
 function buildDashboardCycleHeroDateRange(

@@ -841,3 +841,55 @@ describe("dashboard-view-service", () => {
     });
   });
 });
+
+describe("dashboard upcoming-ovulation low-reliability softening", () => {
+  function cycleStart(date: string): DayLogRecord {
+    return { ...createEmptyDayLogRecord(date), isPeriod: true, cycleStart: true };
+  }
+
+  function heroFor(profileOverrides: Partial<ProfileRecord>, records: DayLogRecord[], now: Date) {
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      ...profileOverrides,
+    };
+    const history = buildCycleHistorySummary(profile, records, now);
+    return buildDashboardViewData(profile, records, history, now).cycleHero;
+  }
+
+  it("shows a needs-more-cycles ovulation note for a sparse irregular cycle", () => {
+    const hero = heroFor(
+      { irregularCycle: true, lastPeriodStart: "2026-03-10" },
+      [cycleStart("2026-03-10")],
+      new Date(2026, 2, 17),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe(
+      "Ovulation: 3 completed cycles are needed before an ovulation range can be shown",
+    );
+  });
+
+  it("shows an ovulation range once an irregular cycle has a reliable trend", () => {
+    const hero = heroFor(
+      { irregularCycle: true, lastPeriodStart: "2026-03-16" },
+      [
+        cycleStart("2025-12-20"),
+        cycleStart("2026-01-17"),
+        cycleStart("2026-02-14"),
+        cycleStart("2026-03-16"),
+      ],
+      new Date(2026, 2, 26),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 30 — Apr 1");
+  });
+
+  it("keeps a single concrete ovulation date for a regular cycle", () => {
+    const hero = heroFor(
+      { lastPeriodStart: "2026-03-01" },
+      [],
+      new Date(2026, 2, 5),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 14");
+  });
+});

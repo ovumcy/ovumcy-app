@@ -325,6 +325,70 @@ describe("cycle-history-service", () => {
     });
   });
 
+  describe("low-reliability ovulation softening (web dashboardNeedsOvulationData / DashboardOvulationRange)", () => {
+    function cycleStart(date: string) {
+      return { ...createEmptyDayLogRecord(date), isPeriod: true, cycleStart: true };
+    }
+
+    it("hides the concrete upcoming ovulation for an irregular cycle with too few cycles", () => {
+      // Irregular cycle, only one recorded start -> 0 completed cycles, so web's
+      // dashboardNeedsOvulationData blanks the ovulation date and signals that
+      // more cycles are needed rather than showing a falsely precise day.
+      const profile = createProfileRecord({
+        irregularCycle: true,
+        lastPeriodStart: "2026-03-10",
+      });
+      const records = [cycleStart("2026-03-10")];
+      const now = new Date(2026, 2, 17);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.hasReliableTrend).toBe(false);
+      expect(projection.upcomingOvulationDate).toBeNull();
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(true);
+      expect(projection.upcomingOvulationWindowStartDate).toBeNull();
+      expect(projection.upcomingOvulationWindowEndDate).toBeNull();
+    });
+
+    it("presents the upcoming ovulation as a range once an irregular cycle has a reliable trend", () => {
+      // Starts Dec 20, Jan 17, Feb 14, Mar 16 -> 3 completed cycles (28, 28, 30).
+      // Web DashboardOvulationRange = next-period range shifted back by the luteal
+      // phase: next-period [Apr 13, Apr 15] - 14 d luteal = [Mar 30, Apr 1]. The
+      // concrete date is blanked in favor of the range.
+      const profile = createProfileRecord({
+        irregularCycle: true,
+        lastPeriodStart: "2026-03-16",
+      });
+      const records = [
+        cycleStart("2025-12-20"),
+        cycleStart("2026-01-17"),
+        cycleStart("2026-02-14"),
+        cycleStart("2026-03-16"),
+      ];
+      const now = new Date(2026, 2, 26);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.hasReliableTrend).toBe(true);
+      expect(projection.upcomingOvulationDate).toBeNull();
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(false);
+      expect(projection.upcomingOvulationWindowStartDate).toBe("2026-03-30");
+      expect(projection.upcomingOvulationWindowEndDate).toBe("2026-04-01");
+    });
+
+    it("keeps the concrete upcoming ovulation date for a regular cycle", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+      const now = new Date(2026, 2, 5);
+      const history = buildCycleHistorySummary(profile, [], now);
+      const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+      expect(projection.upcomingOvulationDate).toBe("2026-03-14");
+      expect(projection.upcomingOvulationExact).toBe(true);
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(false);
+      expect(projection.upcomingOvulationWindowStartDate).toBeNull();
+    });
+  });
+
   describe("detectCurrentPhase precedence (web resolveCyclePhase parity, cycles.go:419-446)", () => {
     // Shared cycle: anchor 2026-03-01, default 28-day cycle / 5-day period,
     // no completed cycles yet -> predictionCycleLength falls back to

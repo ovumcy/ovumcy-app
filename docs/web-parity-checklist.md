@@ -415,16 +415,26 @@ that owns the canonical web UX).
     `formatDisplayDate` helper: present whenever `upcomingOvulationDate` is
     non-null, absent entirely under the pregnancy-pause and unpredictable-cycle
     branches (and any other null-producing path), never a separate "unavailable"
-    string. Deviation: web further splits `DisplayOvulationDate` into
-    use-range / needs-more-cycles / impossible sub-states
-    (`dashboardNeedsOvulationData`, `DashboardOvulationRange`,
-    `dashboard_cycle.go:169-341`) that the app's single nullable field does not
-    model, so the app always shows one concrete date (or nothing); this also
-    means the app keeps showing the date in the rolled-forward "stale" hero
-    state, where web's analogous irregular/low-reliability path blanks
-    ovulation specifically while still showing an approximate next-period date.
-    Porting that finer-grained branching is a possible future parity task, not
-    done here since it is new gating logic beyond this change's scope.
+    string. Decision (2026-07-20): the low-reliability softening of
+    `DisplayOvulationDate` is now ported (medical-safety: avoid a falsely precise
+    ovulation day for a sparse/irregular history). The shared projection
+    (`buildCurrentCycleProjection` -> `resolveUpcomingOvulationDisplay`,
+    `src/services/cycle-history-service.ts`) mirrors web's
+    `dashboardNeedsOvulationData` and `DashboardOvulationRange`
+    (`dashboard_cycle.go:169-341`): an irregular cycle with fewer than three
+    completed cycles hides the concrete date and surfaces
+    `dashboardCopy.ovulationNeedsMoreCycles`
+    (`upcomingOvulationNeedsMoreCycles`), and an irregular cycle with a reliable
+    trend shows the next-period range shifted back by the luteal phase as an
+    ovulation range (`upcomingOvulationWindowStart/EndDate`, rendered via
+    `dashboardCopy.ovulationRange`). Regular cycles still show one concrete date,
+    now appending `dashboardCopy.ovulationApproximate` when the luteal phase was
+    clamped (web `DisplayOvulationExact`). Residual deviation: web's
+    `impossible`/`DisplayOvulationUnavailable` text state and the "blank ovulation
+    but keep an approximate next-period date" stale-hero path are not modeled —
+    the app keeps hiding the ovulation element entirely (never a separate
+    "Cannot be calculated" string), which is conservative (no false info) rather
+    than a false-precision risk.
   - Projected period length now matches web's rolling `AveragePeriodLength`
     instead of the profile-configured `periodLength`, closing the former allowed
     deviation. `cycle-history-service.resolveProjectedPeriodLength` averages the
