@@ -486,6 +486,15 @@ describe("SettingsScreen", () => {
           },
         ),
       )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so doctorPDF is read from
+      // the billing snapshot boolean (still unlocked here).
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -621,6 +630,14 @@ describe("SettingsScreen", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
+      )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(

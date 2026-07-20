@@ -259,21 +259,28 @@ describe("StatsScreen", () => {
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
     });
-    global.fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          premium_features: {
-            advanced_fertility: true,
-            advanced_insights: true,
-            doctor_pdf: true,
-            extended_reports: true,
+    // A fresh Response per call: the managed premium resolution now probes the
+    // session (buildEntitlementTokenGate -> getSession) before the billing
+    // fetch, and a Response body can only be read once. This URL-agnostic
+    // billing payload fails session-view validation, so the token gate resolves
+    // to undefined and advancedInsights comes from the billing snapshot boolean
+    // (the fail-to-snapshot path) exactly as before.
+    global.fetch = jest.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            premium_features: {
+              advanced_fertility: true,
+              advanced_insights: true,
+              doctor_pdf: true,
+              extended_reports: true,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
           },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
+        ),
     ) as unknown as typeof global.fetch;
 
     const storage = createStorageMock({

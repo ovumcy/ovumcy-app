@@ -123,6 +123,14 @@ describe("settings services", () => {
           },
         ),
       )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -209,6 +217,14 @@ describe("settings services", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
+      )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(
@@ -304,6 +320,14 @@ describe("settings services", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
+      )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(
@@ -417,6 +441,14 @@ describe("settings services", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
+      )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
       )
       .mockResolvedValueOnce(
         new Response(

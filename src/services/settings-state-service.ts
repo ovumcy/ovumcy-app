@@ -5,6 +5,7 @@ import {
 } from "../sync/sync-client-service";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { buildEntitlementTokenGate } from "./entitlement-token-gate-service";
 import { loadLocalExportState } from "./export-service";
 import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
 import {
@@ -47,7 +48,11 @@ export async function loadSettingsScreenState(
         storage,
         secretStore,
         syncState.preferences.mode,
-        undefined,
+        // Doctor PDF is token-gated: a verified entitlement token decides
+        // `doctorPDF`; absent/invalid, the billing snapshot boolean stands.
+        await buildEntitlementTokenGate(secretStore, syncState.preferences.mode, {
+          nowSeconds: Math.floor(now.getTime() / 1000),
+        }),
         now,
       );
       if (billingSnapshot) {
