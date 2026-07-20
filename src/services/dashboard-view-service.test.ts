@@ -8,6 +8,7 @@ import {
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   buildDashboardViewData,
+  resolveDaySaveMessage,
   resolveDaySaveMessageKey,
 } from "./dashboard-view-service";
 
@@ -838,6 +839,29 @@ describe("dashboard-view-service", () => {
       // Even on cycle day 1 (which would otherwise be self-care), the pause wins.
       expect(resolveDaySaveMessageKey(cycleStart, profile, projection)).toBe(
         "pregnancy_paused",
+      );
+    });
+
+    it("falls back to neutral when the projection has no cycle anchor", () => {
+      const profile = regularProfile({ lastPeriodStart: null });
+      const projection = makeProjection(profile, []);
+
+      // No anchor date (and not paused / not unpredictable) exercises the
+      // anchor-absent path, which yields the neutral default.
+      expect(projection.cycleAnchorDate).toBeNull();
+      expect(resolveDaySaveMessageKey("2026-03-10", profile, projection)).toBe(
+        "neutral",
+      );
+    });
+
+    it("resolves the save message with the default English locale when none is passed", () => {
+      const profile = regularProfile();
+      const projection = makeProjection(profile, cycleStartRecords);
+
+      // Omitting the locale argument exercises the default-parameter path; the
+      // resolved copy must match an explicit "en" request.
+      expect(resolveDaySaveMessage("2026-03-10", profile, projection)).toBe(
+        resolveDaySaveMessage("2026-03-10", profile, projection, "en"),
       );
     });
   });
