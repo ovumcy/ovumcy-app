@@ -111,6 +111,9 @@ export function detectSustainedThermalShift(
     const dayOne = points[index];
     const dayTwo = points[index + 1];
     const dayThree = points[index + 2];
+    /* istanbul ignore next -- unreachable: the loop bound guarantees index+2 is
+       an in-range index of the dense points array, so all three are defined;
+       the guard exists only to satisfy noUncheckedIndexedAccess. */
     if (!dayOne || !dayTwo || !dayThree) {
       continue;
     }
@@ -125,12 +128,19 @@ export function detectSustainedThermalShift(
     }
 
     // Sliding coverline = MAX of the 6 immediately preceding recorded temps.
+    /* istanbul ignore next -- the ?./?? fallbacks are unreachable: index >=
+       BBT_COVERLINE_WINDOW keeps this index in range of the dense array and
+       collectCycleBBTPoints only admits bbt > 0, so neither the optional chain
+       nor the ?? 0 ever fires; both are compiler-only (noUncheckedIndexedAccess). */
     let coverline = points[index - BBT_COVERLINE_WINDOW]?.bbt ?? 0;
     for (
       let windowIndex = index - BBT_COVERLINE_WINDOW + 1;
       windowIndex < index;
       windowIndex += 1
     ) {
+      /* istanbul ignore next -- windowIndex stays within [index-5, index-1],
+         all in-range indices of the dense array whose bbt is > 0, so the ?./??
+         fallbacks never fire (compiler-only, noUncheckedIndexedAccess). */
       const value = points[windowIndex]?.bbt ?? 0;
       if (value > coverline) {
         coverline = value;
