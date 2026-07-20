@@ -103,6 +103,8 @@ const statsCopyEn = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "BBT appears only when you track it. Readings stay local and are shown for the current cycle only.",
+  bbtCoverlineLabel: "Coverline",
+  bbtProbableOvulationLabel: "Probable ovulation",
   advancedInsights: {
     title: "Advanced insights",
     subtitle: "Premium patterns derived only from your recent local cycle history.",
@@ -411,6 +413,8 @@ const statsCopyDe: StatsCopy = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "BBT erscheint nur, wenn Sie sie erfassen. Die Werte bleiben lokal und werden nur für den aktuellen Zyklus angezeigt.",
+  bbtCoverlineLabel: "Coverline",
+  bbtProbableOvulationLabel: "Wahrscheinlicher Eisprung",
   advancedInsights: {
     title: "Erweiterte Analysen",
     subtitle: "Premium-Muster nur aus Ihrem lokalen Zyklusverlauf der letzten Zyklen.",
@@ -713,6 +717,8 @@ const statsCopyFr: StatsCopy = {
   bbtUnitFahrenheit: "°F",
   bbtCaption:
     "La TB apparaît seulement quand vous la suivez. Les mesures restent locales et ne sont affichées que pour le cycle en cours.",
+  bbtCoverlineLabel: "Ligne de couverture",
+  bbtProbableOvulationLabel: "Ovulation probable",
   advancedInsights: {
     title: "Analyses avancées",
     subtitle: "Schémas premium calculés uniquement à partir de votre historique local récent.",
@@ -1005,6 +1011,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "БТТ появляется только когда вы её отслеживаете. Показания остаются локальными и показываются только для текущего цикла.",
+    bbtCoverlineLabel: "Покровная линия",
+    bbtProbableOvulationLabel: "Вероятная овуляция",
     advancedInsights: {
       title: "Расширенная аналитика",
       subtitle: "Премиум-паттерны, рассчитанные только по вашей недавней локальной истории циклов.",
@@ -1292,6 +1300,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "La TBC aparece solo cuando la registras. Las lecturas siguen siendo locales y se muestran solo para el ciclo actual.",
+    bbtCoverlineLabel: "Línea de cobertura",
+    bbtProbableOvulationLabel: "Ovulación probable",
     advancedInsights: {
       title: "Análisis avanzados",
       subtitle: "Patrones premium calculados solo a partir de tu historial local reciente.",
@@ -1581,6 +1591,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     bbtUnitFahrenheit: "°F",
     bbtCaption:
       "La BBT appare solo quando la registri. Le rilevazioni restano locali e sono mostrate solo per il ciclo corrente.",
+    bbtCoverlineLabel: "Linea di copertura",
+    bbtProbableOvulationLabel: "Probabile ovulazione",
     advancedInsights: {
       title: "Analisi avanzate",
       subtitle: "Pattern premium calcolati solo dalla tua cronologia locale recente.",

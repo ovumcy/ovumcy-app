@@ -40,6 +40,7 @@ import {
   buildStatsSymptomPatterns,
   buildStatsTrendPoints,
 } from "./stats-insights-service";
+import { detectSustainedThermalShift } from "./observed-ovulation-service";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
@@ -49,7 +50,12 @@ import {
   buildStatsPremiumInsights,
   type StatsShortLutealHint,
 } from "./stats-premium-insights-service";
-import { atLocalDay, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import {
+  addDays,
+  atLocalDay,
+  formatLocalDate,
+  parseLocalDate,
+} from "./profile-settings-policy";
 import { localizeSymptomRecords } from "./symptom-presentation-service";
 
 export type StatsTopCardViewData = {
@@ -210,6 +216,13 @@ export type StatsViewData = {
       label: string;
       value: number;
     }[];
+    // Free-tier baseline signals matching ovumcy-web's owner BBT chart: the
+    // coverline (drawn only once a sustained shift is confirmed) and the
+    // probable-ovulation caption. These are baseline local analytics, never
+    // gated behind managed premium (see SECURITY.md).
+    coverlineValue: number | null;
+    coverlineLabel: string;
+    probableOvulationLabel: string | null;
   };
   topCards: StatsTopCardViewData[];
   cycleOverview?: {
@@ -418,6 +431,33 @@ export function buildStatsViewData(
     ? buildStatsExtendedReports(history)
     : null;
   const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
+  // Free-tier BBT baseline (owner decision 2026-07-20): the coverline and
+  // probable-ovulation marker are baseline local analytics shown for free,
+  // matching ovumcy-web's owner BBT chart — never gated behind managed premium.
+  // Reuse the canonical "3-over-6" detector on the current cycle up to today.
+  const bbtCurrentCycleShift = projection.cycleAnchorDate
+    ? detectSustainedThermalShift(
+        records.filter((record) => record.date <= formatLocalDate(now)),
+        projection.cycleAnchorDate,
+      )
+    : null;
+  const bbtCoverlineValue = bbtCurrentCycleShift
+    ? roundTemperature(
+        celsiusToUnit(bbtCurrentCycleShift.coverline, profile.temperatureUnit),
+      )
+    : null;
+  let bbtProbableOvulationLabel: string | null = null;
+  if (bbtCurrentCycleShift) {
+    const shiftStart = parseLocalDate(bbtCurrentCycleShift.shiftStartDate);
+    if (shiftStart) {
+      // Probable ovulation is the calendar day before the first elevated day.
+      const probableOvulationDate = formatLocalDate(addDays(shiftStart, -1));
+      bbtProbableOvulationLabel = `${statsCopy.bbtProbableOvulationLabel}: ${formatDisplayDate(
+        probableOvulationDate,
+        locale,
+      )}`;
+    }
+  }
   const premiumLocks = buildStatsPremiumLocks(premiumFeatures, statsCopy);
 
   return {
@@ -570,6 +610,9 @@ export function buildStatsViewData(
                 celsiusToUnit(point.value, profile.temperatureUnit),
               ),
             })),
+            coverlineValue: bbtCoverlineValue,
+            coverlineLabel: statsCopy.bbtCoverlineLabel,
+            probableOvulationLabel: bbtProbableOvulationLabel,
           },
         }
       : {}),
