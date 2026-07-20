@@ -949,4 +949,19 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
 
     expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 14");
   });
+
+  it("appends the approximate qualifier when a short cycle clamps the ovulation date", () => {
+    // cycleLength 17 with the default 14-day luteal phase exceeds the supported
+    // luteal span, so predictCycleWindow clamps and marks the date inexact; the
+    // concrete ovulation label must then carry the "(approximate)" qualifier.
+    const hero = heroFor(
+      { lastPeriodStart: "2026-03-10", cycleLength: 17 },
+      [cycleStart("2026-03-10")],
+      new Date(2026, 2, 12),
+    );
+
+    expect(hero.upcomingOvulationLabel).toContain(
+      getDashboardCopy("en").ovulationApproximate,
+    );
+  });
 });
