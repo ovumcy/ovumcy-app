@@ -26,6 +26,10 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type DayLogEditorCardProps = {
+  // Precomputed by shared services (day-log-editor-service.resolveBleedingSafetyHint):
+  // a non-diagnostic ACOG-guidance hint shown under the flow field for prolonged
+  // or sustained very heavy bleeding. null hides the element entirely.
+  bleedingSafetyHint?: string | null;
   cancelLabel?: string;
   entryExists: boolean;
   highlightedSection?: DayLogEditorSectionKey | null;
@@ -60,6 +64,7 @@ export type DayLogEditorSectionKey =
   | "notes";
 
 export function DayLogEditorCard({
+  bleedingSafetyHint = null,
   cancelLabel,
   entryExists,
   highlightedSection = null,
@@ -242,6 +247,11 @@ export function DayLogEditorCard({
             selectedValue={record.flow}
             testIDPrefix="day-log-flow"
           />
+          {bleedingSafetyHint ? (
+            <Text style={styles.bleedingSafetyHint} testID="day-log-bleeding-safety-hint">
+              {bleedingSafetyHint}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -439,6 +449,15 @@ const createStyles = (colors: AppThemeColors) =>
       color: colors.textMuted,
       fontSize: 14,
       lineHeight: 21,
+    },
+    bleedingSafetyHint: {
+      backgroundColor: colors.accentSoft,
+      borderRadius: 12,
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 19,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
     },
     input: {
       backgroundColor: colors.surfaceTint,

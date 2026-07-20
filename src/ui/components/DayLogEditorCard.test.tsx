@@ -117,6 +117,7 @@ type RenderCardOptions = {
   highlightedSection?: DayLogEditorSectionKey | null;
   isSaving?: boolean;
   onCancel?: () => void;
+  bleedingSafetyHint?: string | null;
   onDelete?: () => void | Promise<void>;
   onPatch?: jest.Mock;
   onSave?: jest.Mock;
@@ -163,6 +164,7 @@ function buildCardElement(options: RenderCardOptions) {
   const element = (
     <DayLogEditorCard
       {...optionalHandlerProps}
+      bleedingSafetyHint={options.bleedingSafetyHint ?? null}
       entryExists={options.entryExists ?? false}
       highlightedSection={options.highlightedSection ?? null}
       isSaving={options.isSaving ?? false}
@@ -548,5 +550,33 @@ describe("DayLogEditorCard save/cancel/delete actions", () => {
 
     expect(screen.getByTestId("day-log-status-banner")).toBeTruthy();
     expect(screen.getByText("Saving locally...")).toBeTruthy();
+  });
+
+  it("renders a bleeding safety hint under the flow field only when provided", () => {
+    const { rerenderWith } = renderCard({
+      record: { isPeriod: true, flow: "heavy" },
+    });
+
+    expect(screen.queryByTestId("day-log-bleeding-safety-hint")).toBeNull();
+
+    rerenderWith({
+      record: { isPeriod: true, flow: "heavy" },
+      bleedingSafetyHint: "Guidance, not a diagnosis: see a clinician.",
+    });
+
+    expect(screen.getByTestId("day-log-bleeding-safety-hint")).toBeTruthy();
+    expect(
+      screen.getByText("Guidance, not a diagnosis: see a clinician."),
+    ).toBeTruthy();
+  });
+
+  it("hides the bleeding safety hint when the day is not a period day", () => {
+    renderCard({
+      record: { isPeriod: false },
+      bleedingSafetyHint: "Guidance, not a diagnosis: see a clinician.",
+    });
+
+    // Flow section (and its hint) only render for a period day.
+    expect(screen.queryByTestId("day-log-bleeding-safety-hint")).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarDayPanelProps = {
+  bleedingSafetyHint?: string | null;
   entryExists: boolean;
   isEditing: boolean;
   isSaving: boolean;
@@ -36,6 +37,7 @@ type CalendarDayPanelProps = {
 };
 
 export function CalendarDayPanel({
+  bleedingSafetyHint = null,
   entryExists,
   isEditing,
   isSaving,
@@ -76,6 +78,7 @@ export function CalendarDayPanel({
           />
         ) : null}
         <DayLogEditorCard
+          bleedingSafetyHint={bleedingSafetyHint}
           cancelLabel={summaryViewData.actions.cancelLabel}
           entryExists={entryExists}
           isSaving={isSaving}

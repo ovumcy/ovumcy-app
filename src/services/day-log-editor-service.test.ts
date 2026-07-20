@@ -1,9 +1,11 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { getDayLogCopy } from "../i18n/day-log-copy";
+import { createEmptyDayLogRecord, type DayFlow, type DayLogRecord } from "../models/day-log";
 import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   buildNextDayLogRecordPatch,
   loadDayLogEditorState,
+  resolveBleedingSafetyHint,
   saveDayLogEditorRecord,
 } from "./day-log-editor-service";
 
@@ -235,6 +237,87 @@ describe("day-log-editor-service", () => {
         expect.objectContaining({ value: "custom_old", label: "Old symptom" }),
         expect.objectContaining({ value: "fatigue", label: "Усталость" }),
       ]),
+    );
+  });
+});
+
+describe("resolveBleedingSafetyHint", () => {
+  function periodDay(date: string, flow: DayFlow): DayLogRecord {
+    return { ...createEmptyDayLogRecord(date), isPeriod: true, flow };
+  }
+
+  it("stays silent on a non-period day regardless of flow history", () => {
+    const history = [
+      periodDay("2026-03-15", "heavy"),
+      periodDay("2026-03-16", "heavy"),
+    ];
+    const record = createEmptyDayLogRecord("2026-03-17");
+
+    expect(resolveBleedingSafetyHint(record, history)).toBeNull();
+  });
+
+  it("stays silent for a short heavy run below the sustained threshold", () => {
+    const history = [periodDay("2026-03-16", "heavy")];
+    const record = periodDay("2026-03-17", "heavy");
+
+    // Only two consecutive heavy days, and a two-day bleeding run — neither the
+    // sustained-heavy (>=3 days) nor the prolonged (>7 days) pattern.
+    expect(resolveBleedingSafetyHint(record, history)).toBeNull();
+  });
+
+  it("surfaces the hint after several consecutive heavy-flow days", () => {
+    const history = [
+      periodDay("2026-03-15", "heavy"),
+      periodDay("2026-03-16", "heavy"),
+    ];
+    const record = periodDay("2026-03-17", "heavy");
+
+    expect(resolveBleedingSafetyHint(record, history)).toBe(
+      getDayLogCopy("en").bleedingSafetyHint,
+    );
+  });
+
+  it("surfaces the hint for prolonged bleeding even at a lighter flow", () => {
+    const history = [
+      periodDay("2026-03-10", "light"),
+      periodDay("2026-03-11", "light"),
+      periodDay("2026-03-12", "light"),
+      periodDay("2026-03-13", "light"),
+      periodDay("2026-03-14", "light"),
+      periodDay("2026-03-15", "light"),
+      periodDay("2026-03-16", "light"),
+    ];
+    const record = periodDay("2026-03-17", "light");
+
+    // Eighth consecutive bleeding day — longer than ACOG's ~7-day guidance.
+    expect(resolveBleedingSafetyHint(record, history)).toBe(
+      getDayLogCopy("en").bleedingSafetyHint,
+    );
+  });
+
+  it("uses the live record's flow over any persisted copy for the same day", () => {
+    const history = [
+      periodDay("2026-03-15", "heavy"),
+      periodDay("2026-03-16", "heavy"),
+      // Persisted copy of today still says "light"; the live edit wins.
+      periodDay("2026-03-17", "light"),
+    ];
+    const liveRecord = periodDay("2026-03-17", "heavy");
+
+    expect(resolveBleedingSafetyHint(liveRecord, history)).toBe(
+      getDayLogCopy("en").bleedingSafetyHint,
+    );
+  });
+
+  it("localizes the hint through the day-log copy catalog", () => {
+    const history = [
+      periodDay("2026-03-15", "heavy"),
+      periodDay("2026-03-16", "heavy"),
+    ];
+    const record = periodDay("2026-03-17", "heavy");
+
+    expect(resolveBleedingSafetyHint(record, history, "ru")).toBe(
+      getDayLogCopy("ru").bleedingSafetyHint,
     );
   });
 });
