@@ -592,6 +592,7 @@ export function buildSettingsViewData(
       label: settingsCopy.ageGroup.title,
       hint: settingsCopy.ageGroup.hint,
       options: [
+        { value: "", label: settingsCopy.ageGroup.unspecified },
         { value: "under_40", label: settingsCopy.ageGroup.under40 },
         { value: "age_40_45", label: settingsCopy.ageGroup.age40to45 },
         { value: "age_45_plus", label: settingsCopy.ageGroup.age45plus },

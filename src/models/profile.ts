@@ -20,7 +20,9 @@ export const MIN_CYCLE_RESERVE_DAYS = 10;
 export type LocalDateISO = string;
 
 export type AgeGroup = "" | "under_40" | "age_40_45" | "age_45_plus";
-export type AgeGroupOption = Exclude<AgeGroup, "">;
+// A selectable age-group option. Includes "" ("Prefer not to say"), mirroring
+// web's optional age (AgeGroupUnknown): age is never coerced to a default group.
+export type AgeGroupOption = AgeGroup;
 
 export type UsageGoal = "health" | "avoid_pregnancy" | "trying_to_conceive";
 

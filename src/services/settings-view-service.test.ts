@@ -23,6 +23,31 @@ describe("settings view service", () => {
     ]);
   });
 
+  it("offers a Prefer-not-to-say age option first and localizes it per locale", () => {
+    const en = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    expect(en.ageGroup.options).toEqual([
+      { value: "", label: "Prefer not to say" },
+      { value: "under_40", label: "Under 40" },
+      { value: "age_40_45", label: "40-45" },
+      { value: "age_45_plus", label: "45+" },
+    ]);
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "ru").ageGroup.options[0],
+    ).toEqual({ value: "", label: "Не указывать" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "fr").ageGroup.options[0],
+    ).toEqual({ value: "", label: "Préfère ne pas répondre" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "de").ageGroup.options[0],
+    ).toEqual({ value: "", label: "Keine Angabe" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "es").ageGroup.options[0],
+    ).toEqual({ value: "", label: "Prefiero no decirlo" });
+    expect(
+      buildSettingsViewData(new Date(2026, 2, 22), "it").ageGroup.options[0],
+    ).toEqual({ value: "", label: "Preferisco non indicarlo" });
+  });
+
   it("offers light, dark, and system as the three theme options", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
 

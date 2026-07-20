@@ -68,6 +68,7 @@ const appCopyEn = {
         "Optional. This changes UI emphasis only, not the prediction algorithm.",
     },
     ageGroup: {
+      unspecified: "Prefer not to say",
       under40: "Under 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -156,6 +157,7 @@ const appCopyDe: AppCopy = {
         "Optional. Das verändert nur die Betonung in der Oberfläche, nicht den Vorhersagealgorithmus.",
     },
     ageGroup: {
+      unspecified: "Keine Angabe",
       under40: "Unter 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -244,6 +246,7 @@ const appCopyFr: AppCopy = {
         "Optionnel. Cela change seulement l'accent mis dans l'interface, pas l'algorithme de prédiction.",
     },
     ageGroup: {
+      unspecified: "Préfère ne pas répondre",
       under40: "Moins de 40 ans",
       age40to45: "40-45",
       age45plus: "45+",
@@ -334,6 +337,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Необязательно. Это меняет только акценты интерфейса, а не алгоритм предсказания.",
       },
       ageGroup: {
+        unspecified: "Не указывать",
         under40: "Младше 40",
         age40to45: "40-45",
         age45plus: "45+",
@@ -420,6 +424,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Opcional. Esto solo cambia el énfasis de la interfaz, no el algoritmo de predicción.",
       },
       ageGroup: {
+        unspecified: "Prefiero no decirlo",
         under40: "Menos de 40",
         age40to45: "40-45",
         age45plus: "45+",
@@ -506,6 +511,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Opzionale. Modifica solo l'enfasi dell'interfaccia, non l'algoritmo di previsione.",
       },
       ageGroup: {
+        unspecified: "Preferisco non indicarlo",
         under40: "Sotto i 40",
         age40to45: "40-45",
         age45plus: "45+",

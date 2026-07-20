@@ -54,6 +54,7 @@ const settingsCopyEn = {
   ageGroup: {
     title: "Age group",
     hint: "Optional. Stored with your profile; predictions use only your own cycle history.",
+    unspecified: "Prefer not to say",
     under40: "Under 40",
     age40to45: "40-45",
     age45plus: "45+",
@@ -602,6 +603,7 @@ const settingsCopyDe: SettingsCopy = {
     ...settingsCopyEn.ageGroup,
     title: "Altersgruppe",
     hint: "Optional. Wird mit Ihrem Profil gespeichert; Vorhersagen verwenden ausschließlich Ihre eigene Zyklushistorie.",
+    unspecified: "Keine Angabe",
     under40: "Unter 40",
   },
   goal: {
@@ -1197,6 +1199,7 @@ const settingsCopyFr: SettingsCopy = {
     ...settingsCopyEn.ageGroup,
     title: "Tranche d'âge",
     hint: "Optionnel. Enregistré avec votre profil ; les prédictions n'utilisent que votre propre historique de cycles.",
+    unspecified: "Préfère ne pas répondre",
     under40: "Moins de 40 ans",
   },
   goal: {
@@ -1797,6 +1800,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Возрастная группа",
       hint: "Необязательно. Сохраняется в профиле; прогнозы строятся только по вашей истории циклов.",
+      unspecified: "Не указывать",
       under40: "Младше 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -2356,6 +2360,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Grupo de edad",
       hint: "Opcional. Se guarda con tu perfil; las predicciones usan solo tu propio historial de ciclos.",
+      unspecified: "Prefiero no decirlo",
       under40: "Menos de 40",
       age40to45: "40-45",
       age45plus: "45+",
@@ -2925,6 +2930,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     ageGroup: {
       title: "Fascia d'età",
       hint: "Opzionale. Memorizzata nel profilo; le previsioni usano solo la tua cronologia del ciclo.",
+      unspecified: "Preferisco non indicarlo",
       under40: "Sotto i 40",
       age40to45: "40-45",
       age45plus: "45+",
