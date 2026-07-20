@@ -1179,7 +1179,8 @@ export function areInterfaceSettingsEqual(
   return (
     left.languageOverride === right.languageOverride &&
     left.themeOverride === right.themeOverride &&
-    left.screenCaptureProtectionEnabled === right.screenCaptureProtectionEnabled
+    left.screenCaptureProtectionEnabled === right.screenCaptureProtectionEnabled &&
+    left.firstDayOfWeek === right.firstDayOfWeek
   );
 }
 

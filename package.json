@@ -86,10 +86,10 @@
   },
   "overrides": {
     "@xmldom/xmldom": "0.9.10",
-    "brace-expansion": "5.0.6",
+    "brace-expansion": "5.0.7",
     "@react-native/codegen": {
       "minimatch": {
-        "brace-expansion": "1.1.13"
+        "brace-expansion": "1.1.16"
       }
     },
     "@tootallnate/once": "^3.0.1",
