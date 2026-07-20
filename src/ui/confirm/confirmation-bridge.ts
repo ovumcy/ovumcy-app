@@ -34,6 +34,13 @@ export function requestConfirmationOutcome(
       return;
     }
     if (isPending) {
+      // A confirmation is already on screen. Resolve this concurrent request
+      // deterministically instead of leaving its promise pending forever (a
+      // dangling promise would hang whatever awaits it — e.g. a save/exit
+      // guard). "dismiss" is the safe, non-destructive keep-editing outcome per
+      // the security constitution, so a racing second caller can never coerce a
+      // destructive answer, and the visible dialog is left untouched.
+      resolve("dismiss");
       return;
     }
     isPending = true;

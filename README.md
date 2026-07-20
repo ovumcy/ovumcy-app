@@ -21,6 +21,46 @@ It brings Ovumcy's cycle tracking, symptom logging, insights, settings, exports,
 Core health data stays on-device by default.
 Optional sync is designed as encrypted transport, whether the owner connects a self-hosted community server or a managed Ovumcy Cloud account later.
 
+## Contents
+
+- [Quick Start](#quick-start)
+- [Product Snapshot](#product-snapshot)
+- [Tiers](#tiers)
+- [How Ovumcy App Differs](#how-ovumcy-app-differs)
+- [Short FAQ](#short-faq)
+- [Current Scope](#current-scope)
+- [Public Alpha Expectations](#public-alpha-expectations)
+- [Privacy and Security](#privacy-and-security)
+- [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
+- [Testing and Quality](#testing-and-quality)
+- [Roadmap](#roadmap)
+- [Related Repositories](#related-repositories)
+- [License](#license)
+
+## Quick Start
+
+Requirements:
+
+- Node.js 22+
+- npm
+- Android Studio for Android emulator work
+- Xcode on macOS for iOS simulator work
+
+```bash
+git clone https://github.com/ovumcy/ovumcy-app.git
+cd ovumcy-app
+npm ci
+```
+
+Run the app:
+
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
 ## Product Snapshot
 
 - local-first daily tracking with no account required for core use
@@ -29,6 +69,7 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - custom symptom catalog and journal-style day logging
 - pregnancy test field with automatic prediction pause on a positive result
 - free local device reminders (daily log, upcoming period, fertile window) scheduled entirely on-device
+- local CSV/JSON export and strictly additive offline JSON import/restore (preview, then confirm; existing days are never overwritten)
 - optional encrypted backup and sync instead of cloud-first dependence
 - optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminder emails
 
@@ -57,7 +98,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 
 | Tier | Backend | Cost | What you get |
 | --- | --- | --- | --- |
-| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local device reminders, local CSV/JSON export |
+| **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local device reminders, local CSV/JSON export, offline JSON import |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
 | **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, reminder emails |
 
@@ -77,6 +118,7 @@ The app is still an early public alpha, but the main local-first slices already 
 | Cycle tracking + predictions | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Pregnancy test + auto-pause | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | CSV / JSON export | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Offline JSON import / restore (additive) | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Encrypted backup between devices | :x: | :white_check_mark: | :white_check_mark: |
 | Advanced fertility signals (LH, BBT shift, ovulation confirmation) | :x: | :x: | :white_check_mark: |
 | Premium cycle insights (weighted average, drift, anomalies, seasonal, short luteal warning) | :x: | :x: | :white_check_mark: |
@@ -90,7 +132,7 @@ The app is still an early public alpha, but the main local-first slices already 
 
 ### Does Ovumcy App require an account?
 
-No. Core onboarding and future tracking flows are designed to work without an account.
+No. Core onboarding, daily tracking, stats, local CSV/JSON export, and offline JSON import all work without an account.
 
 ### Where is the data stored?
 
@@ -116,7 +158,7 @@ Yes. Signing up for Ovumcy Cloud starts a 30-day trial that unlocks all premium 
 
 Partner sharing is owner-paid only — the partner never pays and never tracks their own cycle through the share. The owner picks an access level (summary or full) in backup-and-sync settings and generates a single-use invite link, which can also be displayed as a QR code. The partner installs the app, opens the link or scans the QR, and lands in a read-only shared view shaped by the chosen access level — they see exactly what was shared, nothing more, and the cloud only stores ciphertext plus grant metadata.
 
-Today the partner still completes one free Ovumcy Cloud sign-in step on first use so the cloud can route the right ciphertext to the right device; no card and no subscription are involved for that step. Removing even that sign-in step in favour of a pure-guest landing is a tracked roadmap item.
+A no-account guest accept path is implemented on both the app and managed sides: one tap provisions a passwordless, read-only guest session with no card and no subscription. It is deliberately **not enabled in production yet** — it stays gated until platform-verified deep links (Android App Links / iOS Universal Links) are live, so an intercepted invite link cannot be redeemed by a stranger. Until that gate lifts, invite acceptance uses a free Ovumcy Cloud sign-in step. See [docs/sync-trust-model.md](docs/sync-trust-model.md#guest-partner-access) and [docs/deep-links.md](docs/deep-links.md).
 
 ### Is Ovumcy App a medical product?
 
@@ -130,6 +172,7 @@ The current `main` branch provides:
 - a local-first onboarding flow with web-parity structure and copy;
 - native SQLite-backed bootstrap, profile, symptom-catalog, and day-log persistence;
 - local-first dashboard, calendar, settings, stats, custom symptom management, and export flows backed by the same canonical repositories;
+- strictly additive offline JSON import/restore (`import-service.ts`): parse, preview, then explicit confirm; it never overwrites an existing day or symptom and restores the profile only onto a pristine install, all Free-tier with no account required;
 - pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
 - free local device reminders (daily log, upcoming period with a configurable lead, fertile window) scheduled on-device;
 - Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and reminder emails;
@@ -146,8 +189,8 @@ What is already true on `main`:
 
 - core local use does not require an account, sync, or managed hosting;
 - the main owner flows already exist as working local-first slices instead of shells;
-- Ovumcy Cloud premium gates are wired client-side with unified paywall placeholders, and the underlying premium analytics and doctor PDF sections render correctly when the managed billing snapshot reports premium features active;
-- community sync and managed cloud sync round-trips have been validated end-to-end including the new pregnancy test field;
+- Ovumcy Cloud premium gates are wired client-side with unified paywall placeholders; premium surfaces show as cleanly locked (never a silent hide, never an error) without an active plan, and the underlying premium analytics and doctor PDF sections render correctly when the managed billing snapshot reports premium features active;
+- community sync and managed cloud sync have encrypted round-trip integration suites, including the pregnancy test field, but those live suites run only against a configured server (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are skipped by default — they are not part of the routine CI signal;
 - CI, browser smoke, and security automation baselines aligned with the current GitHub hosting mode are in place;
 - web preview is available for fast review, but it is not the durable storage path for sensitive health data.
 
@@ -155,7 +198,7 @@ What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
 - in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot — the decided monetization channel order is Google Play Billing first, then Lemon Squeezy web checkout, then App Store (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); premium UI is wired, but in-app premium purchase is **not possible** on-device until Google Play Billing lands;
-- a no-account guest landing for partner sharing — today the partner still needs an Ovumcy Cloud sign-in step before the read-only shared view opens;
+- a *production-enabled* no-account guest landing for partner sharing — the guest-accept flow is built on both the app and managed sides but stays disabled in production until platform-verified deep links land (see [docs/sync-trust-model.md](docs/sync-trust-model.md#guest-partner-access)), so today invite acceptance still uses a free Ovumcy Cloud sign-in step;
 - release-store readiness for broad end-user distribution;
 - a standalone sync server in this repository.
 
@@ -220,29 +263,6 @@ The app sync trust model is documented in [docs/sync-trust-model.md](docs/sync-t
 - React Native Testing Library
 - Playwright for temporary web-shell smoke
 
-## Quick Start
-
-Requirements:
-
-- Node.js 22+
-- npm
-- Android Studio for Android emulator work
-- Xcode on macOS for iOS simulator work
-
-```bash
-git clone https://github.com/ovumcy/ovumcy-app.git
-cd ovumcy-app
-npm ci
-```
-
-Run the app:
-
-```bash
-npm run android
-npm run ios
-npm run web
-```
-
 ## Testing and Quality
 
 Common local commands:
@@ -261,7 +281,7 @@ Current automated baseline:
 - `typecheck`
 - `jest` screen, service, and storage tests
 - `fast-check` property tests for the payload and partner-share crypto (`src/security/*.property.test.ts`)
-- live sync E2E round-trips (`src/sync/*.live.test.ts`) against the managed and self-hosted servers
+- opt-in live sync E2E round-trips (`src/sync/*.live.test.ts`) that run only when a live server is configured (`OVUMCY_SYNC_LIVE_BASE_URL` / `OVUMCY_MANAGED_LIVE_BASE_URL`) and are otherwise skipped by default
 - `expo-doctor`
 - Playwright web smoke for onboarding and app shell
 - production dependency audit
@@ -291,14 +311,14 @@ Done on `main`:
 - pregnancy test logging with prediction pause across dashboard, calendar, and stats;
 - doctor PDF with colored calendar and premium analytic sections (advanced fertility, cycle comparison, short luteal warning);
 - partner sharing with summary and full access levels and 7-day invite token TTL;
-- community and managed sync transports validated end-to-end with the new fields.
+- community and managed sync transports with encrypted round-trip integration suites covering the new fields (env-gated live suites, skipped by default).
 
 Near-term:
 
 - Google Play Billing integration (the decided first monetization channel — see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)) so a real subscription drives the managed billing snapshot, with in-app premium purchase not possible until this lands; Lemon Squeezy web checkout (already built server-side, second channel, not active in production) and App Store integration (third channel) follow in later phases;
-- finishing the no-account guest acceptance flow so a partner can install the app and redeem an invite link straight into the read-only shared view without an Ovumcy Cloud sign-in step;
+- enabling the already-built no-account guest acceptance flow in production so a partner can redeem an invite link straight into the read-only shared view without an Ovumcy Cloud sign-in step — this is gated on platform-verified deep links (Android App Links / iOS Universal Links) so an intercepted invite cannot be redeemed by a stranger;
 - TestFlight and Google Play internal-testing readiness so end-to-end premium can be validated on real devices with sandbox purchases;
-- expanding export-adjacent safety such as restore/import planning and clearer backup ergonomics;
+- clearer backup and restore ergonomics building on the shipped offline JSON import;
 - repeatable Android and iOS manual smoke discipline per release candidate;
 - growing local data models beyond cycle baseline, day logs, and symptom catalog without changing the zero-knowledge sync contract.
 

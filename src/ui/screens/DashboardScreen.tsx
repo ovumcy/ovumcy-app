@@ -10,6 +10,7 @@ import { syncManagedPartnerSharedProjections } from "../../services/managed-part
 import {
   clearDayLogEditorRecord,
   buildNextDayLogRecordPatch,
+  resolveBleedingSafetyHint,
   saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
 import {
@@ -296,6 +297,11 @@ export function DashboardScreen({
 
   return (
     <DashboardOverviewScreen
+      bleedingSafetyHint={resolveBleedingSafetyHint(
+        state.todayEntry,
+        state.historyRecords,
+        language,
+      )}
       entryExists={hasDayLogData(state.todayEntry)}
       isSaving={isSaving || isAutosaving}
       onDelete={handleDelete}

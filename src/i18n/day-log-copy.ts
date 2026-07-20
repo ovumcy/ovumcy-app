@@ -41,6 +41,8 @@ const dayLogCopyEn = {
     "Clear this entry for this day? Period, symptoms, mood, flow, and notes will be removed from the local record.",
   deleteHint: "This removes the local record for this day.",
   periodOffHint: "Flow is available when this day is marked as a period day.",
+  bleedingSafetyHint:
+    "Guidance, not a diagnosis: bleeding that lasts longer than about 7 days, or very heavy flow over several days, is worth discussing with a clinician.",
     options: {
       mood: [
       { value: 1, label: "😞", secondaryLabel: "Terrible" },
@@ -131,6 +133,8 @@ const dayLogCopyDe: DayLogCopy = {
   deleteHint: "Dadurch wird der lokale Eintrag für diesen Tag entfernt.",
   periodOffHint:
     "Die Blutungsstärke ist verfügbar, wenn dieser Tag als Periodentag markiert ist.",
+  bleedingSafetyHint:
+    "Ein Hinweis, keine Diagnose: Blutungen, die länger als etwa 7 Tage dauern, oder sehr starker Fluss über mehrere Tage sollten ärztlich abgeklärt werden.",
   options: {
     mood: [
       { value: 1, label: "😞", secondaryLabel: "Sehr schlecht" },
@@ -219,6 +223,8 @@ const dayLogCopyFr: DayLogCopy = {
   deleteHint: "Cela supprime l'enregistrement local pour cette journée.",
   periodOffHint:
     "Le flux est disponible quand cette journée est marquée comme jour de règles.",
+  bleedingSafetyHint:
+    "Une indication, pas un diagnostic : des saignements qui durent plus de 7 jours environ, ou un flux très abondant pendant plusieurs jours, méritent d'en parler à un médecin.",
   options: {
     mood: [
       { value: 1, label: "😞", secondaryLabel: "Très mal" },
@@ -309,6 +315,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     deleteHint: "Это удаляет локальную запись для этого дня.",
     periodOffHint:
       "Интенсивность доступна, когда этот день отмечен как день менструации.",
+    bleedingSafetyHint:
+      "Это ориентир, а не диагноз: кровотечение дольше примерно 7 дней или очень обильные выделения несколько дней подряд стоит обсудить с врачом.",
     options: {
       mood: [
         { value: 1, label: "😞", secondaryLabel: "Ужасно" },
@@ -396,6 +404,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     deleteHint: "Esto elimina el registro local de este día.",
     periodOffHint:
       "El flujo está disponible cuando este día está marcado como día de período.",
+    bleedingSafetyHint:
+      "Una orientación, no un diagnóstico: un sangrado que dura más de unos 7 días, o un flujo muy abundante durante varios días, conviene consultarlo con un médico.",
     options: {
       mood: [
         { value: 1, label: "😞", secondaryLabel: "Muy mal" },
@@ -483,6 +493,8 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
     deleteHint: "Questo rimuove il record locale per questo giorno.",
     periodOffHint:
       "Il flusso è disponibile quando questo giorno è segnato come giorno di ciclo.",
+    bleedingSafetyHint:
+      "Un'indicazione, non una diagnosi: un sanguinamento che dura più di circa 7 giorni, o un flusso molto abbondante per più giorni, è opportuno discuterne con un medico.",
     options: {
       mood: [
         { value: 1, label: "😞", secondaryLabel: "Pessimo" },

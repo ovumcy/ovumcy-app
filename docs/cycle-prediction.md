@@ -125,8 +125,11 @@ reproduces them because it runs the identical constants and steps.
   ovulation-to-next-period length across several cycles, that observed luteal
   length (lower-clamped at 10 days) replaces the default. With little or no such
   data the fixed 14-day default stands — a population default estimate, never a
-  personal truth. Individual luteal phases vary (commonly 11–17 days), which is
-  one reason predictions remain estimates.
+  personal truth. The population mean actually sits a little below 14 (around
+  12 days), and individual luteal phases vary widely from person to person and
+  cycle to cycle (commonly 11–17 days), so 14 is a deliberately conservative
+  fallback, not a target — that variability is one reason predictions remain
+  estimates.
 - For irregular cycles the app widens the prediction into a range rather than a
   single date, and surfaces variability statistics (shortest/longest cycle and
   the sample standard deviation) computed over the same recent-cycle window as

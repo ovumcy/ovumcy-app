@@ -14,7 +14,7 @@
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
-    "doctor": "npx expo-doctor",
+    "doctor": "npx expo-doctor@1.20.1",
     "export:web": "expo export -p web",
     "e2e:web": "playwright test",
     "mutation": "stryker run",

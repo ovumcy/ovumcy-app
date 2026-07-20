@@ -317,6 +317,94 @@ export function buildNextDayLogRecordPatch(
   });
 }
 
+// ACOG red-flag guidance, surfaced as a soft, non-diagnostic hint next to the
+// flow field (SECURITY.md "Medical safety": estimates/guidance, never a
+// diagnosis). ovumcy-web carries no equivalent — its flow enum has no safety
+// prompt — so these thresholds are a conservative app-only default rather than a
+// ported value. Two observable bleeding patterns trigger the hint:
+//
+//  - Prolonged bleeding: a run of period days longer than ~7 days
+//    (PROLONGED_BLEEDING_HINT_THRESHOLD_DAYS = 8, i.e. the 8th day onward).
+//  - Sustained very heavy flow: the app records only a daily flow CATEGORY, not
+//    the "soaking through protection every hour for several consecutive hours"
+//    ACOG describes, so that criterion is proxied by several consecutive days
+//    logged at the heaviest category (HEAVY_FLOW_RUN_HINT_THRESHOLD_DAYS = 3).
+//
+// Both are deliberately conservative: firing a little early is safe for a hint
+// that only suggests raising the pattern with a clinician.
+export const HEAVY_FLOW_RUN_HINT_THRESHOLD_DAYS = 3;
+export const PROLONGED_BLEEDING_HINT_THRESHOLD_DAYS = 8;
+
+export function resolveBleedingSafetyHint(
+  record: DayLogRecord,
+  historyRecords: readonly DayLogRecord[],
+  locale = "en",
+): string | null {
+  if (!record.isPeriod) {
+    return null;
+  }
+
+  // The live record (which may carry unsaved edits) wins over any persisted copy
+  // for the same day, so the hint reacts to the flow the owner is choosing now.
+  const recordsByDate = new Map(
+    historyRecords.map((current) => [current.date, current]),
+  );
+  recordsByDate.set(record.date, record);
+
+  const prolongedBleeding =
+    contiguousDayRunLength(
+      recordsByDate,
+      record.date,
+      (candidate) => candidate?.isPeriod === true,
+    ) >= PROLONGED_BLEEDING_HINT_THRESHOLD_DAYS;
+
+  const sustainedHeavyFlow =
+    record.flow === "heavy" &&
+    contiguousDayRunLength(
+      recordsByDate,
+      record.date,
+      (candidate) => candidate?.isPeriod === true && candidate.flow === "heavy",
+    ) >= HEAVY_FLOW_RUN_HINT_THRESHOLD_DAYS;
+
+  if (!prolongedBleeding && !sustainedHeavyFlow) {
+    return null;
+  }
+
+  return getDayLogCopy(locale).bleedingSafetyHint;
+}
+
+// Length of the maximal run of calendar-consecutive days around `date` whose
+// records all satisfy `predicate` (the anchor day included). Both directions are
+// walked so the hint fires whether the owner is editing the day that tips the
+// run over or an earlier day already inside it.
+function contiguousDayRunLength(
+  recordsByDate: Map<string, DayLogRecord>,
+  date: string,
+  predicate: (record: DayLogRecord | undefined) => boolean,
+): number {
+  const anchor = parseLocalDate(date);
+  if (!anchor || !predicate(recordsByDate.get(date))) {
+    return 0;
+  }
+
+  let length = 1;
+  for (let step = 1; ; step += 1) {
+    const previous = recordsByDate.get(formatLocalDate(addDays(anchor, -step)));
+    if (!predicate(previous)) {
+      break;
+    }
+    length += 1;
+  }
+  for (let step = 1; ; step += 1) {
+    const next = recordsByDate.get(formatLocalDate(addDays(anchor, step)));
+    if (!predicate(next)) {
+      break;
+    }
+    length += 1;
+  }
+  return length;
+}
+
 function formatDayLogDateLabel(
   date: DayLogRecord["date"],
   locale: string,

@@ -856,12 +856,21 @@ function drawCalendarSection(
   const monthsHeight =
     rows * MONTH_HEIGHT + Math.max(0, rows - 1) * MONTH_GAP;
   // Keep the heading, legend and the whole month grid together on one page so
-  // the legend never strands at the bottom of a page above an empty gap.
-  ensurePageSpace(layout, 24 + 46 + 10 + monthsHeight + SECTION_GAP);
+  // the legend never strands at the bottom of a page above an empty gap. The
+  // extra 12 covers the observed-ovulation uncertainty footnote line below.
+  ensurePageSpace(layout, 24 + 46 + 10 + 12 + monthsHeight + SECTION_GAP);
 
   layout.cursorY = drawSectionHeading(layout, pdfCopy.calendarTitle);
   drawCalendarLegend(layout, pdfCopy);
   layout.cursorY = drawTextBlock(layout, pdfCopy.fertileWindowAssumptionFootnote, {
+    color: COLOR_MUTED,
+    font: layout.fonts.regular,
+    fontSize: SMALL_FONT_SIZE,
+    lineHeight: 10,
+  });
+  // Medical-safety (SECURITY.md): the probable-ovulation marker is an estimate
+  // from logged BBT / cervical-mucus signals (±1-2 days), never an exact fact.
+  layout.cursorY = drawTextBlock(layout, pdfCopy.observedOvulationUncertaintyFootnote, {
     color: COLOR_MUTED,
     font: layout.fonts.regular,
     fontSize: SMALL_FONT_SIZE,

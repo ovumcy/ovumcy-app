@@ -57,7 +57,6 @@ export const SUPPORTED_THEME_PREFERENCES = ["light", "dark", "system"] as const;
 // First day of the calendar week, in JS Date.getDay() convention: 0 = Sunday,
 // 1 = Monday. Mirrors web's optional "First day of the week" preference.
 export type WeekStartDay = 0 | 1;
-export const SUPPORTED_WEEK_START_DAYS = [0, 1] as const;
 export const DEFAULT_WEEK_START_DAY: WeekStartDay = 0;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",

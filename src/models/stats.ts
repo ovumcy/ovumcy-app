@@ -119,6 +119,24 @@ export type StatsCycleProjection = {
   // (pregnancy pause, facts-only/unpredictable). Optional so existing projection
   // literals stay valid; the producer sets it on every predictable path.
   upcomingOvulationDate?: LocalDateISO | null;
+  // Web DisplayOvulationExact parity (dashboard_cycle.go): false when the luteal
+  // phase had to be clamped on a short supported cycle, so the concrete ovulation
+  // date is only approximate and the surface appends an "(approximate)" qualifier.
+  // Optional so existing projection literals stay valid.
+  upcomingOvulationExact?: boolean;
+  // Web dashboardNeedsOvulationData parity (dashboard_cycle.go:307-309): an
+  // irregular cycle with fewer than STATS_RELIABLE_TREND_CYCLES completed cycles
+  // is too sparse to trust an ovulation date, so the concrete date is hidden and
+  // the surface shows a "needs more cycles" note instead. When true,
+  // upcomingOvulationDate is null.
+  upcomingOvulationNeedsMoreCycles?: boolean;
+  // Web DashboardOvulationRange parity (dashboard_cycle.go:169-182): once the
+  // irregular range is enabled (>=3 completed cycles with a min/max spread), the
+  // upcoming ovulation is shown as a range — the next-period range shifted back
+  // by the luteal phase — and upcomingOvulationDate is null. Both null in every
+  // other state.
+  upcomingOvulationWindowStartDate?: LocalDateISO | null;
+  upcomingOvulationWindowEndDate?: LocalDateISO | null;
   predictionCycleLength: number;
   // Web parity: predictedPeriodLength(stats.AveragePeriodLength) — the rolling
   // average of the last six observed period lengths (INCLUDING the current

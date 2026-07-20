@@ -1,7 +1,11 @@
-const { withAppDelegate } = require('expo/config-plugins');
-const {
-  mergeContents,
-} = require('@expo/config-plugins/build/utils/generateCode');
+// Import the public config-plugins API through Expo's re-export (`expo` is a
+// declared direct dependency). `mergeContents` is published on the
+// `CodeGenerator` namespace — reaching for the internal
+// `@expo/config-plugins/build/utils/generateCode` path instead couples this
+// plugin to a transitive package's private layout, which a routine Expo bump
+// can move without notice.
+const { withAppDelegate, CodeGenerator } = require('expo/config-plugins');
+const { mergeContents } = CodeGenerator;
 
 /**
  * Excludes the app's on-device data stores from iOS iCloud / iTunes / device-transfer

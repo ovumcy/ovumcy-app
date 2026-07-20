@@ -45,7 +45,7 @@ describe("confirmation-bridge", () => {
     ).resolves.toBe(false);
   });
 
-  it("does not deliver or auto-resolve a concurrent request while one is pending", async () => {
+  it("auto-dismisses a concurrent request without delivering it, instead of leaving it pending", async () => {
     const delivered: string[] = [];
     let firstRequest: ConfirmationRequestForTest | null = null;
     registerConfirmationListener((request) => {
@@ -58,21 +58,14 @@ describe("confirmation-bridge", () => {
     const first = requestConfirmation("first?", "OK", "Cancel");
     const second = requestConfirmation("second?", "OK", "Cancel");
 
-    let secondSettled = false;
-    void second.then(() => {
-      secondSettled = true;
-    });
-
-    await Promise.resolve();
-    await Promise.resolve();
+    // The concurrent request is never delivered to the listener (the visible
+    // dialog stays put), but it must settle deterministically to the safe
+    // dismiss outcome (false) rather than dangle forever.
+    await expect(second).resolves.toBe(false);
     expect(delivered).toEqual(["first?"]);
-    expect(secondSettled).toBe(false);
 
     firstRequest!.resolve("accept");
     await expect(first).resolves.toBe(true);
-
-    await Promise.resolve();
-    expect(secondSettled).toBe(false);
   });
 
   it("accepts a new request after the previous one is resolved", async () => {
