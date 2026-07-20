@@ -11,6 +11,11 @@ const dashboardCopyEn = {
   approximateDatePrefix: "around",
   ovulation: "Ovulation",
   ovulationUnavailable: "Cannot be calculated",
+  ovulationRange: (startLabel: string, endLabel: string) =>
+    `${startLabel} — ${endLabel}`,
+  ovulationNeedsMoreCycles:
+    "3 completed cycles are needed before an ovulation range can be shown",
+  ovulationApproximate: "(approximate)",
   predictionsOff: "Predictions off",
   predictionsApproximateHint:
     "Irregular cycle mode keeps predictions visible, but they should be read as approximate guidance rather than exact dates.",
@@ -95,6 +100,11 @@ const dashboardCopyDe: DashboardCopy = {
   approximateDatePrefix: "etwa",
   ovulation: "Eisprung",
   ovulationUnavailable: "Nicht berechenbar",
+  ovulationRange: (startLabel: string, endLabel: string) =>
+    `${startLabel} — ${endLabel}`,
+  ovulationNeedsMoreCycles:
+    "3 abgeschlossene Zyklen sind nötig, bevor ein Eisprung-Bereich angezeigt werden kann",
+  ovulationApproximate: "(ungefähr)",
   predictionsOff: "Vorhersagen aus",
   predictionsApproximateHint:
     "Im Modus für unregelmäßige Zyklen bleiben Vorhersagen sichtbar, sollten aber als ungefähre Orientierung statt als exakte Daten gelesen werden.",
@@ -180,6 +190,11 @@ const dashboardCopyFr: DashboardCopy = {
   approximateDatePrefix: "vers",
   ovulation: "Ovulation",
   ovulationUnavailable: "Impossible à calculer",
+  ovulationRange: (startLabel: string, endLabel: string) =>
+    `${startLabel} — ${endLabel}`,
+  ovulationNeedsMoreCycles:
+    "3 cycles terminés sont nécessaires avant d'afficher une plage d'ovulation",
+  ovulationApproximate: "(approximatif)",
   predictionsOff: "Prédictions désactivées",
   predictionsApproximateHint:
     "Le mode cycle irrégulier garde les prédictions visibles, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
@@ -266,6 +281,11 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     approximateDatePrefix: "примерно",
     ovulation: "Овуляция",
     ovulationUnavailable: "Не вычисляется",
+    ovulationRange: (startLabel: string, endLabel: string) =>
+      `${startLabel} — ${endLabel}`,
+    ovulationNeedsMoreCycles:
+      "нужно 3 завершённых цикла, чтобы показать диапазон овуляции",
+    ovulationApproximate: "(приблизительно)",
     predictionsOff: "Прогнозы выключены",
     predictionsApproximateHint:
       "В режиме нерегулярного цикла прогнозы остаются видимыми, но их нужно читать как приблизительный ориентир, а не как точные даты.",
@@ -349,6 +369,11 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     approximateDatePrefix: "aproximadamente",
     ovulation: "Ovulación",
     ovulationUnavailable: "No se puede calcular",
+    ovulationRange: (startLabel: string, endLabel: string) =>
+      `${startLabel} — ${endLabel}`,
+    ovulationNeedsMoreCycles:
+      "se necesitan 3 ciclos completos antes de mostrar un rango de ovulación",
+    ovulationApproximate: "(aproximada)",
     predictionsOff: "Predicciones desactivadas",
     predictionsApproximateHint:
       "El modo de ciclo irregular mantiene visibles las predicciones, pero deben leerse como una guía aproximada y no como fechas exactas.",
@@ -433,6 +458,11 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     approximateDatePrefix: "intorno al",
     ovulation: "Ovulazione",
     ovulationUnavailable: "Non può essere calcolata",
+    ovulationRange: (startLabel: string, endLabel: string) =>
+      `${startLabel} — ${endLabel}`,
+    ovulationNeedsMoreCycles:
+      "servono 3 cicli completati prima di mostrare un intervallo di ovulazione",
+    ovulationApproximate: "(approssimativo)",
     predictionsOff: "Previsioni disattivate",
     predictionsApproximateHint:
       "La modalità ciclo irregolare mantiene visibili le previsioni, ma vanno lette come un'indicazione approssimativa e non come date esatte.",

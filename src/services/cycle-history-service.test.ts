@@ -325,6 +325,70 @@ describe("cycle-history-service", () => {
     });
   });
 
+  describe("low-reliability ovulation softening (web dashboardNeedsOvulationData / DashboardOvulationRange)", () => {
+    function cycleStart(date: string) {
+      return { ...createEmptyDayLogRecord(date), isPeriod: true, cycleStart: true };
+    }
+
+    it("hides the concrete upcoming ovulation for an irregular cycle with too few cycles", () => {
+      // Irregular cycle, only one recorded start -> 0 completed cycles, so web's
+      // dashboardNeedsOvulationData blanks the ovulation date and signals that
+      // more cycles are needed rather than showing a falsely precise day.
+      const profile = createProfileRecord({
+        irregularCycle: true,
+        lastPeriodStart: "2026-03-10",
+      });
+      const records = [cycleStart("2026-03-10")];
+      const now = new Date(2026, 2, 17);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.hasReliableTrend).toBe(false);
+      expect(projection.upcomingOvulationDate).toBeNull();
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(true);
+      expect(projection.upcomingOvulationWindowStartDate).toBeNull();
+      expect(projection.upcomingOvulationWindowEndDate).toBeNull();
+    });
+
+    it("presents the upcoming ovulation as a range once an irregular cycle has a reliable trend", () => {
+      // Starts Dec 20, Jan 17, Feb 14, Mar 16 -> 3 completed cycles (28, 28, 30).
+      // Web DashboardOvulationRange = next-period range shifted back by the luteal
+      // phase: next-period [Apr 13, Apr 15] - 14 d luteal = [Mar 30, Apr 1]. The
+      // concrete date is blanked in favor of the range.
+      const profile = createProfileRecord({
+        irregularCycle: true,
+        lastPeriodStart: "2026-03-16",
+      });
+      const records = [
+        cycleStart("2025-12-20"),
+        cycleStart("2026-01-17"),
+        cycleStart("2026-02-14"),
+        cycleStart("2026-03-16"),
+      ];
+      const now = new Date(2026, 2, 26);
+      const history = buildCycleHistorySummary(profile, records, now);
+      const projection = buildCurrentCycleProjection(profile, history, records, now);
+
+      expect(history.hasReliableTrend).toBe(true);
+      expect(projection.upcomingOvulationDate).toBeNull();
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(false);
+      expect(projection.upcomingOvulationWindowStartDate).toBe("2026-03-30");
+      expect(projection.upcomingOvulationWindowEndDate).toBe("2026-04-01");
+    });
+
+    it("keeps the concrete upcoming ovulation date for a regular cycle", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+      const now = new Date(2026, 2, 5);
+      const history = buildCycleHistorySummary(profile, [], now);
+      const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+      expect(projection.upcomingOvulationDate).toBe("2026-03-14");
+      expect(projection.upcomingOvulationExact).toBe(true);
+      expect(projection.upcomingOvulationNeedsMoreCycles).toBe(false);
+      expect(projection.upcomingOvulationWindowStartDate).toBeNull();
+    });
+  });
+
   describe("detectCurrentPhase precedence (web resolveCyclePhase parity, cycles.go:419-446)", () => {
     // Shared cycle: anchor 2026-03-01, default 28-day cycle / 5-day period,
     // no completed cycles yet -> predictionCycleLength falls back to
@@ -909,6 +973,55 @@ describe("cycle-history-service", () => {
       expect(
         resolveProjectedPeriodLength(profileSeven, historySeven, seven.records, isoDate(nowSeven)),
       ).toBe(5);
+    });
+
+    it("counts consecutive logged period days up to 11, matching web's inclusive +10 buildCycles cap", () => {
+      // Web buildCycles counts logged period days over start..start+10 inclusive
+      // (`cycles.go` `!day.After(start.AddDate(0, 0, 10))`), so a genuine 11-day
+      // period counts as 11. The app previously capped this at 10; this pins the
+      // aligned cap. Two 11-day cycles average to 11 (was 10 before the fix).
+      const eleven = cyclesWithPeriodLengths(new Date(2026, 0, 1), [11, 11]);
+      const profileEleven = createProfileRecord({ lastPeriodStart: isoDate(eleven.lastStart) });
+      const nowEleven = new Date(
+        eleven.lastStart.getFullYear(),
+        eleven.lastStart.getMonth(),
+        eleven.lastStart.getDate() + 12,
+      );
+      const historyEleven = buildCycleHistorySummary(profileEleven, eleven.records, nowEleven);
+      expect(historyEleven.completedCycleCount).toBe(1);
+      expect(
+        resolveProjectedPeriodLength(
+          profileEleven,
+          historyEleven,
+          eleven.records,
+          isoDate(nowEleven),
+        ),
+      ).toBe(11);
+
+      // A clinically over-long logged period is still capped at 11, never 12+
+      // (web parity): two 12-day cycles average to 11, not 12.
+      const overlong = cyclesWithPeriodLengths(new Date(2026, 0, 1), [12, 12]);
+      const profileOverlong = createProfileRecord({
+        lastPeriodStart: isoDate(overlong.lastStart),
+      });
+      const nowOverlong = new Date(
+        overlong.lastStart.getFullYear(),
+        overlong.lastStart.getMonth(),
+        overlong.lastStart.getDate() + 13,
+      );
+      const historyOverlong = buildCycleHistorySummary(
+        profileOverlong,
+        overlong.records,
+        nowOverlong,
+      );
+      expect(
+        resolveProjectedPeriodLength(
+          profileOverlong,
+          historyOverlong,
+          overlong.records,
+          isoDate(nowOverlong),
+        ),
+      ).toBe(11);
     });
 
     it("drives the projected-period-as-menstrual boundary in detectCurrentPhase (deviation now closed)", () => {

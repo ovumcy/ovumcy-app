@@ -670,6 +670,14 @@ describe("upgradeBackupSyncGuestAccount", () => {
           { status: 200, headers: { "Content-Type": "application/json" } },
         ),
       )
+      // Settings probes the session again to bind the entitlement-token gate;
+      // a non-session payload keeps the gate inert so snapshot features stand.
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 503,
+          headers: { "Content-Type": "application/json" },
+        }),
+      )
       // GET /account/billing
       .mockResolvedValueOnce(
         new Response(

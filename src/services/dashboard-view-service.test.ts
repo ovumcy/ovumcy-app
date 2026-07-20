@@ -1,3 +1,4 @@
+import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import {
@@ -863,5 +864,104 @@ describe("dashboard-view-service", () => {
         resolveDaySaveMessage("2026-03-10", profile, projection, "en"),
       );
     });
+  });
+});
+
+describe("dashboard upcoming-ovulation low-reliability softening", () => {
+  function cycleStart(date: string): DayLogRecord {
+    return { ...createEmptyDayLogRecord(date), isPeriod: true, cycleStart: true };
+  }
+
+  function heroFor(profileOverrides: Partial<ProfileRecord>, records: DayLogRecord[], now: Date) {
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      ...profileOverrides,
+    };
+    const history = buildCycleHistorySummary(profile, records, now);
+    return buildDashboardViewData(profile, records, history, now).cycleHero;
+  }
+
+  it("shows a needs-more-cycles ovulation note for a sparse irregular cycle", () => {
+    const hero = heroFor(
+      { irregularCycle: true, lastPeriodStart: "2026-03-10" },
+      [cycleStart("2026-03-10")],
+      new Date(2026, 2, 17),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe(
+      "Ovulation: 3 completed cycles are needed before an ovulation range can be shown",
+    );
+  });
+
+  it("shows an ovulation range once an irregular cycle has a reliable trend", () => {
+    const hero = heroFor(
+      { irregularCycle: true, lastPeriodStart: "2026-03-16" },
+      [
+        cycleStart("2025-12-20"),
+        cycleStart("2026-01-17"),
+        cycleStart("2026-02-14"),
+        cycleStart("2026-03-16"),
+      ],
+      new Date(2026, 2, 26),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 30 — Apr 1");
+  });
+
+  it("renders the ovulation range through each interface language's copy", () => {
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      irregularCycle: true,
+      lastPeriodStart: "2026-03-16",
+    };
+    const records = [
+      cycleStart("2025-12-20"),
+      cycleStart("2026-01-17"),
+      cycleStart("2026-02-14"),
+      cycleStart("2026-03-16"),
+    ];
+    const now = new Date(2026, 2, 26);
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    // The active language is passed to the view builder as the locale; every
+    // catalog must format the ovulation as an explicit start—end range (never a
+    // single false-precision day) behind its own localized "ovulation" prefix.
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
+      const hero = buildDashboardViewData(
+        profile,
+        records,
+        history,
+        now,
+        locale,
+      ).cycleHero;
+      const copy = getDashboardCopy(locale);
+      expect(hero.upcomingOvulationLabel).toContain(`${copy.ovulation}: `);
+      expect(hero.upcomingOvulationLabel).toContain(" — ");
+    }
+  });
+
+  it("keeps a single concrete ovulation date for a regular cycle", () => {
+    const hero = heroFor(
+      { lastPeriodStart: "2026-03-01" },
+      [],
+      new Date(2026, 2, 5),
+    );
+
+    expect(hero.upcomingOvulationLabel).toBe("Ovulation: Mar 14");
+  });
+
+  it("appends the approximate qualifier when a short cycle clamps the ovulation date", () => {
+    // cycleLength 17 with the default 14-day luteal phase exceeds the supported
+    // luteal span, so predictCycleWindow clamps and marks the date inexact; the
+    // concrete ovulation label must then carry the "(approximate)" qualifier.
+    const hero = heroFor(
+      { lastPeriodStart: "2026-03-10", cycleLength: 17 },
+      [cycleStart("2026-03-10")],
+      new Date(2026, 2, 12),
+    );
+
+    expect(hero.upcomingOvulationLabel).toContain(
+      getDashboardCopy("en").ovulationApproximate,
+    );
   });
 });

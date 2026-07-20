@@ -727,6 +727,11 @@ describe("BackupSyncScreen", () => {
           },
         }),
       )
+      // Settings now probes the session again to bind the entitlement-token
+      // gate (buildEntitlementTokenGate -> getSession). This fixture answers it
+      // with a non-session payload, so the gate stays inert and doctorPDF and
+      // the other snapshot features are read straight from the billing snapshot.
+      .mockResolvedValueOnce(createJSONResponse({}, 503))
       .mockResolvedValueOnce(
         createJSONResponse({
           has_active_plan: true,
@@ -912,6 +917,10 @@ describe("BackupSyncScreen", () => {
           },
         }),
       )
+      // Settings now probes the session again to bind the entitlement-token
+      // gate (buildEntitlementTokenGate -> getSession); a non-session payload
+      // keeps the gate inert so snapshot features are read as-is.
+      .mockResolvedValueOnce(createJSONResponse({}, 503))
       .mockResolvedValueOnce(
         createJSONResponse({
           has_active_plan: false,

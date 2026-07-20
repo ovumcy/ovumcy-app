@@ -4,6 +4,7 @@ import { ActivityIndicator, View } from "react-native";
 
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
+import { buildEntitlementTokenGate } from "../../services/entitlement-token-gate-service";
 import { loadManagedPremiumFeatures } from "../../services/managed-premium-features-service";
 import {
   loadStatsScreenState,
@@ -47,6 +48,14 @@ export function StatsScreen({
                 storage,
                 syncSecretStore,
                 syncState.preferences.mode,
+                // Advanced insights are token-gated: a verified entitlement
+                // token decides `advancedInsights`; absent/invalid, the billing
+                // snapshot boolean stands unchanged.
+                await buildEntitlementTokenGate(
+                  syncSecretStore,
+                  syncState.preferences.mode,
+                  { nowSeconds: Math.floor(effectiveNow.getTime() / 1000) },
+                ),
               )
             : {
                 advancedFertility: false,

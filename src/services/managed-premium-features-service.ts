@@ -8,6 +8,7 @@ import {
 } from "../sync/managed-cloud-api-client";
 import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contract";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
+import { buildEntitlementTokenGate } from "./entitlement-token-gate-service";
 import { resolveVerifiedEntitlements } from "./entitlement-token-service";
 
 /**
@@ -238,6 +239,11 @@ export async function loadManagedPremiumFeatures(
 export async function loadManagedPremiumFeaturesForCurrentSession(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
+  // When a caller supplies a gate it is used verbatim (tests / DI). Otherwise
+  // the signed-token gate is constructed for the active managed session so the
+  // two purely-local premium features are decided by a verified token; the
+  // builder returns undefined (snapshot behaviour preserved) whenever the
+  // active account id cannot be confirmed.
   tokenGate?: EntitlementTokenGate,
 ): Promise<ManagedCloudPremiumFeatures> {
   try {
@@ -246,11 +252,18 @@ export async function loadManagedPremiumFeaturesForCurrentSession(
       return EMPTY_MANAGED_PREMIUM_FEATURES;
     }
 
+    const gate =
+      tokenGate ??
+      (await buildEntitlementTokenGate(
+        secretStore,
+        syncState.preferences.mode,
+      ));
+
     return loadManagedPremiumFeatures(
       storage,
       secretStore,
       syncState.preferences.mode,
-      tokenGate,
+      gate,
     );
   } catch {
     return EMPTY_MANAGED_PREMIUM_FEATURES;

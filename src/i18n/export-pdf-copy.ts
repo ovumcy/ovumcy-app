@@ -18,7 +18,7 @@ const exportPDFCopyEn = {
   legendPeriod: "Period",
   legendLoggedDay: "Logged day",
   legendFertileWindow: "Fertile window",
-  legendOvulation: "Ovulation",
+  legendOvulation: "Probable ovulation",
   legendTentativeOvulation: "Predicted ovulation",
   cyclesEmpty: "Not enough completed cycles to build a doctor-focused report yet.",
   cycleTitle: (
@@ -89,6 +89,7 @@ const exportPDFCopyEn = {
     })`,
   shortLutealWarningTitle: "Short luteal phase",
   fertileWindowAssumptionFootnote: "Fertile windows assume a 14-day luteal phase where a personalised estimate is unavailable.",
+  observedOvulationUncertaintyFootnote: "The probable-ovulation marker is estimated from logged BBT and cervical-mucus signals; it is accurate only to about ±1–2 days, not an exact date.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
     `Observed luteal phase averages ${averageDays.toFixed(1)} d across ${observationCount} recent cycles. Typical is 11–14 d. This is an estimate from logged signals, not a diagnosis; you may wish to discuss it with a clinician.`,
 } as const;
@@ -111,7 +112,7 @@ const exportPDFCopyDe: ExportPDFCopy = {
   legendPeriod: "Periode",
   legendLoggedDay: "Erfasster Tag",
   legendFertileWindow: "Fruchtbares Fenster",
-  legendOvulation: "Eisprung",
+  legendOvulation: "Wahrscheinlicher Eisprung",
   legendTentativeOvulation: "Vermuteter Eisprung",
   cyclesEmpty:
     "Es gibt noch nicht genug abgeschlossene Zyklen für einen arztfreundlichen Bericht.",
@@ -184,6 +185,7 @@ const exportPDFCopyDe: ExportPDFCopy = {
     })`,
   shortLutealWarningTitle: "Kurze Lutealphase",
   fertileWindowAssumptionFootnote: "Fruchtbarkeitsfenster setzen eine 14-tägige Lutealphase voraus, wenn keine personalisierte Schätzung verfügbar ist.",
+  observedOvulationUncertaintyFootnote: "Der Marker für den wahrscheinlichen Eisprung wird aus erfassten BBT- und Zervixschleim-Signalen geschätzt; er ist nur auf etwa ±1–2 Tage genau, kein exaktes Datum.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
     `Beobachtete Lutealphase durchschnittlich ${averageDays.toFixed(1)} T. in ${observationCount} aktuellen Zyklen. Typisch sind 11–14 T. Dies ist eine Schätzung aus erfassten Signalen, keine Diagnose; Sie können dies gerne mit einer Ärztin oder einem Arzt besprechen.`,
 };
@@ -204,7 +206,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
   legendPeriod: "Règles",
   legendLoggedDay: "Jour enregistré",
   legendFertileWindow: "Fenêtre fertile",
-  legendOvulation: "Ovulation",
+  legendOvulation: "Ovulation probable",
   legendTentativeOvulation: "Ovulation prévue",
   cyclesEmpty:
     "Il n'y a pas encore assez de cycles terminés pour créer un rapport orienté médecin.",
@@ -228,7 +230,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     flow: "Flux",
     mood: "Humeur",
     sex: "Sexe",
-    bbt: "TBC",
+    bbt: "TB",
     cervical: "Glaire cervicale",
     lh: "Test LH",
     symptoms: "Symptômes",
@@ -240,7 +242,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     "Aucun signal de fertilité avancé sur les cycles récents.",
   advancedFertilityUnitCelsius: "°C",
   advancedFertilityUnitFahrenheit: "°F",
-  advancedFertilityThermalShiftTitle: "Hausse thermique TBC",
+  advancedFertilityThermalShiftTitle: "Hausse thermique TB",
   advancedFertilityThermalShiftConfirmedValue: "Confirmée",
   advancedFertilityThermalShiftBuildingValue: "En construction",
   advancedFertilityThermalShiftDescription: (
@@ -277,6 +279,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     })`,
   shortLutealWarningTitle: "Phase lutéale courte",
   fertileWindowAssumptionFootnote: "Les fenêtres fertiles supposent une phase lutéale de 14 jours lorsqu'aucune estimation personnalisée n'est disponible.",
+  observedOvulationUncertaintyFootnote: "Le repère d'ovulation probable est estimé à partir des signaux de TB et de glaire cervicale enregistrés ; il n'est précis qu'à environ ±1–2 jours, ce n'est pas une date exacte.",
   shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
     `Phase lutéale observée en moyenne ${averageDays.toFixed(1)} j sur ${observationCount} cycles récents. Typiquement 11 à 14 j. Il s'agit d'une estimation fondée sur les signaux saisis, non d'un diagnostic ; vous pouvez en discuter avec un professionnel de santé.`,
 };
@@ -299,7 +302,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     legendPeriod: "Менструация",
     legendLoggedDay: "Записанный день",
     legendFertileWindow: "Фертильное окно",
-    legendOvulation: "Овуляция",
+    legendOvulation: "Вероятная овуляция",
     legendTentativeOvulation: "Предполагаемая овуляция",
     cyclesEmpty:
       "Пока недостаточно завершённых циклов, чтобы собрать отчёт для врача.",
@@ -372,6 +375,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       })`,
     shortLutealWarningTitle: "Короткая лютеиновая фаза",
     fertileWindowAssumptionFootnote: "Фертильные окна рассчитаны с учётом лютеиновой фазы в 14 дней, если персонализированная оценка недоступна.",
+    observedOvulationUncertaintyFootnote: "Отметка вероятной овуляции рассчитана по записанным сигналам БТТ и цервикальной слизи; она точна лишь примерно до ±1–2 дней и не является точной датой.",
     shortLutealWarningDescription: (
       averageDays: number,
       observationCount: number,
@@ -394,7 +398,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     legendPeriod: "Período",
     legendLoggedDay: "Día registrado",
     legendFertileWindow: "Ventana fértil",
-    legendOvulation: "Ovulación",
+    legendOvulation: "Ovulación probable",
     legendTentativeOvulation: "Ovulación prevista",
     cyclesEmpty:
       "Todavía no hay suficientes ciclos completados para crear un informe orientado al médico.",
@@ -466,6 +470,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
             : "dentro de un patrón variable"
       })`,
     fertileWindowAssumptionFootnote: "Las ventanas fértiles asumen una fase lútea de 14 días cuando no hay una estimación personalizada disponible.",
+    observedOvulationUncertaintyFootnote: "El marcador de ovulación probable se estima a partir de las señales registradas de TBC y moco cervical; solo tiene una precisión de unos ±1–2 días, no es una fecha exacta.",
     shortLutealWarningTitle: "Fase lútea corta",
     shortLutealWarningDescription: (
       averageDays: number,
@@ -489,7 +494,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
     legendPeriod: "Ciclo",
     legendLoggedDay: "Giorno registrato",
     legendFertileWindow: "Finestra fertile",
-    legendOvulation: "Ovulazione",
+    legendOvulation: "Ovulazione probabile",
     legendTentativeOvulation: "Ovulazione prevista",
     cyclesEmpty:
       "Non ci sono ancora abbastanza cicli completati per creare un report orientato al medico.",
@@ -562,6 +567,7 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       })`,
     shortLutealWarningTitle: "Fase luteale corta",
     fertileWindowAssumptionFootnote: "Le finestre fertili presumono una fase luteale di 14 giorni quando non è disponibile una stima personalizzata.",
+    observedOvulationUncertaintyFootnote: "Il segnaposto dell'ovulazione probabile è stimato dai segnali registrati di BBT e muco cervicale; è preciso solo a circa ±1–2 giorni, non è una data esatta.",
     shortLutealWarningDescription: (averageDays: number, observationCount: number) =>
       `Fase luteale osservata in media ${averageDays.toFixed(1)} g su ${observationCount} cicli recenti. Il valore tipico è 11–14 g. Questa è una stima dai segnali registrati, non una diagnosi; potresti volerne parlare con un medico.`,
   },

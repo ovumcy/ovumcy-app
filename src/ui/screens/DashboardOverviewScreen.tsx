@@ -23,6 +23,7 @@ import { DashboardCycleHero } from "./dashboard/DashboardCycleHero";
 type DashboardQuickActionKey = "period" | "mood" | "symptom";
 
 type DashboardOverviewScreenProps = {
+  bleedingSafetyHint: string | null;
   entryExists: boolean;
   editorViewData: DayLogEditorViewData;
   isSaving: boolean;
@@ -39,6 +40,7 @@ type DashboardOverviewScreenProps = {
 };
 
 export function DashboardOverviewScreen({
+  bleedingSafetyHint,
   entryExists,
   editorViewData,
   isSaving,
@@ -205,6 +207,7 @@ export function DashboardOverviewScreen({
             }}
           >
             <DayLogEditorCard
+              bleedingSafetyHint={bleedingSafetyHint}
               entryExists={entryExists}
               highlightedSection={highlightedSection}
               isSaving={isSaving}

@@ -23,7 +23,11 @@ export function FeatureCard({
     <View style={styles.card} testID={testID}>
       {hasHeader ? (
         <View style={styles.header}>
-          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {title ? (
+            <Text accessibilityRole="header" style={styles.title}>
+              {title}
+            </Text>
+          ) : null}
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
       ) : null}

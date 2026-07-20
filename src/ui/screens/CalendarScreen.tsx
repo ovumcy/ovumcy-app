@@ -21,6 +21,7 @@ import {
 import {
   buildNextDayLogRecordPatch,
   clearDayLogEditorRecord,
+  resolveBleedingSafetyHint,
   saveDayLogEditorRecord,
 } from "../../services/day-log-editor-service";
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
@@ -333,6 +334,11 @@ export function CalendarScreen({
 
   return (
     <CalendarOverviewScreen
+      bleedingSafetyHint={resolveBleedingSafetyHint(
+        state.selectedRecord,
+        state.records,
+        language,
+      )}
       entryExists={hasDayLogData(state.selectedRecord)}
       editorViewData={state.editorViewData}
       isEditing={editorMode === "edit"}
