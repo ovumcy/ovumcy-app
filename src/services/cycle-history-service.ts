@@ -451,11 +451,17 @@ function resolveUpcomingOvulationDisplay(
   ) {
     const rangeStart = parseLocalDate(nextPeriodWindow.startDate);
     const rangeEnd = parseLocalDate(nextPeriodWindow.endDate);
+    /* istanbul ignore else -- unreachable: nextPeriodWindow's dates are
+       formatLocalDate outputs, so both always parse; the guard only narrows the
+       Date|null returned by parseLocalDate. */
     if (rangeStart && rangeEnd) {
       // lutealPhase is already resolveLutealPhase()'d by the caller, matching
       // web DashboardOvulationRange's ResolveLutealPhase (idempotent).
       const ovulationStart = addDays(rangeStart, -lutealPhase);
       const ovulationEnd = addDays(rangeEnd, -lutealPhase);
+      /* istanbul ignore else -- unreachable: the next-period window's end never
+         precedes its start, so shifting both back by the same luteal phase
+         keeps ovulationEnd on or after ovulationStart. */
       if (ovulationEnd >= ovulationStart) {
         return {
           date: null,

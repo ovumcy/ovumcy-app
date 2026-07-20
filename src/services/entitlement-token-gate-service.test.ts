@@ -144,6 +144,26 @@ describe("buildEntitlementTokenGate", () => {
     expect(client.getSession).toHaveBeenCalledWith("managed-session-1");
   });
 
+  it("defaults now to the real wall clock (in seconds) when nowSeconds is not injected", async () => {
+    const beforeSeconds = Math.floor(Date.now() / 1000);
+    const client = sessionClient({ ok: true, accountID: "acct-clock" });
+
+    const gate = await buildEntitlementTokenGate(
+      createSyncSecretStoreMock(MANAGED_SECRETS),
+      "managed",
+      {
+        managedClient: client,
+        tokenStore: createMemoryEntitlementTokenStore(),
+      },
+    );
+    const afterSeconds = Math.floor(Date.now() / 1000);
+
+    // No nowSeconds injected -> the gate falls back to the wall clock.
+    expect(gate?.now).toBeGreaterThanOrEqual(beforeSeconds);
+    expect(gate?.now).toBeLessThanOrEqual(afterSeconds);
+    expect(gate?.expectedSub).toBe("acct-clock");
+  });
+
   it("returns undefined when the session view fetch fails (offline / unauthorized)", async () => {
     const gate = await buildEntitlementTokenGate(
       createSyncSecretStoreMock(MANAGED_SECRETS),
