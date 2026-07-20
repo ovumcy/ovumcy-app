@@ -179,6 +179,9 @@ export function inferBBTOvulationDate(
   // first elevated day is always well after the cycle start and this stays
   // inside the cycle.
   const shiftStart = parseLocalDate(shift.shiftStartDate);
+  /* istanbul ignore next -- unreachable: detectSustainedThermalShift only
+     returns a shift once calendarDaysApart(shiftStartDate, …) === 1, which is
+     impossible unless shiftStartDate parses; kept as a defensive fallback. */
   if (!shiftStart) {
     return shift.shiftStartDate;
   }

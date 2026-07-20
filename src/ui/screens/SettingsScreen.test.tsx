@@ -1987,6 +1987,27 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("applies the selected first day of week to the interface picker", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-cycle-section");
+
+    // Default is Sunday (0); selecting Monday (1) runs the interface
+    // first-day-of-week handler and re-selects the picker on the new value.
+    fireEvent.press(screen.getByTestId("settings-interface-first-day-of-week-1"));
+
+    expect(
+      screen.getByTestId("settings-interface-first-day-of-week-1").props
+        .accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: true }));
+    expect(
+      screen.getByTestId("settings-interface-first-day-of-week-0").props
+        .accessibilityState,
+    ).toEqual(expect.objectContaining({ checked: false }));
+  });
+
   it("updates an existing custom symptom's label", async () => {
     const storage = createSettingsStorageMock();
 
