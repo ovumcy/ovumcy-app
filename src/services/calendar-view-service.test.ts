@@ -397,6 +397,9 @@ describe("calendar-view-service", () => {
       themeOverride: null,
       dismissedCalendarPredictionNoticeKey: null,
     } as const;
+    // A canonical "3-over-6" shift: six coverline days at 36.4 then a 3-day
+    // elevated streak 03-16..03-18. The detected shift keeps the predicted
+    // ovulation day firm (not demoted to tentative).
     const records = [
       {
         ...createEmptyDayLogRecord("2026-03-10"),
@@ -409,9 +412,10 @@ describe("calendar-view-service", () => {
       { ...createEmptyDayLogRecord("2026-03-12"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-13"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-14"), bbt: 36.4 },
-      { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-15"), bbt: 36.4 },
       { ...createEmptyDayLogRecord("2026-03-16"), bbt: 36.7 },
       { ...createEmptyDayLogRecord("2026-03-17"), bbt: 36.7 },
+      { ...createEmptyDayLogRecord("2026-03-18"), bbt: 36.7 },
     ];
 
     const viewData = buildCalendarViewData(

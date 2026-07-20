@@ -197,6 +197,8 @@ async function createAdvancedFertilityStorage() {
       notes: "",
     },
     {
+      // Sixth flat coverline day: the "3-over-6" detector needs a full 6-day
+      // window before the elevated streak.
       date: "2026-04-03",
       isPeriod: false,
       cycleStart: false,
@@ -204,7 +206,7 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.55,
+      bbt: 36.3,
       cervicalMucus: "none" as const,
       lhTest: "none" as const,
       pregnancyTest: "none" as const,
@@ -220,7 +222,7 @@ async function createAdvancedFertilityStorage() {
       flow: "none" as const,
       mood: 0,
       sexActivity: "none" as const,
-      bbt: 36.56,
+      bbt: 36.55,
       cervicalMucus: "none" as const,
       lhTest: "none" as const,
       pregnancyTest: "none" as const,
@@ -230,6 +232,22 @@ async function createAdvancedFertilityStorage() {
     },
     {
       date: "2026-04-05",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 36.56,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      pregnancyTest: "none" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+    {
+      date: "2026-04-06",
       isPeriod: false,
       cycleStart: false,
       isUncertain: false,
@@ -377,7 +395,7 @@ describe("DashboardScreen", () => {
 
     const storage = await createAdvancedFertilityStorage();
 
-    renderDashboard(storage, new Date(2026, 3, 5));
+    renderDashboard(storage, new Date(2026, 3, 6));
 
     await screen.findByTestId("dashboard-advanced-fertility-summary");
 

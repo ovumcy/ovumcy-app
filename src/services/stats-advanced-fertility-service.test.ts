@@ -57,10 +57,11 @@ function lhPeak(date: string): DayLogRecord {
   return { ...createEmptyDayLogRecord(date), lhTest: "peak" };
 }
 
-// A canonical sustained thermal shift anchored at the cycle start (2026-03-29):
-// first-5-day baseline = 36.30, threshold = 36.50; readings 04-03..04-05 are the
-// 3-day sustained streak, so the shift (ovulation) day is its start, 2026-04-03.
-// Extra elevated readings after the streak (04-06, 04-07) must NOT move the gap.
+// A canonical "3-over-6" sustained thermal shift in the current cycle (start
+// 2026-03-29): six coverline days at 36.30 then a 3-day elevated streak
+// 04-04..04-06 clearing the coverline + 0.2 margin, so the shift (first
+// elevated) day is 2026-04-04. The extra elevated reading after the streak
+// (04-07) must NOT move the confirmation gap, which is measured to the shift day.
 function currentCycleShiftRecords(): DayLogRecord[] {
   return [
     bbt("2026-03-29", 36.3),
@@ -68,10 +69,10 @@ function currentCycleShiftRecords(): DayLogRecord[] {
     bbt("2026-03-31", 36.3),
     bbt("2026-04-01", 36.3),
     bbt("2026-04-02", 36.3),
-    bbt("2026-04-03", 36.55),
-    bbt("2026-04-04", 36.56),
-    bbt("2026-04-05", 36.57),
-    bbt("2026-04-06", 36.58),
+    bbt("2026-04-03", 36.3),
+    bbt("2026-04-04", 36.55),
+    bbt("2026-04-05", 36.56),
+    bbt("2026-04-06", 36.57),
     bbt("2026-04-07", 36.58),
   ];
 }
@@ -134,11 +135,11 @@ describe("buildStatsAdvancedFertility", () => {
   });
 
   it("measures the ovulation-confirmation gap to the thermal-shift day, not the last BBT record", () => {
-    // Egg-white on 2026-04-01, shift day 2026-04-03 => gap 2. The two extra
-    // elevated BBT days (04-06, 04-07) after the shift do not change the gap.
+    // Egg-white on 2026-04-02, shift day 2026-04-04 => gap 2. The extra elevated
+    // BBT day (04-07) after the shift does not change the gap.
     const records = [
       ...currentCycleShiftRecords(),
-      { ...createEmptyDayLogRecord("2026-04-01"), cervicalMucus: "eggwhite" as const },
+      { ...createEmptyDayLogRecord("2026-04-02"), cervicalMucus: "eggwhite" as const },
     ];
 
     expect(
@@ -148,17 +149,17 @@ describe("buildStatsAdvancedFertility", () => {
         ovulationConfirmation: {
           kind: "confirmed",
           gapDays: 2,
-          mucusDate: "2026-04-01",
+          mucusDate: "2026-04-02",
         },
       }),
     );
   });
 
   it("aligns an LH peak only when the thermal-shift day is within the LH-peak window", () => {
-    // LH peak 2026-04-01, shift day 2026-04-03 => gap 2 -> aligned.
+    // LH peak 2026-04-02, shift day 2026-04-04 => gap 2 -> aligned.
     const records = [
       ...currentCycleShiftRecords(),
-      lhPeak("2026-04-01"),
+      lhPeak("2026-04-02"),
     ];
 
     expect(
@@ -167,7 +168,7 @@ describe("buildStatsAdvancedFertility", () => {
       expect.objectContaining({
         lhPeakSignal: {
           kind: "aligned",
-          date: "2026-04-01",
+          date: "2026-04-02",
           gapDays: 2,
         },
       }),
@@ -175,8 +176,8 @@ describe("buildStatsAdvancedFertility", () => {
   });
 
   it("keeps the LH peak logged (not aligned) when the shift day is more than 4 days after it", () => {
-    // LH peak on the cycle-start day 2026-03-29 is 5 days before the shift day
-    // 2026-04-03 (> 4) -> logged, gap null.
+    // LH peak on the cycle-start day 2026-03-29 is 6 days before the shift day
+    // 2026-04-04 (> 4) -> logged, gap null.
     const records = [
       ...currentCycleShiftRecords(),
       lhPeak("2026-03-29"),
@@ -196,8 +197,10 @@ describe("buildStatsAdvancedFertility", () => {
   });
 
   it("agrees with inferObservedOvulationDate on the same current-cycle data", () => {
-    // The advanced panel's confirmed shift must use the same shift day the
-    // calendar marker derives from inferObservedOvulationDate.
+    // Both the calendar marker and the advanced panel derive from the same
+    // detected shift: inferObservedOvulationDate returns the ovulation day (the
+    // day BEFORE the first elevated day, 2026-04-03), while the confirmation gap
+    // is measured to the shift day itself (2026-04-04).
     const records = currentCycleShiftRecords();
     const calendarOvulation = inferObservedOvulationDate(
       records,
@@ -208,10 +211,10 @@ describe("buildStatsAdvancedFertility", () => {
 
     const withMucus = [
       ...records,
-      { ...createEmptyDayLogRecord("2026-04-01"), cervicalMucus: "eggwhite" as const },
+      { ...createEmptyDayLogRecord("2026-04-02"), cervicalMucus: "eggwhite" as const },
     ];
     const summary = buildStatsAdvancedFertility(createHistory(), withMucus, "2026-03-29");
-    // gap = mucus 2026-04-01 -> calendar shift day 2026-04-03 = 2.
+    // gap = mucus 2026-04-02 -> thermal-shift day 2026-04-04 = 2.
     expect(summary?.ovulationConfirmation?.gapDays).toBe(2);
     expect(summary?.thermalShift?.kind).toBe("confirmed");
   });

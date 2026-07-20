@@ -2,6 +2,7 @@ import type { DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
 import {
   detectSustainedThermalShift,
+  inferBBTOvulationDate,
   type SustainedThermalShift,
 } from "./observed-ovulation-service";
 import { diffLocalDays } from "./profile-settings-policy";
@@ -73,18 +74,18 @@ export function buildStatsAdvancedFertility(
       .find((record) => record.lhTest === "peak");
 
     // Luteal anchor policy (review 1.4): prefer the inferred ovulation DAY from
-    // the canonical sustained thermal shift, else fall back to the LH peak (a
-    // true ovulation proxy). The last egg-white day alone is NOT a luteal anchor
-    // — post-mucus days overstate luteal length — so a mucus-only cycle is
-    // skipped for luteal computation (conservative). Note this uses the BBT
-    // shift directly, not inferObservedOvulationDate, whose egg-white fallback
-    // would reintroduce mucus-only anchoring.
-    const shiftDate = detectSustainedThermalShift(
+    // the canonical "3-over-6" thermal shift (the day before the first elevated
+    // day, matching ovumcy-web's InferUserLutealPhase), else fall back to the LH
+    // peak (a true ovulation proxy). The last egg-white day alone is NOT a
+    // luteal anchor — post-mucus days overstate luteal length — so this uses the
+    // BBT-only inferBBTOvulationDate, not inferObservedOvulationDate whose
+    // egg-white fallback would reintroduce mucus-only anchoring.
+    const bbtOvulationDate = inferBBTOvulationDate(
       cycleRecords,
       cycle.startDate,
       cycle.nextStartDate,
-    )?.shiftStartDate;
-    const lutealAnchorDate = shiftDate ?? lastLHPeakSignal?.date ?? null;
+    );
+    const lutealAnchorDate = bbtOvulationDate ?? lastLHPeakSignal?.date ?? null;
     if (lutealAnchorDate) {
       const lutealDays = diffLocalDays(lutealAnchorDate, cycle.nextStartDate);
       if (
@@ -182,12 +183,12 @@ function buildObservedLutealConsistency(
   };
 }
 
-// Thermal-shift detection reuses the canonical streak primitive (review 1.2 /
-// 1.5): first-5-day baseline + 0.2C threshold + 3-day sustained streak, exactly
-// as inferObservedOvulationDate/the calendar marker. A confirmed shift requires
-// the canonical >= 5-reading baseline; below that the primitive returns null and
-// no "confirmed"/"building" state is emitted. cycleEndDate is exclusive; pass
-// undefined for the open-ended current cycle.
+// Thermal-shift detection reuses the canonical "3-over-6" primitive (review 1.2
+// / 1.5): a sliding coverline (MAX of the 6 preceding undisturbed temps) plus a
+// 3-day elevated streak clearing the third-day margin, exactly as the calendar
+// marker. A confirmed shift requires the full coverline window; below that the
+// primitive returns null and no "confirmed"/"building" state is emitted.
+// cycleEndDate is exclusive; pass undefined for the open-ended current cycle.
 function detectThermalShift(
   records: readonly DayLogRecord[],
   cycleStartDate: string,
@@ -204,10 +205,11 @@ function detectThermalShift(
 function toThermalShiftSummary(
   shift: SustainedThermalShift,
 ): StatsThermalShiftSummary {
-  // The streak detector only emits rises that clear the 0.2C threshold, so
-  // every sustained shift is a confirmed shift. The "building" tier in the
-  // union type is retained for consumers (e.g. cycle-history-service) but is
-  // structurally unreachable here per the no-dead-code rule.
+  // The detector only emits shifts whose third day clears the coverline by the
+  // third-day margin, so every sustained shift is a confirmed shift. The
+  // "building" tier in the union type is retained for consumers (e.g.
+  // cycle-history-service) but is structurally unreachable here per the
+  // no-dead-code rule.
   return {
     kind: "confirmed",
     rise: shift.rise,

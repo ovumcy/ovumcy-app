@@ -125,8 +125,9 @@ async function createAdvancedFertilityStorage() {
     dismissedCalendarPredictionNoticeKey: null,
   });
 
-  // Baseline window 03-29..04-02 stays flat; the sustained streak starts on
-  // 04-03, so the canonical detector anchors the shift after the baseline.
+  // Coverline window 03-29..04-03 stays flat; the sustained "3-over-6" streak
+  // starts on 04-04, so the canonical detector anchors the shift after the full
+  // 6-day coverline window (ovulation 2026-04-03).
   const records = [
     {
       ...createEmptyDayLogRecord("2026-03-29"),
@@ -156,14 +157,18 @@ async function createAdvancedFertilityStorage() {
     },
     {
       ...createEmptyDayLogRecord("2026-04-03"),
-      bbt: 36.55,
+      bbt: 36.3,
     },
     {
       ...createEmptyDayLogRecord("2026-04-04"),
-      bbt: 36.56,
+      bbt: 36.55,
     },
     {
       ...createEmptyDayLogRecord("2026-04-05"),
+      bbt: 36.56,
+    },
+    {
+      ...createEmptyDayLogRecord("2026-04-06"),
       bbt: 36.57,
     },
   ];
@@ -420,7 +425,7 @@ describe("CalendarScreen", () => {
 
     const storage = await createAdvancedFertilityStorage();
 
-    render(<CalendarScreen now={new Date(2026, 3, 5)} storage={storage} />);
+    render(<CalendarScreen now={new Date(2026, 3, 6)} storage={storage} />);
 
     await screen.findByTestId("calendar-advanced-fertility-summary");
 

@@ -374,8 +374,9 @@ describe("buildStatsViewData", () => {
           cervicalMucus: "eggwhite",
           lhTest: "peak",
         },
-        // Current cycle: 5 flat baseline BBT days, then a 3-day sustained
-        // streak so the canonical detector anchors the shift on 2026-04-02.
+        // Current cycle: six flat coverline BBT days, then a 3-day sustained
+        // "3-over-6" streak so the canonical detector anchors the shift on
+        // 2026-04-03 (ovulation 2026-04-02).
         createPeriodRecord("2026-03-28", { bbt: 36.3 }),
         {
           ...createEmptyDayLogRecord("2026-03-29"),
@@ -398,19 +399,23 @@ describe("buildStatsViewData", () => {
         },
         {
           ...createEmptyDayLogRecord("2026-04-02"),
-          bbt: 36.55,
+          bbt: 36.3,
         },
         {
           ...createEmptyDayLogRecord("2026-04-03"),
-          bbt: 36.56,
+          bbt: 36.55,
         },
         {
           ...createEmptyDayLogRecord("2026-04-04"),
+          bbt: 36.56,
+        },
+        {
+          ...createEmptyDayLogRecord("2026-04-05"),
           bbt: 36.57,
         },
       ],
       createDefaultSymptomRecords(),
-      new Date(2026, 3, 4),
+      new Date(2026, 3, 6),
       "en",
       {
         advancedFertility: true,
@@ -482,7 +487,7 @@ describe("buildStatsViewData", () => {
       expect.arrayContaining([
         expect.objectContaining({
           title: "Headache",
-          value: "In 3 days",
+          value: "In 1 day",
         }),
       ]),
     );
