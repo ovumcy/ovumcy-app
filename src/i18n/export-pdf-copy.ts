@@ -230,7 +230,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     flow: "Flux",
     mood: "Humeur",
     sex: "Sexe",
-    bbt: "TBC",
+    bbt: "TB",
     cervical: "Glaire cervicale",
     lh: "Test LH",
     symptoms: "Symptômes",
@@ -242,7 +242,7 @@ const exportPDFCopyFr: ExportPDFCopy = {
     "Aucun signal de fertilité avancé sur les cycles récents.",
   advancedFertilityUnitCelsius: "°C",
   advancedFertilityUnitFahrenheit: "°F",
-  advancedFertilityThermalShiftTitle: "Hausse thermique TBC",
+  advancedFertilityThermalShiftTitle: "Hausse thermique TB",
   advancedFertilityThermalShiftConfirmedValue: "Confirmée",
   advancedFertilityThermalShiftBuildingValue: "En construction",
   advancedFertilityThermalShiftDescription: (
