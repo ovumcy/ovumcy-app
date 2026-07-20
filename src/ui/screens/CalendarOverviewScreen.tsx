@@ -30,7 +30,7 @@ import { spacing } from "../theme/tokens";
 import { useThemedStyles } from "../theme/useThemedStyles";
 
 type CalendarOverviewScreenProps = {
-  bleedingSafetyHint?: string | null;
+  bleedingSafetyHint: string | null;
   entryExists: boolean;
   editorViewData: DayLogEditorViewData;
   isEditing: boolean;
@@ -58,7 +58,7 @@ type CalendarOverviewScreenProps = {
 };
 
 export function CalendarOverviewScreen({
-  bleedingSafetyHint = null,
+  bleedingSafetyHint,
   entryExists,
   editorViewData,
   isEditing,
