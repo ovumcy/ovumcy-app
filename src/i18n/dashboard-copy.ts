@@ -80,7 +80,7 @@ const dashboardCopyEn = {
     "Confirm marking a cycle start with a short gap.",
   futureCycleStartNotice: "Predictions will be recalculated when that day arrives.",
   implantationWarning:
-    "This may be implantation bleeding, not a new cycle. If you are trying to conceive, consider taking a test.",
+    "This early bleeding may not be the start of a new cycle — timing alone cannot tell. If you are trying to conceive, consider taking a test. If it comes with pain, dizziness, or heavy flow, seek medical advice promptly.",
 } as const;
 
 type DashboardCopy = WidenLiteral<typeof dashboardCopyEn>;
@@ -167,7 +167,7 @@ const dashboardCopyDe: DashboardCopy = {
   futureCycleStartNotice:
     "Die Vorhersagen werden neu berechnet, wenn dieser Tag erreicht ist.",
   implantationWarning:
-    "Das könnte eine Einnistungsblutung und kein neuer Zyklus sein. Wenn Sie schwanger werden möchten, ziehen Sie einen Test in Betracht.",
+    "Diese frühe Blutung ist möglicherweise nicht der Beginn eines neuen Zyklus — allein am Zeitpunkt lässt sich das nicht erkennen. Wenn Sie schwanger werden möchten, ziehen Sie einen Test in Betracht. Bei Schmerzen, Schwindel oder starker Blutung suchen Sie umgehend ärztlichen Rat.",
 };
 
 const dashboardCopyFr: DashboardCopy = {
@@ -252,7 +252,7 @@ const dashboardCopyFr: DashboardCopy = {
   futureCycleStartNotice:
     "Les prédictions seront recalculées lorsque ce jour arrivera.",
   implantationWarning:
-    "Cela peut être un saignement d'implantation et non un nouveau cycle. Si vous essayez de concevoir, pensez à faire un test.",
+    "Ce saignement précoce n'est peut-être pas le début d'un nouveau cycle — le calendrier seul ne permet pas de le savoir. Si vous essayez de concevoir, pensez à faire un test. S'il s'accompagne de douleurs, de vertiges ou d'un flux abondant, consultez rapidement un médecin.",
 };
 
 const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
@@ -338,7 +338,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Прогнозы будут пересчитаны, когда наступит этот день.",
     implantationWarning:
-      "Это может быть имплантационное кровотечение, а не новый цикл. Если вы пытаетесь зачать, подумайте о тесте.",
+      "Это раннее кровотечение может не быть началом нового цикла — по одним срокам определить нельзя. Если Вы планируете беременность, рекомендуем сделать тест. При боли, головокружении или обильном кровотечении обратитесь к врачу без промедления.",
   },
   es: {
     cycleDay: "Día del ciclo",
@@ -421,7 +421,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Las predicciones se recalcularán cuando llegue ese día.",
     implantationWarning:
-      "Esto puede ser sangrado de implantación y no un nuevo ciclo. Si buscas embarazo, considera hacerte una prueba.",
+      "Este sangrado temprano puede no ser el inicio de un nuevo ciclo — solo por las fechas no se puede saber. Si buscas embarazo, considera hacerte una prueba. Si va acompañado de dolor, mareo o sangrado abundante, busca atención médica cuanto antes.",
   },
   it: {
     cycleDay: "Giorno del ciclo",
@@ -505,7 +505,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Le previsioni saranno ricalcolate quando quel giorno arriverà.",
     implantationWarning:
-      "Potrebbe trattarsi di sanguinamento da impianto, non di un nuovo ciclo. Se stai cercando una gravidanza, considera di fare un test.",
+      "Questo sanguinamento precoce potrebbe non essere l'inizio di un nuovo ciclo — dai soli tempi non si può stabilire. Se stai cercando una gravidanza, considera di fare un test. Se è accompagnato da dolore, vertigini o flusso abbondante, rivolgiti subito a un medico.",
   },
   de: dashboardCopyDe,
   fr: dashboardCopyFr,
