@@ -1,0 +1,111 @@
+{
+  "$comment": "Shared BBT / observed-ovulation golden vectors. Single source of truth for the app detector (src/services/observed-ovulation-service.ts inferObservedOvulationDate / detectSustainedThermalShift) and ovumcy-web's Go detector (internal/services/cycle_signals.go inferObservedOvulationDate). The two detectors are hand-parallel ports of the '3-over-6' rule (coverline = MAX of the 6 preceding undisturbed readings; a shift is 3 calendar-consecutive elevated recorded days, the first two strictly above the coverline and the third at least +0.2 C above it; ovulation = the calendar day before the first elevated day; egg-white fallback = last egg-white day + 1, clamped to stay before the next cycle start; illness / sleep_disruption days excluded entirely). expectedObservedOvulationDate was produced by RUNNING ovumcy-web's real Go detector against these cases (see docs/cross-repo-contracts.md, contract 5), so it is web-authoritative; src/services/bbt-observed-ovulation-reference.test.ts asserts the app detector reproduces the same date, and scripts/check-cross-repo-contracts.mjs asserts the rule constants have not drifted between the two repos. A detector-rule change MUST update this file, both detectors, and the reference test in the same change. Each day omits bbt when unmeasured (app record bbt 0 / web BBT nil) and cervicalMucus/cycleFactorKeys when absent. cycleEndDate is the exclusive next-cycle-start boundary. Dates are calendar dates (YYYY-MM-DD), timezone-independent.",
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "name": "bbt-shift-basic: 6-day coverline (max 36.40) then a clean 3-day elevated streak -> ovulation is the day before the first elevated day",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-01", "bbt": 36.3 },
+        { "date": "2026-03-02", "bbt": 36.35 },
+        { "date": "2026-03-03", "bbt": 36.3 },
+        { "date": "2026-03-04", "bbt": 36.4 },
+        { "date": "2026-03-05", "bbt": 36.3 },
+        { "date": "2026-03-06", "bbt": 36.35 },
+        { "date": "2026-03-07", "bbt": 36.6 },
+        { "date": "2026-03-08", "bbt": 36.65 },
+        { "date": "2026-03-09", "bbt": 36.7 }
+      ],
+      "expectedObservedOvulationDate": "2026-03-06"
+    },
+    {
+      "name": "max-coverline suppresses the shift (early follicular spike 36.70), egg-white fallback -> last egg-white day + 1",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-01", "bbt": 36.3 },
+        { "date": "2026-03-02", "bbt": 36.3 },
+        { "date": "2026-03-03", "bbt": 36.7 },
+        { "date": "2026-03-04", "bbt": 36.3 },
+        { "date": "2026-03-05", "bbt": 36.3 },
+        { "date": "2026-03-06", "bbt": 36.3 },
+        { "date": "2026-03-07", "bbt": 36.55 },
+        { "date": "2026-03-08", "bbt": 36.6 },
+        { "date": "2026-03-09", "bbt": 36.65 },
+        { "date": "2026-03-11", "cervicalMucus": "eggwhite" }
+      ],
+      "expectedObservedOvulationDate": "2026-03-12"
+    },
+    {
+      "name": "egg-white only (no BBT logged) -> last egg-white day + 1",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-08", "cervicalMucus": "eggwhite" },
+        { "date": "2026-03-10", "cervicalMucus": "eggwhite" },
+        { "date": "2026-03-12", "cervicalMucus": "eggwhite" }
+      ],
+      "expectedObservedOvulationDate": "2026-03-13"
+    },
+    {
+      "name": "egg-white peak on the final cycle day clamps to the peak day itself (day + 1 would cross the next cycle start)",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-11",
+      "days": [
+        { "date": "2026-03-08", "cervicalMucus": "eggwhite" },
+        { "date": "2026-03-10", "cervicalMucus": "eggwhite" }
+      ],
+      "expectedObservedOvulationDate": "2026-03-10"
+    },
+    {
+      "name": "illness fever day (38.50) is excluded entirely, so it neither inflates the coverline nor masks the real shift",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-01", "bbt": 36.3 },
+        { "date": "2026-03-02", "bbt": 36.35 },
+        { "date": "2026-03-03", "bbt": 36.3 },
+        { "date": "2026-03-04", "bbt": 38.5, "cycleFactorKeys": ["illness"] },
+        { "date": "2026-03-05", "bbt": 36.3 },
+        { "date": "2026-03-06", "bbt": 36.35 },
+        { "date": "2026-03-07", "bbt": 36.4 },
+        { "date": "2026-03-08", "bbt": 36.6 },
+        { "date": "2026-03-09", "bbt": 36.65 },
+        { "date": "2026-03-10", "bbt": 36.7 }
+      ],
+      "expectedObservedOvulationDate": "2026-03-07"
+    },
+    {
+      "name": "sleep_disruption spike (38.70) is excluded entirely, so the clean 3-day streak still resolves",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-01", "bbt": 36.3 },
+        { "date": "2026-03-02", "bbt": 36.35 },
+        { "date": "2026-03-03", "bbt": 36.3 },
+        { "date": "2026-03-04", "bbt": 36.4 },
+        { "date": "2026-03-05", "bbt": 38.7, "cycleFactorKeys": ["sleep_disruption"] },
+        { "date": "2026-03-06", "bbt": 36.35 },
+        { "date": "2026-03-07", "bbt": 36.4 },
+        { "date": "2026-03-08", "bbt": 36.6 },
+        { "date": "2026-03-09", "bbt": 36.65 },
+        { "date": "2026-03-10", "bbt": 36.7 }
+      ],
+      "expectedObservedOvulationDate": "2026-03-07"
+    },
+    {
+      "name": "no signal: too few readings for a shift and no egg-white peak -> no observed ovulation",
+      "cycleStartDate": "2026-03-01",
+      "cycleEndDate": "2026-03-29",
+      "days": [
+        { "date": "2026-03-01", "bbt": 36.3 },
+        { "date": "2026-03-02", "bbt": 36.3 },
+        { "date": "2026-03-03", "bbt": 36.3 },
+        { "date": "2026-03-04", "bbt": 36.3 },
+        { "date": "2026-03-05", "bbt": 36.3 }
+      ],
+      "expectedObservedOvulationDate": null
+    }
+  ]
+}
