@@ -148,6 +148,27 @@ describe("observed-ovulation-service", () => {
       expect(shift?.sampleCount).toBe(9);
       expect(shift?.shiftStartDate).toBe("2026-03-07");
     });
+
+    it("treats a calendar-invalid streak date as non-consecutive rather than a shift", () => {
+      // 2026-03-32 is a well-formed string that string-sorts as the latest
+      // reading but is not a real calendar day, so parseLocalDate rejects it.
+      // The consecutiveness check must then fail safe (calendarDaysApart -> 0),
+      // never fabricating a thermal shift from an unparseable date.
+      const records = [
+        buildBBTRecord("2026-03-01", 36.3),
+        buildBBTRecord("2026-03-02", 36.3),
+        buildBBTRecord("2026-03-03", 36.3),
+        buildBBTRecord("2026-03-04", 36.3),
+        buildBBTRecord("2026-03-05", 36.3),
+        buildBBTRecord("2026-03-06", 36.3),
+        buildBBTRecord("2026-03-07", 36.6),
+        buildBBTRecord("2026-03-08", 36.65),
+        buildBBTRecord("2026-03-32", 36.7),
+      ];
+      expect(
+        detectSustainedThermalShift(records, "2026-03-01", "2026-04-07"),
+      ).toBeNull();
+    });
   });
 
   describe("illness / sleep_disruption exclusion", () => {
@@ -304,6 +325,16 @@ describe("observed-ovulation-service", () => {
       expect(
         inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
       ).toBe("2026-03-16");
+    });
+
+    it("returns a calendar-invalid peak date verbatim instead of crashing", () => {
+      // 2026-03-32 string-sorts inside the cycle window but is not a real day,
+      // so the day-after estimate cannot be computed; the peak date degrades
+      // gracefully to itself rather than throwing on the unparseable input.
+      const records = [buildEggWhiteRecord("2026-03-32")];
+      expect(
+        inferEggWhiteOvulationDate(records, "2026-03-10", "2026-04-07"),
+      ).toBe("2026-03-32");
     });
   });
 
