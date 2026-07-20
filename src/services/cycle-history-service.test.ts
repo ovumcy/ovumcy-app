@@ -975,6 +975,55 @@ describe("cycle-history-service", () => {
       ).toBe(5);
     });
 
+    it("counts consecutive logged period days up to 11, matching web's inclusive +10 buildCycles cap", () => {
+      // Web buildCycles counts logged period days over start..start+10 inclusive
+      // (`cycles.go` `!day.After(start.AddDate(0, 0, 10))`), so a genuine 11-day
+      // period counts as 11. The app previously capped this at 10; this pins the
+      // aligned cap. Two 11-day cycles average to 11 (was 10 before the fix).
+      const eleven = cyclesWithPeriodLengths(new Date(2026, 0, 1), [11, 11]);
+      const profileEleven = createProfileRecord({ lastPeriodStart: isoDate(eleven.lastStart) });
+      const nowEleven = new Date(
+        eleven.lastStart.getFullYear(),
+        eleven.lastStart.getMonth(),
+        eleven.lastStart.getDate() + 12,
+      );
+      const historyEleven = buildCycleHistorySummary(profileEleven, eleven.records, nowEleven);
+      expect(historyEleven.completedCycleCount).toBe(1);
+      expect(
+        resolveProjectedPeriodLength(
+          profileEleven,
+          historyEleven,
+          eleven.records,
+          isoDate(nowEleven),
+        ),
+      ).toBe(11);
+
+      // A clinically over-long logged period is still capped at 11, never 12+
+      // (web parity): two 12-day cycles average to 11, not 12.
+      const overlong = cyclesWithPeriodLengths(new Date(2026, 0, 1), [12, 12]);
+      const profileOverlong = createProfileRecord({
+        lastPeriodStart: isoDate(overlong.lastStart),
+      });
+      const nowOverlong = new Date(
+        overlong.lastStart.getFullYear(),
+        overlong.lastStart.getMonth(),
+        overlong.lastStart.getDate() + 13,
+      );
+      const historyOverlong = buildCycleHistorySummary(
+        profileOverlong,
+        overlong.records,
+        nowOverlong,
+      );
+      expect(
+        resolveProjectedPeriodLength(
+          profileOverlong,
+          historyOverlong,
+          overlong.records,
+          isoDate(nowOverlong),
+        ),
+      ).toBe(11);
+    });
+
     it("drives the projected-period-as-menstrual boundary in detectCurrentPhase (deviation now closed)", () => {
       // Observed periods are 2 days, configured is 5. On unlogged cycle day 3 the
       // phase is now follicular (day 3 > rolling period 2), where the pre-port app

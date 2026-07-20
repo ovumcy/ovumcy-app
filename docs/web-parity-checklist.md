@@ -288,6 +288,14 @@ that owns the canonical web UX).
     web #123: 0–14, default 3, clamped never rejected)
   - shows a managed-premium locked state on the email-delivery block only,
     until the reminders entitlement is active
+  - reminder **delivery channels differ by product and this is intentional**,
+    not a parity gap: web delivers reminders server-side — the dashboard
+    reminder banner, an outbound webhook (web #124), and a subscribable `.ics`
+    calendar feed — whereas the app delivers on-device through local
+    notifications (`expo-notifications`), scheduled purely from local data with
+    no server round-trip. Managed reminder **email** is a premium extension
+    beyond the web baseline. No code change closes this difference; it follows
+    from the app being local-first and owning its own notification channel.
 - Danger zone:
   - clear-data path
 
@@ -449,13 +457,16 @@ that owns the canonical web UX).
     menstrual boundary (web `resolveCyclePhase`, `cycles.go:424`), the calendar
     current/predicted/historical period painting (web `calendar_days.go`), and
     the dashboard cycle-hero menstrual phase card (web `dashboard_cycle_hero.go:54`)
-    all read one value. Residual pre-existing app behaviors, unchanged by this
-    port: cycle starts derive from the app's observed-cluster detection plus
-    `profile.lastPeriodStart` (web's bootstrap gate uses log-only
-    `DetectCycleStarts`), and consecutive period-day counting caps at 10 days vs
-    web's 11 — both differ only on clinically extreme inputs. Regression:
-    `cycle-history-service.test.ts` ("projected period length" suite) plus the
-    updated dashboard hero phase-card expectation.
+    all read one value. Consecutive period-day counting now caps at 11 days,
+    matching web's inclusive `buildCycles` `start..start+10` loop
+    (`countLoggedPeriodLength` in `cycle-history-service.ts` vs web `cycles.go`),
+    closing the former 10-day divergence. Residual pre-existing app behavior,
+    unchanged by this port: cycle starts derive from the app's observed-cluster
+    detection plus `profile.lastPeriodStart` (web's bootstrap gate uses log-only
+    `DetectCycleStarts`) — a detection-source difference that surfaces only on
+    clinically extreme inputs. Regression: `cycle-history-service.test.ts`
+    ("projected period length" suite) plus the updated dashboard hero phase-card
+    expectation.
 
 ## Remaining Product Gaps
 

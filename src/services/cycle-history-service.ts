@@ -901,7 +901,10 @@ function countLoggedPeriodLength(
   }
 
   let periodLength = 0;
-  for (let offset = 0; offset < 10; offset += 1) {
+  // Web parity: buildCycles counts consecutive logged period days up to and
+  // including the day `start + 10` (`ovumcy-web` cycles.go buildCycles loop,
+  // `!day.After(start.AddDate(0, 0, 10))`), so the cap is 11 days, not 10.
+  for (let offset = 0; offset <= 10; offset += 1) {
     const currentDate = formatLocalDate(addDays(start, offset));
     if (recordsByDate.get(currentDate)?.isPeriod !== true) {
       break;
