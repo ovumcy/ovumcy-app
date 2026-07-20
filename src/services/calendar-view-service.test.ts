@@ -68,6 +68,41 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("renders a saved future period day as a fact, not a prediction (injected clock)", () => {
+    // Future-period invariant: a period row the owner saved for a date after
+    // today is a recorded FACT, so the calendar paints it as a period cell with
+    // no date guard. Uses an injected clock so it never depends on wall time.
+    const now = new Date(2026, 2, 15);
+    const futureDate = "2026-03-25";
+    const viewData = buildCalendarViewData(
+      {
+        lastPeriodStart: "2026-03-10",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "" as const,
+        usageGoal: "health" as const,
+        trackBBT: false,
+        temperatureUnit: "c" as const,
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: null,
+        themeOverride: null,
+        dismissedCalendarPredictionNoticeKey: null,
+      },
+      [{ ...createEmptyDayLogRecord(futureDate), isPeriod: true }],
+      now,
+      new Date(2026, 2, 1),
+      "2026-03-15",
+    );
+
+    const futureCell = viewData.days.find((day) => day.date === futureDate);
+    expect(futureCell?.isPeriod).toBe(true);
+    expect(futureCell?.hasData).toBe(true);
+  });
+
   it("starts the calendar week on the configured first day of the week", () => {
     const profile = {
       lastPeriodStart: "2026-03-10",
