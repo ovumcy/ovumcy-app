@@ -6,6 +6,7 @@ import {
   normalizeInterfaceLanguage,
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
+  normalizeWeekStartDay,
   resolveScreenCaptureProtectionEnabled,
   type ProfileRecord,
 } from "../models/profile";
@@ -304,6 +305,7 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     reminderLeadDays: clampReminderLeadDays(Number(record.reminderLeadDays)),
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
+    firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
     screenCaptureProtectionEnabled: resolveScreenCaptureProtectionEnabled(
       record.screenCaptureProtectionEnabled,
     ),

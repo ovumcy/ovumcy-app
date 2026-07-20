@@ -8,6 +8,7 @@ import type {
   InterfaceLanguage,
   PredictionMode,
   ThemePreference,
+  WeekStartDay,
 } from "../../models/profile";
 import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
@@ -102,6 +103,7 @@ export type SettingsFlowScreenProps = {
   onImportPickFile: () => void | Promise<void>;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
+  onInterfaceFirstDayOfWeekSelect: (value: WeekStartDay) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
   onOpenBackupSync: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
@@ -195,6 +197,7 @@ export function SettingsFlowScreen({
   onImportPickFile,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
+  onInterfaceFirstDayOfWeekSelect,
   onScreenCaptureProtectionChange,
   onOpenBackupSync,
   onPeriodLengthChange,
@@ -338,6 +341,7 @@ export function SettingsFlowScreen({
 
           <SettingsInterfaceSection
             errorMessage={interfaceErrorMessage}
+            onFirstDayOfWeekSelect={onInterfaceFirstDayOfWeekSelect}
             onLanguageSelect={onInterfaceLanguageSelect}
             onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
             onThemeSelect={onInterfaceThemeSelect}

@@ -21,6 +21,7 @@ import {
   type UsageGoal,
   normalizeInterfaceLanguage,
   normalizeThemePreference,
+  normalizeWeekStartDay,
 } from "../models/profile";
 
 export type CycleGuidanceState = {
@@ -196,6 +197,7 @@ export function sanitizeInterfaceSettingsValues(
   return {
     languageOverride: normalizeInterfaceLanguage(values.languageOverride),
     themeOverride: normalizeThemePreference(values.themeOverride),
+    firstDayOfWeek: normalizeWeekStartDay(values.firstDayOfWeek),
     screenCaptureProtectionEnabled: values.screenCaptureProtectionEnabled !== false,
   };
 }

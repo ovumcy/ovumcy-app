@@ -54,6 +54,11 @@ export const SUPPORTED_INTERFACE_LANGUAGES = [
   "it",
 ] as const;
 export const SUPPORTED_THEME_PREFERENCES = ["light", "dark", "system"] as const;
+// First day of the calendar week, in JS Date.getDay() convention: 0 = Sunday,
+// 1 = Monday. Mirrors web's optional "First day of the week" preference.
+export type WeekStartDay = 0 | 1;
+export const SUPPORTED_WEEK_START_DAYS = [0, 1] as const;
+export const DEFAULT_WEEK_START_DAY: WeekStartDay = 0;
 export const SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS = [
   "calendar_irregular_prediction_notice_v1",
   "calendar_unpredictable_prediction_notice_v1",
@@ -86,6 +91,7 @@ export type ProfileRecord = {
   reminderLeadDays?: number;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
+  firstDayOfWeek?: WeekStartDay;
   screenCaptureProtectionEnabled?: boolean;
   dismissedCalendarPredictionNoticeKey?: CalendarPredictionNoticeKey | null;
   dismissedOnboardingHelperNoticeKey?: OnboardingHelperNoticeKey | null;
@@ -126,8 +132,13 @@ export type InterfaceSettingsValues = Pick<
   ProfileRecord,
   "languageOverride" | "themeOverride"
 > & {
+  firstDayOfWeek: WeekStartDay;
   screenCaptureProtectionEnabled: boolean;
 };
+
+export function normalizeWeekStartDay(value: unknown): WeekStartDay {
+  return value === 1 ? 1 : DEFAULT_WEEK_START_DAY;
+}
 
 export function normalizeInterfaceLanguage(
   value: string | null | undefined,
@@ -248,6 +259,7 @@ export function createDefaultProfileRecord(): ProfileRecord {
     reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
     languageOverride: null,
     themeOverride: null,
+    firstDayOfWeek: DEFAULT_WEEK_START_DAY,
     screenCaptureProtectionEnabled: true,
     dismissedCalendarPredictionNoticeKey: null,
     dismissedOnboardingHelperNoticeKey: null,

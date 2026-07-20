@@ -1,4 +1,7 @@
-import type { InterfaceSettingsValues } from "../../../models/profile";
+import {
+  DEFAULT_WEEK_START_DAY,
+  type InterfaceSettingsValues,
+} from "../../../models/profile";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
@@ -69,6 +72,7 @@ export async function runClearAllDataAction(context: DangerActionContext) {
   syncProfilePreferences({
     languageOverride: null,
     themeOverride: null,
+    firstDayOfWeek: DEFAULT_WEEK_START_DAY,
     screenCaptureProtectionEnabled: true,
   });
   router.replace(`/onboarding?reset=${Date.now().toString()}`);

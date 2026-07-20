@@ -707,6 +707,12 @@ export function useSettingsScreenController({
           themeOverride: value,
         });
       },
+      onInterfaceFirstDayOfWeekSelect: (value) => {
+        applyInterfaceValues({
+          ...readyState.interfaceValues,
+          firstDayOfWeek: value,
+        });
+      },
       onScreenCaptureProtectionChange: (value) => {
         applyInterfaceValues({
           ...readyState.interfaceValues,

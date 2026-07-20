@@ -68,6 +68,46 @@ describe("calendar-view-service", () => {
     );
   });
 
+  it("starts the calendar week on the configured first day of the week", () => {
+    const profile = {
+      lastPeriodStart: "2026-03-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: false,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    };
+    const sunday = buildCalendarViewData(
+      { ...profile, firstDayOfWeek: 0 },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+    const monday = buildCalendarViewData(
+      { ...profile, firstDayOfWeek: 1 },
+      [],
+      new Date(2026, 2, 17),
+      new Date(2026, 2, 1),
+      "2026-03-17",
+    );
+
+    expect(sunday.weekdayLabels[0]).toBe("Sun");
+    expect(monday.weekdayLabels[0]).toBe("Mon");
+    expect(monday.weekdayLabels[6]).toBe("Sun");
+    // The grid's first cell shifts to the configured week start.
+    expect(sunday.days[0]?.date).not.toBe(monday.days[0]?.date);
+  });
+
   it("paints fertile markers on past completed cycles only when showHistoricalPhases is on", () => {
     const baseProfile = {
       lastPeriodStart: "2026-02-26",
