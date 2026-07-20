@@ -387,6 +387,28 @@ describe("export-pdf-service", () => {
     }
   });
 
+  it("frames the observed-ovulation legend and footnote as probable, not exact (medical safety)", () => {
+    for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
+      const copy = getExportPDFCopy(locale);
+      // The observed (BBT/mucus-derived) marker must not read as a bare fact.
+      expect(copy.legendOvulation).not.toBe("Ovulation");
+      expect(copy.legendOvulation).not.toBe("Eisprung");
+      expect(copy.legendOvulation).not.toBe("Ovulación");
+      expect(copy.legendOvulation).not.toBe("Ovulazione");
+      expect(copy.legendOvulation).not.toBe("Овуляция");
+      // A per-locale uncertainty footnote conveys the ±1-2 day estimate.
+      expect(typeof copy.observedOvulationUncertaintyFootnote).toBe("string");
+      expect(copy.observedOvulationUncertaintyFootnote).toContain("±1");
+    }
+  });
+
+  it("englishes the probable-ovulation marker copy explicitly", () => {
+    const copy = getExportPDFCopy("en");
+    expect(copy.legendOvulation).toBe("Probable ovulation");
+    expect(copy.observedOvulationUncertaintyFootnote).toContain("±1–2 days");
+    expect(copy.observedOvulationUncertaintyFootnote).toContain("not an exact date");
+  });
+
   it("summary section label no longer calls it 'Average period length' (honesty relabel)", () => {
     for (const locale of ["en", "ru", "de", "fr", "es", "it"] as const) {
       const copy = getExportPDFCopy(locale);
