@@ -586,22 +586,33 @@ export async function persistGuestPartnerSession(
     existingSecrets ?? createSyncSecretsRecord("", now).record;
 
   // Both refresh fields arrive together or not at all (the client mapper
-  // enforces that), so one check decides whether this session renews.
-  const renewable = Boolean(input.refreshToken && input.refreshTokenExpiresAt);
+  // enforces that), so one check decides whether this session renews. The
+  // check has to be the narrowing expression itself rather than a precomputed
+  // boolean: through a boolean the compiler cannot see the fields are set,
+  // and the `?? null` it would then demand is a branch nothing can reach.
+  //
+  // Either shape is written whole, nulls included: refresh material left over
+  // from an earlier owner session on this device must never survive into a
+  // guest one — inheriting it would let the guest session mint sessions for
+  // somebody else's account.
+  const refreshFields =
+    input.refreshToken && input.refreshTokenExpiresAt
+      ? {
+          managedAuthSessionExpiresAt: input.sessionExpiresAt,
+          managedRefreshToken: input.refreshToken,
+          managedRefreshTokenExpiresAt: input.refreshTokenExpiresAt,
+        }
+      : {
+          managedAuthSessionExpiresAt: null,
+          managedRefreshToken: null,
+          managedRefreshTokenExpiresAt: null,
+        };
 
   await secretStore.writeSyncSecrets({
     ...baseSecrets,
     authSessionToken: null,
     managedAuthSessionToken: input.sessionToken,
-    // Written unconditionally, including the nulls: refresh material left
-    // over from an earlier owner session on this device must never survive
-    // into a guest one, so a non-renewable guest clears the fields rather
-    // than inheriting them.
-    managedAuthSessionExpiresAt: renewable ? input.sessionExpiresAt : null,
-    managedRefreshToken: renewable ? (input.refreshToken ?? null) : null,
-    managedRefreshTokenExpiresAt: renewable
-      ? (input.refreshTokenExpiresAt ?? null)
-      : null,
+    ...refreshFields,
   });
 
   const nextPreferences: SyncPreferencesRecord = {
@@ -612,10 +623,9 @@ export async function persistGuestPartnerSession(
     setupStatus: "connected",
     // The deadline this device faces if it does nothing: the refresh token's
     // when there is one to renew with, the session's own when there is not.
-    guestSessionExpiresAt: renewable
-      ? (input.refreshTokenExpiresAt ?? input.sessionExpiresAt)
-      : input.sessionExpiresAt,
-    guestSessionRenewable: renewable,
+    guestSessionExpiresAt:
+      refreshFields.managedRefreshTokenExpiresAt ?? input.sessionExpiresAt,
+    guestSessionRenewable: refreshFields.managedRefreshToken !== null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
