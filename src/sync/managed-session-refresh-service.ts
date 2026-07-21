@@ -85,7 +85,7 @@ export async function ensureFreshManagedSession(
   inFlightRefresh = exchangeRefreshToken(
     secretStore,
     secrets,
-    refreshToken,
+    { refreshToken, currentSessionToken: sessionToken },
     managedClientFactory,
   ).finally(() => {
     inFlightRefresh = null;
@@ -139,11 +139,14 @@ export function resetManagedSessionRefreshStateForTests(): void {
 async function exchangeRefreshToken(
   secretStore: SyncSecretStore,
   secrets: SyncSecretsRecord,
-  refreshToken: string,
+  // The caller has already established that a session token exists, so it is
+  // handed over rather than re-derived here — re-reading it from the record
+  // would need a defensive fallback for a case that cannot happen.
+  tokens: { refreshToken: string; currentSessionToken: string },
   managedClientFactory: ManagedCloudAPIClientFactory,
 ): Promise<EnsureFreshManagedSessionResult> {
   const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-  const result = await client.refreshSession(refreshToken);
+  const result = await client.refreshSession(tokens.refreshToken);
 
   if (result.ok) {
     await secretStore.writeSyncSecrets(
@@ -167,7 +170,7 @@ async function exchangeRefreshToken(
   // still be valid — hand back what we have and let the actual request decide.
   return {
     ok: true,
-    sessionToken: secrets.managedAuthSessionToken ?? "",
+    sessionToken: tokens.currentSessionToken,
     refreshed: false,
   };
 }

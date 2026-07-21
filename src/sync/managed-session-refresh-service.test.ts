@@ -160,6 +160,61 @@ describe("ensureFreshManagedSession", () => {
     expect(second).toEqual(third);
   });
 
+  it("defaults to the current clock when no time is supplied", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedAuthSessionExpiresAt: "2099-01-01T00:00:00.000Z" }),
+    );
+    const refreshSession = jest.fn();
+
+    // Production callers pass no clock; a session valid until 2099 must be
+    // left alone against the real "now" too.
+    const result = await ensureFreshManagedSession(
+      secretStore,
+      undefined,
+      createRefreshingClient(refreshSession as never),
+    );
+
+    expect(result).toEqual({ ok: true, sessionToken: "access-1", refreshed: false });
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("records no expiry when the renewed session comes back without one", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedAuthSessionExpiresAt: "2026-07-21T12:01:00.000Z" }),
+    );
+    const refreshSession = jest.fn(async () => ({
+      ok: true as const,
+      auth: {
+        accountID: "acct-1",
+        email: "owner@example.com",
+        sessionToken: "access-2",
+        sessionExpiresAt: "",
+        entitlement: {
+          syncAllowed: true,
+          source: "trial",
+          updatedAt: NOW.toISOString(),
+          effectiveAt: NOW.toISOString(),
+          explanation: "",
+        },
+        refreshToken: "refresh-2",
+        refreshTokenExpiresAt: "2026-10-19T12:00:00.000Z",
+      },
+    }));
+
+    await ensureFreshManagedSession(
+      secretStore,
+      NOW,
+      createRefreshingClient(refreshSession as never),
+    );
+
+    // An absent expiry must be stored as absent, not as an empty string that
+    // would later parse as NaN and be read as "not due".
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionExpiresAt).toBeNull();
+  });
+
   it("clears the credentials when the refresh chain is dead", async () => {
     const secretStore = createSyncSecretStoreMock();
     await secretStore.writeSyncSecrets(

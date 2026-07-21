@@ -673,6 +673,46 @@ describe("sync-totp-service", () => {
       }
     });
 
+    it("carries a managed refresh token through to the finalize step", async () => {
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          completeTOTPChallenge: jest.fn().mockResolvedValue({
+            ok: true,
+            auth: {
+              accountID: "account-1",
+              email: "owner@example.com",
+              sessionToken: "managed-session-after-totp",
+              sessionExpiresAt: "2026-05-18T10:00:00.000Z",
+              entitlement: {
+                syncAllowed: true,
+                source: "default_register",
+                updatedAt: "2026-05-17T10:00:00.000Z",
+                effectiveAt: "2026-05-17T10:00:00.000Z",
+                explanation: "Trial active.",
+              },
+              refreshToken: "refresh-after-totp",
+              refreshTokenExpiresAt: "2026-08-15T10:00:00.000Z",
+            },
+          }),
+        }),
+      );
+
+      const result = await completeTOTPChallenge(
+        managedPreferences(),
+        { challengeID: "challenge-1", code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        // Dropping it here would leave the post-2FA session short-lived with
+        // no way to renew itself.
+        expect(result.auth.refreshToken).toBe("refresh-after-totp");
+        expect(result.auth.refreshTokenExpiresAt).toBe("2026-08-15T10:00:00.000Z");
+      }
+    });
+
     it("maps totp_challenge_invalid for the community backend", async () => {
       const apiFactory = jest.fn().mockReturnValue(
         communityClientMock({
