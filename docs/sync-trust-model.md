@@ -191,13 +191,13 @@ What revoke cannot do: symmetric AEAD does not support post-hoc key revocation f
 
 ## Managed Session Renewal
 
-The app declares `refresh_supported` on every managed register, login, and TOTP-challenge completion. A managed cloud that understands the flag answers with a short-lived access session plus a refresh token; one that does not simply ignores it and returns the long-lived session as before, so the client works against either.
+The app declares `refresh_supported` on every managed register, login, TOTP-challenge completion, and guest-partner invite accept. A managed cloud that understands the flag answers with a short-lived access session plus a refresh token; one that does not simply ignores it and returns the long-lived session as before, so the client works against either.
 
 Both the access token and the refresh token are bearer secrets and live in secure storage beside the other sync material (`SyncSecretsRecord.managedAuthSessionToken` / `managedRefreshToken`), never in broad key-value storage, route params, or logs. The stamped access expiry is stored alongside them so renewal can happen before a request fails rather than after.
 
 `ensureFreshManagedSession` (`src/sync/managed-session-refresh-service.ts`) is the only place that exchanges a refresh token. It renews when the access session is within five minutes of expiry, and it serializes: a refresh token is single-use and the server treats a second use of the same token as a leak — revoking the whole family — so concurrent screens share one in-flight exchange rather than racing. It is called from `loadManagedBillingSnapshot`, the read every premium surface funnels through, so one refresher keeps the stored token fresh for every other consumer.
 
-Failure handling is deliberately asymmetric. A rejected refresh means the chain is dead and the credentials are cleared, because the server has already revoked the family and retrying is pointless. A network failure returns the existing token untouched: being offline must never look like being signed out. A guest-partner session records no refresh state at all — it has no renewal path by design.
+Failure handling is deliberately asymmetric. A rejected refresh means the chain is dead and the credentials are cleared, because the server has already revoked the family and retrying is pointless. A network failure returns the existing token untouched: being offline must never look like being signed out. A guest-partner session goes through this same refresher with no special case — see Guest Partner Access above for why the short access session matters more there than anywhere else, and for what a guest that received no refresh material stores instead.
 
 ## Outbound Fetch Posture
 
