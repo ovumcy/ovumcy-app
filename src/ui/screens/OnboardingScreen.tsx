@@ -213,6 +213,9 @@ export function OnboardingScreen({
         );
       }}
       onNext={handleStepOneNext}
+      onOpenPrivacyNotice={() => {
+        router.push("/privacy");
+      }}
       onPeriodLengthChange={(value) => {
         setStepTwoError("");
         setState((current) =>

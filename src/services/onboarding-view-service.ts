@@ -22,6 +22,8 @@ export type OnboardingViewData = {
     dismissTip: string;
     datePlaceholder: string;
     selectedDateLabel: string;
+    privacyNotice: string;
+    privacyNoticeLink: string;
     nextLabel: string;
     dayOptions: ReturnType<typeof buildDayOptions>;
     minDate: string;
@@ -102,6 +104,8 @@ export function buildOnboardingViewData(
       dismissTip: onboardingCopy.step1.dismissTip,
       datePlaceholder: onboardingCopy.step1.datePlaceholder,
       selectedDateLabel: onboardingCopy.step1.selectedDate,
+      privacyNotice: onboardingCopy.step1.privacyNotice,
+      privacyNoticeLink: onboardingCopy.step1.privacyNoticeLink,
       nextLabel: onboardingCopy.buttons.next,
       dayOptions: buildDayOptions(bounds.minDate, bounds.maxDate, locale, {
         today: onboardingCopy.step1.today,

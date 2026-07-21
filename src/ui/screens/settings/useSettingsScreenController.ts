@@ -724,6 +724,11 @@ export function useSettingsScreenController({
           void router.push("/backup-sync");
         });
       },
+      onOpenPrivacyNotice: () => {
+        void confirmPendingSettingsThen(() => {
+          void router.push("/privacy");
+        });
+      },
       onPeriodLengthChange: (value) => {
         applyCycleUpdates({ periodLength: value }, { resetExportMessages: true });
       },

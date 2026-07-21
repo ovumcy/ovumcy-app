@@ -25,6 +25,7 @@ import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSecti
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsImportSection } from "../components/SettingsImportSection";
 import { SettingsInterfaceSection } from "../components/SettingsInterfaceSection";
+import { SettingsPrivacyCard } from "../components/SettingsPrivacyCard";
 import { SettingsSyncSummaryCard } from "../components/SettingsSyncSummaryCard";
 import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
@@ -106,6 +107,7 @@ export type SettingsFlowScreenProps = {
   onInterfaceFirstDayOfWeekSelect: (value: WeekStartDay) => void;
   onScreenCaptureProtectionChange: (value: boolean) => void;
   onOpenBackupSync: () => void | Promise<void>;
+  onOpenPrivacyNotice: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onRestoreSymptom: (symptomID: SymptomID) => void | Promise<void>;
@@ -200,6 +202,7 @@ export function SettingsFlowScreen({
   onInterfaceFirstDayOfWeekSelect,
   onScreenCaptureProtectionChange,
   onOpenBackupSync,
+  onOpenPrivacyNotice,
   onPeriodLengthChange,
   onPredictionModeSelect,
   onRestoreSymptom,
@@ -413,6 +416,10 @@ export function SettingsFlowScreen({
             viewData={viewData.import}
           />
 
+          <SettingsPrivacyCard
+            onOpen={onOpenPrivacyNotice}
+            viewData={viewData.privacy}
+          />
 
           <SettingsDangerZoneSection
             confirmationValue={clearDataConfirmationValue}

@@ -27,6 +27,9 @@ const appCopyEn = {
         twoDaysAgo: "2 days ago",
         datePlaceholder: "dd.mm.yyyy",
         selectedDate: "Selected date",
+        privacyNotice:
+          "Everything you enter is stored on this device. No account, no tracking.",
+        privacyNoticeLink: "Privacy notice",
     },
     step2: {
       title: "Set up cycle parameters",
@@ -116,6 +119,9 @@ const appCopyDe: AppCopy = {
       twoDaysAgo: "Vor 2 Tagen",
       datePlaceholder: "tt.mm.jjjj",
       selectedDate: "Ausgewähltes Datum",
+      privacyNotice:
+        "Alles, was Sie eingeben, bleibt auf diesem Gerät. Kein Konto, kein Tracking.",
+      privacyNoticeLink: "Datenschutzhinweis",
     },
     step2: {
       title: "Zyklusparameter einrichten",
@@ -205,6 +211,9 @@ const appCopyFr: AppCopy = {
       twoDaysAgo: "Il y a 2 jours",
       datePlaceholder: "jj.mm.aaaa",
       selectedDate: "Date sélectionnée",
+      privacyNotice:
+        "Tout ce que vous saisissez reste sur cet appareil. Sans compte, sans pistage.",
+      privacyNoticeLink: "Avis de confidentialité",
     },
     step2: {
       title: "Configurer les paramètres du cycle",
@@ -296,6 +305,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         twoDaysAgo: "2 дня назад",
         datePlaceholder: "дд.мм.гггг",
         selectedDate: "Выбранная дата",
+        privacyNotice:
+          "Всё, что вы вводите, хранится на этом устройстве. Без аккаунта и без слежки.",
+        privacyNoticeLink: "Уведомление о конфиденциальности",
       },
       step2: {
         title: "Настройте параметры цикла",
@@ -383,6 +395,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         twoDaysAgo: "Hace 2 días",
         datePlaceholder: "dd.mm.aaaa",
         selectedDate: "Fecha seleccionada",
+        privacyNotice:
+          "Todo lo que introduces se guarda en este dispositivo. Sin cuenta y sin rastreo.",
+        privacyNoticeLink: "Aviso de privacidad",
       },
       step2: {
         title: "Configura los parámetros del ciclo",
@@ -470,6 +485,9 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
         twoDaysAgo: "2 giorni fa",
         datePlaceholder: "gg.mm.aaaa",
         selectedDate: "Data selezionata",
+        privacyNotice:
+          "Tutto ciò che inserisci resta su questo dispositivo. Nessun account, nessun tracciamento.",
+        privacyNoticeLink: "Informativa sulla privacy",
       },
       step2: {
         title: "Imposta i parametri del ciclo",

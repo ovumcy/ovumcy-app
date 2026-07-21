@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Italian (`it`) interface localization across every copy catalog, reaching
   six-locale parity with the web app; Italian is selectable in the settings
   language picker.
+- In-app privacy notice on its own screen, reachable from onboarding before the
+  first cycle date is stored and from a settings card, with a button that opens
+  the published policy on the website.
+- Right-of-withdrawal and refund wording on the cloud-plan step, covering the
+  14-day EU/EEA consumer withdrawal period and where to send the request.
 
 ### Changed
 
@@ -39,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reminder scheduling now resolves against the device timezone and the
   managed reminder-email schedule.
 - Russian copy uses proper plural forms throughout.
+- CSV export gained the trailing `Pregnancy test`, `Cycle start`, and
+  `Uncertain` columns of the web contract, and the doctor PDF now reports
+  recorded pregnancy tests plus the pause they cause; both previously dropped
+  the field that stops predictions.
 
 ### Fixed
 

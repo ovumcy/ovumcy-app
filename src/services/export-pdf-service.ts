@@ -9,6 +9,7 @@ import type {
   ExportPDFCycle,
   ExportPDFCycleDay,
   ExportPDFExtendedReportRow,
+  ExportPDFPregnancyTest,
   ExportPDFReport,
   ExportPDFShortLutealWarning,
   ExportPDFSummary,
@@ -17,7 +18,11 @@ import { hasDayLogData, type DayLogRecord } from "../models/day-log";
 import { celsiusDeltaToUnit, celsiusToUnit } from "./temperature-policy";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
-import { buildCycleHistorySummary, inferUserLutealPhase } from "./cycle-history-service";
+import {
+  buildCurrentCycleProjection,
+  buildCycleHistorySummary,
+  inferUserLutealPhase,
+} from "./cycle-history-service";
 import {
   predictCycleWindow,
   resolveLutealPhase,
@@ -36,6 +41,7 @@ import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildShortLutealHint } from "./stats-premium-insights-service";
 
 const MAX_EXPORT_PDF_CYCLES = 6;
+const MAX_EXPORT_PDF_PREGNANCY_TESTS = 24;
 const PAGE_WIDTH = PageSizesRuntime.A4[1];
 const PAGE_HEIGHT = PageSizesRuntime.A4[0];
 const PAGE_MARGIN = 28;
@@ -200,6 +206,15 @@ export function buildExportPDFReport({
       }
     : null;
 
+  // The pause itself is never re-derived here: it comes from the same shared
+  // projection that pauses dashboard, calendar, and stats.
+  const projection = buildCurrentCycleProjection(
+    profile,
+    history,
+    [...sortedDayLogs],
+    now,
+  );
+
   return {
     generatedAt: now.toISOString(),
     language,
@@ -218,7 +233,23 @@ export function buildExportPDFReport({
     advancedFertility: advancedFertilityItems,
     extendedReportRows,
     shortLutealWarning,
+    pregnancyTests: buildExportPDFPregnancyTests(sortedDayLogs),
+    pregnancyPauseDate: projection.isPregnancyPaused
+      ? projection.pregnancyTestDate
+      : null,
   };
+}
+
+function buildExportPDFPregnancyTests(
+  sortedDayLogs: readonly DayLogRecord[],
+): ExportPDFPregnancyTest[] {
+  return sortedDayLogs
+    .filter((record) => record.pregnancyTest !== "none")
+    .map((record) => ({
+      date: record.date,
+      result: record.pregnancyTest as ExportPDFPregnancyTest["result"],
+    }))
+    .slice(-MAX_EXPORT_PDF_PREGNANCY_TESTS);
 }
 
 function buildAdvancedFertilityItemsForPDF(
@@ -495,6 +526,45 @@ function drawShortLutealWarningSection(
   layout.cursorY = bottom - SECTION_GAP + 2;
 }
 
+function drawPregnancyTestsSection(
+  layout: ExportPDFLayoutContext,
+  tests: readonly ExportPDFPregnancyTest[],
+  pauseDate: ExportPDFReport["pregnancyPauseDate"],
+  pdfCopy: ReturnType<typeof getExportPDFCopy>,
+) {
+  // Nothing recorded means nothing to report: a clinician PDF for someone who
+  // never logged a test stays exactly as it was.
+  if (tests.length === 0) {
+    return;
+  }
+
+  layout.cursorY = drawSectionHeading(layout, pdfCopy.pregnancyTestsTitle);
+
+  for (const test of tests) {
+    const label =
+      test.result === "positive"
+        ? pdfCopy.pregnancyTestPositiveLabel
+        : pdfCopy.pregnancyTestNegativeLabel;
+    layout.cursorY = drawTextBlock(layout, `${test.date}: ${label}`, {
+      color: COLOR_TEXT,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+  }
+
+  if (pauseDate) {
+    layout.cursorY = drawTextBlock(layout, pdfCopy.pregnancyPausedNote(pauseDate), {
+      color: COLOR_MUTED,
+      font: layout.fonts.regular,
+      fontSize: BODY_FONT_SIZE,
+      lineHeight: LINE_HEIGHT,
+    });
+  }
+
+  layout.cursorY -= SECTION_GAP - 4;
+}
+
 function drawAdvancedFertilitySection(
   layout: ExportPDFLayoutContext,
   items: readonly ExportPDFAdvancedFertilityItem[],
@@ -584,6 +654,12 @@ async function renderExportPDFDocument(
 
   drawDocumentHeader(layout, report, pdfCopy);
   drawSummarySection(layout, report.summary, pdfCopy);
+  drawPregnancyTestsSection(
+    layout,
+    report.pregnancyTests,
+    report.pregnancyPauseDate,
+    pdfCopy,
+  );
   drawShortLutealWarningSection(layout, report.shortLutealWarning, pdfCopy);
   drawAdvancedFertilitySection(layout, report.advancedFertility, pdfCopy);
   drawExtendedReportsSection(layout, report.extendedReportRows, pdfCopy);

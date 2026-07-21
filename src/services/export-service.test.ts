@@ -4,6 +4,7 @@ import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock
 import {
   buildLocalExportArtifact,
   buildExportCSVRows,
+  EXPORT_CSV_HEADERS,
   loadLocalExportState,
   serializeExportCSV,
 } from "./export-service";
@@ -138,6 +139,80 @@ describe("export-service", () => {
       mimeType: "application/pdf",
       content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
     });
+  });
+});
+
+describe("CSV completeness: pregnancy test, cycle start, uncertain", () => {
+  const range = {
+    preset: "all",
+    fromDate: "2026-03-01",
+    toDate: "2026-03-02",
+  } as const;
+
+  it("ends the header contract with the three ovumcy-web parity columns", () => {
+    expect(EXPORT_CSV_HEADERS.slice(-3)).toEqual([
+      "Pregnancy test",
+      "Cycle start",
+      "Uncertain",
+    ]);
+  });
+
+  it("writes a recorded pregnancy test, cycle start, and uncertainty flag", () => {
+    const rows = buildExportCSVRows(
+      [
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          isPeriod: true,
+          cycleStart: true,
+          isUncertain: true,
+          pregnancyTest: "positive",
+        },
+      ],
+      [],
+      "c",
+    );
+
+    expect(rows[0]).toEqual(
+      expect.objectContaining({
+        pregnancyTest: "positive",
+        cycleStart: true,
+        isUncertain: true,
+      }),
+    );
+
+    const csv = serializeExportCSV([...EXPORT_CSV_HEADERS], rows, range);
+    const [, dataLine] = csv.trim().split("\n");
+
+    expect(dataLine?.split(",").slice(-3)).toEqual(["positive", "Yes", "Yes"]);
+  });
+
+  it("leaves the three columns empty for a day with nothing recorded", () => {
+    const rows = buildExportCSVRows(
+      [createEmptyDayLogRecord("2026-03-02")],
+      [],
+      "c",
+    );
+    const csv = serializeExportCSV([...EXPORT_CSV_HEADERS], rows, range);
+    const [headerLine, dataLine] = csv.trim().split("\n");
+
+    expect(headerLine?.split(",")).toHaveLength(EXPORT_CSV_HEADERS.length);
+    expect(dataLine?.split(",")).toHaveLength(EXPORT_CSV_HEADERS.length);
+    expect(dataLine?.split(",").slice(-3)).toEqual(["", "", ""]);
+  });
+
+  it("keeps a negative result distinguishable from no test at all", () => {
+    const rows = buildExportCSVRows(
+      [
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          pregnancyTest: "negative",
+        },
+      ],
+      [],
+      "c",
+    );
+
+    expect(rows[0]?.pregnancyTest).toBe("negative");
   });
 });
 

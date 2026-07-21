@@ -2213,6 +2213,37 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByTestId("settings-sync-renewal-resume-button")).toBeNull();
   });
 
+  it("states the EU withdrawal and refund terms on the plan step, with or without a renewal row", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest
+        .fn()
+        .mockResolvedValue(createConnectedManagedPreferences()),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
+    global.fetch = createManagedBillingFetchMock({
+      billing: {
+        has_active_plan: false,
+        premium_features: { partner_access: false },
+      },
+    });
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    await screen.findByTestId("settings-sync-plan-banner");
+
+    expect(screen.getByTestId("settings-sync-withdrawal-notice")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-renewal-row")).toBeNull();
+    expect(screen.getByText(/14 days to withdraw/)).toBeTruthy();
+  });
+
   it("shows only the flag-enabled renewal action and requires confirmation before cancelling", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest

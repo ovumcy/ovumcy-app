@@ -16,6 +16,7 @@ type OnboardingStepOnePanelProps = {
   onDismissStepOneError: (() => void | Promise<void>) | undefined;
   onDismissStepOneNotice: (() => void | Promise<void>) | undefined;
   onNext: () => void | Promise<void>;
+  onOpenPrivacyNotice: () => void | Promise<void>;
   selectedDateValue: string;
   stepOneError: string;
   stepOneNotice: {
@@ -45,6 +46,7 @@ export function OnboardingStepOnePanel({
   onDismissStepOneError,
   onDismissStepOneNotice,
   onNext,
+  onOpenPrivacyNotice,
   selectedDateValue,
   stepOneError,
   stepOneNotice,
@@ -141,6 +143,21 @@ export function OnboardingStepOnePanel({
           styles={styles}
           testID="onboarding-next-button"
         />
+
+        <View style={styles.privacyNoticeRow}>
+          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+            {viewData.stepOne.privacyNotice}
+          </Text>
+          <Pressable
+            accessibilityRole="link"
+            onPress={onOpenPrivacyNotice}
+            testID="onboarding-privacy-notice-link"
+          >
+            <Text style={styles.privacyNoticeLink}>
+              {viewData.stepOne.privacyNoticeLink}
+            </Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );

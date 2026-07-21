@@ -278,6 +278,9 @@ that owns the canonical web UX).
     - JSON
   - app-owned managed export perk:
     - PDF only when the current managed cloud account has an active plan
+  - CSV columns end with web's trailing three (`Pregnancy test`, `Cycle start`,
+    `Uncertain`) in the same order, so the recorded pregnancy test that drives
+    the prediction pause is exported rather than silently dropped
   - summary lines and local data hint
 - Reminders section:
   - appears between tracking and interface
