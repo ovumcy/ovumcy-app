@@ -69,6 +69,7 @@ function renderFlow(
       onFinish={jest.fn()}
       onPredictionModeSelect={jest.fn()}
       onNext={jest.fn()}
+      onOpenPrivacyNotice={jest.fn()}
       onPeriodLengthChange={jest.fn()}
       onUsageGoalSelect={jest.fn()}
       state={state}
@@ -103,6 +104,22 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.queryByTestId("onboarding-date-field-button")).toBeNull();
   });
 
+  it("states the local-first privacy posture before the first date is saved", () => {
+    const onOpenPrivacyNotice = jest.fn();
+    renderFlow(createState(), { onOpenPrivacyNotice });
+
+    expect(
+      screen.getByText(
+        "Everything you enter is stored on this device. No account, no tracking.",
+      ),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
+
+    expect(onOpenPrivacyNotice).toHaveBeenCalledTimes(1);
+  });
+
+
   it("uses quick day options as the only step 1 date selection path", () => {
     const onDateSelected = jest.fn();
     const state = createState();
@@ -127,6 +144,7 @@ describe("OnboardingFlowScreen", () => {
         onFinish={jest.fn()}
         onPredictionModeSelect={jest.fn()}
         onNext={jest.fn()}
+        onOpenPrivacyNotice={jest.fn()}
         onPeriodLengthChange={jest.fn()}
         onUsageGoalSelect={jest.fn()}
         state={state}
@@ -192,6 +210,7 @@ describe("OnboardingFlowScreen", () => {
         onFinish={onFinish}
         onPredictionModeSelect={onPredictionModeSelect}
         onNext={jest.fn()}
+        onOpenPrivacyNotice={jest.fn()}
         onPeriodLengthChange={jest.fn()}
         onUsageGoalSelect={jest.fn()}
         state={state}

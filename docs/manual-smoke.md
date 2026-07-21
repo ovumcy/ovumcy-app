@@ -91,6 +91,7 @@ Run when web support, branding, or app-shell navigation is touched.
 1. `npm run e2e:web`
 2. Manual browser check:
    - `/` opens onboarding on a clean local state
+   - the onboarding step-1 privacy line links to `/privacy` before any date is saved, and browser back returns to the unfinished step
    - onboarding finish leads to dashboard
    - dashboard renders cycle snapshot with a distinct ovulation marker, uniform phase cards, and the today-journal editor section
    - editing a day entry on the dashboard autosaves and updates local state without a page error
@@ -119,6 +120,7 @@ Run when web support, branding, or app-shell navigation is touched.
 During the same pass, confirm:
 
 - onboarding completion works without an account
+- the privacy notice is reachable from onboarding and from settings, and its policy button opens `https://ovumcy.com/privacy` in the platform browser (a device without a browser shows the address instead of failing silently)
 - no sensitive values appear in URLs
 - no debug logging prints health-related onboarding data
 - app behavior still makes sense with sync absent

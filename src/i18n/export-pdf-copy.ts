@@ -87,6 +87,11 @@ const exportPDFCopyEn = {
           ? "shorter than usual"
           : "within variable pattern"
     })`,
+  pregnancyTestsTitle: "Pregnancy tests",
+  pregnancyTestNegativeLabel: "Negative",
+  pregnancyTestPositiveLabel: "Positive",
+  pregnancyPausedNote: (date: string) =>
+    `Cycle predictions are paused in the app because of the positive test recorded on ${date}.`,
   shortLutealWarningTitle: "Short luteal phase",
   fertileWindowAssumptionFootnote: "Fertile windows assume a 14-day luteal phase where a personalised estimate is unavailable.",
   observedOvulationUncertaintyFootnote: "The probable-ovulation marker is estimated from logged BBT and cervical-mucus signals; it is accurate only to about ±1–2 days, not an exact date.",
@@ -183,6 +188,11 @@ const exportPDFCopyDe: ExportPDFCopy = {
           ? "kürzer als üblich"
           : "innerhalb eines variablen Musters"
     })`,
+  pregnancyTestsTitle: "Schwangerschaftstests",
+  pregnancyTestNegativeLabel: "Negativ",
+  pregnancyTestPositiveLabel: "Positiv",
+  pregnancyPausedNote: (date: string) =>
+    `Die Zyklusprognosen sind in der App pausiert, weil am ${date} ein positiver Test erfasst wurde.`,
   shortLutealWarningTitle: "Kurze Lutealphase",
   fertileWindowAssumptionFootnote: "Fruchtbarkeitsfenster setzen eine 14-tägige Lutealphase voraus, wenn keine personalisierte Schätzung verfügbar ist.",
   observedOvulationUncertaintyFootnote: "Der Marker für den wahrscheinlichen Eisprung wird aus erfassten BBT- und Zervixschleim-Signalen geschätzt; er ist nur auf etwa ±1–2 Tage genau, kein exaktes Datum.",
@@ -277,6 +287,11 @@ const exportPDFCopyFr: ExportPDFCopy = {
           ? "plus court que d'habitude"
           : "dans un schéma variable"
     })`,
+  pregnancyTestsTitle: "Tests de grossesse",
+  pregnancyTestNegativeLabel: "Négatif",
+  pregnancyTestPositiveLabel: "Positif",
+  pregnancyPausedNote: (date: string) =>
+    `Les prévisions de cycle sont suspendues dans l'application en raison du test positif enregistré le ${date}.`,
   shortLutealWarningTitle: "Phase lutéale courte",
   fertileWindowAssumptionFootnote: "Les fenêtres fertiles supposent une phase lutéale de 14 jours lorsqu'aucune estimation personnalisée n'est disponible.",
   observedOvulationUncertaintyFootnote: "Le repère d'ovulation probable est estimé à partir des signaux de TB et de glaire cervicale enregistrés ; il n'est précis qu'à environ ±1–2 jours, ce n'est pas une date exacte.",
@@ -373,6 +388,11 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
             ? "короче обычного"
             : "в пределах вариативного паттерна"
       })`,
+    pregnancyTestsTitle: "Тесты на беременность",
+    pregnancyTestNegativeLabel: "Отрицательный",
+    pregnancyTestPositiveLabel: "Положительный",
+    pregnancyPausedNote: (date: string) =>
+      `Прогнозы цикла в приложении приостановлены из-за положительного теста от ${date}.`,
     shortLutealWarningTitle: "Короткая лютеиновая фаза",
     fertileWindowAssumptionFootnote: "Фертильные окна рассчитаны с учётом лютеиновой фазы в 14 дней, если персонализированная оценка недоступна.",
     observedOvulationUncertaintyFootnote: "Отметка вероятной овуляции рассчитана по записанным сигналам БТТ и цервикальной слизи; она точна лишь примерно до ±1–2 дней и не является точной датой.",
@@ -471,6 +491,11 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
       })`,
     fertileWindowAssumptionFootnote: "Las ventanas fértiles asumen una fase lútea de 14 días cuando no hay una estimación personalizada disponible.",
     observedOvulationUncertaintyFootnote: "El marcador de ovulación probable se estima a partir de las señales registradas de TBC y moco cervical; solo tiene una precisión de unos ±1–2 días, no es una fecha exacta.",
+    pregnancyTestsTitle: "Pruebas de embarazo",
+    pregnancyTestNegativeLabel: "Negativa",
+    pregnancyTestPositiveLabel: "Positiva",
+    pregnancyPausedNote: (date: string) =>
+      `Las predicciones del ciclo están pausadas en la aplicación por la prueba positiva registrada el ${date}.`,
     shortLutealWarningTitle: "Fase lútea corta",
     shortLutealWarningDescription: (
       averageDays: number,
@@ -565,6 +590,11 @@ const exportPDFCopyCatalog: Record<InterfaceLanguage, ExportPDFCopy> = {
             ? "più corto del solito"
             : "all'interno di un pattern variabile"
       })`,
+    pregnancyTestsTitle: "Test di gravidanza",
+    pregnancyTestNegativeLabel: "Negativo",
+    pregnancyTestPositiveLabel: "Positivo",
+    pregnancyPausedNote: (date: string) =>
+      `Le previsioni del ciclo sono in pausa nell'app a causa del test positivo registrato il ${date}.`,
     shortLutealWarningTitle: "Fase luteale corta",
     fertileWindowAssumptionFootnote: "Le finestre fertili presumono una fase luteale di 14 giorni quando non è disponibile una stima personalizzata.",
     observedOvulationUncertaintyFootnote: "Il segnaposto dell'ovulazione probabile è stimato dai segnali registrati di BBT e muco cervicale; è preciso solo a circa ±1–2 giorni, non è una data esatta.",

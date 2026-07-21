@@ -36,6 +36,14 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     page.getByTestId(`onboarding-day-option-${onboardingStart}`),
   ).toBeVisible();
 
+  // The privacy notice must be reachable before the first cycle date is stored.
+  await page.getByTestId("onboarding-privacy-notice-link").click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByTestId("privacy-notice-section-on-device")).toBeVisible();
+  await expect(page.getByTestId("privacy-notice-policy-link")).toBeVisible();
+  await page.goBack();
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+
   await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
   await page.getByTestId("onboarding-next-button").click();
 
@@ -64,6 +72,7 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
   await expect(page.getByTestId("settings-reminders-lock")).toBeVisible();
   await expect(page.getByTestId("settings-sync-summary-card")).toBeVisible();
+  await expect(page.getByTestId("settings-privacy-card")).toBeVisible();
   await page.getByTestId("settings-open-backup-sync-button").click();
   await expect(page).toHaveURL(/\/backup-sync$/);
   await expect(page.getByTestId("settings-sync-section")).toBeVisible();

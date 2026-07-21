@@ -7,6 +7,7 @@ import { getStatsCopy } from "./stats-copy";
 import { getShellCopy } from "./shell-copy";
 import { getDashboardCopy } from "./dashboard-copy";
 import { getDayLogCopy } from "./day-log-copy";
+import { getExportPDFCopy } from "./export-pdf-copy";
 import { getSettingsCopy } from "./settings-copy";
 import { getOnboardingCopy } from "./app-copy";
 import { selectTOTPCopy } from "./totp-copy";
@@ -626,5 +627,94 @@ describe("J account-security copy — formal register (de Sie / fr vous / ru В�
     const ru = selectAccountSecurityCopy("ru");
     expect(ru.errors.rateLimitedRetry).toContain("подождите");
     expect(ru.errors.rateLimitedRetry).not.toContain("подожди ");
+  });
+});
+
+// ── K. Privacy notice + EU withdrawal copy ─────────────────────────────────
+
+describe("K privacy notice — translated, non-empty in 6 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
+  const nonEnglish = locales.filter((lang) => lang !== "en");
+
+  it.each(locales)("%s has a non-empty settings privacy card", (lang) => {
+    const copy = getSettingsCopy(lang).privacy;
+    expect(copy.title.trim().length).toBeGreaterThan(0);
+    expect(copy.subtitle.trim().length).toBeGreaterThan(0);
+    expect(copy.openLabel.trim().length).toBeGreaterThan(0);
+  });
+
+  it.each(nonEnglish)("%s translates the settings privacy card", (lang) => {
+    const en = getSettingsCopy("en").privacy;
+    const copy = getSettingsCopy(lang).privacy;
+    expect(copy.subtitle).not.toBe(en.subtitle);
+    expect(copy.openLabel).not.toBe(en.openLabel);
+  });
+
+  it.each(locales)("%s has an onboarding privacy line and link label", (lang) => {
+    const copy = getOnboardingCopy(lang).step1;
+    expect(copy.privacyNotice.trim().length).toBeGreaterThan(0);
+    expect(copy.privacyNoticeLink.trim().length).toBeGreaterThan(0);
+  });
+
+  it.each(nonEnglish)("%s translates the onboarding privacy line", (lang) => {
+    const en = getOnboardingCopy("en").step1;
+    const copy = getOnboardingCopy(lang).step1;
+    expect(copy.privacyNotice).not.toBe(en.privacyNotice);
+    expect(copy.privacyNoticeLink).not.toBe(en.privacyNoticeLink);
+  });
+});
+
+describe("K EU withdrawal copy — translated, non-empty in 6 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
+  const nonEnglish = locales.filter((lang) => lang !== "en");
+
+  it.each(locales)("%s states the withdrawal period and a contact route", (lang) => {
+    const copy = getSettingsCopy(lang).account;
+    expect(copy.withdrawalTitle.trim().length).toBeGreaterThan(0);
+    expect(copy.withdrawalBody).toContain("14");
+    expect(copy.withdrawalBody).toContain("contact@ovumcy.com");
+  });
+
+  it.each(nonEnglish)("%s translates the withdrawal wording", (lang) => {
+    const en = getSettingsCopy("en").account;
+    const copy = getSettingsCopy(lang).account;
+    expect(copy.withdrawalTitle).not.toBe(en.withdrawalTitle);
+    expect(copy.withdrawalBody).not.toBe(en.withdrawalBody);
+  });
+
+  it("de withdrawal wording keeps the formal Sie register", () => {
+    const de = getSettingsCopy("de").account;
+    expect(de.withdrawalBody).toContain("Sie");
+    expect(de.withdrawalBody).not.toMatch(/\b(du|dich|dein)\b/i);
+  });
+
+  it("fr withdrawal wording keeps the formal vous register", () => {
+    const fr = getSettingsCopy("fr").account;
+    expect(fr.withdrawalBody).toContain("vous");
+    expect(fr.withdrawalBody).not.toMatch(/\b(tu|toi|ton|tes)\b/i);
+  });
+});
+
+describe("K doctor-PDF pregnancy copy — translated, non-empty in 6 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
+  const nonEnglish = locales.filter((lang) => lang !== "en");
+
+  it.each(locales)("%s labels the section and both results", (lang) => {
+    const copy = getExportPDFCopy(lang);
+    expect(copy.pregnancyTestsTitle.trim().length).toBeGreaterThan(0);
+    expect(copy.pregnancyTestNegativeLabel.trim().length).toBeGreaterThan(0);
+    expect(copy.pregnancyTestPositiveLabel.trim().length).toBeGreaterThan(0);
+  });
+
+  it.each(locales)("%s renders the pause note with the recorded date", (lang) => {
+    const note = getExportPDFCopy(lang).pregnancyPausedNote("2026-03-14");
+    expect(note).toContain("2026-03-14");
+    expect(note.trim().length).toBeGreaterThan("2026-03-14".length);
+  });
+
+  it.each(nonEnglish)("%s translates the pause note", (lang) => {
+    expect(getExportPDFCopy(lang).pregnancyPausedNote("2026-03-14")).not.toBe(
+      getExportPDFCopy("en").pregnancyPausedNote("2026-03-14"),
+    );
   });
 });

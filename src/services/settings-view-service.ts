@@ -281,6 +281,8 @@ export type SettingsViewData = {
     renewalResumeLabel: string;
     renewalCancelPrompt: string;
     renewalCancelAccept: string;
+    withdrawalTitle: string;
+    withdrawalBody: string;
     offerDismissLabel: string;
     offerPromoEyebrow: string;
     offerAnnouncementEyebrow: string;
@@ -433,6 +435,7 @@ export type SettingsViewData = {
       failed: string;
     };
   };
+  privacy: SettingsCopy["privacy"];
   status: SettingsCopy["status"];
   premiumLock: SettingsCopy["premiumLock"];
 };
@@ -830,6 +833,8 @@ export function buildSettingsViewData(
       renewalResumeLabel: settingsCopy.account.renewalResumeLabel,
       renewalCancelPrompt: settingsCopy.account.renewalCancelPrompt,
       renewalCancelAccept: settingsCopy.account.renewalCancelAccept,
+      withdrawalTitle: settingsCopy.account.withdrawalTitle,
+      withdrawalBody: settingsCopy.account.withdrawalBody,
       offerDismissLabel: settingsCopy.account.offerDismissLabel,
       offerPromoEyebrow: settingsCopy.account.offerPromoEyebrow,
       offerAnnouncementEyebrow: settingsCopy.account.offerAnnouncementEyebrow,
@@ -997,6 +1002,7 @@ export function buildSettingsViewData(
         failed: settingsCopy.danger.failed,
       },
     },
+    privacy: settingsCopy.privacy,
     status: settingsCopy.status,
     premiumLock: settingsCopy.premiumLock,
   };

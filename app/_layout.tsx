@@ -69,6 +69,7 @@ function RootNavigator() {
             <Stack.Screen name="backup-sync" />
             <Stack.Screen name="sync-account-security" />
             <Stack.Screen name="partner-shared" />
+            <Stack.Screen name="privacy" />
           </Stack>
         </View>
       </ConfirmDialogProvider>

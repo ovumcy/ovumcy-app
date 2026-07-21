@@ -256,6 +256,20 @@ export const createOnboardingFlowStyles = (colors: AppThemeColors) =>
       gap: spacing.sm,
       paddingTop: spacing.xs,
     },
+    privacyNoticeRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 4,
+      justifyContent: "center",
+    },
+    privacyNoticeLink: {
+      color: colors.accent,
+      fontSize: 13,
+      fontWeight: "600",
+      lineHeight: 19,
+      textDecorationLine: "underline",
+    },
     buttonRow: {
       flexDirection: "row",
       gap: 10,

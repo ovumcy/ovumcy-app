@@ -376,6 +376,18 @@ describe("SettingsScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/backup-sync");
   });
 
+  it("opens the privacy notice from the settings privacy card", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await screen.findByTestId("settings-privacy-card");
+
+    fireEvent.press(screen.getByTestId("settings-open-privacy-notice-button"));
+
+    expect(mockPush).toHaveBeenCalledWith("/privacy");
+  });
+
   it("saves pending settings before opening backup and sync", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");

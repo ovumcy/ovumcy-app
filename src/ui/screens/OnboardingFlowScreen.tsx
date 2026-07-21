@@ -35,6 +35,7 @@ export type OnboardingFlowScreenProps = {
   onFinish: () => void | Promise<void>;
   onPredictionModeSelect: (value: PredictionMode) => void;
   onNext: () => void | Promise<void>;
+  onOpenPrivacyNotice: () => void | Promise<void>;
   onPeriodLengthChange: (value: number) => void;
   onUsageGoalSelect: (value: UsageGoal) => void;
   state: LoadedOnboardingState;
@@ -62,6 +63,7 @@ export function OnboardingFlowScreen({
   onFinish,
   onPredictionModeSelect,
   onNext,
+  onOpenPrivacyNotice,
   onPeriodLengthChange,
   onUsageGoalSelect,
   state,
@@ -109,6 +111,7 @@ export function OnboardingFlowScreen({
           onDismissStepOneError={onDismissStepOneError}
           onDismissStepOneNotice={onDismissStepOneNotice}
           onNext={onNext}
+          onOpenPrivacyNotice={onOpenPrivacyNotice}
           selectedDateValue={state.selectedDate}
           stepOneError={stepOneError}
           stepOneNotice={stepOneNotice}

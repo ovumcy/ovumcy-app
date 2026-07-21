@@ -206,6 +206,11 @@ const settingsCopyEn = {
     unsavedPrompt:
       "You have unsaved settings changes. Save them before leaving settings?",
   },
+  privacy: {
+    title: "Privacy",
+    subtitle: "What Ovumcy stores on this device and what never leaves it.",
+    openLabel: "Open privacy notice",
+  },
   account: {
     title: "Backup & sync",
     subtitle:
@@ -304,6 +309,9 @@ const settingsCopyEn = {
     renewalCancelPrompt:
       "Turn off automatic renewal? Your plan stays active until the end of the already-paid period.",
     renewalCancelAccept: "Turn off renewal",
+    withdrawalTitle: "Right of withdrawal and refunds (EU/EEA)",
+    withdrawalBody:
+      "If you buy an Ovumcy Cloud plan as a consumer in the EU or EEA, you have 14 days to withdraw without giving a reason. Cloud access starts immediately at your request, so the withdrawal right ends once the service has been fully provided; withdraw earlier and you pay only for the part already used. To withdraw or ask about a refund, write to contact@ovumcy.com.",
     offerDismissLabel: "Dismiss this offer",
     offerPromoEyebrow: "Offer",
     offerAnnouncementEyebrow: "News",
@@ -768,6 +776,12 @@ const settingsCopyDe: SettingsCopy = {
     unsavedPrompt:
       "Sie haben ungespeicherte Einstellungsänderungen. Vor dem Verlassen speichern?",
   },
+  privacy: {
+    title: "Datenschutz",
+    subtitle:
+      "Was Ovumcy auf diesem Gerät speichert und was es nie verlässt.",
+    openLabel: "Datenschutzhinweis öffnen",
+  },
   account: {
     ...settingsCopyEn.account,
     title: "Backup & Sync",
@@ -870,6 +884,9 @@ const settingsCopyDe: SettingsCopy = {
     renewalCancelPrompt:
       "Automatische Verlängerung deaktivieren? Ihr Tarif bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv.",
     renewalCancelAccept: "Verlängerung deaktivieren",
+    withdrawalTitle: "Widerrufsrecht und Erstattungen (EU/EWR)",
+    withdrawalBody:
+      "Wenn Sie einen Ovumcy-Cloud-Plan als Verbraucherin oder Verbraucher in der EU oder im EWR kaufen, können Sie den Vertrag innerhalb von 14 Tagen ohne Angabe von Gründen widerrufen. Der Cloud-Zugang beginnt auf Ihren Wunsch sofort; das Widerrufsrecht erlischt daher, sobald die Leistung vollständig erbracht ist. Bei früherem Widerruf zahlen Sie nur den bereits genutzten Anteil. Für Widerruf oder Erstattung schreiben Sie an contact@ovumcy.com.",
     offerDismissLabel: "Dieses Angebot ausblenden",
     offerPromoEyebrow: "Angebot",
     offerAnnouncementEyebrow: "Neuigkeiten",
@@ -1370,6 +1387,12 @@ const settingsCopyFr: SettingsCopy = {
     unsavedPrompt:
       "Vous avez des modifications de réglages non enregistrées. Les enregistrer avant de quitter ?",
   },
+  privacy: {
+    title: "Confidentialité",
+    subtitle:
+      "Ce qu'Ovumcy enregistre sur cet appareil et ce qui n'en sort jamais.",
+    openLabel: "Ouvrir l'avis de confidentialité",
+  },
   account: {
     ...settingsCopyEn.account,
     title: "Sauvegarde et sync",
@@ -1474,6 +1497,9 @@ const settingsCopyFr: SettingsCopy = {
     renewalCancelPrompt:
       "Désactiver le renouvellement automatique ? Votre plan reste actif jusqu'à la fin de la période déjà payée.",
     renewalCancelAccept: "Désactiver le renouvellement",
+    withdrawalTitle: "Droit de rétractation et remboursements (UE/EEE)",
+    withdrawalBody:
+      "Si vous achetez un forfait Ovumcy Cloud en tant que consommateur dans l'UE ou l'EEE, vous disposez de 14 jours pour vous rétracter sans motif. L'accès au cloud démarre immédiatement à votre demande : le droit de rétractation prend donc fin une fois le service entièrement fourni, et si vous vous rétractez avant, vous ne payez que la part déjà utilisée. Pour vous rétracter ou demander un remboursement, écrivez à contact@ovumcy.com.",
     offerDismissLabel: "Ignorer cette offre",
     offerPromoEyebrow: "Offre",
     offerAnnouncementEyebrow: "Actualité",
@@ -1974,6 +2000,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       unsavedPrompt:
         "Есть несохранённые изменения в настройках. Сохранить их перед выходом из настроек?",
     },
+    privacy: {
+      title: "Конфиденциальность",
+      subtitle:
+        "Что Ovumcy хранит на этом устройстве и что его никогда не покидает.",
+      openLabel: "Открыть уведомление о конфиденциальности",
+    },
     account: {
       title: "Резервная копия и sync",
       subtitle:
@@ -2073,6 +2105,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       renewalCancelPrompt:
         "Отключить автоматическое продление? План останется активным до конца уже оплаченного периода.",
       renewalCancelAccept: "Отключить продление",
+      withdrawalTitle: "Право на отказ и возврат средств (ЕС/ЕЭЗ)",
+      withdrawalBody:
+        "Если вы покупаете план Ovumcy Cloud как потребитель в ЕС или ЕЭЗ, у вас есть 14 дней, чтобы отказаться от договора без объяснения причин. Доступ к облаку открывается сразу по вашему запросу, поэтому право на отказ прекращается, как только услуга оказана полностью; при отказе раньше вы платите только за уже использованную часть. Чтобы отказаться или запросить возврат, напишите на contact@ovumcy.com.",
       offerDismissLabel: "Скрыть это предложение",
       offerPromoEyebrow: "Предложение",
       offerAnnouncementEyebrow: "Новости",
@@ -2539,6 +2574,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       unsavedPrompt:
         "Hay cambios de ajustes sin guardar. ¿Quieres guardarlos antes de salir de ajustes?",
     },
+    privacy: {
+      title: "Privacidad",
+      subtitle:
+        "Qué guarda Ovumcy en este dispositivo y qué nunca sale de él.",
+      openLabel: "Abrir el aviso de privacidad",
+    },
     account: {
       title: "Copia y sync",
       subtitle:
@@ -2638,6 +2679,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       renewalCancelPrompt:
         "¿Desactivar la renovación automática? Tu plan sigue activo hasta el final del periodo ya pagado.",
       renewalCancelAccept: "Desactivar renovación",
+      withdrawalTitle: "Derecho de desistimiento y reembolsos (UE/EEE)",
+      withdrawalBody:
+        "Si compras un plan de Ovumcy Cloud como consumidor en la UE o el EEE, dispones de 14 días para desistir sin dar explicaciones. El acceso a la nube comienza de inmediato a petición tuya, por lo que el derecho de desistimiento se extingue una vez prestado el servicio por completo; si desistes antes, solo pagas la parte ya utilizada. Para desistir o solicitar un reembolso, escribe a contact@ovumcy.com.",
       offerDismissLabel: "Descartar esta oferta",
       offerPromoEyebrow: "Oferta",
       offerAnnouncementEyebrow: "Novedades",
@@ -3114,6 +3158,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       unsavedPrompt:
         "Ci sono modifiche alle impostazioni non salvate. Vuoi salvarle prima di uscire dalle impostazioni?",
     },
+    privacy: {
+      title: "Privacy",
+      subtitle:
+        "Cosa conserva Ovumcy su questo dispositivo e cosa non lo lascia mai.",
+      openLabel: "Apri l'informativa sulla privacy",
+    },
     account: {
       title: "Backup & sync",
       subtitle:
@@ -3213,6 +3263,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       renewalCancelPrompt:
         "Disattivare il rinnovo automatico? Il tuo piano resta attivo fino alla fine del periodo già pagato.",
       renewalCancelAccept: "Disattiva rinnovo",
+      withdrawalTitle: "Diritto di recesso e rimborsi (UE/SEE)",
+      withdrawalBody:
+        "Se acquisti un piano Ovumcy Cloud come consumatore nell'UE o nel SEE, hai 14 giorni per recedere senza doverne indicare il motivo. L'accesso al cloud inizia subito su tua richiesta, quindi il diritto di recesso si estingue una volta che il servizio è stato interamente fornito; se recedi prima, paghi solo la parte già utilizzata. Per recedere o chiedere un rimborso, scrivi a contact@ovumcy.com.",
       offerDismissLabel: "Ignora questa offerta",
       offerPromoEyebrow: "Offerta",
       offerAnnouncementEyebrow: "Novità",

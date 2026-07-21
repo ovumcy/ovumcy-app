@@ -530,6 +530,13 @@ export function SettingsSyncSetupSection({
                 ) : null}
               </View>
             ) : null}
+            <View
+              style={styles.stepHeader}
+              testID="settings-sync-withdrawal-notice"
+            >
+              <Text style={styles.fieldLabel}>{viewData.withdrawalTitle}</Text>
+              <Text style={styles.helperText}>{viewData.withdrawalBody}</Text>
+            </View>
             {billingOffers.map((offer) => (
               <OfferCard
                 body={offer.body}

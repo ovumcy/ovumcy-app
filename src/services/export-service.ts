@@ -80,6 +80,11 @@ export const EXPORT_CSV_HEADERS = [
   "Cycle factors",
   "Other",
   "Notes",
+  // Trailing three mirror the ovumcy-web Free-tier CSV contract, in the same
+  // order, so an export from either owner surface parses the same way.
+  "Pregnancy test",
+  "Cycle start",
+  "Uncertain",
 ] as const;
 
 const EXPORT_SYMPTOM_COLUMNS_BY_LABEL: Record<string, keyof ExportSymptomFlags> = {
@@ -343,6 +348,9 @@ export function buildExportCSVRows(
       symptoms: flags,
       otherSymptoms,
       notes: record.notes,
+      pregnancyTest: normalizeExportPregnancyTest(record.pregnancyTest),
+      cycleStart: record.cycleStart,
+      isUncertain: record.isUncertain,
     };
   });
 }
@@ -383,6 +391,9 @@ export function serializeExportCSV(
         row.cycleFactors.map(sanitizeCSVTextCell).join("; "),
         row.otherSymptoms.map(sanitizeCSVTextCell).join("; "),
         sanitizeCSVTextCell(row.notes),
+        row.pregnancyTest,
+        booleanToCSV(row.cycleStart),
+        booleanToCSV(row.isUncertain),
       ]
         .map(escapeCSVField)
         .join(","),
@@ -459,6 +470,12 @@ function buildExportFilename(format: ExportFormat, now: Date): string {
 }
 
 function normalizeExportFlow(value: DayLogRecord["flow"]): string {
+  return value === "none" ? "" : value;
+}
+
+function normalizeExportPregnancyTest(
+  value: DayLogRecord["pregnancyTest"],
+): string {
   return value === "none" ? "" : value;
 }
 

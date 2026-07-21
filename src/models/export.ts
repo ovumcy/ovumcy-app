@@ -71,6 +71,9 @@ export type ExportCSVRow = {
   symptoms: ExportSymptomFlags;
   otherSymptoms: string[];
   notes: string;
+  pregnancyTest: string;
+  cycleStart: boolean;
+  isUncertain: boolean;
 };
 
 export type ExportBackupEnvelope = {
@@ -150,6 +153,11 @@ export type ExportPDFShortLutealWarning = {
   observationCount: number;
 };
 
+export type ExportPDFPregnancyTest = {
+  date: LocalDateISO;
+  result: "negative" | "positive";
+};
+
 export type ExportPDFReport = {
   generatedAt: string;
   language: InterfaceLanguage;
@@ -160,4 +168,8 @@ export type ExportPDFReport = {
   advancedFertility: ExportPDFAdvancedFertilityItem[];
   extendedReportRows: ExportPDFExtendedReportRow[];
   shortLutealWarning: ExportPDFShortLutealWarning | null;
+  pregnancyTests: ExportPDFPregnancyTest[];
+  // Non-null only while the shared projection reports an active pause, so the
+  // report never re-derives the pregnancy rule on its own.
+  pregnancyPauseDate: LocalDateISO | null;
 };

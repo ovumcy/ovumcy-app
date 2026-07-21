@@ -7,8 +7,10 @@ import { createLocalAppStorageMock } from "../../test/create-local-app-storage-m
 import { OnboardingScreen } from "./OnboardingScreen";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 const mockRouter = {
   replace: mockReplace,
+  push: mockPush,
 };
 
 jest.mock("expo-router", () => {
@@ -36,6 +38,28 @@ function createOnboardingRecordFixture(
 describe("OnboardingScreen", () => {
   beforeEach(() => {
     mockReplace.mockReset();
+    mockPush.mockReset();
+  });
+
+  it("opens the privacy notice from step 1, before any cycle date is stored", async () => {
+    const storage = createLocalAppStorageMock({
+      readBootstrapState: jest.fn().mockResolvedValue({
+        hasCompletedOnboarding: false,
+        profileVersion: 2,
+        incompleteOnboardingStep: 1,
+      }),
+      readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
+    });
+
+    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await screen.findByTestId("onboarding-next-button");
+
+    fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
+
+    expect(mockPush).toHaveBeenCalledWith("/privacy");
+    // Reading the notice must not commit anything: the transparency obligation
+    // is satisfied before collection, not after it.
+    expect(storage.writeOnboardingRecord).not.toHaveBeenCalled();
   });
 
   it("shows onboarding immediately while local state hydrates", async () => {
