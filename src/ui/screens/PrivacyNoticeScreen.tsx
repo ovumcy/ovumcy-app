@@ -20,9 +20,11 @@ export type PrivacyNoticeScreenProps = {
   openPrivacyPolicy?: () => Promise<boolean>;
 };
 
+// No `= {}` default on the parameter: React always calls a component with a
+// props object, so the whole-object default would be unreachable code.
 export function PrivacyNoticeScreen({
   openPrivacyPolicy = openPrivacyPolicyURL,
-}: PrivacyNoticeScreenProps = {}) {
+}: PrivacyNoticeScreenProps) {
   const router = useRouter();
   const { language } = useAppPreferences();
   const styles = useThemedStyles(createStyles);

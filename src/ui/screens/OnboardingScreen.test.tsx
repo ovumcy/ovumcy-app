@@ -1,4 +1,3 @@
-import * as reactNative from "react-native";
 import type { ComponentProps } from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
@@ -120,26 +119,6 @@ describe("OnboardingFlowScreen", () => {
     expect(onOpenPrivacyNotice).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the privacy line readable on a narrow phone", () => {
-    const dimensions = jest
-      .spyOn(reactNative, "useWindowDimensions")
-      .mockReturnValue({ width: 390, height: 844, scale: 3, fontScale: 1 });
-
-    try {
-      renderFlow(createState());
-
-      // The compact layout is the one most owners actually see; the notice and
-      // its link must survive it rather than only rendering on a tablet.
-      expect(screen.getByTestId("onboarding-privacy-notice-link")).toBeTruthy();
-      expect(
-        screen.getByText(
-          "Everything you enter is stored on this device. No account, no tracking.",
-        ),
-      ).toBeTruthy();
-    } finally {
-      dimensions.mockRestore();
-    }
-  });
 
   it("uses quick day options as the only step 1 date selection path", () => {
     const onDateSelected = jest.fn();

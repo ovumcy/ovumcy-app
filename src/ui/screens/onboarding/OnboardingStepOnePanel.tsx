@@ -145,7 +145,10 @@ export function OnboardingStepOnePanel({
         />
 
         <View style={styles.privacyNoticeRow}>
-          <Text style={[styles.infoText, compact ? styles.infoTextCompact : null]}>
+          {/* One size at every width: this line is already the small style,
+              and a compact variant would only shave a pixel off text that has
+              to stay legible on the narrowest phone. */}
+          <Text style={styles.infoText}>
             {viewData.stepOne.privacyNotice}
           </Text>
           <Pressable
