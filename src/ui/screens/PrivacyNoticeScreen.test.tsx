@@ -9,6 +9,13 @@ const mockBack = jest.fn();
 const mockReplace = jest.fn();
 const mockCanGoBack = jest.fn();
 
+const mockDefaultOpenPrivacyPolicy = jest.fn();
+
+jest.mock("../../services/privacy-notice-service", () => ({
+  ...jest.requireActual("../../services/privacy-notice-service"),
+  openPrivacyPolicy: () => mockDefaultOpenPrivacyPolicy(),
+}));
+
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: mockBack,
@@ -35,6 +42,7 @@ describe("PrivacyNoticeScreen", () => {
     mockReplace.mockReset();
     mockCanGoBack.mockReset();
     mockCanGoBack.mockReturnValue(true);
+    mockDefaultOpenPrivacyPolicy.mockReset();
   });
 
   it("renders every notice section and the policy address", () => {
@@ -90,4 +98,22 @@ describe("PrivacyNoticeScreen", () => {
     expect(mockBack).not.toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledWith("/");
   });
+  it("falls back to the real policy opener when no override is injected", async () => {
+    mockDefaultOpenPrivacyPolicy.mockResolvedValue(true);
+
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PrivacyNoticeScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
+
+    // The injectable prop exists for tests; production renders the route with
+    // no props at all, so the default has to be the wired-up opener.
+    await waitFor(() => {
+      expect(mockDefaultOpenPrivacyPolicy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
+
