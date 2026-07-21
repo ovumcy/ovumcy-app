@@ -490,6 +490,9 @@ describe("SettingsScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     const buildPDFContent = jest
       .fn()
@@ -641,6 +644,9 @@ describe("SettingsScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -1085,6 +1091,9 @@ describe("SettingsScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     render(

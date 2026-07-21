@@ -53,6 +53,9 @@ const PREPARED_MANAGED_SECRETS: SyncSecretsRecord = {
   },
   authSessionToken: null,
   managedAuthSessionToken: null,
+  managedAuthSessionExpiresAt: null,
+  managedRefreshToken: null,
+  managedRefreshTokenExpiresAt: null,
 };
 
 describe("connectBackupSyncAccount managed plan refresh", () => {
@@ -1311,6 +1314,93 @@ describe("completeBackupSyncTOTPChallenge", () => {
     expect(result.state.managedPremiumAccess.planStatus).toBe("active");
     const secrets = await secretStore.readSyncSecrets();
     expect(secrets?.managedAuthSessionToken).toBe("totp-session-1");
+  });
+
+  it("persists the refresh token issued alongside the post-2FA session", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(PREPARED_MANAGED_SECRETS);
+    const state = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 2, 19),
+    );
+
+    global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      if (url.endsWith("/auth/totp/challenge") && method === "POST") {
+        return new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "owner@example.com",
+            session_token: "totp-session-1",
+            session_expires_at: "2026-03-20T08:15:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "manual",
+              updated_at: "2026-03-19T08:15:00.000Z",
+              effective_at: "2026-03-19T08:15:00.000Z",
+              explanation: "Trial active.",
+            },
+            refresh_token: "totp-refresh-1",
+            refresh_token_expires_at: "2026-06-17T08:15:00.000Z",
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/auth/session") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            account_id: "managed-account-1",
+            email: "owner@example.com",
+            session_expires_at: "2026-03-20T08:15:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "manual",
+              updated_at: "2026-03-19T08:15:00.000Z",
+              effective_at: "2026-03-19T08:15:00.000Z",
+              explanation: "Trial active.",
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (url.endsWith("/account/billing") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            has_active_plan: true,
+            premium_features: {
+              doctor_pdf: true,
+              advanced_insights: true,
+              advanced_fertility: true,
+              extended_reports: true,
+              partner_access: true,
+              reminders: true,
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      throw new Error(`Unexpected fetch in test: ${method} ${url}`);
+    }) as typeof fetch;
+
+    const result = await completeBackupSyncTOTPChallenge(
+      storage,
+      secretStore,
+      state,
+      state.syncPreferences,
+      { challengeID: "chal-1", code: "123456" },
+    );
+
+    expect(result.ok).toBe(true);
+    const secrets = await secretStore.readSyncSecrets();
+    // A session finalized after the second factor must be as renewable as one
+    // from a password-only login; otherwise 2FA users alone would be pushed
+    // back to re-entering credentials when the short session expires.
+    expect(secrets?.managedAuthSessionToken).toBe("totp-session-1");
+    expect(secrets?.managedRefreshToken).toBe("totp-refresh-1");
+    expect(secrets?.managedRefreshTokenExpiresAt).toBe("2026-06-17T08:15:00.000Z");
+    expect(secrets?.managedAuthSessionExpiresAt).toBe("2026-03-20T08:15:00.000Z");
   });
 });
 

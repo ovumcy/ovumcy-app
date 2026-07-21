@@ -237,6 +237,12 @@ export type ManagedCloudAuthResult = {
   // must complete the challenge through `completeTOTPChallenge` before any
   // session can be used. Register responses never set this field.
   totpChallenge?: SyncTOTPChallengeHandoff;
+  // refreshToken renews the session without the password. Present only when
+  // the server supports refresh tokens and this client declared support; an
+  // older managed deployment simply omits it and the session keeps the long
+  // legacy lifetime. Single-use — each renewal returns its successor.
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
 };
 
 // ManagedCloudGuestPartnerAcceptResult is the response shape of the
@@ -429,6 +435,17 @@ export type ManagedCloudAPIClient = {
     | { ok: true; auth: ManagedCloudAuthResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  // refreshSession exchanges a refresh token for a fresh access session and a
+  // rotated successor token. It carries no bearer header on purpose: the
+  // access session it replaces has usually expired already. `unauthorized`
+  // means the refresh chain is dead — the owner must sign in again — and the
+  // server has already revoked the whole family, so retrying is pointless.
+  refreshSession(
+    refreshToken: string,
+  ): Promise<
+    | { ok: true; auth: ManagedCloudAuthResult }
+    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  >;
   acceptPartnerInvite(
     sessionToken: string,
     inviteToken: string,
@@ -526,6 +543,8 @@ type RawManagedCloudAuthResult = RawSyncAuthResult & {
   sync_entitlement: RawManagedCloudEntitlement;
   recovery_code?: string;
   totp_challenge?: RawManagedCloudTOTPChallenge;
+  refresh_token?: string;
+  refresh_token_expires_at?: string;
 };
 
 type RawManagedCloudTOTPEnrollmentStart = {
@@ -891,7 +910,25 @@ export function createManagedCloudAPIClient(
           body: {
             challenge_id: input.challengeID,
             code: input.code,
+            refresh_supported: true,
           },
+        },
+        isRawManagedCloudAuthResult,
+      ).then((result) =>
+        result.ok
+          ? { ok: true, auth: mapAuthResult(result.payload) }
+          : { ok: false, errorCode: result.errorCode },
+      );
+    },
+
+    async refreshSession(refreshToken) {
+      return requestJSON<RawManagedCloudAuthResult>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/refresh",
+        {
+          method: "POST",
+          body: { refresh_token: refreshToken },
         },
         isRawManagedCloudAuthResult,
       ).then((result) =>
@@ -1256,7 +1293,11 @@ async function requestAuthResult(
     path,
     {
       method: "POST",
-      body: input,
+      // Declaring refresh support is what makes the server issue a short
+      // access session with a renewable refresh token instead of a long-lived
+      // one. A server that predates the flag ignores it and answers exactly as
+      // before.
+      body: { ...input, refresh_supported: true },
     },
     isRawManagedCloudAuthResult,
   );
@@ -1787,6 +1828,17 @@ function mapAuthResult(raw: RawManagedCloudAuthResult): ManagedCloudAuthResult {
       challengeID: raw.totp_challenge.challenge_id,
       challengeExpiresAt: raw.totp_challenge.challenge_expires_at,
     };
+  }
+  // Both refresh fields travel together; a response carrying only one is
+  // treated as carrying neither rather than storing half a credential.
+  if (
+    typeof raw.refresh_token === "string" &&
+    raw.refresh_token.length > 0 &&
+    typeof raw.refresh_token_expires_at === "string" &&
+    raw.refresh_token_expires_at.length > 0
+  ) {
+    result.refreshToken = raw.refresh_token;
+    result.refreshTokenExpiresAt = raw.refresh_token_expires_at;
   }
   return result;
 }

@@ -104,6 +104,11 @@ export type SyncAuthResult = {
   accountID: string;
   sessionToken: string;
   sessionExpiresAt: string;
+  // refreshToken renews the session without the password. Only the managed
+  // cloud issues these; a self-hosted community server has no refresh flow, so
+  // its results leave both fields unset and its sessions stay long-lived.
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
   // recoveryCode is the plaintext account-level recovery code. It is set only
   // on register responses; login and managed-bridge sessions never carry it.
   // The app surfaces it exactly once at sync setup and then forgets it.
@@ -200,6 +205,19 @@ export type SyncSecretsRecord = {
   wrappedKey: WrappedSyncKeyMetadata;
   authSessionToken: string | null;
   managedAuthSessionToken: string | null;
+  // managedAuthSessionExpiresAt is the ISO expiry the managed cloud stamped on
+  // the current access session. It is what lets the app renew a short-lived
+  // session before it lapses instead of discovering the expiry as a failed
+  // request. Null on a legacy record, or when the server never reported one.
+  managedAuthSessionExpiresAt: string | null;
+  // managedRefreshToken renews the managed access session without asking for
+  // the password again. It is a bearer secret with the same handling rules as
+  // the session token — secure store only, never logged, never in a URL — and
+  // is single-use: every renewal replaces it with its successor. Null when the
+  // server did not issue one (an older managed deployment, or a session minted
+  // before this device declared refresh support).
+  managedRefreshToken: string | null;
+  managedRefreshTokenExpiresAt: string | null;
 };
 
 export function normalizeSyncMode(

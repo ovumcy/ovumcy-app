@@ -185,6 +185,16 @@ When the owner revokes a grant, the managed cloud stops accepting uploads and se
 
 What revoke cannot do: symmetric AEAD does not support post-hoc key revocation for ciphertext the partner has already downloaded. If the partner cached a projection before revoke, that ciphertext stays decryptable on the partner device — there is no cryptographic way to retract it without rolling out a new key the partner does not have. This is documented as a trust-boundary limit, not a bug; the UI surfaces the revoke as "no new updates will be visible," not as "all data deleted from the partner device."
 
+## Managed Session Renewal
+
+The app declares `refresh_supported` on every managed register, login, and TOTP-challenge completion. A managed cloud that understands the flag answers with a short-lived access session plus a refresh token; one that does not simply ignores it and returns the long-lived session as before, so the client works against either.
+
+Both the access token and the refresh token are bearer secrets and live in secure storage beside the other sync material (`SyncSecretsRecord.managedAuthSessionToken` / `managedRefreshToken`), never in broad key-value storage, route params, or logs. The stamped access expiry is stored alongside them so renewal can happen before a request fails rather than after.
+
+`ensureFreshManagedSession` (`src/sync/managed-session-refresh-service.ts`) is the only place that exchanges a refresh token. It renews when the access session is within five minutes of expiry, and it serializes: a refresh token is single-use and the server treats a second use of the same token as a leak — revoking the whole family — so concurrent screens share one in-flight exchange rather than racing. It is called from `loadManagedBillingSnapshot`, the read every premium surface funnels through, so one refresher keeps the stored token fresh for every other consumer.
+
+Failure handling is deliberately asymmetric. A rejected refresh means the chain is dead and the credentials are cleared, because the server has already revoked the family and retrying is pointless. A network failure returns the existing token untouched: being offline must never look like being signed out. A guest-partner session records no refresh state at all — it has no renewal path by design.
+
 ## Outbound Fetch Posture
 
 `sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token because HTTP preserves method + headers on those status codes.

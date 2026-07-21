@@ -19,6 +19,10 @@ import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
+import {
+  applyManagedAuthResultToSecrets,
+  clearManagedSessionFromSecrets,
+} from "./managed-session-refresh-service";
 import { isPasswordTooShort } from "./password-policy";
 import type {
   EncryptedSyncEnvelope,
@@ -230,11 +234,12 @@ export async function connectSyncAccount(
       };
     }
 
-    await secretStore.writeSyncSecrets({
-      ...secrets,
-      authSessionToken: null,
-      managedAuthSessionToken: authResult.auth.sessionToken,
-    });
+    await secretStore.writeSyncSecrets(
+      applyManagedAuthResultToSecrets(
+        { ...secrets, authSessionToken: null },
+        authResult.auth,
+      ),
+    );
 
     const nextPreferences: SyncPreferencesRecord = {
       ...preferences,
@@ -380,7 +385,16 @@ export async function finalizeSyncSessionAfterTOTP(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { sessionToken: string },
+  // The refresh fields are optional so a caller that only has the session
+  // token still compiles; a managed login that received a refresh token passes
+  // it through here, or the finalized session would silently lose the ability
+  // to renew itself and expire in hours.
+  input: {
+    sessionToken: string;
+    sessionExpiresAt?: string;
+    refreshToken?: string;
+    refreshTokenExpiresAt?: string;
+  },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
@@ -428,6 +442,9 @@ export async function finalizeSyncSessionAfterTOTP(
       ...secrets,
       authSessionToken: null,
       managedAuthSessionToken: input.sessionToken,
+      managedAuthSessionExpiresAt: input.sessionExpiresAt ?? null,
+      managedRefreshToken: input.refreshToken ?? null,
+      managedRefreshTokenExpiresAt: input.refreshTokenExpiresAt ?? null,
     });
 
     const nextPreferences: SyncPreferencesRecord = {
@@ -556,6 +573,13 @@ export async function persistGuestPartnerSession(
     ...baseSecrets,
     authSessionToken: null,
     managedAuthSessionToken: input.sessionToken,
+    // A guest session has no renewal path (see the doc comment above), so it
+    // records no renewal state: its expiry already lives in the
+    // `guestSessionExpiresAt` preference, and any refresh material left over
+    // from an earlier owner session on this device must not survive into it.
+    managedAuthSessionExpiresAt: null,
+    managedRefreshToken: null,
+    managedRefreshTokenExpiresAt: null,
   });
 
   const nextPreferences: SyncPreferencesRecord = {
@@ -734,11 +758,12 @@ export async function loadConnectedSyncCapabilities(
     );
     if (!sessionResult.ok) {
       if (sessionResult.errorCode === "unauthorized") {
-        await secretStore.writeSyncSecrets({
-          ...secrets,
-          authSessionToken: null,
-          managedAuthSessionToken: null,
-        });
+        await secretStore.writeSyncSecrets(
+          clearManagedSessionFromSecrets({
+            ...secrets,
+            authSessionToken: null,
+          }),
+        );
       }
       return {
         ok: false,
@@ -910,11 +935,15 @@ export async function recoverSyncAccess(
       recoveredSecrets.wrappedKey,
     );
 
-    await secretStore.writeSyncSecrets({
-      ...recoveredSecrets,
-      authSessionToken: syncSessionResult.auth.sessionToken,
-      managedAuthSessionToken: authResult.auth.sessionToken,
-    });
+    await secretStore.writeSyncSecrets(
+      applyManagedAuthResultToSecrets(
+        {
+          ...recoveredSecrets,
+          authSessionToken: syncSessionResult.auth.sessionToken,
+        },
+        authResult.auth,
+      ),
+    );
 
     const nextPreferences: SyncPreferencesRecord = {
       ...createDefaultSyncPreferencesRecord(),
@@ -1478,11 +1507,12 @@ async function readPreparedSyncContext(
     );
     if (!sessionResult.ok) {
       if (sessionResult.errorCode === "unauthorized") {
-        await secretStore.writeSyncSecrets({
-          ...secrets,
-          authSessionToken: null,
-          managedAuthSessionToken: null,
-        });
+        await secretStore.writeSyncSecrets(
+          clearManagedSessionFromSecrets({
+            ...secrets,
+            authSessionToken: null,
+          }),
+        );
         return { ok: false, errorCode: "unauthorized" };
       }
 

@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the published policy on the website.
 - Right-of-withdrawal and refund wording on the cloud-plan step, covering the
   14-day EU/EEA consumer withdrawal period and where to send the request.
+- Managed session renewal: the app declares refresh support on sign-in, keeps
+  the refresh token in secure storage beside the session token, and renews the
+  short-lived managed access session before it expires instead of asking for
+  the password again. Concurrent renewals share one exchange, because a refresh
+  token is single-use and a second use is treated as a leak server-side. A
+  managed cloud without refresh support is unaffected: its long-lived sessions
+  keep working unchanged.
 
 ### Changed
 

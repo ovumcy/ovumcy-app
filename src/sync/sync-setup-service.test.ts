@@ -30,6 +30,9 @@ describe("sync-setup-service", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     const result = await loadSyncSetupState(storage, secretStore);
@@ -102,6 +105,9 @@ describe("sync-setup-service", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     const result = await prepareSyncSetup(
@@ -155,6 +161,9 @@ describe("sync-setup-service", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "guest-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     };
     await secretStore.writeSyncSecrets(existingGuestSecrets);
 
@@ -287,6 +296,9 @@ describe("sync-setup-service", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     const result = await saveSyncPreferencesDraft(

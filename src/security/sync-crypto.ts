@@ -71,6 +71,9 @@ export function createSyncSecretsRecord(
       wrappedKey,
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     },
   };
 }
@@ -90,6 +93,9 @@ export function createRecoveredSyncSecretsRecord(
     wrappedKey,
     authSessionToken: null,
     managedAuthSessionToken: null,
+    managedAuthSessionExpiresAt: null,
+    managedRefreshToken: null,
+    managedRefreshTokenExpiresAt: null,
   };
 }
 

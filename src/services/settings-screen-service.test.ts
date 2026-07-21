@@ -100,6 +100,9 @@ describe("settings services", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -195,6 +198,9 @@ describe("settings services", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -298,6 +304,9 @@ describe("settings services", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -419,6 +428,9 @@ describe("settings services", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -520,6 +532,9 @@ describe("settings services", () => {
       },
       authSessionToken: "expired-sync-session",
       managedAuthSessionToken: "expired-managed-session",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(JSON.stringify({ error: "unauthorized" }), {
@@ -1220,6 +1235,9 @@ describe("settings services", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     const initialState = createLoadedSettingsState(
       await storage.readProfileRecord(),
