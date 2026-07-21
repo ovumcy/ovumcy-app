@@ -66,7 +66,7 @@
   },
   "private": true,
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "1.61.1",
     "@stryker-mutator/api": "^8.7.1",
     "@stryker-mutator/core": "^8.7.1",
     "@stryker-mutator/jest-runner": "^8.7.1",
