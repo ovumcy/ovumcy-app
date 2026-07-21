@@ -87,4 +87,16 @@ describe("privacy-notice-service", () => {
 
     await expect(openPrivacyPolicy()).resolves.toBe(false);
   });
+  it("falls back to English for a stored language the app no longer knows", () => {
+    // languageOverride is read back from a persisted profile, so it can hold a
+    // value written by a different app version. The notice must still render
+    // rather than come back undefined.
+    const viewData = buildPrivacyNoticeViewData(
+      "kl" as unknown as InterfaceLanguage,
+    );
+
+    expect(viewData.title).toBe(selectPrivacyNoticeCopy("en").title);
+    expect(viewData.sections).toHaveLength(8);
+  });
 });
+

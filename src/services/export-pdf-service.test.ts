@@ -844,6 +844,12 @@ describe("doctor PDF: recorded pregnancy tests", () => {
         symptomRecords: [],
         dayLogs: [
           cycleStartDay("2026-03-01"),
+          // Both results in one document so each side of the label choice is
+          // actually drawn, not just the positive one that drives the pause.
+          {
+            ...createEmptyDayLogRecord("2026-03-10"),
+            pregnancyTest: "negative",
+          },
           {
             ...createEmptyDayLogRecord("2026-03-14"),
             pregnancyTest: "positive",
@@ -854,6 +860,30 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     );
 
     expect(pdfCopy.pregnancyTestsTitle).toBe("Pregnancy tests");
+    const reloaded = await PDFDocument.load(content);
+    expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders the recorded results without a pause note once predictions resumed", async () => {
+    const content = await buildExportPDFContent(
+      {
+        now: new Date("2026-04-20T10:00:00.000Z"),
+        profile: { ...PROFILE, lastPeriodStart: "2026-04-05" },
+        symptomRecords: [],
+        dayLogs: [
+          cycleStartDay("2026-03-01"),
+          {
+            ...createEmptyDayLogRecord("2026-03-14"),
+            pregnancyTest: "positive",
+          },
+          // A later cycle start clears the pause, so the section still lists
+          // the result but the explanatory note has nothing to explain.
+          cycleStartDay("2026-04-05"),
+        ],
+      },
+      loadSharedTestFontBytes,
+    );
+
     const reloaded = await PDFDocument.load(content);
     expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
   });
