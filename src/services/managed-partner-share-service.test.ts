@@ -136,6 +136,9 @@ async function setupConnectedSyncSecrets() {
     },
     authSessionToken: null,
     managedAuthSessionToken: "managed-session-1",
+    managedAuthSessionExpiresAt: null,
+    managedRefreshToken: null,
+    managedRefreshTokenExpiresAt: null,
   });
   return syncSecretStore;
 }

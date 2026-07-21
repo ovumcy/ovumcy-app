@@ -322,6 +322,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: "session-1",
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
@@ -391,6 +394,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: "session-1",
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     let remoteDevices = [
@@ -605,6 +611,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -710,6 +719,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     const fetchMock = jest
       .fn()
@@ -900,6 +912,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest
       .fn()
@@ -1327,6 +1342,9 @@ describe("BackupSyncScreen", () => {
         },
         authSessionToken: null,
         managedAuthSessionToken: "guest-session-1",
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
       });
 
       global.fetch = jest.fn(async (input: RequestInfo | URL) => {
@@ -1424,6 +1442,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     const rawLastSeen = "2026-04-05T10:30:00.000Z";
     global.fetch = jest.fn(async (input: RequestInfo | URL) => {
@@ -1705,6 +1726,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     mockOpenConfirmation.mockResolvedValue(false);
 
@@ -1754,6 +1778,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     mockOpenConfirmation.mockResolvedValue(true);
     mockRequestSensitiveActionChallenge.mockResolvedValue({
@@ -1812,6 +1839,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: "session-1",
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(
@@ -1933,6 +1963,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
 
     // `connectBackupSyncAccount` is the controller's entry point for the
@@ -2116,6 +2149,9 @@ describe("BackupSyncScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     const connectSpy = jest
       .spyOn(backupSyncScreenService, "connectBackupSyncAccount")
@@ -2548,6 +2584,9 @@ describe("BackupSyncScreen", () => {
         },
         authSessionToken: null,
         managedAuthSessionToken: "guest-session-1",
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
       };
     }
 
@@ -2873,6 +2912,9 @@ describe("BackupSyncScreen", () => {
         },
         authSessionToken: null,
         managedAuthSessionToken: "guest-session-1",
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
       };
     }
 
@@ -3055,6 +3097,9 @@ function createConnectedManagedSecrets() {
     },
     authSessionToken: null,
     managedAuthSessionToken: "managed-session-1",
+    managedAuthSessionExpiresAt: null,
+    managedRefreshToken: null,
+    managedRefreshTokenExpiresAt: null,
   };
 }
 

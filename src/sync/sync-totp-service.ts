@@ -314,6 +314,15 @@ export async function completeTOTPChallenge(
         accountID: result.auth.accountID,
         sessionToken: result.auth.sessionToken,
         sessionExpiresAt: result.auth.sessionExpiresAt,
+        // Carried through so the finalize step can persist the renewal
+        // credential; dropping it here would leave the post-2FA session
+        // short-lived with no way to renew.
+        ...(result.auth.refreshToken
+          ? {
+              refreshToken: result.auth.refreshToken,
+              refreshTokenExpiresAt: result.auth.refreshTokenExpiresAt,
+            }
+          : {}),
       },
     };
   }

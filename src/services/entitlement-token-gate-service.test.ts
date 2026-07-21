@@ -26,6 +26,9 @@ const MANAGED_SECRETS: SyncSecretsRecord = {
   },
   authSessionToken: null,
   managedAuthSessionToken: "managed-session-1",
+  managedAuthSessionExpiresAt: null,
+  managedRefreshToken: null,
+  managedRefreshTokenExpiresAt: null,
 };
 
 function createMemoryEntitlementTokenStore(): EntitlementTokenStore {

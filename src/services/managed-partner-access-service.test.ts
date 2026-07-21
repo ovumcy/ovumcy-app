@@ -41,6 +41,9 @@ describe("managed-partner-access-service", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     global.fetch = jest.fn().mockResolvedValue(
       new Response(

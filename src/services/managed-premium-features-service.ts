@@ -6,6 +6,7 @@ import {
   type ManagedCloudBillingSnapshot,
   type ManagedCloudPremiumFeatures,
 } from "../sync/managed-cloud-api-client";
+import { ensureFreshManagedSession } from "../sync/managed-session-refresh-service";
 import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contract";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import { buildEntitlementTokenGate } from "./entitlement-token-gate-service";
@@ -189,9 +190,22 @@ export async function loadManagedBillingSnapshot(
     return null;
   }
 
+  // This is the managed read every premium surface funnels through — dashboard,
+  // calendar, stats, backup-sync — so it is where a short-lived access session
+  // gets renewed. Doing it here keeps one refresher for many readers: every
+  // other consumer of `managedAuthSessionToken` finds a fresh token already
+  // written to the secret store.
+  const session = await ensureFreshManagedSession(secretStore, now);
+  if (!session.ok) {
+    // The refresh chain is dead and the credentials have been cleared. Serving
+    // the offline-grace cache under a session that no longer exists would be
+    // exactly the unbounded cached-premium the billing invariant forbids.
+    return null;
+  }
+
   const billingResult = await createManagedCloudAPIClient(
     MANAGED_CLOUD_AUTH_BASE_URL,
-  ).getBillingSnapshot(secrets.managedAuthSessionToken);
+  ).getBillingSnapshot(session.sessionToken);
 
   let billing: ManagedCloudBillingSnapshot;
   if (billingResult.ok) {
@@ -211,7 +225,7 @@ export async function loadManagedBillingSnapshot(
   const premiumFeatures = await applyEntitlementTokenOverlay(
     billing.premiumFeatures,
     tokenGate,
-    secrets.managedAuthSessionToken,
+    session.sessionToken,
   );
   if (premiumFeatures === billing.premiumFeatures) {
     return billing;

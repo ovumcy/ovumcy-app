@@ -53,6 +53,9 @@ const PREPARED_MANAGED_SECRETS: SyncSecretsRecord = {
   },
   authSessionToken: null,
   managedAuthSessionToken: null,
+  managedAuthSessionExpiresAt: null,
+  managedRefreshToken: null,
+  managedRefreshTokenExpiresAt: null,
 };
 
 describe("connectBackupSyncAccount managed plan refresh", () => {

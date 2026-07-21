@@ -258,6 +258,9 @@ describe("StatsScreen", () => {
       },
       authSessionToken: null,
       managedAuthSessionToken: "managed-session-1",
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
     });
     // A fresh Response per call: the managed premium resolution now probes the
     // session (buildEntitlementTokenGate -> getSession) before the billing

@@ -420,7 +420,16 @@ export async function completeBackupSyncTOTPChallenge(
     storage,
     secretStore,
     preferences,
-    { sessionToken: challengeResult.auth.sessionToken },
+    {
+      sessionToken: challengeResult.auth.sessionToken,
+      sessionExpiresAt: challengeResult.auth.sessionExpiresAt,
+      ...(challengeResult.auth.refreshToken
+        ? {
+            refreshToken: challengeResult.auth.refreshToken,
+            refreshTokenExpiresAt: challengeResult.auth.refreshTokenExpiresAt,
+          }
+        : {}),
+    },
   );
   if (!finalizeResult.ok) {
     return { ok: false, errorCode: finalizeResult.errorCode };
