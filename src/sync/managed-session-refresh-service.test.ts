@@ -207,6 +207,25 @@ describe("ensureFreshManagedSession", () => {
     expect(stored?.managedRefreshToken).toBe("refresh-1");
   });
 
+  it("leaves a session alone when the stored expiry cannot be parsed", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedAuthSessionExpiresAt: "not-a-timestamp" }),
+    );
+    const refreshSession = jest.fn();
+
+    const result = await ensureFreshManagedSession(
+      secretStore,
+      NOW,
+      createRefreshingClient(refreshSession as never),
+    );
+
+    // Garbage in the record must not be read as "expired" and spend the
+    // single-use refresh token on a guess.
+    expect(result).toEqual({ ok: true, sessionToken: "access-1", refreshed: false });
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
   it("leaves a session alone when the server never reported an expiry", async () => {
     const secretStore = createSyncSecretStoreMock();
     await secretStore.writeSyncSecrets(

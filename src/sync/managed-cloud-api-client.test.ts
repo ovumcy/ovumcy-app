@@ -1612,4 +1612,147 @@ describe("managed-cloud-api-client", () => {
       errorCode: "network_failed",
     });
   });
+  it("declares refresh support on sign-in and surfaces the issued refresh token", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          email: "owner@example.com",
+          session_token: "managed-session-1",
+          session_expires_at: "2026-07-22T00:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "trial",
+            updated_at: "2026-07-21T00:00:00.000Z",
+            effective_at: "2026-07-21T00:00:00.000Z",
+            explanation: "",
+          },
+          refresh_token: "refresh-1",
+          refresh_token_expires_at: "2026-10-19T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.login({ email: "owner@example.com", password: "very-secure-pass" }),
+    ).resolves.toEqual({
+      ok: true,
+      auth: expect.objectContaining({
+        sessionToken: "managed-session-1",
+        refreshToken: "refresh-1",
+        refreshTokenExpiresAt: "2026-10-19T00:00:00.000Z",
+      }),
+    });
+
+    // The flag is what makes the server issue a short session with a renewable
+    // token; without it we would silently keep the long-lived one.
+    const body = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body));
+    expect(body.refresh_supported).toBe(true);
+  });
+
+  it("ignores a half-issued refresh pair rather than storing part of a credential", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          email: "owner@example.com",
+          session_token: "managed-session-1",
+          session_expires_at: "2026-07-22T00:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "trial",
+            updated_at: "2026-07-21T00:00:00.000Z",
+            effective_at: "2026-07-21T00:00:00.000Z",
+            explanation: "",
+          },
+          refresh_token: "refresh-1",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    const result = await client.login({
+      email: "owner@example.com",
+      password: "very-secure-pass",
+    });
+
+    if (!result.ok) {
+      throw new Error("expected the login to succeed");
+    }
+    expect(result.auth.refreshToken).toBeUndefined();
+    expect(result.auth.refreshTokenExpiresAt).toBeUndefined();
+  });
+
+  it("exchanges a refresh token for a rotated session without a bearer header", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "account-1",
+          email: "owner@example.com",
+          session_token: "managed-session-2",
+          session_expires_at: "2026-07-23T00:00:00.000Z",
+          sync_entitlement: {
+            sync_allowed: true,
+            source: "trial",
+            updated_at: "2026-07-21T00:00:00.000Z",
+            effective_at: "2026-07-21T00:00:00.000Z",
+            explanation: "",
+          },
+          refresh_token: "refresh-2",
+          refresh_token_expires_at: "2026-10-19T00:00:00.000Z",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(client.refreshSession("refresh-1")).resolves.toEqual({
+      ok: true,
+      auth: expect.objectContaining({
+        sessionToken: "managed-session-2",
+        refreshToken: "refresh-2",
+      }),
+    });
+
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(String(url)).toContain("/auth/refresh");
+    expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: "refresh-1" });
+    // The access session it replaces has usually expired already, so the
+    // refresh token in the body is the sole credential.
+    expect((init?.headers as Record<string, string>)?.Authorization).toBeUndefined();
+  });
+
+  it("reports a dead refresh chain as unauthorized", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(client.refreshSession("refresh-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "unauthorized",
+    });
+  });
 });

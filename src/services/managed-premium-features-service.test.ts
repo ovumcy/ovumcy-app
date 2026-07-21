@@ -122,6 +122,47 @@ afterEach(() => {
   global.fetch = originalFetch;
 });
 
+describe("loadManagedBillingSnapshot — dead refresh chain", () => {
+  it("serves nothing, not even the offline-grace cache, once the session is gone", async () => {
+    // An access session past its expiry with a refresh token beside it: the
+    // load path renews before fetching billing. Here the renewal is refused,
+    // which means the managed session no longer exists.
+    const secretStore = createSyncSecretStoreMock({
+      ...MANAGED_SECRETS,
+      managedAuthSessionExpiresAt: "2000-01-01T00:00:00.000Z",
+      managedRefreshToken: "refresh-1",
+      managedRefreshTokenExpiresAt: "2099-01-01T00:00:00.000Z",
+    });
+    const fetchMock = jest.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        return new Response(JSON.stringify({ error: "unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch after a dead refresh chain: ${url}`);
+    });
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const snapshot = await loadManagedBillingSnapshot(
+      createLocalAppStorageMock(),
+      secretStore,
+      "managed",
+    );
+
+    // Serving cached premium under a session that no longer exists is exactly
+    // the unbounded cached-entitlement the billing invariant forbids.
+    expect(snapshot).toBeNull();
+    const calledUrls = fetchMock.mock.calls.map((call) => String(call[0]));
+    expect(calledUrls.some((url) => url.endsWith("/account/billing"))).toBe(false);
+
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBeNull();
+    expect(stored?.managedRefreshToken).toBeNull();
+  });
+});
+
 describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchanged", () => {
   it("returns the snapshot premiumFeatures verbatim when no gate is supplied", async () => {
     mockManagedFetch({
