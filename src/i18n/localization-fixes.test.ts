@@ -7,6 +7,7 @@ import { getStatsCopy } from "./stats-copy";
 import { getShellCopy } from "./shell-copy";
 import { getDashboardCopy } from "./dashboard-copy";
 import { getDayLogCopy } from "./day-log-copy";
+import { getExportPDFCopy } from "./export-pdf-copy";
 import { getSettingsCopy } from "./settings-copy";
 import { getOnboardingCopy } from "./app-copy";
 import { selectTOTPCopy } from "./totp-copy";
@@ -691,5 +692,29 @@ describe("K EU withdrawal copy — translated, non-empty in 6 locales", () => {
     const fr = getSettingsCopy("fr").account;
     expect(fr.withdrawalBody).toContain("vous");
     expect(fr.withdrawalBody).not.toMatch(/\b(tu|toi|ton|tes)\b/i);
+  });
+});
+
+describe("K doctor-PDF pregnancy copy — translated, non-empty in 6 locales", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
+  const nonEnglish = locales.filter((lang) => lang !== "en");
+
+  it.each(locales)("%s labels the section and both results", (lang) => {
+    const copy = getExportPDFCopy(lang);
+    expect(copy.pregnancyTestsTitle.trim().length).toBeGreaterThan(0);
+    expect(copy.pregnancyTestNegativeLabel.trim().length).toBeGreaterThan(0);
+    expect(copy.pregnancyTestPositiveLabel.trim().length).toBeGreaterThan(0);
+  });
+
+  it.each(locales)("%s renders the pause note with the recorded date", (lang) => {
+    const note = getExportPDFCopy(lang).pregnancyPausedNote("2026-03-14");
+    expect(note).toContain("2026-03-14");
+    expect(note.trim().length).toBeGreaterThan("2026-03-14".length);
+  });
+
+  it.each(nonEnglish)("%s translates the pause note", (lang) => {
+    expect(getExportPDFCopy(lang).pregnancyPausedNote("2026-03-14")).not.toBe(
+      getExportPDFCopy("en").pregnancyPausedNote("2026-03-14"),
+    );
   });
 });
