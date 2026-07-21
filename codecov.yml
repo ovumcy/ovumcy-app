@@ -6,7 +6,22 @@
 # report lands; until then it reports without blocking.
 
 codecov:
-  require_ci_to_pass: true
+  # Deliberately false. When true, Codecov withholds every status until it has
+  # independently concluded that CI passed — and on 2026-07-21 it silently
+  # stopped deriving that signal for this repo: reports ingested and scored
+  # fine (`state: complete`, coverage present) while `ci_passed` stayed null on
+  # every pull-request head, so `codecov/patch` was never posted. Because that
+  # context is a required check on `main`, an external service's inability to
+  # observe our CI froze every merge in the repository, including a one-line
+  # dependency bump.
+  #
+  # Nothing is lost by dropping it: the ruleset on `main` already requires
+  # quality, web-smoke, npm-audit-production, trivy-fs, and the CodeQL analyses
+  # to pass on their own. Codecov's opinion about whether CI passed was pure
+  # duplication of a gate GitHub enforces directly — and a single point of
+  # failure in front of it. The coverage gates below are untouched and keep
+  # blocking exactly as before.
+  require_ci_to_pass: false
 
 coverage:
   status:
