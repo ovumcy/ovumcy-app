@@ -85,7 +85,8 @@ export function areSyncPreferencesEqual(
     left.preparedAt === right.preparedAt &&
     left.lastRemoteGeneration === right.lastRemoteGeneration &&
     left.lastSyncedAt === right.lastSyncedAt &&
-    left.guestSessionExpiresAt === right.guestSessionExpiresAt
+    left.guestSessionExpiresAt === right.guestSessionExpiresAt &&
+    left.guestSessionRenewable === right.guestSessionRenewable
   );
 }
 
@@ -114,16 +115,24 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // resolveGuestSessionExpiryNudgeDays reduces the guest session's expiry
 // timestamp plus the current time into a whole-day countdown the UI can
 // render as a nudge, or null when no nudge should show: not a guest session,
-// an unparseable timestamp, already expired (the nudge is moot once the
-// session is dead — the natural "unauthorized" error path on the next
-// attempt already communicates that), or still further than the threshold
-// out. Days remaining rounds UP, matching describeSubscriptionCountdown's
-// convention (a session expiring in 2h still reads as "1 day left").
+// a session that renews itself, an unparseable timestamp, already expired
+// (the nudge is moot once the session is dead — the natural "unauthorized"
+// error path on the next attempt already communicates that), or still
+// further than the threshold out. Days remaining rounds UP, matching
+// describeSubscriptionCountdown's convention (a session expiring in 2h still
+// reads as "1 day left").
+//
+// A renewable guest session gets no countdown at all. Its stored deadline is
+// the refresh token's, which slides forward on every use, so a date named
+// here would be one the device has already moved past needing — and naming a
+// wrong date is worse than naming none. The standing "create an account"
+// affordance stays visible either way; only the deadline is withheld.
 export function resolveGuestSessionExpiryNudgeDays(
   guestSessionExpiresAt: string | null,
   nowISO: string,
+  guestSessionRenewable: boolean = false,
 ): number | null {
-  if (!guestSessionExpiresAt) {
+  if (!guestSessionExpiresAt || guestSessionRenewable) {
     return null;
   }
 

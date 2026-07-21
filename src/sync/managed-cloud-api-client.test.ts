@@ -692,8 +692,100 @@ describe("managed-cloud-api-client", () => {
     // The whole point of the guest endpoint is that it is unauthenticated:
     // no Authorization header is ever sent, unlike every other partner call.
     expect((call?.[1]?.headers as Headers).has("Authorization")).toBe(false);
+    // refresh_supported travels on this endpoint too: a guest account has no
+    // password, so without it the device would hold a link-minted bearer for
+    // the full SESSION_TTL.
     expect(call?.[1]?.body).toBe(
-      JSON.stringify({ invite_token: "invite-token-9-fixture-padding" }),
+      JSON.stringify({
+        invite_token: "invite-token-9-fixture-padding",
+        refresh_supported: true,
+      }),
+    );
+  });
+
+  const guestRefreshCases: [
+    string,
+    Record<string, string>,
+    { refreshToken?: string; refreshTokenExpiresAt?: string },
+  ][] = [
+    [
+      "carries both refresh fields through when the server issued a token",
+      {
+        refresh_token: "guest-refresh-1",
+        refresh_token_expires_at: "2026-07-04T00:00:00.000Z",
+      },
+      {
+        refreshToken: "guest-refresh-1",
+        refreshTokenExpiresAt: "2026-07-04T00:00:00.000Z",
+      },
+    ],
+    [
+      "drops a refresh token that arrived without its expiry",
+      { refresh_token: "guest-refresh-1" },
+      {},
+    ],
+    [
+      "drops a refresh expiry that arrived without its token",
+      { refresh_token_expires_at: "2026-07-04T00:00:00.000Z" },
+      {},
+    ],
+  ];
+
+  it.each(guestRefreshCases)("guest accept %s", async (_label, extraFields, expectedFields) => {
+    // Half a credential is worse than none: a token with no expiry would be
+    // stored and then used past a deadline the client cannot see, and an
+    // expiry with no token marks the session renewable when nothing can
+    // renew it.
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          account_id: "guest-account-1",
+          session_token: "guest-session-1",
+          session_expires_at: "2026-04-06T00:00:00.000Z",
+          ...extraFields,
+          grant: {
+            id: "grant-9",
+            owner_account_id: "owner-1",
+            partner_account_id: "guest-account-1",
+            access_level: "full",
+            source_invite_id: "invite-9",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            last_seen_at: "2026-04-05T08:00:00.000Z",
+            created_at: "2026-04-05T08:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          },
+          invite: {
+            id: "invite-9",
+            owner_account_id: "owner-1",
+            access_level: "full",
+            status: "accepted",
+            expires_at: "2026-04-10T00:00:00.000Z",
+            accepted_at: "2026-04-05T08:00:00.000Z",
+            accepted_account_id: "guest-account-1",
+            created_by: "owner-1",
+            created_at: "2026-04-01T00:00:00.000Z",
+            updated_at: "2026-04-05T08:00:00.000Z",
+          },
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    const result = await client.acceptPartnerInviteAsGuest(
+      "invite-token-9-fixture-padding",
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.result.refreshToken).toBe(expectedFields.refreshToken);
+    expect(result.result.refreshTokenExpiresAt).toBe(
+      expectedFields.refreshTokenExpiresAt,
     );
   });
 

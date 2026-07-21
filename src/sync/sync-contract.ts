@@ -90,14 +90,28 @@ export type SyncPreferencesRecord = {
   lastSyncedAt: string | null;
   // guestSessionExpiresAt is the ONLY local marker of "this device's managed
   // session was established via guest-partner accept" (see
-  // `persistGuestPartnerSession`). Null for every non-guest session. Doubles
-  // as the expiry-nudge data source: the guest-partner session dies with no
-  // renewal path (single-use invite, no password), so the client surfaces a
-  // "save your access" nudge as this approaches. Cleared back to null the
-  // moment the account stops being a guest — a real register/login/recover,
-  // a disconnect, or a successful `/account/upgrade` — so it can never
-  // survive onto a non-guest session.
+  // `persistGuestPartnerSession`). Null for every non-guest session. Cleared
+  // back to null the moment the account stops being a guest — a real
+  // register/login/recover, a disconnect, or a successful `/account/upgrade`
+  // — so it can never survive onto a non-guest session.
+  //
+  // It holds the moment this device loses access if it does nothing: the
+  // refresh token's expiry when the accept produced one, the session's own
+  // expiry when it did not.
   guestSessionExpiresAt: string | null;
+  // guestSessionRenewable says whether that deadline is one the device can
+  // push back on its own. True when the accept returned a refresh token, so
+  // every use slides the deadline out and the guest is not in fact heading
+  // for a lockout. False for a guest session with no renewal path at all —
+  // an app build that predates refresh support, or a managed server with the
+  // refresh TTLs set to 0.
+  //
+  // It exists to keep the "save your access" nudge honest: a countdown shown
+  // to a device that renews would name a date that has already moved, and a
+  // wrong date is worse than no date. Only the non-renewable case is actually
+  // heading for a deadline, so only it gets the countdown. Always false when
+  // guestSessionExpiresAt is null, which is what a non-guest session is.
+  guestSessionRenewable: boolean;
 };
 
 export type SyncAuthResult = {
@@ -251,5 +265,6 @@ export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {
     lastRemoteGeneration: null,
     lastSyncedAt: null,
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
 }

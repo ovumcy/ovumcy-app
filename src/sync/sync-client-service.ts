@@ -249,6 +249,7 @@ export async function connectSyncAccount(
       // clear any stale marker left by an earlier guest-partner session on
       // this device (see SyncPreferencesRecord.guestSessionExpiresAt).
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -347,6 +348,7 @@ export async function connectSyncAccount(
     // Self-hosted community sync has no guest-partner concept; clear any
     // stale marker carried over from a prior managed guest session.
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -455,6 +457,7 @@ export async function finalizeSyncSessionAfterTOTP(
       // clear any stale marker left by an earlier guest-partner session on
       // this device (see SyncPreferencesRecord.guestSessionExpiresAt).
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -517,6 +520,7 @@ export async function finalizeSyncSessionAfterTOTP(
     // Self-hosted community sync has no guest-partner concept; clear any
     // stale marker carried over from a prior managed guest session.
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -548,18 +552,30 @@ export async function finalizeSyncSessionAfterTOTP(
  * top of an existing record, so it can never silently regenerate keys out
  * from under an already-set-up device.
  *
- * `input.sessionExpiresAt` is persisted verbatim into the new
- * `guestSessionExpiresAt` preference field — the ONLY local marker that this
+ * The `guestSessionExpiresAt` preference is the ONLY local marker that this
  * device's managed session is a guest one (see the field's doc comment on
- * `SyncPreferencesRecord`). It doubles as the data source for the client's
- * "save your access before it expires" nudge, since a guest session has no
- * renewal path.
+ * `SyncPreferencesRecord`), and it records the moment this device loses
+ * access if it does nothing.
+ *
+ * A guest that declared refresh support gets a short access session plus a
+ * refresh token, exactly like any other managed client, so the refresh
+ * material is persisted and `ensureFreshManagedSession` renews it with no
+ * special-casing. That deadline is the refresh token's, and it slides
+ * forward on every use — `guestSessionRenewable` records that, so the "save
+ * your access" nudge withholds a countdown it would otherwise name wrongly.
+ * A guest without refresh material keeps the long session and the accurate
+ * countdown it has always had.
  */
 export async function persistGuestPartnerSession(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { sessionToken: string; sessionExpiresAt: string },
+  input: {
+    sessionToken: string;
+    sessionExpiresAt: string;
+    refreshToken?: string;
+    refreshTokenExpiresAt?: string;
+  },
   now: Date,
 ): Promise<{
   capabilities: SyncCapabilityDocument;
@@ -569,17 +585,34 @@ export async function persistGuestPartnerSession(
   const baseSecrets: SyncSecretsRecord =
     existingSecrets ?? createSyncSecretsRecord("", now).record;
 
+  // Both refresh fields arrive together or not at all (the client mapper
+  // enforces that), so one check decides whether this session renews. The
+  // check has to be the narrowing expression itself rather than a precomputed
+  // boolean: through a boolean the compiler cannot see the fields are set,
+  // and the `?? null` it would then demand is a branch nothing can reach.
+  //
+  // Either shape is written whole, nulls included: refresh material left over
+  // from an earlier owner session on this device must never survive into a
+  // guest one — inheriting it would let the guest session mint sessions for
+  // somebody else's account.
+  const refreshFields =
+    input.refreshToken && input.refreshTokenExpiresAt
+      ? {
+          managedAuthSessionExpiresAt: input.sessionExpiresAt,
+          managedRefreshToken: input.refreshToken,
+          managedRefreshTokenExpiresAt: input.refreshTokenExpiresAt,
+        }
+      : {
+          managedAuthSessionExpiresAt: null,
+          managedRefreshToken: null,
+          managedRefreshTokenExpiresAt: null,
+        };
+
   await secretStore.writeSyncSecrets({
     ...baseSecrets,
     authSessionToken: null,
     managedAuthSessionToken: input.sessionToken,
-    // A guest session has no renewal path (see the doc comment above), so it
-    // records no renewal state: its expiry already lives in the
-    // `guestSessionExpiresAt` preference, and any refresh material left over
-    // from an earlier owner session on this device must not survive into it.
-    managedAuthSessionExpiresAt: null,
-    managedRefreshToken: null,
-    managedRefreshTokenExpiresAt: null,
+    ...refreshFields,
   });
 
   const nextPreferences: SyncPreferencesRecord = {
@@ -588,7 +621,11 @@ export async function persistGuestPartnerSession(
     endpointInput: "",
     normalizedEndpoint: MANAGED_SYNC_BASE_URL,
     setupStatus: "connected",
-    guestSessionExpiresAt: input.sessionExpiresAt,
+    // The deadline this device faces if it does nothing: the refresh token's
+    // when there is one to renew with, the session's own when there is not.
+    guestSessionExpiresAt:
+      refreshFields.managedRefreshTokenExpiresAt ?? input.sessionExpiresAt,
+    guestSessionRenewable: refreshFields.managedRefreshToken !== null,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -682,6 +719,7 @@ export async function upgradeGuestPartnerAccount(
       const clearedPreferences: SyncPreferencesRecord = {
         ...preferences,
         guestSessionExpiresAt: null,
+        guestSessionRenewable: false,
       };
       await storage.writeSyncPreferencesRecord(clearedPreferences);
       return {
@@ -701,6 +739,7 @@ export async function upgradeGuestPartnerAccount(
   const nextPreferences: SyncPreferencesRecord = {
     ...preferences,
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -961,6 +1000,7 @@ export async function recoverSyncAccess(
       // in `...preferences` can never survive onto this freshly recovered
       // session.
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     };
     await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -1056,6 +1096,7 @@ export async function recoverSyncAccess(
     // account has none, so clear defensively (same reasoning as the managed
     // recovery branch above).
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 
@@ -1451,6 +1492,7 @@ export async function clearLocalSyncSession(
     // accept, each of which sets this field to its own correct value. Clear
     // it here so a stale guest marker never survives past this boundary.
     guestSessionExpiresAt: null,
+    guestSessionRenewable: false,
   };
   await storage.writeSyncPreferencesRecord(nextPreferences);
 

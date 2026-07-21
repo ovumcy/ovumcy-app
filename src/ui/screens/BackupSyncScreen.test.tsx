@@ -1938,6 +1938,7 @@ describe("BackupSyncScreen", () => {
       lastRemoteGeneration: null,
       lastSyncedAt: null,
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     };
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest
@@ -2124,6 +2125,7 @@ describe("BackupSyncScreen", () => {
       lastRemoteGeneration: null,
       lastSyncedAt: null,
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     };
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest

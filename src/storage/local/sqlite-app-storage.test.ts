@@ -1335,6 +1335,7 @@ describe("sqlite-app-storage", () => {
       lastRemoteGeneration: 123,
       lastSyncedAt: "2026-03-17T10:05:00.000Z",
       guestSessionExpiresAt: null,
+      guestSessionRenewable: false,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-17",
@@ -1495,6 +1496,9 @@ describe("sqlite-app-storage", () => {
       lastRemoteGeneration: null,
       lastSyncedAt: null,
       guestSessionExpiresAt: null,
+      // A row written before this field existed reads back false: those guest
+      // sessions had no renewal path, so the countdown they showed was right.
+      guestSessionRenewable: false,
     });
     expect(inspected.state.syncPreferencesColumns).toEqual(
       expect.arrayContaining(["last_remote_generation", "last_synced_at"]),
