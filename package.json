@@ -110,6 +110,7 @@
     "js-yaml": "^4.2.0",
     "@stryker-mutator/core": {
       "ajv": "^8.20.0"
-    }
+    },
+    "fast-uri": "^3.1.3"
   }
 }
