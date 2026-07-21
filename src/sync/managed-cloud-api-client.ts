@@ -255,6 +255,13 @@ export type ManagedCloudGuestPartnerAcceptResult = {
   accountID: string;
   sessionToken: string;
   sessionExpiresAt: string;
+  // Set only when the server issued a refresh token for this guest — the
+  // short access session and the token that renews it always arrive together
+  // or not at all. Absent means the session is the long-lived kind with no
+  // renewal path, which is what a managed server with refresh disabled hands
+  // back.
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
   grant: ManagedCloudPartnerAccessGrant;
   invite: ManagedCloudPartnerInvite;
 };
@@ -690,6 +697,8 @@ type RawManagedCloudGuestPartnerAcceptResult = {
   account_id: string;
   session_token: string;
   session_expires_at: string;
+  refresh_token?: string;
+  refresh_token_expires_at?: string;
   grant: RawManagedCloudPartnerAccessGrant;
   invite: RawManagedCloudPartnerInvite;
 };
@@ -1164,7 +1173,10 @@ export function createManagedCloudAPIClient(
         "/auth/partner/invites/accept",
         {
           method: "POST",
-          body: { invite_token: inviteToken },
+          // Declaring refresh support matters most on this endpoint: a guest
+          // account has no password to fall back on, so without it the device
+          // holds a link-minted bearer good for the full SESSION_TTL.
+          body: { invite_token: inviteToken, refresh_supported: true },
         },
         isRawManagedCloudGuestPartnerAcceptResult,
       ).then((result) =>
@@ -2097,13 +2109,26 @@ function mapPartnerInviteIssueResult(
 function mapGuestPartnerAcceptResult(
   raw: RawManagedCloudGuestPartnerAcceptResult,
 ): ManagedCloudGuestPartnerAcceptResult {
-  return {
+  const result: ManagedCloudGuestPartnerAcceptResult = {
     accountID: raw.account_id,
     sessionToken: raw.session_token,
     sessionExpiresAt: raw.session_expires_at,
     grant: mapPartnerAccessGrant(raw.grant),
     invite: mapPartnerInvite(raw.invite),
   };
+  // Both refresh fields travel together; a response carrying only one is
+  // treated as carrying neither rather than storing half a credential. Same
+  // rule as mapAuthResult.
+  if (
+    typeof raw.refresh_token === "string" &&
+    raw.refresh_token.length > 0 &&
+    typeof raw.refresh_token_expires_at === "string" &&
+    raw.refresh_token_expires_at.length > 0
+  ) {
+    result.refreshToken = raw.refresh_token;
+    result.refreshTokenExpiresAt = raw.refresh_token_expires_at;
+  }
+  return result;
 }
 
 function mapSyncAuthResult(raw: RawSyncAuthResult): SyncAuthResult {

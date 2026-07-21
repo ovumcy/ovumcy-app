@@ -41,6 +41,7 @@ export function useBackupSyncGuestUpgrade(core: BackupSyncSessionCore) {
     ? resolveGuestSessionExpiryNudgeDays(
         state.syncPreferences.guestSessionExpiresAt,
         effectiveNow.toISOString(),
+        state.syncPreferences.guestSessionRenewable,
       )
     : null;
   const nudgeMessage =

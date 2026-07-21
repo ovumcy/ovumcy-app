@@ -59,7 +59,11 @@ follows from that:
   provisions a guest account (no password, no recovery code, marked by the
   reserved, non-issuable `guest+<accountID>@guest.invalid` address, RFC 2606)
   and issues it a normal, server-revocable session bound to that device, in
-  the same call that accepts the invite. Every existing invariant — single-use
+  the same call that accepts the invite. That session is short-lived and
+  renewed by a rotating refresh token written in the same transaction, so the
+  link-minted bearer is worth hours rather than weeks — which matters most
+  here, since a guest holds no password to fall back on. Every existing
+  invariant — single-use
   + 7-day TTL, owner-entitlement gating on every operation, access-level
   minimization, pregnancy-test stripping, owner visibility + permanent revoke
   — applies to a guest identically, because guest accept reuses the same

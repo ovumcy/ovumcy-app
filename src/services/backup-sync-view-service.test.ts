@@ -569,6 +569,32 @@ describe("backup sync view service", () => {
         ),
       ).toBeNull();
     });
+
+    it("withholds the countdown from a session that renews itself", () => {
+      // Same inputs that produce "3 days left" above. A renewable guest holds
+      // a refresh token whose expiry slides forward on every use, so this
+      // date is one the device will never actually reach — naming it would
+      // tell the owner their access dies on a day it does not.
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-08T00:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+          true,
+        ),
+      ).toBeNull();
+    });
+
+    it("still counts down for a guest session that cannot renew", () => {
+      // The case the nudge exists for: no refresh token, so this deadline is
+      // real and the owner loses access permanently when it passes.
+      expect(
+        resolveGuestSessionExpiryNudgeDays(
+          "2026-04-08T00:00:00.000Z",
+          "2026-04-05T12:00:00.000Z",
+          false,
+        ),
+      ).toBe(3);
+    });
   });
 
   describe("formatBackupSyncLastSeen", () => {

@@ -410,6 +410,10 @@ function mergeSyncPreferencesRecord(
       typeof parsed?.guestSessionExpiresAt === "string"
         ? parsed.guestSessionExpiresAt
         : null,
+    // Defaults to false, which is also what a blob written before this field
+    // existed means: those guest sessions had no renewal path, so the
+    // countdown they were showing stays correct.
+    guestSessionRenewable: parsed?.guestSessionRenewable === true,
   };
 }
 

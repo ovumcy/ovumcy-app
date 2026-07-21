@@ -1532,6 +1532,10 @@ function mapNormalizedSyncPreferencesRecord(
       typeof record.guestSessionExpiresAt === "string"
         ? record.guestSessionExpiresAt
         : null,
+    // Defaults to false, which is also what a row written before this field
+    // existed means: those guest sessions had no renewal path, so the
+    // countdown they were showing stays correct.
+    guestSessionRenewable: record.guestSessionRenewable === true,
   };
 }
 

@@ -1427,10 +1427,13 @@ describe("persistGuestPartnerSession", () => {
         endpointInput: "",
         normalizedEndpoint: "https://sync.ovumcy.cloud",
         setupStatus: "connected",
-        // The ONLY local guest-partner marker: persisted verbatim from the
-        // guest-accept response so the client can detect guest mode and
-        // surface the expiry nudge without any extra network round trip.
+        // The ONLY local guest-partner marker: persisted from the
+        // guest-accept response so the client can detect guest mode without
+        // any extra network round trip. With no refresh token in the
+        // response this is the session's own expiry, and the countdown it
+        // drives is accurate.
         guestSessionExpiresAt: "2026-05-05T08:00:00.000Z",
+        guestSessionRenewable: false,
       }),
     });
 
@@ -1452,6 +1455,85 @@ describe("persistGuestPartnerSession", () => {
     // New account boundary: the billing cache is reset exactly like a normal
     // managed connect resets it.
     expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists the refresh material a renewable guest received and marks the session renewable", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock(null);
+
+    const result = await persistGuestPartnerSession(
+      storage,
+      secretStore,
+      createDefaultSyncPreferencesRecord(),
+      {
+        sessionToken: "guest-session-3",
+        sessionExpiresAt: "2026-04-06T08:00:00.000Z",
+        refreshToken: "guest-refresh-3",
+        refreshTokenExpiresAt: "2026-07-04T08:00:00.000Z",
+      },
+      new Date("2026-04-05T08:00:00.000Z"),
+    );
+
+    // A guest account has no password, so a short session persisted without
+    // the token that renews it would strand the device.
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets).toEqual(
+      expect.objectContaining({
+        managedAuthSessionToken: "guest-session-3",
+        managedAuthSessionExpiresAt: "2026-04-06T08:00:00.000Z",
+        managedRefreshToken: "guest-refresh-3",
+        managedRefreshTokenExpiresAt: "2026-07-04T08:00:00.000Z",
+      }),
+    );
+
+    // The marker records the deadline the device faces if it does nothing —
+    // the refresh token's, not the 24h session's — and flags that the
+    // deadline slides, so the nudge withholds a countdown.
+    expect(result.preferences).toEqual(
+      expect.objectContaining({
+        guestSessionExpiresAt: "2026-07-04T08:00:00.000Z",
+        guestSessionRenewable: true,
+      }),
+    );
+  });
+
+  it("clears refresh material left by an earlier owner session when the guest cannot renew", async () => {
+    const storage = createLocalAppStorageMock();
+    const prepared = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-19T08:15:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...prepared.record,
+      managedAuthSessionToken: "previous-owner-session",
+      managedAuthSessionExpiresAt: "2026-04-06T08:00:00.000Z",
+      managedRefreshToken: "previous-owner-refresh",
+      managedRefreshTokenExpiresAt: "2026-07-04T08:00:00.000Z",
+    });
+
+    const result = await persistGuestPartnerSession(
+      storage,
+      secretStore,
+      createDefaultSyncPreferencesRecord(),
+      {
+        sessionToken: "guest-session-4",
+        sessionExpiresAt: "2026-05-05T08:00:00.000Z",
+      },
+      new Date("2026-04-05T08:00:00.000Z"),
+    );
+
+    // Inheriting the previous account's refresh token would let this guest
+    // session mint sessions for someone else's account.
+    const storedSecrets = await secretStore.readSyncSecrets();
+    expect(storedSecrets).toEqual(
+      expect.objectContaining({
+        managedAuthSessionToken: "guest-session-4",
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
+      }),
+    );
+    expect(result.preferences.guestSessionRenewable).toBe(false);
   });
 
   it("keeps an already-prepared device's master key and device identity untouched", async () => {
