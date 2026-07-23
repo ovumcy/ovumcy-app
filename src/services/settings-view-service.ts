@@ -515,6 +515,25 @@ export type SettingsSyncSummaryViewData = {
   statusTone: "success" | "info";
 };
 
+// One key per settings section that moved to its own route. "data" hosts the
+// export + import pair — the issue-level "import-export" grouping. Sync and
+// privacy are not keys here: their hub cards already navigate to dedicated
+// screens (/backup-sync, /privacy).
+export type SettingsHubSectionKey =
+  | "cycle"
+  | "symptoms"
+  | "tracking"
+  | "reminders"
+  | "interface"
+  | "data"
+  | "danger";
+
+export type SettingsHubNavigationRow = {
+  key: SettingsHubSectionKey;
+  title: string;
+  description: string;
+};
+
 export type SettingsSymptomsState = {
   active: SymptomRecord[];
   archived: SymptomRecord[];
@@ -1300,6 +1319,53 @@ export function buildSettingsSyncSummary(
     actionLabel: viewData.openHubLabel,
     statusMessage,
     statusTone,
+  };
+}
+
+// Assemble the hub navigation rows from the section copy that already exists —
+// the route split reuses each section's own title (and subtitle where the
+// section has one) so no new locale keys are introduced. The "data" row pairs
+// the export title with the import title so both halves of that screen are
+// named on the hub.
+export function buildSettingsHubNavigation(
+  viewData: SettingsViewData,
+): Record<SettingsHubSectionKey, SettingsHubNavigationRow> {
+  return {
+    cycle: {
+      key: "cycle",
+      title: viewData.cycle.title,
+      description: "",
+    },
+    symptoms: {
+      key: "symptoms",
+      title: viewData.symptoms.title,
+      description: viewData.symptoms.subtitle,
+    },
+    tracking: {
+      key: "tracking",
+      title: viewData.tracking.title,
+      description: viewData.tracking.subtitle,
+    },
+    reminders: {
+      key: "reminders",
+      title: viewData.reminders.title,
+      description: viewData.reminders.subtitle,
+    },
+    interface: {
+      key: "interface",
+      title: viewData.interface.title,
+      description: viewData.interface.subtitle,
+    },
+    data: {
+      key: "data",
+      title: viewData.export.title,
+      description: viewData.import.title,
+    },
+    danger: {
+      key: "danger",
+      title: viewData.danger.title,
+      description: viewData.danger.subtitle,
+    },
   };
 }
 

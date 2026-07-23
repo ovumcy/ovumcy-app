@@ -236,16 +236,24 @@ that owns the canonical web UX).
 
 ### Settings
 
-- Top order:
+- Web renders one settings page; the app splits the same content into a
+  settings hub plus one route per section (`/settings/cycle`, `/settings/symptoms`,
+  `/settings/tracking`, `/settings/reminders`, `/settings/interface`,
+  `/settings/data` for export + restore, `/settings/danger`). This is an
+  allowed navigation deviation for phone-scale cognitive load; each section's
+  content, copy, and control order below are unchanged and stay the parity
+  contract.
+- Hub order (mirrors web's page order):
   - page title + subtitle
-  - cycle section
-  - symptoms section
-  - tracking section
-  - reminders section
-  - interface section
-  - account / recovery blocks
-  - data / export section
-  - danger zone
+  - cycle entry
+  - symptoms entry
+  - tracking entry
+  - reminders entry
+  - interface entry
+  - account / recovery summary card (opens `Backup & sync`)
+  - data / export entry
+  - privacy card
+  - danger zone entry
 - Cycle section:
   - sliders
   - last period start field

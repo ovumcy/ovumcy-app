@@ -16,7 +16,10 @@ import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
 import { ScreenScaffold } from "../components/ScreenScaffold";
-import { SettingsFlowScreen } from "./SettingsFlowScreen";
+import {
+  SettingsFlowScreen,
+  type SettingsScreenSection,
+} from "./SettingsFlowScreen";
 import { useSettingsScreenController } from "./settings/useSettingsScreenController";
 
 type SettingsScreenProps = {
@@ -25,6 +28,7 @@ type SettingsScreenProps = {
   importFilePickerClient?: ImportFilePickerClient;
   now?: Date;
   reminderScheduler?: LocalReminderScheduler;
+  section: SettingsScreenSection;
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
 };
@@ -35,6 +39,7 @@ export function SettingsScreen({
   importFilePickerClient = createPlatformImportFilePickerClient(),
   now,
   reminderScheduler = createPlatformLocalReminderScheduler(),
+  section,
   storage = appStorage,
   syncSecretStore = defaultSyncSecretStore,
 }: SettingsScreenProps) {
@@ -59,5 +64,5 @@ export function SettingsScreen({
     );
   }
 
-  return <SettingsFlowScreen {...flowProps} />;
+  return <SettingsFlowScreen {...flowProps} section={section} />;
 }

@@ -14,13 +14,16 @@ import type { SymptomID } from "../../models/symptom";
 import type { SymptomDraftValues } from "../../services/symptom-policy";
 import {
   buildSettingsFlowPresentationState,
+  buildSettingsHubNavigation,
   buildSettingsImportPreviewViewData,
   type LoadedSettingsState,
+  type SettingsHubSectionKey,
   type SettingsSyncSummaryViewData,
   type SettingsViewData,
 } from "../../services/settings-view-service";
 import { AppButton } from "../components/AppButton";
 import { AppScreenSurface } from "../components/AppScreenSurface";
+import { InlineBackButton } from "../components/InlineBackButton";
 import { SettingsDangerZoneSection } from "../components/SettingsDangerZoneSection";
 import { SettingsExportSection } from "../components/SettingsExportSection";
 import { SettingsImportSection } from "../components/SettingsImportSection";
@@ -31,12 +34,29 @@ import { SettingsSymptomsSection } from "../components/SettingsSymptomsSection";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useThemedStyles } from "../theme/useThemedStyles";
 import { SettingsCycleSection } from "./settings/SettingsCycleSection";
+import { SettingsHubNavigationRow } from "./settings/SettingsHubNavigationRow";
 import { SettingsRemindersSection } from "./settings/SettingsRemindersSection";
 import { createSettingsFlowStyles } from "./settings/settings-flow-styles";
 import type { PendingImportPreview } from "./settings/settings-screen-import-actions";
 import { SettingsTrackingSection } from "./settings/SettingsTrackingSection";
 
+// "hub" is the settings tab root (summary + navigation); every other value is
+// one extracted section living on its own route under /settings/*.
+export type SettingsScreenSection = "hub" | SettingsHubSectionKey;
+
+// Sections whose fields participate in the pending-save dirty state; each of
+// their screens renders the same save action the combined screen had.
+const EDITABLE_SETTINGS_SECTIONS: readonly SettingsScreenSection[] = [
+  "cycle",
+  "tracking",
+  "reminders",
+  "interface",
+];
+
 export type SettingsFlowScreenProps = {
+  section: SettingsScreenSection;
+  onBackToSettingsHub: () => void;
+  onOpenSettingsSection: (sectionKey: SettingsHubSectionKey) => void;
   createSymptomDraft: SymptomDraftValues;
   createSymptomErrorMessage: string;
   createSymptomStatusMessage: string;
@@ -141,6 +161,9 @@ export type SettingsFlowScreenProps = {
 };
 
 export function SettingsFlowScreen({
+  section,
+  onBackToSettingsHub,
+  onOpenSettingsSection,
   createSymptomDraft,
   createSymptomErrorMessage,
   createSymptomStatusMessage,
@@ -247,6 +270,7 @@ export function SettingsFlowScreen({
         locale,
       )
     : null;
+  const hubNavigation = buildSettingsHubNavigation(viewData);
 
   return (
     <AppScreenSurface>
@@ -259,139 +283,213 @@ export function SettingsFlowScreen({
         style={styles.screen}
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>{viewData.title}</Text>
-            <Text style={styles.headerDescription}>{viewData.description}</Text>
-          </View>
-
-          <SettingsCycleSection
-            cycleErrorMessage={cycleErrorMessage}
-            cycleDateInputValue={cycleDateInputValue}
-            cycleGuidance={cycleGuidance}
-            cyclePickerMaximumDate={flowState.cyclePickerMaximumDate}
-            cyclePickerMinimumDate={flowState.cyclePickerMinimumDate}
-            cyclePickerValue={flowState.cyclePickerValue}
-            cycleStatusMessage={cycleStatusMessage}
-            displayedCycleStartDate={flowState.displayedCycleStartDate}
-            now={now}
-            onAgeGroupSelect={onAgeGroupSelect}
-            onAutoPeriodFillChange={onAutoPeriodFillChange}
-            onClearLastPeriodStart={onClearLastPeriodStart}
-            onCycleLengthChange={onCycleLengthChange}
-            onCycleDateInputChange={onCycleDateInputChange}
-            onDatePickerCancel={onDatePickerCancel}
-            onDatePickerChange={onDatePickerChange}
-            onDatePickerConfirm={onDatePickerConfirm}
-            onDatePickerToggle={onDatePickerToggle}
-            onPeriodLengthChange={onPeriodLengthChange}
-            onPredictionModeSelect={onPredictionModeSelect}
-            onUsageGoalSelect={onUsageGoalSelect}
-            predictionMode={flowState.predictionMode}
-            showDatePicker={showDatePicker}
-            state={state}
-            styles={styles}
-            supportsNativeDatePicker={flowState.exportSection.supportsNativeDatePicker}
-            viewData={viewData}
-          />
-
-          <SettingsSymptomsSection
-            createDraft={createSymptomDraft}
-            createErrorMessage={createSymptomErrorMessage}
-            createStatusMessage={createSymptomStatusMessage}
-            onArchive={onArchiveSymptom}
-            onCreate={onCreateSymptom}
-            onCreateDraftChange={onCreateSymptomDraftChange}
-            onRestore={onRestoreSymptom}
-            onRowDraftChange={onSymptomDraftChange}
-            onUpdate={onUpdateSymptom}
-            rowDrafts={rowSymptomDrafts}
-            rowErrorMessages={rowSymptomErrorMessages}
-            rowStatusMessages={rowSymptomStatusMessages}
-            viewData={viewData.symptoms}
-            visibleState={flowState.symptomsState}
-          />
-
-          <SettingsTrackingSection
-            onHideNotesChange={onHideNotesChange}
-            onShowHistoricalPhasesChange={onShowHistoricalPhasesChange}
-            onHideCycleFactorsChange={onHideCycleFactorsChange}
-            onHideSexChipChange={onHideSexChipChange}
-            onTemperatureUnitSelect={onTemperatureUnitSelect}
-            onTrackBBTChange={onTrackBBTChange}
-            onTrackCervicalMucusChange={onTrackCervicalMucusChange}
-            state={state}
-            styles={styles}
-            trackingStatusMessage={trackingStatusMessage}
-            viewData={viewData}
-          />
-
-          <SettingsRemindersSection
-            onDailyLogReminderChange={onDailyLogReminderChange}
-            onFertileWindowReminderChange={onFertileWindowReminderChange}
-            onManagedReminderEmailsChange={onManagedReminderEmailsChange}
-            onPremiumCTAPress={() => {
-              void onOpenBackupSync();
-            }}
-            onReminderLeadDaysChange={onReminderLeadDaysChange}
-            onReminderTimeChange={onReminderTimeChange}
-            onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}
-            reminderStatusMessage={reminderStatusMessage}
-            reminderStatusTone={reminderStatusTone}
-            state={state}
-            styles={styles}
-            viewData={viewData}
-          />
-
-          <SettingsInterfaceSection
-            errorMessage={interfaceErrorMessage}
-            onFirstDayOfWeekSelect={onInterfaceFirstDayOfWeekSelect}
-            onLanguageSelect={onInterfaceLanguageSelect}
-            onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
-            onThemeSelect={onInterfaceThemeSelect}
-            statusMessage={interfaceStatusMessage}
-            value={state.interfaceValues}
-            viewData={viewData.interface}
-          />
-
-          <View style={styles.formGroup}>
-            <AppButton
-              disabled={
-                !hasUnsavedSettingsChanges || isSavingSettings || cycleGuidance.invalid
-              }
-              label={
-                isSavingSettings
-                  ? viewData.common.saving
-                  : viewData.common.saveChanges
-              }
-              onPress={onSavePendingSettings}
-              testID="settings-save-all-button"
+          {section === "hub" ? (
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>{viewData.title}</Text>
+              <Text style={styles.headerDescription}>{viewData.description}</Text>
+            </View>
+          ) : (
+            <InlineBackButton
+              label={viewData.account.backToSettingsLabel}
+              onPress={onBackToSettingsHub}
+              testID="settings-section-back-button"
             />
-          </View>
+          )}
 
-          <SettingsSyncSummaryCard onOpen={onOpenBackupSync} summary={syncSummary} />
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("cycle")}
+              row={hubNavigation.cycle}
+              testID="settings-hub-open-cycle"
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("symptoms")}
+              row={hubNavigation.symptoms}
+              testID="settings-hub-open-symptoms"
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("tracking")}
+              row={hubNavigation.tracking}
+              testID="settings-hub-open-tracking"
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("reminders")}
+              row={hubNavigation.reminders}
+              testID="settings-hub-open-reminders"
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("interface")}
+              row={hubNavigation.interface}
+              testID="settings-hub-open-interface"
+            />
+          ) : null}
 
-          <SettingsExportSection
-            errorMessage={exportErrorMessage}
-            exportState={state.exportState}
-            isExporting={isExporting}
-            onCSVExport={onExportCSV}
-            onFromDateChange={onExportFromDateChange}
-            onFromDatePress={onExportFromDatePress}
-            onJSONExport={onExportJSON}
-            onPDFExport={onExportPDF}
-            onPremiumCTAPress={() => {
-              void onOpenBackupSync();
-            }}
-            onPresetSelect={onExportPresetSelect}
-            onToDateChange={onExportToDateChange}
-            onToDatePress={onExportToDatePress}
-            premiumLockCopy={viewData.premiumLock}
-            presentationState={flowState.exportSection}
-            statusMessage={exportStatusMessage}
-            viewData={viewData.export}
-          />
+          {section === "cycle" ? (
+            <SettingsCycleSection
+              cycleErrorMessage={cycleErrorMessage}
+              cycleDateInputValue={cycleDateInputValue}
+              cycleGuidance={cycleGuidance}
+              cyclePickerMaximumDate={flowState.cyclePickerMaximumDate}
+              cyclePickerMinimumDate={flowState.cyclePickerMinimumDate}
+              cyclePickerValue={flowState.cyclePickerValue}
+              cycleStatusMessage={cycleStatusMessage}
+              displayedCycleStartDate={flowState.displayedCycleStartDate}
+              now={now}
+              onAgeGroupSelect={onAgeGroupSelect}
+              onAutoPeriodFillChange={onAutoPeriodFillChange}
+              onClearLastPeriodStart={onClearLastPeriodStart}
+              onCycleLengthChange={onCycleLengthChange}
+              onCycleDateInputChange={onCycleDateInputChange}
+              onDatePickerCancel={onDatePickerCancel}
+              onDatePickerChange={onDatePickerChange}
+              onDatePickerConfirm={onDatePickerConfirm}
+              onDatePickerToggle={onDatePickerToggle}
+              onPeriodLengthChange={onPeriodLengthChange}
+              onPredictionModeSelect={onPredictionModeSelect}
+              onUsageGoalSelect={onUsageGoalSelect}
+              predictionMode={flowState.predictionMode}
+              showDatePicker={showDatePicker}
+              state={state}
+              styles={styles}
+              supportsNativeDatePicker={flowState.exportSection.supportsNativeDatePicker}
+              viewData={viewData}
+            />
+          ) : null}
 
-          {flowState.exportSection.supportsNativeDatePicker && showExportDatePicker ? (
+          {section === "symptoms" ? (
+            <SettingsSymptomsSection
+              createDraft={createSymptomDraft}
+              createErrorMessage={createSymptomErrorMessage}
+              createStatusMessage={createSymptomStatusMessage}
+              onArchive={onArchiveSymptom}
+              onCreate={onCreateSymptom}
+              onCreateDraftChange={onCreateSymptomDraftChange}
+              onRestore={onRestoreSymptom}
+              onRowDraftChange={onSymptomDraftChange}
+              onUpdate={onUpdateSymptom}
+              rowDrafts={rowSymptomDrafts}
+              rowErrorMessages={rowSymptomErrorMessages}
+              rowStatusMessages={rowSymptomStatusMessages}
+              viewData={viewData.symptoms}
+              visibleState={flowState.symptomsState}
+            />
+          ) : null}
+
+          {section === "tracking" ? (
+            <SettingsTrackingSection
+              onHideNotesChange={onHideNotesChange}
+              onShowHistoricalPhasesChange={onShowHistoricalPhasesChange}
+              onHideCycleFactorsChange={onHideCycleFactorsChange}
+              onHideSexChipChange={onHideSexChipChange}
+              onTemperatureUnitSelect={onTemperatureUnitSelect}
+              onTrackBBTChange={onTrackBBTChange}
+              onTrackCervicalMucusChange={onTrackCervicalMucusChange}
+              state={state}
+              styles={styles}
+              trackingStatusMessage={trackingStatusMessage}
+              viewData={viewData}
+            />
+          ) : null}
+
+          {section === "reminders" ? (
+            <SettingsRemindersSection
+              onDailyLogReminderChange={onDailyLogReminderChange}
+              onFertileWindowReminderChange={onFertileWindowReminderChange}
+              onManagedReminderEmailsChange={onManagedReminderEmailsChange}
+              onPremiumCTAPress={() => {
+                void onOpenBackupSync();
+              }}
+              onReminderLeadDaysChange={onReminderLeadDaysChange}
+              onReminderTimeChange={onReminderTimeChange}
+              onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}
+              reminderStatusMessage={reminderStatusMessage}
+              reminderStatusTone={reminderStatusTone}
+              state={state}
+              styles={styles}
+              viewData={viewData}
+            />
+          ) : null}
+
+          {section === "interface" ? (
+            <SettingsInterfaceSection
+              errorMessage={interfaceErrorMessage}
+              onFirstDayOfWeekSelect={onInterfaceFirstDayOfWeekSelect}
+              onLanguageSelect={onInterfaceLanguageSelect}
+              onScreenCaptureProtectionChange={onScreenCaptureProtectionChange}
+              onThemeSelect={onInterfaceThemeSelect}
+              statusMessage={interfaceStatusMessage}
+              value={state.interfaceValues}
+              viewData={viewData.interface}
+            />
+          ) : null}
+
+          {EDITABLE_SETTINGS_SECTIONS.includes(section) ? (
+            <View style={styles.formGroup}>
+              <AppButton
+                disabled={
+                  !hasUnsavedSettingsChanges ||
+                  isSavingSettings ||
+                  cycleGuidance.invalid
+                }
+                label={
+                  isSavingSettings
+                    ? viewData.common.saving
+                    : viewData.common.saveChanges
+                }
+                onPress={onSavePendingSettings}
+                testID="settings-save-all-button"
+              />
+            </View>
+          ) : null}
+
+          {section === "hub" ? (
+            <SettingsSyncSummaryCard
+              onOpen={onOpenBackupSync}
+              summary={syncSummary}
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("data")}
+              row={hubNavigation.data}
+              testID="settings-hub-open-data"
+            />
+          ) : null}
+
+          {section === "data" ? (
+            <SettingsExportSection
+              errorMessage={exportErrorMessage}
+              exportState={state.exportState}
+              isExporting={isExporting}
+              onCSVExport={onExportCSV}
+              onFromDateChange={onExportFromDateChange}
+              onFromDatePress={onExportFromDatePress}
+              onJSONExport={onExportJSON}
+              onPDFExport={onExportPDF}
+              onPremiumCTAPress={() => {
+                void onOpenBackupSync();
+              }}
+              onPresetSelect={onExportPresetSelect}
+              onToDateChange={onExportToDateChange}
+              onToDatePress={onExportToDatePress}
+              premiumLockCopy={viewData.premiumLock}
+              presentationState={flowState.exportSection}
+              statusMessage={exportStatusMessage}
+              viewData={viewData.export}
+            />
+          ) : null}
+
+          {section === "data" &&
+          flowState.exportSection.supportsNativeDatePicker &&
+          showExportDatePicker ? (
             <DateTimePicker
               display="default"
               maximumDate={flowState.exportPickerMaximumDate ?? now}
@@ -405,31 +503,44 @@ export function SettingsFlowScreen({
             />
           ) : null}
 
-          <SettingsImportSection
-            errorMessage={importErrorMessage}
-            isImporting={isImporting}
-            onCancel={onImportCancel}
-            onConfirm={onImportConfirm}
-            onPickFile={onImportPickFile}
-            preview={importPreview}
-            statusMessage={importStatusMessage}
-            viewData={viewData.import}
-          />
+          {section === "data" ? (
+            <SettingsImportSection
+              errorMessage={importErrorMessage}
+              isImporting={isImporting}
+              onCancel={onImportCancel}
+              onConfirm={onImportConfirm}
+              onPickFile={onImportPickFile}
+              preview={importPreview}
+              statusMessage={importStatusMessage}
+              viewData={viewData.import}
+            />
+          ) : null}
 
-          <SettingsPrivacyCard
-            onOpen={onOpenPrivacyNotice}
-            viewData={viewData.privacy}
-          />
+          {section === "hub" ? (
+            <SettingsPrivacyCard
+              onOpen={onOpenPrivacyNotice}
+              viewData={viewData.privacy}
+            />
+          ) : null}
+          {section === "hub" ? (
+            <SettingsHubNavigationRow
+              onPress={() => onOpenSettingsSection("danger")}
+              row={hubNavigation.danger}
+              testID="settings-hub-open-danger"
+            />
+          ) : null}
 
-          <SettingsDangerZoneSection
-            confirmationValue={clearDataConfirmationValue}
-            errorMessage={clearDataErrorMessage}
-            isClearingData={isClearingData}
-            onChangeConfirmationValue={onClearDataConfirmationChange}
-            onSubmit={onClearAllData}
-            statusMessage={clearDataStatusMessage}
-            viewData={viewData.danger}
-          />
+          {section === "danger" ? (
+            <SettingsDangerZoneSection
+              confirmationValue={clearDataConfirmationValue}
+              errorMessage={clearDataErrorMessage}
+              isClearingData={isClearingData}
+              onChangeConfirmationValue={onClearDataConfirmationChange}
+              onSubmit={onClearAllData}
+              statusMessage={clearDataStatusMessage}
+              viewData={viewData.danger}
+            />
+          ) : null}
         </View>
       </ScrollView>
     </AppScreenSurface>
