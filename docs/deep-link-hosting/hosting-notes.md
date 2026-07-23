@@ -15,6 +15,13 @@ placeholders below, then drag `site/` to the static host as-is.
 | `apple-app-site-association` | `https://invite.ovumcy.cloud/.well-known/apple-app-site-association` | same as above; **no `.json` extension** |
 | `fallback.html` | `https://invite.ovumcy.cloud/backup-sync` | static only; must never log/echo/persist the `invite_token` query value |
 
+Deployment shape (2026-07-23): DNS for `invite.ovumcy.cloud` already points at the VPS, and the
+files are served at deploy time by a Traefik static route — companion infrastructure, not app
+code (`docs/deep-links.md` §6–§7). The `_headers` file encodes the contract for
+Pages/Netlify-style static hosts; on Traefik the same contract is enforced at the route level:
+`Content-Type: application/json` on both well-known paths, direct `200`s, no redirect, no auth
+wall, and the AASA file served without a `.json` extension.
+
 Fill in before uploading:
 
 1. **`assetlinks.json`** — replace both placeholders with SHA-256 signing-cert fingerprints
