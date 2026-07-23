@@ -2,7 +2,10 @@ import { type DimensionValue, Text, View } from "react-native";
 
 import type { StatsViewData } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
-import { StatsOverviewSymptomRow } from "./StatsOverviewShared";
+import {
+  composeStatsAccessibilityLabel,
+  StatsOverviewSymptomRow,
+} from "./StatsOverviewShared";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewPatternSectionsProps = {
@@ -31,7 +34,15 @@ export function StatsOverviewPatternSections({
         >
           <View style={styles.sectionGrid}>
             {viewData.symptomPatterns.items.map((item) => (
-              <View key={item.id} style={[styles.panel, { width: pairWidth }]}>
+              <View
+                accessibilityLabel={composeStatsAccessibilityLabel([
+                  item.label,
+                  item.summary,
+                ])}
+                accessible
+                key={item.id}
+                style={[styles.panel, { width: pairWidth }]}
+              >
                 <View style={styles.metaRow}>
                   <Text style={styles.metaIcon}>{item.icon}</Text>
                   <Text style={styles.metaLabel}>{item.label}</Text>
@@ -56,6 +67,12 @@ export function StatsOverviewPatternSections({
                 <View style={styles.sectionGrid}>
                   {viewData.phaseMoodInsights.items.map((item) => (
                     <View
+                      accessibilityLabel={composeStatsAccessibilityLabel(
+                        item.hasData
+                          ? [item.phase, item.averageMood, item.countLabel]
+                          : [item.phase, item.emptyLabel],
+                      )}
+                      accessible
                       key={item.key}
                       style={[styles.panel, { width: pairWidth }]}
                     >
@@ -98,10 +115,22 @@ export function StatsOverviewPatternSections({
               >
                 <View style={styles.listStack}>
                   {viewData.phaseSymptomInsights.items.map((item) => (
+                    // Deliberately not one grouped element: each symptom row
+                    // below is already its own composed label, and grouping the
+                    // panel would collapse them into a single unreadable
+                    // paragraph. The phase heading names the group instead.
                     <View key={item.key} style={styles.panel}>
                       <View style={styles.metaRow}>
-                        <Text style={styles.metaIcon}>{item.icon}</Text>
-                        <Text style={styles.metaLabel}>{item.phase}</Text>
+                        <Text
+                          accessibilityElementsHidden
+                          importantForAccessibility="no-hide-descendants"
+                          style={styles.metaIcon}
+                        >
+                          {item.icon}
+                        </Text>
+                        <Text accessibilityRole="header" style={styles.metaLabel}>
+                          {item.phase}
+                        </Text>
                       </View>
                       {item.hasData ? (
                         <>

@@ -177,6 +177,7 @@ export function SettingsCycleSection({
             {showDatePicker ? (
               <View style={styles.formGroup}>
                 <AppTextInput
+                  accessibilityLabel={viewData.cycle.lastPeriodStartLabel}
                   autoCapitalize="none"
                   autoCorrect={false}
                   inputMode="numeric"
@@ -262,6 +263,7 @@ export function SettingsCycleSection({
         <Text style={styles.fieldLabel}>{viewData.cycle.predictionModeLabel}</Text>
         <Text style={styles.helperText}>{viewData.cycle.predictionModeHint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.cycle.predictionModeLabel}
           onSelect={onPredictionModeSelect}
           options={viewData.cycle.predictionModeOptions}
           selectedValue={predictionMode}
@@ -273,6 +275,7 @@ export function SettingsCycleSection({
         <Text style={styles.fieldLabel}>{viewData.ageGroup.label}</Text>
         <Text style={styles.helperText}>{viewData.ageGroup.hint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.ageGroup.label}
           layout="grid3"
           onSelect={onAgeGroupSelect}
           options={viewData.ageGroup.options}
@@ -285,6 +288,7 @@ export function SettingsCycleSection({
         <Text style={styles.fieldLabel}>{viewData.usageGoal.label}</Text>
         <Text style={styles.helperText}>{viewData.usageGoal.hint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.usageGoal.label}
           onSelect={onUsageGoalSelect}
           options={viewData.usageGoal.options}
           selectedValue={state.cycleValues.usageGoal}

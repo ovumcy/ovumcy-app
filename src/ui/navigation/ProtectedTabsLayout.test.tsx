@@ -1,8 +1,9 @@
 import React from "react";
 import { act, render, screen, waitFor } from "@testing-library/react-native";
-import { AppState, Text, View } from "react-native";
+import { AppState, Dimensions, Platform, Text, View } from "react-native";
 
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
+import { TAB_BAR_BASE_CONTENT_HEIGHT } from "../layout/tab-bar-metrics";
 import { ProtectedTabsLayout } from "./ProtectedTabsLayout";
 
 const mockReact = React;
@@ -18,10 +19,21 @@ jest.mock("expo-router", () => {
     );
   }
 
-  function Tabs({ children }: { children?: React.ReactNode }) {
+  function Tabs({
+    children,
+    screenOptions,
+  }: {
+    children?: React.ReactNode;
+    screenOptions?: { tabBarStyle?: { height?: number } };
+  }) {
     return mockReact.createElement(
       mockView,
-      { testID: "protected-tabs" },
+      {
+        testID: "protected-tabs",
+        // Surfaces the tab-bar geometry the layout computed so the font-scale
+        // behaviour is assertable without a real navigator.
+        accessibilityValue: { now: screenOptions?.tabBarStyle?.height ?? 0 },
+      },
       children,
     );
   }
@@ -94,6 +106,65 @@ describe("ProtectedTabsLayout", () => {
       const tab = screen.getByTestId(`protected-tab-${name}`);
       expect(tab.props.accessibilityLabel).toBeTruthy();
       expect(tab.props.accessibilityLabel).toBe(tab.props.children);
+    }
+  });
+
+  it("grows the tab band when the OS font scale enlarges the tab labels", async () => {
+    // Android (and web) scale the tab label with the system font size; the band
+    // is a constant 56pt otherwise, so the label would clip against the icon.
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "android", writable: true });
+    jest.spyOn(Dimensions, "get").mockReturnValue({
+      fontScale: 2,
+      height: 844,
+      scale: 3,
+      width: 390,
+    });
+
+    try {
+      render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("protected-tabs")).toBeTruthy(),
+      );
+
+      const height = screen.getByTestId("protected-tabs").props
+        .accessibilityValue.now as number;
+      expect(height).toBeGreaterThan(TAB_BAR_BASE_CONTENT_HEIGHT);
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        value: originalOS,
+        writable: true,
+      });
+    }
+  });
+
+  it("keeps the tab band at its base height on iOS, where the label does not scale", async () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "ios", writable: true });
+    jest.spyOn(Dimensions, "get").mockReturnValue({
+      fontScale: 2,
+      height: 844,
+      scale: 3,
+      width: 390,
+    });
+
+    try {
+      render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+
+      await waitFor(() =>
+        expect(screen.getByTestId("protected-tabs")).toBeTruthy(),
+      );
+
+      // 56pt band plus the minimum bottom padding the layout always applies.
+      const height = screen.getByTestId("protected-tabs").props
+        .accessibilityValue.now as number;
+      expect(height).toBe(TAB_BAR_BASE_CONTENT_HEIGHT + 10);
+    } finally {
+      Object.defineProperty(Platform, "OS", {
+        value: originalOS,
+        writable: true,
+      });
     }
   });
 

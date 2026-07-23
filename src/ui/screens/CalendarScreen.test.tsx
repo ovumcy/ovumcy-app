@@ -1,5 +1,6 @@
 import * as React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
@@ -902,10 +903,84 @@ describe("CalendarScreen", () => {
     // predicts ovulation around 2026-03-23 with a fertile window and
     // predicted-period days painted on the grid; a positive pregnancy test
     // must blank all of that instead of showing a stale prediction.
-    expect(screen.queryByLabelText(/Ovulation day/)).toBeNull();
-    expect(screen.queryByLabelText(/Predicted period/)).toBeNull();
+    // Scoped to the day buttons: the legend now carries an accessible name for
+    // every state it explains, and the legend listing "Ovulation day" as a key
+    // is not the same claim as a grid cell being painted with it.
+    expect(
+      screen.queryByRole("button", { name: /Ovulation day/ }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Predicted period/ }),
+    ).toBeNull();
     expect(
       await screen.findByTestId("calendar-prediction-disclaimer"),
     ).toBeTruthy();
+  });
+
+  it("announces every actionable calendar control with a role, a name, and its state", async () => {
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
+
+    await waitForCalendarReady();
+
+    // The month title is the screen heading; month navigation and the day
+    // cells are buttons, and the selected day says so.
+    expect(screen.getAllByRole("header").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("calendar-prev-button").props.accessibilityRole).toBe(
+      "button",
+    );
+    expect(screen.getByTestId("calendar-next-button").props.accessibilityRole).toBe(
+      "button",
+    );
+
+    const selectedDay = screen.getByTestId("calendar-day-2026-03-17");
+    expect(selectedDay.props.accessibilityRole).toBe("button");
+    expect(selectedDay.props.accessibilityLabel).toBeTruthy();
+    expect(selectedDay.props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
+
+    // The legend explains the colour language of the grid, so each swatch is
+    // announced with the state it stands for rather than as a bare box.
+    expect(screen.getByLabelText("Logged period")).toBeTruthy();
+    expect(screen.getByLabelText("Logged entry")).toBeTruthy();
+  });
+
+  it("reports the calendar-key toggle state on the narrow phone layout", async () => {
+    // Under 430pt the month grid wins over an always-on legend, so the key
+    // collapses behind a toggle. A collapsed disclosure that never says it is
+    // collapsed leaves a screen-reader user unaware the key exists.
+    jest.spyOn(Dimensions, "get").mockReturnValue({
+      fontScale: 1,
+      height: 844,
+      scale: 3,
+      width: 390,
+    });
+
+    try {
+      render(
+        <CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />,
+      );
+
+      await waitForCalendarReady();
+
+      const toggle = screen.getByTestId("calendar-legend-toggle");
+      expect(toggle.props.accessibilityRole).toBe("button");
+      expect(toggle.props.accessibilityLabel).toBe("Show calendar key");
+      expect(toggle.props.accessibilityState).toEqual(
+        expect.objectContaining({ expanded: false }),
+      );
+      expect(screen.queryByTestId("calendar-legend-expanded")).toBeNull();
+
+      fireEvent.press(toggle);
+
+      const expandedToggle = screen.getByTestId("calendar-legend-toggle");
+      expect(expandedToggle.props.accessibilityLabel).toBe("Hide calendar key");
+      expect(expandedToggle.props.accessibilityState).toEqual(
+        expect.objectContaining({ expanded: true }),
+      );
+      expect(screen.getByTestId("calendar-legend-expanded")).toBeTruthy();
+    } finally {
+      jest.restoreAllMocks();
+    }
   });
 });

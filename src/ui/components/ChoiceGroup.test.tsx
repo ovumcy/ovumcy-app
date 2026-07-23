@@ -67,4 +67,44 @@ describe("ChoiceGroup", () => {
       }),
     );
   });
+
+  it("names the group with the field label so a radio announces what it answers", () => {
+    render(
+      <ChoiceGroup
+        groupLabel="Prediction mode"
+        onSelect={() => {}}
+        options={[
+          { value: "regular", label: "Regular" },
+          { value: "irregular", label: "Unpredictable" },
+        ]}
+        selectedValue="regular"
+        testIDPrefix="prediction-mode"
+      />,
+    );
+
+    const group = screen.getByTestId("prediction-mode-group");
+    expect(group.props.accessibilityRole).toBe("radiogroup");
+    expect(group.props.accessibilityLabel).toBe("Prediction mode");
+
+    expect(
+      screen.getByRole("radio", { name: "Regular", checked: true }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("radio", { name: "Unpredictable", checked: false }),
+    ).toBeTruthy();
+  });
+
+  it("leaves the group unnamed when no field label introduces it", () => {
+    render(
+      <ChoiceGroup
+        onSelect={() => {}}
+        options={[{ value: "a", label: "A" }]}
+        testIDPrefix="unlabelled"
+      />,
+    );
+
+    expect(
+      screen.getByTestId("unlabelled-group").props.accessibilityLabel,
+    ).toBeUndefined();
+  });
 });

@@ -1,4 +1,85 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * Multiplies every rendered font size by `factor`, leaving box geometry alone.
+ *
+ * This is the browser stand-in for an OS "larger text" setting: react-native-web
+ * emits pixel font sizes inline, so neither browser text-zoom nor React Native's
+ * own `allowFontScaling` reaches it. Reading the computed size once and writing
+ * it back scaled reproduces exactly the pressure Dynamic Type puts on a native
+ * layout — text grows, the containers do not — which is what the dense screens
+ * have to survive.
+ */
+async function applyFontScale(page: Page, factor: number): Promise<void> {
+  await page.evaluate((scale) => {
+    // Clear any earlier pass first. Font size inherits, so re-reading a value
+    // this helper already wrote would compound (1.5x twice is 2.25x) and the
+    // test would silently stop measuring the scale it claims to.
+    for (const scaled of Array.from(
+      document.querySelectorAll("[data-font-scaled]"),
+    )) {
+      if (scaled instanceof HTMLElement) {
+        scaled.style.removeProperty("font-size");
+        delete scaled.dataset.fontScaled;
+      }
+    }
+
+    for (const element of Array.from(document.querySelectorAll("*"))) {
+      if (!(element instanceof HTMLElement)) {
+        continue;
+      }
+
+      const size = Number.parseFloat(window.getComputedStyle(element).fontSize);
+      if (Number.isFinite(size) && size > 0) {
+        element.style.setProperty("font-size", `${size * scale}px`, "important");
+        element.dataset.fontScaled = "1";
+      }
+    }
+  }, factor);
+}
+
+/**
+ * How far the document can be scrolled sideways. Horizontal overflow is how a
+ * layout hides a control off-screen while still reporting that it rendered.
+ */
+async function measureHorizontalOverflow(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+}
+
+/**
+ * Elements whose own content is taller than their clipped box — i.e. text that
+ * the layout is cutting off rather than growing to fit.
+ */
+async function findClippedElements(
+  page: Page,
+  selector: string,
+): Promise<string[]> {
+  return page.evaluate((target) => {
+    const clipped: string[] = [];
+
+    for (const element of Array.from(document.querySelectorAll(target))) {
+      if (!(element instanceof HTMLElement)) {
+        continue;
+      }
+
+      const overflowsVertically = element.scrollHeight > element.clientHeight + 1;
+      const overflowsHorizontally = element.scrollWidth > element.clientWidth + 1;
+      if (overflowsVertically || overflowsHorizontally) {
+        clipped.push(
+          `${element.dataset.testid ?? element.tagName}: ` +
+            `${element.scrollWidth}x${element.scrollHeight} content in ` +
+            `${element.clientWidth}x${element.clientHeight} box`,
+        );
+      }
+    }
+
+    return clipped;
+  }, selector);
+}
 
 function formatLocalDate(value: Date): string {
   const year = value.getFullYear();
@@ -608,4 +689,101 @@ test("web shell publishes the canonical favicon", async ({ page }) => {
 
   expect(faviconResponse.status).toBe(200);
   expect(faviconResponse.contentType).toContain("image");
+});
+
+test("dense screens stay usable at a 1.5x font scale (dynamic type)", async ({
+  page,
+}) => {
+  const today = new Date();
+  const onboardingStart = formatLocalDate(addDays(today, -28));
+
+  // A narrow phone viewport: the width where the calendar grid and the tab bar
+  // have the least room to absorb larger text.
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await page.goto("/");
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+
+  await applyFontScale(page, 1.5);
+  // Step 1 is a scrolling day grid plus a pinned footer: the primary action
+  // must survive the extra text height, not be pushed out of reach.
+  await expect(page.getByTestId("onboarding-progress")).toBeVisible();
+  await expect(page.getByTestId("onboarding-next-button")).toBeVisible();
+
+  await page.getByTestId(`onboarding-day-option-${onboardingStart}`).click();
+  await page.getByTestId("onboarding-next-button").click();
+  await expect(page.getByTestId("onboarding-finish-button")).toBeVisible();
+  await page.getByTestId("onboarding-finish-button").click();
+  await expect(page).toHaveURL(/\/dashboard$/);
+
+  await applyFontScale(page, 1.5);
+  await expect(page.getByTestId("dashboard-quick-action-period")).toBeVisible();
+  await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
+
+  // Calendar: the fixed-geometry surface. Every day cell caps its own text, so
+  // the cells must grow or shrink-to-fit rather than clip, and every day must
+  // still be tappable.
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page.getByTestId("calendar-day-panel")).toBeVisible();
+  await applyFontScale(page, 1.5);
+
+  const todayCell = page.getByTestId(`calendar-day-${formatLocalDate(today)}`);
+  await expect(todayCell).toBeVisible();
+  const todayCellBox = await todayCell.boundingBox();
+  expect(todayCellBox?.width ?? 0).toBeGreaterThan(24);
+  expect(todayCellBox?.height ?? 0).toBeGreaterThan(24);
+
+  const dayCellCount = await page
+    .locator('[data-testid^="calendar-day-2"]')
+    .count();
+  expect(dayCellCount).toBeGreaterThan(27);
+  expect(
+    await findClippedElements(page, '[data-testid^="calendar-day-2"]'),
+  ).toEqual([]);
+
+  // The month is still navigable and a day still opens the editor.
+  await expect(page.getByTestId("calendar-prev-button")).toBeVisible();
+  await expect(page.getByTestId("calendar-today-button")).toBeVisible();
+  await todayCell.click();
+  await expect(page.getByTestId("day-log-period-toggle").last()).toBeVisible();
+
+  // Stats: the bar chart is the other fixed-geometry surface (a constant bar
+  // track between two labels inside a min-height shell).
+  await page.locator(tabLink("/stats")).click();
+  await expect(page).toHaveURL(/\/stats$/);
+  await expect(page.getByTestId("stats-screen-title")).toBeVisible();
+  await applyFontScale(page, 1.5);
+  await expect(page.getByTestId("stats-empty-hero")).toBeVisible();
+  await expect(page.getByTestId("stats-prediction-disclaimer")).toBeVisible();
+
+  // Settings hub rows and the tab bar are the navigation of last resort: if
+  // they clip or overflow, a large-text user cannot leave the screen.
+  await page.locator(tabLink("/settings")).click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await applyFontScale(page, 1.5);
+  await expect(page.getByTestId("settings-hub-open-interface")).toBeVisible();
+  await expect(page.getByTestId("settings-hub-open-cycle")).toBeVisible();
+
+  for (const route of ["/dashboard", "/calendar", "/stats", "/settings"] as const) {
+    await expect(page.locator(tabLink(route))).toBeVisible();
+  }
+
+  // Nothing anywhere in the sweep may push the document sideways: horizontal
+  // overflow is how "it still renders" hides a control off-screen.
+  expect(await measureHorizontalOverflow(page)).toBeLessThanOrEqual(1);
+
+  // One pass at the largest realistic accessibility text size. 2x is well past
+  // the `fontScale.dense` cap the fixed-geometry surfaces apply natively, so
+  // this is deliberately harsher than the app can actually be asked to render.
+  await page.locator(tabLink("/calendar")).click();
+  await expect(page).toHaveURL(/\/calendar$/);
+  await applyFontScale(page, 2);
+  await expect(
+    page.getByTestId(`calendar-day-${formatLocalDate(today)}`),
+  ).toBeVisible();
+  expect(
+    await findClippedElements(page, '[data-testid^="calendar-day-2"]'),
+  ).toEqual([]);
+  expect(await measureHorizontalOverflow(page)).toBeLessThanOrEqual(1);
 });

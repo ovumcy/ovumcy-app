@@ -285,7 +285,9 @@ export function SettingsFlowScreen({
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
           {section === "hub" ? (
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>{viewData.title}</Text>
+              <Text accessibilityRole="header" style={styles.headerTitle}>
+                {viewData.title}
+              </Text>
               <Text style={styles.headerDescription}>{viewData.description}</Text>
             </View>
           ) : (

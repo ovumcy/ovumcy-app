@@ -150,6 +150,7 @@ export function DayLogEditorCard({
       <Text style={styles.sectionLabel}>{viewData.labels.bbt}</Text>
       <Text style={styles.sectionHint}>{viewData.labels.bbtHint}</Text>
       <AppTextInput
+        accessibilityLabel={viewData.labels.bbt}
         inputMode="decimal"
         maxLength={6}
         onBlur={() => setBbtText(formatTemperatureValue(record.bbt, temperatureUnit))}
@@ -173,6 +174,7 @@ export function DayLogEditorCard({
       </Text>
       <ChoiceGroup
         compact
+        groupLabel={viewData.labels.cervicalMucus}
         onSelect={(value) => onPatch({ cervicalMucus: value })}
         options={viewData.options.cervicalMucus}
         selectedValue={record.cervicalMucus}
@@ -190,6 +192,7 @@ export function DayLogEditorCard({
       <Text style={styles.sectionHint}>{viewData.labels.lhTestHint}</Text>
       <ChoiceGroup
         compact
+        groupLabel={viewData.labels.lhTest}
         onSelect={(value) => onPatch({ lhTest: value })}
         options={viewData.options.lhTest}
         selectedValue={record.lhTest}
@@ -211,6 +214,7 @@ export function DayLogEditorCard({
       </Text>
       <ChoiceGroup
         compact
+        groupLabel={viewData.labels.pregnancyTest}
         onSelect={(value) => onPatch({ pregnancyTest: value })}
         options={viewData.options.pregnancyTest}
         selectedValue={record.pregnancyTest}
@@ -242,6 +246,7 @@ export function DayLogEditorCard({
           <Text style={styles.sectionLabel}>{viewData.labels.flow}</Text>
           <ChoiceGroup
             compact
+            groupLabel={viewData.labels.flow}
             onSelect={(value) => onPatch({ flow: value })}
             options={viewData.options.flow}
             selectedValue={record.flow}
@@ -262,6 +267,7 @@ export function DayLogEditorCard({
         <Text style={styles.sectionLabel}>{viewData.labels.symptoms}</Text>
         <MultiSelectChipGroup
           compact
+          groupLabel={viewData.labels.symptoms}
           onToggle={(value) => {
             const next = record.symptomIDs.includes(value)
               ? record.symptomIDs.filter((current) => current !== value)
@@ -302,6 +308,7 @@ export function DayLogEditorCard({
         <ChoiceGroup
           compact
           contentAlign="center"
+          groupLabel={viewData.labels.mood}
           layout="grid5"
           onClearSelection={() => onPatch({ mood: 0 })}
           onSelect={(value) => onPatch({ mood: value })}
@@ -320,6 +327,7 @@ export function DayLogEditorCard({
           <Text style={styles.sectionHint}>{viewData.labels.cycleFactorsHint}</Text>
           <MultiSelectChipGroup
             compact
+            groupLabel={viewData.labels.cycleFactors}
             onToggle={(value) => {
               const next = record.cycleFactorKeys.includes(value)
                 ? record.cycleFactorKeys.filter((current) => current !== value)
@@ -341,6 +349,7 @@ export function DayLogEditorCard({
           <Text style={styles.sectionLabel}>{viewData.labels.intimacy}</Text>
           <ChoiceGroup
             compact
+            groupLabel={viewData.labels.intimacy}
             onSelect={(value) => onPatch({ sexActivity: value })}
             options={viewData.options.sexActivity}
             selectedValue={record.sexActivity}
@@ -373,6 +382,7 @@ export function DayLogEditorCard({
           <View style={styles.notesSection}>
             <Text style={styles.sectionLabel}>{viewData.labels.notes}</Text>
             <AppTextInput
+              accessibilityLabel={viewData.labels.notes}
               multiline
               onChangeText={(value) => onPatch({ notes: value })}
               placeholder={viewData.labels.notesPlaceholder}

@@ -185,6 +185,7 @@ export function SettingsSyncSetupSection({
         <View style={styles.formGroup}>
           <Text style={styles.fieldLabel}>{viewData.modeLabel}</Text>
           <ChoiceGroup
+            groupLabel={viewData.modeLabel}
             layout="grid2"
             onSelect={(value) => {
               if (presentation.accountActionsDisabled) {
@@ -341,6 +342,7 @@ export function SettingsSyncSetupSection({
                 <View style={styles.formGroup}>
                   <Text style={styles.fieldLabel}>{viewData.connectionLabel}</Text>
                   <ChoiceGroup
+                    groupLabel={viewData.connectionLabel}
                     layout="grid2"
                     onSelect={(value) => {
                       setActiveAccountPane(value);

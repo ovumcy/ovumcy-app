@@ -13,7 +13,11 @@ export function BrandLockup({ subtitle }: BrandLockupProps) {
 
   return (
     <View style={styles.lockup}>
+      {/* The mark repeats the wordmark that follows it, so it is decorative:
+          announcing it would make a screen reader say "Ovumcy" twice. */}
       <Image
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         source={require("../../../assets/branding/ovumcy-icon-192.png")}
         style={styles.icon}
       />

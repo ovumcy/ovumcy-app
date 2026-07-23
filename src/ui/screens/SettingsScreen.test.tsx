@@ -1602,6 +1602,56 @@ describe("SettingsScreen", () => {
     expect(screen.queryByTestId("settings-import-preview")).toBeNull();
   });
 
+  it("announces the whole import preview as one summary, including the nothing-new line", async () => {
+    // Every day in the backup is already on this device, so the preview adds
+    // its "nothing new" line. The summary of what confirm is about to apply is
+    // announced as one element, so it is heard whole before the write.
+    const storage = createSettingsStorageMock({
+      readDayLogRecord: jest.fn().mockImplementation(async (date: string) => ({
+        ...createEmptyDayLogRecord(date),
+        notes: "existing entry",
+      })),
+    });
+    const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        section="data"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-preview");
+    expect(
+      screen.getByText("Everything in this backup is already on this device."),
+    ).toBeTruthy();
+    // One element, one summary, in the order the card renders — and no doubled
+    // full stop where a line already ends in one. The backup timestamp is read
+    // back from the line the user sees rather than pinned as a literal: it is
+    // formatted in the runner's own timezone, and the contract being asserted
+    // is that the announcement says exactly what is on screen.
+    const backupCreatedLine = String(
+      screen.getByText(/^Backup created: /).props.children,
+    );
+
+    expect(
+      screen.getByTestId("settings-import-preview-summary").props
+        .accessibilityLabel,
+    ).toBe(
+      `Ready to restore. ${backupCreatedLine}. ` +
+        "Backup range: 2026-03-01 to 2026-03-02. Entries in backup: 2. " +
+        "New days to add: 0. " +
+        "Days already on this device (kept unchanged): 2. " +
+        "Your current settings stay unchanged. " +
+        "Everything in this backup is already on this device.",
+    );
+  });
+
   it("keeps the preview visible and reports restore-failed when applying a confirmed import throws", async () => {
     const storage = createSettingsStorageMock();
     const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
@@ -2390,6 +2440,55 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
     expect(mockPush).not.toHaveBeenCalled();
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+  });
+
+  it("names every hub navigation row so a screen reader hears its destination", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
+
+    await screen.findByTestId("settings-hub-open-cycle");
+
+    for (const testID of [
+      "settings-hub-open-cycle",
+      "settings-hub-open-symptoms",
+      "settings-hub-open-tracking",
+      "settings-hub-open-reminders",
+      "settings-hub-open-interface",
+      "settings-hub-open-data",
+      "settings-hub-open-danger",
+    ]) {
+      const row = screen.getByTestId(testID);
+      expect(row.props.accessibilityRole).toBe("button");
+      expect(row.props.accessibilityLabel).toBeTruthy();
+    }
+
+    // The hub title is the screen heading a rotor jumps to.
+    expect(screen.getAllByRole("header").length).toBeGreaterThan(0);
+  });
+
+  it("names the interface choice groups so each radio says what it changes", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="interface"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-interface-section");
+
+    for (const [testID, label] of [
+      ["settings-interface-language-group", "Language"],
+      ["settings-interface-theme-group", "Theme"],
+      ["settings-interface-first-day-of-week-group", "First day of the week"],
+    ] as const) {
+      const group = screen.getByTestId(testID);
+      expect(group.props.accessibilityRole).toBe("radiogroup");
+      expect(group.props.accessibilityLabel).toBe(label);
+    }
   });
 
   it("discards changes when the backup-sync guard rejects saving, then navigates", async () => {

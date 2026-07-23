@@ -222,6 +222,7 @@ function SymptomEditorCard({
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{nameLabel}</Text>
         <AppTextInput
+          accessibilityLabel={nameLabel}
           autoCapitalize="sentences"
           autoCorrect={false}
           onChangeText={(value) => onDraftChange({ label: value })}
@@ -235,14 +236,21 @@ function SymptomEditorCard({
 
       <View style={styles.formGroup}>
         <Text style={styles.fieldLabel}>{iconLabel}</Text>
-        <View style={styles.iconRow}>
+        <View
+          accessibilityLabel={iconLabel}
+          accessibilityRole="radiogroup"
+          style={styles.iconRow}
+        >
           {iconOptions.map((option) => {
             const isSelected = draft.icon === option.value;
             return (
               <Pressable
                 key={option.value}
                 accessibilityRole="radio"
-                accessibilityState={{ selected: isSelected }}
+                // `checked` is the state a radio announces (ChoiceGroup does
+                // the same); `selected` left this one silent about whether it
+                // was the chosen icon.
+                accessibilityState={{ checked: isSelected }}
                 onPress={() => onDraftChange({ icon: option.value })}
                 style={[
                   styles.iconOption,

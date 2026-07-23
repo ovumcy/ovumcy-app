@@ -140,7 +140,15 @@ export function CalendarMonthGrid({
                       />
                     ) : null}
                     {day.hasSex ? (
+                      // Glyph marker inside the fixed-geometry cell footer: it
+                      // shares the row with the data dot, so it takes the same
+                      // dense cap as the rest of the grid. The day cell's
+                      // accessibility label already states what it means, so
+                      // the raw "♥" stays out of the reading order.
                       <Text
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                        maxFontSizeMultiplier={fontScale.dense}
                         style={styles.heartMarker}
                         testID={`calendar-marker-sex-${day.date}`}
                       >

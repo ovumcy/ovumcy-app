@@ -37,7 +37,12 @@ export function BackupSyncScreen({
     return (
       <ScreenScaffold description={loadingDescription} title={loadingTitle}>
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator color={accentColor} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={loadingTitle}
+            accessibilityRole="progressbar"
+            color={accentColor}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );

@@ -15,9 +15,15 @@ export function CalendarStateDecor({
 }: CalendarStateDecorProps) {
   const styles = useThemedStyles(createStyles);
 
+  // Both variants are pure swatches. In the grid the day cell's own
+  // accessibility label already names the ovulation state; in the legend the
+  // adjacent label does. Either way an unlabelled dot in the reading order is
+  // noise, so the decor stays out of the accessibility tree.
   if (stateKey === "ovulation") {
     return (
       <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         pointerEvents="none"
         style={[
           styles.ovulationMarker,
@@ -30,6 +36,8 @@ export function CalendarStateDecor({
   if (stateKey === "ovulation_tentative") {
     return (
       <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
         pointerEvents="none"
         style={[
           styles.ovulationDash,

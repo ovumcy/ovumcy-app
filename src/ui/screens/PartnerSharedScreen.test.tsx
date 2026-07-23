@@ -338,6 +338,11 @@ describe("PartnerSharedScreen", () => {
     expect(screen.getByText("Top symptoms: Cramps")).toBeTruthy();
     expect(screen.getByTestId("partner-shared-row-2026-04-04")).toBeTruthy();
     expect(screen.getByText("Shared note")).toBeTruthy();
+    // One shared day is one announcement: date, details, symptoms, factors and
+    // note arrive together instead of as five orphan lines.
+    const sharedRow = screen.getByTestId("partner-shared-row-2026-04-04");
+    expect(sharedRow.props.accessible).toBe(true);
+    expect(sharedRow.props.accessibilityLabel).toContain("Shared note");
     // Medical-safety disclaimer sits with the prediction window (matches the
     // owner Dashboard/Calendar/Stats surfaces; deviates beyond web parity).
     expect(screen.getByTestId("partner-shared-prediction-disclaimer")).toBeTruthy();

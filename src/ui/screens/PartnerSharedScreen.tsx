@@ -139,7 +139,12 @@ export function PartnerSharedScreen({
         }
       >
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={copy.sharedViewLoadingTitle}
+            accessibilityRole="progressbar"
+            color={colors.accent}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );
@@ -277,8 +282,22 @@ export function PartnerSharedScreen({
                     readState.temperatureUnit,
                   );
 
+                  const historyFactorText = row.cycleFactors
+                    .map((factor) => resolveCycleFactorLabel(dayLogCopy, factor))
+                    .join(", ");
+
                   return (
                     <View
+                      accessibilityLabel={[
+                        formatHistoryDate(row.date, language),
+                        historyDetailText,
+                        row.symptomSummary,
+                        historyFactorText,
+                        row.notes,
+                      ]
+                        .filter((line) => Boolean(line && line.trim()))
+                        .join(". ")}
+                      accessible
                       key={row.date}
                       style={styles.historyItem}
                       testID={`partner-shared-row-${row.date}`}
@@ -290,12 +309,8 @@ export function PartnerSharedScreen({
                       {row.symptomSummary ? (
                         <Text style={styles.helperText}>{row.symptomSummary}</Text>
                       ) : null}
-                      {row.cycleFactors.length > 0 ? (
-                        <Text style={styles.helperText}>
-                          {row.cycleFactors
-                            .map((factor) => resolveCycleFactorLabel(dayLogCopy, factor))
-                            .join(", ")}
-                        </Text>
+                      {historyFactorText.length > 0 ? (
+                        <Text style={styles.helperText}>{historyFactorText}</Text>
                       ) : null}
                       {row.notes ? <Text style={styles.notes}>{row.notes}</Text> : null}
                     </View>
@@ -326,7 +341,13 @@ export function PartnerSharedScreen({
 function MetricItem({ label, value }: { label: string; value: string }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <View style={styles.metricItem}>
+    // Caption above figure: read apart they are two orphan fragments, so the
+    // pair is announced as one "<metric>. <value>." element.
+    <View
+      accessibilityLabel={`${label}. ${value}.`}
+      accessible
+      style={styles.metricItem}
+    >
       <Text style={styles.metricLabel}>{label}</Text>
       <Text style={styles.metricValue}>{value}</Text>
     </View>

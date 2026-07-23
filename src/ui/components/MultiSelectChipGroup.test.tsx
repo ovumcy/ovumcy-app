@@ -61,4 +61,32 @@ describe("MultiSelectChipGroup", () => {
       }),
     );
   });
+
+  it("names the group and announces each chip by its word, not its emoji", () => {
+    render(
+      <MultiSelectChipGroup
+        groupLabel="Cycle factors"
+        onToggle={() => {}}
+        options={[
+          { value: "stress", label: "Stress", icon: "⚡" },
+          { value: "medication_change", label: "Medication change", icon: "💊" },
+        ]}
+        selectedValues={["stress"]}
+        testIDPrefix="factor"
+      />,
+    );
+
+    expect(screen.getByTestId("factor-group").props.accessibilityLabel).toBe(
+      "Cycle factors",
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "Stress", checked: true }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("checkbox", {
+        name: "Medication change",
+        checked: false,
+      }),
+    ).toBeTruthy();
+  });
 });

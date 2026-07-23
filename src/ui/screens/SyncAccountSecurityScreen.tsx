@@ -44,7 +44,12 @@ export function SyncAccountSecurityScreen({
     return (
       <ScreenScaffold description={copy.subtitle} title={copy.title}>
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={copy.title}
+            accessibilityRole="progressbar"
+            color={colors.accent}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );

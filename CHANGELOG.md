@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Accessibility coverage across the remaining screens: interactive controls now
+  carry a role, an accessible name taken from the localized copy already on
+  screen, and the state that matters (disabled, selected, checked, expanded).
+  Option groups are named by their field label, informational rows that read as
+  one fact are announced as one element, screen and section titles expose the
+  header role, and decorative chrome is kept out of the accessibility tree.
+- Dynamic Type support: OS font scaling stays enabled everywhere, and the
+  fixed-geometry surfaces (calendar month grid, stats bar chart, dashboard cycle
+  hero, compact one-line chrome) cap their scaling at a named tier so a very
+  large system font shrinks-to-fit instead of overlapping. The bottom tab band
+  now grows with the OS font scale on the platforms that scale tab labels.
+- A Playwright lane that walks onboarding, day logging, calendar, insights, and
+  settings at an enlarged font scale, failing on clipped calendar cells or
+  horizontal overflow, plus a policy test pinning the font-scaling caps and
+  per-surface screen assertions on names, roles, and states.
+
 ### Changed
 
 - The `production` EAS build profile now supplies the production entitlement

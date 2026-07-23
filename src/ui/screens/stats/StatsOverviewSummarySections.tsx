@@ -3,6 +3,7 @@ import { type DimensionValue, Text, View } from "react-native";
 import type { StatsViewData } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
 import { fontScale } from "../../theme/tokens";
+import { composeStatsAccessibilityLabel } from "./StatsOverviewShared";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewSummarySectionsProps = {
@@ -39,7 +40,14 @@ export function StatsOverviewSummarySections({
         <FeatureCard title={viewData.cycleOverview.title}>
           <View style={styles.overviewGrid}>
             <View style={styles.panel}>
-              <View style={styles.row}>
+              <View
+                accessibilityLabel={composeStatsAccessibilityLabel([
+                  viewData.cycleOverview.averageLabel,
+                  viewData.cycleOverview.averageValue,
+                ])}
+                accessible
+                style={styles.row}
+              >
                 <Text style={styles.rowLabel}>
                   {viewData.cycleOverview.averageLabel}
                 </Text>
@@ -47,7 +55,14 @@ export function StatsOverviewSummarySections({
                   {viewData.cycleOverview.averageValue}
                 </Text>
               </View>
-              <View style={styles.row}>
+              <View
+                accessibilityLabel={composeStatsAccessibilityLabel([
+                  viewData.cycleOverview.medianLabel,
+                  viewData.cycleOverview.medianValue,
+                ])}
+                accessible
+                style={styles.row}
+              >
                 <Text style={styles.rowLabel}>
                   {viewData.cycleOverview.medianLabel}
                 </Text>
@@ -56,7 +71,14 @@ export function StatsOverviewSummarySections({
                 </Text>
               </View>
             </View>
-            <View style={styles.panel}>
+            <View
+              accessibilityLabel={composeStatsAccessibilityLabel([
+                viewData.cycleOverview.rangeTitle,
+                viewData.cycleOverview.rangeValue,
+              ])}
+              accessible
+              style={styles.panel}
+            >
               <Text style={styles.cardLabel}>
                 {viewData.cycleOverview.rangeTitle}
               </Text>
@@ -146,7 +168,9 @@ export function StatsOverviewSummarySections({
 function buildSummaryCardAccessibilityLabel(
   card: StatsViewData["topCards"][number],
 ): string {
-  return [card.title, card.value, card.description ?? ""]
-    .filter((value) => value.trim().length > 0)
-    .join(". ");
+  return composeStatsAccessibilityLabel([
+    card.title,
+    card.value,
+    card.description,
+  ]);
 }

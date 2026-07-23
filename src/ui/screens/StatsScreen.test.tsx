@@ -1,5 +1,11 @@
 import * as React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
@@ -423,6 +429,15 @@ describe("StatsScreen", () => {
     expect(screen.getByText("Weighted average")).toBeTruthy();
     expect(screen.getByTestId("stats-extended-reports")).toBeTruthy();
     expect(screen.getByText("Extended reports")).toBeTruthy();
+
+    // Every premium insight panel is a title, a figure, and a qualifier laid
+    // out as separate text nodes; they are announced as one sentence so the
+    // figure never arrives without the thing it measures.
+    expect(
+      within(screen.getByTestId("stats-advanced-fertility")).getByLabelText(
+        /^Observed luteal phase\. /,
+      ),
+    ).toBeTruthy();
   });
 
   it("renders the fertile current-phase card (web resolveCyclePhase parity)", async () => {

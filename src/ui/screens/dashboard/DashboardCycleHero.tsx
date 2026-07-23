@@ -193,7 +193,11 @@ export function DashboardCycleHero({ viewData }: DashboardCycleHeroProps) {
                   ? styles.phaseCardActiveOvulation
                   : null,
               ]}
+              // Phase name and its day range are one fact; the coloured dot
+              // beside them carries no separate meaning.
+              accessibilityLabel={`${phaseCard.label}. ${phaseCard.rangeLabel}`}
               accessibilityState={{ selected: phaseCard.active }}
+              accessible
               testID={`dashboard-cycle-hero-phase-card-${phaseCard.key}`}
             >
               <View style={styles.phaseCardHeader}>

@@ -31,6 +31,7 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 - [Current Scope](#current-scope)
 - [Public Alpha Expectations](#public-alpha-expectations)
 - [Privacy and Security](#privacy-and-security)
+- [Accessibility](#accessibility)
 - [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Testing and Quality](#testing-and-quality)
@@ -220,6 +221,15 @@ What this repository still does **not** claim yet:
 - Security checks in GitHub Actions cover production dependency audit and Trivy filesystem scanning.
 - CodeQL analysis is enabled while the repository remains public on GitHub.
 - Dependabot monitors app dependencies and GitHub Actions updates.
+
+## Accessibility
+
+- Interactive controls carry an accessibility role, an accessible name sourced from the same localized copy the screen renders, and the state that matters (`disabled`, `selected`, `checked`, `expanded`). Option groups (single-choice tiles, symptom chips) are named by the field label above them, so a radio or checkbox announces which question it answers.
+- Informational rows that read as one fact — a stats panel, a calendar legend entry, a partner-shared day, a metric caption and its figure — are announced as one element instead of a run of disconnected fragments. Purely decorative chrome (the shell's glow/stripe layer, calendar state swatches, skeleton placeholders) is kept out of the accessibility tree.
+- Screen and section titles expose the header role, so a rotor can jump between "what screen am I on" and each section.
+- OS font scaling (Dynamic Type / Android font size) is honored: `allowFontScaling` is never switched off, so body copy grows with the system setting without limit. Fixed-geometry surfaces — the calendar month grid, the stats bar chart, the dashboard cycle hero, and compact one-line chrome — cap `maxFontSizeMultiplier` at a named tier (`src/ui/theme/tokens.ts`) so a very large system font shrinks-to-fit inside its own cell instead of overlapping a neighbour. The bottom tab band grows with the OS font scale on the platforms that scale tab labels.
+- Automated coverage: per-surface screen tests assert names, roles, and states on actionable elements; a policy test pins the font-scaling caps on the dense surfaces; the Playwright web smoke walks onboarding, day logging, calendar, stats, and settings at an enlarged font scale and fails on clipped calendar cells or horizontal overflow.
+- Not automated: real screen-reader passes. VoiceOver and TalkBack reading-order checks, plus the OS "larger text" settings, are part of the manual acceptance pass in [docs/manual-smoke.md](docs/manual-smoke.md).
 
 ## Architecture
 

@@ -68,6 +68,7 @@ export function SettingsExportSection({
           <View style={styles.formGroup}>
             <Text style={styles.fieldLabel}>{viewData.presetLabel}</Text>
             <ChoiceGroup
+              groupLabel={viewData.presetLabel}
               layout="grid2"
               onSelect={onPresetSelect}
               options={viewData.presetOptions}
@@ -102,6 +103,7 @@ export function SettingsExportSection({
                 </Pressable>
               ) : (
                 <AppTextInput
+                  accessibilityLabel={viewData.fromLabel}
                   autoCapitalize="none"
                   autoCorrect={false}
                   inputMode="numeric"
@@ -137,6 +139,7 @@ export function SettingsExportSection({
                 </Pressable>
               ) : (
                 <AppTextInput
+                  accessibilityLabel={viewData.toLabel}
                   autoCapitalize="none"
                   autoCorrect={false}
                   inputMode="numeric"

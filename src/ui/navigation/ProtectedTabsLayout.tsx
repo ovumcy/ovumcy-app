@@ -2,7 +2,7 @@ import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getShellCopy } from "../../i18n/shell-copy";
@@ -16,6 +16,7 @@ import type { SyncSecretStore } from "../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
+import { resolveTabBarContentHeight } from "../layout/tab-bar-metrics";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { GuardedTabBarButton } from "./GuardedTabBarButton";
 import { TabLeaveGuardProvider } from "./TabLeaveGuardContext";
@@ -39,6 +40,7 @@ export function ProtectedTabsLayout({
 }: ProtectedTabsLayoutProps) {
   const { colors, language } = useAppPreferences();
   const insets = useSafeAreaInsets();
+  const { fontScale: osFontScale } = useWindowDimensions();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<
     boolean | null
   >(null);
@@ -47,7 +49,12 @@ export function ProtectedTabsLayout({
     ? Math.max(insets.bottom, 10)
     : Math.max(insets.bottom, 8);
   const tabBarBottomPadding = Math.max(bottomInset, 10);
-  const tabBarHeight = 56 + tabBarBottomPadding;
+  // React Navigation pins the tab label on iOS 13+ (large-content viewer) and
+  // scales it everywhere else, so the band only has to grow where the label
+  // actually grows. See `resolveTabBarContentHeight` for the cap and why.
+  const tabBarHeight =
+    resolveTabBarContentHeight(osFontScale, Platform.OS !== "ios") +
+    tabBarBottomPadding;
   const renderTabBarButton = (routeName: string) =>
     function renderGuardedTabBarButton(props: BottomTabBarButtonProps) {
       return <GuardedTabBarButton {...props} targetRouteName={routeName} />;

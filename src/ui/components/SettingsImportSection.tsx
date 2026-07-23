@@ -57,16 +57,31 @@ export function SettingsImportSection({
 
       {preview ? (
         <View style={styles.previewCard} testID="settings-import-preview">
-          <Text style={styles.previewTitle}>{viewData.previewTitle}</Text>
-          {preview.detailLines.map((line) => (
-            <Text key={line} style={styles.previewText}>
-              {line}
-            </Text>
-          ))}
-          <Text style={styles.previewText}>{preview.profileLine}</Text>
-          {preview.nothingNewLine ? (
-            <Text style={styles.previewText}>{preview.nothingNewLine}</Text>
-          ) : null}
+          {/* What the confirm button is about to apply. Announced as one
+              element so the summary is heard whole before the irreversible
+              action, not as loose lines the user can swipe past. */}
+          <View
+            accessibilityLabel={composePreviewAccessibilityLabel([
+              viewData.previewTitle,
+              ...preview.detailLines,
+              preview.profileLine,
+              preview.nothingNewLine,
+            ])}
+            accessible
+            style={styles.previewSummary}
+            testID="settings-import-preview-summary"
+          >
+            <Text style={styles.previewTitle}>{viewData.previewTitle}</Text>
+            {preview.detailLines.map((line) => (
+              <Text key={line} style={styles.previewText}>
+                {line}
+              </Text>
+            ))}
+            <Text style={styles.previewText}>{preview.profileLine}</Text>
+            {preview.nothingNewLine ? (
+              <Text style={styles.previewText}>{preview.nothingNewLine}</Text>
+            ) : null}
+          </View>
 
           <View style={styles.actionsRow}>
             <AppButton
@@ -99,6 +114,22 @@ export function SettingsImportSection({
   );
 }
 
+/**
+ * Joins the preview lines into one spoken summary.
+ *
+ * The lines mix sentence fragments ("New days to add: 2") with lines that are
+ * already full sentences ("Your current settings stay unchanged."), so a blunt
+ * `join(". ")` would read one of them out with a doubled full stop. Each line
+ * gets a terminator only when it does not already have one.
+ */
+function composePreviewAccessibilityLabel(lines: readonly string[]): string {
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => (/[.!?]$/.test(line) ? line : `${line}.`))
+    .join(" ");
+}
+
 const createStyles = (colors: AppThemeColors) =>
   StyleSheet.create({
     previewCard: {
@@ -109,6 +140,9 @@ const createStyles = (colors: AppThemeColors) =>
       gap: spacing.xs,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
+    },
+    previewSummary: {
+      gap: spacing.xs,
     },
     previewTitle: {
       color: colors.text,
