@@ -354,6 +354,7 @@ export type SettingsViewData = {
       syncFailed: string;
       restoreFailed: string;
       deleteAccountFailed: string;
+      deleteAccountCleanupUnavailable: string;
       renewalUnavailable: string;
       renewalUpdateFailed: string;
     };
@@ -916,6 +917,8 @@ export function buildSettingsViewData(
         syncFailed: settingsCopy.account.errors.syncFailed,
         restoreFailed: settingsCopy.account.errors.restoreFailed,
         deleteAccountFailed: settingsCopy.account.errors.deleteAccountFailed,
+        deleteAccountCleanupUnavailable:
+          settingsCopy.account.errors.deleteAccountCleanupUnavailable,
         renewalUnavailable: settingsCopy.account.errors.renewalUnavailable,
         renewalUpdateFailed: settingsCopy.account.errors.renewalUpdateFailed,
       },

@@ -32,6 +32,7 @@ export type ManagedCloudAPIErrorCode =
   | "unauthorized"
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
+  | "sync_purge_unavailable"
   | "origin_not_allowed"
   | "totp_not_configured"
   | "totp_already_enabled"
@@ -1450,6 +1451,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "unauthorized":
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
+      case "sync_purge_unavailable":
       case "origin_not_allowed":
       case "totp_not_configured":
       case "totp_already_enabled":

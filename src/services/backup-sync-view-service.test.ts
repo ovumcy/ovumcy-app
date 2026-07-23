@@ -658,6 +658,10 @@ describe("backup sync view service", () => {
       ["recovery_export_failed", viewData.account.errors.recoveryExportFailed],
       ["stale_generation", viewData.account.errors.syncFailed],
       [
+        "sync_purge_unavailable",
+        viewData.account.errors.deleteAccountCleanupUnavailable,
+      ],
+      [
         "billing_management_unavailable",
         viewData.account.errors.renewalUnavailable,
       ],
@@ -701,13 +705,14 @@ describe("backup sync view service", () => {
       ).toEqual(empty);
     });
 
-    it("reuses the mapped message in the delete-account banner only for the three connection-loss codes", () => {
+    it("reuses the mapped message in the delete-account banner only for the connection-loss and purge-blocked codes", () => {
       const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
 
       for (const errorCode of [
         "not_connected",
         "unauthorized",
         "network_failed",
+        "sync_purge_unavailable",
       ]) {
         const presentation = resolveBackupSyncErrorPresentation(
           errorCode,
@@ -718,6 +723,28 @@ describe("backup sync view service", () => {
           resolveBackupSyncErrorMessage(errorCode, viewData.account),
         );
       }
+    });
+
+    // ovumcy-managed answers DELETE /account with 503 sync_purge_unavailable
+    // when it cannot confirm the sync-plane data would be erased too: the
+    // deletion failed closed and the account is fully intact. The banner must
+    // say exactly that (deferred, nothing lost, retry later) instead of the
+    // generic "unable to delete" copy that reads like a real fault.
+    it("gives sync_purge_unavailable its dedicated deletion-deferred copy in the delete-account banner", () => {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+      const presentation = resolveBackupSyncErrorPresentation(
+        "sync_purge_unavailable",
+        "delete_account",
+        viewData.account,
+      );
+
+      expect(presentation.deleteAccountMessage).toBe(
+        viewData.account.errors.deleteAccountCleanupUnavailable,
+      );
+      expect(presentation.deleteAccountMessage).not.toBe(
+        viewData.account.errors.deleteAccountFailed,
+      );
     });
 
     it("falls back to the generic delete-account failure message for any other code", () => {
