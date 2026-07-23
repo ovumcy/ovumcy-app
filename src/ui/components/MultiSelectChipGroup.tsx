@@ -21,6 +21,12 @@ type MultiSelectChipGroupProps<T extends string> = {
   selectedValues: readonly T[];
   onToggle: (value: T) => void;
   compact?: boolean;
+  /**
+   * Visible field label that introduces this group (e.g. "Symptoms"). Same
+   * contract as `ChoiceGroup.groupLabel`: the checkboxes otherwise announce
+   * only their own option name with no sense of what is being chosen.
+   */
+  groupLabel?: string | undefined;
   testIDPrefix?: string;
 };
 
@@ -29,6 +35,7 @@ export function MultiSelectChipGroup<T extends string>({
   selectedValues,
   onToggle,
   compact = false,
+  groupLabel,
   testIDPrefix,
 }: MultiSelectChipGroupProps<T>) {
   const styles = useThemedStyles(createStyles);
@@ -49,6 +56,7 @@ export function MultiSelectChipGroup<T extends string>({
 
   return (
     <View
+      accessibilityLabel={groupLabel}
       onLayout={handleLayout}
       style={[styles.group, compact ? styles.groupCompact : null]}
       testID={testIDPrefix ? `${testIDPrefix}-group` : undefined}
@@ -59,6 +67,11 @@ export function MultiSelectChipGroup<T extends string>({
         return (
           <Pressable
             key={option.value}
+            // The chip's emoji is decoration for the word next to it; naming
+            // the chip explicitly keeps the announcement to the option itself
+            // instead of "grimacing face, Cramps" (same pattern as the
+            // dashboard quick actions).
+            accessibilityLabel={option.label}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: isActive }}
             onPress={() => onToggle(option.value)}

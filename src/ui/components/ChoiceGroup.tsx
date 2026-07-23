@@ -23,6 +23,14 @@ type ChoiceGroupProps<T extends string | number> = {
   layout?: "stack" | "grid2" | "grid3" | "grid5";
   contentAlign?: "leading" | "center";
   compact?: boolean;
+  /**
+   * Visible field label that introduces this group (e.g. "Prediction mode").
+   * The tiles are radios, so without a group name a screen reader announces
+   * only "<option>, radio button" and the user has to remember which question
+   * they are answering. Callers pass the same string they render above the
+   * group — never a second, invented one.
+   */
+  groupLabel?: string | undefined;
   onClearSelection?: () => void;
   testIDPrefix?: string;
 };
@@ -34,6 +42,7 @@ export function ChoiceGroup<T extends string | number>({
   layout = "stack",
   contentAlign = "leading",
   compact = false,
+  groupLabel,
   onClearSelection,
   testIDPrefix,
 }: ChoiceGroupProps<T>) {
@@ -56,6 +65,8 @@ export function ChoiceGroup<T extends string | number>({
 
   return (
     <View
+      accessibilityLabel={groupLabel}
+      accessibilityRole="radiogroup"
       onLayout={handleLayout}
       style={[
         styles.group,

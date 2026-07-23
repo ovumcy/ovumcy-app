@@ -53,7 +53,14 @@ export function ScreenScaffold({
           {topAccessory ? <View style={styles.topAccessory}>{topAccessory}</View> : null}
           <View style={[styles.hero, isCompact ? styles.heroCompact : null]}>
             {eyebrow ? <Text style={styles.eyebrow}>{eyebrow}</Text> : null}
-            <Text style={[styles.title, isCompact ? styles.titleCompact : null]}>
+            {/* The scaffold title is the screen's top-level heading: giving it
+                the header role lets a screen reader jump straight to "what
+                screen am I on" the same way FeatureCard titles expose each
+                section. */}
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, isCompact ? styles.titleCompact : null]}
+            >
               {title}
             </Text>
             <Text

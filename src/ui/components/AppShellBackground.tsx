@@ -12,7 +12,16 @@ export function AppShellBackground() {
   );
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    // Purely decorative chrome: glows plus ~42 stripe views that carry no
+    // information. Hiding the whole subtree keeps them out of the screen
+    // reader's element list instead of making the user swipe past dozens of
+    // unlabelled nodes before reaching the screen content.
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+    >
       <View
         style={[
           StyleSheet.absoluteFill,
