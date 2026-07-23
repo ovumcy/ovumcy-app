@@ -1,20 +1,32 @@
 // cert-pin-policy encapsulates the pure decision logic that compares an
-// expected pin set for a host against the leaf SPKI fingerprint observed by
-// the native bridge at connect time. Keeping this layer free of I/O lets the
+// expected pin set for a host against the SPKI fingerprint observed by the
+// native bridge at connect time. Keeping this layer free of I/O lets the
 // sync-client orchestration and the UX warning surface share the same
 // canonical comparison without each re-deriving the matching rules.
 //
-// The expected pin set is sourced differently by endpoint mode:
-//   - self_hosted: the caller reads the owner-entered pin from
-//     `cert-pin-store` and wraps it into a single-element array.
-//   - managed: the caller reads the build-time pin constants from
-//     `sync-contract` (multi-pin so cert rotations span release cycles).
+// The expected pin set is sourced differently by endpoint mode, and the two
+// modes deliberately pin at different depths of the chain:
+//   - self_hosted: the leaf, Trust On First Use. The caller reads the
+//     owner-entered pin from `cert-pin-store` and wraps it into a
+//     single-element array. A self-hoster may use a private CA or a
+//     self-signed cert, so no public root is a meaningful anchor there.
+//   - managed: the CA. The caller reads the build-time pin constants from
+//     `sync-contract` — the Let's Encrypt ISRG root keys, multi-pin so the
+//     pin survives ACME renewal (which mints a new leaf key) and the
+//     announced root-generation migration. See the TLS Pinning Posture
+//     section in docs/sync-trust-model.md for the pin set and the rationale.
+//
+// Because the managed pin is a CA pin, the observed fingerprint compared here
+// is whichever certificate in the validated chain the enforcement layer
+// matched — not necessarily the leaf. Both TrustKit (iOS) and OkHttp's
+// CertificatePinner (Android) match against every certificate in the
+// validated chain, anchor included, which is what makes a root pin work.
 //
 // The native enforcement layer (`react-native-ssl-public-key-pinning`) blocks
-// a TLS handshake when the leaf SPKI is not in its registered pin set. This
-// JS-layer policy backs that with a defensive check at the sync-connect
-// boundary so a regression in pin-set registration cannot silently let an
-// unpinned connect through.
+// a TLS handshake when no certificate in the validated chain is in its
+// registered pin set. This JS-layer policy backs that with a defensive check
+// at the sync-connect boundary so a regression in pin-set registration cannot
+// silently let an unpinned connect through.
 
 export type CertPinEvaluationResult =
   | {

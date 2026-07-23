@@ -136,12 +136,13 @@ function isWellFormedFingerprint(value: string): boolean {
 }
 
 function resolveManagedPinSet(): readonly string[] | null {
-  // Placeholder: real fingerprints for sync.ovumcy.cloud and
-  // managed.ovumcy.cloud must be filled in by the ovumcy team before the
-  // managed-cloud enforcement layer goes live. Returning null here means
-  // managed endpoints currently fall back to standard CA chain trust until
-  // the constants are populated. See the TLS Pinning Posture section in
-  // docs/sync-trust-model.md for why this is deferred.
+  // Placeholder. The pin set itself is no longer an open question: the TLS
+  // Pinning Posture section in docs/sync-trust-model.md records the four
+  // Let's Encrypt ISRG root pins that belong here, and the pre-release
+  // checklist that must pass before they are enabled. Returning null means
+  // managed endpoints fall back to standard CA chain trust until pinning is
+  // wired — populating this constant without the native enforcement layer
+  // registered changes nothing at the handshake, so the two land together.
   return null;
 }
 

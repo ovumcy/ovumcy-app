@@ -167,7 +167,16 @@ follows from that:
   policy threads pin sets through. However, the native enforcement layer
   (`react-native-ssl-public-key-pinning`) is **not installed or registered**, so
   TLS today relies on standard CA-chain trust. The JS policy is defense-in-depth
-  for when native pinning is enabled.
+  for when native pinning is enabled. The strategy is no longer open: the
+  managed endpoint will pin the Let's Encrypt ISRG root keys rather than the
+  leaf, because ACME renewal mints a new leaf key roughly every 60 days and a
+  leaf pin would break every install at the first renewal. A CA-level pin
+  narrows the accepted issuer set to one CA but does not defend against a
+  certificate Let's Encrypt itself is induced to issue for the host — a
+  deliberate trade, recorded with the pin set, the rotation rule, and the
+  pre-release checklist in
+  [docs/sync-trust-model.md](docs/sync-trust-model.md#tls-pinning-posture).
+  Until that wiring ships, the residual risk stands exactly as described above.
 - **Signed entitlement tokens are implemented but dormant; verification, once
   activated, is bypassable by a forked client (honest non-DRM scope).** A signed
   EdDSA/Ed25519 token overlay for the two *purely-local* premium features
