@@ -120,3 +120,10 @@ content can be inspected against the documented, conservative prediction copy.
   yet, so the end-to-end pinning behavior is not exercised in the app suite.
 - Predictions are calendar-and-signal estimates, not medical advice or
   contraception; the tests pin the algorithm, not its clinical validity.
+- Accessibility is tested as structure, not as experience. The suites assert
+  that actionable elements expose a role, a name, and their state, that the
+  fixed-geometry surfaces cap font scaling, and that an enlarged font scale in
+  the web smoke clips nothing and never scrolls the page sideways. What a
+  VoiceOver or TalkBack user actually hears — reading order, focus behavior,
+  announcement quality — needs a device pass; those steps are in
+  `docs/manual-smoke.md`.

@@ -116,6 +116,51 @@ Run when web support, branding, or app-shell navigation is touched.
    - favicon is visible on a fresh browser session
    - no broken tab icons or shell glyphs appear
 
+## Accessibility Checks
+
+Screen readers and OS text scaling cannot be verified from CI: the automated
+suites assert that names, roles, states, and font-scaling caps are present, but
+only a device pass shows what a user actually hears and sees. Run this on both
+platforms, on the narrowest phone available.
+
+Screen reader (VoiceOver on iOS, TalkBack on Android):
+
+1. Swipe through onboarding step 1 and step 2. The step title is announced as a
+   heading, the progress line as a progress indicator, every day chip as a
+   button that says whether it is selected, and each option group announces the
+   question it answers before its options.
+2. On the dashboard, the quick actions announce their word (not their emoji) and
+   report whether today is already marked. Every day-log field announces its own
+   label; the notes and BBT inputs are named, not bare text fields.
+3. On the calendar, move through the month grid: each day announces its date and
+   what is recorded or predicted for it, and the selected day says so. The
+   legend entries announce the state each swatch stands for. The calendar-key
+   toggle announces expanded or collapsed.
+4. On insights, each stat panel is announced as one sentence (title, figure,
+   qualifier) instead of loose fragments, and each chart announces its summary.
+5. On the settings hub, every navigation row announces its destination, and each
+   section screen announces its heading first. Confirm the save action reports
+   its disabled state.
+6. On backup and sync, the mode picker announces what it switches, and the
+   recovery, account, plan, and sync actions each announce a role and a state.
+7. Nothing decorative is in the reading order: the background glow/stripes, the
+   calendar state swatches, and the insights skeleton placeholders are skipped.
+
+OS text size (iOS Settings → Accessibility → Display & Text Size → Larger Text
+at the largest non-accessibility size, then the largest accessibility size;
+Android Settings → Display → Font size at maximum):
+
+8. The calendar month grid keeps all six week rows on screen with every day
+   still tappable, no clipped day numbers, and no cell overlapping another.
+9. The insights bar charts keep their value and axis labels readable and inside
+   the chart card, with no label overlapping a bar.
+10. The dashboard cycle hero keeps the phase cards legible without text spilling
+    outside the card, and the ring stays intact.
+11. The bottom tab bar keeps all four labels readable and unclipped, and stays
+    clear of the system navigation area.
+12. Every screen's primary action stays reachable — nothing is pushed off the
+    bottom or sideways, and no screen scrolls horizontally.
+
 ## Privacy Checks
 
 During the same pass, confirm:
