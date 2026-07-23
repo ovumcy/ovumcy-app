@@ -264,6 +264,36 @@ describe("useBackupSyncAccountDeletion", () => {
       expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
     });
 
+    // The managed server answers 503 sync_purge_unavailable when it refuses
+    // the deletion because the sync-plane erasure cannot be confirmed: the
+    // account and all data stay intact for a later retry. The hook must
+    // surface that exact code (so the banner shows the deletion-deferred
+    // copy, not the generic failure) and must leave everything untouched —
+    // still signed in, no local teardown side effects, no navigation.
+    it("surfaces sync_purge_unavailable with delete_account scope and leaves the signed-in state untouched", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "sync_purge_unavailable",
+      });
+      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "sync_purge_unavailable",
+        scope: "delete_account",
+      });
+      expect(result.current.isDeletingAccount).toBe(false);
+      expect(core.router.replace).not.toHaveBeenCalled();
+      expect(core.syncProfilePreferences).not.toHaveBeenCalled();
+      expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
+    });
+
     it("on success clears the pending partner invite, resets interface preferences, and routes to the onboarding reset", async () => {
       stashManagedPartnerInviteToken("pending-invite-token");
       const core = createBackupSyncSessionCoreMock();

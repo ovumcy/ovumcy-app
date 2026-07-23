@@ -419,6 +419,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.recoveryExportFailed;
     case "stale_generation":
       return viewData.errors.syncFailed;
+    case "sync_purge_unavailable":
+      return viewData.errors.deleteAccountCleanupUnavailable;
     case "billing_management_unavailable":
       return viewData.errors.renewalUnavailable;
     case "billing_subscription_conflict":
@@ -465,13 +467,18 @@ export function resolveBackupSyncErrorPresentation(
   // delete_account errors (unauthorized, network_failed, or a rare/unmapped
   // server code) always render in the dedicated delete-account banner, never
   // in the shared account/sync banners used by login, connect, or restore.
+  // sync_purge_unavailable joins the pass-through list: the server refused
+  // the deletion on purpose (it cannot confirm the synced data would be
+  // erased too), the account is fully intact, and the owner should retry
+  // later — the generic "unable to delete" copy would hide all of that.
   if (scope === "delete_account") {
     return {
       ...emptyPresentation,
       deleteAccountMessage:
         errorCode === "not_connected" ||
         errorCode === "unauthorized" ||
-        errorCode === "network_failed"
+        errorCode === "network_failed" ||
+        errorCode === "sync_purge_unavailable"
           ? message
           : viewData.errors.deleteAccountFailed,
     };

@@ -405,6 +405,8 @@ const settingsCopyEn = {
         "Unable to restore the encrypted backup copy right now. Please try again.",
       deleteAccountFailed:
         "Unable to delete your account right now. Nothing was changed. Please try again.",
+      deleteAccountCleanupUnavailable:
+        "Deletion was stopped safely. The server cannot currently confirm that your synced data would be removed too. Your account and data are unchanged. Please try again later.",
       renewalUnavailable:
         "Renewal for this plan cannot be managed from the app.",
       renewalUpdateFailed:
@@ -997,6 +999,8 @@ const settingsCopyDe: SettingsCopy = {
         "Die verschlüsselte Sicherungskopie konnte gerade nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.",
       deleteAccountFailed:
         "Ihr Konto konnte gerade nicht gelöscht werden. Es wurde nichts geändert. Bitte versuchen Sie es erneut.",
+      deleteAccountCleanupUnavailable:
+        "Die Löschung wurde sicher gestoppt. Der Server kann gerade nicht bestätigen, dass auch Ihre synchronisierten Daten entfernt würden. Konto und Daten sind unverändert. Bitte versuchen Sie es später erneut.",
     },
   },
   symptoms: {
@@ -1613,6 +1617,8 @@ const settingsCopyFr: SettingsCopy = {
         "Impossible de restaurer la copie de sauvegarde chiffrée pour le moment. Réessayez.",
       deleteAccountFailed:
         "Impossible de supprimer votre compte pour le moment. Rien n'a été modifié. Veuillez réessayer.",
+      deleteAccountCleanupUnavailable:
+        "La suppression a été interrompue par sécurité. Le serveur ne peut pas confirmer pour le moment que vos données synchronisées seraient aussi supprimées. Votre compte et vos données restent intacts. Réessayez plus tard.",
     },
   },
   symptoms: {
@@ -2206,6 +2212,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Сейчас не удалось восстановить зашифрованную резервную копию. Попробуйте ещё раз.",
         deleteAccountFailed:
           "Сейчас не удалось удалить аккаунт. Ничего не изменилось. Попробуйте ещё раз.",
+        deleteAccountCleanupUnavailable:
+          "Удаление безопасно остановлено. Сервер сейчас не может подтвердить, что синхронизированные данные тоже будут удалены. Аккаунт и данные не изменились. Попробуйте позже.",
         renewalUnavailable:
           "Продлением этого плана нельзя управлять из приложения.",
         renewalUpdateFailed:
@@ -2787,6 +2795,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo restaurar la copia de respaldo cifrada ahora. Inténtalo de nuevo.",
         deleteAccountFailed:
           "No se pudo eliminar tu cuenta ahora. No se cambió nada. Inténtalo de nuevo.",
+        deleteAccountCleanupUnavailable:
+          "La eliminación se detuvo de forma segura. El servidor no puede confirmar ahora mismo que tus datos sincronizados también se eliminarían. Tu cuenta y tus datos siguen intactos. Inténtalo de nuevo más tarde.",
         renewalUnavailable:
           "La renovación de este plan no se puede gestionar desde la app.",
         renewalUpdateFailed:
@@ -3371,6 +3381,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Impossibile ripristinare il backup cifrato in questo momento. Riprova.",
         deleteAccountFailed:
           "Impossibile eliminare il tuo account in questo momento. Nulla è stato modificato. Riprova.",
+        deleteAccountCleanupUnavailable:
+          "L'eliminazione è stata interrotta per sicurezza. Il server non può confermare in questo momento che anche i tuoi dati sincronizzati verrebbero rimossi. Il tuo account e i tuoi dati restano intatti. Riprova più tardi.",
         renewalUnavailable:
           "Il rinnovo di questo piano non può essere gestito dall'app.",
         renewalUpdateFailed:
