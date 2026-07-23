@@ -31,6 +31,9 @@
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_ENTITLEMENT_PUBKEYS": "{\"83793f7182b7c2c5\":\"09770a637713ef81e99b9ccf313b4ab8f5ac2ef8d12aca37aa2f925c66e4d84d\"}"
       }
     }
   },

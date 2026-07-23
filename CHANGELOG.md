@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `production` EAS build profile now supplies the production entitlement
+  verification key through `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS`, so a production
+  artifact verifies managed-issued entitlement tokens instead of falling back to
+  the placeholder key and the billing-snapshot boolean. Only the public half of
+  the key pair ships in the client — it is embedded in every artifact by
+  construction; the managed signing seed stays server-side. Development and
+  preview builds keep the placeholder default, and the existing release guard
+  still fails any production build or web deploy that would ship it.
+
 ### Added
 
 - Premium lock placeholders on the Stats and Settings surfaces that route to the
