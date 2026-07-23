@@ -54,12 +54,19 @@ export function AppEntryScreen({
         <View style={styles.content}>
           <View style={styles.card}>
             <Text style={styles.kicker}>OVUMCY</Text>
-            <Text style={styles.title}>{shellCopy.loading.appShellTitle}</Text>
+            <Text accessibilityRole="header" style={styles.title}>
+              {shellCopy.loading.appShellTitle}
+            </Text>
             <Text style={styles.description}>
               {shellCopy.loading.appShellDescription}
             </Text>
             <View style={styles.spinnerRow}>
-              <ActivityIndicator color={colors.accent} size="large" />
+              <ActivityIndicator
+                accessibilityLabel={shellCopy.loading.appShellTitle}
+                accessibilityRole="progressbar"
+                color={colors.accent}
+                size="large"
+              />
             </View>
           </View>
         </View>

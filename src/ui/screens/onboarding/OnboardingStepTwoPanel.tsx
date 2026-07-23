@@ -133,6 +133,7 @@ export function OnboardingStepTwoPanel({
         </Text>
         <ChoiceGroup
           contentAlign={compact ? "leading" : "center"}
+          groupLabel={viewData.stepTwo.predictionModeLabel}
           layout={compact ? "stack" : "grid3"}
           onSelect={(value) => onPredictionModeSelect(value as PredictionMode)}
           options={viewData.stepTwo.predictionModeOptions}
@@ -151,6 +152,7 @@ export function OnboardingStepTwoPanel({
         <ChoiceGroup
           compact={compact}
           contentAlign={compact ? "center" : "leading"}
+          groupLabel={viewData.stepTwo.ageGroupLabel}
           layout={compact ? "grid3" : "stack"}
           onSelect={onAgeGroupSelect}
           options={viewData.stepTwo.ageOptions}
@@ -166,6 +168,7 @@ export function OnboardingStepTwoPanel({
         <ChoiceGroup
           compact={compact}
           contentAlign={compact ? "center" : "leading"}
+          groupLabel={viewData.stepTwo.usageGoalLabel}
           layout={compact ? "grid2" : "stack"}
           onSelect={onUsageGoalSelect}
           options={viewData.stepTwo.usageGoalOptions}

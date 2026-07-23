@@ -42,7 +42,17 @@ export function OnboardingShell({
 
   const progressContent = (
     <>
-      <View style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}>
+      {/* "Step 1 of 2" plus the fill bar are one control to a screen reader:
+          the bar alone is an unlabelled box, and the label alone loses the
+          proportion. `progressbar` + `accessibilityValue` announces both. */}
+      <View
+        accessibilityLabel={progressLabel}
+        accessibilityRole="progressbar"
+        accessibilityValue={{ min: 0, max: 100, now: progressPercent }}
+        accessible
+        style={[styles.progressBlock, compact ? styles.progressBlockCompact : null]}
+        testID="onboarding-progress"
+      >
         <Text style={[styles.kicker, compact ? styles.kickerCompact : null]}>{progressLabel}</Text>
         <View style={[styles.progressPanel, compact ? styles.progressPanelCompact : null]}>
           <View style={styles.progressTrack}>
@@ -56,7 +66,12 @@ export function OnboardingShell({
         </View>
       </View>
       <View style={[styles.panel, scrollEnabled ? null : styles.panelPinned, compact ? styles.panelCompact : null]}>
-        <Text style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}>{title}</Text>
+        <Text
+          accessibilityRole="header"
+          style={[styles.heroTitle, compact ? styles.heroTitleCompact : null]}
+        >
+          {title}
+        </Text>
         {subtitle ? (
           <Text style={[styles.heroMuted, compact ? styles.heroMutedCompact : null]}>
             {subtitle}

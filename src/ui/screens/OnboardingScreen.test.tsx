@@ -311,4 +311,66 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.getByText(viewData.stepTwo.messages.infoCycleShort)).toBeTruthy();
     expect(screen.queryByText(viewData.stepTwo.messages.infoCycleLong)).toBeNull();
   });
+
+  it("announces the step title as a header and the progress as a progress bar", () => {
+    renderFlow(createState());
+
+    expect(
+      screen.getByRole("header", {
+        name: "When did your last period start?",
+      }),
+    ).toBeTruthy();
+
+    const progress = screen.getByTestId("onboarding-progress");
+    expect(progress.props.accessibilityRole).toBe("progressbar");
+    expect(progress.props.accessibilityLabel).toBe("Step 1 of 2");
+    expect(progress.props.accessibilityValue).toEqual({
+      max: 100,
+      min: 0,
+      now: expect.any(Number),
+    });
+  });
+
+  it("names every step 2 choice group so a radio says which question it answers", () => {
+    renderFlow(
+      createState({
+        record: createOnboardingRecord({ lastPeriodStart: "2026-03-17" }),
+        selectedDate: "2026-03-17",
+        step: 2,
+      }),
+    );
+
+    const expectations: [string, string][] = [
+      ["onboarding-prediction-mode-group", "How predictable is your cycle?"],
+      ["onboarding-age-group-group", "Your age"],
+      ["onboarding-usage-goal-group", "Why are you using Ovumcy?"],
+    ];
+
+    for (const [testID, label] of expectations) {
+      const group = screen.getByTestId(testID);
+      expect(group.props.accessibilityRole).toBe("radiogroup");
+      expect(group.props.accessibilityLabel).toBe(label);
+    }
+  });
+
+  it("keeps step 2 actions announced with a role and a disabled state", () => {
+    renderFlow(
+      createState({
+        record: createOnboardingRecord({ lastPeriodStart: "2026-03-17" }),
+        selectedDate: "2026-03-17",
+        step: 2,
+      }),
+      { isSaving: true },
+    );
+
+    expect(
+      screen.getByTestId("onboarding-finish-button").props.accessibilityRole,
+    ).toBe("button");
+    expect(
+      screen.getByTestId("onboarding-finish-button").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ disabled: true }));
+    expect(
+      screen.getByTestId("onboarding-back-button").props.accessibilityRole,
+    ).toBe("button");
+  });
 });
