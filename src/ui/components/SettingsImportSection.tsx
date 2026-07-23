@@ -61,14 +61,12 @@ export function SettingsImportSection({
               element so the summary is heard whole before the irreversible
               action, not as loose lines the user can swipe past. */}
           <View
-            accessibilityLabel={[
+            accessibilityLabel={composePreviewAccessibilityLabel([
               viewData.previewTitle,
               ...preview.detailLines,
               preview.profileLine,
               preview.nothingNewLine,
-            ]
-              .filter((line): line is string => Boolean(line && line.trim()))
-              .join(". ")}
+            ])}
             accessible
             style={styles.previewSummary}
           >
@@ -113,6 +111,24 @@ export function SettingsImportSection({
       )}
     </FeatureCard>
   );
+}
+
+/**
+ * Joins the preview lines into one spoken summary.
+ *
+ * The lines mix sentence fragments ("New days to add: 2") with lines that are
+ * already full sentences ("Your current settings stay unchanged."), so a blunt
+ * `join(". ")` would read one of them out with a doubled full stop. Each line
+ * gets a terminator only when it does not already have one.
+ */
+export function composePreviewAccessibilityLabel(
+  lines: readonly (string | null | undefined)[],
+): string {
+  return lines
+    .map((line) => line?.trim() ?? "")
+    .filter((line) => line.length > 0)
+    .map((line) => (/[.!?]$/.test(line) ? line : `${line}.`))
+    .join(" ");
 }
 
 const createStyles = (colors: AppThemeColors) =>

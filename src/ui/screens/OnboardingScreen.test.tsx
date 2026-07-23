@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
 
 import type { OnboardingRecord } from "../../models/onboarding";
 import { buildCycleGuidanceState } from "../../services/onboarding-policy";
@@ -350,6 +351,32 @@ describe("OnboardingFlowScreen", () => {
       const group = screen.getByTestId(testID);
       expect(group.props.accessibilityRole).toBe("radiogroup");
       expect(group.props.accessibilityLabel).toBe(label);
+    }
+  });
+
+  it("keeps the heading and the progress announced on the compact phone layout", () => {
+    // Under 430pt the flow switches to its compact type scale; the announced
+    // structure must not change with the geometry.
+    jest.spyOn(Dimensions, "get").mockReturnValue({
+      fontScale: 1,
+      height: 844,
+      scale: 3,
+      width: 390,
+    });
+
+    try {
+      renderFlow(createState());
+
+      expect(
+        screen.getByRole("header", {
+          name: "When did your last period start?",
+        }),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("onboarding-progress").props.accessibilityLabel,
+      ).toBe("Step 1 of 2");
+    } finally {
+      jest.restoreAllMocks();
     }
   });
 

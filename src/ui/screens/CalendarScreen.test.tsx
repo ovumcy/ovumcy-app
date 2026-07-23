@@ -1,5 +1,6 @@
 import * as React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Dimensions } from "react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
@@ -942,5 +943,44 @@ describe("CalendarScreen", () => {
     // announced with the state it stands for rather than as a bare box.
     expect(screen.getByLabelText("Logged period")).toBeTruthy();
     expect(screen.getByLabelText("Logged entry")).toBeTruthy();
+  });
+
+  it("reports the calendar-key toggle state on the narrow phone layout", async () => {
+    // Under 430pt the month grid wins over an always-on legend, so the key
+    // collapses behind a toggle. A collapsed disclosure that never says it is
+    // collapsed leaves a screen-reader user unaware the key exists.
+    jest.spyOn(Dimensions, "get").mockReturnValue({
+      fontScale: 1,
+      height: 844,
+      scale: 3,
+      width: 390,
+    });
+
+    try {
+      render(
+        <CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />,
+      );
+
+      await waitForCalendarReady();
+
+      const toggle = screen.getByTestId("calendar-legend-toggle");
+      expect(toggle.props.accessibilityRole).toBe("button");
+      expect(toggle.props.accessibilityLabel).toBe("Show calendar key");
+      expect(toggle.props.accessibilityState).toEqual(
+        expect.objectContaining({ expanded: false }),
+      );
+      expect(screen.queryByTestId("calendar-legend-expanded")).toBeNull();
+
+      fireEvent.press(toggle);
+
+      const expandedToggle = screen.getByTestId("calendar-legend-toggle");
+      expect(expandedToggle.props.accessibilityLabel).toBe("Hide calendar key");
+      expect(expandedToggle.props.accessibilityState).toEqual(
+        expect.objectContaining({ expanded: true }),
+      );
+      expect(screen.getByTestId("calendar-legend-expanded")).toBeTruthy();
+    } finally {
+      jest.restoreAllMocks();
+    }
   });
 });

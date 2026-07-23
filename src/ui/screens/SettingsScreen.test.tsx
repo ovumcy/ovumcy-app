@@ -1602,6 +1602,48 @@ describe("SettingsScreen", () => {
     expect(screen.queryByTestId("settings-import-preview")).toBeNull();
   });
 
+  it("announces the whole import preview as one summary, including the nothing-new line", async () => {
+    // Every day in the backup is already on this device, so the preview adds
+    // its "nothing new" line. The summary of what confirm is about to apply is
+    // announced as one element, so it is heard whole before the write.
+    const storage = createSettingsStorageMock({
+      readDayLogRecord: jest.fn().mockImplementation(async (date: string) => ({
+        ...createEmptyDayLogRecord(date),
+        notes: "existing entry",
+      })),
+    });
+    const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        section="data"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-preview");
+    expect(
+      screen.getByText("Everything in this backup is already on this device."),
+    ).toBeTruthy();
+    // One element, one summary — and no doubled full stop where a line already
+    // ends in one.
+    expect(
+      screen.getByLabelText(
+        "Ready to restore. Backup created: Mar 1, 2026, 11:00 AM. " +
+          "Backup range: 2026-03-01 to 2026-03-02. Entries in backup: 2. " +
+          "New days to add: 0. " +
+          "Days already on this device (kept unchanged): 2. " +
+          "Your current settings stay unchanged. " +
+          "Everything in this backup is already on this device.",
+      ),
+    ).toBeTruthy();
+  });
+
   it("keeps the preview visible and reports restore-failed when applying a confirmed import throws", async () => {
     const storage = createSettingsStorageMock();
     const importFilePickerClient = createImportPickerMock(importEnvelopeJSON());
