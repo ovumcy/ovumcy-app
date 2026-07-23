@@ -1704,6 +1704,24 @@ describe("managed-cloud-api-client", () => {
       errorCode: "network_failed",
     });
   });
+
+  it("maps a 503 sync_purge_unavailable on deleteAccount to its own code (deletion failed closed, account intact)", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "sync_purge_unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(client.deleteAccount("managed-session-1")).resolves.toEqual({
+      ok: false,
+      errorCode: "sync_purge_unavailable",
+    });
+  });
   it("declares refresh support on sign-in and surfaces the issued refresh token", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(
