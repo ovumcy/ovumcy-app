@@ -31,7 +31,16 @@ export function StatsOverviewEmptyState({
         <View style={styles.emptyHeroCard}>
           <View style={[styles.emptyOrb, styles.emptyOrbPrimary]} />
           <View style={[styles.emptyOrb, styles.emptyOrbSecondary]} />
-          <View style={styles.emptyGrid}>
+          {/* The skeleton cells are placeholder chrome, but each one names a
+              section that unlocks later — that list is the point of the hero.
+              Announced as one element so it reads as "here is what is coming"
+              instead of five stray section names with blank boxes between
+              them. */}
+          <View
+            accessibilityLabel={emptyState.lockedSections.join(". ")}
+            accessible
+            style={styles.emptyGrid}
+          >
             {emptyState.lockedSections.map((sectionTitle, index) => (
               <View
                 key={sectionTitle}
@@ -48,14 +57,30 @@ export function StatsOverviewEmptyState({
             ))}
           </View>
         </View>
-        <View style={styles.emptyNote}>
+        {/* Pure decoration: a dot and two rules standing in for a note. */}
+        <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={styles.emptyNote}
+        >
           <View style={styles.emptyNoteDot} />
           <View style={styles.emptyNoteLine} />
           <View style={[styles.emptyNoteLine, styles.emptyNoteLineShort]} />
         </View>
       </View>
       <View style={styles.progressBlock}>
-        <View style={styles.progressTrack}>
+        <View
+          accessibilityLabel={emptyState.progressLabel}
+          accessibilityRole="progressbar"
+          accessibilityValue={{
+            min: 0,
+            max: 100,
+            now: emptyState.progressPercent,
+          }}
+          accessible
+          style={styles.progressTrack}
+          testID="stats-empty-progress"
+        >
           <View
             style={[
               styles.progressFill,

@@ -58,7 +58,11 @@ export function StatsOverviewScreen({
       >
         <View style={[styles.container, { paddingTop: insets.top + 16 }]}>
           <View style={styles.header}>
-            <Text style={styles.headerTitle} testID="stats-screen-title">
+            <Text
+              accessibilityRole="header"
+              style={styles.headerTitle}
+              testID="stats-screen-title"
+            >
               {viewData.title}
             </Text>
             <Text style={styles.headerDescription}>{viewData.description}</Text>
@@ -77,13 +81,22 @@ export function StatsOverviewScreen({
           ) : null}
 
           {viewData.predictionExplanation ? (
-            <View style={styles.noticePanel}>
+            <View
+              accessibilityLabel={viewData.predictionExplanation}
+              accessible
+              style={styles.noticePanel}
+            >
               <Text style={styles.noticeText}>{viewData.predictionExplanation}</Text>
             </View>
           ) : null}
 
           {viewData.notices.map((notice) => (
-            <View key={notice} style={styles.noticePanel}>
+            <View
+              accessibilityLabel={notice}
+              accessible
+              key={notice}
+              style={styles.noticePanel}
+            >
               <Text style={styles.noticeText}>{notice}</Text>
             </View>
           ))}

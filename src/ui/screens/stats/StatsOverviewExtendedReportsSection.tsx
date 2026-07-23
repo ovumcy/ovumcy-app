@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import type { StatsViewData } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
 import { PremiumLockCard } from "../../components/PremiumLockCard";
+import { composeStatsAccessibilityLabel } from "./StatsOverviewShared";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewExtendedReportsSectionProps = {
@@ -43,7 +44,17 @@ export function StatsOverviewExtendedReportsSection({
       <Text style={styles.helperText}>{viewData.extendedReports.summary}</Text>
       <View style={styles.listStack}>
         {viewData.extendedReports.rows.map((row) => (
-          <View key={row.key} style={styles.panel}>
+          <View
+            accessibilityLabel={composeStatsAccessibilityLabel([
+              row.title,
+              row.comparisonLabel,
+              row.cycleLengthLabel,
+              row.periodLengthLabel,
+            ])}
+            accessible
+            key={row.key}
+            style={styles.panel}
+          >
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>{row.title}</Text>
               <Text style={styles.helperText}>{row.comparisonLabel}</Text>

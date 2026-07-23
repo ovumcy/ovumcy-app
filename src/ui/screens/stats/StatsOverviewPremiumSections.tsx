@@ -7,6 +7,7 @@ import type {
 } from "../../../services/stats-view-service";
 import { FeatureCard } from "../../components/FeatureCard";
 import { PremiumLockCard } from "../../components/PremiumLockCard";
+import { composeStatsAccessibilityLabel } from "./StatsOverviewShared";
 import type { StatsOverviewStyles } from "./stats-overview-styles";
 
 type StatsOverviewPremiumSectionsProps = {
@@ -68,7 +69,16 @@ export function StatsOverviewPremiumSections({
         >
           <View style={styles.sectionGrid}>
             {section.items.map((item) => (
-              <View key={item.key} style={styles.panel}>
+              <View
+                accessibilityLabel={composeStatsAccessibilityLabel([
+                  item.title,
+                  item.value,
+                  item.description,
+                ])}
+                accessible
+                key={item.key}
+                style={styles.panel}
+              >
                 <View style={styles.metaRow}>
                   <Text style={styles.metaLabel}>{item.title}</Text>
                   <Text style={styles.rowValue}>{item.value}</Text>

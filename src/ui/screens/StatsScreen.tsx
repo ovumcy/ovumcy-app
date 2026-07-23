@@ -93,7 +93,12 @@ export function StatsScreen({
         description={shellCopy.loading.statsDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={shellCopy.loading.statsTitle}
+            accessibilityRole="progressbar"
+            color={colors.accent}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );
