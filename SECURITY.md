@@ -188,10 +188,15 @@ follows from that:
   to the billing-snapshot boolean** whenever no valid token is present (no gate
   constructed — today's state — no endpoint, offline with an expired cache,
   unknown `kid`, tamper), so older managed servers and the pre-rollout state
-  behave exactly as before. The embedded public key shipped today is a
-  documented placeholder; until the operator installs the production key,
-  no production token verifies and every gate uses the snapshot. A release
-  guard (`scripts/verify-entitlement-pubkeys.mjs`, run as the
+  behave exactly as before. The public key compiled into the source stays a
+  documented placeholder — the fail-closed default for any build that does not
+  declare its own key, so a development or preview artifact verifies no
+  production token at all. Production builds override it: the `production` EAS
+  profile supplies the real `kid -> pubkey` map through
+  `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS`, and `npm run deploy` requires the same
+  variable in its environment. Only the public half ever reaches the client;
+  the managed signing seed stays server-side. A release guard
+  (`scripts/verify-entitlement-pubkeys.mjs`, run as the
   `eas-build-pre-install` hook on the production EAS profile and at the start
   of `npm run deploy`) fails any production build or web deploy whose
   `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` would leave the placeholder active, so a

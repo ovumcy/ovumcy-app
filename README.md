@@ -291,6 +291,7 @@ Current automated baseline:
 Deployment tooling:
 
 - `npm run deploy` pins `eas-cli` to an explicit version via npx (`eas-cli@18.4.0`), not `@latest`. (eas-cli is not a project dependency, so it is not in the lockfile.)
+- The `production` EAS build profile carries `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` (the entitlement `kid -> public key` map — public by construction; it ships inside every client artifact anyway). Native production builds pick it up from `eas.json`; a web deploy runs outside that profile, so export the same value in the deploy shell — otherwise the release guard stops the deploy rather than let the placeholder key ship.
 
 Manual acceptance guidance lives in [docs/manual-smoke.md](docs/manual-smoke.md).
 
