@@ -1,7 +1,5 @@
-import { useFocusEffect } from "expo-router";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useNavigation, usePreventRemove } from "@react-navigation/native";
-import { BackHandler, Platform } from "react-native";
 
 type ParentTabNavigation = {
   addListener: (
@@ -73,6 +71,13 @@ type UseSettingsExitGuardsOptions = {
   onConfirmLeave: (continueLeave: () => void) => Promise<void>;
 };
 
+// Guards a settings section screen's dirty state against every exit path:
+// usePreventRemove covers route removal — including the Android hardware back
+// and the native back gesture, which pop the section back to the hub — and the
+// ancestor tabPress listeners cover switching tabs. The pre-split Android
+// "confirm before exiting the app" BackHandler is gone with the single-screen
+// layout: dirty state now only exists on pushed section screens, never at the
+// tab root, so hardware back is always a route removal.
 export function useSettingsExitGuards({
   enabled,
   onConfirmLeave,
@@ -118,30 +123,4 @@ export function useSettingsExitGuards({
       });
     };
   }, [navigation, onConfirmLeave]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== "android") {
-        return undefined;
-      }
-
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        () => {
-          if (!enabled) {
-            return false;
-          }
-
-          void onConfirmLeave(() => {
-            BackHandler.exitApp();
-          });
-          return true;
-        },
-      );
-
-      return () => {
-        subscription.remove();
-      };
-    }, [enabled, onConfirmLeave]),
-  );
 }

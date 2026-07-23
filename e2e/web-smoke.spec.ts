@@ -68,11 +68,18 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.getByTestId("settings-interface-section")).toBeVisible();
-  await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
-  await expect(page.getByTestId("settings-reminders-lock")).toBeVisible();
+  // The settings tab is a hub: summary cards plus one navigation row per
+  // extracted section route.
+  await expect(page.getByTestId("settings-hub-open-interface")).toBeVisible();
+  await expect(page.getByTestId("settings-hub-open-reminders")).toBeVisible();
   await expect(page.getByTestId("settings-sync-summary-card")).toBeVisible();
   await expect(page.getByTestId("settings-privacy-card")).toBeVisible();
+  await page.getByTestId("settings-hub-open-reminders").click();
+  await expect(page).toHaveURL(/\/settings\/reminders$/);
+  await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
+  await expect(page.getByTestId("settings-reminders-lock")).toBeVisible();
+  await page.getByTestId("settings-section-back-button").click();
+  await expect(page).toHaveURL(/\/settings$/);
   await page.getByTestId("settings-open-backup-sync-button").click();
   await expect(page).toHaveURL(/\/backup-sync$/);
   await expect(page.getByTestId("settings-sync-section")).toBeVisible();
@@ -81,9 +88,15 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await expect(page.getByTestId("settings-sync-recovery-card")).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/\/settings$/);
+  await page.getByTestId("settings-hub-open-symptoms").click();
+  await expect(page).toHaveURL(/\/settings\/symptoms$/);
   await page.getByTestId("settings-symptom-create-name-input").fill("Jaw pain");
   await page.getByTestId("settings-symptom-create-action-button").click();
   await expect(page.getByText("Jaw pain")).toBeVisible();
+  // Leave settings at the hub: the tab keeps its stack state, so the next
+  // visit through the tab bar reopens wherever settings was left.
+  await page.getByTestId("settings-section-back-button").click();
+  await expect(page).toHaveURL(/\/settings$/);
 
   await page.locator(tabLink("/dashboard")).click();
   await expect(page).toHaveURL(/\/dashboard$/);
@@ -139,8 +152,11 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByTestId("settings-hub-open-reminders")).toBeVisible();
+  await page.getByTestId("settings-hub-open-data").click();
+  await expect(page).toHaveURL(/\/settings\/data$/);
   await expect(page.getByTestId("settings-export-section")).toBeVisible();
-  await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
+  await expect(page.getByTestId("settings-import-section")).toBeVisible();
   await expect(page.getByTestId("settings-export-csv-button")).toBeVisible();
 
   const [csvDownload] = await Promise.all([
@@ -162,6 +178,8 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
     "aria-disabled",
     "true",
   );
+  await page.getByTestId("settings-section-back-button").click();
+  await expect(page).toHaveURL(/\/settings$/);
 
   await page.locator(tabLink("/stats")).click();
   await expect(page).toHaveURL(/\/stats$/);
@@ -171,6 +189,8 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
 
   await page.locator(tabLink("/settings")).click();
   await expect(page).toHaveURL(/\/settings$/);
+  await page.getByTestId("settings-hub-open-danger").click();
+  await expect(page).toHaveURL(/\/settings\/danger$/);
   await page.getByTestId("settings-clear-data-confirmation-input").fill("CLEAR");
   await page.getByTestId("settings-clear-data-button").click();
 
@@ -404,17 +424,27 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
   for (const locale of ["ru", "de", "fr", "es"] as const) {
     await page.locator(tabLink("/settings")).click();
     await expect(page).toHaveURL(/\/settings$/);
+    await page.getByTestId("settings-hub-open-interface").click();
+    await expect(page).toHaveURL(/\/settings\/interface$/);
     await page.getByTestId(`settings-interface-language-${locale}`).click();
     await page.getByTestId("settings-save-all-button").click();
     await expect(
       page.getByTestId("settings-interface-status-banner"),
     ).toBeVisible();
 
-    // Reminders lock card in this locale
+    // Reminders lock card in this locale — on its own settings route
+    await page.getByTestId("settings-section-back-button").click();
+    await expect(page).toHaveURL(/\/settings$/);
+    await page.getByTestId("settings-hub-open-reminders").click();
+    await expect(page).toHaveURL(/\/settings\/reminders$/);
     await page.getByTestId("settings-reminders-lock").scrollIntoViewIfNeeded();
     await page.screenshot({
       path: `e2e/screenshots/visual-locale-${locale}-reminders-lock.png`,
     });
+    // Leave settings at the hub so the next locale iteration re-enters there
+    // (the tab keeps its stack state between visits).
+    await page.getByTestId("settings-section-back-button").click();
+    await expect(page).toHaveURL(/\/settings$/);
 
     // Stats paywall cards
     await page.locator(tabLink("/stats")).click();

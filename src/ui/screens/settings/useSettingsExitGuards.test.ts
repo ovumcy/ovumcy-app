@@ -1,17 +1,9 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { BackHandler, Platform } from "react-native";
+import { Platform } from "react-native";
 
 import { useSettingsExitGuards } from "./useSettingsExitGuards";
 
-const mockUseFocusEffect = jest.fn();
 let mockGetParent: (() => unknown) | undefined;
-
-jest.mock("expo-router", () => ({
-  useFocusEffect: (effect: () => void | (() => void)) => {
-    mockUseFocusEffect(effect);
-    effect();
-  },
-}));
 
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
@@ -117,53 +109,5 @@ describe("useSettingsExitGuards: ancestor tab-navigator wiring", () => {
     expect(preventDefault).not.toHaveBeenCalled();
     expect(onConfirmLeave).not.toHaveBeenCalled();
     expect(tabNavigation.navigate).not.toHaveBeenCalled();
-  });
-});
-
-describe("useSettingsExitGuards: Android hardware back", () => {
-  const originalPlatformOS = Platform.OS;
-  let hardwareBackPressCallback: (() => boolean) | null;
-  let addEventListenerSpy: jest.SpiedFunction<typeof BackHandler.addEventListener>;
-
-  beforeEach(() => {
-    mockGetParent = undefined;
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: "android",
-    });
-    hardwareBackPressCallback = null;
-    addEventListenerSpy = jest
-      .spyOn(BackHandler, "addEventListener")
-      .mockImplementation((eventName, callback) => {
-        if (eventName === "hardwareBackPress") {
-          hardwareBackPressCallback = callback as () => boolean;
-        }
-        return { remove: jest.fn() };
-      });
-  });
-
-  afterEach(() => {
-    Object.defineProperty(Platform, "OS", {
-      configurable: true,
-      value: originalPlatformOS,
-    });
-    addEventListenerSpy.mockRestore();
-  });
-
-  it("lets the default handler run (returns false, never confirms) when there is nothing to guard", () => {
-    const onConfirmLeave = jest.fn();
-
-    renderHook(() =>
-      useSettingsExitGuards({ enabled: false, onConfirmLeave }),
-    );
-
-    expect(hardwareBackPressCallback).toEqual(expect.any(Function));
-    let handled: boolean | undefined;
-    act(() => {
-      handled = hardwareBackPressCallback?.();
-    });
-
-    expect(handled).toBe(false);
-    expect(onConfirmLeave).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@ import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import {
   buildSettingsDirtyState,
   buildSettingsFlowPresentationState,
+  buildSettingsHubNavigation,
   buildSettingsViewData,
   createLoadedSettingsState,
   revertLoadedSettingsDraftValues,
@@ -107,6 +108,59 @@ describe("settings view service", () => {
       buildSettingsViewData(new Date(2026, 2, 22), "ru").interface
         .screenCaptureProtectionLabel,
     ).toBe("Защита скриншотов");
+  });
+
+  it("builds every hub navigation row from the section copy that already exists", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+
+    const rows = buildSettingsHubNavigation(viewData);
+
+    expect(rows.cycle).toEqual({
+      key: "cycle",
+      title: viewData.cycle.title,
+      description: "",
+    });
+    expect(rows.symptoms).toEqual({
+      key: "symptoms",
+      title: viewData.symptoms.title,
+      description: viewData.symptoms.subtitle,
+    });
+    expect(rows.tracking).toEqual({
+      key: "tracking",
+      title: viewData.tracking.title,
+      description: viewData.tracking.subtitle,
+    });
+    expect(rows.reminders).toEqual({
+      key: "reminders",
+      title: viewData.reminders.title,
+      description: viewData.reminders.subtitle,
+    });
+    expect(rows.interface).toEqual({
+      key: "interface",
+      title: viewData.interface.title,
+      description: viewData.interface.subtitle,
+    });
+    // The data row names both halves of the combined export + import screen.
+    expect(rows.data).toEqual({
+      key: "data",
+      title: viewData.export.title,
+      description: viewData.import.title,
+    });
+    expect(rows.danger).toEqual({
+      key: "danger",
+      title: viewData.danger.title,
+      description: viewData.danger.subtitle,
+    });
+  });
+
+  it("localizes hub navigation rows through the same settings copy catalogs", () => {
+    const rows = buildSettingsHubNavigation(
+      buildSettingsViewData(new Date(2026, 2, 22), "ru"),
+    );
+
+    expect(rows.cycle.title).toBe("Параметры цикла");
+    expect(rows.data.title).toBe("Экспорт данных");
+    expect(rows.danger.title).toBe("Опасная зона");
   });
 
   it("builds export and symptom presentation state outside UI components", () => {

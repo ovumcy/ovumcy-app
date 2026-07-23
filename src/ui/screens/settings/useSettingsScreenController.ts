@@ -27,6 +27,7 @@ import {
   buildSettingsViewData,
   revertLoadedSettingsDraftValues,
   type LoadedSettingsState,
+  type SettingsHubSectionKey,
 } from "../../../services/settings-view-service";
 import {
   createDefaultSymptomDraft,
@@ -84,11 +85,37 @@ type UseSettingsScreenControllerOptions = {
   syncSecretStore?: SyncSecretStore;
 };
 
+// The route the section arrives on is owned by the route file; the controller
+// only supplies the handlers, so its props omit `section`.
+type SettingsControllerFlowProps = Omit<SettingsFlowScreenProps, "section">;
+
 type SettingsScreenControllerResult = {
   accentColor: string;
-  flowProps: SettingsFlowScreenProps | null;
+  flowProps: SettingsControllerFlowProps | null;
   loadingDescription: string;
   loadingTitle: string;
+};
+
+// Hub row key -> pushed route. Sections live in the settings stack inside the
+// tabs shell so the tab bar stays visible and the tab guard keys stay
+// "settings" for every sub-route.
+const SETTINGS_SECTION_HREFS: Record<
+  SettingsHubSectionKey,
+  | "/settings/cycle"
+  | "/settings/symptoms"
+  | "/settings/tracking"
+  | "/settings/reminders"
+  | "/settings/interface"
+  | "/settings/data"
+  | "/settings/danger"
+> = {
+  cycle: "/settings/cycle",
+  symptoms: "/settings/symptoms",
+  tracking: "/settings/tracking",
+  reminders: "/settings/reminders",
+  interface: "/settings/interface",
+  data: "/settings/data",
+  danger: "/settings/danger",
 };
 
 export function useSettingsScreenController({
@@ -719,6 +746,16 @@ export function useSettingsScreenController({
           screenCaptureProtectionEnabled: value,
         });
       },
+      onBackToSettingsHub: () => {
+        // Route removal is what triggers the dirty-exit guard
+        // (usePreventRemove), so this handler only navigates. A deep-linked
+        // entry has no history to pop — fall back to the hub route.
+        if (router.canGoBack()) {
+          router.back();
+          return;
+        }
+        router.replace("/(tabs)/settings");
+      },
       onOpenBackupSync: () => {
         void confirmPendingSettingsThen(() => {
           void router.push("/backup-sync");
@@ -727,6 +764,11 @@ export function useSettingsScreenController({
       onOpenPrivacyNotice: () => {
         void confirmPendingSettingsThen(() => {
           void router.push("/privacy");
+        });
+      },
+      onOpenSettingsSection: (sectionKey) => {
+        void confirmPendingSettingsThen(() => {
+          void router.push(SETTINGS_SECTION_HREFS[sectionKey]);
         });
       },
       onPeriodLengthChange: (value) => {

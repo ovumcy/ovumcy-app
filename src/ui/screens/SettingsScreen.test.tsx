@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native";
-import { BackHandler, Platform } from "react-native";
+import { Platform } from "react-native";
 
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import { createEmptyDayLogRecord } from "../../models/day-log";
@@ -19,6 +19,8 @@ import { openConfirmation, openLeaveConfirmation } from "../confirm/open-confirm
 import { SettingsScreen } from "./SettingsScreen";
 
 const mockUseEffect = React.useEffect;
+const mockBack = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockDispatch = jest.fn();
@@ -32,9 +34,6 @@ let tabPressCallback:
       target?: string;
     }) => void)
   | null = null;
-let hardwareBackPressCallback: (() => boolean | null | undefined) | null = null;
-let addBackHandlerListenerSpy: jest.SpiedFunction<typeof BackHandler.addEventListener>;
-let exitAppSpy: jest.SpiedFunction<typeof BackHandler.exitApp>;
 const originalPlatformOS = Platform.OS;
 
 jest.setTimeout(15000);
@@ -45,6 +44,8 @@ jest.mock("expo-router", () => {
       mockUseEffect(effect, [effect]);
     },
     useRouter: () => ({
+      back: mockBack,
+      canGoBack: mockCanGoBack,
       push: mockPush,
       replace: mockReplace,
     }),
@@ -139,6 +140,9 @@ describe("SettingsScreen", () => {
 
     preventRemoveCallback = null;
     tabPressCallback = null;
+    mockBack.mockReset();
+    mockCanGoBack.mockReset();
+    mockCanGoBack.mockReturnValue(true);
     mockDispatch.mockReset();
     mockParentNavigate.mockReset();
     mockOpenConfirmation.mockReset();
@@ -151,23 +155,6 @@ describe("SettingsScreen", () => {
       configurable: true,
       value: "android",
     });
-    hardwareBackPressCallback = null;
-    addBackHandlerListenerSpy = jest
-      .spyOn(BackHandler, "addEventListener")
-      .mockImplementation((eventName, callback) => {
-        if (eventName === "hardwareBackPress") {
-          hardwareBackPressCallback = callback;
-        }
-
-        return {
-          remove: jest.fn(() => {
-            if (eventName === "hardwareBackPress") {
-              hardwareBackPressCallback = null;
-            }
-          }),
-        };
-      });
-    exitAppSpy = jest.spyOn(BackHandler, "exitApp").mockImplementation(jest.fn());
     global.fetch = originalFetch;
   });
 
@@ -180,14 +167,12 @@ describe("SettingsScreen", () => {
       configurable: true,
       value: originalPlatformOS,
     });
-    addBackHandlerListenerSpy.mockRestore();
-    exitAppSpy.mockRestore();
   });
 
   it("saves cycle settings through the canonical profile repository", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -210,7 +195,7 @@ describe("SettingsScreen", () => {
   it("maps the prediction-mode selector to the persisted cycle flags", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -230,9 +215,9 @@ describe("SettingsScreen", () => {
   it("saves tracking settings with the chosen temperature unit", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="tracking" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-tracking-section");
 
     fireEvent.press(screen.getByTestId("settings-temperature-unit-f"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
@@ -249,9 +234,9 @@ describe("SettingsScreen", () => {
   it("saves screenshot protection through interface settings", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-screen-capture-protection"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
@@ -268,9 +253,9 @@ describe("SettingsScreen", () => {
   it("persists a first-day-of-week change through Save all", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(
       screen.getByTestId("settings-interface-first-day-of-week-1"),
@@ -289,9 +274,9 @@ describe("SettingsScreen", () => {
   it("toggles tracking cards through the shared binary toggle control", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="tracking" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-tracking-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-track-bbt"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
@@ -308,9 +293,9 @@ describe("SettingsScreen", () => {
   it("persists the hide-notes privacy toggle through settings", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="tracking" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-tracking-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-hide-notes"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
@@ -327,9 +312,9 @@ describe("SettingsScreen", () => {
   it("creates and archives a custom symptom through the settings flow", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="symptoms" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-symptoms-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-symptom-create-name-input"),
@@ -367,7 +352,7 @@ describe("SettingsScreen", () => {
   it("opens the dedicated backup and sync screen from the summary card", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
 
     await screen.findByTestId("settings-sync-summary-card");
 
@@ -379,7 +364,7 @@ describe("SettingsScreen", () => {
   it("opens the privacy notice from the settings privacy card", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
 
     await screen.findByTestId("settings-privacy-card");
 
@@ -392,54 +377,174 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent(
-      screen.getByTestId("settings-cycle-length-slider"),
-      "valueChange",
-      35,
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="reminders"
+        storage={storage}
+      />,
     );
-    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await screen.findByTestId("settings-reminders-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
+    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
         expect.objectContaining({
-          cycleLength: 35,
+          dailyLogReminderEnabled: true,
         }),
       ),
     );
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
   });
 
-  it("renders the app-equivalent interface, backup summary, export, and danger sections", async () => {
+  it("keeps the hub a summary and navigation surface without inline section editors", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-hub-open-cycle");
 
-    expect(screen.getByTestId("settings-cycle-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-symptoms-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-tracking-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-reminders-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
-    expect(screen.getByTestId("settings-reminder-lead-days-slider")).toBeTruthy();
-    expect(screen.getByTestId("settings-interface-section")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-symptoms")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-tracking")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-reminders")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-interface")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-data")).toBeTruthy();
+    expect(screen.getByTestId("settings-hub-open-danger")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-summary-card")).toBeTruthy();
     expect(
       screen.getByTestId("settings-sync-summary-details").props.accessibilityLabel,
     ).toBe("Destination. Ovumcy Cloud. Last sync. Not synced yet.");
+    expect(screen.getByTestId("settings-privacy-card")).toBeTruthy();
+    // Section editors and the pending-save action all moved to the section
+    // routes; the hub itself has nothing to edit or save.
+    expect(screen.queryByTestId("settings-cycle-section")).toBeNull();
+    expect(screen.queryByTestId("settings-symptoms-section")).toBeNull();
+    expect(screen.queryByTestId("settings-tracking-section")).toBeNull();
+    expect(screen.queryByTestId("settings-reminders-section")).toBeNull();
+    expect(screen.queryByTestId("settings-interface-section")).toBeNull();
+    expect(screen.queryByTestId("settings-export-section")).toBeNull();
+    expect(screen.queryByTestId("settings-import-section")).toBeNull();
+    expect(screen.queryByTestId("settings-danger-zone-section")).toBeNull();
+    expect(screen.queryByTestId("settings-save-all-button")).toBeNull();
     expect(screen.queryByTestId("settings-sync-section")).toBeNull();
-    expect(screen.getByTestId("settings-export-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-danger-zone-section")).toBeTruthy();
-    expect(screen.getByTestId("settings-save-all-button")).toBeTruthy();
-    expect(screen.queryByTestId("settings-save-cycle-button")).toBeNull();
-    expect(screen.queryByTestId("settings-save-tracking-button")).toBeNull();
-    expect(screen.queryByTestId("settings-save-interface-button")).toBeNull();
+    expect(screen.queryByTestId("settings-section-back-button")).toBeNull();
+  });
+
+  it("pushes each section route from its hub navigation row", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
+
+    await screen.findByTestId("settings-hub-open-cycle");
+
+    const expectedHrefBySection = {
+      cycle: "/settings/cycle",
+      symptoms: "/settings/symptoms",
+      tracking: "/settings/tracking",
+      reminders: "/settings/reminders",
+      interface: "/settings/interface",
+      data: "/settings/data",
+      danger: "/settings/danger",
+    } as const;
+
+    for (const [sectionKey, expectedHref] of Object.entries(
+      expectedHrefBySection,
+    )) {
+      mockPush.mockClear();
+      fireEvent.press(screen.getByTestId(`settings-hub-open-${sectionKey}`));
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith(expectedHref));
+    }
+  });
+
+  it.each([
+    ["cycle", "settings-cycle-section"],
+    ["symptoms", "settings-symptoms-section"],
+    ["tracking", "settings-tracking-section"],
+    ["reminders", "settings-reminders-section"],
+    ["interface", "settings-interface-section"],
+    ["data", "settings-export-section"],
+    ["danger", "settings-danger-zone-section"],
+  ] as const)(
+    "renders the extracted %s section on its own route with a back action and no hub rows",
+    async (section, sentinelTestID) => {
+      const storage = createSettingsStorageMock();
+
+      render(
+        <SettingsScreen
+          now={new Date(2026, 2, 17)}
+          section={section}
+          storage={storage}
+        />,
+      );
+
+      await screen.findByTestId(sentinelTestID);
+
+      expect(screen.getByTestId("settings-section-back-button")).toBeTruthy();
+      expect(screen.queryByTestId("settings-hub-open-cycle")).toBeNull();
+      expect(screen.queryByTestId("settings-sync-summary-card")).toBeNull();
+      expect(screen.queryByTestId("settings-privacy-card")).toBeNull();
+    },
+  );
+
+  it("keeps the section-level premium and control details after the move", async () => {
+    const storage = createSettingsStorageMock();
+
+    const remindersRender = render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="reminders"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-reminders-section");
+    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
+    expect(screen.getByTestId("settings-reminder-lead-days-slider")).toBeTruthy();
+
+    remindersRender.unmount();
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />,
+    );
+
+    await screen.findByTestId("settings-export-section");
+    expect(screen.getByTestId("settings-import-section")).toBeTruthy();
     expect(screen.getByTestId("settings-export-pdf-button")).toBeTruthy();
     expect(screen.getByTestId("settings-export-pdf-lock")).toBeTruthy();
+  });
+
+  it("returns to the settings hub from the section back action", async () => {
+    const storage = createSettingsStorageMock();
+    mockCanGoBack.mockReturnValue(true);
+
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-section-back-button"));
+
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the hub route when a deep-linked section has no history to pop", async () => {
+    const storage = createSettingsStorageMock();
+    mockCanGoBack.mockReturnValue(false);
+
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />,
+    );
+
+    await screen.findByTestId("settings-cycle-section");
+
+    fireEvent.press(screen.getByTestId("settings-section-back-button"));
+
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
   });
 
   it("prepares a JSON export through the settings flow and hands it to the delivery client", async () => {
@@ -452,11 +557,12 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         exportDeliveryClient={exportDeliveryClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
 
     fireEvent.press(screen.getByTestId("settings-export-json-button"));
 
@@ -552,12 +658,13 @@ describe("SettingsScreen", () => {
         exportDeliveryClient={exportDeliveryClient}
         exportServiceDependencies={{ buildPDFContent }}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
         syncSecretStore={syncSecretStore}
       />,
     );
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
     expect(screen.queryByTestId("settings-export-pdf-lock")).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-export-pdf-button"));
@@ -583,6 +690,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         now={new Date(2026, 2, 17)}
         reminderScheduler={reminderScheduler}
+        section="reminders"
         storage={storage}
       />,
     );
@@ -725,6 +833,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         now={new Date(2026, 2, 17)}
         reminderScheduler={reminderScheduler}
+        section="reminders"
         storage={storage}
         syncSecretStore={syncSecretStore}
       />,
@@ -765,9 +874,9 @@ describe("SettingsScreen", () => {
   it("updates the native export range through the date picker instead of free-text input", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
 
     await act(async () => {
       fireEvent.press(screen.getByTestId("settings-export-from-button"));
@@ -798,7 +907,7 @@ describe("SettingsScreen", () => {
       value: "web",
     });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -829,7 +938,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -863,9 +972,9 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
 
@@ -893,9 +1002,9 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-interface-theme-system"));
 
@@ -923,7 +1032,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -958,9 +1067,9 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
 
@@ -989,9 +1098,9 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-interface-theme-dark"));
 
@@ -1009,11 +1118,16 @@ describe("SettingsScreen", () => {
     ).toEqual(expect.objectContaining({ checked: true }));
   });
 
-  it("confirms unsaved changes before the Android hardware back exits settings", async () => {
+  it("confirms unsaved changes when the Android hardware back pops a section (route removal)", async () => {
+    // With the route-level split, dirty state only exists on pushed section
+    // screens, so the Android hardware back is a stack pop intercepted by
+    // usePreventRemove — the same guard as any other route removal.
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />,
+    );
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1023,10 +1137,10 @@ describe("SettingsScreen", () => {
       35,
     );
 
-    expect(hardwareBackPressCallback).toEqual(expect.any(Function));
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
 
     await act(async () => {
-      hardwareBackPressCallback?.();
+      preventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
     });
 
     await waitFor(() =>
@@ -1037,7 +1151,11 @@ describe("SettingsScreen", () => {
         expect.any(String),
       ),
     );
-    await waitFor(() => expect(exitAppSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockDispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "GO_BACK" }),
+      ),
+    );
     expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
       expect.objectContaining({
         cycleLength: 35,
@@ -1048,9 +1166,9 @@ describe("SettingsScreen", () => {
   it("requires typed confirmation before clearing all local data", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="danger" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-danger-zone-section");
 
     fireEvent.press(screen.getByTestId("settings-clear-data-button"));
 
@@ -1099,12 +1217,13 @@ describe("SettingsScreen", () => {
     render(
       <SettingsScreen
         now={new Date(2026, 2, 17)}
+        section="danger"
         storage={storage}
         syncSecretStore={syncSecretStore}
       />,
     );
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-danger-zone-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-clear-data-confirmation-input"),
@@ -1139,9 +1258,9 @@ describe("SettingsScreen", () => {
         reason,
       });
 
-      render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+      render(<SettingsScreen now={new Date(2026, 2, 17)} section="danger" storage={storage} />);
 
-      await screen.findByTestId("settings-cycle-section");
+      await screen.findByTestId("settings-danger-zone-section");
 
       fireEvent.changeText(
         screen.getByTestId("settings-clear-data-confirmation-input"),
@@ -1163,9 +1282,9 @@ describe("SettingsScreen", () => {
       reason: "cancelled",
     });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="danger" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-danger-zone-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-clear-data-confirmation-input"),
@@ -1187,9 +1306,9 @@ describe("SettingsScreen", () => {
       clearAllLocalData: jest.fn().mockRejectedValue(new Error("disk error")),
     });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="danger" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-danger-zone-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-clear-data-confirmation-input"),
@@ -1247,6 +1366,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1287,6 +1407,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1313,6 +1434,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1340,6 +1462,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1365,6 +1488,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1388,6 +1512,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1423,6 +1548,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1463,6 +1589,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1486,6 +1613,7 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         importFilePickerClient={importFilePickerClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
@@ -1509,7 +1637,7 @@ describe("SettingsScreen", () => {
   it("saves the selected age-group and usage-goal choices", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1530,7 +1658,7 @@ describe("SettingsScreen", () => {
   it("saves the auto-period-fill toggle and the period-length slider", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1552,7 +1680,7 @@ describe("SettingsScreen", () => {
   it("clears the last period start date", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1569,7 +1697,7 @@ describe("SettingsScreen", () => {
   it("announces the native cycle date controls as buttons for screen readers", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1587,7 +1715,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1605,7 +1733,7 @@ describe("SettingsScreen", () => {
   it("opens the native cycle date picker, ignores a dismiss, then confirms a new date", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1645,7 +1773,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1674,7 +1802,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1705,7 +1833,7 @@ describe("SettingsScreen", () => {
   it("blocks saving and shows the incompatibility banner for an impossible cycle/period combination", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1736,7 +1864,7 @@ describe("SettingsScreen", () => {
   it("shows the long-cycle informational hint without blocking the save", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -1774,11 +1902,12 @@ describe("SettingsScreen", () => {
       <SettingsScreen
         exportDeliveryClient={exportDeliveryClient}
         now={new Date(2026, 2, 17)}
+        section="data"
         storage={storage}
       />,
     );
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
 
     fireEvent.press(screen.getByTestId("settings-export-csv-button"));
 
@@ -1795,9 +1924,9 @@ describe("SettingsScreen", () => {
   it("closes the native export date picker without changing the range when dismissed or given no value", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
     const originalFromValue = screen.getByTestId("settings-export-from-value")
       .props.children;
 
@@ -1860,9 +1989,9 @@ describe("SettingsScreen", () => {
       }),
     });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
     expect(
       screen.getByTestId("settings-export-preset-all").props.accessibilityState,
     ).toEqual(expect.objectContaining({ checked: true }));
@@ -1883,9 +2012,9 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-export-section");
     // The default range (from existing data) starts fully populated.
     expect(screen.getByTestId("settings-export-from-input").props.value).toBe(
       "2026-03-10",
@@ -1952,24 +2081,37 @@ describe("SettingsScreen", () => {
   it("opens backup and sync from either premium-lock CTA (reminders email, export PDF)", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    const remindersRender = render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="reminders"
+        storage={storage}
+      />,
+    );
 
     await screen.findByTestId("settings-reminders-lock");
 
     fireEvent.press(screen.getByTestId("settings-reminders-lock"));
-    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
 
+    remindersRender.unmount();
     mockPush.mockClear();
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />,
+    );
+
+    await screen.findByTestId("settings-export-pdf-lock");
+
     fireEvent.press(screen.getByTestId("settings-export-pdf-lock"));
-    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
   });
 
   it("saves the remaining tracking toggles (sex-chip visibility, cycle factors, historical phases, cervical mucus)", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="tracking" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-tracking-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-hide-sex-chip"));
     fireEvent.press(screen.getByTestId("settings-toggle-hide-cycle-factors"));
@@ -1992,7 +2134,7 @@ describe("SettingsScreen", () => {
   it("saves the upcoming-period, fertile-window, and managed email-delivery reminder toggles", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="reminders" storage={storage} />);
 
     await screen.findByTestId("settings-reminders-section");
 
@@ -2015,9 +2157,9 @@ describe("SettingsScreen", () => {
   it("saves the selected interface language", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     fireEvent.press(screen.getByTestId("settings-interface-language-de"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
@@ -2032,9 +2174,9 @@ describe("SettingsScreen", () => {
   it("applies the selected first day of week to the interface picker", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="interface" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-interface-section");
 
     // Default is Sunday (0); selecting Monday (1) runs the interface
     // first-day-of-week handler and re-selects the picker on the new value.
@@ -2053,9 +2195,9 @@ describe("SettingsScreen", () => {
   it("updates an existing custom symptom's label", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="symptoms" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-symptoms-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-symptom-create-name-input"),
@@ -2093,9 +2235,9 @@ describe("SettingsScreen", () => {
   it("restores a previously archived custom symptom", async () => {
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="symptoms" storage={storage} />);
 
-    await screen.findByTestId("settings-cycle-section");
+    await screen.findByTestId("settings-symptoms-section");
 
     fireEvent.changeText(
       screen.getByTestId("settings-symptom-create-name-input"),
@@ -2134,7 +2276,7 @@ describe("SettingsScreen", () => {
     // covered directly in settings-screen-symptom-actions.test.ts.
     const storage = createSettingsStorageMock();
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="symptoms" storage={storage} />);
 
     await screen.findByTestId("settings-symptoms-section");
 
@@ -2148,7 +2290,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -2176,7 +2318,7 @@ describe("SettingsScreen", () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />);
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -2198,11 +2340,13 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("stays in settings and keeps changes when Android back is dismissed", async () => {
+  it("keeps changes on the section when the route-removal guard is dismissed (Android back)", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="cycle" storage={storage} />,
+    );
 
     await screen.findByTestId("settings-cycle-section");
 
@@ -2212,87 +2356,62 @@ describe("SettingsScreen", () => {
       35,
     );
 
-    expect(hardwareBackPressCallback).toEqual(expect.any(Function));
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
 
     await act(async () => {
-      hardwareBackPressCallback?.();
+      preventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
     });
 
     await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
-    expect(exitAppSpy).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
     expect(screen.getByTestId("settings-cycle-length-slider").props.value).toBe(
       35,
     );
   });
 
-  it("saves before Android back exits the app when the guard accepts saving", async () => {
-    const storage = createSettingsStorageMock();
-    mockOpenLeaveConfirmation.mockResolvedValue("accept");
-
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent(
-      screen.getByTestId("settings-cycle-length-slider"),
-      "valueChange",
-      35,
-    );
-
-    await act(async () => {
-      hardwareBackPressCallback?.();
-    });
-
-    await waitFor(() =>
-      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-        expect.objectContaining({ cycleLength: 35 }),
-      ),
-    );
-    await waitFor(() => expect(exitAppSpy).toHaveBeenCalledTimes(1));
-  });
-
-  it("stays on settings and keeps changes when the backup-sync guard is dismissed", async () => {
+  it("stays on the section and keeps changes when the backup-sync guard is dismissed", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent(
-      screen.getByTestId("settings-cycle-length-slider"),
-      "valueChange",
-      35,
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="reminders"
+        storage={storage}
+      />,
     );
-    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await screen.findByTestId("settings-reminders-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
+    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
 
     await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
     expect(mockPush).not.toHaveBeenCalled();
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
-    expect(screen.getByTestId("settings-cycle-length-slider").props.value).toBe(
-      35,
-    );
   });
 
   it("discards changes when the backup-sync guard rejects saving, then navigates", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
-    render(<SettingsScreen now={new Date(2026, 2, 17)} storage={storage} />);
-
-    await screen.findByTestId("settings-cycle-section");
-
-    fireEvent(
-      screen.getByTestId("settings-cycle-length-slider"),
-      "valueChange",
-      35,
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="reminders"
+        storage={storage}
+      />,
     );
-    fireEvent.press(screen.getByTestId("settings-open-backup-sync-button"));
+
+    await screen.findByTestId("settings-reminders-section");
+
+    fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
+    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
     expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
-      expect.objectContaining({ cycleLength: 35 }),
+      expect.objectContaining({ dailyLogReminderEnabled: true }),
     );
   });
 });

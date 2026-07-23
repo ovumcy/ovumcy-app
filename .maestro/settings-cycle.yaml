@@ -14,8 +14,12 @@ appId: ${APP_ID}
 ---
 - launchApp
 
-# Go to Settings and find the cycle section.
+# Go to Settings and open the cycle section route from the hub.
 - tapOn: "Settings"
+- assertVisible:
+    id: "settings-hub-open-cycle"
+- tapOn:
+    id: "settings-hub-open-cycle"
 - assertVisible:
     id: "settings-cycle-section"
 - scrollUntilVisible:
