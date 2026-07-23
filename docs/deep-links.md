@@ -1,9 +1,12 @@
 # Deep-Link Safety Plan — Android App Links & iOS Universal Links
 
 Status: **in progress** — the app-side config is applied in `app.json` (Android
-intent filter §2.2, iOS associated domains §3.2). Remaining: host the two
-well-known files (ready-to-upload templates in `docs/deep-link-hosting/`),
-reconcile signing fingerprints / Team ID (§7 step 4), and — last — flip the
+intent filter §2.2, iOS associated domains §3.2), the invite host is fixed
+(`invite.ovumcy.cloud`, §4), and its DNS already points at the VPS (2026-07-23).
+Remaining: fill the signing fingerprints / Team ID into the hosting bundle
+(§7 step 4), serve the two well-known files plus the fallback page from the VPS
+at deploy time — a Traefik route; companion infrastructure, not app code
+(ready-to-upload templates in `docs/deep-link-hosting/`) — and, last, flip the
 managed-side invite base URL (§7 step 5). This document is the design of record
 for migrating partner-invite links off the squattable `ovumcy://` custom scheme
 and onto platform-verified deep links.
@@ -319,6 +322,14 @@ Notes:
 User-facing links live in the `.cloud` zone alongside the service hosts (see the
 resolved zone question below); the dedicated-subdomain rationale is unchanged.
 
+Hosting shape (2026-07-23): the invite host is served from the existing VPS
+behind Traefik as a static route — DNS for `invite.ovumcy.cloud` already points
+there. The "static bucket/CDN" wording below describes the generic option; the
+deployed shape is a Traefik route that serves only the three static artifacts
+(two well-known files + the fallback page), which preserves the least-privilege
+property. Wiring that route is deploy-time companion infrastructure (§6), not
+app code.
+
 This commits DNS/TLS/hosting and the managed-side `PARTNER_INVITE_BASE_URL`.
 Chosen option and rationale first, rejected alternatives after.
 
@@ -386,9 +397,17 @@ Scenarios:
      the `invite_token`; it should instruct the user to open the app (which, once
      verified, will re-associate future taps). The static page treats the query
      string as sensitive and never persists it.
-3. **App not installed.** The HTTPS link opens the browser fallback page (a store
-   link + explanation). This is strictly better than `ovumcy://`, which today
-   silently dead-ends ("no app found") when the app is absent.
+3. **App not installed — the v1 "press the link again" flow.** The HTTPS link
+   opens the browser fallback page (a store link + explanation). v1 deliberately
+   ships **without** seamless deferred deep-linking (decided out of scope — see
+   `docs/sync-trust-model.md`, Out of scope in v1), so the fallback page **is**
+   the graceful path, not a stopgap: it explicitly says "install the app, then
+   tap the invite link again" — an explicit screen, never an empty start screen
+   or a silent dead end. The second press of the same link still redeems,
+   because an invite is consumed on accept, not on tap, and the 7-day invite
+   TTL comfortably survives the install pause. This is strictly better than
+   `ovumcy://`, which today silently dead-ends ("no app found") when the app is
+   absent.
 4. **Old OS versions** (pre-App-Links Android < 6, pre-Universal-Links iOS < 9):
    they cannot verify, so they use the browser fallback path (scenario 2/3). No
    custom-scheme interception is reintroduced because the invite URL itself is now
@@ -407,11 +426,14 @@ persistence of the query string), which the guidance above enforces.
 ## 6. Companion infrastructure checklist (managed / domain team)
 
 Lift into the managed/domain repo. `<INVITE_HOST>` = the host decided in §4:
-`invite.ovumcy.cloud`.
+`invite.ovumcy.cloud`. Execution shape (2026-07-23): this checklist runs as
+deploy-time companion infrastructure on the VPS — a Traefik route serving the
+static artifacts — not as app code; DNS is already in place.
 
 **DNS & TLS**
 
-- [ ] Create DNS record for `<INVITE_HOST>` pointing at the static host/CDN.
+- [x] Create DNS record for `<INVITE_HOST>` — done (2026-07-23): DNS points at
+      the VPS; the items below ride the Traefik route at deploy time.
 - [ ] Issue a valid, publicly-trusted TLS cert for `<INVITE_HOST>` (ACME/managed).
       Self-signed / private-CA certs fail both Apple and Android verification.
 - [ ] Confirm no HSTS/redirect surprises: the two well-known URLs must return
@@ -438,10 +460,12 @@ Lift into the managed/domain repo. `<INVITE_HOST>` = the host decided in §4:
 
 **Invite URL minting (managed service)**
 
-- [ ] Set `PARTNER_INVITE_BASE_URL = https://<INVITE_HOST>/backup-sync`
-      (currently defaults to `ovumcy://backup-sync`). This is the single switch
-      that flips minted invite URLs from custom-scheme to verified HTTPS; the app
-      needs no code change to *consume* the new URL.
+- [ ] Set `PARTNER_INVITE_BASE_URL = https://invite.ovumcy.cloud/backup-sync` —
+      the fixed target value (deploy-time env; the managed code default stays
+      `ovumcy://backup-sync` and is the rollback value). This is the single
+      switch that flips minted invite URLs from custom-scheme to verified HTTPS;
+      the app needs no code change to *consume* the new URL. Sequencing: §7
+      step 5 — only after both well-known files verify in production.
 - [ ] Keep raw `invite_token` out of all server logs/metrics (already the
       contract: only `TokenHash` is persisted; the raw token appears solely in the
       returned URL).
@@ -471,6 +495,9 @@ breaks until the final flip.
    TLS), host `assetlinks.json` and `apple-app-site-association` with the correct
    content-types and no redirects, and stand up the fallback page. Do this while
    invite URLs are still `ovumcy://` — hosting the files early is harmless.
+   State (2026-07-23): DNS already points at the VPS; serving the three static
+   artifacts is a Traefik route added at deploy time (companion infrastructure,
+   not app code).
 2. **App config (this repo), Android.** Add `expo.android.intentFilters` (§2.2)
    with `autoVerify: true` for `<INVITE_HOST>`; keep `expo.scheme`. Ship in the
    next build. Verify with `adb shell pm get-app-links app.ovumcy.mobile`.
