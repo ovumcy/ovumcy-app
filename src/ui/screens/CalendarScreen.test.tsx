@@ -902,10 +902,45 @@ describe("CalendarScreen", () => {
     // predicts ovulation around 2026-03-23 with a fertile window and
     // predicted-period days painted on the grid; a positive pregnancy test
     // must blank all of that instead of showing a stale prediction.
-    expect(screen.queryByLabelText(/Ovulation day/)).toBeNull();
-    expect(screen.queryByLabelText(/Predicted period/)).toBeNull();
+    // Scoped to the day buttons: the legend now carries an accessible name for
+    // every state it explains, and the legend listing "Ovulation day" as a key
+    // is not the same claim as a grid cell being painted with it.
+    expect(
+      screen.queryByRole("button", { name: /Ovulation day/ }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Predicted period/ }),
+    ).toBeNull();
     expect(
       await screen.findByTestId("calendar-prediction-disclaimer"),
     ).toBeTruthy();
+  });
+
+  it("announces every actionable calendar control with a role, a name, and its state", async () => {
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
+
+    await waitForCalendarReady();
+
+    // The month title is the screen heading; month navigation and the day
+    // cells are buttons, and the selected day says so.
+    expect(screen.getAllByRole("header").length).toBeGreaterThan(0);
+    expect(screen.getByTestId("calendar-prev-button").props.accessibilityRole).toBe(
+      "button",
+    );
+    expect(screen.getByTestId("calendar-next-button").props.accessibilityRole).toBe(
+      "button",
+    );
+
+    const selectedDay = screen.getByTestId("calendar-day-2026-03-17");
+    expect(selectedDay.props.accessibilityRole).toBe("button");
+    expect(selectedDay.props.accessibilityLabel).toBeTruthy();
+    expect(selectedDay.props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
+
+    // The legend explains the colour language of the grid, so each swatch is
+    // announced with the state it stands for rather than as a bare box.
+    expect(screen.getByLabelText("Logged period")).toBeTruthy();
+    expect(screen.getByLabelText("Logged entry")).toBeTruthy();
   });
 });

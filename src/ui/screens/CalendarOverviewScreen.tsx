@@ -125,7 +125,9 @@ export function CalendarOverviewScreen({
                   ]}
                 >
                   <View style={styles.headerCopy}>
-                    <Text style={styles.headerTitle}>{viewData.title}</Text>
+                    <Text accessibilityRole="header" style={styles.headerTitle}>
+                      {viewData.title}
+                    </Text>
                     <Text style={styles.headerDescription}>{viewData.monthLabel}</Text>
                   </View>
                   <View
@@ -179,7 +181,13 @@ export function CalendarOverviewScreen({
 
                 {showLegendToggle ? (
                   <Pressable
+                    accessibilityLabel={
+                      showLegend
+                        ? viewData.legend.hideLegend
+                        : viewData.legend.showLegend
+                    }
                     accessibilityRole="button"
+                    accessibilityState={{ expanded: showLegend }}
                     onPress={() => {
                       setIsLegendExpanded((current) => !current);
                     }}
@@ -191,7 +199,16 @@ export function CalendarOverviewScreen({
                         ? viewData.legend.hideLegend
                         : viewData.legend.showLegend}
                     </Text>
-                    <Text style={styles.legendToggleIcon}>{showLegend ? "−" : "+"}</Text>
+                    {/* The +/− glyph repeats the expanded state the label and
+                        accessibilityState already carry; announcing "plus"
+                        after the label is noise. */}
+                    <Text
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      style={styles.legendToggleIcon}
+                    >
+                      {showLegend ? "−" : "+"}
+                    </Text>
                   </Pressable>
                 ) : null}
 
@@ -235,7 +252,13 @@ export function CalendarOverviewScreen({
                       <View style={[styles.legendDot, styles.legendDotData]} />
                     </LegendItem>
                     <LegendItem label={viewData.legend.sexLogged} styles={styles}>
-                      <Text style={styles.legendHeart}>♥</Text>
+                      <Text
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                        style={styles.legendHeart}
+                      >
+                        ♥
+                      </Text>
                     </LegendItem>
                   </View>
                   </View>
@@ -293,7 +316,10 @@ function LegendItem({
   styles: ReturnType<typeof createStyles>;
 }) {
   return (
-    <View style={styles.legendItem}>
+    // Swatch + caption are one legend entry: the swatch is the meaning and the
+    // caption is its name, so they are announced together rather than as an
+    // unlabelled box followed by a stray word.
+    <View accessibilityLabel={label} accessible style={styles.legendItem}>
       {children}
       <Text numberOfLines={2} style={styles.legendLabel}>
         {label}

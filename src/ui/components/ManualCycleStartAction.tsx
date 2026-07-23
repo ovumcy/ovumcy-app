@@ -38,7 +38,15 @@ export function ManualCycleStartAction({
         {...buttonProps}
       />
       {notices.length > 0 ? (
-        <View style={styles.noticeGroup}>
+        // The notices qualify the button above them (future date, suggested
+        // date, implantation caveat). Grouping them into one element keeps
+        // that relationship in the reading order instead of scattering up to
+        // three unattached sentences after the control.
+        <View
+          accessibilityLabel={notices.join(" ")}
+          accessible
+          style={styles.noticeGroup}
+        >
           {notices.map((message) => (
             <Text key={message} style={styles.noticeText}>
               {message}

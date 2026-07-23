@@ -178,7 +178,12 @@ export function DashboardScreen({
         description={shellCopy.loading.dashboardDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={shellCopy.loading.dashboardTitle}
+            accessibilityRole="progressbar"
+            color={colors.accent}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );

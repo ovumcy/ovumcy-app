@@ -171,6 +171,7 @@ export function DashboardOverviewScreen({
 
           <View style={styles.quickActionsBlock}>
             <Text
+              accessibilityRole="header"
               style={styles.quickActionsTitle}
               testID="dashboard-quick-actions-title"
             >

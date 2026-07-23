@@ -894,4 +894,42 @@ describe("DashboardScreen", () => {
       screen.queryByTestId("dashboard-cycle-hero-phase-card-period"),
     ).toBeNull();
   });
+
+  it("announces the day-logging surface: headers, named quick actions, and grouped phase cards", async () => {
+    const storage = createStorageMock();
+
+    renderDashboard(storage);
+
+    await screen.findByTestId("day-log-period-toggle");
+
+    // Section headings a rotor can jump between.
+    expect(
+      screen.getByTestId("dashboard-quick-actions-title").props
+        .accessibilityRole,
+    ).toBe("header");
+
+    // Quick actions are icon+word buttons: the announcement is the word, and
+    // the period action reports whether today is already marked.
+    const periodAction = screen.getByTestId("dashboard-quick-action-period");
+    expect(periodAction.props.accessibilityRole).toBe("button");
+    expect(periodAction.props.accessibilityLabel).toBeTruthy();
+    expect(periodAction.props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: false }),
+    );
+
+    // Day-log fields: each option group states which question it answers.
+    expect(
+      screen.getByTestId("day-log-symptom-group").props.accessibilityLabel,
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("day-log-mood-group").props.accessibilityRole,
+    ).toBe("radiogroup");
+
+    // The cycle-hero phase cards are one fact each (phase plus day range).
+    const phaseCard = screen.getByTestId(
+      "dashboard-cycle-hero-phase-card-period",
+    );
+    expect(phaseCard.props.accessibilityLabel).toMatch(/\. /);
+    expect(phaseCard.props.accessible).toBe(true);
+  });
 });

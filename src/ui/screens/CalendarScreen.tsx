@@ -200,7 +200,12 @@ export function CalendarScreen({
         description={shellCopy.loading.calendarDescription}
       >
         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-          <ActivityIndicator color={colors.accent} size="large" />
+          <ActivityIndicator
+            accessibilityLabel={shellCopy.loading.calendarTitle}
+            accessibilityRole="progressbar"
+            color={colors.accent}
+            size="large"
+          />
         </View>
       </ScreenScaffold>
     );
