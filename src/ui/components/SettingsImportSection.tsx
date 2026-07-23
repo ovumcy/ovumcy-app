@@ -57,16 +57,32 @@ export function SettingsImportSection({
 
       {preview ? (
         <View style={styles.previewCard} testID="settings-import-preview">
-          <Text style={styles.previewTitle}>{viewData.previewTitle}</Text>
-          {preview.detailLines.map((line) => (
-            <Text key={line} style={styles.previewText}>
-              {line}
-            </Text>
-          ))}
-          <Text style={styles.previewText}>{preview.profileLine}</Text>
-          {preview.nothingNewLine ? (
-            <Text style={styles.previewText}>{preview.nothingNewLine}</Text>
-          ) : null}
+          {/* What the confirm button is about to apply. Announced as one
+              element so the summary is heard whole before the irreversible
+              action, not as loose lines the user can swipe past. */}
+          <View
+            accessibilityLabel={[
+              viewData.previewTitle,
+              ...preview.detailLines,
+              preview.profileLine,
+              preview.nothingNewLine,
+            ]
+              .filter((line): line is string => Boolean(line && line.trim()))
+              .join(". ")}
+            accessible
+            style={styles.previewSummary}
+          >
+            <Text style={styles.previewTitle}>{viewData.previewTitle}</Text>
+            {preview.detailLines.map((line) => (
+              <Text key={line} style={styles.previewText}>
+                {line}
+              </Text>
+            ))}
+            <Text style={styles.previewText}>{preview.profileLine}</Text>
+            {preview.nothingNewLine ? (
+              <Text style={styles.previewText}>{preview.nothingNewLine}</Text>
+            ) : null}
+          </View>
 
           <View style={styles.actionsRow}>
             <AppButton
@@ -109,6 +125,9 @@ const createStyles = (colors: AppThemeColors) =>
       gap: spacing.xs,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
+    },
+    previewSummary: {
+      gap: spacing.xs,
     },
     previewTitle: {
       color: colors.text,

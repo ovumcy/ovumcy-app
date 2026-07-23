@@ -48,6 +48,7 @@ export function SettingsInterfaceSection({
         <Text style={styles.fieldLabel}>{viewData.languageLabel}</Text>
         <Text style={styles.helperText}>{viewData.languageHint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.languageLabel}
           layout="grid3"
           onSelect={onLanguageSelect}
           options={viewData.languageOptions}
@@ -60,6 +61,7 @@ export function SettingsInterfaceSection({
         <Text style={styles.fieldLabel}>{viewData.themeLabel}</Text>
         <Text style={styles.helperText}>{viewData.themeHint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.themeLabel}
           layout="grid3"
           onSelect={onThemeSelect}
           options={viewData.themeOptions}
@@ -72,6 +74,7 @@ export function SettingsInterfaceSection({
         <Text style={styles.fieldLabel}>{viewData.firstDayOfWeekLabel}</Text>
         <Text style={styles.helperText}>{viewData.firstDayOfWeekHint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.firstDayOfWeekLabel}
           layout="grid2"
           onSelect={onFirstDayOfWeekSelect}
           options={viewData.firstDayOfWeekOptions}

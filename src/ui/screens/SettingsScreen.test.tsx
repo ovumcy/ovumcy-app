@@ -2392,6 +2392,55 @@ describe("SettingsScreen", () => {
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
+  it("names every hub navigation row so a screen reader hears its destination", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(<SettingsScreen now={new Date(2026, 2, 17)} section="hub" storage={storage} />);
+
+    await screen.findByTestId("settings-hub-open-cycle");
+
+    for (const testID of [
+      "settings-hub-open-cycle",
+      "settings-hub-open-symptoms",
+      "settings-hub-open-tracking",
+      "settings-hub-open-reminders",
+      "settings-hub-open-interface",
+      "settings-hub-open-data",
+      "settings-hub-open-danger",
+    ]) {
+      const row = screen.getByTestId(testID);
+      expect(row.props.accessibilityRole).toBe("button");
+      expect(row.props.accessibilityLabel).toBeTruthy();
+    }
+
+    // The hub title is the screen heading a rotor jumps to.
+    expect(screen.getAllByRole("header").length).toBeGreaterThan(0);
+  });
+
+  it("names the interface choice groups so each radio says what it changes", async () => {
+    const storage = createSettingsStorageMock();
+
+    render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        section="interface"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-interface-section");
+
+    for (const [testID, label] of [
+      ["settings-interface-language-group", "Language"],
+      ["settings-interface-theme-group", "Theme"],
+      ["settings-interface-first-day-of-week-group", "First day of the week"],
+    ] as const) {
+      const group = screen.getByTestId(testID);
+      expect(group.props.accessibilityRole).toBe("radiogroup");
+      expect(group.props.accessibilityLabel).toBe(label);
+    }
+  });
+
   it("discards changes when the backup-sync guard rejects saving, then navigates", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");

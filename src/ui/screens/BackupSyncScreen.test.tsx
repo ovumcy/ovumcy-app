@@ -118,6 +118,32 @@ describe("BackupSyncScreen", () => {
     });
   });
 
+  it("names the sync-mode choice group so a radio says what it switches", async () => {
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+
+    render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+        syncSecretStore={syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+
+    const modeGroup = screen.getByTestId("settings-sync-mode-group");
+    expect(modeGroup.props.accessibilityRole).toBe("radiogroup");
+    expect(modeGroup.props.accessibilityLabel).toBe("Sync mode");
+
+    // The device-label field is a bare input: without a name it announces as
+    // "text field" with only the placeholder to go on.
+    expect(
+      screen.getByTestId("settings-sync-device-label-input").props
+        .accessibilityLabel,
+    ).toBeTruthy();
+  });
+
   it("prepares local encrypted sync and reveals the recovery phrase once", async () => {
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();

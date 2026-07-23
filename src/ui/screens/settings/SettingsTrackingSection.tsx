@@ -112,6 +112,7 @@ export function SettingsTrackingSection({
         <Text style={styles.fieldLabel}>{viewData.tracking.temperatureUnit.label}</Text>
         <Text style={styles.helperText}>{viewData.tracking.temperatureUnit.hint}</Text>
         <ChoiceGroup
+          groupLabel={viewData.tracking.temperatureUnit.label}
           layout="grid2"
           onSelect={onTemperatureUnitSelect}
           options={viewData.tracking.temperatureUnit.options}

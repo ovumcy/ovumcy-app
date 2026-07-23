@@ -153,6 +153,7 @@ export function SettingsPartnerAccessSection({
                 <View style={styles.formGroup}>
                   <Text style={styles.fieldLabel}>{copy.accessLevelLabel}</Text>
                   <ChoiceGroup
+                    groupLabel={copy.accessLevelLabel}
                     layout="grid2"
                     onSelect={(value) => {
                       onAccessLevelChange(value as ManagedCloudPartnerAccessLevel);
