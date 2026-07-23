@@ -68,13 +68,111 @@ The goal is:
 
 The app should therefore treat managed auth and managed sync as separate responsibilities even when the UI presents them in one owner flow.
 
+"Managed" itself is backend vocabulary, not a user-facing concept: no screen or copy catalog surfaces it as a product term. The UI speaks of the Ovumcy Cloud plan and backup & sync.
+
 ## Recovery
 
 Recovery phrases are shown only when the app prepares or recreates local sync keys.
 
+The new-phone flow is: install → sign in → enter the recovery phrase to restore the key → download the blob → decrypt on the device. The server participates only as blob storage; it never sees the phrase or the restored key.
+
 If an owner loses every device and also loses the recovery phrase, encrypted sync data cannot be recovered.
 
 This is a privacy tradeoff, not a support bug: the server is not supposed to know enough to recover the health payload by itself.
+
+## Identity Axes, Storefront Doors, and Trust Anchors
+
+Decision (2026-07-23): this section is the model of record for the billing /
+entitlement / premium-boundary work (product contract v1). Premium and billing
+changes are High-risk: the model lands in this document first, code follows it —
+never the other way around. Parts marked **target** are not implemented yet;
+everything else is the shipped posture. Nothing below relaxes the
+premium-boundary invariants in `SECURITY.md`.
+
+### Three orthogonal identity axes
+
+One device can hold three independent capabilities. They are different axes, not
+levels of one ladder, and the app must never conflate them:
+
+- **premium** — unlocked features;
+- **sync** — data survival (encrypted off-device backup);
+- **guest access** — read of another person's shared projection.
+
+What the app may and may not infer:
+
+- **Premium never implies sync.** A local premium unlock grants no sync
+  entitlement and no account.
+- **Sync never implies premium.** Sync entitlement is a signal separate from
+  plan status (already the shipped posture — see Premium Entitlement and the
+  Sync Plane below).
+- **Guest access never unlocks premium.** A guest reads someone else's
+  minimized projection, read-only; premium insights over one's own data do not
+  apply to a guest session.
+- **`sub` classes stay distinct.** Guest accounts, device-anchored premium
+  identities (**target** — the managed cloud is email-centric today), and email
+  accounts are separate `sub` classes and never merge implicitly. The only
+  account-class transition is the explicit guest→full upgrade path, which
+  preserves the account id and grants.
+
+### The three storefront doors
+
+Decision (2026-07-23): the paid offer is three doors, each answering a different
+need and each backed by its own trust anchor. There is deliberately no
+subscription-without-sync SKU (it would be dominated by the one-time unlock) and
+no expensive lifetime tier.
+
+| Door | Grants | Account | Trust anchor |
+| --- | --- | --- | --- |
+| **Free** | Core tracking, predictions, stats, local CSV/JSON export | none | none — data lives only on the device and dies with it |
+| **One-time premium unlock** (store non-consumable, **target**) | Premium features; no sync, no account, no server round-trip | none | Store receipt verified on-device (StoreKit 2 / Play Billing); restored through the store account |
+| **Monthly + yearly subscription** | Premium features + sync included | needed only for sync — subscribing without enabling sync or connecting the account is allowed | Managed billing snapshot under a managed session (the shipped premium authority) |
+
+Door rules:
+
+- The one-time unlock is positioned as "unlock features", not "forever": it
+  lives as long as the installed app plus the store account's restore path, and
+  is priced below the yearly subscription (exact price points are an open
+  product item, not code).
+- The subscription includes sync because sync's marginal cost is ~0; its account
+  exists for sync, not as a premium license anchor.
+- Premium is not welded to an account: the one-time door must work with no
+  account at all. Signed EdDSA entitlement tokens (the implemented-but-dormant
+  overlay documented in `SECURITY.md`) back **only portable / gifted premium
+  grants** — they are not the primary premium path, and the signing key is not
+  activated yet, so no production token verifies today.
+- Store-native mechanics stay store-native: discounts, intro pricing,
+  month→year upsell, renewal, cancellation, refunds. The app never implements
+  billing logic; app-side involvement is UI hints only.
+- Server-to-server store notifications (churn analytics) are out of scope in
+  v1; access truth is the store plus on-device verification.
+- The self-hosted Community Sync tier is unchanged and outside the storefront:
+  bring-your-own-server, no store SKU, orthogonal to these doors.
+
+Current state vs target: today every premium surface reads the managed billing
+snapshot and the token overlay is dormant (`SECURITY.md`, Accepted Residual
+Risks). The store-receipt on-device path and the device-anchored `sub` class are
+the target work this section models ahead of implementation.
+
+### Out of scope in v1 (decided)
+
+- Browser/web client for sync and partner sharing (in-browser decryption is a
+  separate future feature).
+- Server-to-server store notifications (churn analytics).
+- A doctor-facing export-snapshot share flow (distinct from the existing
+  on-device doctor PDF, which stays).
+- Seamless deferred deep-linking for invites — v1 uses the explicit "press the
+  link again" flow (see Partner Sharing Trust Boundary below and
+  `docs/deep-links.md` §5).
+- An expensive lifetime tier (dropped permanently, not deferred).
+
+### Open product items (deliberately not detailed here)
+
+Product-side decisions, tracked outside code:
+
+- final price points (fixed constraint: the one-time unlock costs less than the
+  yearly subscription);
+- final accept-screen copy for partner sharing (the honest-revocation wording
+  requirement is fixed below; exact copy is a product draft).
 
 ## Premium Entitlement and the Sync Plane
 
@@ -96,7 +194,17 @@ Partner sharing is an Ovumcy Cloud feature. The trust model for the partner shar
 - the projection is encrypted on the owner device and uploaded to managed as an opaque ciphertext blob tied to a specific grant;
 - the partner device decrypts the projection only after the grant is accepted; managed never holds the plaintext share;
 - the partner experience stays read-only and free — the partner is a guest of the owner's subscription, not a separate billing subject;
-- community sync may keep history continuity for the owner, but it must not become a transport or authority path for partner shared access.
+- community sync may keep history continuity for the owner, but it must not become a transport or authority path for partner shared access;
+- sharing requires the owner to hold the cloud/sync tier, because projections physically live on the managed cloud — an owner with only a local premium unlock cannot share. That is an honest line, not a bug;
+- the invite link is a one-time handshake: accepting places a session and the decryption key on the guest device; after accept the link is dead, and the guest simply opens the app, pulls the fresh blob, and decrypts locally;
+- the shared view is a live projection, not a snapshot: the owner device re-uploads an updated projection and the guest pulls it without a new accept; a monotonic `generation` counter carried inside the AEAD payload rejects rollback, and grants are durable;
+- `access_level` (summary / full) is chosen by the owner at invite time and fixed per grant; a repeat accept never raises it;
+- revocation stops the future, it does not erase the past: already-downloaded ciphertext stays readable on the guest device (see Revoke semantics and limits below), and the accept screen must say so honestly — UX copy, not crypto; final wording is an open product item;
+- re-sharing with the same person after a revoke happens only through a fresh invite issued after the revoke — a new handshake and a new key; invites issued before the revoke never resurrect access.
+
+### v1 invite-link flow — "press the link again"
+
+v1 ships without seamless deferred deep-linking (decided out of scope). A partner who taps an invite link on a device without the app installed lands on the invite host's static fallback page, which says: install the app, then press the invite link again — an explicit screen, never an empty start screen or a silent dead end. The second press of the same link still redeems because an invite is consumed on accept, not on tap, and the 7-day invite TTL comfortably survives the install pause. Delivery hardening and the full fallback matrix live in `docs/deep-links.md` §5.
 
 ## Guest Partner Access
 
@@ -188,6 +296,8 @@ Once `K_grant` has been derived for an `inviteID → grantID` pair, the owner re
 When the owner revokes a grant, the managed cloud stops accepting uploads and serving ciphertext, and the owner client drops `K_grant` plus `ownerGenerationByGrantID[grantID]` from local storage. Future uploads cannot re-encrypt under a stale key: the next upload sees no key and bails with `share_key_unavailable`.
 
 What revoke cannot do: symmetric AEAD does not support post-hoc key revocation for ciphertext the partner has already downloaded. If the partner cached a projection before revoke, that ciphertext stays decryptable on the partner device — there is no cryptographic way to retract it without rolling out a new key the partner does not have. This is documented as a trust-boundary limit, not a bug; the UI surfaces the revoke as "no new updates will be visible," not as "all data deleted from the partner device."
+
+Decision (2026-07-23): a revoke is permanent for the issued handshake — a repeat accept of the consumed invite, or any invite issued before the revoke, never resurrects access. Sharing with the same person again is legitimate and supported, but only through a fresh invite issued after the revoke: a new handshake deriving a new `K_grant`, with the old link and the old stored projection dead. Re-sharing the same pair via a fresh post-revoke invite is a supported scenario, not a revocation bypass.
 
 ## Managed Session Renewal
 
