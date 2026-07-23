@@ -1630,18 +1630,26 @@ describe("SettingsScreen", () => {
     expect(
       screen.getByText("Everything in this backup is already on this device."),
     ).toBeTruthy();
-    // One element, one summary — and no doubled full stop where a line already
-    // ends in one.
+    // One element, one summary, in the order the card renders — and no doubled
+    // full stop where a line already ends in one. The backup timestamp is read
+    // back from the line the user sees rather than pinned as a literal: it is
+    // formatted in the runner's own timezone, and the contract being asserted
+    // is that the announcement says exactly what is on screen.
+    const backupCreatedLine = String(
+      screen.getByText(/^Backup created: /).props.children,
+    );
+
     expect(
-      screen.getByLabelText(
-        "Ready to restore. Backup created: Mar 1, 2026, 11:00 AM. " +
-          "Backup range: 2026-03-01 to 2026-03-02. Entries in backup: 2. " +
-          "New days to add: 0. " +
-          "Days already on this device (kept unchanged): 2. " +
-          "Your current settings stay unchanged. " +
-          "Everything in this backup is already on this device.",
-      ),
-    ).toBeTruthy();
+      screen.getByTestId("settings-import-preview-summary").props
+        .accessibilityLabel,
+    ).toBe(
+      `Ready to restore. ${backupCreatedLine}. ` +
+        "Backup range: 2026-03-01 to 2026-03-02. Entries in backup: 2. " +
+        "New days to add: 0. " +
+        "Days already on this device (kept unchanged): 2. " +
+        "Your current settings stay unchanged. " +
+        "Everything in this backup is already on this device.",
+    );
   });
 
   it("keeps the preview visible and reports restore-failed when applying a confirmed import throws", async () => {

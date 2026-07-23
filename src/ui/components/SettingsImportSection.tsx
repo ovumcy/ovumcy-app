@@ -69,6 +69,7 @@ export function SettingsImportSection({
             ])}
             accessible
             style={styles.previewSummary}
+            testID="settings-import-preview-summary"
           >
             <Text style={styles.previewTitle}>{viewData.previewTitle}</Text>
             {preview.detailLines.map((line) => (
@@ -121,11 +122,9 @@ export function SettingsImportSection({
  * `join(". ")` would read one of them out with a doubled full stop. Each line
  * gets a terminator only when it does not already have one.
  */
-export function composePreviewAccessibilityLabel(
-  lines: readonly (string | null | undefined)[],
-): string {
+function composePreviewAccessibilityLabel(lines: readonly string[]): string {
   return lines
-    .map((line) => line?.trim() ?? "")
+    .map((line) => line.trim())
     .filter((line) => line.length > 0)
     .map((line) => (/[.!?]$/.test(line) ? line : `${line}.`))
     .join(" ");
