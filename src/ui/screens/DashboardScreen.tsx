@@ -1,10 +1,14 @@
-import { useFocusEffect } from "expo-router";
+import type { PostpartumCycleReturnOfferViewData } from "../../services/postpartum-mode-service";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
+import { buildCrisisSupportViewData } from "../../i18n/crisis-copy";
 import { getDashboardCopy } from "../../i18n/dashboard-copy";
+import { getPostpartumCopy } from "../../i18n/postpartum-copy";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
+import { sanitizeCrisisContactValues } from "../../services/profile-settings-policy";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import { syncManagedPartnerSharedProjections } from "../../services/managed-partner-share-sync-service";
 import {
@@ -22,6 +26,7 @@ import { syncManagedLocalReminderSchedule } from "../../services/local-reminder-
 import {
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
+import { endPostpartum } from "../../services/postpartum-mode-service";
 import { createPlatformLocalReminderScheduler } from "../../services/platform-local-reminder-scheduler";
 import { hasDayLogData } from "../../models/day-log";
 import type { SyncSecretStore } from "../../security/sync-secret-store";
@@ -59,14 +64,20 @@ export function DashboardScreen({
   syncSecretStore = defaultSyncSecretStore,
 }: DashboardScreenProps) {
   const { colors, language } = useAppPreferences();
+  const router = useRouter();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedDashboardState | null>(null);
   const [status, setStatus] = useState<EditorStatusState>(null);
   const [draftVersion, setDraftVersion] = useState(0);
+  // Cycle-return offer accept flow: disables the offer's
+  // accept/keep row while the confirm-then-end round trip is in flight,
+  // mirroring PregnancyEndScreen's isEndingPostpartum guard.
+  const [isClosingPostpartum, setIsClosingPostpartum] = useState(false);
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
+  const postpartumCopy = getPostpartumCopy(language);
 
   const refresh = useCallback(async (options?: { syncReminders?: boolean }) => {
     const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
@@ -114,7 +125,7 @@ export function DashboardScreen({
           {
             showLHTests: premiumFeatures.advancedFertility,
           },
-        );
+            );
         if (!isMounted) {
           return;
         }
@@ -195,6 +206,17 @@ export function DashboardScreen({
     state.todayEntry,
     effectiveNow,
     language,
+  );
+
+  // Crisis-support view-data for the postpartum support-resources row. Built
+  // from copy + the owner's local profile contact only — NO premium/plan read,
+  // so it stays available in read-only lapse states. The postpartum-mode service
+  // owns the row labels/context; the container owns the personal-contact card so
+  // the crisis contact never rides the postpartum view-data.
+  const crisisSupport = buildCrisisSupportViewData(
+    language,
+    state.profile.crisisContactName,
+    state.profile.crisisContactPhone,
   );
 
   async function handleDelete() {
@@ -300,6 +322,56 @@ export function DashboardScreen({
     setIsSaving(false);
   }
 
+  // The pressed card hands its own offer view-data in, so the handler never
+  // re-reads screen state (no stale-press race, no unreachable guard).
+  async function handleAcceptCycleReturn(
+    offer: PostpartumCycleReturnOfferViewData,
+  ) {
+    // Two-button confirm; a dismissal (backdrop/Back/cancel) keeps tracking --
+    // openConfirmation resolves false for both, mirroring
+    // PregnancyEndScreen.handleEndPostpartum's manual-end dialog.
+    const confirmed = await openConfirmation(
+      `${offer.confirmDialog.title}\n\n${offer.confirmDialog.body}`,
+      offer.confirmDialog.confirmLabel,
+      offer.confirmDialog.cancelLabel,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClosingPostpartum(true);
+    setStatus(null);
+
+    const result = await endPostpartum(
+      storage,
+      { reason: "cycle_returned" },
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setStatus({ message: postpartumCopy.status.endFailed, tone: "error" });
+      setIsClosingPostpartum(false);
+      return;
+    }
+
+    // Reloads readActivePostpartum() (now null) so the dashboard re-renders
+    // in plain cycle mode with zero postpartum traces.
+    await refresh({ syncReminders: true });
+    setIsClosingPostpartum(false);
+  }
+
+  async function handleSaveCrisisContact(contact: {
+    name: string;
+    phone: string;
+  }) {
+    // Merge ONLY the two crisis fields onto the latest profile (never clobber
+    // other settings), normalized in the policy layer, then refresh so the row
+    // re-renders with the saved contact. No premium/plan gate on this path.
+    const sanitized = sanitizeCrisisContactValues(contact);
+    const current = await storage.readProfileRecord();
+    await storage.writeProfileRecord({ ...current, ...sanitized });
+    await refresh();
+  }
+
   return (
     <DashboardOverviewScreen
       bleedingSafetyHint={resolveBleedingSafetyHint(
@@ -331,6 +403,21 @@ export function DashboardScreen({
       manualCycleStart={manualCycleStart}
       viewData={state.viewData}
       editorViewData={state.editorViewData}
+      onStartPregnancyPress={() => router.push("/pregnancy-start")}
+      onPremiumCTAPress={() => router.push("/backup-sync")}
+      onBirthPress={() => router.push("/pregnancy-end?reason=birth")}
+      onManagePregnancyPress={() => router.push("/pregnancy-end")}
+      onManagePostpartumPress={() => router.push("/pregnancy-end")}
+      onAcceptCycleReturn={handleAcceptCycleReturn}
+      isAcceptingCycleReturn={isClosingPostpartum}
+      onStartScreeningPress={() => router.push("/postpartum-screening")}
+      onOpenScreeningHistoryPress={() =>
+        router.push("/postpartum-screening?view=history")
+      }
+      onKickCounterPress={() => router.push("/kick-counter")}
+      onContractionTimerPress={() => router.push("/contraction-timer")}
+      crisisSupport={crisisSupport}
+      onSaveCrisisContact={handleSaveCrisisContact}
     />
   );
 }

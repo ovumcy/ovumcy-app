@@ -95,6 +95,20 @@ export function normalizeCrisisContactPhone(value: unknown): string {
 // Mirrors web's optional age: an unknown/legacy age stays "" ("Prefer not to
 // say") rather than being coerced to a concrete group. Age never alters the
 // prediction algorithm — only the age-variability hint (45+) and UI display.
+// Combined normalizer the profile-update paths call before persisting a crisis
+// contact edit. Returns the two ProfileRecord fields already trimmed and
+// capped, so no screen ever writes a raw user string straight onto the
+// profile.
+export function sanitizeCrisisContactValues(values: {
+  name: unknown;
+  phone: unknown;
+}): { crisisContactName: string; crisisContactPhone: string } {
+  return {
+    crisisContactName: normalizeCrisisContactName(values.name),
+    crisisContactPhone: normalizeCrisisContactPhone(values.phone),
+  };
+}
+
 export function resolveDisplayedAgeGroup(ageGroup: AgeGroup): AgeGroup {
   return normalizeAgeGroup(ageGroup);
 }

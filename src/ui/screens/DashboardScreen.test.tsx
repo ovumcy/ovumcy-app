@@ -1,33 +1,59 @@
 import * as React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { getBabyWeekCopy } from "../../i18n/baby-week-copy";
+import { getPregnancyCopy } from "../../i18n/pregnancy-copy";
+import { getPostpartumCopy } from "../../i18n/postpartum-copy";
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultSymptomRecords } from "../../models/symptom";
-import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
+import { createDefaultProfileRecord } from "../../models/profile";
+import { createPregnancyRecord } from "../../models/pregnancy";
+import { createScreeningResponse } from "../../models/screening";
+import {
+  createPostpartumRecord,
+  type PostpartumRecord,
+} from "../../models/postpartum";
+import {
+  loadManagedPremiumFeaturesForCurrentSession,
+} from "../../services/managed-premium-features-service";
+import { loadPregnancyModuleOwned } from "../../services/pregnancy-entitlement-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { createVolatileWebAppStorage } from "../../storage/local/volatile-web-app-storage";
+import { addDays, parseLocalDate } from "../../services/profile-settings-policy";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { DashboardScreen } from "./DashboardScreen";
 
 const mockUseEffect = React.useEffect;
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => {
   return {
     useFocusEffect: (effect: () => void | (() => void)) => {
       mockUseEffect(effect, [effect]);
     },
+    useRouter: () => ({ push: mockPush, replace: jest.fn() }),
   };
 });
 
-jest.mock("../confirm/open-confirmation", () => {
-  return {
-    openConfirmation: jest.fn(),
-  };
-});
+// The cycle-return offer drives its accept flow through a real
+// confirm dialog (openConfirmation). Every other flow in this file relies on
+// the "no registered listener -> dismiss" fallback (see
+// confirmation-bridge.ts), which an unconfigured `jest.fn()` reproduces
+// identically (returns undefined, awaited as falsy) -- so mocking the module
+// here is safe for the rest of the suite.
+jest.mock("../confirm/open-confirmation", () => ({
+  openConfirmation: jest.fn(),
+}));
+
+const mockOpenConfirmation = jest.mocked(openConfirmation);
 
 jest.mock("../../services/managed-premium-features-service", () => {
+  const actual = jest.requireActual(
+    "../../services/managed-premium-features-service",
+  );
   return {
+    ...actual,
     loadManagedPremiumFeaturesForCurrentSession: jest.fn().mockResolvedValue({
       advancedFertility: false,
       advancedInsights: false,
@@ -39,10 +65,63 @@ jest.mock("../../services/managed-premium-features-service", () => {
   };
 });
 
-const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockLoadManagedPremiumFeaturesForCurrentSession = jest.mocked(
   loadManagedPremiumFeaturesForCurrentSession,
 );
+
+jest.mock("../../services/pregnancy-entitlement-service", () => ({
+  ...jest.requireActual("../../services/pregnancy-entitlement-service"),
+  loadPregnancyModuleOwned: jest.fn().mockResolvedValue(false),
+}));
+const mockLoadPregnancyModuleOwned = jest.mocked(loadPregnancyModuleOwned);
+
+const PREGNANCY_EDD = "2026-10-08";
+
+function pregnancyNowForGaDays(gaDays: number): Date {
+  return addDays(parseLocalDate(PREGNANCY_EDD)!, gaDays - 280);
+}
+
+function positiveTestRecords(date: string) {
+  return [
+    {
+      date,
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none" as const,
+      mood: 0,
+      sexActivity: "none" as const,
+      bbt: 0,
+      cervicalMucus: "none" as const,
+      lhTest: "none" as const,
+      pregnancyTest: "positive" as const,
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "",
+    },
+  ];
+}
+
+// A logged, explicit cycle-start day (cycle-return offer tests).
+// Mirrors positiveTestRecords' full-field shape.
+function periodStartDayLogRecord(date: string) {
+  return {
+    date,
+    isPeriod: true,
+    cycleStart: true,
+    isUncertain: false,
+    flow: "medium" as const,
+    mood: 0,
+    sexActivity: "none" as const,
+    bbt: 0,
+    cervicalMucus: "none" as const,
+    lhTest: "none" as const,
+    pregnancyTest: "none" as const,
+    cycleFactorKeys: [],
+    symptomIDs: [],
+    notes: "",
+  };
+}
 
 function createStorageMock(overrides = {}) {
   return createLocalAppStorageMock({
@@ -279,6 +358,7 @@ describe("DashboardScreen", () => {
 
   afterEach(() => {
     jest.useRealTimers();
+    mockPush.mockReset();
     mockLoadManagedPremiumFeaturesForCurrentSession.mockReset();
     mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
       advancedFertility: false,
@@ -288,6 +368,9 @@ describe("DashboardScreen", () => {
       partnerAccess: false,
       reminders: false,
     });
+    mockLoadPregnancyModuleOwned.mockReset();
+    mockLoadPregnancyModuleOwned.mockResolvedValue(false);
+    mockOpenConfirmation.mockReset();
   });
 
   it(
@@ -932,4 +1015,1053 @@ describe("DashboardScreen", () => {
     expect(phaseCard.props.accessibilityLabel).toMatch(/\. /);
     expect(phaseCard.props.accessible).toBe(true);
   });
+
+  it("renders a premium-locked pregnancy entry card while paused and locked", async () => {
+    mockLoadPregnancyModuleOwned.mockResolvedValue(false);
+    renderDashboard(
+      createStorageMock({
+        listDayLogRecordsInRange: jest
+          .fn()
+          .mockResolvedValue(positiveTestRecords("2026-06-01")),
+      }),
+      new Date(2026, 5, 1),
+    );
+
+    const lock = await screen.findByTestId("dashboard-pregnancy-entry-card-title");
+    expect(lock.props.children).toBe(getPregnancyCopy("en").entryCard.lockedTitle);
+
+    fireEvent.press(screen.getByTestId("dashboard-pregnancy-entry-card"));
+    expect(mockPush).toHaveBeenCalledWith("/backup-sync");
+  });
+
+  it("navigates to pregnancy setup from the unlocked entry card", async () => {
+    mockLoadPregnancyModuleOwned.mockResolvedValue(true);
+    renderDashboard(
+      createStorageMock({
+        listDayLogRecordsInRange: jest
+          .fn()
+          .mockResolvedValue(positiveTestRecords("2026-06-01")),
+      }),
+      new Date(2026, 5, 1),
+    );
+
+    const cta = await screen.findByTestId("dashboard-pregnancy-entry-card-cta");
+    expect(cta).toBeTruthy();
+
+    fireEvent.press(cta);
+    expect(mockPush).toHaveBeenCalledWith("/pregnancy-start");
+  });
+
+  it("renders the pregnancy dashboard hero and disclaimer, suppressing the cycle hero", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(171),
+    );
+
+    await screen.findByTestId("dashboard-pregnancy-mode");
+    expect(screen.getByTestId("dashboard-pregnancy-week-value").props.children).toBe(
+      "24+3",
+    );
+    expect(screen.getByTestId("dashboard-pregnancy-disclaimer")).toBeTruthy();
+    // Cycle-oriented sections are suppressed via view-data in pregnancy mode.
+    expect(screen.queryByTestId("dashboard-cycle-hero")).toBeNull();
+    expect(screen.queryByTestId("day-log-period-toggle")).toBeNull();
+  });
+
+  describe("baby this week", () => {
+    it("renders the card directly below the hero with the current week's size and development content", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+            }),
+          ),
+        }),
+        // Same fixture as the hero test above: gaDays 171 -> 24+3 -> week 24.
+        pregnancyNowForGaDays(171),
+      );
+
+      await screen.findByTestId("dashboard-pregnancy-mode");
+      const babyWeekCopy = getBabyWeekCopy("en");
+      expect(screen.getByTestId("dashboard-pregnancy-baby-week")).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-pregnancy-baby-week-size").props.children,
+      ).toBe(babyWeekCopy.weeks[24].size);
+      expect(
+        screen.getByTestId("dashboard-pregnancy-baby-week-development")
+          .props.children,
+      ).toBe(babyWeekCopy.weeks[24].development);
+      expect(
+        screen.queryByTestId("dashboard-pregnancy-baby-week-multiples-note"),
+      ).toBeNull();
+    });
+
+    it("shows the catalog's multiples note for a twins pregnancy", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+              fetusCount: 2,
+            }),
+          ),
+        }),
+        pregnancyNowForGaDays(171),
+      );
+
+      await screen.findByTestId("dashboard-pregnancy-baby-week");
+      expect(
+        screen.getByTestId("dashboard-pregnancy-baby-week-multiples-note")
+          .props.children,
+      ).toBe(getBabyWeekCopy("en").multiplesNote);
+    });
+  });
+
+  describe("multiples: dashboard multiplesCard", () => {
+    it("hides the multiples card for a singleton pregnancy", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+            }),
+          ),
+        }),
+        pregnancyNowForGaDays(171),
+      );
+
+      await screen.findByTestId("dashboard-pregnancy-mode");
+      expect(
+        screen.queryByTestId("dashboard-pregnancy-multiples-card"),
+      ).toBeNull();
+    });
+
+    it("shows the base multiples card (below the hero) for twins with dcda chorionicity, no monochorionic line", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+              fetusCount: 2,
+              chorionicity: "dcda",
+            }),
+          ),
+        }),
+        pregnancyNowForGaDays(171),
+      );
+
+      const card = await screen.findByTestId("dashboard-pregnancy-multiples-card");
+      expect(card).toBeTruthy();
+      expect(screen.queryByText(/every 2 weeks/)).toBeNull();
+    });
+
+    it("shows the monochorionic extra line for twins with mcda chorionicity", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+              fetusCount: 2,
+              chorionicity: "mcda",
+            }),
+          ),
+        }),
+        pregnancyNowForGaDays(171),
+      );
+
+      await screen.findByTestId("dashboard-pregnancy-multiples-card");
+      expect(screen.getByText(/every 2 weeks/)).toBeTruthy();
+    });
+  });
+
+  it("surfaces the 'I gave birth' CTA from week 37 (term) and navigates to the end flow", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(37 * 7),
+    );
+
+    const cta = await screen.findByTestId("dashboard-pregnancy-birth-cta");
+    fireEvent.press(cta);
+    expect(mockPush).toHaveBeenCalledWith("/pregnancy-end?reason=birth");
+  });
+
+  it("hides the birth CTA before week 37 but always shows the manage link", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      // 36+6 — the last pre-term day; the CTA must still be hidden, and the
+      // manage link (the birth path for preterm births) must be present.
+      pregnancyNowForGaDays(36 * 7 + 6),
+    );
+
+    const link = await screen.findByTestId("dashboard-pregnancy-manage-link");
+    expect(screen.queryByTestId("dashboard-pregnancy-birth-cta")).toBeNull();
+
+    fireEvent.press(link);
+    expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
+  });
+
+  it("navigates to the kick counter from the kick teaser card at week 28+", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(28 * 7),
+    );
+
+    const teaser = await screen.findByTestId("dashboard-pregnancy-kick-teaser");
+    fireEvent.press(teaser);
+    expect(mockPush).toHaveBeenCalledWith("/kick-counter");
+  });
+
+  it("hides the kick teaser card before week 28", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(27 * 7 + 6),
+    );
+
+    await screen.findByTestId("dashboard-pregnancy-mode");
+    expect(screen.queryByTestId("dashboard-pregnancy-kick-teaser")).toBeNull();
+  });
+
+  it("renders the contraction-timer card and navigates to it, subdued outside the third trimester", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(171), // second trimester
+    );
+
+    const card = await screen.findByTestId("dashboard-pregnancy-contraction-timer");
+    fireEvent.press(card);
+    expect(mockPush).toHaveBeenCalledWith("/contraction-timer");
+  });
+
+  it("renders the contraction-timer card prominently from the third trimester", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(28 * 7), // first trimester-III day
+    );
+
+    const card = await screen.findByTestId("dashboard-pregnancy-contraction-timer");
+    fireEvent.press(card);
+    expect(mockPush).toHaveBeenCalledWith("/contraction-timer");
+  });
+
+  it("shows zero pregnancy traces after an end even while the positive test still pauses predictions", async () => {
+    const ended = {
+      ...createPregnancyRecord({
+        edd: PREGNANCY_EDD,
+        eddBasis: "lmp",
+        lmpDate: "2026-01-01",
+        startedAt: "2026-03-01",
+      }),
+      status: "ended" as const,
+      endedAt: "2026-06-05",
+      endReason: "loss" as const,
+      modeOfDelivery: null,
+    };
+    mockLoadPregnancyModuleOwned.mockResolvedValue(true);
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(null),
+        listDayLogRecordsInRange: jest
+          .fn()
+          .mockResolvedValue(positiveTestRecords("2026-06-01")),
+        listPregnancyRecords: jest.fn().mockResolvedValue([ended]),
+      }),
+      new Date(2026, 5, 10),
+    );
+
+    // Plain cycle mode renders (prediction disclaimer is a cycle-mode surface)...
+    await screen.findByTestId("dashboard-prediction-disclaimer");
+    // ...and NONE of the pregnancy surfaces appear — no mode, no re-engagement.
+    expect(screen.queryByTestId("dashboard-pregnancy-mode")).toBeNull();
+    expect(screen.queryByTestId("dashboard-pregnancy-entry-card")).toBeNull();
+    expect(screen.queryByTestId("dashboard-pregnancy-birth-cta")).toBeNull();
+    expect(screen.queryByTestId("dashboard-pregnancy-manage-link")).toBeNull();
+  });
+
+  it("shows a stale-pregnancy card instead of the pregnancy dashboard when the EDD passed well beyond the trackable window", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(630), // ~50 weeks past the due date
+    );
+
+    expect(await screen.findByTestId("dashboard-pregnancy-stale-card")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-pregnancy-mode")).toBeNull();
+    expect(screen.queryByTestId("dashboard-pregnancy-entry-card")).toBeNull();
+    // Additive, not a takeover -- cycle sections still render underneath.
+    expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+  });
+
+  it("navigates to manage pregnancy tracking from the stale-pregnancy card's CTA", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(630),
+    );
+
+    const cta = await screen.findByTestId("dashboard-pregnancy-stale-card-cta");
+    fireEvent.press(cta);
+    expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
+  });
+
+  it("does not show a stale-pregnancy card for a normal in-window pregnancy", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: PREGNANCY_EDD,
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      pregnancyNowForGaDays(171),
+    );
+
+    await screen.findByTestId("dashboard-pregnancy-mode");
+    expect(screen.queryByTestId("dashboard-pregnancy-stale-card")).toBeNull();
+  });
+
+  describe("red flags", () => {
+    it("renders the pregnancy red-flags section collapsed by default, expands to show items, and hides reduced_movements before week 28", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+            }),
+          ),
+        }),
+        pregnancyNowForGaDays(27 * 7 + 6), // 27+6 -- one day before week 28
+      );
+
+      const toggle = await screen.findByTestId(
+        "dashboard-pregnancy-red-flags-toggle",
+      );
+      expect(
+        screen.queryByTestId("dashboard-pregnancy-red-flags-expanded"),
+      ).toBeNull();
+      expect(
+        screen.getByTestId("dashboard-pregnancy-red-flags-toggle")
+          .props.accessibilityState,
+      ).toEqual(expect.objectContaining({ expanded: false }));
+
+      fireEvent.press(toggle);
+
+      expect(
+        await screen.findByTestId("dashboard-pregnancy-red-flags-expanded"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-pregnancy-red-flags-toggle")
+          .props.accessibilityState,
+      ).toEqual(expect.objectContaining({ expanded: true }));
+      expect(
+        screen.getByTestId("dashboard-pregnancy-red-flag-heavy_bleeding"),
+      ).toBeTruthy();
+      expect(
+        screen.queryByTestId("dashboard-pregnancy-red-flag-reduced_movements"),
+      ).toBeNull();
+    });
+
+    it("renders the postpartum red-flags section collapsed by default and expands to show all eight items incl. the psychosis escalation", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({
+              startedAt: "2026-03-03",
+              modeOfDelivery: "vaginal",
+            }),
+          ),
+        }),
+      );
+
+      const toggle = await screen.findByTestId(
+        "dashboard-postpartum-red-flags-toggle",
+      );
+      expect(
+        screen.queryByTestId("dashboard-postpartum-red-flags-expanded"),
+      ).toBeNull();
+
+      fireEvent.press(toggle);
+
+      expect(
+        await screen.findByTestId("dashboard-postpartum-red-flags-expanded"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-postpartum-red-flag-heavy_bleeding_pp"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-postpartum-red-flag-mental_health"),
+      ).toBeTruthy();
+      // the firm-but-calm postpartum-psychosis escalation, after mental_health.
+      expect(
+        screen.getByTestId("dashboard-postpartum-red-flag-psychosis_signs"),
+      ).toBeTruthy();
+    });
+  });
+
+  describe("postpartum mode", () => {
+    // Default dashboard now is 2026-03-17; a birth on 2026-03-03 is 14 days
+    // (2+0 weeks) ago -> early phase, well inside the trackable window.
+    it("renders the postpartum dashboard above the still-visible cycle sections", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({
+              startedAt: "2026-03-03",
+              modeOfDelivery: "vaginal",
+            }),
+          ),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(
+        screen.getByTestId("dashboard-postpartum-week-value").props.children,
+      ).toBe("2+0");
+      expect(screen.getByTestId("dashboard-postpartum-recovery-card")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-postpartum-lochia-card")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-postpartum-disclaimer")).toBeTruthy();
+
+      // Additive, not a takeover: cycle journal + quick actions stay visible
+      // (bleeding/lochia logging matters postpartum). Pregnancy surfaces absent.
+      expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+      expect(screen.getByTestId("dashboard-quick-actions-title")).toBeTruthy();
+      expect(screen.queryByTestId("dashboard-pregnancy-mode")).toBeNull();
+      expect(screen.queryByTestId("dashboard-pregnancy-entry-card")).toBeNull();
+    });
+
+    // Default `now` (2026-03-17) puts this 14 days after the 2026-03-03 birth
+    // date, i.e. the early phase. Full phase x mode-of-delivery matrix
+    // coverage lives in postpartum-mode-service.test.ts; this
+    // pins the mode-of-delivery-aware body reaching the rendered screen.
+    it("resolves a mode-of-delivery-aware recovery body for a cesarean birth, but not a vaginal one", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({
+              startedAt: "2026-03-03",
+              modeOfDelivery: "cesarean",
+            }),
+          ),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(screen.getByText(/abdominal surgery/)).toBeTruthy();
+
+      screen.unmount();
+
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({
+              startedAt: "2026-03-03",
+              modeOfDelivery: "vaginal",
+            }),
+          ),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(screen.queryByText(/abdominal surgery/)).toBeNull();
+    });
+
+    it("renders an existing postpartum record read-only even when premium has lapsed", async () => {
+      // Lapse posture mirrors pregnancy: rendering an existing record never
+      // consults the premium gate (reads are never gated). The default mock
+      // returns locked; the record must still render, and the unlock selector
+      // must not even be called for a rendered record.
+      mockLoadPregnancyModuleOwned.mockResolvedValue(false);
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2026-03-03" }),
+          ),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(
+        mockLoadPregnancyModuleOwned,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("gives an active pregnancy precedence over a stray active postpartum", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePregnancy: jest.fn().mockResolvedValue(
+            createPregnancyRecord({
+              edd: PREGNANCY_EDD,
+              eddBasis: "lmp",
+              lmpDate: "2026-01-01",
+              startedAt: "2026-03-01",
+            }),
+          ),
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2026-03-03" }),
+          ),
+        }),
+        pregnancyNowForGaDays(171),
+      );
+
+      await screen.findByTestId("dashboard-pregnancy-mode");
+      expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
+    });
+
+    it("shows a stale-postpartum card past the 26-week window and navigates to manage", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2025-06-01" }),
+          ),
+        }),
+      );
+
+      const cta = await screen.findByTestId("dashboard-postpartum-stale-card-cta");
+      expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
+      // Additive: cycle sections still render underneath.
+      expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
+      fireEvent.press(cta);
+      expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
+    });
+
+    it("navigates to manage postpartum tracking from the dashboard manage link", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2026-03-03" }),
+          ),
+        }),
+      );
+
+      const link = await screen.findByTestId("dashboard-postpartum-manage-link");
+      fireEvent.press(link);
+      expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
+    });
+
+    it("leaves zero postpartum traces once the record has ended (no active postpartum)", async () => {
+      // After endPostpartum the record is "ended", so readActivePostpartum
+      // resolves null and the dashboard renders plain cycle mode — no
+      // postpartum hero, cards, or stale card linger.
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(null),
+          listPostpartumRecords: jest.fn().mockResolvedValue([
+            {
+              ...createPostpartumRecord({ startedAt: "2026-03-03" }),
+              status: "ended" as const,
+              endedAt: "2026-03-17",
+              endReason: "manual" as const,
+            },
+          ]),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-cycle-hero");
+      expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
+      expect(screen.queryByTestId("dashboard-postpartum-stale-card")).toBeNull();
+    });
+  });
+
+  describe("cycle-return offer & LAM education card", () => {
+    // Same birth date used throughout the postpartum-mode describe block
+    // above -- 14 days before the default dashboard `now` (2026-03-17), well
+    // inside the trackable window.
+    function activePostpartumBirth() {
+      return createPostpartumRecord({
+        startedAt: "2026-03-03",
+        modeOfDelivery: "vaginal",
+      });
+    }
+
+    // createStorageMock's baseline profile carries `lastPeriodStart:
+    // "2026-03-10"` for the unrelated cycle-hero fixtures elsewhere in this
+    // file -- collectCycleStartDates treats a profile lastPeriodStart as a
+    // cycle start too, and 2026-03-10 is itself after this block's birth date
+    // (2026-03-03). Neutralizing it here isolates the signal this describe
+    // block actually tests: the DAY-LOG history, via listDayLogRecordsInRange.
+    function readProfileRecordOverride() {
+      return {
+        readProfileRecord: jest.fn().mockResolvedValue({
+          lastPeriodStart: null,
+          cycleLength: 28,
+          periodLength: 5,
+          autoPeriodFill: true,
+          irregularCycle: false,
+          unpredictableCycle: false,
+          ageGroup: "",
+          usageGoal: "health",
+          trackBBT: true,
+          temperatureUnit: "f",
+          trackCervicalMucus: true,
+          hideSexChip: true,
+          languageOverride: "en",
+          themeOverride: "light",
+        }),
+      };
+    }
+
+    it("offer visibility matrix: shown with a cycle start after birth, hidden with one only before birth, hidden with no active postpartum", async () => {
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+        }),
+      );
+      await screen.findByTestId("dashboard-postpartum-cycle-return-offer");
+      screen.unmount();
+
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+          // A pre-pregnancy period, well before the birth -- must not read as
+          // a "new" (returning) cycle start.
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-01-10")]),
+        }),
+      );
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(
+        screen.queryByTestId("dashboard-postpartum-cycle-return-offer"),
+      ).toBeNull();
+      screen.unmount();
+
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest.fn().mockResolvedValue(null),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+        }),
+      );
+      await screen.findByTestId("dashboard-cycle-hero");
+      expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
+      expect(
+        screen.queryByTestId("dashboard-postpartum-cycle-return-offer"),
+      ).toBeNull();
+    });
+
+    it("accept flow: confirms, calls endPostpartum with reason cycle_returned, and leaves zero postpartum traces after", async () => {
+      let active: PostpartumRecord | null = activePostpartumBirth();
+      const writePostpartumRecord = jest.fn(async (record: PostpartumRecord) => {
+        active = record.status === "active" ? record : null;
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest.fn(async () => active),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+          writePostpartumRecord,
+        }),
+      );
+
+      const acceptButton = await screen.findByTestId(
+        "dashboard-postpartum-cycle-return-offer-accept",
+      );
+      fireEvent.press(acceptButton);
+
+      await waitFor(() =>
+        expect(writePostpartumRecord).toHaveBeenCalledTimes(1),
+      );
+      expect(writePostpartumRecord.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({
+          status: "ended",
+          endReason: "cycle_returned",
+        }),
+      );
+
+      // The confirm dialog mirrors the manage screen's manual end dialog.
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        expect.stringContaining("Close postpartum tracking?"),
+        "Close tracking",
+        "Keep tracking",
+      );
+
+      await screen.findByTestId("dashboard-cycle-hero");
+      expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
+      expect(screen.queryByTestId("dashboard-postpartum-stale-card")).toBeNull();
+      expect(
+        screen.queryByTestId("dashboard-postpartum-cycle-return-offer"),
+      ).toBeNull();
+    });
+
+    it("dialog dismissal keeps tracking: the service is not called and postpartum mode stays", async () => {
+      mockOpenConfirmation.mockResolvedValue(false);
+      const writePostpartumRecord = jest.fn().mockResolvedValue(undefined);
+
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+          writePostpartumRecord,
+        }),
+      );
+
+      const acceptButton = await screen.findByTestId(
+        "dashboard-postpartum-cycle-return-offer-accept",
+      );
+      fireEvent.press(acceptButton);
+
+      await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalled());
+      expect(writePostpartumRecord).not.toHaveBeenCalled();
+      expect(screen.getByTestId("dashboard-postpartum-mode")).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-postpartum-cycle-return-offer"),
+      ).toBeTruthy();
+    });
+
+    it('"Keep" dismisses the offer for this screen session only, without calling the service', async () => {
+      const writePostpartumRecord = jest.fn().mockResolvedValue(undefined);
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+          writePostpartumRecord,
+        }),
+      );
+
+      const keepButton = await screen.findByTestId(
+        "dashboard-postpartum-cycle-return-offer-keep",
+      );
+      fireEvent.press(keepButton);
+
+      expect(mockOpenConfirmation).not.toHaveBeenCalled();
+      expect(writePostpartumRecord).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId("dashboard-postpartum-cycle-return-offer"),
+      ).toBeNull();
+      // "Keep" dismisses only the offer card -- postpartum mode itself stays.
+      expect(screen.getByTestId("dashboard-postpartum-mode")).toBeTruthy();
+    });
+
+    it("LAM card is present while active with no new cycle start, and absent once a new cycle start exists", async () => {
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+        }),
+      );
+      await screen.findByTestId("dashboard-postpartum-lam-card");
+      screen.unmount();
+
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+          listDayLogRecordsInRange: jest
+            .fn()
+            .mockResolvedValue([periodStartDayLogRecord("2026-03-10")]),
+        }),
+      );
+      await screen.findByTestId("dashboard-postpartum-cycle-return-offer");
+      expect(screen.queryByTestId("dashboard-postpartum-lam-card")).toBeNull();
+    });
+
+    it("the LAM card body states the three-conditions framing", async () => {
+      renderDashboard(
+        createStorageMock({
+          ...readProfileRecordOverride(),
+          readActivePostpartum: jest
+            .fn()
+            .mockResolvedValue(activePostpartumBirth()),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-lam-card");
+      expect(screen.getByText(/no period since birth/)).toBeTruthy();
+      expect(screen.getByText(/six months/)).toBeTruthy();
+    });
+  });
+
+  describe("crisis support", () => {
+    it("renders a quiet standing support-resources row that expands in place to the crisis-support card", async () => {
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2026-03-03" }),
+          ),
+        }),
+      );
+
+      const toggle = await screen.findByTestId(
+        "dashboard-postpartum-support-resources-toggle",
+      );
+      // Collapsed by default (no new route — expand in place).
+      expect(
+        screen.queryByTestId(
+          "dashboard-postpartum-support-resources-expanded",
+        ),
+      ).toBeNull();
+
+      fireEvent.press(toggle);
+
+      expect(
+        await screen.findByTestId(
+          "dashboard-postpartum-support-resources-expanded",
+        ),
+      ).toBeTruthy();
+      // The shared crisis-support block + its always-on guidance are revealed.
+      expect(
+        screen.getByTestId("dashboard-postpartum-crisis-support"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-postpartum-crisis-support-guidance"),
+      ).toBeTruthy();
+    });
+
+    it("keeps the support-resources row available in the read-only lapse posture (never premium-gated)", async () => {
+      // Premium is locked (default mock) and the pregnancy/postpartum unlock
+      // selector must not even be consulted for a rendered record — yet the
+      // crisis-support row must still be present. HARD RULE pin.
+      mockLoadPregnancyModuleOwned.mockResolvedValue(false);
+      renderDashboard(
+        createStorageMock({
+          readActivePostpartum: jest.fn().mockResolvedValue(
+            createPostpartumRecord({ startedAt: "2026-03-03" }),
+          ),
+        }),
+      );
+
+      await screen.findByTestId("dashboard-postpartum-mode");
+      expect(
+        screen.getByTestId("dashboard-postpartum-support-resources"),
+      ).toBeTruthy();
+      expect(
+        screen.getByTestId("dashboard-postpartum-support-resources-toggle"),
+      ).toBeTruthy();
+      expect(
+        mockLoadPregnancyModuleOwned,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("shows a saved crisis contact and persists an inline edit through the profile path", async () => {
+      const storage = createStorageMock({
+        readActivePostpartum: jest.fn().mockResolvedValue(
+          createPostpartumRecord({ startedAt: "2026-03-03" }),
+        ),
+        readProfileRecord: jest.fn().mockResolvedValue({
+          ...createDefaultProfileRecord(),
+          lastPeriodStart: "2026-03-10",
+          crisisContactName: "Mum",
+          crisisContactPhone: "07700 900000",
+        }),
+      });
+      renderDashboard(storage);
+
+      fireEvent.press(
+        await screen.findByTestId(
+          "dashboard-postpartum-support-resources-toggle",
+        ),
+      );
+
+      expect(
+        await screen.findByText("Your support contact: Mum — 07700 900000"),
+      ).toBeTruthy();
+
+      fireEvent.press(
+        screen.getByTestId("dashboard-postpartum-crisis-support-edit-button"),
+      );
+      fireEvent.changeText(
+        screen.getByTestId("dashboard-postpartum-crisis-support-name-input"),
+        "Aunt Jo",
+      );
+      fireEvent.changeText(
+        screen.getByTestId("dashboard-postpartum-crisis-support-phone-input"),
+        "0123 456",
+      );
+      await act(async () => {
+        fireEvent.press(
+          screen.getByTestId("dashboard-postpartum-crisis-support-save-button"),
+        );
+        await Promise.resolve();
+      });
+
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          crisisContactName: "Aunt Jo",
+          crisisContactPhone: "0123 456",
+        }),
+      );
+    });
+  });
 });
+
+describe("DashboardScreen postpartum action edges", () => {
+  it("routes the screening offer and history presses", async () => {
+    renderDashboard(
+      createStorageMock({
+        readActivePostpartum: jest.fn().mockResolvedValue(
+          createPostpartumRecord({ startedAt: "2026-06-01" }),
+        ),
+        // One response 19 days old: the 14-day cadence makes the offer due
+        // again AND the "last check-in" history row exists.
+        listScreeningResponses: jest.fn().mockResolvedValue([
+          createScreeningResponse({
+            date: "2026-07-01",
+            answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          }),
+        ]),
+      }),
+      new Date("2026-07-20T10:00:00.000Z"),
+    );
+
+    fireEvent.press(await screen.findByTestId("dashboard-screening-offer-button"));
+    expect(mockPush).toHaveBeenCalledWith("/postpartum-screening");
+    fireEvent.press(screen.getByTestId("dashboard-screening-history-link"));
+    expect(mockPush).toHaveBeenCalledWith("/postpartum-screening?view=history");
+  });
+
+  it("surfaces a failed cycle-return end without closing the offer silently", async () => {
+    mockOpenConfirmation.mockResolvedValueOnce(true);
+    const storage = createStorageMock({
+      readActivePostpartum: jest.fn().mockResolvedValue(
+        createPostpartumRecord({ startedAt: "2026-05-01" }),
+      ),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-07-18"),
+          cycleStart: true,
+          isPeriod: true,
+        },
+      ]),
+      writePostpartumRecord: jest.fn().mockRejectedValue(new Error("busy")),
+    });
+    renderDashboard(storage, new Date("2026-07-20T10:00:00.000Z"));
+
+    fireEvent.press(
+      await screen.findByTestId("dashboard-postpartum-cycle-return-offer-accept"),
+    );
+
+    expect(
+      await screen.findByText(getPostpartumCopy("en").status.endFailed),
+    ).toBeTruthy();
+  });
+});
+

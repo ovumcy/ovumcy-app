@@ -7,6 +7,15 @@ import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvide
 import { CalendarMonthGrid } from "../components/CalendarMonthGrid";
 import { StatsBarChart } from "../components/StatsBarChart";
 import { DashboardCycleHero } from "../screens/dashboard/DashboardCycleHero";
+import { ContractionTimerFlowScreen } from "../screens/pregnancy/ContractionTimerFlowScreen";
+import { KickCounterFlowScreen } from "../screens/pregnancy/KickCounterFlowScreen";
+import { createPregnancyRecord } from "../../models/pregnancy";
+import { buildKickCounterViewData } from "../../services/kick-counter-service";
+import {
+  buildContractionSessionHistoryViewData,
+  buildContractionTimerViewData,
+  createContractionSession,
+} from "../../services/contraction-timer-service";
 import { fontScale } from "./tokens";
 
 /**
@@ -173,5 +182,78 @@ describe("dynamic type on fixed-geometry surfaces", () => {
       screen.getByTestId("dashboard-cycle-hero-upcoming-ovulation").props
         .maxFontSizeMultiplier,
     ).toBeUndefined();
+  });
+});
+
+describe("pregnancy counters cap their fixed-geometry figures", () => {
+  const activePregnancy = createPregnancyRecord({
+    edd: "2026-10-08",
+    eddBasis: "lmp",
+    lmpDate: "2026-01-01",
+    startedAt: "2026-01-05",
+  });
+
+  it("caps the kick-counter tap figures", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <KickCounterFlowScreen
+          language="en"
+          viewData={buildKickCounterViewData(
+            activePregnancy,
+            "2026-08-01",
+            [],
+            "en",
+          )}
+          sessionPhase="counting"
+          tapCount={7}
+          elapsedMinutes={12}
+          isSaving={false}
+          statusMessage=""
+          reminderEnabled={false}
+          onTap={() => {}}
+          onFinish={() => {}}
+          onDiscard={() => {}}
+          onDeleteSession={() => {}}
+          onReminderToggle={() => {}}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("kick-counter-tap-count").props.maxFontSizeMultiplier,
+    ).toBe(fontScale.dense);
+  });
+
+  it("caps the contraction-timer toggle and elapsed figures", () => {
+    const session = createContractionSession(new Date("2026-08-01T10:00:00.000Z"));
+    render(
+      <AppPreferencesTestProvider>
+        <ContractionTimerFlowScreen
+          language="en"
+          viewData={buildContractionTimerViewData(
+            activePregnancy,
+            session,
+            new Date("2026-08-01T10:05:00.000Z"),
+            "en",
+          )}
+          historyViewData={buildContractionSessionHistoryViewData([], null, "en")}
+          isTiming
+          elapsedValue="1:23"
+          isSaving={false}
+          statusMessage=""
+          onToggle={() => {}}
+          onFinish={() => {}}
+          onDiscard={() => {}}
+          onDeleteHistorySession={() => {}}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("contraction-timer-toggle-label").props.maxFontSizeMultiplier,
+    ).toBe(fontScale.dense);
+    expect(
+      screen.getByTestId("contraction-timer-elapsed").props.maxFontSizeMultiplier,
+    ).toBe(fontScale.dense);
   });
 });

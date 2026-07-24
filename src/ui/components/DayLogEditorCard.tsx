@@ -61,6 +61,7 @@ export type DayLogEditorSectionKey =
   | "cervicalMucus"
   | "lhTest"
   | "pregnancyTest"
+  | "pregnancyMetrics"
   | "notes";
 
 export function DayLogEditorCard({
@@ -128,6 +129,53 @@ export function DayLogEditorCard({
         ? roundTemperature(unitToCelsius(displayValue, temperatureUnit))
         : 0;
     onPatch({ bbt: celsius });
+  }
+
+  // Pregnancy metrics (weightKg/bpSystolic/bpDiastolic) are genuinely
+  // optional -- unlike bbt's 0-sentinel, "no reading" is represented by the
+  // key being absent from the record (see models/day-log.ts). Passing the
+  // numeric 0 here (never `undefined`, which exactOptionalPropertyTypes
+  // would reject for an optional `number` prop) is TS-legal and reaches the
+  // same "absent" outcome: normalizeDayWeightKg/normalizeDayBpSystolic/
+  // normalizeDayBpDiastolic reject 0 as below their minimum and
+  // sanitizeDayLogRecord then omits the key entirely -- mirroring how an
+  // emptied BBT field resolves to 0="not entered".
+  const [metricsKey, setMetricsKey] = useState(record.date);
+  const [weightText, setWeightText] = useState(() =>
+    formatOptionalDecimal(record.weightKg),
+  );
+  const [systolicText, setSystolicText] = useState(() =>
+    formatOptionalInteger(record.bpSystolic),
+  );
+  const [diastolicText, setDiastolicText] = useState(() =>
+    formatOptionalInteger(record.bpDiastolic),
+  );
+  if (record.date !== metricsKey) {
+    setMetricsKey(record.date);
+    setWeightText(formatOptionalDecimal(record.weightKg));
+    setSystolicText(formatOptionalInteger(record.bpSystolic));
+    setDiastolicText(formatOptionalInteger(record.bpDiastolic));
+  }
+
+  function handleWeightChange(value: string) {
+    const sanitized = sanitizeWeightInput(value);
+    setWeightText(sanitized);
+    const parsed = Number(sanitized);
+    onPatch({ weightKg: Number.isFinite(parsed) && parsed > 0 ? parsed : 0 });
+  }
+
+  function handleSystolicChange(value: string) {
+    const sanitized = sanitizeBpInput(value);
+    setSystolicText(sanitized);
+    const parsed = Number(sanitized);
+    onPatch({ bpSystolic: Number.isFinite(parsed) && parsed > 0 ? parsed : 0 });
+  }
+
+  function handleDiastolicChange(value: string) {
+    const sanitized = sanitizeBpInput(value);
+    setDiastolicText(sanitized);
+    const parsed = Number(sanitized);
+    onPatch({ bpDiastolic: Number.isFinite(parsed) && parsed > 0 ? parsed : 0 });
   }
 
   function handleSectionLayout(key: DayLogEditorSectionKey) {
@@ -374,6 +422,62 @@ export function DayLogEditorCard({
         </>
       )}
 
+      {viewData.visibility.showPregnancyMetrics ? (
+        <View
+          onLayout={handleSectionLayout("pregnancyMetrics")}
+          style={resolveSectionStyle("pregnancyMetrics", styles.section)}
+        >
+          <View style={styles.metricGroup}>
+            <Text style={styles.sectionLabel}>{viewData.labels.weight}</Text>
+            <Text style={styles.sectionHint}>{viewData.labels.weightHint}</Text>
+            <View style={styles.metricInputRow}>
+              <AppTextInput
+                inputMode="decimal"
+                maxLength={6}
+                onBlur={() => setWeightText(formatOptionalDecimal(record.weightKg))}
+                onChangeText={handleWeightChange}
+                placeholder="0.00"
+                style={[styles.input, styles.metricInput]}
+                testID="day-log-weight-input"
+                value={weightText}
+              />
+              <Text style={styles.metricUnit}>{viewData.labels.weightUnit}</Text>
+            </View>
+          </View>
+
+          <View style={styles.metricGroup}>
+            <Text style={styles.sectionLabel}>{viewData.labels.bloodPressure}</Text>
+            <Text style={styles.sectionHint}>{viewData.labels.bloodPressureHint}</Text>
+            <View style={styles.metricInputRow}>
+              <AppTextInput
+                inputMode="numeric"
+                keyboardType="number-pad"
+                maxLength={3}
+                onBlur={() => setSystolicText(formatOptionalInteger(record.bpSystolic))}
+                onChangeText={handleSystolicChange}
+                placeholder={viewData.labels.bloodPressureSystolicPlaceholder}
+                style={[styles.input, styles.metricInput]}
+                testID="day-log-bp-systolic-input"
+                value={systolicText}
+              />
+              <Text style={styles.metricSeparator}>/</Text>
+              <AppTextInput
+                inputMode="numeric"
+                keyboardType="number-pad"
+                maxLength={3}
+                onBlur={() => setDiastolicText(formatOptionalInteger(record.bpDiastolic))}
+                onChangeText={handleDiastolicChange}
+                placeholder={viewData.labels.bloodPressureDiastolicPlaceholder}
+                style={[styles.input, styles.metricInput]}
+                testID="day-log-bp-diastolic-input"
+                value={diastolicText}
+              />
+              <Text style={styles.metricUnit}>{viewData.labels.bloodPressureUnit}</Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       {viewData.visibility.showNotes ? (
         <View
           onLayout={handleSectionLayout("notes")}
@@ -483,6 +587,29 @@ const createStyles = (colors: AppThemeColors) =>
       minHeight: 112,
       textAlignVertical: "top",
     },
+    metricGroup: {
+      gap: spacing.xs,
+    },
+    metricInputRow: {
+      alignItems: "center",
+      flexDirection: "row",
+      gap: spacing.xs,
+    },
+    metricInput: {
+      flexGrow: 1,
+      flexShrink: 1,
+      minWidth: 64,
+    },
+    metricUnit: {
+      color: colors.textMuted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    metricSeparator: {
+      color: colors.textMuted,
+      fontSize: 15,
+      fontWeight: "700",
+    },
     actions: {
       gap: spacing.sm,
     },
@@ -526,6 +653,44 @@ function sanitizeBbtInput(raw: string): string {
   const intPart = cleaned.slice(0, dotIndex).slice(0, 3);
   const fracPart = cleaned.slice(dotIndex + 1).replace(/\./g, "").slice(0, 2);
   return `${intPart}.${fracPart}`;
+}
+
+// Same shape as sanitizeBbtInput (max 3 integer + 2 fractional digits), which
+// happens to fit the 30-250 kg weight range too -- kept as its own function
+// since it sanitizes a different domain field, not a refactor of the BBT path.
+function sanitizeWeightInput(raw: string): string {
+  const cleaned = raw.replace(",", ".").replace(/[^\d.]/g, "");
+  const dotIndex = cleaned.indexOf(".");
+  if (dotIndex === -1) {
+    return cleaned.slice(0, 3);
+  }
+  const intPart = cleaned.slice(0, dotIndex).slice(0, 3);
+  const fracPart = cleaned.slice(dotIndex + 1).replace(/\./g, "").slice(0, 2);
+  return `${intPart}.${fracPart}`;
+}
+
+// Blood pressure is stored as a whole mmHg number (normalizeDayBpSystolic /
+// normalizeDayBpDiastolic round to the nearest integer) -- digits only, up to
+// 3 of them.
+function sanitizeBpInput(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 3);
+}
+
+// weightKg/bpSystolic/bpDiastolic are genuinely optional (absent, never a
+// 0-sentinel) -- these render an absent or non-positive value as an empty
+// field rather than "0", matching normalizeDayWeightKg/
+// normalizeDayBpSystolic/normalizeDayBpDiastolic's own absent-below-minimum
+// treatment of 0.
+function formatOptionalDecimal(value: number | undefined): string {
+  return value !== undefined && Number.isFinite(value) && value > 0
+    ? String(value)
+    : "";
+}
+
+function formatOptionalInteger(value: number | undefined): string {
+  return value !== undefined && Number.isFinite(value) && value > 0
+    ? String(Math.round(value))
+    : "";
 }
 
 function buildCollapsedSymptomOptions(
