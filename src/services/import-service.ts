@@ -19,6 +19,8 @@ import {
   clampPeriodLength,
   clampReminderLeadDays,
   normalizeAgeGroup,
+  normalizeCrisisContactName,
+  normalizeCrisisContactPhone,
   normalizeReminderTime,
   normalizeTemperatureUnit,
   normalizeUsageGoal,
@@ -299,6 +301,13 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     upcomingPeriodReminderEnabled: record.upcomingPeriodReminderEnabled === true,
     fertileWindowReminderEnabled: record.fertileWindowReminderEnabled === true,
     managedReminderEmailsEnabled: record.managedReminderEmailsEnabled === true,
+    kickCountReminderEnabled: record.kickCountReminderEnabled === true,
+    // Personal crisis-support contact — additive optional strings,
+    // absent-tolerant (a backup predating the fields lands on "" via the
+    // normalizer's non-string guard), trimmed + length-capped like every other
+    // imported profile value so an oversized/hostile field can't smuggle in.
+    crisisContactName: normalizeCrisisContactName(record.crisisContactName),
+    crisisContactPhone: normalizeCrisisContactPhone(record.crisisContactPhone),
     reminderTime: normalizeReminderTime(String(record.reminderTime ?? "")),
     // Number(undefined) is NaN, so a backup predating the field lands on the
     // shared default the same way an out-of-range value does.

@@ -6,6 +6,22 @@ import {
 } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
+  sanitizeContractionSession,
+  sanitizeKickCountSession,
+  sanitizePregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+  type PregnancyRecord,
+} from "../../models/pregnancy";
+import {
+  sanitizePostpartumRecord,
+  type PostpartumRecord,
+} from "../../models/postpartum";
+import {
+  sanitizeScreeningResponse,
+  type ScreeningResponse,
+} from "../../models/screening";
+import {
   createDefaultSymptomRecords,
   type SymptomRecord,
 } from "../../models/symptom";
@@ -16,6 +32,7 @@ import {
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   normalizeWeekStartDay,
+  type LocalDateISO,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -50,6 +67,11 @@ export const ONBOARDING_RECORD_KEY = "ovumcy/onboarding-record";
 export const DAY_LOG_RECORDS_KEY = "ovumcy/day-log-records";
 export const SYMPTOM_RECORDS_KEY = "ovumcy/symptom-records";
 export const SYNC_PREFERENCES_RECORD_KEY = "ovumcy/sync-preferences";
+export const PREGNANCY_RECORDS_KEY = "ovumcy/pregnancy-records";
+export const KICK_SESSIONS_KEY = "ovumcy/kick-sessions";
+export const CONTRACTION_SESSIONS_KEY = "ovumcy/contraction-sessions";
+export const POSTPARTUM_RECORDS_KEY = "ovumcy/postpartum-records";
+export const SCREENING_RESPONSES_KEY = "ovumcy/screening-responses";
 
 export function createAsyncStorageAppStorage(): LocalAppStorage {
   return {
@@ -191,6 +213,163 @@ export function createAsyncStorageAppStorage(): LocalAppStorage {
     },
 
     async writeManagedBillingCacheRecord(): Promise<void> {},
+
+    async readActivePregnancy(): Promise<PregnancyRecord | null> {
+      const records = await readAsyncStoragePregnancyRecords();
+      return records.find((record) => record.status === "active") ?? null;
+    },
+
+    async listPregnancyRecords(): Promise<PregnancyRecord[]> {
+      return readAsyncStoragePregnancyRecords();
+    },
+
+    async writePregnancyRecord(record: PregnancyRecord): Promise<void> {
+      const normalized = sanitizePregnancyRecord(record);
+      if (!normalized) {
+        throw new Error("writePregnancyRecord: record failed sanitize");
+      }
+
+      const map = await readAsyncStorageRecordMap(PREGNANCY_RECORDS_KEY);
+      // At-most-one-active invariant, enforced on every backend so services
+      // never branch on storage tech: reject a second concurrently active
+      // record; updating the SAME active record (same id) still succeeds.
+      if (normalized.status === "active") {
+        for (const [id, value] of Object.entries(map)) {
+          if (id === normalized.id) {
+            continue;
+          }
+          const existing = sanitizePregnancyRecord(value);
+          if (existing && existing.status === "active") {
+            throw new Error(
+              "writePregnancyRecord: another pregnancy is already active",
+            );
+          }
+        }
+      }
+
+      map[normalized.id] = normalized;
+      await AsyncStorage.setItem(PREGNANCY_RECORDS_KEY, JSON.stringify(map));
+    },
+
+    async listKickSessions(
+      fromDate?: LocalDateISO,
+      toDate?: LocalDateISO,
+    ): Promise<KickCountSession[]> {
+      const sessions = await readAsyncStorageKickSessions();
+      return sessions.filter((session) =>
+        isDayInRange(session.date, fromDate, toDate),
+      );
+    },
+
+    async writeKickSession(session: KickCountSession): Promise<void> {
+      const normalized = sanitizeKickCountSession(session);
+      if (!normalized) {
+        throw new Error("writeKickSession: session failed sanitize");
+      }
+
+      const map = await readAsyncStorageRecordMap(KICK_SESSIONS_KEY);
+      map[normalized.id] = normalized;
+      await AsyncStorage.setItem(KICK_SESSIONS_KEY, JSON.stringify(map));
+    },
+
+    async deleteKickSession(id: string): Promise<void> {
+      const map = await readAsyncStorageRecordMap(KICK_SESSIONS_KEY);
+      delete map[id];
+      await AsyncStorage.setItem(KICK_SESSIONS_KEY, JSON.stringify(map));
+    },
+
+    async listContractionSessions(
+      fromDate?: LocalDateISO,
+      toDate?: LocalDateISO,
+    ): Promise<ContractionSession[]> {
+      const sessions = await readAsyncStorageContractionSessions();
+      return sessions.filter((session) =>
+        isDayInRange(session.date, fromDate, toDate),
+      );
+    },
+
+    async writeContractionSession(session: ContractionSession): Promise<void> {
+      const normalized = sanitizeContractionSession(session);
+      if (!normalized) {
+        throw new Error("writeContractionSession: session failed sanitize");
+      }
+
+      const map = await readAsyncStorageRecordMap(CONTRACTION_SESSIONS_KEY);
+      map[normalized.id] = normalized;
+      await AsyncStorage.setItem(CONTRACTION_SESSIONS_KEY, JSON.stringify(map));
+    },
+
+    async deleteContractionSession(id: string): Promise<void> {
+      const map = await readAsyncStorageRecordMap(CONTRACTION_SESSIONS_KEY);
+      delete map[id];
+      await AsyncStorage.setItem(CONTRACTION_SESSIONS_KEY, JSON.stringify(map));
+    },
+
+    async deleteAllPregnancyData(): Promise<void> {
+      await clearAsyncStoragePregnancyData();
+    },
+
+    async readActivePostpartum(): Promise<PostpartumRecord | null> {
+      const records = await readAsyncStoragePostpartumRecords();
+      return records.find((record) => record.status === "active") ?? null;
+    },
+
+    async listPostpartumRecords(): Promise<PostpartumRecord[]> {
+      return readAsyncStoragePostpartumRecords();
+    },
+
+    async writePostpartumRecord(record: PostpartumRecord): Promise<void> {
+      const normalized = sanitizePostpartumRecord(record);
+      if (!normalized) {
+        throw new Error("writePostpartumRecord: record failed sanitize");
+      }
+
+      const map = await readAsyncStorageRecordMap(POSTPARTUM_RECORDS_KEY);
+      // At-most-one-active invariant, enforced on every backend so services
+      // never branch on storage tech: reject a second concurrently active
+      // record; updating the SAME active record (same id) still succeeds.
+      if (normalized.status === "active") {
+        for (const [id, value] of Object.entries(map)) {
+          if (id === normalized.id) {
+            continue;
+          }
+          const existing = sanitizePostpartumRecord(value);
+          if (existing && existing.status === "active") {
+            throw new Error(
+              "writePostpartumRecord: another postpartum is already active",
+            );
+          }
+        }
+      }
+
+      map[normalized.id] = normalized;
+      await AsyncStorage.setItem(POSTPARTUM_RECORDS_KEY, JSON.stringify(map));
+    },
+
+    async deleteAllPostpartumData(): Promise<void> {
+      await clearAsyncStoragePostpartumData();
+    },
+
+    async listScreeningResponses(): Promise<ScreeningResponse[]> {
+      return readAsyncStorageScreeningResponses();
+    },
+
+    async writeScreeningResponse(response: ScreeningResponse): Promise<void> {
+      // Sanitize (also recomputes score/flag from answers) before persisting,
+      // matching every other backend so services never branch on storage tech.
+      const normalized = sanitizeScreeningResponse(response);
+      if (!normalized) {
+        throw new Error("writeScreeningResponse: response failed sanitize");
+      }
+
+      const map = await readAsyncStorageRecordMap(SCREENING_RESPONSES_KEY);
+      map[normalized.id] = normalized;
+      await AsyncStorage.setItem(SCREENING_RESPONSES_KEY, JSON.stringify(map));
+    },
+
+    async deleteAllScreeningData(): Promise<void> {
+      await clearAsyncStorageScreeningData();
+    },
   };
 }
 
@@ -273,6 +452,14 @@ const LEGACY_LOCAL_APP_DATA_KEYS = [
   DAY_LOG_RECORDS_KEY,
   SYMPTOM_RECORDS_KEY,
   SYNC_PREFERENCES_RECORD_KEY,
+  // Pregnancy-mode, postpartum-mode, and screening keys are wiped and
+  // forensically scrubbed on clear like the other health-data keys (this
+  // adapter owns them all).
+  PREGNANCY_RECORDS_KEY,
+  KICK_SESSIONS_KEY,
+  CONTRACTION_SESSIONS_KEY,
+  POSTPARTUM_RECORDS_KEY,
+  SCREENING_RESPONSES_KEY,
 ] as const;
 
 export async function clearAsyncStorageLocalAppData(): Promise<void> {
@@ -305,6 +492,83 @@ async function overwriteLegacyLocalAppDataKeys(): Promise<void> {
 }
 
 const SCRUB_OVERWRITE_LENGTH = 4096;
+
+// The three pregnancy-data keys, targeted by the hard-delete action that
+// removes the whole pregnancy data class while leaving cycle/day-log/profile
+// data intact — unlike the full clear above.
+const PREGNANCY_DATA_KEYS = [
+  PREGNANCY_RECORDS_KEY,
+  KICK_SESSIONS_KEY,
+  CONTRACTION_SESSIONS_KEY,
+] as const;
+
+export async function clearAsyncStoragePregnancyData(): Promise<void> {
+  // Overwrite-before-remove, same forensic-scrub reasoning as
+  // clearAsyncStorageLocalAppData: `multiRemove` only unlinks the keys on the
+  // native SQLite/RocksDB-backed store, so the freed pages can still hold the
+  // old plaintext pregnancy-outcome data (the most sensitive class in the app)
+  // and be recovered forensically. Overwriting with inert filler first lets the
+  // store reuse those pages before the delete. Best-effort: a failed overwrite
+  // still falls through to the removal.
+  const scrubValue = "0".repeat(SCRUB_OVERWRITE_LENGTH);
+  try {
+    await AsyncStorage.multiSet(
+      PREGNANCY_DATA_KEYS.map((key) => [key, scrubValue]),
+    );
+  } catch {
+    // Hardening step, not a correctness requirement.
+  }
+  await AsyncStorage.multiRemove([...PREGNANCY_DATA_KEYS]);
+}
+
+// The postpartum-data key, targeted by the hard-delete action that removes
+// the whole postpartum data class while leaving cycle/day-log/profile AND
+// pregnancy data intact — pregnancy and postpartum are deleted independently.
+const POSTPARTUM_DATA_KEYS = [POSTPARTUM_RECORDS_KEY] as const;
+
+export async function clearAsyncStoragePostpartumData(): Promise<void> {
+  // Overwrite-before-remove, same forensic-scrub reasoning as
+  // clearAsyncStoragePregnancyData: `multiRemove` only unlinks the keys on the
+  // native SQLite/RocksDB-backed store, so the freed pages can still hold the
+  // old plaintext postpartum-outcome data (same sensitivity class as pregnancy
+  // outcome data) and be recovered forensically. Overwriting with inert filler
+  // first lets the store reuse those pages before the delete. Best-effort: a
+  // failed overwrite still falls through to the removal.
+  const scrubValue = "0".repeat(SCRUB_OVERWRITE_LENGTH);
+  try {
+    await AsyncStorage.multiSet(
+      POSTPARTUM_DATA_KEYS.map((key) => [key, scrubValue]),
+    );
+  } catch {
+    // Hardening step, not a correctness requirement.
+  }
+  await AsyncStorage.multiRemove([...POSTPARTUM_DATA_KEYS]);
+}
+
+// The screening-data key, targeted by the hard-delete action that removes
+// the whole EPDS screening data class while leaving cycle/day-log/profile,
+// pregnancy, AND postpartum data intact — mental-health screening is a distinct
+// sensitive class deleted only via its own explicit consent.
+const SCREENING_DATA_KEYS = [SCREENING_RESPONSES_KEY] as const;
+
+export async function clearAsyncStorageScreeningData(): Promise<void> {
+  // Overwrite-before-remove, same forensic-scrub reasoning as
+  // clearAsyncStoragePostpartumData: `multiRemove` only unlinks the keys on the
+  // native SQLite/RocksDB-backed store, so the freed pages can still hold the
+  // old plaintext screening answers (mental-health answers, the most sensitive
+  // class in the app) and be recovered forensically. Overwriting with inert
+  // filler first lets the store reuse those pages before the delete.
+  // Best-effort: a failed overwrite still falls through to the removal.
+  const scrubValue = "0".repeat(SCRUB_OVERWRITE_LENGTH);
+  try {
+    await AsyncStorage.multiSet(
+      SCREENING_DATA_KEYS.map((key) => [key, scrubValue]),
+    );
+  } catch {
+    // Hardening step, not a correctness requirement.
+  }
+  await AsyncStorage.multiRemove([...SCREENING_DATA_KEYS]);
+}
 
 export async function readAsyncStorageSyncPreferencesRecord(): Promise<SyncPreferencesRecord> {
   const rawValue = await AsyncStorage.getItem(SYNC_PREFERENCES_RECORD_KEY);
@@ -340,6 +604,116 @@ async function readAsyncStorageSymptomRecords(): Promise<SymptomRecord[]> {
   }
 
   return parsed.map((record) => mergeSymptomRecord(record));
+}
+
+async function readAsyncStorageRecordMap(
+  key: string,
+): Promise<Record<string, unknown>> {
+  const rawValue = await AsyncStorage.getItem(key);
+  if (!rawValue) {
+    return {};
+  }
+
+  const parsed = safeParse<Record<string, unknown>>(rawValue);
+  return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+    ? parsed
+    : {};
+}
+
+async function readAsyncStoragePregnancyRecords(): Promise<PregnancyRecord[]> {
+  const map = await readAsyncStorageRecordMap(PREGNANCY_RECORDS_KEY);
+  return Object.values(map)
+    .map((value) => sanitizePregnancyRecord(value))
+    .filter((record): record is PregnancyRecord => record !== null)
+    .sort(comparePregnancyRecords);
+}
+
+async function readAsyncStorageKickSessions(): Promise<KickCountSession[]> {
+  const map = await readAsyncStorageRecordMap(KICK_SESSIONS_KEY);
+  return Object.values(map)
+    .map((value) => sanitizeKickCountSession(value))
+    .filter((session): session is KickCountSession => session !== null)
+    .sort(compareSessionsByDate);
+}
+
+async function readAsyncStorageContractionSessions(): Promise<
+  ContractionSession[]
+> {
+  const map = await readAsyncStorageRecordMap(CONTRACTION_SESSIONS_KEY);
+  return Object.values(map)
+    .map((value) => sanitizeContractionSession(value))
+    .filter((session): session is ContractionSession => session !== null)
+    .sort(compareSessionsByDate);
+}
+
+async function readAsyncStoragePostpartumRecords(): Promise<PostpartumRecord[]> {
+  const map = await readAsyncStorageRecordMap(POSTPARTUM_RECORDS_KEY);
+  return Object.values(map)
+    .map((value) => sanitizePostpartumRecord(value))
+    .filter((record): record is PostpartumRecord => record !== null)
+    .sort(comparePostpartumRecords);
+}
+
+function comparePregnancyRecords(
+  left: PregnancyRecord,
+  right: PregnancyRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function comparePostpartumRecords(
+  left: PostpartumRecord,
+  right: PostpartumRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+async function readAsyncStorageScreeningResponses(): Promise<ScreeningResponse[]> {
+  const map = await readAsyncStorageRecordMap(SCREENING_RESPONSES_KEY);
+  return Object.values(map)
+    .map((value) => sanitizeScreeningResponse(value))
+    .filter((response): response is ScreeningResponse => response !== null)
+    .sort(compareScreeningResponses);
+}
+
+function compareScreeningResponses(
+  left: ScreeningResponse,
+  right: ScreeningResponse,
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function compareSessionsByDate(
+  left: { date: string; id: string },
+  right: { date: string; id: string },
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function isDayInRange(
+  day: string,
+  fromDate?: LocalDateISO,
+  toDate?: LocalDateISO,
+): boolean {
+  if (fromDate && day < fromDate) {
+    return false;
+  }
+  if (toDate && day > toDate) {
+    return false;
+  }
+  return true;
 }
 
 function safeParse<T>(rawValue: string): T | null {

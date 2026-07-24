@@ -23,6 +23,7 @@ describe("day-log-editor-service", () => {
       showLHTest: false,
       showNotes: true,
       showCycleFactors: true,
+      showPregnancyMetrics: false,
     });
     expect(state.viewData.labels.bbtHint).toContain("°F");
   });

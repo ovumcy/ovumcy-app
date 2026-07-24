@@ -21,6 +21,13 @@ import { normalizeDayLogSymptomIDs } from "./symptom-policy";
 const MIN_DAY_BBT_CELSIUS = 34;
 const MAX_DAY_BBT_CELSIUS = 43;
 
+const MIN_DAY_WEIGHT_KG = 30;
+const MAX_DAY_WEIGHT_KG = 250;
+const MIN_DAY_BP_SYSTOLIC = 60;
+const MAX_DAY_BP_SYSTOLIC = 250;
+const MIN_DAY_BP_DIASTOLIC = 40;
+const MAX_DAY_BP_DIASTOLIC = 150;
+
 export type DayLogVisibility = {
   showSexActivity: boolean;
   showBBT: boolean;
@@ -28,10 +35,16 @@ export type DayLogVisibility = {
   showLHTest: boolean;
   showNotes: boolean;
   showCycleFactors: boolean;
+  // Pregnancy metrics (weightKg/bpSystolic/bpDiastolic). Not a profile
+  // field like trackBBT -- pregnancy-active status lives in a separate
+  // repository, so it is threaded in as an option exactly like showLHTests
+  // (a premium flag that also isn't part of ProfileRecord).
+  showPregnancyMetrics: boolean;
 };
 
 export type DayLogVisibilityOptions = {
   showLHTests?: boolean;
+  showPregnancyMetrics?: boolean;
 };
 
 export function buildDayLogVisibility(
@@ -45,16 +58,31 @@ export function buildDayLogVisibility(
     showLHTest: options.showLHTests === true,
     showNotes: profile.hideNotes !== true,
     showCycleFactors: profile.hideCycleFactors !== true,
+    showPregnancyMetrics: options.showPregnancyMetrics === true,
   };
 }
 
 export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
   const normalizedFlow = normalizeDayFlow(record.flow);
   const normalizedNotes = trimDayLogNotes(record.notes);
+  // exactOptionalPropertyTypes forbids assigning a `number | undefined`
+  // normalizer result straight into an optional `number` property, and a
+  // later "no override" can't erase a key the `...record` spread below
+  // already added — so the raw pregnancy-metric values are pulled out of
+  // the spread source here and spliced back in conditionally at the end.
+  const {
+    weightKg: rawWeightKg,
+    bpSystolic: rawBpSystolic,
+    bpDiastolic: rawBpDiastolic,
+    ...restRecord
+  } = record;
+  const weightKg = normalizeDayWeightKg(rawWeightKg);
+  const bpSystolic = normalizeDayBpSystolic(rawBpSystolic);
+  const bpDiastolic = normalizeDayBpDiastolic(rawBpDiastolic);
 
   return {
     ...createEmptyDayLogRecord(record.date),
-    ...record,
+    ...restRecord,
     isPeriod: record.isPeriod,
     cycleStart: record.cycleStart && record.isPeriod,
     isUncertain: record.isUncertain && record.cycleStart && record.isPeriod,
@@ -68,6 +96,12 @@ export function sanitizeDayLogRecord(record: DayLogRecord): DayLogRecord {
     cycleFactorKeys: normalizeDayCycleFactorKeys(record.cycleFactorKeys),
     symptomIDs: normalizeDayLogSymptomIDs(record.symptomIDs),
     notes: normalizedNotes,
+    // BP systolic/diastolic apply independently — a lone reading (e.g.
+    // diastolic without systolic) is stored as given; neither value invents
+    // nor drops its counterpart.
+    ...(weightKg !== undefined ? { weightKg } : {}),
+    ...(bpSystolic !== undefined ? { bpSystolic } : {}),
+    ...(bpDiastolic !== undefined ? { bpDiastolic } : {}),
   };
 }
 
@@ -124,6 +158,51 @@ export function normalizeDayBBT(value: number): number {
   // BBT is stored canonically in Celsius; the UI converts to/from the user's unit.
   if (rounded < MIN_DAY_BBT_CELSIUS || rounded > MAX_DAY_BBT_CELSIUS) {
     return 0;
+  }
+
+  return rounded;
+}
+
+export function normalizeDayWeightKg(
+  value: number | undefined,
+): number | undefined {
+  if (value === undefined || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const rounded = Math.round(value * 100) / 100;
+  if (rounded < MIN_DAY_WEIGHT_KG || rounded > MAX_DAY_WEIGHT_KG) {
+    return undefined;
+  }
+
+  return rounded;
+}
+
+export function normalizeDayBpSystolic(
+  value: number | undefined,
+): number | undefined {
+  if (value === undefined || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const rounded = Math.round(value);
+  if (rounded < MIN_DAY_BP_SYSTOLIC || rounded > MAX_DAY_BP_SYSTOLIC) {
+    return undefined;
+  }
+
+  return rounded;
+}
+
+export function normalizeDayBpDiastolic(
+  value: number | undefined,
+): number | undefined {
+  if (value === undefined || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const rounded = Math.round(value);
+  if (rounded < MIN_DAY_BP_DIASTOLIC || rounded > MAX_DAY_BP_DIASTOLIC) {
+    return undefined;
   }
 
   return rounded;

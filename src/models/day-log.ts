@@ -69,6 +69,13 @@ export type DayLogRecord = {
   cycleFactorKeys: DayCycleFactorKey[];
   symptomIDs: DaySymptomID[];
   notes: string;
+  // Pregnancy-mode metrics (premium, additive). Genuinely optional — absent
+  // means "not logged today", never a 0-sentinel like bbt/mood below. Legacy
+  // rows and sync snapshots captured before these fields existed decode with
+  // them absent; see sanitizeDayLogRecord in day-log-policy.ts.
+  weightKg?: number;
+  bpSystolic?: number;
+  bpDiastolic?: number;
 };
 
 export function createEmptyDayLogRecord(date: LocalDateISO): DayLogRecord {
@@ -87,6 +94,8 @@ export function createEmptyDayLogRecord(date: LocalDateISO): DayLogRecord {
     cycleFactorKeys: [],
     symptomIDs: [],
     notes: "",
+    // weightKg / bpSystolic / bpDiastolic intentionally omitted — absent,
+    // not a sentinel value (see the DayLogRecord comment above).
   };
 }
 
@@ -103,7 +112,10 @@ export function hasDayLogData(record: DayLogRecord): boolean {
     record.pregnancyTest !== "none" ||
     record.cycleFactorKeys.length > 0 ||
     record.symptomIDs.length > 0 ||
-    record.notes.trim().length > 0
+    record.notes.trim().length > 0 ||
+    (record.weightKg !== undefined && record.weightKg > 0) ||
+    (record.bpSystolic !== undefined && record.bpSystolic > 0) ||
+    (record.bpDiastolic !== undefined && record.bpDiastolic > 0)
   );
 }
 

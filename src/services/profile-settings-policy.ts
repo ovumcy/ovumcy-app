@@ -70,6 +70,28 @@ export function normalizeTemperatureUnit(value: string): TemperatureUnit {
   return value.trim().toLowerCase() === "f" ? "f" : DEFAULT_TEMPERATURE_UNIT;
 }
 
+// Personal crisis-support contact caps. Generous but bounded: a
+// name or phone longer than these is untrusted (a hostile import or a paste
+// accident), so we trim and hard-cap rather than reject. "" is the "not set"
+// state. Absent/non-string input tolerates to "" (never throws).
+export const CRISIS_CONTACT_NAME_MAX_LENGTH = 120;
+export const CRISIS_CONTACT_PHONE_MAX_LENGTH = 60;
+
+function normalizeCrisisContactField(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim().slice(0, maxLength);
+}
+
+export function normalizeCrisisContactName(value: unknown): string {
+  return normalizeCrisisContactField(value, CRISIS_CONTACT_NAME_MAX_LENGTH);
+}
+
+export function normalizeCrisisContactPhone(value: unknown): string {
+  return normalizeCrisisContactField(value, CRISIS_CONTACT_PHONE_MAX_LENGTH);
+}
+
 // Mirrors web's optional age: an unknown/legacy age stays "" ("Prefer not to
 // say") rather than being coerced to a concrete group. Age never alters the
 // prediction algorithm — only the age-variability hint (45+) and UI display.
