@@ -3474,8 +3474,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     import: {
       title: "Ripristina da backup",
       subtitle:
-        "Importa un precedente export JSON di Ovumcy. Vengono aggiunti solo i giorni che non hai già — nulla viene sovrascritto o cancellato.",
-      pickAction: "Scegli file di export",
+        "Importa una precedente esportazione JSON di Ovumcy. Vengono aggiunti solo i giorni che non hai già — nulla viene sovrascritto o cancellato.",
+      pickAction: "Scegli file di esportazione",
       previewTitle: "Pronto per il ripristino",
       previewCreatedTemplate: "Backup creato: %s",
       previewRangeTemplate: "Periodo del backup: %s a %s",
@@ -3498,8 +3498,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Le impostazioni del ciclo sono state ripristinate dal backup.",
       errors: {
         malformed:
-          "Questo file non può essere letto come backup. Scegli un export JSON non modificato creato da Ovumcy.",
-        unrecognizedFormat: "Questo file non è un export Ovumcy valido.",
+          "Questo file non può essere letto come backup. Scegli un'esportazione JSON non modificata creata da Ovumcy.",
+        unrecognizedFormat: "Questo file non è un'esportazione Ovumcy valida.",
         tooLarge: "Quel file è troppo grande per l'importazione.",
         pickUnavailable:
           "La scelta dei file non è disponibile su questo dispositivo al momento.",

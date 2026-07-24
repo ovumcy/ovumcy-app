@@ -505,7 +505,7 @@ const dayLogCopyCatalog: Record<InterfaceLanguage, DayLogCopy> = {
       ],
       flow: [
         { value: "none", label: "Nessuno" },
-        { value: "spotting", label: "Spotting" },
+        { value: "spotting", label: "Perdite" },
         { value: "light", label: "Leggero" },
         { value: "medium", label: "Moderato" },
         { value: "heavy", label: "Abbondante" },
