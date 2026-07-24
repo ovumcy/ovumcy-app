@@ -960,6 +960,11 @@ describe("sync-client-service", () => {
       profile: await storage.readProfileRecord(),
       symptomRecords: await storage.listSymptomRecords(),
       dayLogs: [dayLog],
+      pregnancies: [],
+      kickSessions: [],
+      contractionSessions: [],
+      postpartumRecords: [],
+      screeningResponses: [],
     });
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,

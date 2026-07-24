@@ -1,3 +1,10 @@
+import {
+  createPregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+} from "../models/pregnancy";
+import { createPostpartumRecord } from "../models/postpartum";
+import { createScreeningResponse } from "../models/screening";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -61,6 +68,46 @@ describeIfLive("sync-client-service live transport", () => {
       notes: "live sync smoke",
     });
 
+    // Premium pregnancy domain (X10): must survive the encrypted round-trip.
+    const pregnancy = createPregnancyRecord({
+      edd: "2026-12-01",
+      eddBasis: "lmp",
+      startedAt: "2026-03-01",
+      lmpDate: "2026-02-24",
+    });
+    const kickSession: KickCountSession = {
+      id: "kick-live-1",
+      date: "2026-03-18",
+      durationMinutes: 30,
+      kickCount: 12,
+    };
+    const contractionSession: ContractionSession = {
+      id: "contraction-live-1",
+      date: "2026-03-19",
+      startedAt: "2026-03-19T20:00:00.000Z",
+      contractions: [
+        { startedAt: "2026-03-19T20:00:00.000Z", durationSeconds: 45 },
+        { startedAt: "2026-03-19T20:05:00.000Z", durationSeconds: 55 },
+      ],
+    };
+    await storage.writePregnancyRecord(pregnancy);
+    await storage.writeKickSession(kickSession);
+    await storage.writeContractionSession(contractionSession);
+
+    // Premium postpartum + EPDS screening domain: the recovery record and
+    // the most-sensitive mood-screening answers must survive the encrypted
+    // round-trip too.
+    const postpartum = createPostpartumRecord({
+      startedAt: "2026-03-05",
+      modeOfDelivery: "vaginal",
+    });
+    const screening = createScreeningResponse({
+      date: "2026-03-18",
+      answers: [1, 0, 2, 1, 0, 1, 0, 2, 1, 0],
+    });
+    await storage.writePostpartumRecord(postpartum);
+    await storage.writeScreeningResponse(screening);
+
     let preferences: SyncPreferencesRecord = {
       ...createDefaultSyncPreferencesRecord(),
       mode: "self_hosted",
@@ -123,6 +170,14 @@ describeIfLive("sync-client-service live transport", () => {
       themeOverride: "dark",
     });
     await storage.deleteDayLogRecord("2026-03-17");
+    // Simulate the second device having no pregnancy / postpartum / screening
+    // data before restore.
+    await storage.deleteAllPregnancyData();
+    await storage.deleteAllPostpartumData();
+    await storage.deleteAllScreeningData();
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
 
     const restoreResult = await runSyncRestore(storage, secretStore, preferences);
     expect(restoreResult.ok).toBe(true);
@@ -148,6 +203,27 @@ describeIfLive("sync-client-service live transport", () => {
         notes: "live sync smoke",
       }),
     );
+    // The pregnancy domain arrived intact on the simulated second device.
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({
+        id: pregnancy.id,
+        status: "active",
+        edd: "2026-12-01",
+      }),
+    );
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: kickSession.id, kickCount: 12 }),
+    ]);
+    const restoredContractions = await storage.listContractionSessions();
+    expect(restoredContractions).toHaveLength(1);
+    expect(restoredContractions[0]?.contractions).toHaveLength(2);
+    // The postpartum + screening domain arrived intact on the second device.
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: postpartum.id, status: "active" }),
+    );
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: screening.id, score: screening.score }),
+    ]);
 
     const disconnectResult = await disconnectSyncAccount(
       storage,
