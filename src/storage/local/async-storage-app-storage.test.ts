@@ -5,6 +5,7 @@ import { createDefaultProfileRecord } from "../../models/profile";
 import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
 import {
   createAsyncStorageAppStorage,
+  DAY_LOG_RECORDS_KEY,
   hasAsyncStorageLocalAppData,
   ONBOARDING_RECORD_KEY,
   PROFILE_RECORD_KEY,
@@ -126,6 +127,9 @@ describe("async-storage-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps", "fatigue"],
       notes: "Web fallback note",
+      weightKg: 65.436,
+      bpSystolic: 118.6,
+      bpDiastolic: 76.2,
     });
 
     await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual({
@@ -143,6 +147,9 @@ describe("async-storage-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps", "fatigue"],
       notes: "Web fallback note",
+      weightKg: 65.44,
+      bpSystolic: 119,
+      bpDiastolic: 76,
     });
 
     await expect(
@@ -151,6 +158,9 @@ describe("async-storage-app-storage", () => {
       expect.objectContaining({
         date: "2026-03-18",
         isPeriod: true,
+        weightKg: 65.44,
+        bpSystolic: 119,
+        bpDiastolic: 76,
       }),
     ]);
     await expect(
@@ -161,6 +171,46 @@ describe("async-storage-app-storage", () => {
       dateFrom: "2026-03-18",
       dateTo: "2026-03-18",
     });
+  });
+
+  it("loads a legacy day-log JSON blob predating pregnancy metrics with those fields left undefined", async () => {
+    const storage = createAsyncStorageAppStorage();
+    await AsyncStorage.setItem(
+      DAY_LOG_RECORDS_KEY,
+      JSON.stringify({
+        "2026-03-19": {
+          date: "2026-03-19",
+          isPeriod: false,
+          cycleStart: false,
+          isUncertain: false,
+          flow: "none",
+          mood: 0,
+          sexActivity: "none",
+          bbt: 0,
+          cervicalMucus: "none",
+          lhTest: "none",
+          pregnancyTest: "none",
+          cycleFactorKeys: [],
+          symptomIDs: [],
+          notes: "Pre-pregnancy-mode entry",
+          // weightKg / bpSystolic / bpDiastolic intentionally absent — this
+          // simulates an app-version JSON blob written before this feature
+          // existed.
+        },
+      }),
+    );
+
+    const record = await storage.readDayLogRecord("2026-03-19");
+
+    expect(record).toEqual(
+      expect.objectContaining({
+        date: "2026-03-19",
+        notes: "Pre-pregnancy-mode entry",
+      }),
+    );
+    expect(record).not.toHaveProperty("weightKg");
+    expect(record).not.toHaveProperty("bpSystolic");
+    expect(record).not.toHaveProperty("bpDiastolic");
   });
 
   it("persists custom symptom records in the async-storage adapter", async () => {
@@ -411,6 +461,373 @@ describe("async-storage-app-storage", () => {
         expect.objectContaining({ id: "cramps", isDefault: true }),
       ]),
     );
+  });
+
+  // NOTE: the pregnancy repository tests are placed BEFORE the "overwrites
+  // legacy plaintext keys" test on purpose. That test spies on
+  // `AsyncStorage.multiSet` and calls `mockRestore()`; because the jest-expo
+  // AsyncStorage mock implements `setItem` on top of `multiSet`, the restore
+  // strips `multiSet`'s implementation and leaves `setItem` a no-op for every
+  // later test in the file — so any write-then-read test must run ahead of it.
+  it("persists and lists pregnancy records, kick sessions, and contraction sessions", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: "2025-11-08",
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({
+        id: "pregnancy_1",
+        status: "active",
+        edd: "2026-08-15",
+      }),
+    );
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(1);
+
+    await storage.writeKickSession({
+      id: "kick_a",
+      date: "2026-07-10",
+      durationMinutes: 60,
+      kickCount: 8,
+    });
+    await storage.writeKickSession({
+      id: "kick_b",
+      date: "2026-07-25",
+      durationMinutes: 45,
+      kickCount: 11,
+    });
+
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_a" }),
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+    await expect(
+      storage.listKickSessions("2026-07-20", "2026-07-31"),
+    ).resolves.toEqual([expect.objectContaining({ id: "kick_b" })]);
+
+    await storage.writeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [
+        { startedAt: "2026-08-10T14:30:00.000Z", durationSeconds: 40 },
+      ],
+    });
+    await expect(
+      storage.listContractionSessions("2026-08-01", "2026-08-31"),
+    ).resolves.toEqual([expect.objectContaining({ id: "contraction_1" })]);
+
+    await storage.deleteKickSession("kick_a");
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+    await storage.deleteContractionSession("contraction_1");
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+  });
+
+  it("enforces the at-most-one-active pregnancy invariant in the async-storage adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "lmp",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+
+    await expect(
+      storage.writePregnancyRecord({
+        id: "pregnancy_2",
+        status: "active",
+        edd: "2026-09-15",
+        eddBasis: "lmp",
+        lmpDate: null,
+        schedulePreset: "who2016",
+        startedAt: "2025-12-10",
+        endedAt: null,
+        endReason: null,
+        modeOfDelivery: null,
+      }),
+    ).rejects.toThrow("another pregnancy is already active");
+
+    // Updating the SAME active record still succeeds.
+    await expect(
+      storage.writePregnancyRecord({
+        id: "pregnancy_1",
+        status: "active",
+        edd: "2026-08-20",
+        eddBasis: "lmp",
+        lmpDate: null,
+        schedulePreset: "who2016",
+        startedAt: "2025-11-10",
+        endedAt: null,
+        endReason: null,
+        modeOfDelivery: null,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("clears pregnancy data on destructive local reset", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "lmp",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+    await storage.writeKickSession({
+      id: "kick_1",
+      date: "2026-07-20",
+      durationMinutes: 60,
+      kickCount: 10,
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+  });
+
+  // Postpartum repository tests, placed (like the pregnancy ones) BEFORE the
+  // spy-then-mockRestore tests below: restoring the AsyncStorage multiSet spy
+  // strips the jest-expo setItem implementation for every later test, so any
+  // write-then-read test must run ahead of the first restore.
+  it("persists and lists postpartum records", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: null,
+      endReason: null,
+    });
+
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({
+        id: "postpartum_1",
+        status: "active",
+        modeOfDelivery: "cesarean",
+      }),
+    );
+    await expect(storage.listPostpartumRecords()).resolves.toHaveLength(1);
+  });
+
+  it("enforces the at-most-one-active postpartum invariant in the async-storage adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    });
+
+    await expect(
+      storage.writePostpartumRecord({
+        id: "postpartum_2",
+        status: "active",
+        startedAt: "2026-06-05",
+        modeOfDelivery: null,
+        endedAt: null,
+        endReason: null,
+      }),
+    ).rejects.toThrow("another postpartum is already active");
+
+    // Updating the SAME active record still succeeds.
+    await expect(
+      storage.writePostpartumRecord({
+        id: "postpartum_1",
+        status: "active",
+        startedAt: "2026-06-01",
+        modeOfDelivery: "vaginal",
+        endedAt: null,
+        endReason: null,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("clears postpartum data on destructive local reset", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    });
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+  });
+
+  it("deleteAllPostpartumData clears postpartum but leaves pregnancy + day-log intact", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "medium",
+      mood: 4,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      lhTest: "none",
+      pregnancyTest: "positive",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "cycle data survives",
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "ended",
+      edd: "2026-06-05",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-09-01",
+      endedAt: "2026-06-01",
+      endReason: "birth",
+      modeOfDelivery: "cesarean",
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: null,
+      endReason: null,
+    });
+
+    await storage.deleteAllPostpartumData();
+
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+
+    // Pregnancy + day-log data (its own delete action) is untouched — postpartum
+    // and pregnancy data are deleted independently. The overwrite-before-remove
+    // forensic scrub is the same shared multiSet/multiRemove mechanism proven by
+    // the pregnancy delete test below (clearAsyncStoragePostpartumData reuses it).
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(1);
+    await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual(
+      expect.objectContaining({ date: "2026-03-18", isPeriod: true }),
+    );
+  });
+
+  it("deleteAllPregnancyData clears the pregnancy keys, scrubs them first, and leaves other keys intact", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeDayLogRecord({
+      date: "2026-03-18",
+      isPeriod: true,
+      cycleStart: true,
+      isUncertain: false,
+      flow: "medium",
+      mood: 4,
+      sexActivity: "protected",
+      bbt: 36.7,
+      cervicalMucus: "creamy",
+      lhTest: "none",
+      pregnancyTest: "positive",
+      cycleFactorKeys: ["stress"],
+      symptomIDs: ["cramps"],
+      notes: "cycle data survives",
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "lmp",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+    await storage.writeKickSession({
+      id: "kick_1",
+      date: "2026-07-20",
+      durationMinutes: 60,
+      kickCount: 10,
+    });
+    await storage.writeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [
+        { startedAt: "2026-08-10T14:30:00.000Z", durationSeconds: 40 },
+      ],
+    });
+
+    const multiSetSpy = jest.spyOn(AsyncStorage, "multiSet");
+    const multiRemoveSpy = jest.spyOn(AsyncStorage, "multiRemove");
+    multiSetSpy.mockClear();
+    multiRemoveSpy.mockClear();
+
+    await storage.deleteAllPregnancyData();
+
+    // All three pregnancy collections are empty.
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+
+    // The day log (and every other key) is untouched.
+    await expect(storage.readDayLogRecord("2026-03-18")).resolves.toEqual(
+      expect.objectContaining({ date: "2026-03-18", isPeriod: true }),
+    );
+
+    // Overwrite-before-remove forensic scrub, targeting ONLY the three
+    // pregnancy keys — the day-log key is never removed.
+    expect(multiSetSpy.mock.invocationCallOrder[0]).toBeLessThan(
+      multiRemoveSpy.mock.invocationCallOrder[0]!,
+    );
+    const removedKeys = multiRemoveSpy.mock.calls.flatMap((call) => call[0]);
+    expect([...removedKeys].sort()).toEqual(
+      [
+        "ovumcy/contraction-sessions",
+        "ovumcy/kick-sessions",
+        "ovumcy/pregnancy-records",
+      ].sort(),
+    );
+    expect(removedKeys).not.toContain("ovumcy/day-log-records");
+
+    multiSetSpy.mockRestore();
+    multiRemoveSpy.mockRestore();
   });
 
   // NOTE: keep this test last in the file. jest.spyOn(AsyncStorage, "multiSet")

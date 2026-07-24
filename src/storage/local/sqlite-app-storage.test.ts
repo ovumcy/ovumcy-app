@@ -7,6 +7,13 @@ import {
 import type { LocalDataKeyStore } from "../../security/local-data-key-store";
 import { createEmptyDayLogRecord } from "../../models/day-log";
 import { createDefaultProfileRecord } from "../../models/profile";
+import type {
+  ContractionSession,
+  KickCountSession,
+  PregnancyRecord,
+} from "../../models/pregnancy";
+import type { PostpartumRecord } from "../../models/postpartum";
+import type { ScreeningResponse } from "../../models/screening";
 import {
   buildLocalDataAad,
   encryptLocalDataRecord,
@@ -91,6 +98,40 @@ type FakeDatabaseState = {
   managedBillingCacheRow: {
     encrypted_payload: string | null;
   } | null;
+  // hasPregnancyTables models a pre-v14 database until the schema reconcile
+  // runs CREATE TABLE for the three pregnancy-mode tables.
+  hasPregnancyTables: boolean;
+  pregnancyRecordsRows: {
+    id: string;
+    status: string;
+    encrypted_payload: string | null;
+  }[];
+  kickSessionsRows: {
+    id: string;
+    day: string;
+    encrypted_payload: string | null;
+  }[];
+  contractionSessionsRows: {
+    id: string;
+    day: string;
+    encrypted_payload: string | null;
+  }[];
+  // hasPostpartumTable models a pre-v15 database until the schema reconcile
+  // runs CREATE TABLE for postpartum_records.
+  hasPostpartumTable: boolean;
+  postpartumRecordsRows: {
+    id: string;
+    status: string;
+    encrypted_payload: string | null;
+  }[];
+  // hasScreeningTable models a pre-v16 database until the schema reconcile runs
+  // CREATE TABLE for screening_responses.
+  hasScreeningTable: boolean;
+  screeningResponsesRows: {
+    id: string;
+    day: string;
+    encrypted_payload: string | null;
+  }[];
   userVersion: number;
 };
 
@@ -116,6 +157,14 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     syncPreferencesRow: null,
     hasManagedBillingCacheTable: false,
     managedBillingCacheRow: null,
+    hasPregnancyTables: true,
+    pregnancyRecordsRows: [],
+    kickSessionsRows: [],
+    contractionSessionsRows: [],
+    hasPostpartumTable: true,
+    postpartumRecordsRows: [],
+    hasScreeningTable: true,
+    screeningResponsesRows: [],
     userVersion: 0,
     ...state,
   };
@@ -126,6 +175,24 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
     }
   }
 
+  function requirePregnancyTables() {
+    if (!databaseState.hasPregnancyTables) {
+      throw new Error("no such table: pregnancy_records");
+    }
+  }
+
+  function requirePostpartumTable() {
+    if (!databaseState.hasPostpartumTable) {
+      throw new Error("no such table: postpartum_records");
+    }
+  }
+
+  function requireScreeningTable() {
+    if (!databaseState.hasScreeningTable) {
+      throw new Error("no such table: screening_responses");
+    }
+  }
+
   function applySchemaStatement(source: string) {
     if (source.startsWith("PRAGMA user_version =")) {
       databaseState.userVersion = Number(source.replace(/\D/g, ""));
@@ -133,6 +200,18 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
 
     if (source.includes("CREATE TABLE IF NOT EXISTS managed_billing_cache")) {
       databaseState.hasManagedBillingCacheTable = true;
+    }
+
+    if (source.includes("CREATE TABLE IF NOT EXISTS pregnancy_records")) {
+      databaseState.hasPregnancyTables = true;
+    }
+
+    if (source.includes("CREATE TABLE IF NOT EXISTS postpartum_records")) {
+      databaseState.hasPostpartumTable = true;
+    }
+
+    if (source.includes("CREATE TABLE IF NOT EXISTS screening_responses")) {
+      databaseState.hasScreeningTable = true;
     }
 
     if (source.includes("ALTER TABLE profile_settings ADD COLUMN language_override")) {
@@ -439,6 +518,47 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           }) as T[];
       }
 
+      if (source.includes("FROM pregnancy_records")) {
+        requirePregnancyTables();
+        let rows = [...databaseState.pregnancyRecordsRows];
+        if (source.includes("WHERE status = 'active'")) {
+          rows = rows.filter((row) => row.status === "active");
+          if (source.includes("id != ?")) {
+            const selfID = String(params[0]);
+            rows = rows.filter((row) => row.id !== selfID);
+          }
+        }
+        return rows as T[];
+      }
+
+      if (source.includes("FROM kick_sessions")) {
+        requirePregnancyTables();
+        return [...databaseState.kickSessionsRows] as T[];
+      }
+
+      if (source.includes("FROM contraction_sessions")) {
+        requirePregnancyTables();
+        return [...databaseState.contractionSessionsRows] as T[];
+      }
+
+      if (source.includes("FROM postpartum_records")) {
+        requirePostpartumTable();
+        let rows = [...databaseState.postpartumRecordsRows];
+        if (source.includes("WHERE status = 'active'")) {
+          rows = rows.filter((row) => row.status === "active");
+          if (source.includes("id != ?")) {
+            const selfID = String(params[0]);
+            rows = rows.filter((row) => row.id !== selfID);
+          }
+        }
+        return rows as T[];
+      }
+
+      if (source.includes("FROM screening_responses")) {
+        requireScreeningTable();
+        return [...databaseState.screeningResponsesRows] as T[];
+      }
+
       return [];
     },
 
@@ -573,6 +693,109 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           (row) => row.id !== nextRow.id,
         );
         databaseState.symptomRows.push(nextRow);
+      }
+
+      if (source.includes("INSERT INTO pregnancy_records")) {
+        requirePregnancyTables();
+        const nextRow = {
+          id: String(params[0]),
+          status: String(params[1]),
+          encrypted_payload: (params[2] as string | null) ?? null,
+        };
+        databaseState.pregnancyRecordsRows =
+          databaseState.pregnancyRecordsRows.filter(
+            (row) => row.id !== nextRow.id,
+          );
+        databaseState.pregnancyRecordsRows.push(nextRow);
+      }
+      if (source.includes("DELETE FROM pregnancy_records")) {
+        requirePregnancyTables();
+        databaseState.pregnancyRecordsRows = [];
+      }
+
+      if (source.includes("INSERT INTO kick_sessions")) {
+        requirePregnancyTables();
+        const nextRow = {
+          id: String(params[0]),
+          day: String(params[1]),
+          encrypted_payload: (params[2] as string | null) ?? null,
+        };
+        databaseState.kickSessionsRows = databaseState.kickSessionsRows.filter(
+          (row) => row.id !== nextRow.id,
+        );
+        databaseState.kickSessionsRows.push(nextRow);
+      }
+      if (source.includes("DELETE FROM kick_sessions")) {
+        requirePregnancyTables();
+        if (source.includes("WHERE id =")) {
+          const id = String(params[0]);
+          databaseState.kickSessionsRows =
+            databaseState.kickSessionsRows.filter((row) => row.id !== id);
+          return { changes: 1 };
+        }
+        databaseState.kickSessionsRows = [];
+      }
+
+      if (source.includes("INSERT INTO contraction_sessions")) {
+        requirePregnancyTables();
+        const nextRow = {
+          id: String(params[0]),
+          day: String(params[1]),
+          encrypted_payload: (params[2] as string | null) ?? null,
+        };
+        databaseState.contractionSessionsRows =
+          databaseState.contractionSessionsRows.filter(
+            (row) => row.id !== nextRow.id,
+          );
+        databaseState.contractionSessionsRows.push(nextRow);
+      }
+      if (source.includes("DELETE FROM contraction_sessions")) {
+        requirePregnancyTables();
+        if (source.includes("WHERE id =")) {
+          const id = String(params[0]);
+          databaseState.contractionSessionsRows =
+            databaseState.contractionSessionsRows.filter(
+              (row) => row.id !== id,
+            );
+          return { changes: 1 };
+        }
+        databaseState.contractionSessionsRows = [];
+      }
+
+      if (source.includes("INSERT INTO postpartum_records")) {
+        requirePostpartumTable();
+        const nextRow = {
+          id: String(params[0]),
+          status: String(params[1]),
+          encrypted_payload: (params[2] as string | null) ?? null,
+        };
+        databaseState.postpartumRecordsRows =
+          databaseState.postpartumRecordsRows.filter(
+            (row) => row.id !== nextRow.id,
+          );
+        databaseState.postpartumRecordsRows.push(nextRow);
+      }
+      if (source.includes("DELETE FROM postpartum_records")) {
+        requirePostpartumTable();
+        databaseState.postpartumRecordsRows = [];
+      }
+
+      if (source.includes("INSERT INTO screening_responses")) {
+        requireScreeningTable();
+        const nextRow = {
+          id: String(params[0]),
+          day: String(params[1]),
+          encrypted_payload: (params[2] as string | null) ?? null,
+        };
+        databaseState.screeningResponsesRows =
+          databaseState.screeningResponsesRows.filter(
+            (row) => row.id !== nextRow.id,
+          );
+        databaseState.screeningResponsesRows.push(nextRow);
+      }
+      if (source.includes("DELETE FROM screening_responses")) {
+        requireScreeningTable();
+        databaseState.screeningResponsesRows = [];
       }
 
       return { changes: 1 };
@@ -836,7 +1059,9 @@ describe("sqlite-app-storage", () => {
   it("migrates a v12 database by creating and seeding the managed billing cache table", async () => {
     // Simulates an existing install: user_version already 12, no
     // managed_billing_cache table on disk yet. Hydration must create the
-    // table (v13), seed the default encrypted record, and bump the version.
+    // table (v13), seed the default encrypted record, and bump the version to
+    // the current schema version (now 15, through the additive v13 + v14 + v15
+    // steps).
     const inspected = createInspectableFakeDatabase({
       hasManagedBillingCacheTable: false,
       userVersion: 12,
@@ -856,7 +1081,7 @@ describe("sqlite-app-storage", () => {
       dismissedOfferIDs: [],
     });
     expect(inspected.state.hasManagedBillingCacheTable).toBe(true);
-    expect(inspected.state.userVersion).toBe(13);
+    expect(inspected.state.userVersion).toBe(16);
     expect(inspected.state.managedBillingCacheRow?.encrypted_payload).toEqual(
       expect.any(String),
     );
@@ -1097,6 +1322,10 @@ describe("sqlite-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
+      weightKg: 65.436,
+      // bpSystolic intentionally omitted — a lone BP reading must round-trip
+      // without inventing its pair.
+      bpDiastolic: 76.2,
     });
 
     await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual({
@@ -1114,6 +1343,8 @@ describe("sqlite-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps"],
       notes: "Localized journal note",
+      weightKg: 65.44,
+      bpDiastolic: 76,
     });
 
     await expect(
@@ -1122,6 +1353,8 @@ describe("sqlite-app-storage", () => {
       expect.objectContaining({
         date: "2026-03-17",
         isPeriod: true,
+        weightKg: 65.44,
+        bpDiastolic: 76,
       }),
     ]);
     await expect(
@@ -1290,6 +1523,80 @@ describe("sqlite-app-storage", () => {
     await expect(AsyncStorage.getItem("ovumcy/profile-record")).resolves.toBeNull();
 
     await AsyncStorage.clear();
+  });
+
+  it("loads a legacy encrypted day log payload predating pregnancy metrics with those fields left undefined", async () => {
+    const localDataKey = "a".repeat(64);
+    const legacyRowKey = "legacy-day-log-row";
+    const legacyEncryptedPayload = encryptLocalDataRecord(
+      localDataKey,
+      {
+        date: "2026-03-19",
+        isPeriod: false,
+        cycleStart: false,
+        isUncertain: false,
+        flow: "none",
+        mood: 0,
+        sexActivity: "none",
+        bbt: 0,
+        cervicalMucus: "none",
+        lhTest: "none",
+        pregnancyTest: "none",
+        cycleFactorKeys: [],
+        symptomIDs: [],
+        notes: "Pre-pregnancy-mode entry",
+        // weightKg / bpSystolic / bpDiastolic intentionally absent from this
+        // payload — it simulates an encrypted snapshot captured before this
+        // feature existed.
+      },
+      buildLocalDataAad("day_log", legacyRowKey),
+    );
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+      openDatabase: async () =>
+        createFakeDatabase({
+          dayLogRows: [
+            {
+              day: legacyRowKey,
+              is_period: 0,
+              cycle_start: 0,
+              is_uncertain: 0,
+              flow: "none",
+              mood: 0,
+              sex_activity: "none",
+              bbt: 0,
+              cervical_mucus: "none",
+              lh_test: "none",
+              pregnancy_test: "none",
+              cycle_factor_keys: "[]",
+              symptom_ids: "[]",
+              notes: "",
+              encrypted_payload: legacyEncryptedPayload,
+            },
+          ],
+        }),
+    });
+
+    const records = await storage.listDayLogRecordsInRange(
+      "2026-03-01",
+      "2026-03-31",
+    );
+
+    expect(records).toEqual([
+      expect.objectContaining({
+        date: "2026-03-19",
+        notes: "Pre-pregnancy-mode entry",
+      }),
+    ]);
+    expect(records[0]).not.toHaveProperty("weightKg");
+    expect(records[0]).not.toHaveProperty("bpSystolic");
+    expect(records[0]).not.toHaveProperty("bpDiastolic");
   });
 
   it("stores sensitive local records in encrypted payload columns instead of plaintext", async () => {
@@ -2617,5 +2924,711 @@ describe("sqlite-app-storage", () => {
         symptomIDs: [],
       }),
     );
+  });
+
+  function createPregnancyStorage(overrides?: Partial<FakeDatabaseState>) {
+    const inspected = createInspectableFakeDatabase(overrides);
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => inspected.database,
+    });
+    return { storage, inspected };
+  }
+
+  function buildPregnancyRecord(
+    overrides: Partial<PregnancyRecord> = {},
+  ): PregnancyRecord {
+    return {
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: "2025-11-08",
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+      ...overrides,
+    };
+  }
+
+  function buildKickSession(
+    overrides: Partial<KickCountSession> = {},
+  ): KickCountSession {
+    return {
+      id: "kick_1",
+      date: "2026-07-20",
+      durationMinutes: 60,
+      kickCount: 12,
+      ...overrides,
+    };
+  }
+
+  function buildContractionSession(
+    overrides: Partial<ContractionSession> = {},
+  ): ContractionSession {
+    return {
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [
+        { startedAt: "2026-08-10T14:30:00.000Z", durationSeconds: 45 },
+        { startedAt: "2026-08-10T14:35:00.000Z", durationSeconds: 50 },
+      ],
+      ...overrides,
+    };
+  }
+
+  it("round-trips pregnancy records, kick sessions, and contraction sessions", async () => {
+    const { storage } = createPregnancyStorage();
+
+    const pregnancy = buildPregnancyRecord();
+    await storage.writePregnancyRecord(pregnancy);
+
+    await expect(storage.readActivePregnancy()).resolves.toEqual(pregnancy);
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([pregnancy]);
+
+    await storage.writeKickSession(
+      buildKickSession({ id: "kick_a", date: "2026-07-10", kickCount: 8 }),
+    );
+    await storage.writeKickSession(
+      buildKickSession({ id: "kick_b", date: "2026-07-20", kickCount: 12 }),
+    );
+
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_a", date: "2026-07-10" }),
+      expect.objectContaining({ id: "kick_b", date: "2026-07-20" }),
+    ]);
+    await expect(
+      storage.listKickSessions("2026-07-15", "2026-07-31"),
+    ).resolves.toEqual([expect.objectContaining({ id: "kick_b" })]);
+
+    const contraction = buildContractionSession();
+    await storage.writeContractionSession(contraction);
+    await expect(
+      storage.listContractionSessions("2026-08-01", "2026-08-31"),
+    ).resolves.toEqual([contraction]);
+    await expect(
+      storage.listContractionSessions("2026-09-01", "2026-09-30"),
+    ).resolves.toEqual([]);
+
+    await storage.deleteKickSession("kick_a");
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+
+    await storage.deleteContractionSession("contraction_1");
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+  });
+
+  it("stores pregnancy data in encrypted payloads, never plaintext EDD or end-reason strings", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    const ended = buildPregnancyRecord({
+      id: "pregnancy_ended",
+      status: "ended",
+      edd: "2026-08-15",
+      endedAt: "2026-08-18",
+      endReason: "birth",
+      modeOfDelivery: "vaginal",
+    });
+    await storage.writePregnancyRecord(ended);
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "contraction_x", date: "2026-08-10" }),
+    );
+
+    const pregnancyRow = inspected.state.pregnancyRecordsRows[0];
+    expect(pregnancyRow?.encrypted_payload).toEqual(expect.any(String));
+    // Sensitive fields live only in the AEAD payload; the only plaintext is the
+    // coarse status enum used for the at-most-one-active selection query.
+    expect(pregnancyRow?.encrypted_payload).not.toContain("2026-08-15");
+    expect(pregnancyRow?.encrypted_payload).not.toContain("birth");
+    expect(pregnancyRow?.encrypted_payload).not.toContain("vaginal");
+    expect(pregnancyRow?.status).toBe("ended");
+
+    const contractionRow = inspected.state.contractionSessionsRows[0];
+    expect(contractionRow?.encrypted_payload).toEqual(expect.any(String));
+    // The precise contraction timestamp is encrypted; only the coarse `day`
+    // is plaintext for range selection.
+    expect(JSON.stringify(contractionRow)).not.toContain("T14:30:00");
+    expect(contractionRow?.day).toBe("2026-08-10");
+
+    // The values are recoverable via the repo — proving encryption, not omission.
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([ended]);
+  });
+
+  it("drops a pregnancy row whose ciphertext was copied from a different pregnancy id (AAD fail-closed)", async () => {
+    // Mirrors the day_log AAD test, but the pregnancy read path is defensive:
+    // rather than throwing, a row that fails AAD-authenticated decryption is
+    // skipped, so a swapped/foreign blob is never surfaced or misattributed.
+    const { storage, inspected } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_a",
+        status: "ended",
+        edd: "2026-08-01",
+        endedAt: "2026-08-01",
+        endReason: "birth",
+      }),
+    );
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_b",
+        status: "ended",
+        edd: "2026-09-01",
+        endedAt: "2026-09-01",
+        endReason: "loss",
+      }),
+    );
+
+    const rowA = inspected.state.pregnancyRecordsRows.find(
+      (row) => row.id === "pregnancy_a",
+    );
+    const rowB = inspected.state.pregnancyRecordsRows.find(
+      (row) => row.id === "pregnancy_b",
+    );
+    if (!rowA || !rowB) {
+      throw new Error("expected two pregnancy rows persisted");
+    }
+    // Splice A's ciphertext into B's row. AAD binds ("pregnancy_records", id),
+    // so decrypting it under B's id fails the auth tag.
+    rowB.encrypted_payload = rowA.encrypted_payload ?? null;
+
+    const records = await storage.listPregnancyRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]?.id).toBe("pregnancy_a");
+    expect(records.some((record) => record.id === "pregnancy_b")).toBe(false);
+  });
+
+  it("drops a contraction row holding a kick-session ciphertext (cross-table AAD binding)", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    await storage.writeKickSession(
+      buildKickSession({ id: "shared_id", date: "2026-07-20" }),
+    );
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "shared_id", date: "2026-07-20" }),
+    );
+
+    const kickRow = inspected.state.kickSessionsRows[0];
+    const contractionRow = inspected.state.contractionSessionsRows[0];
+    if (!kickRow || !contractionRow) {
+      throw new Error("expected kick + contraction rows persisted");
+    }
+    // Same id, but AAD binds the table name too, so decrypting a kick payload
+    // as a contraction fails the auth tag and the row is dropped.
+    contractionRow.encrypted_payload = kickRow.encrypted_payload ?? null;
+
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "shared_id" }),
+    ]);
+  });
+
+  it("enforces the at-most-one-active pregnancy invariant", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_1" }),
+    );
+
+    // A second, different active record is rejected.
+    await expect(
+      storage.writePregnancyRecord(
+        buildPregnancyRecord({ id: "pregnancy_2", status: "active" }),
+      ),
+    ).rejects.toThrow("another pregnancy is already active");
+
+    // Updating the SAME active record still succeeds.
+    await expect(
+      storage.writePregnancyRecord(
+        buildPregnancyRecord({
+          id: "pregnancy_1",
+          status: "active",
+          edd: "2026-09-01",
+        }),
+      ),
+    ).resolves.toBeUndefined();
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_1", edd: "2026-09-01" }),
+    );
+
+    // Ending the current pregnancy, then starting a new one, succeeds.
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_1",
+        status: "ended",
+        endedAt: "2026-09-02",
+        endReason: "birth",
+      }),
+    );
+    await expect(
+      storage.writePregnancyRecord(
+        buildPregnancyRecord({ id: "pregnancy_3", status: "active" }),
+      ),
+    ).resolves.toBeUndefined();
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_3" }),
+    );
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(2);
+  });
+
+  it("wipes the pregnancy tables on destructive local reset and leaves them empty and usable", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+    );
+    await storage.writeKickSession(buildKickSession({ id: "kick_1" }));
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "contraction_1" }),
+    );
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+
+    // Tables remain usable after reset (same connection, no reopen).
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_after", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_after" }),
+    );
+  });
+
+  it("deleteAllPregnancyData clears every pregnancy table but leaves other tables intact", async () => {
+    const { storage } = createPregnancyStorage();
+
+    // A day log stands in for the health data outside the pregnancy tables.
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+    );
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_ended",
+        status: "ended",
+        endedAt: "2026-05-01",
+        endReason: "loss",
+      }),
+    );
+    await storage.writeKickSession(buildKickSession({ id: "kick_1" }));
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "contraction_1" }),
+    );
+
+    await storage.deleteAllPregnancyData();
+
+    // All three pregnancy tables are empty.
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+
+    // Data outside the pregnancy tables is untouched.
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual(
+      expect.objectContaining({ date: "2026-03-17", isPeriod: true }),
+    );
+
+    // Tables remain usable afterward (same connection, no reopen).
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_after", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_after" }),
+    );
+  });
+
+  it("upgrades a v13 database through v14/v15/v16, creating the pregnancy, postpartum, and screening tables with existing data intact", async () => {
+    const localDataKey = "a".repeat(64);
+    const inspected = createInspectableFakeDatabase({
+      userVersion: 13,
+      hasManagedBillingCacheTable: true,
+      hasPregnancyTables: false,
+      hasPostpartumTable: false,
+      hasScreeningTable: false,
+      profileRow: {
+        last_period_start: null,
+        cycle_length: 28,
+        period_length: 5,
+        auto_period_fill: 1,
+        irregular_cycle: 0,
+        unpredictable_cycle: 0,
+        age_group: "",
+        usage_goal: "health",
+        track_bbt: 0,
+        temperature_unit: "c",
+        track_cervical_mucus: 0,
+        hide_sex_chip: 0,
+        language_override: null,
+        theme_override: null,
+        encrypted_payload: encryptLocalDataRecord(
+          localDataKey,
+          { ...createDefaultProfileRecord(), lastPeriodStart: "2026-03-15" },
+          buildLocalDataAad("profile_settings", "1"),
+        ),
+      },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+      openDatabase: async () => inspected.database,
+    });
+
+    // Existing encrypted profile data survives the additive v13 -> v16 upgrade.
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ lastPeriodStart: "2026-03-15" }),
+    );
+    expect(inspected.state.hasPregnancyTables).toBe(true);
+    expect(inspected.state.hasPostpartumTable).toBe(true);
+    expect(inspected.state.hasScreeningTable).toBe(true);
+    expect(inspected.state.userVersion).toBe(16);
+
+    // The freshly created pregnancy repos are usable post-upgrade.
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_new", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_new" }),
+    );
+
+    // The freshly created postpartum repo is usable post-upgrade too.
+    await storage.writePostpartumRecord(buildPostpartumRecord({ id: "postpartum_new" }));
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_new" }),
+    );
+  });
+
+  function buildPostpartumRecord(
+    overrides: Partial<PostpartumRecord> = {},
+  ): PostpartumRecord {
+    return {
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: null,
+      endReason: null,
+      ...overrides,
+    };
+  }
+
+  it("round-trips postpartum records and stores outcome fields only in the encrypted payload", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    const ended = buildPostpartumRecord({
+      id: "postpartum_ended",
+      status: "ended",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: "2026-07-20",
+      endReason: "cycle_returned",
+    });
+    await storage.writePostpartumRecord(ended);
+
+    // Recoverable via the repo (proving encryption, not omission).
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([ended]);
+
+    const row = inspected.state.postpartumRecordsRows[0];
+    expect(row?.encrypted_payload).toEqual(expect.any(String));
+    // Sensitive fields live only in the AEAD payload; only the coarse status
+    // enum is plaintext for the at-most-one-active selection.
+    expect(row?.encrypted_payload).not.toContain("2026-06-01");
+    expect(row?.encrypted_payload).not.toContain("cesarean");
+    expect(row?.encrypted_payload).not.toContain("cycle_returned");
+    expect(row?.status).toBe("ended");
+  });
+
+  it("drops a postpartum row whose ciphertext was copied from a different postpartum id (AAD fail-closed)", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_a", status: "ended", endedAt: "2026-06-20", endReason: "manual" }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_b", status: "ended", endedAt: "2026-07-20", endReason: "manual" }),
+    );
+
+    const rowA = inspected.state.postpartumRecordsRows.find(
+      (row) => row.id === "postpartum_a",
+    );
+    const rowB = inspected.state.postpartumRecordsRows.find(
+      (row) => row.id === "postpartum_b",
+    );
+    if (!rowA || !rowB) {
+      throw new Error("expected two postpartum rows persisted");
+    }
+    // AAD binds ("postpartum_records", id); decrypting A's blob under B's id
+    // fails the auth tag, so the swapped row is dropped rather than surfaced.
+    rowB.encrypted_payload = rowA.encrypted_payload ?? null;
+
+    const records = await storage.listPostpartumRecords();
+    expect(records).toHaveLength(1);
+    expect(records[0]?.id).toBe("postpartum_a");
+  });
+
+  it("enforces the at-most-one-active postpartum invariant", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "active" }),
+    );
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_1" }),
+    );
+
+    // A second, different active record is rejected.
+    await expect(
+      storage.writePostpartumRecord(
+        buildPostpartumRecord({ id: "postpartum_2", status: "active" }),
+      ),
+    ).rejects.toThrow("another postpartum is already active");
+
+    // Updating the SAME active record still succeeds.
+    await expect(
+      storage.writePostpartumRecord(
+        buildPostpartumRecord({ id: "postpartum_1", status: "active", modeOfDelivery: "vaginal" }),
+      ),
+    ).resolves.toBeUndefined();
+
+    // Ending it, then starting a new one, succeeds.
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "ended", endedAt: "2026-07-01", endReason: "manual" }),
+    );
+    await expect(
+      storage.writePostpartumRecord(
+        buildPostpartumRecord({ id: "postpartum_3", status: "active" }),
+      ),
+    ).resolves.toBeUndefined();
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_3" }),
+    );
+    await expect(storage.listPostpartumRecords()).resolves.toHaveLength(2);
+  });
+
+  it("wipes the postpartum table on destructive local reset and leaves it usable", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "active" }),
+    );
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+
+    // Usable after reset (same connection, no reopen).
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_after", status: "active" }),
+    );
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_after" }),
+    );
+  });
+
+  it("deleteAllPostpartumData clears the postpartum table but leaves pregnancy + other data intact", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_ended", status: "ended", endedAt: "2026-06-01", endReason: "birth" }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "active" }),
+    );
+
+    await storage.deleteAllPostpartumData();
+
+    // Postpartum is empty.
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+
+    // Pregnancy + day-log data outside the postpartum table are untouched.
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(1);
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual(
+      expect.objectContaining({ date: "2026-03-17", isPeriod: true }),
+    );
+  });
+
+  function buildScreeningResponse(
+    overrides: Partial<ScreeningResponse> = {},
+  ): ScreeningResponse {
+    return {
+      id: "screening_1",
+      date: "2026-07-01",
+      instrument: "epds",
+      answers: [1, 2, 0, 3, 1, 0, 2, 1, 0, 0],
+      score: 10,
+      selfHarmFlag: false,
+      ...overrides,
+    };
+  }
+
+  it("round-trips screening responses and stores answers/score only in the encrypted payload", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    // A response with a non-zero item 10 so both the answers and the derived
+    // self-harm flag are on the line for the plaintext-leak check.
+    const flagged = buildScreeningResponse({
+      id: "screening_flagged",
+      date: "2026-07-05",
+      answers: [1, 2, 0, 3, 1, 0, 2, 1, 0, 2],
+      score: 12,
+      selfHarmFlag: true,
+    });
+    await storage.writeScreeningResponse(flagged);
+
+    // Recoverable via the repo (proving encryption, not omission).
+    await expect(storage.listScreeningResponses()).resolves.toEqual([flagged]);
+
+    const row = inspected.state.screeningResponsesRows[0];
+    expect(row?.encrypted_payload).toEqual(expect.any(String));
+    // The per-item answers, the score, and the self-harm flag live ONLY in the
+    // AEAD payload — the plaintext structure never leaks. The single plaintext
+    // column is the coarse completion day, used for ordering / cadence.
+    expect(JSON.stringify(row)).not.toContain("answers");
+    expect(JSON.stringify(row)).not.toContain("selfHarmFlag");
+    expect(JSON.stringify(row)).not.toContain("score");
+    expect(row?.day).toBe("2026-07-05");
+  });
+
+  it("recomputes a persisted score that disagrees with the stored answers on read", async () => {
+    const { storage } = createPregnancyStorage();
+
+    // A caller (or a drifted older write) hands a wrong stored score/flag; the
+    // write sanitizes and the read corrects — history integrity beats stored
+    // values. answers sum to 10 with item 10 non-zero.
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({
+        id: "screening_drifted",
+        answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
+        score: 0,
+        selfHarmFlag: false,
+      }),
+    );
+
+    const [stored] = await storage.listScreeningResponses();
+    expect(stored?.score).toBe(3);
+    expect(stored?.selfHarmFlag).toBe(true);
+  });
+
+  it("drops a screening row whose ciphertext was copied from a different id (AAD fail-closed)", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_a", date: "2026-06-01" }),
+    );
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_b", date: "2026-07-01" }),
+    );
+
+    const rowA = inspected.state.screeningResponsesRows.find(
+      (row) => row.id === "screening_a",
+    );
+    const rowB = inspected.state.screeningResponsesRows.find(
+      (row) => row.id === "screening_b",
+    );
+    if (!rowA || !rowB) {
+      throw new Error("expected two screening rows persisted");
+    }
+    // AAD binds ("screening_responses", id); decrypting A's blob under B's id
+    // fails the auth tag, so the swapped row is dropped rather than surfaced.
+    rowB.encrypted_payload = rowA.encrypted_payload ?? null;
+
+    const responses = await storage.listScreeningResponses();
+    expect(responses).toHaveLength(1);
+    expect(responses[0]?.id).toBe("screening_a");
+  });
+
+  it("wipes the screening table on destructive local reset and leaves it usable", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writeScreeningResponse(buildScreeningResponse());
+
+    await storage.clearAllLocalData();
+
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
+
+    // Usable after reset (same connection, no reopen).
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_after" }),
+    );
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: "screening_after" }),
+    ]);
+  });
+
+  it("deleteAllScreeningData clears screening but leaves postpartum + other data intact (separate sensitive classes)", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "active" }),
+    );
+    await storage.writeScreeningResponse(buildScreeningResponse());
+
+    await storage.deleteAllScreeningData();
+
+    // Screening is empty...
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
+    // ...but the postpartum record and day-log data are untouched — screening
+    // is deleted only via its own explicit action.
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_1" }),
+    );
+    await expect(storage.readDayLogRecord("2026-03-17")).resolves.toEqual(
+      expect.objectContaining({ date: "2026-03-17", isPeriod: true }),
+    );
+  });
+
+  it("deleteAllPostpartumData does NOT delete screening data (screening is a separate class)", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_1", status: "active" }),
+    );
+    await storage.writeScreeningResponse(buildScreeningResponse());
+
+    await storage.deleteAllPostpartumData();
+
+    // Postpartum is gone, but the screening response survives — the two
+    // sensitive classes are never coupled.
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: "screening_1" }),
+    ]);
   });
 });

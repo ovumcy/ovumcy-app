@@ -50,6 +50,23 @@ export function createLocalAppStorageMock(
       .fn()
       .mockResolvedValue(createDefaultManagedBillingCacheRecord()),
     writeManagedBillingCacheRecord: jest.fn().mockResolvedValue(undefined),
+    readActivePregnancy: jest.fn().mockResolvedValue(null),
+    listPregnancyRecords: jest.fn().mockResolvedValue([]),
+    writePregnancyRecord: jest.fn().mockResolvedValue(undefined),
+    listKickSessions: jest.fn().mockResolvedValue([]),
+    writeKickSession: jest.fn().mockResolvedValue(undefined),
+    deleteKickSession: jest.fn().mockResolvedValue(undefined),
+    listContractionSessions: jest.fn().mockResolvedValue([]),
+    writeContractionSession: jest.fn().mockResolvedValue(undefined),
+    deleteContractionSession: jest.fn().mockResolvedValue(undefined),
+    deleteAllPregnancyData: jest.fn().mockResolvedValue(undefined),
+    readActivePostpartum: jest.fn().mockResolvedValue(null),
+    listPostpartumRecords: jest.fn().mockResolvedValue([]),
+    writePostpartumRecord: jest.fn().mockResolvedValue(undefined),
+    deleteAllPostpartumData: jest.fn().mockResolvedValue(undefined),
+    listScreeningResponses: jest.fn().mockResolvedValue([]),
+    writeScreeningResponse: jest.fn().mockResolvedValue(undefined),
+    deleteAllScreeningData: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

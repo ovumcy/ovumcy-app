@@ -1,6 +1,13 @@
 import type { DayLogRecord } from "../../models/day-log";
 import type { OnboardingRecord, OnboardingStep } from "../../models/onboarding";
-import type { ProfileRecord } from "../../models/profile";
+import type { LocalDateISO, ProfileRecord } from "../../models/profile";
+import type {
+  ContractionSession,
+  KickCountSession,
+  PregnancyRecord,
+} from "../../models/pregnancy";
+import type { PostpartumRecord } from "../../models/postpartum";
+import type { ScreeningResponse } from "../../models/screening";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { SymptomRecord } from "../../models/symptom";
 
@@ -165,4 +172,54 @@ export interface LocalAppStorage {
   writeSymptomRecord(record: SymptomRecord): Promise<void>;
   readManagedBillingCacheRecord(): Promise<ManagedBillingCacheRecord>;
   writeManagedBillingCacheRecord(record: ManagedBillingCacheRecord): Promise<void>;
+  // Pregnancy-mode repositories. Sensitive fields (edd, dates, endReason,
+  // modeOfDelivery, session payloads) live only in the encrypted payload; the
+  // plaintext status/day columns carry the minimum needed for selection.
+  readActivePregnancy(): Promise<PregnancyRecord | null>;
+  listPregnancyRecords(): Promise<PregnancyRecord[]>;
+  writePregnancyRecord(record: PregnancyRecord): Promise<void>;
+  listKickSessions(
+    fromDate?: LocalDateISO,
+    toDate?: LocalDateISO,
+  ): Promise<KickCountSession[]>;
+  writeKickSession(session: KickCountSession): Promise<void>;
+  deleteKickSession(id: string): Promise<void>;
+  listContractionSessions(
+    fromDate?: LocalDateISO,
+    toDate?: LocalDateISO,
+  ): Promise<ContractionSession[]>;
+  writeContractionSession(session: ContractionSession): Promise<void>;
+  deleteContractionSession(id: string): Promise<void>;
+  // Hard-delete of the entire pregnancy data class: removes ALL pregnancy
+  // records, kick sessions, and contraction sessions. A destructive, device-auth
+  // gated action; other tables (day logs, profile, symptoms) are untouched.
+  deleteAllPregnancyData(): Promise<void>;
+  // Postpartum-mode repository. Sensitive fields (startedAt/birth date,
+  // modeOfDelivery, endedAt, endReason) live only in the encrypted payload; the
+  // plaintext status column carries the minimum needed for the one-active
+  // selection query, mirroring pregnancy_records.
+  readActivePostpartum(): Promise<PostpartumRecord | null>;
+  listPostpartumRecords(): Promise<PostpartumRecord[]>;
+  writePostpartumRecord(record: PostpartumRecord): Promise<void>;
+  // Hard-delete of the whole postpartum data class: removes ALL postpartum
+  // records. Its own destructive, device-auth gated action, separate from
+  // deleteAllPregnancyData — pregnancy and postpartum data are deleted
+  // independently. Other tables (day logs, profile, symptoms, pregnancy) are
+  // untouched.
+  deleteAllPostpartumData(): Promise<void>;
+  // EPDS mood-screening repository. Mental-health screening answers are a
+  // distinct, more-sensitive data class: the answer vector and derived score
+  // live ONLY in the encrypted payload, bound to
+  // buildLocalDataAad("screening_responses", id); the sole plaintext is the
+  // coarse completion `day` used for history ordering and the repeat-cadence
+  // query. There is no read-active/single-row concept — a screening is an
+  // append-only history — so only a list read is exposed.
+  listScreeningResponses(): Promise<ScreeningResponse[]>;
+  writeScreeningResponse(response: ScreeningResponse): Promise<void>;
+  // Hard-delete of the whole screening data class: removes ALL screening
+  // responses. Its own destructive, device-auth gated action, SEPARATE from
+  // deleteAllPostpartumData — mental-health screening data is a distinct
+  // sensitive class deleted only via its own explicit consent, never coupled to
+  // the postpartum delete. Every other table stays untouched.
+  deleteAllScreeningData(): Promise<void>;
 }

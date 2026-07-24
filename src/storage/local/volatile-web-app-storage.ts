@@ -4,12 +4,29 @@ import {
 } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
+  sanitizeContractionSession,
+  sanitizeKickCountSession,
+  sanitizePregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+  type PregnancyRecord,
+} from "../../models/pregnancy";
+import {
+  sanitizePostpartumRecord,
+  type PostpartumRecord,
+} from "../../models/postpartum";
+import {
+  sanitizeScreeningResponse,
+  type ScreeningResponse,
+} from "../../models/screening";
+import {
   createDefaultProfileRecord,
   normalizeCalendarPredictionNoticeKey,
   normalizeInterfaceLanguage,
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   normalizeWeekStartDay,
+  type LocalDateISO,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -49,6 +66,11 @@ type VolatileWebStorageState = {
   dayLogRecords: Record<string, DayLogRecord>;
   symptomRecords: SymptomRecord[];
   managedBillingCacheRecord: ManagedBillingCacheRecord;
+  pregnancyRecords: Record<string, PregnancyRecord>;
+  kickSessions: Record<string, KickCountSession>;
+  contractionSessions: Record<string, ContractionSession>;
+  postpartumRecords: Record<string, PostpartumRecord>;
+  screeningResponses: Record<string, ScreeningResponse>;
 };
 
 export function createVolatileWebAppStorage(): LocalAppStorage {
@@ -218,6 +240,201 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
         managedBillingCacheRecord: normalizeManagedBillingCacheRecord(record),
       };
     },
+
+    async readActivePregnancy(): Promise<PregnancyRecord | null> {
+      return (
+        sanitizePregnancyRecords(state.pregnancyRecords).find(
+          (record) => record.status === "active",
+        ) ?? null
+      );
+    },
+
+    async listPregnancyRecords(): Promise<PregnancyRecord[]> {
+      return sanitizePregnancyRecords(state.pregnancyRecords);
+    },
+
+    async writePregnancyRecord(record: PregnancyRecord): Promise<void> {
+      const normalized = sanitizePregnancyRecord(record);
+      if (!normalized) {
+        throw new Error("writePregnancyRecord: record failed sanitize");
+      }
+
+      // At-most-one-active invariant, enforced on every backend so services
+      // never branch on storage tech: reject a second concurrently active
+      // record; updating the SAME active record (same id) still succeeds.
+      if (normalized.status === "active") {
+        for (const [id, existing] of Object.entries(state.pregnancyRecords)) {
+          if (id !== normalized.id && existing.status === "active") {
+            throw new Error(
+              "writePregnancyRecord: another pregnancy is already active",
+            );
+          }
+        }
+      }
+
+      state = {
+        ...state,
+        pregnancyRecords: {
+          ...state.pregnancyRecords,
+          [normalized.id]: normalized,
+        },
+      };
+    },
+
+    async listKickSessions(
+      fromDate?: LocalDateISO,
+      toDate?: LocalDateISO,
+    ): Promise<KickCountSession[]> {
+      return sanitizeKickSessions(state.kickSessions).filter((session) =>
+        isDayInRange(session.date, fromDate, toDate),
+      );
+    },
+
+    async writeKickSession(session: KickCountSession): Promise<void> {
+      const normalized = sanitizeKickCountSession(session);
+      if (!normalized) {
+        throw new Error("writeKickSession: session failed sanitize");
+      }
+
+      state = {
+        ...state,
+        kickSessions: {
+          ...state.kickSessions,
+          [normalized.id]: normalized,
+        },
+      };
+    },
+
+    async deleteKickSession(id: string): Promise<void> {
+      const nextKickSessions = { ...state.kickSessions };
+      delete nextKickSessions[id];
+      state = {
+        ...state,
+        kickSessions: nextKickSessions,
+      };
+    },
+
+    async listContractionSessions(
+      fromDate?: LocalDateISO,
+      toDate?: LocalDateISO,
+    ): Promise<ContractionSession[]> {
+      return sanitizeContractionSessions(state.contractionSessions).filter(
+        (session) => isDayInRange(session.date, fromDate, toDate),
+      );
+    },
+
+    async writeContractionSession(session: ContractionSession): Promise<void> {
+      const normalized = sanitizeContractionSession(session);
+      if (!normalized) {
+        throw new Error("writeContractionSession: session failed sanitize");
+      }
+
+      state = {
+        ...state,
+        contractionSessions: {
+          ...state.contractionSessions,
+          [normalized.id]: normalized,
+        },
+      };
+    },
+
+    async deleteContractionSession(id: string): Promise<void> {
+      const nextContractionSessions = { ...state.contractionSessions };
+      delete nextContractionSessions[id];
+      state = {
+        ...state,
+        contractionSessions: nextContractionSessions,
+      };
+    },
+
+    async deleteAllPregnancyData(): Promise<void> {
+      // Hard-delete the whole pregnancy data class; every other collection
+      // (day logs, profile, symptoms, sync prefs) is left intact.
+      state = {
+        ...state,
+        pregnancyRecords: {},
+        kickSessions: {},
+        contractionSessions: {},
+      };
+    },
+
+    async readActivePostpartum(): Promise<PostpartumRecord | null> {
+      return (
+        sanitizePostpartumRecords(state.postpartumRecords).find(
+          (record) => record.status === "active",
+        ) ?? null
+      );
+    },
+
+    async listPostpartumRecords(): Promise<PostpartumRecord[]> {
+      return sanitizePostpartumRecords(state.postpartumRecords);
+    },
+
+    async writePostpartumRecord(record: PostpartumRecord): Promise<void> {
+      const normalized = sanitizePostpartumRecord(record);
+      if (!normalized) {
+        throw new Error("writePostpartumRecord: record failed sanitize");
+      }
+
+      // At-most-one-active invariant, enforced on every backend so services
+      // never branch on storage tech: reject a second concurrently active
+      // record; updating the SAME active record (same id) still succeeds.
+      if (normalized.status === "active") {
+        for (const [id, existing] of Object.entries(state.postpartumRecords)) {
+          if (id !== normalized.id && existing.status === "active") {
+            throw new Error(
+              "writePostpartumRecord: another postpartum is already active",
+            );
+          }
+        }
+      }
+
+      state = {
+        ...state,
+        postpartumRecords: {
+          ...state.postpartumRecords,
+          [normalized.id]: normalized,
+        },
+      };
+    },
+
+    async deleteAllPostpartumData(): Promise<void> {
+      // Hard-delete the whole postpartum data class; every other collection
+      // (day logs, profile, symptoms, sync prefs, pregnancy) is left intact.
+      state = {
+        ...state,
+        postpartumRecords: {},
+      };
+    },
+
+    async listScreeningResponses(): Promise<ScreeningResponse[]> {
+      return sanitizeScreeningResponses(state.screeningResponses);
+    },
+
+    async writeScreeningResponse(response: ScreeningResponse): Promise<void> {
+      const normalized = sanitizeScreeningResponse(response);
+      if (!normalized) {
+        throw new Error("writeScreeningResponse: response failed sanitize");
+      }
+
+      state = {
+        ...state,
+        screeningResponses: {
+          ...state.screeningResponses,
+          [normalized.id]: normalized,
+        },
+      };
+    },
+
+    async deleteAllScreeningData(): Promise<void> {
+      // Hard-delete the whole screening data class; every other collection
+      // (incl. postpartum) is left intact — screening is deleted only via its
+      // own explicit consent, never coupled to the postpartum delete.
+      state = {
+        ...state,
+        screeningResponses: {},
+      };
+    },
   };
 }
 
@@ -240,7 +457,111 @@ function createDefaultVolatileWebStorageState(): VolatileWebStorageState {
     dayLogRecords: {},
     symptomRecords: createDefaultSymptomRecords(),
     managedBillingCacheRecord: createDefaultManagedBillingCacheRecord(),
+    pregnancyRecords: {},
+    kickSessions: {},
+    contractionSessions: {},
+    postpartumRecords: {},
+    screeningResponses: {},
   };
+}
+
+function sanitizePregnancyRecords(
+  records: Record<string, PregnancyRecord>,
+): PregnancyRecord[] {
+  return Object.values(records)
+    .map((record) => sanitizePregnancyRecord(record))
+    .filter((record): record is PregnancyRecord => record !== null)
+    .sort(comparePregnancyRecords);
+}
+
+function sanitizeKickSessions(
+  sessions: Record<string, KickCountSession>,
+): KickCountSession[] {
+  return Object.values(sessions)
+    .map((session) => sanitizeKickCountSession(session))
+    .filter((session): session is KickCountSession => session !== null)
+    .sort(compareSessionsByDate);
+}
+
+function sanitizeContractionSessions(
+  sessions: Record<string, ContractionSession>,
+): ContractionSession[] {
+  return Object.values(sessions)
+    .map((session) => sanitizeContractionSession(session))
+    .filter((session): session is ContractionSession => session !== null)
+    .sort(compareSessionsByDate);
+}
+
+function sanitizePostpartumRecords(
+  records: Record<string, PostpartumRecord>,
+): PostpartumRecord[] {
+  return Object.values(records)
+    .map((record) => sanitizePostpartumRecord(record))
+    .filter((record): record is PostpartumRecord => record !== null)
+    .sort(comparePostpartumRecords);
+}
+
+function comparePregnancyRecords(
+  left: PregnancyRecord,
+  right: PregnancyRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function comparePostpartumRecords(
+  left: PostpartumRecord,
+  right: PostpartumRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function sanitizeScreeningResponses(
+  responses: Record<string, ScreeningResponse>,
+): ScreeningResponse[] {
+  return Object.values(responses)
+    .map((response) => sanitizeScreeningResponse(response))
+    .filter((response): response is ScreeningResponse => response !== null)
+    .sort(compareScreeningResponses);
+}
+
+function compareScreeningResponses(
+  left: ScreeningResponse,
+  right: ScreeningResponse,
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function compareSessionsByDate(
+  left: { date: string; id: string },
+  right: { date: string; id: string },
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function isDayInRange(
+  day: string,
+  fromDate?: LocalDateISO,
+  toDate?: LocalDateISO,
+): boolean {
+  if (fromDate && day < fromDate) {
+    return false;
+  }
+  if (toDate && day > toDate) {
+    return false;
+  }
+  return true;
 }
 
 function mergeProfileRecord(record: Partial<ProfileRecord>): ProfileRecord {

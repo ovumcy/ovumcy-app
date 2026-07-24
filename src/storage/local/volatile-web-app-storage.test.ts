@@ -35,6 +35,9 @@ describe("volatile-web-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps", "fatigue"],
       notes: "Session-only web note",
+      weightKg: 65.436,
+      bpSystolic: 118.6,
+      bpDiastolic: 76.2,
     });
 
     await expect(storage.readBootstrapState()).resolves.toEqual({
@@ -66,6 +69,9 @@ describe("volatile-web-app-storage", () => {
       cycleFactorKeys: ["stress"],
       symptomIDs: ["cramps", "fatigue"],
       notes: "Session-only web note",
+      weightKg: 65.44,
+      bpSystolic: 119,
+      bpDiastolic: 76,
     });
     await expect(
       storage.readDayLogSummary("2026-03-01", "2026-03-31"),
@@ -83,6 +89,44 @@ describe("volatile-web-app-storage", () => {
         }),
       ]),
     );
+  });
+
+  it("leaves pregnancy metrics absent for a day log written without them", async () => {
+    // Volatile web storage has no durable persistence to hold a "legacy"
+    // snapshot (state resets every session by design — see
+    // security-constitution.md on web preview never being durable secure
+    // storage for health data). The relevant guarantee here is narrower:
+    // omitting the fields on write must not default them to a sentinel.
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writeDayLogRecord({
+      date: "2026-03-19",
+      isPeriod: false,
+      cycleStart: false,
+      isUncertain: false,
+      flow: "none",
+      mood: 0,
+      sexActivity: "none",
+      bbt: 0,
+      cervicalMucus: "none",
+      lhTest: "none",
+      pregnancyTest: "none",
+      cycleFactorKeys: [],
+      symptomIDs: [],
+      notes: "No pregnancy metrics today",
+    });
+
+    const record = await storage.readDayLogRecord("2026-03-19");
+
+    expect(record).toEqual(
+      expect.objectContaining({
+        date: "2026-03-19",
+        notes: "No pregnancy metrics today",
+      }),
+    );
+    expect(record).not.toHaveProperty("weightKg");
+    expect(record).not.toHaveProperty("bpSystolic");
+    expect(record).not.toHaveProperty("bpDiastolic");
   });
 
   it("does not persist sensitive health data across a new web app instance", async () => {
@@ -237,5 +281,257 @@ describe("volatile-web-app-storage", () => {
       dateFrom: null,
       dateTo: null,
     });
+  });
+
+  it("keeps pregnancy records, kick sessions, and contraction sessions for the current session", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: "2025-11-08",
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_1", status: "active" }),
+    );
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(1);
+
+    await storage.writeKickSession({
+      id: "kick_a",
+      date: "2026-07-10",
+      durationMinutes: 60,
+      kickCount: 8,
+    });
+    await storage.writeKickSession({
+      id: "kick_b",
+      date: "2026-07-25",
+      durationMinutes: 45,
+      kickCount: 11,
+    });
+    await expect(
+      storage.listKickSessions("2026-07-20", "2026-07-31"),
+    ).resolves.toEqual([expect.objectContaining({ id: "kick_b" })]);
+
+    await storage.writeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [
+        { startedAt: "2026-08-10T14:30:00.000Z", durationSeconds: 40 },
+      ],
+    });
+    await expect(storage.listContractionSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "contraction_1" }),
+    ]);
+
+    await storage.deleteKickSession("kick_a");
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+  });
+
+  it("deleteAllPregnancyData clears every pregnancy collection but keeps other data", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    // Non-pregnancy data (profile) stands witness that it is left intact.
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-10",
+    });
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: "2025-11-08",
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+    await storage.writeKickSession({
+      id: "kick_1",
+      date: "2026-07-20",
+      durationMinutes: 60,
+      kickCount: 10,
+    });
+    await storage.writeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [
+        { startedAt: "2026-08-10T14:30:00.000Z", durationSeconds: 40 },
+      ],
+    });
+
+    await storage.deleteAllPregnancyData();
+
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+
+    // Profile (and everything outside the pregnancy collections) is untouched.
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ lastPeriodStart: "2026-03-10" }),
+    );
+  });
+
+  it("enforces the at-most-one-active pregnancy invariant in the volatile web adapter", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "lmp",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+
+    await expect(
+      storage.writePregnancyRecord({
+        id: "pregnancy_2",
+        status: "active",
+        edd: "2026-09-15",
+        eddBasis: "lmp",
+        lmpDate: null,
+        schedulePreset: "who2016",
+        startedAt: "2025-12-10",
+        endedAt: null,
+        endReason: null,
+        modeOfDelivery: null,
+      }),
+    ).rejects.toThrow("another pregnancy is already active");
+  });
+
+  it("does not persist pregnancy data across a new web app instance", async () => {
+    const firstSession = createVolatileWebAppStorage();
+
+    await firstSession.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "lmp",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+    await firstSession.writeKickSession({
+      id: "kick_1",
+      date: "2026-07-20",
+      durationMinutes: 60,
+      kickCount: 10,
+    });
+
+    const nextSession = createVolatileWebAppStorage();
+
+    await expect(nextSession.readActivePregnancy()).resolves.toBeNull();
+    await expect(nextSession.listPregnancyRecords()).resolves.toEqual([]);
+    await expect(nextSession.listKickSessions()).resolves.toEqual([]);
+  });
+
+  it("keeps postpartum records for the current session and enforces one-active", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: null,
+      endReason: null,
+    });
+
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_1", status: "active" }),
+    );
+    await expect(storage.listPostpartumRecords()).resolves.toHaveLength(1);
+
+    await expect(
+      storage.writePostpartumRecord({
+        id: "postpartum_2",
+        status: "active",
+        startedAt: "2026-06-05",
+        modeOfDelivery: null,
+        endedAt: null,
+        endReason: null,
+      }),
+    ).rejects.toThrow("another postpartum is already active");
+  });
+
+  it("deleteAllPostpartumData clears postpartum but keeps pregnancy + other data", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-10",
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_1",
+      status: "ended",
+      edd: "2026-06-05",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-09-01",
+      endedAt: "2026-06-01",
+      endReason: "birth",
+      modeOfDelivery: "cesarean",
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: "cesarean",
+      endedAt: null,
+      endReason: null,
+    });
+
+    await storage.deleteAllPostpartumData();
+
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+
+    // Pregnancy + profile are untouched.
+    await expect(storage.listPregnancyRecords()).resolves.toHaveLength(1);
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      expect.objectContaining({ lastPeriodStart: "2026-03-10" }),
+    );
+  });
+
+  it("does not persist postpartum data across a new web app instance", async () => {
+    const firstSession = createVolatileWebAppStorage();
+
+    await firstSession.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    });
+
+    const nextSession = createVolatileWebAppStorage();
+
+    await expect(nextSession.readActivePostpartum()).resolves.toBeNull();
+    await expect(nextSession.listPostpartumRecords()).resolves.toEqual([]);
   });
 });

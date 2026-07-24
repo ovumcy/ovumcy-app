@@ -8,6 +8,22 @@ import {
 } from "../../models/day-log";
 import type { OnboardingRecord } from "../../models/onboarding";
 import {
+  sanitizeContractionSession,
+  sanitizeKickCountSession,
+  sanitizePregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+  type PregnancyRecord,
+} from "../../models/pregnancy";
+import {
+  sanitizePostpartumRecord,
+  type PostpartumRecord,
+} from "../../models/postpartum";
+import {
+  sanitizeScreeningResponse,
+  type ScreeningResponse,
+} from "../../models/screening";
+import {
   buildLocalDataAad,
   decryptLocalDataRecord,
   encryptLocalDataRecord,
@@ -23,6 +39,7 @@ import {
   normalizeOnboardingHelperNoticeKey,
   normalizeThemePreference,
   normalizeWeekStartDay,
+  type LocalDateISO,
   type ProfileRecord,
 } from "../../models/profile";
 import {
@@ -150,6 +167,30 @@ type SymptomRow = {
 };
 
 type ManagedBillingCacheRow = {
+  encrypted_payload: string | null;
+};
+
+type PregnancyRecordRow = {
+  id: string;
+  status: string;
+  encrypted_payload: string | null;
+};
+
+type PregnancySessionRow = {
+  id: string;
+  day: string;
+  encrypted_payload: string | null;
+};
+
+type PostpartumRecordRow = {
+  id: string;
+  status: string;
+  encrypted_payload: string | null;
+};
+
+type ScreeningResponseRow = {
+  id: string;
+  day: string;
   encrypted_payload: string | null;
 };
 
@@ -589,6 +630,265 @@ export function createSQLiteAppStorage(
     );
   }
 
+  async function readActivePregnancyInternal(): Promise<PregnancyRecord | null> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/readActivePregnancy/select",
+      () =>
+        database.getAllAsync<PregnancyRecordRow>(
+          `SELECT id, status, encrypted_payload
+           FROM pregnancy_records
+           WHERE status = 'active';`,
+        ),
+    );
+
+    for (const row of rows) {
+      const record = decodePregnancyRow(row, localDataKey);
+      // Defensive: a row whose plaintext status says "active" but whose payload
+      // fails to decrypt/sanitize (e.g. a swapped/foreign blob, or a payload
+      // whose inner status disagrees with the column) is skipped, not surfaced.
+      if (record && record.status === "active") {
+        return record;
+      }
+    }
+
+    return null;
+  }
+
+  async function listPregnancyRecordsInternal(): Promise<PregnancyRecord[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/listPregnancyRecords/select",
+      () =>
+        database.getAllAsync<PregnancyRecordRow>(
+          `SELECT id, status, encrypted_payload FROM pregnancy_records;`,
+        ),
+    );
+
+    return rows
+      .map((row) => decodePregnancyRow(row, localDataKey))
+      .filter((record): record is PregnancyRecord => record !== null)
+      .sort(comparePregnancyRecords);
+  }
+
+  async function writePregnancyRecordInternal(
+    record: PregnancyRecord,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writePregnancyRecord/upsert", () =>
+      upsertPregnancyRecord(database, record, localDataKey),
+    );
+  }
+
+  async function listKickSessionsInternal(
+    fromDate?: LocalDateISO,
+    toDate?: LocalDateISO,
+  ): Promise<KickCountSession[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/listKickSessions/select",
+      () =>
+        database.getAllAsync<PregnancySessionRow>(
+          `SELECT id, day, encrypted_payload FROM kick_sessions;`,
+        ),
+    );
+
+    return rows
+      .filter((row) => isDayInRange(row.day, fromDate, toDate))
+      .map((row) => decodeKickSessionRow(row, localDataKey))
+      .filter((session): session is KickCountSession => session !== null)
+      .sort(compareSessionsByDate);
+  }
+
+  async function writeKickSessionInternal(
+    session: KickCountSession,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writeKickSession/upsert", () =>
+      upsertKickSession(database, session, localDataKey),
+    );
+  }
+
+  async function deleteKickSessionInternal(id: string): Promise<void> {
+    const database = await getHydratedDatabase();
+    await withStorageOperationLabel("sqlite/deleteKickSession/delete", () =>
+      database.runAsync("DELETE FROM kick_sessions WHERE id = ?;", id),
+    );
+  }
+
+  async function listContractionSessionsInternal(
+    fromDate?: LocalDateISO,
+    toDate?: LocalDateISO,
+  ): Promise<ContractionSession[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/listContractionSessions/select",
+      () =>
+        database.getAllAsync<PregnancySessionRow>(
+          `SELECT id, day, encrypted_payload FROM contraction_sessions;`,
+        ),
+    );
+
+    return rows
+      .filter((row) => isDayInRange(row.day, fromDate, toDate))
+      .map((row) => decodeContractionSessionRow(row, localDataKey))
+      .filter((session): session is ContractionSession => session !== null)
+      .sort(compareSessionsByDate);
+  }
+
+  async function writeContractionSessionInternal(
+    session: ContractionSession,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writeContractionSession/upsert", () =>
+      upsertContractionSession(database, session, localDataKey),
+    );
+  }
+
+  async function deleteContractionSessionInternal(id: string): Promise<void> {
+    const database = await getHydratedDatabase();
+    await withStorageOperationLabel(
+      "sqlite/deleteContractionSession/delete",
+      () =>
+        database.runAsync("DELETE FROM contraction_sessions WHERE id = ?;", id),
+    );
+  }
+
+  async function deleteAllPregnancyDataInternal(): Promise<void> {
+    const database = await getHydratedDatabase();
+    // Hard-delete the whole pregnancy data class. Only the three pregnancy
+    // tables are cleared; day_logs / profile_settings / symptoms and the rest
+    // stay intact (unlike wipeLocalAppTables). No schema change — DELETE FROM
+    // only. The whole batch runs inside one enqueued storage operation, so the
+    // per-connection serialization is preserved (no overlapping bursts).
+    await withStorageOperationLabel(
+      "sqlite/deleteAllPregnancyData/delete",
+      async () => {
+        await database.runAsync("DELETE FROM pregnancy_records;");
+        await database.runAsync("DELETE FROM kick_sessions;");
+        await database.runAsync("DELETE FROM contraction_sessions;");
+      },
+    );
+  }
+
+  async function readActivePostpartumInternal(): Promise<PostpartumRecord | null> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/readActivePostpartum/select",
+      () =>
+        database.getAllAsync<PostpartumRecordRow>(
+          `SELECT id, status, encrypted_payload
+           FROM postpartum_records
+           WHERE status = 'active';`,
+        ),
+    );
+
+    for (const row of rows) {
+      const record = decodePostpartumRow(row, localDataKey);
+      // Defensive: a row whose plaintext status says "active" but whose payload
+      // fails to decrypt/sanitize (swapped/foreign blob, or an inner status
+      // that disagrees with the column) is skipped, not surfaced.
+      if (record && record.status === "active") {
+        return record;
+      }
+    }
+
+    return null;
+  }
+
+  async function listPostpartumRecordsInternal(): Promise<PostpartumRecord[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/listPostpartumRecords/select",
+      () =>
+        database.getAllAsync<PostpartumRecordRow>(
+          `SELECT id, status, encrypted_payload FROM postpartum_records;`,
+        ),
+    );
+
+    return rows
+      .map((row) => decodePostpartumRow(row, localDataKey))
+      .filter((record): record is PostpartumRecord => record !== null)
+      .sort(comparePostpartumRecords);
+  }
+
+  async function writePostpartumRecordInternal(
+    record: PostpartumRecord,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writePostpartumRecord/upsert", () =>
+      upsertPostpartumRecord(database, record, localDataKey),
+    );
+  }
+
+  async function deleteAllPostpartumDataInternal(): Promise<void> {
+    const database = await getHydratedDatabase();
+    // Hard-delete the whole postpartum data class. Only postpartum_records is
+    // cleared; every other table (incl. the pregnancy tables) stays intact —
+    // pregnancy and postpartum data are deleted independently. No schema
+    // change — DELETE FROM only, inside one enqueued storage operation so the
+    // per-connection serialization is preserved.
+    await withStorageOperationLabel(
+      "sqlite/deleteAllPostpartumData/delete",
+      async () => {
+        await database.runAsync("DELETE FROM postpartum_records;");
+      },
+    );
+  }
+
+  async function listScreeningResponsesInternal(): Promise<ScreeningResponse[]> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    const rows = await withStorageOperationLabel(
+      "sqlite/listScreeningResponses/select",
+      () =>
+        database.getAllAsync<ScreeningResponseRow>(
+          `SELECT id, day, encrypted_payload FROM screening_responses;`,
+        ),
+    );
+
+    return rows
+      .map((row) => decodeScreeningRow(row, localDataKey))
+      .filter((response): response is ScreeningResponse => response !== null)
+      .sort(compareScreeningResponses);
+  }
+
+  async function writeScreeningResponseInternal(
+    response: ScreeningResponse,
+  ): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await withStorageOperationLabel("sqlite/writeScreeningResponse/upsert", () =>
+      upsertScreeningResponse(database, response, localDataKey),
+    );
+  }
+
+  async function deleteAllScreeningDataInternal(): Promise<void> {
+    const database = await getHydratedDatabase();
+    // Hard-delete the whole screening data class. Only screening_responses is
+    // cleared; every other table (incl. postpartum_records) stays intact —
+    // mental-health screening is a SEPARATE sensitive class, deleted only via
+    // its own explicit consent, never coupled to the postpartum delete. No
+    // schema change — DELETE FROM only, inside one enqueued storage operation
+    // so the per-connection serialization is preserved.
+    await withStorageOperationLabel(
+      "sqlite/deleteAllScreeningData/delete",
+      async () => {
+        await database.runAsync("DELETE FROM screening_responses;");
+      },
+    );
+  }
+
   return {
     readBootstrapState() {
       return enqueueStorageOperation(() => readBootstrapStateInternal());
@@ -645,6 +945,65 @@ export function createSQLiteAppStorage(
       return enqueueStorageOperation(() =>
         writeManagedBillingCacheRecordInternal(record),
       );
+    },
+    readActivePregnancy() {
+      return enqueueStorageOperation(() => readActivePregnancyInternal());
+    },
+    listPregnancyRecords() {
+      return enqueueStorageOperation(() => listPregnancyRecordsInternal());
+    },
+    writePregnancyRecord(record) {
+      return enqueueStorageOperation(() => writePregnancyRecordInternal(record));
+    },
+    listKickSessions(fromDate, toDate) {
+      return enqueueStorageOperation(() =>
+        listKickSessionsInternal(fromDate, toDate),
+      );
+    },
+    writeKickSession(session) {
+      return enqueueStorageOperation(() => writeKickSessionInternal(session));
+    },
+    deleteKickSession(id) {
+      return enqueueStorageOperation(() => deleteKickSessionInternal(id));
+    },
+    listContractionSessions(fromDate, toDate) {
+      return enqueueStorageOperation(() =>
+        listContractionSessionsInternal(fromDate, toDate),
+      );
+    },
+    writeContractionSession(session) {
+      return enqueueStorageOperation(() =>
+        writeContractionSessionInternal(session),
+      );
+    },
+    deleteContractionSession(id) {
+      return enqueueStorageOperation(() => deleteContractionSessionInternal(id));
+    },
+    deleteAllPregnancyData() {
+      return enqueueStorageOperation(() => deleteAllPregnancyDataInternal());
+    },
+    readActivePostpartum() {
+      return enqueueStorageOperation(() => readActivePostpartumInternal());
+    },
+    listPostpartumRecords() {
+      return enqueueStorageOperation(() => listPostpartumRecordsInternal());
+    },
+    writePostpartumRecord(record) {
+      return enqueueStorageOperation(() => writePostpartumRecordInternal(record));
+    },
+    deleteAllPostpartumData() {
+      return enqueueStorageOperation(() => deleteAllPostpartumDataInternal());
+    },
+    listScreeningResponses() {
+      return enqueueStorageOperation(() => listScreeningResponsesInternal());
+    },
+    writeScreeningResponse(response) {
+      return enqueueStorageOperation(() =>
+        writeScreeningResponseInternal(response),
+      );
+    },
+    deleteAllScreeningData() {
+      return enqueueStorageOperation(() => deleteAllScreeningDataInternal());
     },
   };
 }
@@ -1273,6 +1632,385 @@ async function upsertManagedBillingCacheRecord(
       buildLocalDataAad("managed_billing_cache", "1"),
     ),
   );
+}
+
+async function upsertPregnancyRecord(
+  database: LocalAppDatabase,
+  record: PregnancyRecord,
+  localDataKey: string,
+): Promise<void> {
+  // Sanitize before encrypt (mirrors upsertDayLogRecord). A structurally invalid
+  // record cannot be persisted meaningfully, so reject the write loudly rather
+  // than silently drop a write the caller believes succeeded.
+  const normalized = sanitizePregnancyRecord(record);
+  if (!normalized) {
+    throw new Error("writePregnancyRecord: record failed sanitize");
+  }
+
+  // At-most-one-active invariant: reject writing an "active" record while a
+  // DIFFERENT record is already active (services own status transitions).
+  if (normalized.status === "active") {
+    await assertNoOtherActivePregnancy(database, localDataKey, normalized.id);
+  }
+
+  await database.runAsync(
+    `INSERT INTO pregnancy_records (id, status, encrypted_payload)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       status = excluded.status,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalized.id,
+    normalized.status,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("pregnancy_records", normalized.id),
+    ),
+  );
+}
+
+async function assertNoOtherActivePregnancy(
+  database: LocalAppDatabase,
+  localDataKey: string,
+  selfID: string,
+): Promise<void> {
+  const rows = await database.getAllAsync<PregnancyRecordRow>(
+    `SELECT id, status, encrypted_payload
+     FROM pregnancy_records
+     WHERE status = 'active' AND id != ?;`,
+    selfID,
+  );
+
+  for (const row of rows) {
+    // Only a row that genuinely decrypts to an active record counts as a
+    // conflict; undecryptable/stale rows are ignored (defensive, so a stale
+    // "active" ciphertext never permanently blocks starting a new pregnancy).
+    const record = decodePregnancyRow(row, localDataKey);
+    if (record && record.status === "active") {
+      throw new Error(
+        "writePregnancyRecord: another pregnancy is already active",
+      );
+    }
+  }
+}
+
+async function upsertKickSession(
+  database: LocalAppDatabase,
+  session: KickCountSession,
+  localDataKey: string,
+): Promise<void> {
+  const normalized = sanitizeKickCountSession(session);
+  if (!normalized) {
+    throw new Error("writeKickSession: session failed sanitize");
+  }
+
+  await database.runAsync(
+    `INSERT INTO kick_sessions (id, day, encrypted_payload)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       day = excluded.day,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalized.id,
+    normalized.date,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("kick_sessions", normalized.id),
+    ),
+  );
+}
+
+async function upsertContractionSession(
+  database: LocalAppDatabase,
+  session: ContractionSession,
+  localDataKey: string,
+): Promise<void> {
+  const normalized = sanitizeContractionSession(session);
+  if (!normalized) {
+    throw new Error("writeContractionSession: session failed sanitize");
+  }
+
+  await database.runAsync(
+    `INSERT INTO contraction_sessions (id, day, encrypted_payload)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       day = excluded.day,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalized.id,
+    normalized.date,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("contraction_sessions", normalized.id),
+    ),
+  );
+}
+
+function decodePregnancyRow(
+  row: PregnancyRecordRow,
+  localDataKey: string,
+): PregnancyRecord | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  // Defensive read: decrypt (may throw on an AAD/key mismatch — e.g. ciphertext
+  // swapped between rows or tables by a writer with database-file access) then
+  // sanitize (may return null on a structurally invalid payload). Any failure
+  // drops the row so a bad/foreign blob is never surfaced or misattributed —
+  // fail closed.
+  try {
+    return sanitizePregnancyRecord(
+      decryptLocalDataRecord<unknown>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("pregnancy_records", row.id),
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function decodeKickSessionRow(
+  row: PregnancySessionRow,
+  localDataKey: string,
+): KickCountSession | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  try {
+    return sanitizeKickCountSession(
+      decryptLocalDataRecord<unknown>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("kick_sessions", row.id),
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function decodeContractionSessionRow(
+  row: PregnancySessionRow,
+  localDataKey: string,
+): ContractionSession | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  try {
+    return sanitizeContractionSession(
+      decryptLocalDataRecord<unknown>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("contraction_sessions", row.id),
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function comparePregnancyRecords(
+  left: PregnancyRecord,
+  right: PregnancyRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+async function upsertPostpartumRecord(
+  database: LocalAppDatabase,
+  record: PostpartumRecord,
+  localDataKey: string,
+): Promise<void> {
+  // Sanitize before encrypt (mirrors upsertPregnancyRecord). A structurally
+  // invalid record cannot be persisted meaningfully, so reject the write loudly
+  // rather than silently drop a write the caller believes succeeded.
+  const normalized = sanitizePostpartumRecord(record);
+  if (!normalized) {
+    throw new Error("writePostpartumRecord: record failed sanitize");
+  }
+
+  // At-most-one-active invariant: reject writing an "active" record while a
+  // DIFFERENT record is already active (services own status transitions).
+  if (normalized.status === "active") {
+    await assertNoOtherActivePostpartum(database, localDataKey, normalized.id);
+  }
+
+  await database.runAsync(
+    `INSERT INTO postpartum_records (id, status, encrypted_payload)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       status = excluded.status,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalized.id,
+    normalized.status,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("postpartum_records", normalized.id),
+    ),
+  );
+}
+
+async function assertNoOtherActivePostpartum(
+  database: LocalAppDatabase,
+  localDataKey: string,
+  selfID: string,
+): Promise<void> {
+  const rows = await database.getAllAsync<PostpartumRecordRow>(
+    `SELECT id, status, encrypted_payload
+     FROM postpartum_records
+     WHERE status = 'active' AND id != ?;`,
+    selfID,
+  );
+
+  for (const row of rows) {
+    // Only a row that genuinely decrypts to an active record counts as a
+    // conflict; undecryptable/stale rows are ignored (defensive, so a stale
+    // "active" ciphertext never permanently blocks starting new postpartum).
+    const record = decodePostpartumRow(row, localDataKey);
+    if (record && record.status === "active") {
+      throw new Error(
+        "writePostpartumRecord: another postpartum is already active",
+      );
+    }
+  }
+}
+
+function decodePostpartumRow(
+  row: PostpartumRecordRow,
+  localDataKey: string,
+): PostpartumRecord | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  // Defensive read: decrypt (may throw on an AAD/key mismatch — ciphertext
+  // swapped between rows or tables by a writer with database-file access) then
+  // sanitize (may return null on a structurally invalid payload). Any failure
+  // drops the row so a bad/foreign blob is never surfaced or misattributed —
+  // fail closed.
+  try {
+    return sanitizePostpartumRecord(
+      decryptLocalDataRecord<unknown>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("postpartum_records", row.id),
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function comparePostpartumRecords(
+  left: PostpartumRecord,
+  right: PostpartumRecord,
+): number {
+  if (left.startedAt !== right.startedAt) {
+    return left.startedAt.localeCompare(right.startedAt);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+async function upsertScreeningResponse(
+  database: LocalAppDatabase,
+  response: ScreeningResponse,
+  localDataKey: string,
+): Promise<void> {
+  // Sanitize before encrypt (mirrors upsertPostpartumRecord). Sanitize also
+  // RECOMPUTES score + selfHarmFlag from the answers, so a caller can never
+  // persist a score/flag that disagrees with the answers. A structurally
+  // invalid response cannot be persisted meaningfully, so reject the write
+  // loudly rather than silently drop a write the caller believes succeeded.
+  const normalized = sanitizeScreeningResponse(response);
+  if (!normalized) {
+    throw new Error("writeScreeningResponse: response failed sanitize");
+  }
+
+  await database.runAsync(
+    `INSERT INTO screening_responses (id, day, encrypted_payload)
+     VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       day = excluded.day,
+       encrypted_payload = excluded.encrypted_payload;`,
+    normalized.id,
+    // Only the coarse completion day is plaintext (history ordering / cadence
+    // query); the answers, score, and self-harm flag are in the payload only.
+    normalized.date,
+    encryptLocalDataRecord(
+      localDataKey,
+      normalized,
+      buildLocalDataAad("screening_responses", normalized.id),
+    ),
+  );
+}
+
+function decodeScreeningRow(
+  row: ScreeningResponseRow,
+  localDataKey: string,
+): ScreeningResponse | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  // Defensive read: decrypt (may throw on an AAD/key mismatch — ciphertext
+  // swapped between rows or tables by a writer with database-file access) then
+  // sanitize (may return null on a structurally invalid payload, and recomputes
+  // score/flag from answers). Any failure drops the row so a bad/foreign blob
+  // is never surfaced or misattributed — fail closed.
+  try {
+    return sanitizeScreeningResponse(
+      decryptLocalDataRecord<unknown>(
+        localDataKey,
+        row.encrypted_payload,
+        buildLocalDataAad("screening_responses", row.id),
+      ),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function compareScreeningResponses(
+  left: ScreeningResponse,
+  right: ScreeningResponse,
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function compareSessionsByDate(
+  left: { date: string; id: string },
+  right: { date: string; id: string },
+): number {
+  if (left.date !== right.date) {
+    return left.date.localeCompare(right.date);
+  }
+  return left.id.localeCompare(right.id);
+}
+
+function isDayInRange(
+  day: string,
+  fromDate?: LocalDateISO,
+  toDate?: LocalDateISO,
+): boolean {
+  if (fromDate && day < fromDate) {
+    return false;
+  }
+  if (toDate && day > toDate) {
+    return false;
+  }
+  return true;
 }
 
 function mapManagedBillingCacheRow(
