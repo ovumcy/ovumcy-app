@@ -81,7 +81,8 @@ export async function syncReminderDeliveryState(
   const hasAnyReminderEnabled =
     profile.dailyLogReminderEnabled === true ||
     profile.upcomingPeriodReminderEnabled === true ||
-    profile.fertileWindowReminderEnabled === true;
+    profile.fertileWindowReminderEnabled === true ||
+    profile.kickCountReminderEnabled === true;
 
   if (!hasAnyReminderEnabled) {
     await scheduler.sync([]);
@@ -148,7 +149,24 @@ async function loadLocalReminderPlans(
   );
   const today = formatLocalDate(now);
   const records = await storage.listDayLogRecordsInRange(rangeStart, today);
-  return buildLocalReminderPlans(profile, records, now, locale);
+  // The kick-count reminder is the only kind gated on pregnancy state.
+  // The active-pregnancy read is short-circuited on its flag so a plain
+  // cycle-mode load (flag off — the default) performs no extra storage call.
+  // Kind-level gating (active status, gaWeeks >= 28) stays in
+  // buildLocalReminderPlans; kick_count remains local-push-only (the managed
+  // email channel filters it out in managed-reminder-email-schedule-service).
+  const activePregnancy =
+    profile.kickCountReminderEnabled === true
+      ? await storage.readActivePregnancy()
+      : null;
+  return buildLocalReminderPlans(
+    profile,
+    records,
+    now,
+    locale,
+    undefined,
+    activePregnancy,
+  );
 }
 
 async function syncLocalReminderPlans(

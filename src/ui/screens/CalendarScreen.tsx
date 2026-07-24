@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { createEmptyDayLogRecord, hasDayLogData } from "../../models/day-log";
+import type { CalendarPredictionNoticeKey } from "../../models/profile";
 import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getShellCopy } from "../../i18n/shell-copy";
 import { appStorage } from "../../services/app-bootstrap-service";
@@ -78,6 +79,10 @@ export function CalendarScreen({
   const [status, setStatus] = useState<EditorStatusState>(null);
   const [editorMode, setEditorMode] = useState<CalendarEditorMode>("view");
   const [draftVersion, setDraftVersion] = useState(0);
+  // Session-scoped notice dismissals (dismissalScope: "session") live here and
+  // are never persisted, so the notice returns on the next screen mount.
+  const [sessionDismissedNoticeKey, setSessionDismissedNoticeKey] =
+    useState<CalendarPredictionNoticeKey | null>(null);
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
@@ -329,13 +334,21 @@ export function CalendarScreen({
       return;
     }
 
-    await dismissCalendarPredictionNotice(
-      storage,
-      state.profile,
-      state.viewData.predictionNotice.key,
-    );
+    const notice = state.viewData.predictionNotice;
+    if (notice.dismissalScope === "session") {
+      setSessionDismissedNoticeKey(notice.key);
+      return;
+    }
+
+    await dismissCalendarPredictionNotice(storage, state.profile, notice.key);
     await refreshForActiveSelection();
   }
+
+  const visibleViewData =
+    state.viewData.predictionNotice &&
+    state.viewData.predictionNotice.key === sessionDismissedNoticeKey
+      ? { ...state.viewData, predictionNotice: null }
+      : state.viewData;
 
   return (
     <CalendarOverviewScreen
@@ -416,7 +429,7 @@ export function CalendarScreen({
       statusMessage={status?.message ?? autosaveStatus?.message ?? ""}
       statusTone={status?.tone ?? autosaveStatus?.tone}
       summaryViewData={state.selectedDaySummary}
-      viewData={state.viewData}
+      viewData={visibleViewData}
     />
   );
 }

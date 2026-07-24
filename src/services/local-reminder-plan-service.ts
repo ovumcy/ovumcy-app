@@ -4,15 +4,18 @@ import {
   DEFAULT_REMINDER_TIME,
   type ProfileRecord,
 } from "../models/profile";
+import { KICK_COUNTS_START_WEEK, type PregnancyRecord } from "../models/pregnancy";
 import { getReminderCopy } from "../i18n/reminder-copy";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
 } from "./cycle-history-service";
 import { predictCycleWindow } from "./cycle-prediction-policy";
+import { calcGestationalAge } from "./pregnancy-timeline-service";
 import {
   addDays,
   clampReminderLeadDays,
+  formatLocalDate,
   normalizeReminderTime,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -20,7 +23,8 @@ import {
 export type LocalReminderKind =
   | "daily_log"
   | "upcoming_period"
-  | "fertile_window";
+  | "fertile_window"
+  | "kick_count";
 
 export type LocalReminderPlan =
   | {
@@ -54,6 +58,11 @@ export function buildLocalReminderPlans(
   now: Date,
   locale = "en",
   timeZone?: string,
+  // Optional and defaulted to null so every pre-existing call site (which
+  // knows nothing about pregnancy state) keeps compiling and behaving
+  // identically -- omitting it simply means no kick_count plan is ever
+  // produced, the same as before this parameter existed.
+  activePregnancy: PregnancyRecord | null = null,
 ): LocalReminderPlan[] {
   // One resolved zone, stamped on every plan and used to turn calendar days
   // into concrete instants. Defaults to the device zone so the non-managed
@@ -88,6 +97,37 @@ export function buildLocalReminderPlans(
         minute,
       },
     });
+  }
+
+  // Kick-count reminder: gated purely by pregnancy state (an active
+  // record at/after KICK_COUNTS_START_WEEK), never by cycle
+  // predictability/pause -- evaluated before the unpredictableCycle early
+  // return below, which only concerns period/fertile-window predictions.
+  // Notification copy deliberately reuses the existing generic daily_log
+  // title/body: no "kick" or "pregnancy" wording reaches the notification,
+  // matching the privacy posture of every other local reminder kind.
+  if (
+    profile.kickCountReminderEnabled === true &&
+    activePregnancy &&
+    activePregnancy.status === "active"
+  ) {
+    const gestationalAge = calcGestationalAge(
+      activePregnancy.edd,
+      formatLocalDate(now),
+    );
+    if (gestationalAge && gestationalAge.weeks >= KICK_COUNTS_START_WEEK) {
+      plans.push({
+        kind: "kick_count",
+        title: copy.notificationTitle,
+        body: copy.dailyLogBody,
+        timeZone: resolvedTimeZone,
+        trigger: {
+          type: "daily",
+          hour,
+          minute,
+        },
+      });
+    }
   }
 
   if (profile.unpredictableCycle) {

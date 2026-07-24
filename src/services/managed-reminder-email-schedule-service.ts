@@ -9,6 +9,7 @@ import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contrac
 import {
   resolveReminderTimeZone,
   zonedWallTimeToUTC,
+  type LocalReminderKind,
   type LocalReminderPlan,
 } from "./local-reminder-plan-service";
 
@@ -78,6 +79,29 @@ export async function syncManagedReminderEmailSchedules(
   }
 }
 
+// Kinds the managed email channel understands. Deliberately narrower than
+// LocalReminderKind: a new local-only kind (e.g. "kick_count") is not
+// automatically eligible for the managed email channel just because it is
+// eligible for local push -- an explicit opt-in here keeps the channel-split
+// intentional, and a kind the server doesn't recognize can never round-trip
+// to it as metadata (see the medical-safety-adjacent privacy posture in
+// SECURITY.md: managed premium unlocks reminder emails but must not become a
+// second channel for health-adjacent signals beyond what is already
+// explicitly generic).
+const MANAGED_EMAIL_SCHEDULE_KINDS: readonly ManagedCloudReminderEmailScheduleKind[] =
+  ["daily_log", "upcoming_period", "fertile_window"];
+
+// Narrows on the whole plan (not just `plan.kind`) so the filtered array's
+// element type actually carries the narrowed `kind` into the subsequent
+// `.map` -- filtering on a same-shaped boolean predicate would not.
+function isManagedEmailPlan(
+  plan: LocalReminderPlan,
+): plan is LocalReminderPlan & { kind: ManagedCloudReminderEmailScheduleKind } {
+  return (MANAGED_EMAIL_SCHEDULE_KINDS as readonly LocalReminderKind[]).includes(
+    plan.kind,
+  );
+}
+
 export function buildManagedReminderEmailSchedules(
   plans: readonly LocalReminderPlan[],
   locale: string | undefined,
@@ -91,7 +115,7 @@ export function buildManagedReminderEmailSchedules(
   dailyMinute: number;
   nextDeliveryAt: string;
 }[] {
-  return plans.map((plan) => {
+  return plans.filter(isManagedEmailPlan).map((plan) => {
     const base = {
       kind: plan.kind,
       locale: normalizeReminderLocale(locale),

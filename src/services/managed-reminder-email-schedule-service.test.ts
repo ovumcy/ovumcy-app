@@ -90,6 +90,33 @@ describe("managed-reminder-email-schedule-service", () => {
     });
   });
 
+  it("excludes a kick_count plan from managed email schedules (local-push-only kind)", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-04-05T08:15:00.000Z"));
+
+    const schedules = buildManagedReminderEmailSchedules(
+      [
+        {
+          kind: "daily_log",
+          title: "Ovumcy reminder",
+          body: "Open Ovumcy to update today's entry.",
+          trigger: { type: "daily", hour: 21, minute: 30 },
+        },
+        {
+          kind: "kick_count",
+          title: "Ovumcy reminder",
+          body: "Open Ovumcy to update today's entry.",
+          trigger: { type: "daily", hour: 21, minute: 30 },
+        },
+      ],
+      "en",
+      "UTC",
+    );
+
+    expect(schedules).toHaveLength(1);
+    expect(schedules[0]!.kind).toBe("daily_log");
+  });
+
   it("rolls a daily reminder to the next day after the scheduled time passes", () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-04-05T22:15:00.000Z"));
