@@ -4,16 +4,14 @@ import {
   type PregnancyEntitlementSource,
 } from "./pregnancy-entitlement-service";
 
-const FLAG_ENV_KEY = "EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK";
-
 describe("loadPregnancyModuleOwned", () => {
-  const savedFlag = process.env[FLAG_ENV_KEY];
+  const savedFlag = process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
 
   afterEach(() => {
     if (savedFlag === undefined) {
-      delete process.env[FLAG_ENV_KEY];
+      delete process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
     } else {
-      process.env[FLAG_ENV_KEY] = savedFlag;
+      process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK = savedFlag;
     }
   });
 
@@ -48,7 +46,7 @@ describe("loadPregnancyModuleOwned", () => {
   });
 
   it("defaults to the dev-flag source: unset flag means not owned even in dev", async () => {
-    delete process.env[FLAG_ENV_KEY];
+    delete process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK;
 
     await expect(loadPregnancyModuleOwned()).resolves.toBe(false);
   });
@@ -56,7 +54,7 @@ describe("loadPregnancyModuleOwned", () => {
   it("defaults to the dev-flag source: a set flag unlocks a dev build", async () => {
     // Jest runs with __DEV__ === true, so the default source is on its
     // development path here; the release path is pinned separately below.
-    process.env[FLAG_ENV_KEY] = "1";
+    process.env.EXPO_PUBLIC_PREGNANCY_MODULE_DEV_UNLOCK = "1";
 
     await expect(loadPregnancyModuleOwned()).resolves.toBe(true);
   });
