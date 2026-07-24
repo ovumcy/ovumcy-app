@@ -1492,10 +1492,65 @@ export function buildSettingsImportPreviewViewData(
     );
   }
 
+  // Pregnancy-mode collections(formatVersion 2). Each row appears only
+  // when its count is positive, so a v1 file's preview renders exactly as it
+  // did before these collections existed.
+  if (outcome.pregnanciesAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewPregnanciesTemplate, [
+        String(outcome.pregnanciesAdded),
+      ]),
+    );
+  }
+  if (outcome.kickSessionsAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewKickSessionsTemplate, [
+        String(outcome.kickSessionsAdded),
+      ]),
+    );
+  }
+  if (outcome.contractionSessionsAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewContractionSessionsTemplate, [
+        String(outcome.contractionSessionsAdded),
+      ]),
+    );
+  }
+
+  // Postpartum records + screening responses(formatVersion 3). Same
+  // "row only when the count is positive" rule as the pregnancy-mode rows above,
+  // so a v1/v2 file's preview stays byte-identical to before these collections
+  // existed. The screening row reports only a COUNT of new check-ins — never a
+  // score, band, or self-harm signal (the most sensitive class never surfaces
+  // its answers in a settings preview).
+  if (outcome.postpartumRecordsAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewPostpartumRecordsTemplate, [
+        String(outcome.postpartumRecordsAdded),
+      ]),
+    );
+  }
+  if (outcome.screeningResponsesAdded > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewScreeningResponsesTemplate, [
+        String(outcome.screeningResponsesAdded),
+      ]),
+    );
+  }
+
+  // The pregnancy-mode + Y7 counts participate in hasChanges so a v2/v3 backup
+  // whose only new content is one of these collections can actually be
+  // confirmed — otherwise the preview would list rows to add while
+  // simultaneously claiming "nothing new" with a disabled confirm button.
   const hasChanges =
     outcome.dayLogsAdded > 0 ||
     outcome.symptomsAdded > 0 ||
-    outcome.profileRestored;
+    outcome.profileRestored ||
+    outcome.pregnanciesAdded > 0 ||
+    outcome.kickSessionsAdded > 0 ||
+    outcome.contractionSessionsAdded > 0 ||
+    outcome.postpartumRecordsAdded > 0 ||
+    outcome.screeningResponsesAdded > 0;
 
   return {
     detailLines,

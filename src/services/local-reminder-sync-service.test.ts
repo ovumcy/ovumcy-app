@@ -1,3 +1,4 @@
+import { createPregnancyRecord } from "../models/pregnancy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
@@ -7,6 +8,7 @@ import {
 } from "./local-reminder-sync-service";
 import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
 import { syncManagedReminderEmailSchedules } from "./managed-reminder-email-schedule-service";
+import { addDays, parseLocalDate } from "./profile-settings-policy";
 import type { LocalReminderScheduler } from "./local-reminder-scheduler-contract";
 
 jest.mock("./managed-premium-features-service", () => ({
@@ -242,6 +244,136 @@ describe("local-reminder-sync-service", () => {
         { enabled: false },
       );
       expect(loadManagedPremiumFeaturesMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("kick-count reminder wiring(end-to-end through the sync service)", () => {
+    const KICK_EDD = "2026-10-08";
+
+    function nowForGaDays(gaDays: number): Date {
+      return addDays(parseLocalDate(KICK_EDD)!, gaDays - 280);
+    }
+
+    function activePregnancyRecord() {
+      return createPregnancyRecord({
+        edd: KICK_EDD,
+        eddBasis: "lmp",
+        lmpDate: "2026-01-01",
+        startedAt: "2026-03-01",
+      });
+    }
+
+    it("never reads pregnancy state when the kick flag is off, and schedules no kick plan", async () => {
+      const storage = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+      });
+      const scheduler = createScheduler();
+      const profile = {
+        ...createDefaultProfileRecord(),
+        dailyLogReminderEnabled: true,
+        kickCountReminderEnabled: false,
+      };
+
+      await expect(
+        syncLocalReminderSchedule(storage, scheduler, profile, {
+          now: new Date(2026, 3, 5, 10, 0, 0, 0),
+        }),
+      ).resolves.toBe("scheduled");
+
+      // Plain cycle load stays free of the extra pregnancy read.
+      expect(storage.readActivePregnancy).not.toHaveBeenCalled();
+      const [plans] = (scheduler.sync as jest.Mock).mock.calls[0] as [
+        { kind: string }[],
+      ];
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(false);
+    });
+
+    it("schedules the kick reminder at the profile reminder time when on, active, and >= 28 weeks", async () => {
+      // Kick is the ONLY enabled reminder: this exercises both edits at once —
+      // the hasAnyReminderEnabled gate no longer short-circuits, and the
+      // plan-builder receives the active pregnancy.
+      const storage = createLocalAppStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(activePregnancyRecord()),
+      });
+      const secretStore = createSyncSecretStoreMock();
+      const scheduler = createScheduler();
+      loadManagedPremiumFeaturesMock.mockResolvedValue(
+        premiumFeaturesWithReminders(false),
+      );
+      syncManagedReminderEmailSchedulesMock.mockResolvedValue("disabled");
+      const profile = {
+        ...createDefaultProfileRecord(),
+        kickCountReminderEnabled: true,
+        reminderTime: "09:15",
+      };
+
+      const result = await syncReminderDeliveryState(
+        storage,
+        secretStore,
+        scheduler,
+        profile,
+        { now: nowForGaDays(28 * 7) },
+      );
+
+      expect(result.local).toBe("scheduled");
+      expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: "kick_count",
+            trigger: { type: "daily", hour: 9, minute: 15 },
+          }),
+        ]),
+      );
+    });
+
+    it("schedules nothing when the flag is on but there is no active pregnancy", async () => {
+      const storage = createLocalAppStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(null),
+      });
+      const scheduler = createScheduler();
+      const profile = {
+        ...createDefaultProfileRecord(),
+        kickCountReminderEnabled: true,
+      };
+
+      await expect(
+        syncLocalReminderSchedule(storage, scheduler, profile, {
+          now: new Date(2026, 5, 1, 10, 0, 0, 0),
+        }),
+      ).resolves.toBe("disabled");
+
+      expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
+    });
+
+    it("schedules nothing for an ended pregnancy (defense-in-depth on the status field)", async () => {
+      // The real repo's readActivePregnancy never returns an ended record;
+      // mocking one here proves the plan-builder's own status check holds
+      // end-to-end even if that repo contract were violated.
+      const ended = {
+        ...activePregnancyRecord(),
+        status: "ended" as const,
+        endedAt: "2026-09-01",
+        endReason: "birth" as const,
+        modeOfDelivery: "vaginal" as const,
+      };
+      const storage = createLocalAppStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(ended),
+      });
+      const scheduler = createScheduler();
+      const profile = {
+        ...createDefaultProfileRecord(),
+        kickCountReminderEnabled: true,
+      };
+
+      await expect(
+        syncLocalReminderSchedule(storage, scheduler, profile, {
+          now: nowForGaDays(30 * 7),
+        }),
+      ).resolves.toBe("disabled");
+
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
     });
   });
 });

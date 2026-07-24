@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { Dimensions } from "react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
+import { createPregnancyRecord } from "../../models/pregnancy";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
@@ -528,6 +529,44 @@ describe("CalendarScreen", () => {
     await waitFor(() =>
       expect(screen.queryByTestId("calendar-prediction-mode-banner")).toBeNull(),
     );
+  });
+
+  it("shows the pregnancy-paused notice and keeps its dismissal session-only", async () => {
+    const storage = createStorageMock();
+    storage.readActivePregnancy = jest.fn().mockResolvedValue(
+      createPregnancyRecord({
+        edd: "2026-12-01",
+        eddBasis: "lmp",
+        lmpDate: "2026-02-24",
+        startedAt: "2026-02-24",
+      }),
+    );
+
+    const firstMount = render(
+      <CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />,
+    );
+
+    await screen.findByTestId("calendar-prediction-mode-banner");
+    expect(
+      screen.getByText(
+        /Pregnancy tracking is active|Отслеживание беременности активно|El seguimiento del embarazo está activo/i,
+      ),
+    ).toBeTruthy();
+
+    fireEvent.press(
+      screen.getByTestId("calendar-prediction-mode-banner-dismiss"),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("calendar-prediction-mode-banner")).toBeNull(),
+    );
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+
+    // Session-only by contract: a fresh mount surfaces the notice again while
+    // the pregnancy is still active.
+    firstMount.unmount();
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await screen.findByTestId("calendar-prediction-mode-banner");
   });
 
   it("autosaves a new period entry and keeps the editor open", async () => {

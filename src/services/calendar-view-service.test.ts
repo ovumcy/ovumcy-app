@@ -1,4 +1,6 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import { createPregnancyRecord } from "../models/pregnancy";
+import type { ProfileRecord } from "../models/profile";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
 import {
   buildCalendarViewData,
@@ -540,6 +542,7 @@ describe("calendar-view-service", () => {
 
     expect(viewData.isPredictionDisabled).toBe(false);
     expect(viewData.predictionNotice).toEqual({
+      dismissalScope: "persistent",
       dismissLabel: "Dismiss notice",
       key: "calendar_irregular_prediction_notice_v1",
       message:
@@ -574,6 +577,7 @@ describe("calendar-view-service", () => {
 
     expect(viewData.isPredictionDisabled).toBe(true);
     expect(viewData.predictionNotice).toEqual({
+      dismissalScope: "persistent",
       dismissLabel: "Dismiss notice",
       key: "calendar_unpredictable_prediction_notice_v1",
       message:
@@ -1103,5 +1107,258 @@ describe("calendar-view-service", () => {
 
       expect(viewData.days.some((day) => day.stateKey === "pre_fertile")).toBe(false);
     });
+  });
+
+  // A period logged AFTER the latest positive test lifts
+  // resolvePregnancyPause's own pause (cycle-history-service, untouched) --
+  // during an ACTIVE pregnancy that lift is medically wrong. This fixture is
+  // the same shape as the "hides predicted period..." test above, plus one
+  // more logged period (2026-04-08) dated after the positive test.
+  const liftedPauseProfile: ProfileRecord = {
+    lastPeriodStart: "2026-03-01",
+    cycleLength: 28,
+    periodLength: 5,
+    autoPeriodFill: true,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "health",
+    trackBBT: false,
+    temperatureUnit: "c",
+    trackCervicalMucus: false,
+    hideSexChip: false,
+    languageOverride: null,
+    themeOverride: null,
+    dismissedCalendarPredictionNoticeKey: null,
+  };
+  const liftedPauseRecords: DayLogRecord[] = [
+    {
+      ...createEmptyDayLogRecord("2026-03-01"),
+      isPeriod: true,
+      cycleStart: true,
+    },
+    { ...createEmptyDayLogRecord("2026-04-05"), pregnancyTest: "positive" },
+    {
+      ...createEmptyDayLogRecord("2026-04-08"),
+      isPeriod: true,
+      cycleStart: true,
+    },
+  ];
+  const predictionStateKeys = [
+    "predicted",
+    "pre_fertile",
+    "fertility_edge",
+    "fertility_peak",
+    "ovulation",
+    "ovulation_tentative",
+  ];
+
+  it("paints predictions normally once the pause lifts and no suppression flag is set (regression guard -- e.g. no active pregnancy)", () => {
+    const viewData = buildCalendarViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+    );
+
+    expect(
+      viewData.days.some((day) => predictionStateKeys.includes(day.stateKey)),
+    ).toBe(true);
+  });
+
+  it("suppresses prediction cells for an active pregnancy even after the pause lifts, while still painting the logged period", () => {
+    const viewData = buildCalendarViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+      "en",
+      { suppressPredictions: true },
+    );
+
+    expect(
+      viewData.days.some((day) => predictionStateKeys.includes(day.stateKey)),
+    ).toBe(false);
+    const loggedPeriodDay = viewData.days.find(
+      (day) => day.date === "2026-04-08",
+    );
+    expect(loggedPeriodDay?.stateKey).toBe("period");
+    expect(loggedPeriodDay?.isPeriod).toBe(true);
+  });
+
+  it("suppresses predictions end-to-end via loadCalendarScreenState when a pregnancy is active and the pause has lifted", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2027-01-15",
+        eddBasis: "lmp",
+        lmpDate: "2026-04-01",
+        startedAt: "2026-04-01",
+      }),
+    );
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-04-05"),
+      pregnancyTest: "positive",
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-04-08"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 3, 10),
+      "2026-04",
+      "2026-04-10",
+    );
+
+    expect(
+      state.viewData.days.some((day) =>
+        predictionStateKeys.includes(day.stateKey),
+      ),
+    ).toBe(false);
+  });
+
+  it("shows a session-scoped pregnancy-paused notice when an active pregnancy suppresses predictions", () => {
+    const viewData = buildCalendarViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+      "en",
+      { suppressPredictions: true },
+    );
+
+    expect(viewData.predictionNotice).toEqual({
+      dismissalScope: "session",
+      dismissLabel: "Dismiss notice",
+      key: "calendar_pregnancy_paused_prediction_notice_v1",
+      message:
+        "Pregnancy tracking is active. Calendar predictions are paused, so this screen shows recorded facts and saved markers only.",
+    });
+  });
+
+  it("keeps the pregnancy-paused notice off when predictions are not suppressed, even with pregnancy facts logged", () => {
+    const viewData = buildCalendarViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+    );
+
+    expect(viewData.predictionNotice).toBeNull();
+  });
+
+  it("prefers the pregnancy-paused notice over the mode notices while predictions are suppressed", () => {
+    const viewData = buildCalendarViewData(
+      {
+        ...liftedPauseProfile,
+        irregularCycle: true,
+        unpredictableCycle: true,
+      },
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+      "en",
+      { suppressPredictions: true },
+    );
+
+    expect(viewData.predictionNotice?.key).toBe(
+      "calendar_pregnancy_paused_prediction_notice_v1",
+    );
+  });
+
+  it("shows the pregnancy-paused notice even after a mode notice was dismissed and persisted", () => {
+    const viewData = buildCalendarViewData(
+      {
+        ...liftedPauseProfile,
+        unpredictableCycle: true,
+        dismissedCalendarPredictionNoticeKey:
+          "calendar_unpredictable_prediction_notice_v1",
+      },
+      liftedPauseRecords,
+      new Date(2026, 3, 10),
+      new Date(2026, 3, 1),
+      "2026-04-10",
+      "en",
+      { suppressPredictions: true },
+    );
+
+    expect(viewData.predictionNotice).toEqual(
+      expect.objectContaining({
+        dismissalScope: "session",
+        key: "calendar_pregnancy_paused_prediction_notice_v1",
+      }),
+    );
+  });
+
+  it("surfaces the pregnancy-paused notice end-to-end via loadCalendarScreenState for an active pregnancy", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2027-01-15",
+        eddBasis: "lmp",
+        lmpDate: "2026-04-01",
+        startedAt: "2026-04-01",
+      }),
+    );
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-04-05"),
+      pregnancyTest: "positive",
+    });
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 3, 10),
+      "2026-04",
+      "2026-04-10",
+    );
+
+    expect(state.viewData.predictionNotice).toEqual(
+      expect.objectContaining({
+        dismissalScope: "session",
+        key: "calendar_pregnancy_paused_prediction_notice_v1",
+      }),
+    );
+  });
+
+  it("shows pregnancy metrics in the calendar day editor while a pregnancy is active", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2027-04-18",
+        eddBasis: "lmp",
+        lmpDate: "2026-07-12",
+        startedAt: "2026-07-12",
+      }),
+    );
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 6, 12),
+      "2026-07",
+      "2026-07-12",
+    );
+
+    expect(state.editorViewData.visibility.showPregnancyMetrics).toBe(true);
+  });
+
+  it("keeps pregnancy metrics out of the calendar day editor without an active pregnancy", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    const state = await loadCalendarScreenState(
+      storage,
+      new Date(2026, 6, 12),
+      "2026-07",
+      "2026-07-12",
+    );
+
+    expect(state.editorViewData.visibility.showPregnancyMetrics).toBe(false);
   });
 });

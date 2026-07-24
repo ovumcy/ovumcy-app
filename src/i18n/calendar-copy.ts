@@ -20,6 +20,8 @@ const calendarCopyEn = {
     "Irregular cycle mode is on. Ovumcy still shows predictions here, but they should be read as approximate guidance rather than exact dates.",
   predictionModeUnpredictable:
     "Facts-only mode is on. Calendar predictions are off, so this screen shows recorded facts and saved markers only.",
+  predictionPregnancyPaused:
+    "Pregnancy tracking is active. Calendar predictions are paused, so this screen shows recorded facts and saved markers only.",
   calendarMeaning: "What this day means",
   calendarMarkers: "Extra markers",
   periodDayYes: "Yes",
@@ -81,6 +83,8 @@ const calendarCopyDe: CalendarCopy = {
     "Der Modus für unregelmäßige Zyklen ist aktiv. Ovumcy zeigt hier weiterhin Vorhersagen an, aber sie sollten als ungefähre Orientierung und nicht als exakte Daten gelesen werden.",
   predictionModeUnpredictable:
     "Der Modus „Nur Fakten“ ist aktiv. Kalender-Vorhersagen sind ausgeschaltet, daher zeigt dieser Bildschirm nur erfasste Fakten und gespeicherte Marker.",
+  predictionPregnancyPaused:
+    "Das Schwangerschafts-Tracking ist aktiv. Kalender-Vorhersagen sind pausiert, daher zeigt dieser Bildschirm nur erfasste Fakten und gespeicherte Marker.",
   calendarMeaning: "Was dieser Tag bedeutet",
   calendarMarkers: "Zusätzliche Marker",
   periodDayYes: "Ja",
@@ -141,6 +145,8 @@ const calendarCopyFr: CalendarCopy = {
     "Le mode cycle irrégulier est activé. Ovumcy affiche encore des prédictions ici, mais elles doivent être lues comme une indication approximative et non comme des dates exactes.",
   predictionModeUnpredictable:
     "Le mode « Seulement les faits » est activé. Les prédictions du calendrier sont désactivées, donc cet écran n'affiche que les faits enregistrés et les marqueurs sauvegardés.",
+  predictionPregnancyPaused:
+    "Le suivi de grossesse est actif. Les prédictions du calendrier sont en pause, donc cet écran n'affiche que les faits enregistrés et les marqueurs sauvegardés.",
   calendarMeaning: "Ce que signifie ce jour",
   calendarMarkers: "Marqueurs supplémentaires",
   periodDayYes: "Oui",
@@ -205,6 +211,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       "Включён режим нерегулярного цикла. Ovumcy всё ещё показывает предсказания, но здесь их нужно читать как приблизительный ориентир, а не как точные даты.",
     predictionModeUnpredictable:
       "Включён режим «Только факты». Предсказания в календаре выключены, поэтому экран показывает только записанные факты и сохранённые отметки.",
+    predictionPregnancyPaused:
+      "Отслеживание беременности активно. Предсказания в календаре приостановлены, поэтому экран показывает только записанные факты и сохранённые отметки.",
     calendarMeaning: "Что означает этот день",
     calendarMarkers: "Дополнительные отметки",
     periodDayYes: "Да",
@@ -263,6 +271,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       "El modo de ciclo irregular está activo. Ovumcy seguirá mostrando predicciones aquí, pero deben leerse como una guía aproximada y no como fechas exactas.",
     predictionModeUnpredictable:
       "El modo «Solo hechos» está activo. Las predicciones del calendario están desactivadas, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
+    predictionPregnancyPaused:
+      "El seguimiento del embarazo está activo. Las predicciones del calendario están en pausa, así que esta pantalla muestra solo hechos registrados y marcadores guardados.",
     calendarMeaning: "Qué significa este día",
     calendarMarkers: "Marcadores extra",
     periodDayYes: "Sí",
@@ -322,6 +332,8 @@ const calendarCopyCatalog: Record<InterfaceLanguage, CalendarCopy> = {
       "La modalità ciclo irregolare è attiva. Ovumcy mostra ancora le previsioni qui, ma vanno lette come un'indicazione approssimativa e non come date esatte.",
     predictionModeUnpredictable:
       "La modalità solo fatti è attiva. Le previsioni del calendario sono disattivate, quindi questa schermata mostra solo i fatti registrati e i marcatori salvati.",
+    predictionPregnancyPaused:
+      "Il monitoraggio della gravidanza è attivo. Le previsioni del calendario sono in pausa, quindi questa schermata mostra solo i fatti registrati e i marcatori salvati.",
     calendarMeaning: "Cosa significa questo giorno",
     calendarMarkers: "Marcatori aggiuntivi",
     periodDayYes: "Sì",

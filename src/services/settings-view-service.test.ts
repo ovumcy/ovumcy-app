@@ -1,10 +1,14 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
+import type { ExportBackupEnvelope } from "../models/export";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
+import type { ImportOutcome } from "./import-service";
 import {
   buildSettingsDirtyState,
   buildSettingsFlowPresentationState,
   buildSettingsHubNavigation,
+  buildSettingsImportPreviewViewData,
   buildSettingsViewData,
   createLoadedSettingsState,
   revertLoadedSettingsDraftValues,
@@ -289,5 +293,186 @@ describe("settings view service", () => {
       hasUnsavedSettingsChanges: true,
     });
     expect(revertLoadedSettingsDraftValues(dirtyState)).toEqual(state);
+  });
+});
+
+describe("buildSettingsImportPreviewViewData (import preview)", () => {
+  function zeroImportOutcome(
+    overrides: Partial<ImportOutcome> = {},
+  ): ImportOutcome {
+    return {
+      dayLogsAdded: 0,
+      dayLogsSkipped: 0,
+      dayLogsRejected: 0,
+      symptomsAdded: 0,
+      profileRestored: false,
+      pregnanciesAdded: 0,
+      pregnanciesSkipped: 0,
+      kickSessionsAdded: 0,
+      kickSessionsSkipped: 0,
+      contractionSessionsAdded: 0,
+      contractionSessionsSkipped: 0,
+      postpartumRecordsAdded: 0,
+      postpartumRecordsSkipped: 0,
+      screeningResponsesAdded: 0,
+      screeningResponsesSkipped: 0,
+      ...overrides,
+    };
+  }
+
+  function previewEnvelope(
+    overrides: Partial<ExportBackupEnvelope> = {},
+  ): ExportBackupEnvelope {
+    return {
+      app: "ovumcy",
+      formatVersion: 2,
+      // Deliberately invalid: keeps the locale-formatted "created" line out of
+      // detailLines so the assertions below can pin the full array exactly.
+      exportedAt: "",
+      preset: "all",
+      range: { fromDate: null, toDate: null },
+      summary: { totalEntries: 0, hasData: false, dateFrom: null, dateTo: null },
+      profile: createDefaultProfileRecord(),
+      symptoms: [],
+      dayLogs: [],
+      ...overrides,
+    };
+  }
+
+  const importCopy = buildSettingsViewData(new Date(2026, 2, 22), "en").import;
+
+  it("renders one preview row per pregnancy-mode collection with a positive count (v2 file)", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope({ dayLogs: [createEmptyDayLogRecord("2026-03-01")] }),
+      zeroImportOutcome({
+        dayLogsAdded: 1,
+        pregnanciesAdded: 1,
+        kickSessionsAdded: 2,
+        contractionSessionsAdded: 3,
+      }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.detailLines).toEqual([
+      "Entries in backup: 1",
+      "New days to add: 1",
+      "New pregnancy records: 1",
+      "New kick-count sessions: 2",
+      "New contraction sessions: 3",
+    ]);
+    expect(preview.canConfirm).toBe(true);
+    expect(preview.nothingNewLine).toBe("");
+  });
+
+  it("keeps a v1 file's preview exactly as before: no pregnancy-mode rows when the counts are zero", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope({
+        formatVersion: 1,
+        dayLogs: [
+          createEmptyDayLogRecord("2026-03-01"),
+          createEmptyDayLogRecord("2026-03-02"),
+        ],
+      }),
+      zeroImportOutcome({ dayLogsAdded: 1, dayLogsSkipped: 1 }),
+      importCopy,
+      "en",
+    );
+
+    // Exact-array pin: the preview must be byte-identical to the pre-import-preview
+    // output for a v1 outcome — no pregnancy/kick/contraction rows.
+    expect(preview.detailLines).toEqual([
+      "Entries in backup: 2",
+      "New days to add: 1",
+      "Days already on this device (kept unchanged): 1",
+    ]);
+    expect(preview.canConfirm).toBe(true);
+  });
+
+  it("lets a v2 backup whose only new content is pregnancy data be confirmed", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope(),
+      zeroImportOutcome({ pregnanciesAdded: 1 }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.canConfirm).toBe(true);
+    expect(preview.nothingNewLine).toBe("");
+    expect(preview.detailLines).toContain("New pregnancy records: 1");
+  });
+
+  it("still reports nothing-new and blocks confirm when every count is zero", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope(),
+      zeroImportOutcome(),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.canConfirm).toBe(false);
+    expect(preview.nothingNewLine).toBe(
+      "Everything in this backup is already on this device.",
+    );
+  });
+
+  it("renders one preview row per v3 collection with a positive count (v3 file)", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope({
+        formatVersion: 3,
+        dayLogs: [createEmptyDayLogRecord("2026-03-01")],
+      }),
+      zeroImportOutcome({
+        dayLogsAdded: 1,
+        postpartumRecordsAdded: 1,
+        screeningResponsesAdded: 2,
+      }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.detailLines).toEqual([
+      "Entries in backup: 1",
+      "New days to add: 1",
+      "New postpartum records: 1",
+      "New check-ins: 2",
+    ]);
+    expect(preview.canConfirm).toBe(true);
+    expect(preview.nothingNewLine).toBe("");
+  });
+
+  it("keeps a v2 file's preview byte-identical: no postpartum/screening rows when those counts are zero", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope({
+        formatVersion: 2,
+        dayLogs: [createEmptyDayLogRecord("2026-03-01")],
+      }),
+      // A v2 outcome carries pregnancy-mode rows but zero Y7 counts.
+      zeroImportOutcome({ dayLogsAdded: 1, pregnanciesAdded: 1 }),
+      importCopy,
+      "en",
+    );
+
+    // Exact-array pin: the preview must be byte-identical to the pre-Y7 output
+    // for a v2 outcome — no postpartum/check-in rows.
+    expect(preview.detailLines).toEqual([
+      "Entries in backup: 1",
+      "New days to add: 1",
+      "New pregnancy records: 1",
+    ]);
+    expect(preview.canConfirm).toBe(true);
+  });
+
+  it("lets a v3 backup whose only new content is a screening check-in be confirmed", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope(),
+      zeroImportOutcome({ screeningResponsesAdded: 1 }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.canConfirm).toBe(true);
+    expect(preview.nothingNewLine).toBe("");
+    expect(preview.detailLines).toContain("New check-ins: 1");
   });
 });

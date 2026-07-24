@@ -57,6 +57,14 @@ export type DayLogEditorViewData = {
     pregnancyTestHint: string;
     bbt: string;
     bbtHint: string;
+    weight: string;
+    weightUnit: string;
+    weightHint: string;
+    bloodPressure: string;
+    bloodPressureUnit: string;
+    bloodPressureHint: string;
+    bloodPressureSystolicPlaceholder: string;
+    bloodPressureDiastolicPlaceholder: string;
     notes: string;
     showMoreSymptoms: string;
     showFewerSymptoms: string;
@@ -110,7 +118,10 @@ export type LoadedDayLogEditorState = {
   viewData: DayLogEditorViewData;
 };
 
-export type DayLogEditorPremiumOptions = Pick<DayLogVisibilityOptions, "showLHTests">;
+export type DayLogEditorPremiumOptions = Pick<
+  DayLogVisibilityOptions,
+  "showLHTests" | "showPregnancyMetrics"
+>;
 
 export async function loadDayLogEditorState(
   storage: LocalAppStorage,
@@ -118,14 +129,23 @@ export async function loadDayLogEditorState(
   locale = "en",
   premiumOptions: DayLogEditorPremiumOptions = {},
 ): Promise<LoadedDayLogEditorState> {
-  const [profile, record, symptomRecords] = await Promise.all([
+  const [profile, record, symptomRecords, activePregnancy] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(date),
     storage.listSymptomRecords(),
+    storage.readActivePregnancy(),
   ]);
   const filteredRecord: DayLogRecord = {
     ...record,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
+  };
+  // Pregnancy-metric visibility is derived here, alongside every other
+  // visibility input this function already loads -- unlike showLHTests
+  // (a managed-premium flag the caller must supply), active-pregnancy status
+  // is available directly from this same storage contract.
+  const resolvedPremiumOptions: DayLogEditorPremiumOptions = {
+    ...premiumOptions,
+    ...(activePregnancy ? { showPregnancyMetrics: true as const } : {}),
   };
 
   return {
@@ -138,7 +158,7 @@ export async function loadDayLogEditorState(
       symptomRecords,
       filteredRecord.symptomIDs,
       locale,
-      premiumOptions,
+      resolvedPremiumOptions,
     ),
   };
 }
@@ -270,6 +290,14 @@ export function buildDayLogEditorViewData(
       pregnancyTestHint: dayLogCopy.pregnancyTestHint,
       bbt: dayLogCopy.bbt,
       bbtHint: `${dayLogCopy.bbtHint} ${profile.temperatureUnit === "f" ? "°F" : "°C"}.`,
+      weight: dayLogCopy.weight,
+      weightUnit: dayLogCopy.weightUnit,
+      weightHint: dayLogCopy.weightHint,
+      bloodPressure: dayLogCopy.bloodPressure,
+      bloodPressureUnit: dayLogCopy.bloodPressureUnit,
+      bloodPressureHint: dayLogCopy.bloodPressureHint,
+      bloodPressureSystolicPlaceholder: dayLogCopy.bloodPressureSystolicPlaceholder,
+      bloodPressureDiastolicPlaceholder: dayLogCopy.bloodPressureDiastolicPlaceholder,
       notes: dayLogCopy.notes,
       showMoreSymptoms: dayLogCopy.showMoreSymptoms,
       showFewerSymptoms: dayLogCopy.showFewerSymptoms,

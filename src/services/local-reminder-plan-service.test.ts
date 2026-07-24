@@ -1,7 +1,9 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord } from "../models/profile";
+import { createPregnancyRecord } from "../models/pregnancy";
 import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 import { buildManagedReminderEmailSchedules } from "./managed-reminder-email-schedule-service";
+import { addDays, parseLocalDate } from "./profile-settings-policy";
 
 // The calendar day a UTC instant falls on when viewed in `timeZone`.
 function localDayIn(instant: Date, timeZone: string): string {
@@ -334,6 +336,129 @@ describe("local-reminder-plan-service", () => {
       expect(emailWall).toBe(expected);
       expect(dailySchedule!.dailyHour).toBe(dailyPlan.trigger.hour);
       expect(dailySchedule!.dailyMinute).toBe(dailyPlan.trigger.minute);
+    });
+  });
+
+  describe("kick-count reminder(optional, default off)", () => {
+    const KICK_EDD = "2026-10-08";
+
+    function nowForGaDays(gaDays: number): Date {
+      return addDays(parseLocalDate(KICK_EDD)!, gaDays - 280);
+    }
+
+    function activePregnancyRecord() {
+      return createPregnancyRecord({
+        edd: KICK_EDD,
+        eddBasis: "lmp",
+        lmpDate: "2026-01-01",
+        startedAt: "2026-03-01",
+      });
+    }
+
+    function baseProfile(overrides: Partial<ReturnType<typeof createDefaultProfileRecord>>) {
+      return {
+        ...createDefaultProfileRecord(),
+        reminderTime: "09:00",
+        ...overrides,
+      };
+    }
+
+    it("never plans it when the flag is off, even with an otherwise-eligible pregnancy", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: false }),
+        [],
+        nowForGaDays(30 * 7),
+        "en",
+        undefined,
+        activePregnancyRecord(),
+      );
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(false);
+    });
+
+    it("plans a daily reminder when the flag is on, the pregnancy is active, and gaWeeks >= 28", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true }),
+        [],
+        nowForGaDays(28 * 7),
+        "en",
+        undefined,
+        activePregnancyRecord(),
+      );
+      const plan = plans.find((candidate) => candidate.kind === "kick_count");
+      expect(plan).toBeDefined();
+      expect(plan?.trigger).toEqual({ type: "daily", hour: 9, minute: 0 });
+    });
+
+    it("does not plan it one week before the start week (27+6)", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true }),
+        [],
+        nowForGaDays(27 * 7 + 6),
+        "en",
+        undefined,
+        activePregnancyRecord(),
+      );
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(false);
+    });
+
+    it("does not plan it with no active pregnancy", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true }),
+        [],
+        new Date(2026, 5, 1),
+        "en",
+        undefined,
+        null,
+      );
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(false);
+    });
+
+    it("does not plan it for an ended pregnancy", () => {
+      const ended = {
+        ...activePregnancyRecord(),
+        status: "ended" as const,
+        endedAt: "2026-09-01",
+        endReason: "birth" as const,
+        modeOfDelivery: "vaginal" as const,
+      };
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true }),
+        [],
+        nowForGaDays(30 * 7),
+        "en",
+        undefined,
+        ended,
+      );
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(false);
+    });
+
+    it("is independent of cycle predictability -- still plans in facts-only mode", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true, unpredictableCycle: true }),
+        [],
+        nowForGaDays(30 * 7),
+        "en",
+        undefined,
+        activePregnancyRecord(),
+      );
+      expect(plans.some((plan) => plan.kind === "kick_count")).toBe(true);
+    });
+
+    it("uses the existing generic notification copy, with no kick/pregnancy wording", () => {
+      const plans = buildLocalReminderPlans(
+        baseProfile({ kickCountReminderEnabled: true }),
+        [],
+        nowForGaDays(30 * 7),
+        "en",
+        undefined,
+        activePregnancyRecord(),
+      );
+      const plan = plans.find((candidate) => candidate.kind === "kick_count");
+      expect(plan).toBeDefined();
+      expect(plan?.title).toBe("Ovumcy reminder");
+      expect(plan?.body).toBe("Open Ovumcy to update today's entry.");
+      expect(plan?.title.toLowerCase()).not.toMatch(/kick|pregnan/);
+      expect(plan?.body.toLowerCase()).not.toMatch(/kick|pregnan/);
     });
   });
 });

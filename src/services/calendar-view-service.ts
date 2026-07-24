@@ -167,12 +167,14 @@ export async function loadCalendarScreenState(
   const rangeStart = formatLocalDate(addCalendarDays(gridStart, -70));
   const rangeEnd = formatLocalDate(addCalendarDays(gridEnd, 70));
 
-  const [profile, logs, selectedRecord, symptomRecords] = await Promise.all([
-    storage.readProfileRecord(),
-    storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
-    storage.readDayLogRecord(activeDate),
-    storage.listSymptomRecords(),
-  ]);
+  const [profile, logs, selectedRecord, symptomRecords, activePregnancy] =
+    await Promise.all([
+      storage.readProfileRecord(),
+      storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
+      storage.readDayLogRecord(activeDate),
+      storage.listSymptomRecords(),
+      storage.readActivePregnancy(),
+    ]);
   const filteredSelectedRecord: DayLogRecord = {
     ...selectedRecord,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
@@ -184,8 +186,14 @@ export async function loadCalendarScreenState(
     filteredSelectedRecord,
     activeDate,
   );
-  const editorPremiumOptions =
-    options.showLHTests === true ? { showLHTests: true as const } : {};
+  // Pregnancy-metric visibility mirrors loadDayLogEditorState: active-pregnancy
+  // status comes from the same storage contract this loader already reads, so
+  // the calendar editor and the dashboard editor gate the weight/BP fields
+  // identically (the calendar is the only editor reachable in pregnancy mode).
+  const editorPremiumOptions = {
+    ...(options.showLHTests === true ? { showLHTests: true as const } : {}),
+    ...(activePregnancy ? { showPregnancyMetrics: true as const } : {}),
+  };
   const editorViewData = buildDayLogEditorViewData(
     profile,
     activeDate,
@@ -208,6 +216,13 @@ export async function loadCalendarScreenState(
     {
       history,
       projection,
+      // an ACTIVE pregnancy record must suppress predictions even when
+      // resolvePregnancyPause (cycle-history-service, untouched) has itself
+      // lifted the pause -- e.g. a period/bleeding day logged after the
+      // latest positive test while the pregnancy is still being tracked.
+      // buildCalendarViewData ORs this with its own projection.isPregnancyPaused
+      // check, so this only ever widens suppression, never narrows it.
+      suppressPredictions: activePregnancy !== null,
     },
   );
   const selectedDay =
@@ -252,6 +267,14 @@ export function buildCalendarViewData(
   options: {
     history?: ReturnType<typeof buildCycleHistorySummary>;
     projection?: ReturnType<typeof buildCurrentCycleProjection>;
+    // Additive: true when an active, trackable pregnancy record exists.
+    // A period logged after the latest positive test lifts
+    // resolvePregnancyPause's own pause (cycle-history-service, untouched by
+    // this option) -- during an ACTIVE pregnancy that lift is medically wrong,
+    // so this flag suppresses predictions independently of (and ORed with)
+    // projection.isPregnancyPaused below. Defaults to false, so every
+    // existing caller/test keeps today's pause-only suppression unchanged.
+    suppressPredictions?: boolean;
   } = {},
 ): CalendarViewData {
   const calendarCopy = getCalendarCopy(locale);
@@ -268,13 +291,19 @@ export function buildCalendarViewData(
     records,
     today,
     monthStart,
+    options.suppressPredictions ?? false,
   );
   const recordsByDay = buildCalendarRecordsByDay(profile, records);
   const firstDayOfWeek = normalizeWeekStartDay(profile.firstDayOfWeek);
   const gridStart = startOfWeek(startOfMonth(monthStart), firstDayOfWeek);
   const gridEnd = endOfWeek(endOfMonth(monthStart), firstDayOfWeek);
   const todayValue = formatLocalDate(today);
-  const predictionNotice = buildCalendarPredictionNotice(profile, locale);
+  // suppressPredictions carries exactly one meaning -- "an active pregnancy
+  // record exists" (see loadCalendarScreenState) -- so the notice explains the
+  // same suppression buildCalendarPredictionMaps just applied above.
+  const predictionNotice = buildCalendarPredictionNotice(profile, locale, {
+    pregnancyActive: options.suppressPredictions ?? false,
+  });
   const days: CalendarDayCellViewData[] = [];
 
   for (let cursor = gridStart; cursor <= gridEnd; cursor = addCalendarDays(cursor, 1)) {
@@ -644,6 +673,7 @@ function buildCalendarPredictionMaps(
   records: readonly DayLogRecord[],
   today: Date,
   monthStart: Date,
+  suppressPredictions: boolean,
 ): {
   predictedPeriod: Set<string>;
   preFertile: Set<string>;
@@ -659,7 +689,15 @@ function buildCalendarPredictionMaps(
   const ovulation = new Set<string>();
   const tentativeOvulation = new Set<string>();
 
-  if (profile.unpredictableCycle || projection.isPregnancyPaused) {
+  // Same empty-maps treatment as today's pause: no predicted/pre_fertile/
+  // fertility_*/ovulation/ovulation_tentative states. Logged facts (period
+  // days, hasData, hasSex) are untouched -- resolveCalendarDayStateKey checks
+  // the day's own record before ever consulting these maps.
+  if (
+    profile.unpredictableCycle ||
+    projection.isPregnancyPaused ||
+    suppressPredictions
+  ) {
     return {
       predictedPeriod,
       preFertile,

@@ -1,7 +1,13 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import { createPregnancyRecord } from "../models/pregnancy";
 import type { ProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
-import { buildStatsViewData } from "./stats-view-service";
+import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
+import {
+  buildCurrentCycleProjection,
+  buildCycleHistorySummary,
+} from "./cycle-history-service";
+import { buildStatsViewData, loadStatsScreenState } from "./stats-view-service";
 
 function createProfileRecord(
   overrides?: Partial<ProfileRecord>,
@@ -710,5 +716,173 @@ describe("buildStatsViewData short/long completed-cycle notices", () => {
 
     expect(viewData.notices).not.toContain(SHORT_NOTICE);
     expect(viewData.notices).not.toContain(LONG_NOTICE);
+  });
+});
+
+describe("buildStatsViewData active-pregnancy prediction suppression", () => {
+  // X14 follow-up: a period logged AFTER the latest positive test lifts
+  // resolvePregnancyPause's own pause (cycle-history-service, untouched) --
+  // during an ACTIVE pregnancy that lift is medically wrong, and stats has no
+  // dashboard-style mode switch to hide the leak. Mirrors the calendar's X14
+  // lifted-pause fixture: three completed cycles unlock insights, then a
+  // positive test (2026-03-20) followed by a logged period (2026-03-25) that
+  // re-anchors the projection mid-pregnancy. The varied cycle lengths
+  // (26/30/28) force a multi-day next-period window so the unsuppressed
+  // prediction explanation is deterministically non-empty; the day-10
+  // headache pattern plus BBT/mucus/LH records after the phantom anchor make
+  // every gated section render in the unsuppressed regression guard.
+  const liftedPauseProfile = createProfileRecord({
+    lastPeriodStart: "2025-12-20",
+    trackBBT: true,
+  });
+  const liftedPauseRecords: DayLogRecord[] = [
+    createPeriodRecord("2025-12-20"),
+    { ...createEmptyDayLogRecord("2025-12-29"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-01-15"),
+    { ...createEmptyDayLogRecord("2026-01-24"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-02-14"),
+    { ...createEmptyDayLogRecord("2026-02-23"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-03-14"),
+    { ...createEmptyDayLogRecord("2026-03-20"), pregnancyTest: "positive" },
+    {
+      ...createEmptyDayLogRecord("2026-03-25"),
+      isPeriod: true,
+      cycleStart: true,
+      bbt: 36.4,
+    },
+    { ...createEmptyDayLogRecord("2026-03-26"), bbt: 36.5 },
+    {
+      ...createEmptyDayLogRecord("2026-03-27"),
+      bbt: 36.45,
+      cervicalMucus: "eggwhite",
+    },
+    { ...createEmptyDayLogRecord("2026-03-28"), bbt: 36.6, lhTest: "peak" },
+    { ...createEmptyDayLogRecord("2026-03-29"), bbt: 36.55 },
+  ];
+  const liftedPauseNow = new Date(2026, 2, 29);
+  const premiumFeatures = {
+    advancedFertility: true,
+    advancedInsights: true,
+    doctorPDF: false,
+    extendedReports: false,
+    partnerAccess: false,
+    reminders: false,
+  };
+
+  it("still renders prediction-bearing sections once the pause lifts and no suppression flag is set (regression guard -- e.g. no active pregnancy)", () => {
+    const viewData = buildStatsViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      createDefaultSymptomRecords(),
+      liftedPauseNow,
+      "en",
+      premiumFeatures,
+    );
+
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.bbtTrend?.points).toHaveLength(5);
+    expect(viewData.predictionExplanation).toBe(
+      "Your cycle length varies, so the next period is shown as a range rather than a single day.",
+    );
+    expect(viewData.topCards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    expect(viewData.personalForecasts?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "headache" })]),
+    );
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+  });
+
+  it("suppresses prediction-bearing sections for an active pregnancy even after the pause lifts, keeping completed-cycle facts", () => {
+    // Sanity check on the fixture itself: cycle-history-service's own pause
+    // IS lifted here (this is the exact hole the flag closes on this surface).
+    const history = buildCycleHistorySummary(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      liftedPauseNow,
+    );
+    const projection = buildCurrentCycleProjection(
+      liftedPauseProfile,
+      history,
+      liftedPauseRecords,
+      liftedPauseNow,
+    );
+    expect(projection.isPregnancyPaused).toBe(false);
+
+    const viewData = buildStatsViewData(
+      liftedPauseProfile,
+      liftedPauseRecords,
+      createDefaultSymptomRecords(),
+      liftedPauseNow,
+      "en",
+      premiumFeatures,
+      { suppressPredictions: true },
+    );
+
+    expect(viewData.bbtTrend).toBeUndefined();
+    expect(viewData.predictionExplanation).toBe("");
+    expect(viewData.personalForecasts).toBeUndefined();
+    expect(viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    const phaseCard = viewData.topCards.find(
+      (card) => card.key === "current-phase",
+    );
+    expect(phaseCard?.value).toContain("Unknown");
+    expect(phaseCard?.description).toBeUndefined();
+    // Current-cycle fertility signals drop; completed-cycle facts stay.
+    expect(viewData.advancedFertility?.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "signal-coverage" }),
+      ]),
+    );
+    // Historical facts untouched by suppression -- including the 11-day
+    // "cycle" the phantom period closed: logged data stays a fact, only
+    // prediction framing is suppressed.
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.trendChart?.points).toHaveLength(4);
+    expect(viewData.predictionDisclaimer).toBe(
+      "These are estimates, not medical advice or a method of contraception.",
+    );
+  });
+
+  it("suppresses predictions end-to-end via loadStatsScreenState when a pregnancy is active and the pause has lifted", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord(liftedPauseProfile);
+    for (const record of liftedPauseRecords) {
+      await storage.writeDayLogRecord(record);
+    }
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2026-12-19",
+        eddBasis: "lmp",
+        lmpDate: "2026-03-14",
+        startedAt: "2026-03-14",
+      }),
+    );
+
+    const state = await loadStatsScreenState(storage, liftedPauseNow);
+
+    expect(state.viewData.hasInsights).toBe(true);
+    expect(state.viewData.bbtTrend).toBeUndefined();
+    expect(state.viewData.predictionExplanation).toBe("");
+    expect(state.viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    const phaseCard = state.viewData.topCards.find(
+      (card) => card.key === "current-phase",
+    );
+    expect(phaseCard?.description).toBeUndefined();
   });
 });

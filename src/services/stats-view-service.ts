@@ -293,10 +293,11 @@ export async function loadStatsScreenState(
     new Date(today.getFullYear() - 2, today.getMonth(), today.getDate()),
   );
   const rangeEnd = formatLocalDate(today);
-  const [profile, records, symptomRecords] = await Promise.all([
+  const [profile, records, symptomRecords, activePregnancy] = await Promise.all([
     storage.readProfileRecord(),
     storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
     storage.listSymptomRecords(),
+    storage.readActivePregnancy(),
   ]);
 
   return {
@@ -310,6 +311,15 @@ export async function loadStatsScreenState(
       now,
       locale,
       premiumFeatures,
+      {
+        // X14 follow-up: an ACTIVE pregnancy record must suppress stats
+        // predictions even when resolvePregnancyPause (cycle-history-service,
+        // untouched) has itself lifted the pause -- e.g. a period/bleeding day
+        // logged after the latest positive test while the pregnancy is still
+        // being tracked. Same flag, same meaning, same storage read as
+        // loadCalendarScreenState's X14 fix.
+        suppressPredictions: activePregnancy !== null,
+      },
     ),
   };
 }
@@ -328,7 +338,22 @@ export function buildStatsViewData(
     partnerAccess: false,
     reminders: false,
   },
+  options: {
+    // Additive (X14 follow-up): true when an active, trackable pregnancy
+    // record exists. A period logged after the latest positive test lifts
+    // resolvePregnancyPause's own pause (cycle-history-service, untouched by
+    // this option) -- during an ACTIVE pregnancy that lift is medically wrong,
+    // so this flag suppresses the prediction-bearing sections (BBT current
+    // cycle, prediction explanation, personal forecasts, current-cycle
+    // fertility signals, phase/mucus top cards) independently of
+    // projection.isPregnancyPaused. Note the paused projection deliberately
+    // keeps cycleAnchorDate, so anchor-driven sections must be gated here --
+    // pause-mirroring alone would not suppress them. Defaults to false, so
+    // every existing caller/test keeps today's pause-only behavior unchanged.
+    suppressPredictions?: boolean;
+  } = {},
 ): StatsViewData {
+  const suppressPredictions = options.suppressPredictions ?? false;
   const statsCopy = getStatsCopy(locale);
   const dashboardCopy = getDashboardCopy(locale);
   const dayLogCopy = getDayLogCopy(locale);
@@ -393,9 +418,10 @@ export function buildStatsViewData(
   const phaseSymptomInsights = phaseInsightsUnlocked
     ? buildStatsPhaseSymptomInsights(records, localizedSymptomRecords)
     : [];
-  const personalForecasts = premiumFeatures.advancedInsights
-    ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
-    : [];
+  const personalForecasts =
+    premiumFeatures.advancedInsights && !suppressPredictions
+      ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
+      : [];
   const premiumInsights = premiumFeatures.advancedInsights
     ? buildStatsPremiumInsights(history)
     : null;
@@ -417,7 +443,10 @@ export function buildStatsViewData(
     ? buildStatsAdvancedFertility(
         history,
         records,
-        projection.cycleAnchorDate,
+        // A null anchor drops the current-cycle fertility signals (thermal
+        // shift, LH peak, ovulation confirmation) while keeping the
+        // completed-cycle facts (observed luteal, signal coverage).
+        suppressPredictions ? null : projection.cycleAnchorDate,
       )
     : null;
   const advancedFertilitySection = premiumFertility
@@ -430,18 +459,22 @@ export function buildStatsViewData(
   const extendedReports = premiumFeatures.extendedReports
     ? buildStatsExtendedReports(history)
     : null;
-  const bbtSeries = buildStatsBBTSeries(projection, records, now, locale);
+  // The BBT series and the derived coverline / probable-ovulation marker are
+  // current-cycle fertility signals: while suppressPredictions holds (active
+  // pregnancy, or the day-log pause), they are phantom math and stay hidden —
+  // same rule as the doctor PDF and the partner projection.
+  const bbtSeries = suppressPredictions
+    ? []
+    : buildStatsBBTSeries(projection, records, now, locale);
   // Free-tier BBT baseline (owner decision 2026-07-20): the coverline and
   // probable-ovulation marker are baseline local analytics shown for free,
   // matching ovumcy-web's owner BBT chart — never gated behind managed premium.
   // Reuse the canonical "3-over-6" detector on the current cycle up to today.
+  // (Reaching this point requires history.hasInsights, so a real
+  // cycleAnchorDate always exists here; the null check only narrows the type.)
   let bbtCurrentCycleShift: ReturnType<typeof detectSustainedThermalShift> =
     null;
-  /* istanbul ignore else -- unreachable: reaching this point requires
-     history.hasInsights (checked above), which needs a completed cycle whose
-     next start is strictly before today, so a real cycleAnchorDate always
-     exists here; the guard only narrows the null-typed anchor for detect(). */
-  if (projection.cycleAnchorDate) {
+  if (!suppressPredictions && projection.cycleAnchorDate) {
     bbtCurrentCycleShift = detectSustainedThermalShift(
       records.filter((record) => record.date <= formatLocalDate(now)),
       projection.cycleAnchorDate,
@@ -517,7 +550,14 @@ export function buildStatsViewData(
         }
       : {}),
     ...(premiumLocks ? { premiumLocks } : {}),
-    predictionExplanation: buildPredictionExplanation(profile, projection, locale),
+    // Suppression renders no banner rather than pregnancyPausedHint: that copy
+    // instructs "log a new period to resume", which is exactly the wrong
+    // instruction while a pregnancy is actively tracked (and would promise a
+    // resume this flag now correctly refuses). Dedicated pregnancy-mode notice
+    // copy is the X14 open-question-2 follow-up.
+    predictionExplanation: suppressPredictions
+      ? ""
+      : buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
     trendChart: {
       title: statsCopy.cycleTrend,
@@ -633,6 +673,7 @@ export function buildStatsViewData(
       reliability,
       locale,
       statsCopy,
+      suppressPredictions,
     ),
     cycleOverview: {
       title: statsCopy.cycleLengthCard,
@@ -1100,6 +1141,7 @@ function buildTopCards(
   reliability: ReturnType<typeof buildStatsReliability>,
   locale: string,
   statsCopy: ReturnType<typeof getStatsCopy>,
+  suppressPredictions: boolean,
 ): StatsTopCardViewData[] {
   const cards: StatsTopCardViewData[] = [
     {
@@ -1119,12 +1161,13 @@ function buildTopCards(
           : statsCopy.noData,
     },
   ];
-  const mucusFertilityCard = buildMucusFertilityCard(
-    projection,
-    records,
-    locale,
-    statsCopy,
-  );
+  // Suppression drops the "peak fertility" framing and the phase/cycle-day
+  // claim entirely: both key off an anchor the paused projection deliberately
+  // keeps, so the pause alone never hides them. The phase card falls back to
+  // the same unknown-phase rendering a genuinely paused projection produces.
+  const mucusFertilityCard = suppressPredictions
+    ? null
+    : buildMucusFertilityCard(projection, records, locale, statsCopy);
 
   if (profile.unpredictableCycle) {
     cards.push({
@@ -1137,13 +1180,16 @@ function buildTopCards(
     cards.push(mucusFertilityCard);
   } else {
     const description =
-      projection.currentCycleDay !== null
+      !suppressPredictions && projection.currentCycleDay !== null
         ? `Cycle day ${projection.currentCycleDay}`
         : undefined;
     cards.push({
       key: "current-phase",
       title: statsCopy.currentPhase,
-      value: buildPhaseValue(projection.currentPhase, statsCopy),
+      value: buildPhaseValue(
+        suppressPredictions ? "unknown" : projection.currentPhase,
+        statsCopy,
+      ),
       ...(description ? { description } : {}),
     });
   }

@@ -1,6 +1,9 @@
 import { getDashboardCopy } from "../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
+import { createPregnancyRecord } from "../models/pregnancy";
+import { createPostpartumRecord } from "../models/postpartum";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
@@ -8,9 +11,11 @@ import {
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   buildDashboardViewData,
+  loadDashboardScreenState,
   resolveDaySaveMessage,
   resolveDaySaveMessageKey,
 } from "./dashboard-view-service";
+import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 describe("dashboard-view-service", () => {
   it("switches to facts-only mode for unpredictable cycles", () => {
@@ -963,5 +968,602 @@ describe("dashboard upcoming-ovulation low-reliability softening", () => {
     expect(hero.upcomingOvulationLabel).toContain(
       getDashboardCopy("en").ovulationApproximate,
     );
+  });
+});
+
+const PREGNANCY_EDD = "2026-10-08";
+
+// `now` (Date) that makes calcGestationalAge(PREGNANCY_EDD, formatLocalDate(now))
+// report `gaDays`, mirroring the pregnancy-timeline suites.
+function pregnancyNowForGaDays(gaDays: number): Date {
+  return addDays(parseLocalDate(PREGNANCY_EDD)!, gaDays - 280);
+}
+
+function pregnancyActiveRecord() {
+  return createPregnancyRecord({
+    edd: PREGNANCY_EDD,
+    eddBasis: "lmp",
+    lmpDate: "2026-01-01",
+    startedAt: "2026-03-01",
+  });
+}
+
+function positivePregnancyTestRecords(date: string): DayLogRecord[] {
+  return [{ ...createEmptyDayLogRecord(date), pregnancyTest: "positive" }];
+}
+
+function endedPregnancyRecord(endedAt: string, reason: "birth" | "loss" | "other") {
+  return {
+    ...pregnancyActiveRecord(),
+    status: "ended" as const,
+    endedAt,
+    endReason: reason,
+    modeOfDelivery: null,
+  };
+}
+
+describe("dashboard-view-service pregnancy mode", () => {
+  const pausedProfile: ProfileRecord = {
+    ...createDefaultProfileRecord(),
+    lastPeriodStart: "2026-05-01",
+    languageOverride: "en",
+  };
+  const pausedNow = new Date(2026, 5, 1);
+  const pausedRecords = positivePregnancyTestRecords("2026-06-01");
+
+  it("stays in plain cycle mode with no entry card when nothing is pregnant", () => {
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-10",
+    };
+    const now = new Date(2026, 2, 17);
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+  });
+
+  it("renders a premium-locked entry card while the pause is active and locked", () => {
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      { activePregnancy: null, pregnancyModeUnlocked: false },
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyEntryCard).toEqual(
+      expect.objectContaining({ variant: "premium_locked" }),
+    );
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+  });
+
+  it("renders a start entry card while the pause is active and unlocked", () => {
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      { activePregnancy: null, pregnancyModeUnlocked: true },
+    );
+
+    expect(viewData.pregnancyEntryCard).toEqual(
+      expect.objectContaining({ variant: "start_pregnancy" }),
+    );
+  });
+
+  it("switches to pregnancy dashboard view-data for an active record", () => {
+    const now = pregnancyNowForGaDays(171);
+    const profile = createDefaultProfileRecord();
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.mode).toBe("pregnancy");
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.pregnancyDashboard?.hero.weekValueLabel).toBe("24+3");
+    expect(viewData.pregnancyDashboard?.kickTeaser.visible).toBe(false);
+  });
+
+  it("shows plain cycle mode with no entry card after a birth end (positive still paused)", () => {
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      {
+        activePregnancy: null,
+        pregnancyModeUnlocked: true,
+        endedPregnancyRecords: [endedPregnancyRecord("2026-06-05", "birth")],
+      },
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+  });
+
+  it("shows plain cycle mode with no entry card after a loss end (no re-engagement)", () => {
+    // Boundary: the loss is recorded on the same day as the paused positive
+    // test, so endedAt === pregnancyTestDate must still count as "on/after".
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      {
+        activePregnancy: null,
+        pregnancyModeUnlocked: true,
+        endedPregnancyRecords: [endedPregnancyRecord("2026-06-01", "loss")],
+      },
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+  });
+
+  it("re-shows the entry card for a new positive test dated after the latest end", () => {
+    const newPositive = positivePregnancyTestRecords("2026-07-01");
+    const now = new Date(2026, 6, 2);
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      newPositive,
+      buildCycleHistorySummary(pausedProfile, newPositive, now),
+      now,
+      "en",
+      {
+        activePregnancy: null,
+        pregnancyModeUnlocked: true,
+        endedPregnancyRecords: [endedPregnancyRecord("2026-06-05", "birth")],
+      },
+    );
+
+    expect(viewData.pregnancyEntryCard).toEqual(
+      expect.objectContaining({ variant: "start_pregnancy" }),
+    );
+  });
+
+  it("shows the kick teaser from week 28 in the pregnancy dashboard", () => {
+    const now = pregnancyNowForGaDays(28 * 7);
+    const profile = createDefaultProfileRecord();
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.pregnancyDashboard?.kickTeaser.visible).toBe(true);
+  });
+
+  it("surfaces today's logged metrics into the pregnancy dashboard view-data", () => {
+    const now = pregnancyNowForGaDays(196);
+    const todayValue = formatLocalDate(now);
+    const profile = createDefaultProfileRecord();
+    const todayLog: DayLogRecord = {
+      ...createEmptyDayLogRecord(todayValue),
+      weightKg: 70,
+    };
+    const viewData = buildDashboardViewData(
+      profile,
+      [todayLog],
+      buildCycleHistorySummary(profile, [todayLog], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.pregnancyDashboard?.todayMetrics.weight?.value).toBe("70 kg");
+  });
+
+  it("emits a stale card instead of the pregnancy dashboard for an active record whose EDD passed well beyond the trackable window", () => {
+    const now = pregnancyNowForGaDays(630); // ~50 weeks past the due date
+    const profile = createDefaultProfileRecord();
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.staleCard).toEqual(
+      expect.objectContaining({
+        ctaLabel: "Manage pregnancy tracking",
+      }),
+    );
+    expect(viewData.staleCard?.body).toContain("estimated due date has passed");
+  });
+
+  it("keeps the silent cycle fallback (no stale card, no entry card) for a malformed/future EDD", () => {
+    const now = pregnancyNowForGaDays(-1); // before conception -- malformed/future relative to "today"
+    const profile = createDefaultProfileRecord();
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.pregnancyDashboard).toBeUndefined();
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+    expect(viewData.staleCard).toBeUndefined();
+  });
+
+  it("does not emit a stale card for a normal in-window active pregnancy", () => {
+    const now = pregnancyNowForGaDays(171);
+    const profile = createDefaultProfileRecord();
+    const viewData = buildDashboardViewData(
+      profile,
+      [],
+      buildCycleHistorySummary(profile, [], now),
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.mode).toBe("pregnancy");
+    expect(viewData.staleCard).toBeUndefined();
+  });
+
+  // X14 regression guard. The hole: resolvePregnancyPause (cycle-history-
+  // service, untouched) lifts its pause once a period is logged after the
+  // latest positive test -- correct when the pregnancy actually ended and a
+  // real new cycle starts, wrong while the pregnancy is still active (e.g.
+  // bleeding logged as a period day). Pins that the dashboard was never
+  // exposed to this hole in the first place: buildPregnancySection checks
+  // `activePregnancy` FIRST, before ever consulting projection.isPregnancyPaused,
+  // so cycle predictions can never leak into pregnancy mode regardless of the
+  // day-log records' own pause state.
+  it("stays in pregnancy dashboard mode even after a period logged post-positive-test lifts cycle-history's own pause", () => {
+    const now = pregnancyNowForGaDays(171);
+    const profile = createDefaultProfileRecord();
+    const records: DayLogRecord[] = [
+      { ...createEmptyDayLogRecord("2026-05-01"), pregnancyTest: "positive" },
+      {
+        ...createEmptyDayLogRecord("2026-05-20"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    // Sanity check on the fixture itself: cycle-history-service's own pause
+    // IS lifted here (this is the exact hole FIX B closes downstream).
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
+    expect(projection.isPregnancyPaused).toBe(false);
+
+    const viewData = buildDashboardViewData(
+      profile,
+      records,
+      history,
+      now,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+
+    expect(viewData.mode).toBe("pregnancy");
+    expect(viewData.pregnancyDashboard).toBeDefined();
+    expect(viewData.pregnancyEntryCard).toBeUndefined();
+  });
+});
+
+describe("loadDashboardScreenState pregnancy mode", () => {
+
+  it("reads the active pregnancy and renders pregnancy dashboard view-data", async () => {
+    const now = pregnancyNowForGaDays(171);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(pregnancyActiveRecord()),
+    });
+    const loadPregnancyModuleOwned = jest.fn().mockResolvedValue(false);
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned,
+    });
+
+    expect(storage.readActivePregnancy).toHaveBeenCalled();
+    expect(state.viewData.mode).toBe("pregnancy");
+    // An existing record renders from local data — the managed unlock gate is
+    // never consulted.
+    expect(loadPregnancyModuleOwned).not.toHaveBeenCalled();
+  });
+
+  it("reuses the already-loaded active pregnancy to show pregnancy metrics in the day-log editor", async () => {
+    const now = pregnancyNowForGaDays(171);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(pregnancyActiveRecord()),
+    });
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned: jest.fn().mockResolvedValue(false),
+    });
+
+    expect(state.editorViewData.visibility.showPregnancyMetrics).toBe(true);
+    // No second pregnancy read for the editor's own visibility gate.
+    expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides pregnancy metrics in the day-log editor with no active pregnancy", async () => {
+    const now = new Date(2026, 2, 17);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned: jest.fn().mockResolvedValue(false),
+    });
+
+    expect(state.editorViewData.visibility.showPregnancyMetrics).toBe(false);
+  });
+
+  it("consults the unlock gate exactly once when paused with no record (locked)", async () => {
+    const now = new Date(2026, 5, 1);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue(positivePregnancyTestRecords("2026-06-01")),
+    });
+    const loadPregnancyModuleOwned = jest.fn().mockResolvedValue(false);
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned,
+    });
+
+    expect(loadPregnancyModuleOwned).toHaveBeenCalledTimes(1);
+    expect(state.viewData.pregnancyEntryCard).toEqual(
+      expect.objectContaining({ variant: "premium_locked" }),
+    );
+  });
+
+  it("produces the start entry card when paused, no record, and unlocked", async () => {
+    const now = new Date(2026, 5, 1);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue(positivePregnancyTestRecords("2026-06-01")),
+    });
+    const loadPregnancyModuleOwned = jest.fn().mockResolvedValue(true);
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned,
+    });
+
+    expect(state.viewData.pregnancyEntryCard).toEqual(
+      expect.objectContaining({ variant: "start_pregnancy" }),
+    );
+  });
+
+  it("never consults the unlock gate on a plain cycle-mode load", async () => {
+    const now = new Date(2026, 2, 17);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+    const loadPregnancyModuleOwned = jest.fn().mockResolvedValue(false);
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned,
+    });
+
+    expect(loadPregnancyModuleOwned).not.toHaveBeenCalled();
+    expect(state.viewData.mode).toBe("cycle");
+    expect(state.viewData.pregnancyEntryCard).toBeUndefined();
+    // The pregnancy-record list is an extra read reserved for the paused state.
+    expect(storage.listPregnancyRecords).not.toHaveBeenCalled();
+  });
+
+  it("suppresses the entry card when an ended record covers the paused positive test", async () => {
+    const now = new Date(2026, 5, 1);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue(positivePregnancyTestRecords("2026-06-01")),
+      listPregnancyRecords: jest
+        .fn()
+        .mockResolvedValue([endedPregnancyRecord("2026-06-05", "loss")]),
+    });
+    const loadPregnancyModuleOwned = jest.fn().mockResolvedValue(true);
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+      loadPregnancyModuleOwned,
+    });
+
+    expect(storage.listPregnancyRecords).toHaveBeenCalledTimes(1);
+    expect(state.viewData.mode).toBe("cycle");
+    expect(state.viewData.pregnancyEntryCard).toBeUndefined();
+  });
+});
+
+// Cycle-return offer detection: buildDashboardViewData's
+// postpartum branch computes `hasNewCycleStart` from the SAME
+// profile/historyRecords it already has (no new storage read) via
+// cycle-history-service.collectCycleStartDates, and threads it into
+// buildPostpartumDashboardViewData.
+describe("dashboard-view-service postpartum cycle-return offer", () => {
+  function periodStartRecord(date: string): DayLogRecord {
+    return {
+      ...createEmptyDayLogRecord(date),
+      isPeriod: true,
+      cycleStart: true,
+    };
+  }
+
+  it("shows the offer and hides the LAM card: active postpartum + a cycle start logged AFTER the birth", () => {
+    const profile = createDefaultProfileRecord();
+    const now = new Date(2026, 5, 20); // 2026-06-20
+    const activePostpartum = createPostpartumRecord({
+      startedAt: "2026-06-01",
+      modeOfDelivery: "vaginal",
+    });
+    const records = [periodStartRecord("2026-06-15")];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePostpartum,
+    });
+
+    expect(viewData.mode).toBe("postpartum");
+    expect(viewData.postpartumDashboard?.cycleReturnOffer.visible).toBe(true);
+    expect(viewData.postpartumDashboard?.lamCard).toBeNull();
+  });
+
+  it("hides the offer and keeps the LAM card: the only logged cycle start is BEFORE the birth", () => {
+    const profile = createDefaultProfileRecord();
+    const now = new Date(2026, 5, 20);
+    const activePostpartum = createPostpartumRecord({
+      startedAt: "2026-06-01",
+      modeOfDelivery: "vaginal",
+    });
+    // A pre-pregnancy period, well before the birth -- must not read as a
+    // "new" (returning) cycle start.
+    const records = [periodStartRecord("2026-01-10")];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePostpartum,
+    });
+
+    expect(viewData.mode).toBe("postpartum");
+    expect(viewData.postpartumDashboard?.cycleReturnOffer.visible).toBe(false);
+    expect(viewData.postpartumDashboard?.lamCard).not.toBeNull();
+  });
+
+  it("never builds a postpartum section (offer or LAM card) with no active postpartum record", () => {
+    const profile = createDefaultProfileRecord();
+    const now = new Date(2026, 5, 20);
+    const records = [periodStartRecord("2026-06-15")];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePostpartum: null,
+    });
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.postpartumDashboard).toBeUndefined();
+  });
+});
+
+describe("loadDashboardScreenState postpartum cycle-return offer", () => {
+
+  it("threads a day-log cycle start after the birth, read via listDayLogRecordsInRange, into the offer's visibility", async () => {
+    const now = new Date(2026, 5, 20);
+    const storage = createLocalAppStorageMock({
+      readActivePostpartum: jest
+        .fn()
+        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-01" })),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        {
+          ...createEmptyDayLogRecord("2026-06-15"),
+          isPeriod: true,
+          cycleStart: true,
+        },
+      ]),
+    });
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+    });
+
+    expect(state.viewData.mode).toBe("postpartum");
+    expect(state.viewData.postpartumDashboard?.cycleReturnOffer.visible).toBe(
+      true,
+    );
+  });
+
+  it("keeps the offer hidden when no day-log cycle start exists after the birth", async () => {
+    const now = new Date(2026, 5, 20);
+    const storage = createLocalAppStorageMock({
+      readActivePostpartum: jest
+        .fn()
+        .mockResolvedValue(createPostpartumRecord({ startedAt: "2026-06-01" })),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+
+    const state = await loadDashboardScreenState(storage, now, "en", {}, {
+    });
+
+    expect(state.viewData.postpartumDashboard?.cycleReturnOffer.visible).toBe(
+      false,
+    );
+    expect(state.viewData.postpartumDashboard?.lamCard).not.toBeNull();
+  });
+});
+
+describe("loadDashboardScreenState postpartum stale window", () => {
+  const locale = "en";
+
+  function storageWithPostpartum(startedAt: string) {
+    return createLocalAppStorageMock({
+      readActivePostpartum: jest.fn().mockResolvedValue(
+        createPostpartumRecord({ startedAt }),
+      ),
+    });
+  }
+
+  it("falls back to cycle mode with a stale card once postpartum leaves the 26-week window", async () => {
+    // Started ~30 weeks before "today": outside POSTPARTUM_TRACKABLE_WEEKS_MAX.
+    const state = await loadDashboardScreenState(
+      storageWithPostpartum("2026-01-01"),
+      parseLocalDate("2026-08-01")!,
+      locale,
+    );
+
+    expect(state.viewData.mode).toBe("cycle");
+    expect(state.viewData.postpartumStaleCard).toBeDefined();
+    expect(state.viewData.postpartumDashboard).toBeUndefined();
+  });
+
+  it("falls back to plain cycle mode for a degenerate future-dated postpartum record", async () => {
+    // startedAt after "today" resolves no weeks-since-birth at all: neither
+    // the postpartum dashboard nor the stale card renders, never a crash.
+    const state = await loadDashboardScreenState(
+      storageWithPostpartum("2026-12-01"),
+      parseLocalDate("2026-08-01")!,
+      locale,
+    );
+
+    expect(state.viewData.mode).toBe("cycle");
+    expect(state.viewData.postpartumStaleCard).toBeUndefined();
+    expect(state.viewData.postpartumDashboard).toBeUndefined();
+  });
+
+  it("renders the postpartum dashboard while inside the window", async () => {
+    const state = await loadDashboardScreenState(
+      storageWithPostpartum("2026-07-01"),
+      parseLocalDate("2026-08-01")!,
+      locale,
+    );
+
+    expect(state.viewData.mode).toBe("postpartum");
+    expect(state.viewData.postpartumDashboard).toBeDefined();
   });
 });

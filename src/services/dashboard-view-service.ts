@@ -1,8 +1,25 @@
 import { getDashboardCopy } from "../i18n/dashboard-copy";
+import { getPregnancyCopy } from "../i18n/pregnancy-copy";
 import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayLogRecord } from "../models/day-log";
+import type { PregnancyRecord } from "../models/pregnancy";
+import type { PostpartumRecord } from "../models/postpartum";
+import type { ScreeningResponse } from "../models/screening";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { loadPregnancyModuleOwned } from "./pregnancy-entitlement-service";
+import {
+  buildPregnancyDashboardViewData,
+  buildPregnancyStaleCardViewData,
+  type PregnancyDashboardViewData,
+  type PregnancyStaleCardViewData,
+} from "./pregnancy-mode-service";
+import {
+  buildPostpartumDashboardViewData,
+  buildPostpartumStaleCardViewData,
+  type PostpartumDashboardViewData,
+  type PostpartumStaleCardViewData,
+} from "./postpartum-mode-service";
 import {
   buildDayLogEditorViewData,
   type DayLogEditorViewData,
@@ -10,6 +27,7 @@ import {
 import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
+  collectCycleStartDates,
 } from "./cycle-history-service";
 import { calcOvulationDay, predictCycleWindow } from "./cycle-prediction-policy";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
@@ -62,7 +80,39 @@ export type DashboardCycleHeroViewData = {
   }[];
 };
 
+// Additive pregnancy-mode discriminant. `mode` is a presentational switch
+// only — absent/"cycle" renders the existing dashboard unchanged; "pregnancy"
+// renders `pregnancyDashboard` instead of the cycle-oriented sections. The
+// entry card appears in cycle mode when the pregnancy pause is active and no
+// pregnancy record exists yet. All branching is decided here, never on screens.
+export type PregnancyEntryCardViewData = {
+  variant: "start_pregnancy" | "premium_locked";
+  eyebrowLabel: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+};
+
 export type DashboardViewData = {
+  // "pregnancy" REPLACES the cycle surface; "postpartum" is ADDITIVE (the
+  // postpartum cards render above the still-visible cycle journal/quick
+  // actions, since bleeding/lochia logging matters postpartum). Absent/"cycle"
+  // renders the existing dashboard unchanged.
+  mode?: "cycle" | "pregnancy" | "postpartum";
+  pregnancyEntryCard?: PregnancyEntryCardViewData;
+  pregnancyDashboard?: PregnancyDashboardViewData;
+  // Postpartum-mode view-data. Present only when an active postpartum
+  // record renders and no active pregnancy takes precedence — see
+  // buildPregnancySection.
+  postpartumDashboard?: PostpartumDashboardViewData;
+  // Compact card for an active postpartum record past the trackable window
+  // (birth date > ~6 months ago). Cycle mode stays "cycle" alongside it,
+  // mirroring the pregnancy staleCard.
+  postpartumStaleCard?: PostpartumStaleCardViewData;
+  // Compact card for an active pregnancy record stuck outside the trackable
+  // GA window (today far past the due date) -- see buildPregnancySection.
+  // Cycle mode ("mode" stays "cycle") renders normally alongside it.
+  staleCard?: PregnancyStaleCardViewData;
   cycleHero: DashboardCycleHeroViewData;
   predictionExplanation: string;
   // Web parity (dashboard.html data-dashboard-prediction-disclaimer): a
@@ -170,24 +220,81 @@ export async function loadDashboardScreenState(
   options: {
     showLHTests?: boolean;
   } = {},
+  deps: {
+    loadPregnancyModuleOwned?: () => Promise<boolean>;
+  } = {},
 ): Promise<LoadedDashboardState> {
   const today = formatLocalDate(now);
   const rangeStart = formatLocalDate(
     new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()),
   );
-  const [profile, todayEntry, historyRecords, symptomRecords] = await Promise.all([
+  const [
+    profile,
+    todayEntry,
+    historyRecords,
+    symptomRecords,
+    activePregnancy,
+    activePostpartum,
+  ] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(today),
     storage.listDayLogRecordsInRange(rangeStart, today),
     storage.listSymptomRecords(),
+    storage.readActivePregnancy(),
+    storage.readActivePostpartum(),
   ]);
+  // Screening responses are read ONLY when a postpartum record is active — the
+  // only surface that consumes them today — so a plain cycle-mode or pregnancy
+  // load never touches the most sensitive data class (privacy-minimal).
+  const screeningResponses: ScreeningResponse[] = activePostpartum
+    ? await storage.listScreeningResponses()
+    : [];
   const filteredTodayEntry: DayLogRecord = {
     ...todayEntry,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, todayEntry.symptomIDs),
   };
   const history = buildCycleHistorySummary(profile, historyRecords, now);
-  const editorPremiumOptions =
-    options.showLHTests === true ? { showLHTests: true as const } : {};
+  // Pregnancy metrics (weightKg/bpSystolic/bpDiastolic) reuse the
+  // activePregnancy read this function already performs for the pregnancy
+  // dashboard below -- no second storage call, mirroring how showLHTests
+  // threads a premium flag that also isn't part of ProfileRecord.
+  const editorPremiumOptions = {
+    ...(options.showLHTests === true ? { showLHTests: true as const } : {}),
+    ...(activePregnancy ? { showPregnancyMetrics: true as const } : {}),
+  };
+
+  // Pregnancy-module ownership is consulted ONLY when the pregnancy pause is
+  // active and there is no pregnancy record yet — the sole state where the
+  // entry card's locked/unlocked split matters. A plain cycle-mode load never
+  // makes this check, and an existing record renders from local data (reading
+  // logged data never re-checks ownership; see pregnancy-entitlement-service's
+  // scope policy). The projection computed here for the short-circuit is
+  // threaded into buildDashboardViewData so it is not recomputed.
+  let pregnancyModeUnlocked = false;
+  let projection: ReturnType<typeof buildCurrentCycleProjection> | undefined;
+  let endedPregnancyRecords: PregnancyRecord[] = [];
+  // An active postpartum record suppresses the pregnancy entry card entirely:
+  // the owner is postpartum, so re-offering "start pregnancy" is wrong, and
+  // rendering an existing postpartum record never re-checks the plan (reads
+  // are never premium-gated — the lapse posture mirrors pregnancy).
+  if (!activePregnancy && !activePostpartum) {
+    projection = buildCurrentCycleProjection(profile, history, historyRecords, now);
+    if (projection.isPregnancyPaused) {
+      const loadUnlock = deps.loadPregnancyModuleOwned ?? loadPregnancyModuleOwned;
+      // Both extra reads run ONLY in the paused-with-no-active-record state:
+      // the pregnancy-record list drives the post-end entry-card suppression
+      // and the ownership check splits locked/unlocked. A plain cycle-mode
+      // load makes neither call.
+      const [records, unlocked] = await Promise.all([
+        storage.listPregnancyRecords(),
+        loadUnlock(),
+      ]);
+      endedPregnancyRecords = records.filter(
+        (record) => record.status === "ended",
+      );
+      pregnancyModeUnlocked = unlocked;
+    }
+  }
 
   return {
     historyRecords,
@@ -201,6 +308,12 @@ export async function loadDashboardScreenState(
       locale,
       {
         showAdvancedFertilitySummary: options.showLHTests === true,
+        activePregnancy,
+        activePostpartum,
+        screeningResponses,
+        pregnancyModeUnlocked,
+        endedPregnancyRecords,
+        ...(projection ? { projection } : {}),
       },
     ),
     editorViewData: buildDayLogEditorViewData(
@@ -226,15 +339,52 @@ export function buildDashboardViewData(
   locale = "en",
   options: {
     showAdvancedFertilitySummary?: boolean;
+    activePregnancy?: PregnancyRecord | null;
+    activePostpartum?: PostpartumRecord | null;
+    // Screening responses for the postpartum dashboard's offer/history surfacing
+    //. Consumed only in the active-postpartum branch of buildPregnancySection.
+    screeningResponses?: readonly ScreeningResponse[];
+    pregnancyModeUnlocked?: boolean;
+    projection?: ReturnType<typeof buildCurrentCycleProjection>;
+    // Ended pregnancy records, used only to suppress the "start pregnancy"
+    // entry card after a pregnancy has concluded (see buildPregnancySection).
+    endedPregnancyRecords?: PregnancyRecord[];
   } = {},
 ): DashboardViewData {
   const dashboardCopy = getDashboardCopy(locale);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const projectedCycle = buildCurrentCycleProjection(
-    profile,
-    history,
-    historyRecords,
-    now,
+  const todayValue = formatLocalDate(now);
+  const projectedCycle =
+    options.projection ??
+    buildCurrentCycleProjection(profile, history, historyRecords, now);
+  const todayLog =
+    historyRecords.find((record) => record.date === todayValue) ?? null;
+  const activePostpartumRecord = options.activePostpartum ?? null;
+  // Cycle-return detection: a day-log cycle start dated AFTER the
+  // postpartum birth date suggests cycles are returning. Computed HERE, where
+  // profile/historyRecords already live (no new storage read) -- only when a
+  // postpartum record is active, mirroring how screeningResponses is read
+  // only in that same state. cycle-history-service.collectCycleStartDates
+  // stays the SOLE owner of "what counts as a cycle start" (period clusters,
+  // uncertain-day handling, profile.lastPeriodStart) -- never reimplemented
+  // here; the result is threaded into the postpartum view-data builder, which
+  // never reads day-log history itself.
+  const hasNewCycleStart =
+    activePostpartumRecord !== null &&
+    collectCycleStartDates(profile, historyRecords, todayValue).some(
+      (startDate) => startDate > activePostpartumRecord.startedAt,
+    );
+  const pregnancySection = buildPregnancySection(
+    projectedCycle,
+    options.activePregnancy ?? null,
+    activePostpartumRecord,
+    options.endedPregnancyRecords ?? [],
+    options.pregnancyModeUnlocked ?? false,
+    todayValue,
+    todayLog,
+    locale,
+    options.screeningResponses ?? [],
+    hasNewCycleStart,
   );
   const advancedFertilitySummary =
     options.showAdvancedFertilitySummary === true
@@ -248,6 +398,20 @@ export function buildDashboardViewData(
       : null;
 
   return {
+    mode: pregnancySection.mode,
+    ...(pregnancySection.pregnancyEntryCard
+      ? { pregnancyEntryCard: pregnancySection.pregnancyEntryCard }
+      : {}),
+    ...(pregnancySection.pregnancyDashboard
+      ? { pregnancyDashboard: pregnancySection.pregnancyDashboard }
+      : {}),
+    ...(pregnancySection.postpartumDashboard
+      ? { postpartumDashboard: pregnancySection.postpartumDashboard }
+      : {}),
+    ...(pregnancySection.postpartumStaleCard
+      ? { postpartumStaleCard: pregnancySection.postpartumStaleCard }
+      : {}),
+    ...(pregnancySection.staleCard ? { staleCard: pregnancySection.staleCard } : {}),
     cycleHero: buildDashboardCycleHero(profile, projectedCycle, history, locale),
     predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
     predictionDisclaimer: dashboardCopy.predictionDisclaimer,
@@ -273,6 +437,131 @@ export function buildDashboardViewData(
       locale,
     ),
   };
+}
+
+// The single pregnancy/postpartum-mode branching point (architecture
+// invariant: screens never branch on domain state). Precedence: an active,
+// trackable pregnancy wins and produces the pregnancy dashboard; then an active
+// postpartum record produces the (additive) postpartum dashboard; otherwise,
+// when predictions are paused by a positive test and neither record exists, an
+// entry card invites pregnancy setup (locked vs unlocked from the managed
+// gate); otherwise nothing is added and the dashboard stays in plain cycle
+// mode. An active pregnancy takes precedence over a stray active postpartum by
+// being checked first.
+function buildPregnancySection(
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  activePregnancy: PregnancyRecord | null,
+  activePostpartum: PostpartumRecord | null,
+  endedPregnancyRecords: PregnancyRecord[],
+  pregnancyModeUnlocked: boolean,
+  todayValue: string,
+  todayLog: DayLogRecord | null,
+  locale: string,
+  screeningResponses: readonly ScreeningResponse[],
+  // Cycle-return detection, computed by the caller -- see
+  // buildDashboardViewData. Consumed only in the active-postpartum branch
+  // below.
+  hasNewCycleStart: boolean,
+): {
+  mode: "cycle" | "pregnancy" | "postpartum";
+  pregnancyEntryCard?: PregnancyEntryCardViewData;
+  pregnancyDashboard?: PregnancyDashboardViewData;
+  postpartumDashboard?: PostpartumDashboardViewData;
+  postpartumStaleCard?: PostpartumStaleCardViewData;
+  staleCard?: PregnancyStaleCardViewData;
+} {
+  if (activePregnancy) {
+    const pregnancyDashboard = buildPregnancyDashboardViewData(
+      activePregnancy,
+      todayValue,
+      locale,
+      todayLog,
+    );
+    if (pregnancyDashboard) {
+      return { mode: "pregnancy", pregnancyDashboard };
+    }
+
+    // GA is null (outside the trackable window). A stale/past-window record
+    // (today well past the due date) gets a compact fallback card instead of
+    // silently vanishing; a malformed/future EDD (defensive) keeps the prior
+    // silent cycle-mode fallback with no entry card — a pregnancy record
+    // already exists, so re-offering "start pregnancy" would be wrong, but a
+    // bogus date does not warrant a confident claim either. See
+    // buildPregnancyStaleCardViewData.
+    const staleCard = buildPregnancyStaleCardViewData(activePregnancy, todayValue, locale);
+    return staleCard ? { mode: "cycle", staleCard } : { mode: "cycle" };
+  }
+
+  // Postpartum branch, beside the pregnancy one. Reads only the local
+  // record — rendering an existing record is never premium-gated (lapse
+  // posture mirrors pregnancy). A trackable record produces postpartum mode; a
+  // past-window record gets a review/close card; a malformed/future birth date
+  // falls back silently to cycle mode.
+  if (activePostpartum) {
+    const postpartumDashboard = buildPostpartumDashboardViewData(
+      activePostpartum,
+      todayValue,
+      locale,
+      screeningResponses,
+      hasNewCycleStart,
+    );
+    if (postpartumDashboard) {
+      return { mode: "postpartum", postpartumDashboard };
+    }
+
+    const postpartumStaleCard = buildPostpartumStaleCardViewData(
+      activePostpartum,
+      todayValue,
+      locale,
+    );
+    return postpartumStaleCard
+      ? { mode: "cycle", postpartumStaleCard }
+      : { mode: "cycle" };
+  }
+
+  if (projection.isPregnancyPaused) {
+    // Post-end suppression: resolvePregnancyPause still reports paused
+    // because the positive test remains newer than every cycle start until the
+    // next period is logged. But if that positive already belongs to a
+    // pregnancy that has been concluded, re-offering "start pregnancy tracking"
+    // would be wrong — and, after a loss, harmful. Suppress the entry card when
+    // any ENDED record's endedAt is on/after the paused positive-test date. A
+    // positive test dated AFTER the latest concluded pregnancy is a genuinely
+    // new event and still shows the card. (Prediction-pause behaviour itself is
+    // untouched — cycle-history-service is the sole owner of the pause.)
+    const pregnancyTestDate = projection.pregnancyTestDate;
+    const concludedForThisTest =
+      pregnancyTestDate !== null &&
+      endedPregnancyRecords.some(
+        (record) =>
+          record.endedAt !== null && record.endedAt >= pregnancyTestDate,
+      );
+    if (concludedForThisTest) {
+      return { mode: "cycle" };
+    }
+
+    const pregnancyCopy = getPregnancyCopy(locale);
+    return {
+      mode: "cycle",
+      pregnancyEntryCard: pregnancyModeUnlocked
+        ? {
+            variant: "start_pregnancy",
+            eyebrowLabel: pregnancyCopy.entryCard.eyebrow,
+            title: pregnancyCopy.entryCard.unlockedTitle,
+            description: pregnancyCopy.entryCard.unlockedBody,
+            ctaLabel: pregnancyCopy.entryCard.unlockedCta,
+          }
+        : {
+            variant: "premium_locked",
+            eyebrowLabel: pregnancyCopy.entryCard.eyebrow,
+            title: pregnancyCopy.entryCard.lockedTitle,
+            description: pregnancyCopy.entryCard.lockedBody,
+            ctaLabel: pregnancyCopy.entryCard.lockedCta,
+          },
+    };
+  }
+
+  return { mode: "cycle" };
 }
 
 function buildDashboardCycleHero(

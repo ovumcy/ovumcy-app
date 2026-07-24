@@ -1,5 +1,6 @@
 import { getDayLogCopy } from "../i18n/day-log-copy";
 import { createEmptyDayLogRecord, type DayFlow, type DayLogRecord } from "../models/day-log";
+import { createPregnancyRecord } from "../models/pregnancy";
 import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
@@ -48,6 +49,37 @@ describe("day-log-editor-service", () => {
     );
   });
 
+  it("hides pregnancy metrics with no active pregnancy", async () => {
+    const state = await loadDayLogEditorState(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(null),
+      }),
+      "2026-03-17",
+    );
+
+    expect(state.viewData.visibility.showPregnancyMetrics).toBe(false);
+  });
+
+  it("shows pregnancy metrics while a pregnancy is active", async () => {
+    const state = await loadDayLogEditorState(
+      createStorageMock({
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: "2026-10-08",
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      }),
+      "2026-03-17",
+    );
+
+    expect(state.viewData.visibility.showPregnancyMetrics).toBe(true);
+    expect(state.viewData.labels.weightUnit).toBe("kg");
+    expect(state.viewData.labels.bloodPressureUnit).toBe("mmHg");
+  });
+
   it("normalizes day log patches before persisting", async () => {
     const storage = createStorageMock();
     const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
@@ -72,6 +104,51 @@ describe("day-log-editor-service", () => {
         notes: "note",
       }),
     );
+  });
+
+  it("carries pregnancy metric fields from a draft patch through save", async () => {
+    const storage = createStorageMock();
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      weightKg: 65.436,
+      bpSystolic: 118.6,
+      bpDiastolic: 76.2,
+    });
+
+    const result = await saveDayLogEditorRecord(storage, record);
+
+    expect(result).toEqual({
+      ok: true,
+      record: expect.objectContaining({
+        weightKg: 65.44,
+        bpSystolic: 119,
+        bpDiastolic: 76,
+      }),
+    });
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        weightKg: 65.44,
+        bpSystolic: 119,
+        bpDiastolic: 76,
+      }),
+    );
+  });
+
+  it("drops an out-of-range pregnancy metric before it reaches storage", async () => {
+    const storage = createStorageMock();
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      weightKg: 999,
+    });
+
+    const result = await saveDayLogEditorRecord(storage, record);
+
+    if (!result.ok) {
+      throw new Error("expected saveDayLogEditorRecord to succeed");
+    }
+    expect(result.record).not.toHaveProperty("weightKg");
+    const [writtenRecord] = (storage.writeDayLogRecord as jest.Mock).mock.calls[0] as [
+      Record<string, unknown>,
+    ];
+    expect(writtenRecord).not.toHaveProperty("weightKg");
   });
 
   it("auto-fills the remaining period window when the first day is newly marked", async () => {
