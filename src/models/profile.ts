@@ -40,9 +40,18 @@ export type ResolvedTheme = "light" | "dark";
 export const DEFAULT_RESOLVED_THEME: ResolvedTheme = "light";
 export type PredictionMode = "regular" | "irregular" | "facts_only";
 export type ReminderTime = string;
-export type CalendarPredictionNoticeKey =
+// Only the mode notices are dismiss-and-forget: dismissing one persists its
+// key into dismissedCalendarPredictionNoticeKey and it never returns. The
+// pregnancy-paused notice is deliberately excluded from this union (and from
+// the SUPPORTED_ persistence whitelist below): it must reappear whenever an
+// active pregnancy suppresses predictions again, so its dismissal lives only
+// in screen session state and is never written to the profile.
+export type DismissibleCalendarPredictionNoticeKey =
   | "calendar_irregular_prediction_notice_v1"
   | "calendar_unpredictable_prediction_notice_v1";
+export type CalendarPredictionNoticeKey =
+  | DismissibleCalendarPredictionNoticeKey
+  | "calendar_pregnancy_paused_prediction_notice_v1";
 export type OnboardingHelperNoticeKey = "onboarding_day1_tip_notice_v1";
 
 export const SUPPORTED_INTERFACE_LANGUAGES = [
@@ -86,13 +95,30 @@ export type ProfileRecord = {
   upcomingPeriodReminderEnabled?: boolean;
   fertileWindowReminderEnabled?: boolean;
   managedReminderEmailsEnabled?: boolean;
+  // Optional kick-count reminder. Default OFF; only ever
+  // meaningful while an active pregnancy exists at/after
+  // KICK_COUNTS_START_WEEK -- see local-reminder-plan-service.ts's gating.
+  // Mirrors dailyLogReminderEnabled exactly: additive, payload passthrough,
+  // no storage-adapter mapping needed.
+  kickCountReminderEnabled?: boolean;
   reminderTime?: ReminderTime;
   reminderLeadDays?: number;
+  // Personal crisis-support contact. Additive, optional, and
+  // encrypted at rest natively like every other profile field (profile rides
+  // the existing encrypted payload -- no storage-adapter/schema change). These
+  // are the owner's private safety data and are held to the strictest handling:
+  // NEVER in logs, notification payloads, or export FILENAMES, and NEVER in a
+  // partner projection at any access level (partner-shared-projection-service
+  // and the PartnerSharedProfileRecord Pick both exclude them by construction --
+  // see the partner-leak pins). Empty string is the "not set" state; trim +
+  // length-cap normalization lives in profile-settings-policy.
+  crisisContactName?: string;
+  crisisContactPhone?: string;
   languageOverride: InterfaceLanguage | null;
   themeOverride: ThemePreference | null;
   firstDayOfWeek?: WeekStartDay;
   screenCaptureProtectionEnabled?: boolean;
-  dismissedCalendarPredictionNoticeKey?: CalendarPredictionNoticeKey | null;
+  dismissedCalendarPredictionNoticeKey?: DismissibleCalendarPredictionNoticeKey | null;
   dismissedOnboardingHelperNoticeKey?: OnboardingHelperNoticeKey | null;
 };
 
@@ -171,15 +197,15 @@ export function resolveScreenCaptureProtectionEnabled(
 
 export function normalizeCalendarPredictionNoticeKey(
   value: string | null | undefined,
-): CalendarPredictionNoticeKey | null {
+): DismissibleCalendarPredictionNoticeKey | null {
   if (!value) {
     return null;
   }
 
   return SUPPORTED_CALENDAR_PREDICTION_NOTICE_KEYS.includes(
-    value as CalendarPredictionNoticeKey,
+    value as DismissibleCalendarPredictionNoticeKey,
   )
-    ? (value as CalendarPredictionNoticeKey)
+    ? (value as DismissibleCalendarPredictionNoticeKey)
     : null;
 }
 
@@ -254,8 +280,15 @@ export function createDefaultProfileRecord(): ProfileRecord {
     upcomingPeriodReminderEnabled: false,
     fertileWindowReminderEnabled: false,
     managedReminderEmailsEnabled: false,
+    kickCountReminderEnabled: false,
     reminderTime: DEFAULT_REMINDER_TIME,
     reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
+    // Materialized to "" (not absent) so the field is enumerated by the profile
+    // pristine-comparison (import-service.profileFieldsEqual) and thus protected
+    // from being clobbered by a JSON import onto a device that already has a
+    // crisis contact set. "" is the canonical "not set" state.
+    crisisContactName: "",
+    crisisContactPhone: "",
     languageOverride: null,
     themeOverride: null,
     firstDayOfWeek: DEFAULT_WEEK_START_DAY,

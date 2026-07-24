@@ -1,19 +1,19 @@
 import { getCalendarCopy } from "../i18n/calendar-copy";
 import type {
-  CalendarPredictionNoticeKey,
+  DismissibleCalendarPredictionNoticeKey,
   ProfileRecord,
 } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 
 export type CalendarPredictionNoticeViewData = {
   dismissLabel: string;
-  key: CalendarPredictionNoticeKey;
+  key: DismissibleCalendarPredictionNoticeKey;
   message: string;
 };
 
 export function resolveCalendarPredictionNoticeKey(
   profile: Pick<ProfileRecord, "irregularCycle" | "unpredictableCycle">,
-): CalendarPredictionNoticeKey | null {
+): DismissibleCalendarPredictionNoticeKey | null {
   if (profile.unpredictableCycle) {
     return "calendar_unpredictable_prediction_notice_v1";
   }
@@ -53,7 +53,7 @@ export function buildCalendarPredictionNotice(
 export async function dismissCalendarPredictionNotice(
   storage: LocalAppStorage,
   profile: ProfileRecord,
-  key: CalendarPredictionNoticeKey,
+  key: DismissibleCalendarPredictionNoticeKey,
 ): Promise<ProfileRecord> {
   if (profile.dismissedCalendarPredictionNoticeKey === key) {
     return profile;
