@@ -1380,6 +1380,11 @@ describe("SettingsScreen", () => {
       screen.getByText("Days already on this device (kept unchanged): 1"),
     ).toBeTruthy();
     expect(screen.getByText("Your current settings stay unchanged.")).toBeTruthy();
+    // A v1 file must preview exactly as it did before the v2 pregnancy-mode
+    // collections existed: none of the new rows appear.
+    expect(screen.queryByText(/New pregnancy records/)).toBeNull();
+    expect(screen.queryByText(/New kick-count sessions/)).toBeNull();
+    expect(screen.queryByText(/New contraction sessions/)).toBeNull();
     // Two-phase contract: the preview is a dry run.
     expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
@@ -1396,6 +1401,76 @@ describe("SettingsScreen", () => {
     );
     // Configured device: the backup profile must never replace user settings.
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("settings-import-preview")).toBeNull();
+  });
+
+  it("previews and restores the pregnancy-mode collections from a v2 import file", async () => {
+    const storage = createSettingsStorageMock();
+    const importFilePickerClient = createImportPickerMock(
+      importEnvelopeJSON({
+        formatVersion: 2,
+        pregnancies: [
+          {
+            id: "p1",
+            status: "ended",
+            edd: "2025-10-01",
+            eddBasis: "lmp",
+            lmpDate: null,
+            schedulePreset: "who2016",
+            startedAt: "2025-01-01",
+            endedAt: "2025-06-01",
+            endReason: "birth",
+            modeOfDelivery: null,
+          },
+        ],
+        kickSessions: [
+          { id: "k1", date: "2026-02-10", durationMinutes: 15, kickCount: 10 },
+        ],
+        contractionSessions: [
+          {
+            id: "c1",
+            date: "2026-02-11",
+            startedAt: "2026-02-11T10:00:00.000Z",
+            contractions: [],
+          },
+        ],
+      }),
+    );
+
+    render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        section="data"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    await screen.findByTestId("settings-import-preview");
+    expect(screen.getByText("New pregnancy records: 1")).toBeTruthy();
+    expect(screen.getByText("New kick-count sessions: 1")).toBeTruthy();
+    expect(screen.getByText("New contraction sessions: 1")).toBeTruthy();
+    // Dry run: nothing written during the preview phase.
+    expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
+    expect(storage.writeKickSession).not.toHaveBeenCalled();
+    expect(storage.writeContractionSession).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("settings-import-confirm-button"));
+
+    await screen.findByTestId("settings-import-status-banner");
+    expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
+    expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "p1", status: "ended" }),
+    );
+    expect(storage.writeKickSession).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "k1", kickCount: 10 }),
+    );
+    expect(storage.writeContractionSession).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "c1" }),
+    );
     expect(screen.queryByTestId("settings-import-preview")).toBeNull();
   });
 

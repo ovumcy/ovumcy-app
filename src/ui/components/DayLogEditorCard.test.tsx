@@ -580,3 +580,138 @@ describe("DayLogEditorCard save/cancel/delete actions", () => {
     expect(screen.queryByTestId("day-log-bleeding-safety-hint")).toBeNull();
   });
 });
+
+function renderMetricsCard(
+  recordOverrides: Partial<{
+    weightKg: number;
+    bpSystolic: number;
+    bpDiastolic: number;
+  }> = {},
+  showPregnancyMetrics = true,
+) {
+  const profile = createDefaultProfileRecord();
+  const viewData = buildDayLogEditorViewData(
+    profile,
+    "2026-05-31",
+    createDefaultSymptomRecords(),
+    [],
+    "en",
+    { showPregnancyMetrics },
+  );
+  const onPatch = jest.fn();
+
+  render(
+    <DayLogEditorCard
+      entryExists={false}
+      isSaving={false}
+      record={{ ...createEmptyDayLogRecord("2026-05-31"), ...recordOverrides }}
+      statusMessage=""
+      viewData={viewData}
+      onPatch={onPatch}
+      onSave={jest.fn()}
+    />,
+  );
+
+  return { onPatch };
+}
+
+describe("DayLogEditorCard pregnancy metrics", () => {
+  it("hides weight and blood pressure inputs when the visibility flag is off (no active pregnancy)", () => {
+    renderMetricsCard({}, false);
+
+    expect(screen.queryByTestId("day-log-weight-input")).toBeNull();
+    expect(screen.queryByTestId("day-log-bp-systolic-input")).toBeNull();
+    expect(screen.queryByTestId("day-log-bp-diastolic-input")).toBeNull();
+  });
+
+  it("shows weight and blood pressure inputs when the visibility flag is on (active pregnancy)", () => {
+    renderMetricsCard({}, true);
+
+    expect(screen.getByTestId("day-log-weight-input")).toBeTruthy();
+    expect(screen.getByTestId("day-log-bp-systolic-input")).toBeTruthy();
+    expect(screen.getByTestId("day-log-bp-diastolic-input")).toBeTruthy();
+  });
+
+  it("patches a typed weight value", () => {
+    const { onPatch } = renderMetricsCard({}, true);
+
+    fireEvent.changeText(screen.getByTestId("day-log-weight-input"), "65.5");
+
+    expect(screen.getByTestId("day-log-weight-input").props.value).toBe("65.5");
+    expect(onPatch).toHaveBeenLastCalledWith({ weightKg: 65.5 });
+  });
+
+  it("patches typed systolic and diastolic values independently", () => {
+    const { onPatch } = renderMetricsCard({}, true);
+
+    fireEvent.changeText(screen.getByTestId("day-log-bp-systolic-input"), "120");
+    expect(onPatch).toHaveBeenLastCalledWith({ bpSystolic: 120 });
+
+    fireEvent.changeText(screen.getByTestId("day-log-bp-diastolic-input"), "80");
+    expect(onPatch).toHaveBeenLastCalledWith({ bpDiastolic: 80 });
+  });
+
+  it("shows a stored weight and clears it to an absent-mapping zero-patch when emptied", () => {
+    const { onPatch } = renderMetricsCard({ weightKg: 65.5 }, true);
+
+    expect(screen.getByTestId("day-log-weight-input").props.value).toBe("65.5");
+
+    fireEvent.changeText(screen.getByTestId("day-log-weight-input"), "");
+
+    expect(screen.getByTestId("day-log-weight-input").props.value).toBe("");
+    // 0 is not a legal weight (normalizeDayWeightKg's MIN is 30), so the
+    // downstream sanitize step drops the key entirely -- this is how an
+    // emptied field maps to "absent", not to a literal 0 kg reading.
+    expect(onPatch).toHaveBeenLastCalledWith({ weightKg: 0 });
+  });
+
+  it("drops letters and extra separators from the weight input", () => {
+    const { onPatch } = renderMetricsCard({}, true);
+
+    fireEvent.changeText(screen.getByTestId("day-log-weight-input"), "6a5.5.7b");
+
+    expect(screen.getByTestId("day-log-weight-input").props.value).toBe("65.57");
+    expect(onPatch).toHaveBeenLastCalledWith({ weightKg: 65.57 });
+  });
+
+  it("drops non-digit characters from blood pressure inputs", () => {
+    const { onPatch } = renderMetricsCard({}, true);
+
+    fireEvent.changeText(screen.getByTestId("day-log-bp-systolic-input"), "1a2c0");
+
+    expect(screen.getByTestId("day-log-bp-systolic-input").props.value).toBe("120");
+    expect(onPatch).toHaveBeenLastCalledWith({ bpSystolic: 120 });
+  });
+});
+
+describe("pregnancy metric edge input", () => {
+  it("renders saved positive metrics and resets a cleared field on blur", () => {
+    const { onPatch } = renderMetricsCard({
+      weightKg: 65.4,
+      bpSystolic: 118,
+      bpDiastolic: 76,
+    });
+
+    const weight = screen.getByTestId("day-log-weight-input");
+    expect(weight.props.value).toBe("65.4");
+
+    // Clearing then leaving the field restores the saved value instead of
+    // persisting an empty string.
+    fireEvent.changeText(weight, "");
+    fireEvent(weight, "blur");
+    expect(screen.getByTestId("day-log-weight-input").props.value).toBe("65.4");
+    fireEvent(screen.getByTestId("day-log-bp-systolic-input"), "blur");
+    fireEvent(screen.getByTestId("day-log-bp-diastolic-input"), "blur");
+    expect(onPatch).toHaveBeenCalled();
+  });
+
+  it("patches unparseable blood-pressure input as cleared (0), never NaN", () => {
+    const { onPatch } = renderMetricsCard();
+
+    fireEvent.changeText(screen.getByTestId("day-log-bp-systolic-input"), "abc");
+    expect(onPatch).toHaveBeenLastCalledWith({ bpSystolic: 0 });
+    fireEvent.changeText(screen.getByTestId("day-log-bp-diastolic-input"), "xyz");
+    expect(onPatch).toHaveBeenLastCalledWith({ bpDiastolic: 0 });
+  });
+});
+
