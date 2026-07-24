@@ -88,6 +88,16 @@ export type ExportPDFBuildInput = {
   dayLogs: readonly DayLogRecord[];
   profile: ProfileRecord;
   symptomRecords: readonly SymptomRecord[];
+  // Additive, mirrors stats/calendar's X14 suppressPredictions pattern:
+  // true when an active, trackable pregnancy record exists for the owner
+  // (activePregnancy !== null, computed by the storage-aware caller in
+  // export-service.ts). Gates ONLY buildAdvancedFertilityItemsForPDF's
+  // current-cycle anchor (thermal shift / ovulation confirmation / LH peak) --
+  // completed-cycle history (the per-cycle tables, calendar markers, extended
+  // reports, short-luteal warning) is untouched, since all of it is already
+  // computed from history.completedCycles rather than a live anchor. Defaults
+  // to false, so every existing caller/test keeps today's behavior unchanged.
+  suppressPredictions?: boolean;
 };
 
 type ExportPDFLayoutContext = {
@@ -150,6 +160,7 @@ export function buildExportPDFReport({
   dayLogs,
   profile,
   symptomRecords,
+  suppressPredictions = false,
 }: ExportPDFBuildInput): ExportPDFReport {
   const language = resolveCopyLanguage(profile.languageOverride);
   const dayLogLabels = getDayLogCopy(language);
@@ -188,6 +199,7 @@ export function buildExportPDFReport({
     sortedDayLogs,
     profile,
     pdfCopy,
+    suppressPredictions,
   );
   const extendedReports = buildStatsExtendedReports(history);
   const extendedReportRows: ExportPDFExtendedReportRow[] = (
@@ -257,14 +269,27 @@ function buildAdvancedFertilityItemsForPDF(
   sortedDayLogs: readonly DayLogRecord[],
   profile: ProfileRecord,
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
+  suppressPredictions: boolean,
 ): ExportPDFAdvancedFertilityItem[] {
   // Use the live current-cycle anchor (profile.lastPeriodStart) instead of the
   // last completed cycle's start, so the stats match the cycle the app treats as
   // current rather than the one before it.
+  //
+  // Y7b: while an active pregnancy record is being tracked, a null anchor
+  // drops ONLY the current-cycle-anchored signals (thermal shift, ovulation
+  // confirmation, LH peak) -- mirrors stats-view-service's
+  // `suppressPredictions ? null : projection.cycleAnchorDate` exactly, so the
+  // doctor PDF stops printing phantom fertility signals derived from BBT/
+  // mucus/LH data logged after a lifted pause during pregnancy. This function
+  // never surfaces the completed-cycle facts (observed luteal, signal
+  // coverage) in the first place, so suppression here correctly degrades to
+  // the section's existing "no advanced fertility signals" empty copy --
+  // the same neutral presentation a facts_only/no-current-cycle owner
+  // already gets, no new copy needed.
   const summary = buildStatsAdvancedFertility(
     history,
     sortedDayLogs,
-    profile.lastPeriodStart ?? null,
+    suppressPredictions ? null : (profile.lastPeriodStart ?? null),
   );
   if (!summary) {
     return [];
