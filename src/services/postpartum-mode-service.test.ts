@@ -587,11 +587,11 @@ describe("defensive branches", () => {
   const now = new Date("2026-06-10T12:00:00.000Z");
 
   it("starts postpartum dated today when the birth record has no endedAt", async () => {
-    const storage = createLocalAppStorageMock();
-    storage.listPregnancyRecords.mockResolvedValue([
-      endedBirthPregnancy({ endedAt: null }),
-    ]);
-    storage.readActivePostpartum.mockResolvedValue(null);
+    const storage = createLocalAppStorageMock({
+      listPregnancyRecords: jest
+        .fn()
+        .mockResolvedValue([endedBirthPregnancy({ endedAt: null })]),
+    });
 
     const result = await startPostpartumFromBirth(storage, { now });
 
@@ -602,13 +602,13 @@ describe("defensive branches", () => {
   });
 
   it("prefers the dated birth over an undated one, and breaks endedAt ties deterministically", async () => {
-    const storage = createLocalAppStorageMock();
-    storage.listPregnancyRecords.mockResolvedValue([
-      endedBirthPregnancy({ id: "pregnancy_undated", endedAt: null }),
-      endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
-      endedBirthPregnancy({ id: "pregnancy_tied", endedAt: "2026-06-01" }),
-    ]);
-    storage.readActivePostpartum.mockResolvedValue(null);
+    const storage = createLocalAppStorageMock({
+      listPregnancyRecords: jest.fn().mockResolvedValue([
+        endedBirthPregnancy({ id: "pregnancy_undated", endedAt: null }),
+        endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
+        endedBirthPregnancy({ id: "pregnancy_tied", endedAt: "2026-06-01" }),
+      ]),
+    });
 
     const result = await startPostpartumFromBirth(storage, { now });
 
@@ -620,8 +620,9 @@ describe("defensive branches", () => {
   });
 
   it("falls back to today when endPostpartum receives an unparseable endedAt", async () => {
-    const storage = createLocalAppStorageMock();
-    storage.readActivePostpartum.mockResolvedValue(activePostpartum());
+    const storage = createLocalAppStorageMock({
+      readActivePostpartum: jest.fn().mockResolvedValue(activePostpartum()),
+    });
 
     const result = await endPostpartum(
       storage,
@@ -646,8 +647,9 @@ describe("end and birth-resolution branch completion", () => {
   const now = new Date("2026-06-10T12:00:00.000Z");
 
   it("persists an explicitly provided valid endedAt", async () => {
-    const storage = createLocalAppStorageMock();
-    storage.readActivePostpartum.mockResolvedValue(activePostpartum());
+    const storage = createLocalAppStorageMock({
+      readActivePostpartum: jest.fn().mockResolvedValue(activePostpartum()),
+    });
 
     const result = await endPostpartum(
       storage,
@@ -672,9 +674,9 @@ describe("end and birth-resolution branch completion", () => {
         endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
       ],
     ]) {
-      const storage = createLocalAppStorageMock();
-      storage.listPregnancyRecords.mockResolvedValue(records);
-      storage.readActivePostpartum.mockResolvedValue(null);
+      const storage = createLocalAppStorageMock({
+        listPregnancyRecords: jest.fn().mockResolvedValue(records),
+      });
 
       const result = await startPostpartumFromBirth(storage, { now });
 

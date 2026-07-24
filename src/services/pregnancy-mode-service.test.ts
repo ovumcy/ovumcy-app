@@ -1119,13 +1119,10 @@ describe("buildPregnancyStaleCardViewData", () => {
 describe("defensive branches", () => {
   it("rejects an unparseable LMP date distinctly from a missing one", async () => {
     const storage = createLocalAppStorageMock();
-    storage.readActivePregnancy.mockResolvedValue(null);
-    storage.listPostpartumRecords.mockResolvedValue([]);
 
     const result = await startPregnancy(storage, {
       eddBasis: "lmp",
       lmpDate: "2026-99-99",
-      startedAt: "2026-01-05",
     });
 
     expect(result).toEqual({ ok: false, errorCode: "invalid_date" });
@@ -1134,20 +1131,18 @@ describe("defensive branches", () => {
 
   it("treats an omitted EDD as missing for a non-LMP basis", async () => {
     const storage = createLocalAppStorageMock();
-    storage.readActivePregnancy.mockResolvedValue(null);
-    storage.listPostpartumRecords.mockResolvedValue([]);
 
     const result = await startPregnancy(storage, {
       eddBasis: "ultrasound",
-      startedAt: "2026-01-05",
     });
 
     expect(result).toEqual({ ok: false, errorCode: "missing_date" });
   });
 
   it("falls back to today when endPregnancy receives an unparseable endedAt", async () => {
-    const storage = createLocalAppStorageMock();
-    storage.readActivePregnancy.mockResolvedValue(activeRecord());
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+    });
 
     const result = await endPregnancy(
       storage,

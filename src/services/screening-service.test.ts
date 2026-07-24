@@ -321,8 +321,9 @@ describe("defensive branches", () => {
     });
     expect(okStorage.deleteAllScreeningData).toHaveBeenCalled();
 
-    const brokenStorage = createLocalAppStorageMock();
-    brokenStorage.deleteAllScreeningData.mockRejectedValue(new Error("busy"));
+    const brokenStorage = createLocalAppStorageMock({
+      deleteAllScreeningData: jest.fn().mockRejectedValue(new Error("busy")),
+    });
     await expect(deleteAllScreeningData(brokenStorage)).resolves.toEqual({
       ok: false,
       errorCode: "generic",
