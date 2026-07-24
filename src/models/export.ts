@@ -1,5 +1,12 @@
 import type { DayLogRecord } from "./day-log";
 import type {
+  ContractionSession,
+  KickCountSession,
+  PregnancyRecord,
+} from "./pregnancy";
+import type { PostpartumRecord } from "./postpartum";
+import type { ScreeningResponse } from "./screening";
+import type {
   InterfaceLanguage,
   LocalDateISO,
   ProfileRecord,
@@ -58,6 +65,19 @@ export type ExportSymptomFlags = {
   constipation: boolean;
 };
 
+// Pregnancy-mode fields. weightKg/bpSystolic/bpDiastolic are per-day
+// metrics already carried on DayLogRecord -- blank when absent, mirroring
+// moodRating/bbt's existing "0 renders blank" convention. kickCount is the SUM
+// of that date's kick-count sessions (0/none renders blank the same way).
+// Contraction sessions are deliberately NOT represented as a CSV column: they
+// are datetime-grained (multiple timestamped contractions per session, not
+// one value per day) and do not fit this file's one-row-per-day shape: they
+// export only in the JSON backup (ExportBackupEnvelope.contractionSessions).
+// Postpartum records (episodic recovery episodes) and screening responses
+// (a 10-item answer vector + derived score) are the same shape mismatch, so
+// they too stay JSON-only (postpartumRecords / screeningResponses) with no CSV
+// column -- the screening answer vector in particular is the most sensitive
+// class and never belongs in a flat spreadsheet cell.
 export type ExportCSVRow = {
   date: LocalDateISO;
   period: boolean;
@@ -74,11 +94,19 @@ export type ExportCSVRow = {
   pregnancyTest: string;
   cycleStart: boolean;
   isUncertain: boolean;
+  weightKg: number;
+  bpSystolic: number;
+  bpDiastolic: number;
+  kickCount: number;
 };
 
 export type ExportBackupEnvelope = {
   app: "ovumcy";
-  formatVersion: 1;
+  // 1: original shape (profile/symptoms/dayLogs only). 2: adds the optional
+  // pregnancy-mode collections. 3: adds the optional postpartum + screening
+  // collections below. A v1/v2 object (the newer keys absent) stays
+  // structurally valid so old backups keep parsing unchanged.
+  formatVersion: 1 | 2 | 3;
   exportedAt: string;
   preset: ExportPreset;
   range: {
@@ -89,6 +117,24 @@ export type ExportBackupEnvelope = {
   profile: ProfileRecord;
   symptoms: SymptomRecord[];
   dayLogs: DayLogRecord[];
+  // Pregnancy-mode collections (v2+). The export path always writes all
+  // three (possibly empty arrays) at formatVersion 2+; they stay optional on
+  // the type only so a v1-shaped object (parsed from an old backup) remains
+  // assignable without fabricating empty arrays that were never on disk.
+  pregnancies?: PregnancyRecord[];
+  kickSessions?: KickCountSession[];
+  contractionSessions?: ContractionSession[];
+  // Postpartum + EPDS mood-screening collections (v3+). The export path
+  // always writes both (possibly empty arrays) at formatVersion 3; optional on
+  // the type for the same reason as the pregnancy collections above — a v1/v2
+  // object stays assignable without inventing keys that were never on disk.
+  // Screening responses are the most sensitive class in the product; they live
+  // in the JSON backup only (never a CSV column) and never in an export
+  // filename or log. postpartumRecords are episodic and therefore un-ranged
+  // (like pregnancies); screeningResponses are ranged by completion date (like
+  // sessions) — see export-service.buildJSONArtifact.
+  postpartumRecords?: PostpartumRecord[];
+  screeningResponses?: ScreeningResponse[];
 };
 
 export type ExportPDFCycleDay = {
