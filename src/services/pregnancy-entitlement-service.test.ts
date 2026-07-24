@@ -82,9 +82,12 @@ describe("createDevFlagPregnancyEntitlementSource", () => {
 
     const locked = ["0", "yes", "TRUE", "", undefined];
     for (const flagValue of locked) {
+      // Spread keeps exactOptionalPropertyTypes happy: an unset flag is an
+      // absent property, not an explicit undefined (same resolution either
+      // way through the ?? chain).
       const source = createDevFlagPregnancyEntitlementSource({
         isDevelopment: true,
-        flagValue,
+        ...(flagValue === undefined ? {} : { flagValue }),
       });
       await expect(source.loadOwnsPregnancyModule()).resolves.toBe(false);
     }
