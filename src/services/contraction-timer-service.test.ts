@@ -24,7 +24,7 @@ import {
   startContraction,
   stopContraction,
 } from "./contraction-timer-service";
-import { addDays, parseLocalDate } from "./profile-settings-policy";
+import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 const EDD = "2026-10-08";
 
@@ -926,5 +926,34 @@ describe("defensive branches", () => {
       .filter((row) => row.id !== "contraction_bad")
       .map((row) => row.id);
     expect(parseableIds).toEqual(["contraction_new", "contraction_mid"]);
+  });
+});
+
+describe("real-clock defaults", () => {
+  it("resumeOrCreateSession defaults `now` to the real clock", async () => {
+    const storage = createLocalAppStorageMock();
+
+    const created = await resumeOrCreateSession(storage);
+
+    expect(created.contractions).toEqual([]);
+    expect(new Date(created.startedAt).getTime()).toBeGreaterThan(0);
+  });
+
+  it("stopContraction defaults `now` to the real clock", async () => {
+    const storage = createLocalAppStorageMock();
+    const live = session({
+      id: "contraction_live",
+      startedAt: new Date(Date.now() - 60_000).toISOString(),
+      date: formatLocalDate(new Date()),
+    });
+
+    const result = await stopContraction(
+      storage,
+      live,
+      new Date(Date.now() - 30_000).toISOString(),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writeContractionSession).toHaveBeenCalled();
   });
 });
