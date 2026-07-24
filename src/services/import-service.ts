@@ -63,7 +63,7 @@ import {
 //     user-entered data yet). Any user-entered value — even a language
 //     override — blocks the profile restore, so a restore can never clobber the
 //     user's current configuration.
-//   - pregnancy records / kick-count sessions / contraction sessions (X9,
+//   - pregnancy records / kick-count sessions / contraction sessions (
 //     formatVersion 2 only): each record is sanitized (an invalid one is
 //     skipped, never fatal) and skipped whenever its id already exists
 //     on-device. Pregnancy records additionally honor the one-active-pregnancy
@@ -72,7 +72,7 @@ import {
 //     active record — never overwriting, ending, or throwing past it. A
 //     formatVersion 1 file never carries these keys, so it imports exactly as
 //     before.
-//   - postpartum records / screening responses (Y7, formatVersion 3 only):
+//   - postpartum records / screening responses (formatVersion 3 only):
 //     postpartum records mirror the pregnancy path exactly (sanitize-or-skip,
 //     id-dedup, ended-before-active ordering + the one-active-postpartum
 //     invariant). Screening responses mirror the session path (sanitize-or-skip,
@@ -118,7 +118,7 @@ export type ImportOutcome = {
   dayLogsRejected: number;
   symptomsAdded: number;
   profileRestored: boolean;
-  // Pregnancy-mode collections (X9, v2 only; always 0 for a v1 file). Unlike
+  // Pregnancy-mode collections (v2 only; always 0 for a v1 file). Unlike
   // dayLogs there is no separate "rejected" bucket: a structurally invalid
   // record, a duplicate id, and an active-invariant conflict are all
   // additive-merge skips from the user's point of view (nothing changed on
@@ -129,7 +129,7 @@ export type ImportOutcome = {
   kickSessionsSkipped: number;
   contractionSessionsAdded: number;
   contractionSessionsSkipped: number;
-  // Postpartum records / screening responses (Y7, v3 only; always 0 for a
+  // Postpartum records / screening responses (v3 only; always 0 for a
   // v1/v2 file). Same one-"skipped"-bucket convention as the pregnancy
   // collections: a structurally invalid record, a duplicate id, and (for
   // postpartum) an active-invariant conflict are all additive-merge skips.

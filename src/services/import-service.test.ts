@@ -213,7 +213,7 @@ describe("import-service parse", () => {
     ).toEqual({ ok: false, errorCode: "unrecognized_format" });
   });
 
-  it("accepts formatVersion 2 (X9) and defaults missing pregnancy-mode collections", () => {
+  it("accepts formatVersion 2 and defaults missing pregnancy-mode collections", () => {
     const result = parseImportEnvelope(
       JSON.stringify({ app: "ovumcy", formatVersion: 2 }),
     );
@@ -227,7 +227,7 @@ describe("import-service parse", () => {
     }
   });
 
-  it("accepts formatVersion 3 (Y7) and defaults missing postpartum + screening collections", () => {
+  it("accepts formatVersion 3 and defaults missing postpartum + screening collections", () => {
     const result = parseImportEnvelope(
       JSON.stringify({ app: "ovumcy", formatVersion: 3 }),
     );
@@ -668,7 +668,7 @@ describe("previewImportBackupEnvelope (dry-run)", () => {
   });
 });
 
-describe("import-service v1 compatibility (X9)", () => {
+describe("import-service v1 compatibility", () => {
   it("imports a v1 file exactly as before: no pregnancy-mode keys touched, all new counts stay zero", async () => {
     const { storage, dayLogs } = createStatefulStorage();
 
@@ -1168,5 +1168,48 @@ describe("restoreFromJSONBackup orchestration", () => {
 
     expect(result).toEqual({ ok: false, errorCode: "malformed" });
     expect(dayLogs.size).toBe(0);
+  });
+});
+
+describe("previewImportBackupEnvelope (dry-run, v3 collections)", () => {
+  it("counts every new collection without writing any of them", async () => {
+    const { storage } = createStatefulStorage();
+
+    const preview = await previewImportBackupEnvelope(
+      storage,
+      envelope({
+        formatVersion: 3,
+        pregnancies: [
+          pregnancyRecord({
+            id: "p_dry",
+            status: "ended",
+            endedAt: "2026-05-01",
+            endReason: "birth",
+          }),
+        ],
+        kickSessions: [kickSession({ id: "k_dry" })],
+        contractionSessions: [contractionSession({ id: "c_dry" })],
+        postpartumRecords: [
+          postpartumRecord({
+            id: "pp_dry",
+            status: "ended",
+            endedAt: "2026-06-15",
+            endReason: "cycle_returned",
+          }),
+        ],
+        screeningResponses: [screeningResponse({ id: "s_dry" })],
+      }),
+    );
+
+    expect(preview.pregnanciesAdded).toBe(1);
+    expect(preview.kickSessionsAdded).toBe(1);
+    expect(preview.contractionSessionsAdded).toBe(1);
+    expect(preview.postpartumRecordsAdded).toBe(1);
+    expect(preview.screeningResponsesAdded).toBe(1);
+    expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
+    expect(storage.writeKickSession).not.toHaveBeenCalled();
+    expect(storage.writeContractionSession).not.toHaveBeenCalled();
+    expect(storage.writePostpartumRecord).not.toHaveBeenCalled();
+    expect(storage.writeScreeningResponse).not.toHaveBeenCalled();
   });
 });
