@@ -614,6 +614,66 @@ describe("volatile-web-app-storage", () => {
     await expect(storage.listContractionSessions()).resolves.toEqual([]);
   });
 
+  it("allows updating the active record in place and starting a new one after an end", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    const active = {
+      id: "pregnancy_1",
+      status: "active" as const,
+      edd: "2026-08-15",
+      eddBasis: "ultrasound" as const,
+      lmpDate: null,
+      schedulePreset: "who2016" as const,
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    };
+    await storage.writePregnancyRecord(active);
+    // Same id: an in-place update of the active record is not a conflict.
+    await storage.writePregnancyRecord({ ...active, edd: "2026-08-20" });
+    // End it, then a NEW active record is allowed.
+    await storage.writePregnancyRecord({
+      ...active,
+      status: "ended",
+      endedAt: "2026-08-20",
+      endReason: "birth",
+    });
+    await storage.writePregnancyRecord({
+      ...active,
+      id: "pregnancy_2",
+      startedAt: "2026-09-01",
+    });
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_2" }),
+    );
+
+    const postpartum = {
+      id: "postpartum_1",
+      status: "active" as const,
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    };
+    await storage.writePostpartumRecord(postpartum);
+    await storage.writePostpartumRecord({ ...postpartum, modeOfDelivery: "vaginal" });
+    await storage.writePostpartumRecord({
+      ...postpartum,
+      status: "ended",
+      endedAt: "2026-07-15",
+      endReason: "cycle_returned",
+    });
+    await storage.writePostpartumRecord({
+      ...postpartum,
+      id: "postpartum_2",
+      startedAt: "2026-08-01",
+    });
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_2" }),
+    );
+  });
+
   it("rejects writes that fail sanitize instead of storing garbage", async () => {
     const storage = createVolatileWebAppStorage();
 

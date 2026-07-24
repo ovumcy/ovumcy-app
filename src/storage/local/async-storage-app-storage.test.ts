@@ -805,6 +805,71 @@ describe("async-storage-app-storage", () => {
     await AsyncStorage.clear();
   });
 
+  it("allows a new active record once the previous one has ended in the legacy adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_old",
+      status: "ended",
+      edd: "2025-09-20",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-01-05",
+      endedAt: "2025-09-20",
+      endReason: "birth",
+      modeOfDelivery: null,
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_new",
+      status: "active",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: null,
+      endReason: null,
+      modeOfDelivery: null,
+    });
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_new" }),
+    );
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_old",
+      status: "ended",
+      startedAt: "2025-09-20",
+      modeOfDelivery: null,
+      endedAt: "2025-12-01",
+      endReason: "cycle_returned",
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_new",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    });
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_new" }),
+    );
+
+    await AsyncStorage.clear();
+  });
+
+  it("returns an empty collection when a stored record map is malformed JSON", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    // An array is valid JSON but not a record map — the guard falls back to
+    // an empty map rather than treating array indices as record ids.
+    await AsyncStorage.setItem("ovumcy/pregnancy-records", "[]");
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+
+    await AsyncStorage.clear();
+  });
+
   it("rejects writes that fail sanitize in the legacy adapter", async () => {
     const storage = createAsyncStorageAppStorage();
 

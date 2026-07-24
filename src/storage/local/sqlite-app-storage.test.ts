@@ -3632,6 +3632,42 @@ describe("sqlite-app-storage", () => {
     ]);
   });
 
+  it("allows a new active record once the previous one has ended", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_old",
+        status: "ended",
+        startedAt: "2025-01-05",
+        endedAt: "2025-09-20",
+        endReason: "birth",
+      }),
+    );
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_new", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_new" }),
+    );
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({
+        id: "postpartum_old",
+        status: "ended",
+        startedAt: "2025-09-20",
+        endedAt: "2025-12-01",
+        endReason: "cycle_returned",
+      }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_new", status: "active" }),
+    );
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_new" }),
+    );
+  });
+
   it("rejects a write that fails sanitize on every pregnancy-data class", async () => {
     const { storage, inspected } = createPregnancyStorage();
 
@@ -3722,6 +3758,21 @@ describe("sqlite-app-storage", () => {
     await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
     await expect(storage.readActivePostpartum()).resolves.toBeNull();
     await expect(storage.listScreeningResponses()).resolves.toEqual([]);
+
+    // A stale undecodable "active" row must not block starting a new record:
+    // the write-path conflict check ignores rows that fail to decode.
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_fresh", status: "active" }),
+    );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_fresh" }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({ id: "postpartum_fresh", status: "active" }),
+    );
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_fresh" }),
+    );
   });
 
   it("orders every list by its date field with id as the tie-breaker", async () => {

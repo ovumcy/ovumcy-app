@@ -438,6 +438,29 @@ describe("sanitizeContractionSession invalid inputs", () => {
     ).toBeNull();
   });
 
+  it("returns null when id, date, or startedAt is not a string at all", () => {
+    const base = {
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [],
+    };
+    expect(sanitizeContractionSession({ ...base, id: 42 })).toBeNull();
+    expect(sanitizeContractionSession({ ...base, date: 42 })).toBeNull();
+    expect(sanitizeContractionSession({ ...base, startedAt: 42 })).toBeNull();
+  });
+
+  it("drops a contraction entry whose startedAt is not a string", () => {
+    const session = sanitizeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [{ startedAt: 42, durationSeconds: 60 }],
+    });
+    expect(session).not.toBeNull();
+    expect(session?.contractions).toEqual([]);
+  });
+
   it("drops non-object contraction entries while keeping the session", () => {
     const session = sanitizeContractionSession({
       id: "contraction_1",
@@ -447,5 +470,37 @@ describe("sanitizeContractionSession invalid inputs", () => {
     });
     expect(session).not.toBeNull();
     expect(session?.contractions).toEqual([]);
+  });
+});
+
+describe("sanitize non-string field guards", () => {
+  const validRecord: PregnancyRecord = {
+    id: "pregnancy_1",
+    status: "active",
+    edd: "2026-08-15",
+    eddBasis: "ultrasound",
+    lmpDate: null,
+    schedulePreset: "who2016",
+    startedAt: "2025-11-10",
+    endedAt: null,
+    endReason: null,
+    modeOfDelivery: null,
+  };
+
+  it("rejects a pregnancy record whose startedAt is not a string", () => {
+    expect(
+      sanitizePregnancyRecord({ ...validRecord, startedAt: 42 }),
+    ).toBeNull();
+  });
+
+  it("rejects a kick session whose id or date is not a string", () => {
+    const base = {
+      id: "kick_1",
+      date: "2026-07-10",
+      durationMinutes: 60,
+      kickCount: 8,
+    };
+    expect(sanitizeKickCountSession({ ...base, id: 42 })).toBeNull();
+    expect(sanitizeKickCountSession({ ...base, date: 42 })).toBeNull();
   });
 });

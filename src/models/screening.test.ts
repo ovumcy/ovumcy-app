@@ -218,3 +218,21 @@ describe("createScreeningResponse guards", () => {
     }
   });
 });
+
+describe("sanitize non-string field guards", () => {
+  const validResponse: ScreeningResponse = {
+    id: "screening_1",
+    date: "2026-07-01",
+    instrument: "epds",
+    answers: [1, 2, 0, 3, 1, 0, 2, 1, 0, 0],
+    score: 10,
+    selfHarmFlag: false,
+  };
+
+  it("rejects a response whose id or date is not a string", () => {
+    expect(sanitizeScreeningResponse({ ...validResponse, id: 42 })).toBeNull();
+    expect(
+      sanitizeScreeningResponse({ ...validResponse, date: 42 }),
+    ).toBeNull();
+  });
+});

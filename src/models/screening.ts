@@ -190,10 +190,11 @@ function sumAnswers(answers: readonly number[]): number {
   return answers.reduce((total, value) => total + value, 0);
 }
 
-// `?? 0` only to satisfy noUncheckedIndexedAccess — normalizeAnswers guarantees
-// the index exists before this is ever reached.
+// Number() only to satisfy noUncheckedIndexedAccess — normalizeAnswers
+// guarantees the index exists before this is ever reached (a hypothetical
+// missing answer becomes NaN and safely reads as "not flagged").
 function resolveSelfHarmFlag(answers: readonly number[]): boolean {
-  return (answers[EPDS_SELF_HARM_ITEM_INDEX] ?? 0) > 0;
+  return Number(answers[EPDS_SELF_HARM_ITEM_INDEX]) > 0;
 }
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {

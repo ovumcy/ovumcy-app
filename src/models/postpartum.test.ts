@@ -149,3 +149,21 @@ describe("record id generation without crypto.randomUUID", () => {
     }
   });
 });
+
+describe("sanitize non-string field guards", () => {
+  const validRecord: PostpartumRecord = {
+    id: "postpartum_1",
+    status: "active",
+    startedAt: "2026-06-01",
+    modeOfDelivery: null,
+    endedAt: null,
+    endReason: null,
+  };
+
+  it("rejects a record whose id or startedAt is not a string", () => {
+    expect(sanitizePostpartumRecord({ ...validRecord, id: 42 })).toBeNull();
+    expect(
+      sanitizePostpartumRecord({ ...validRecord, startedAt: 42 }),
+    ).toBeNull();
+  });
+});
