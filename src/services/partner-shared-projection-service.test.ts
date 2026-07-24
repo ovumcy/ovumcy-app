@@ -297,7 +297,7 @@ describe("partner-shared-projection-service", () => {
   // data must NEVER reach a partner projection at any access level. The
   // pregnancy/kick/contraction collections never enter the projection input,
   // so those tokens are structural regression pins. The day-log weightKg /
-  // bpSystolic / bpDiastolic fields (X3, additive optional) WOULD have leaked
+  // bpSystolic / bpDiastolic fields (additive optional) WOULD have leaked
   // via the old `...record` spread — these tests pin the explicit field-pick.
   //
   // Serialized belt-and-braces: we check specific pregnancy-DOMAIN tokens
@@ -360,7 +360,7 @@ describe("partner-shared-projection-service", () => {
     },
   );
 
-  // Y4: the owner's personal crisis-support contact is owner-only private safety
+  // The owner's personal crisis-support contact is owner-only private safety
   // data and must NEVER reach a partner projection at any access level. The
   // profile pick is explicit (both the runtime literal and the
   // PartnerSharedProfileRecord Pick already exclude these fields), so these are
@@ -401,7 +401,7 @@ describe("partner-shared-projection-service", () => {
     },
   );
 
-  // Y7: postpartum recovery data and EPDS mood-screening answers are the most
+  // Postpartum recovery data and EPDS mood-screening answers are the most
   // sensitive owner-only classes in the product. Neither entity is part of the
   // projection INPUT SURFACE at all — buildPartnerSharedProjectionPayload takes
   // only accessLevel / dayLogs / profile / symptomRecords + grant metadata — so
@@ -459,7 +459,7 @@ describe("partner-shared-projection-service", () => {
     },
   );
 
-  // Y7b: closes the last two violators of the amended security-constitution
+  // Closes the last two violators of the amended security-constitution
   // Medical-safety bullet ("While a pregnancy record is ACTIVE, prediction
   // surfaces stay suppressed regardless of that pause") for the partner
   // surface. Partners must never be able to infer pregnancy state, and

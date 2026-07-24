@@ -89,7 +89,7 @@ export async function syncManagedPartnerSharedProjections(
         symptomRecords,
       },
       {
-        // Y7b (mirrors stats/calendar's X14 pattern): an ACTIVE pregnancy
+        // Mirrors the stats/calendar suppressPredictions pattern: an ACTIVE pregnancy
         // record must suppress partner-facing predictions even when the
         // day-log pause itself has already been lifted by a later period
         // log. The builder additionally recomputes the owner's own
