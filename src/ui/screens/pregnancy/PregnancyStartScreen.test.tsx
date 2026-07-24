@@ -140,7 +140,7 @@ describe("PregnancyStartScreen", () => {
       expect(persisted).toEqual(
         expect.objectContaining({ edd: EDD, eddBasis: "lmp", status: "active" }),
       );
-      // Pin: the record shape is byte-identical to a pre-Y0 record -- no
+      // Pin: the record shape is byte-identical to a singleton record -- no
       // fetusCount/chorionicity keys at all, not even undefined.
       expect(Object.prototype.hasOwnProperty.call(persisted, "fetusCount")).toBe(
         false,
