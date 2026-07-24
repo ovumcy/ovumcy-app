@@ -399,3 +399,53 @@ describe("sanitizeContractionSession", () => {
     });
   });
 });
+
+describe("record id generation without crypto.randomUUID", () => {
+  it("falls back to a time+counter id when the platform lacks randomUUID", () => {
+    const cryptoObject = globalThis.crypto as { randomUUID?: () => string };
+    Object.defineProperty(cryptoObject, "randomUUID", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const record = createPregnancyRecord({
+        edd: "2026-10-08",
+        eddBasis: "lmp",
+        lmpDate: "2026-01-01",
+        startedAt: "2026-01-05",
+      });
+      expect(record.id).toMatch(/^pregnancy_[0-9a-z]+_[0-9a-z]+$/);
+    } finally {
+      delete (cryptoObject as Record<string, unknown>).randomUUID;
+    }
+  });
+});
+
+describe("sanitizeContractionSession invalid inputs", () => {
+  it("returns null for a non-object value", () => {
+    expect(sanitizeContractionSession(42)).toBeNull();
+  });
+
+  it("returns null when the completion date is not a local ISO date", () => {
+    expect(
+      sanitizeContractionSession({
+        id: "contraction_1",
+        date: "not-a-date",
+        startedAt: "2026-08-10T14:30:00.000Z",
+        contractions: [],
+      }),
+    ).toBeNull();
+  });
+
+  it("drops non-object contraction entries while keeping the session", () => {
+    const session = sanitizeContractionSession({
+      id: "contraction_1",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [42, "bogus"],
+    });
+    expect(session).not.toBeNull();
+    expect(session?.contractions).toEqual([]);
+  });
+});

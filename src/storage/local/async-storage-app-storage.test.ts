@@ -747,6 +747,236 @@ describe("async-storage-app-storage", () => {
     );
   });
 
+  it("persists screening responses and hard-deletes them via their own scrubbed action", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writeScreeningResponse({
+      id: "screening_b",
+      date: "2026-07-01",
+      instrument: "epds",
+      answers: [1, 2, 0, 3, 1, 0, 2, 1, 0, 0],
+      score: 10,
+      selfHarmFlag: false,
+    });
+    await storage.writeScreeningResponse({
+      id: "screening_a",
+      date: "2026-07-01",
+      instrument: "epds",
+      answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      score: 0,
+      selfHarmFlag: false,
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_1",
+      status: "active",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: null,
+      endReason: null,
+    });
+
+    await storage.writeScreeningResponse({
+      id: "screening_c",
+      date: "2026-06-01",
+      instrument: "epds",
+      answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      score: 0,
+      selfHarmFlag: false,
+    });
+
+    // Earlier day first; same-day responses order deterministically by id.
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: "screening_c" }),
+      expect.objectContaining({ id: "screening_a" }),
+      expect.objectContaining({ id: "screening_b" }),
+    ]);
+
+    await storage.deleteAllScreeningData();
+
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
+    await expect(
+      AsyncStorage.getItem("ovumcy/screening-responses"),
+    ).resolves.toBeNull();
+    // The postpartum record survives — separate sensitive class.
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_1" }),
+    );
+
+    await AsyncStorage.clear();
+  });
+
+  it("rejects writes that fail sanitize in the legacy adapter", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await expect(
+      storage.writePregnancyRecord({
+        id: "  ",
+        status: "active",
+        edd: "2026-08-15",
+        eddBasis: "ultrasound",
+        lmpDate: null,
+        schedulePreset: "who2016",
+        startedAt: "2025-11-10",
+        endedAt: null,
+        endReason: null,
+        modeOfDelivery: null,
+      }),
+    ).rejects.toThrow("writePregnancyRecord: record failed sanitize");
+    await expect(
+      storage.writeKickSession({
+        id: "kick_1",
+        date: "not-a-date",
+        durationMinutes: 60,
+        kickCount: 8,
+      }),
+    ).rejects.toThrow("writeKickSession: session failed sanitize");
+    await expect(
+      storage.writeContractionSession({
+        id: "",
+        date: "2026-08-10",
+        startedAt: "2026-08-10T14:30:00.000Z",
+        contractions: [],
+      }),
+    ).rejects.toThrow("writeContractionSession: session failed sanitize");
+    await expect(
+      storage.writePostpartumRecord({
+        id: "postpartum_1",
+        status: "active",
+        startedAt: "not-a-date",
+        modeOfDelivery: null,
+        endedAt: null,
+        endReason: null,
+      }),
+    ).rejects.toThrow("writePostpartumRecord: record failed sanitize");
+    await expect(
+      storage.writeScreeningResponse({
+        id: "screening_1",
+        date: "2026-07-01",
+        instrument: "epds",
+        answers: [1] as unknown as [number],
+        score: 1,
+        selfHarmFlag: false,
+      }),
+    ).rejects.toThrow("writeScreeningResponse: response failed sanitize");
+
+    await AsyncStorage.clear();
+  });
+
+  it("orders lists by date with id as the tie-breaker and honors the upper range bound", async () => {
+    const storage = createAsyncStorageAppStorage();
+
+    await storage.writePregnancyRecord({
+      id: "pregnancy_b",
+      status: "ended",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: "2026-08-01",
+      endReason: "birth",
+      modeOfDelivery: null,
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_a",
+      status: "ended",
+      edd: "2026-08-15",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-11-10",
+      endedAt: "2026-08-01",
+      endReason: "birth",
+      modeOfDelivery: null,
+    });
+    await storage.writePregnancyRecord({
+      id: "pregnancy_c",
+      status: "ended",
+      edd: "2025-11-20",
+      eddBasis: "ultrasound",
+      lmpDate: null,
+      schedulePreset: "who2016",
+      startedAt: "2025-03-01",
+      endedAt: "2025-11-20",
+      endReason: "birth",
+      modeOfDelivery: null,
+    });
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([
+      expect.objectContaining({ id: "pregnancy_c" }),
+      expect.objectContaining({ id: "pregnancy_a" }),
+      expect.objectContaining({ id: "pregnancy_b" }),
+    ]);
+
+    await storage.writePostpartumRecord({
+      id: "postpartum_b",
+      status: "ended",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: "2026-07-15",
+      endReason: "cycle_returned",
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_a",
+      status: "ended",
+      startedAt: "2026-06-01",
+      modeOfDelivery: null,
+      endedAt: "2026-07-15",
+      endReason: "cycle_returned",
+    });
+    await storage.writePostpartumRecord({
+      id: "postpartum_c",
+      status: "ended",
+      startedAt: "2025-01-10",
+      modeOfDelivery: null,
+      endedAt: "2025-03-01",
+      endReason: "cycle_returned",
+    });
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([
+      expect.objectContaining({ id: "postpartum_c" }),
+      expect.objectContaining({ id: "postpartum_a" }),
+      expect.objectContaining({ id: "postpartum_b" }),
+    ]);
+
+    await storage.writeKickSession({
+      id: "kick_b",
+      date: "2026-07-10",
+      durationMinutes: 60,
+      kickCount: 8,
+    });
+    await storage.writeKickSession({
+      id: "kick_a",
+      date: "2026-07-10",
+      durationMinutes: 45,
+      kickCount: 11,
+    });
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_a" }),
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+    await expect(
+      storage.listKickSessions(undefined, "2026-07-05"),
+    ).resolves.toEqual([]);
+
+    await storage.writeContractionSession({
+      id: "contraction_b",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T14:30:00.000Z",
+      contractions: [],
+    });
+    await storage.writeContractionSession({
+      id: "contraction_a",
+      date: "2026-08-10",
+      startedAt: "2026-08-10T15:30:00.000Z",
+      contractions: [],
+    });
+    await expect(storage.listContractionSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "contraction_a" }),
+      expect.objectContaining({ id: "contraction_b" }),
+    ]);
+
+    await AsyncStorage.clear();
+  });
+
   it("deleteAllPregnancyData clears the pregnancy keys, scrubs them first, and leaves other keys intact", async () => {
     const storage = createAsyncStorageAppStorage();
 

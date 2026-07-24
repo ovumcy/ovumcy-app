@@ -3631,4 +3631,207 @@ describe("sqlite-app-storage", () => {
       expect.objectContaining({ id: "screening_1" }),
     ]);
   });
+
+  it("rejects a write that fails sanitize on every pregnancy-data class", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    await expect(
+      storage.writePregnancyRecord(buildPregnancyRecord({ id: "  " })),
+    ).rejects.toThrow("writePregnancyRecord: record failed sanitize");
+    await expect(
+      storage.writeKickSession(buildKickSession({ date: "not-a-date" })),
+    ).rejects.toThrow("writeKickSession: session failed sanitize");
+    await expect(
+      storage.writeContractionSession(buildContractionSession({ id: "" })),
+    ).rejects.toThrow("writeContractionSession: session failed sanitize");
+    await expect(
+      storage.writePostpartumRecord(
+        buildPostpartumRecord({ startedAt: "not-a-date" }),
+      ),
+    ).rejects.toThrow("writePostpartumRecord: record failed sanitize");
+    await expect(
+      storage.writeScreeningResponse(
+        buildScreeningResponse({
+          answers: [1] as unknown as ScreeningResponse["answers"],
+        }),
+      ),
+    ).rejects.toThrow("writeScreeningResponse: response failed sanitize");
+
+    // Nothing reached any table.
+    expect(inspected.state.pregnancyRecordsRows).toHaveLength(0);
+    expect(inspected.state.kickSessionsRows).toHaveLength(0);
+    expect(inspected.state.contractionSessionsRows).toHaveLength(0);
+    expect(inspected.state.postpartumRecordsRows).toHaveLength(0);
+    expect(inspected.state.screeningResponsesRows).toHaveLength(0);
+  });
+
+  it("skips rows whose encrypted payload is missing instead of surfacing partial data", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_ok",
+        status: "ended",
+        endedAt: "2026-08-01",
+        endReason: "birth",
+      }),
+    );
+    // A writer with database-file access can leave a row with a NULL payload;
+    // every decode path must drop it rather than surface partial data.
+    inspected.state.pregnancyRecordsRows.push({
+      id: "pregnancy_null",
+      status: "active",
+      encrypted_payload: null,
+    });
+    inspected.state.kickSessionsRows.push({
+      id: "kick_null",
+      day: "2026-07-01",
+      encrypted_payload: null,
+    });
+    // Not just NULL: a corrupted ciphertext must fail decryption and be
+    // dropped the same way.
+    inspected.state.kickSessionsRows.push({
+      id: "kick_garbage",
+      day: "2026-07-02",
+      encrypted_payload: "not-a-ciphertext",
+    });
+    inspected.state.contractionSessionsRows.push({
+      id: "contraction_null",
+      day: "2026-07-01",
+      encrypted_payload: null,
+    });
+    inspected.state.postpartumRecordsRows.push({
+      id: "postpartum_null",
+      status: "active",
+      encrypted_payload: null,
+    });
+    inspected.state.screeningResponsesRows.push({
+      id: "screening_null",
+      day: "2026-07-01",
+      encrypted_payload: null,
+    });
+
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([
+      expect.objectContaining({ id: "pregnancy_ok" }),
+    ]);
+    // The NULL-payload row claims to be active; the read must not trust the
+    // plaintext status column alone.
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.listKickSessions()).resolves.toEqual([]);
+    await expect(storage.listContractionSessions()).resolves.toEqual([]);
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([]);
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
+  });
+
+  it("orders every list by its date field with id as the tie-breaker", async () => {
+    const { storage } = createPregnancyStorage();
+
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_b",
+        status: "ended",
+        startedAt: "2026-01-05",
+        endedAt: "2026-08-01",
+        endReason: "birth",
+      }),
+    );
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_a",
+        status: "ended",
+        startedAt: "2026-01-05",
+        endedAt: "2026-08-01",
+        endReason: "birth",
+      }),
+    );
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({
+        id: "pregnancy_c",
+        status: "ended",
+        startedAt: "2025-03-01",
+        endedAt: "2025-11-20",
+        endReason: "birth",
+      }),
+    );
+    await expect(storage.listPregnancyRecords()).resolves.toEqual([
+      expect.objectContaining({ id: "pregnancy_c" }),
+      expect.objectContaining({ id: "pregnancy_a" }),
+      expect.objectContaining({ id: "pregnancy_b" }),
+    ]);
+
+    await storage.writeKickSession(
+      buildKickSession({ id: "kick_b", date: "2026-07-10" }),
+    );
+    await storage.writeKickSession(
+      buildKickSession({ id: "kick_a", date: "2026-07-10" }),
+    );
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "kick_a" }),
+      expect.objectContaining({ id: "kick_b" }),
+    ]);
+    // Upper range bound filters out later days.
+    await expect(
+      storage.listKickSessions(undefined, "2026-07-05"),
+    ).resolves.toEqual([]);
+
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "contraction_b", date: "2026-08-10" }),
+    );
+    await storage.writeContractionSession(
+      buildContractionSession({ id: "contraction_a", date: "2026-08-10" }),
+    );
+    await expect(storage.listContractionSessions()).resolves.toEqual([
+      expect.objectContaining({ id: "contraction_a" }),
+      expect.objectContaining({ id: "contraction_b" }),
+    ]);
+
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({
+        id: "postpartum_b",
+        status: "ended",
+        startedAt: "2026-06-01",
+        endedAt: "2026-07-15",
+        endReason: "cycle_returned",
+      }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({
+        id: "postpartum_a",
+        status: "ended",
+        startedAt: "2026-06-01",
+        endedAt: "2026-07-15",
+        endReason: "cycle_returned",
+      }),
+    );
+    await storage.writePostpartumRecord(
+      buildPostpartumRecord({
+        id: "postpartum_c",
+        status: "ended",
+        startedAt: "2025-01-10",
+        endedAt: "2025-03-01",
+        endReason: "cycle_returned",
+      }),
+    );
+    await expect(storage.listPostpartumRecords()).resolves.toEqual([
+      expect.objectContaining({ id: "postpartum_c" }),
+      expect.objectContaining({ id: "postpartum_a" }),
+      expect.objectContaining({ id: "postpartum_b" }),
+    ]);
+
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_b", date: "2026-07-01" }),
+    );
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_a", date: "2026-07-01" }),
+    );
+    await storage.writeScreeningResponse(
+      buildScreeningResponse({ id: "screening_c", date: "2026-06-01" }),
+    );
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: "screening_c" }),
+      expect.objectContaining({ id: "screening_a" }),
+      expect.objectContaining({ id: "screening_b" }),
+    ]);
+  });
 });

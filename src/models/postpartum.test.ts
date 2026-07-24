@@ -132,3 +132,20 @@ describe("sanitizePostpartumRecord", () => {
     expect(sanitized?.id).toBe("postpartum_pad");
   });
 });
+
+describe("record id generation without crypto.randomUUID", () => {
+  it("falls back to a time+counter id when the platform lacks randomUUID", () => {
+    const cryptoObject = globalThis.crypto as { randomUUID?: () => string };
+    Object.defineProperty(cryptoObject, "randomUUID", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const record = createPostpartumRecord({ startedAt: "2026-06-01" });
+      expect(record.id).toMatch(/^postpartum_[0-9a-z]+_[0-9a-z]+$/);
+    } finally {
+      delete (cryptoObject as Record<string, unknown>).randomUUID;
+    }
+  });
+});

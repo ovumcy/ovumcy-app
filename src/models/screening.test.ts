@@ -188,3 +188,33 @@ describe("sanitizeScreeningResponse", () => {
     expect(inverse?.selfHarmFlag).toBe(false);
   });
 });
+
+describe("createScreeningResponse guards", () => {
+  it("throws on an unknown screening instrument", () => {
+    expect(() =>
+      createScreeningResponse({
+        instrument: "phq9" as ScreeningResponse["instrument"],
+        date: "2026-07-01",
+        answers: answers(1, 2, 0, 3, 1, 0, 2, 1, 0, 0),
+      }),
+    ).toThrow("createScreeningResponse: unknown instrument");
+  });
+
+  it("falls back to a time+counter id when the platform lacks randomUUID", () => {
+    const cryptoObject = globalThis.crypto as { randomUUID?: () => string };
+    Object.defineProperty(cryptoObject, "randomUUID", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const record = createScreeningResponse({
+        date: "2026-07-01",
+        answers: answers(1, 2, 0, 3, 1, 0, 2, 1, 0, 0),
+      });
+      expect(record.id).toMatch(/^screening_[0-9a-z]+_[0-9a-z]+$/);
+    } finally {
+      delete (cryptoObject as Record<string, unknown>).randomUUID;
+    }
+  });
+});
