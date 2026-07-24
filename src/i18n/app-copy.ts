@@ -478,7 +478,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
       step1: {
         title: "Quando è iniziato il tuo ultimo ciclo?",
         subtitle: "Scegli una data negli ultimi 60 giorni.",
-        day1Tip: "Il Giorno 1 è il primo giorno di flusso pieno, non spotting.",
+        day1Tip: "Il Giorno 1 è il primo giorno di flusso pieno, non di perdite.",
         dismissTip: "Chiudi nota",
         today: "Oggi",
         yesterday: "Ieri",
@@ -497,7 +497,7 @@ const appCopyCatalog: Record<InterfaceLanguage, AppCopy> = {
           "Sposta il cursore sulla lunghezza del ciclo che vedi di solito da un inizio del ciclo al successivo. Una base comune è circa 21-35 giorni.",
         periodLength: "Durata del ciclo mestruale",
         periodLengthHint:
-          "Questo è il numero di giorni con flusso effettivo, non lo spotting prima dell'inizio.",
+          "Questo è il numero di giorni con flusso effettivo, non le perdite prima dell'inizio.",
         errorIncompatible:
           "La durata del ciclo mestruale è incompatibile con la lunghezza del ciclo. La mestruazione non può occupare quasi tutto il ciclo.",
         warningApproximate:

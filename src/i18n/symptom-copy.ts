@@ -109,7 +109,7 @@ const builtinSymptomCopyIt: BuiltinSymptomCopy = {
   acne: "Acne",
   back_pain: "Mal di schiena",
   nausea: "Nausea",
-  spotting: "Spotting",
+  spotting: "Perdite",
   irritability: "Irritabilità",
   insomnia: "Insonnia",
   food_cravings: "Desiderio di cibo",
