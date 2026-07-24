@@ -20,7 +20,7 @@ import {
 import { formatLocalDate } from "./profile-settings-policy";
 
 // Contraction-timer session lifecycle + derived 5-1-1 math + the contraction-
-// timer screen's view-data (X7, extended by X13 for GA-aware education + the
+// timer screen's view-data (GA-aware education + the
 // week-20 birth-option gate). Mirrors kick-counter-service.ts's structure and
 // tone rules closely: education only, neutral, no exclamation marks. The
 // 5-1-1 detection is SURFACING ONLY -- matches511Pattern() drives which of
@@ -28,8 +28,7 @@ import { formatLocalDate } from "./profile-settings-policy";
 // vs visually elevated; which line is "applicable" is a separate,
 // GA-dependent choice, see resolveEducationVariant below); nothing here
 // raises an alarm, schedules a notification, or renders a "go to hospital
-// now" verdict. See SECURITY.md's medical-safety invariant and
-// docs/implementation-notes-x7.md / -x13.md.
+// now" verdict. See SECURITY.md's medical-safety invariant.
 //
 // Unlike kick-counter (which persists only once, on Finish), a labor session
 // can run for hours and app kills are likely, so every COMPLETED contraction
@@ -443,7 +442,7 @@ function formatDisplayTime(value: string, locale: string): string {
   }).format(parsed);
 }
 
-// --- GA-aware education (X13) -------------------------------------------------
+// --- GA-aware education -------------------------------------------------
 
 export type ContractionEducationVariant = "routine_511" | "preterm";
 

@@ -278,7 +278,7 @@ describe("buildPostpartumDashboardViewData", () => {
     ).toBeNull();
   });
 
-  describe("redFlags (Y1 phase 2)", () => {
+  describe("redFlags", () => {
     it("contains all eight postpartum items (psychosis after mental_health), in order, regardless of the recovery phase", () => {
       const early = buildPostpartumDashboardViewData(
         activePostpartum(),
@@ -339,7 +339,7 @@ describe("buildPostpartumDashboardViewData", () => {
     });
   });
 
-  describe("supportResources (Y4)", () => {
+  describe("supportResources", () => {
     it("carries the standing support-resources row labels and the mental_health context body", () => {
       const view = buildPostpartumDashboardViewData(
         activePostpartum(),
@@ -359,7 +359,7 @@ describe("buildPostpartumDashboardViewData", () => {
     });
   });
 
-  describe("recovery body matrix (Y5 phase 2: phase x mode-of-delivery)", () => {
+  describe("recovery body matrix (phase x mode-of-delivery)", () => {
     // Same birth date as `activePostpartum()` (2026-06-01); "today" lands
     // exactly on each phase's inclusive boundary, reusing the dates already
     // exercised above (early = 2 weeks, core = 6 weeks, extended = 7 weeks).
@@ -452,7 +452,7 @@ describe("buildPostpartumDashboardViewData", () => {
     });
   });
 
-  describe("cycleReturnOffer / lamCard (Y6 phase 2)", () => {
+  describe("cycleReturnOffer / lamCard", () => {
     it("shows the cycle-return offer and supersedes (hides) the LAM card when hasNewCycleStart is true", () => {
       const view = buildPostpartumDashboardViewData(
         activePostpartum(),
@@ -507,7 +507,7 @@ describe("buildPostpartumDashboardViewData", () => {
   });
 });
 
-describe("buildPostpartumCycleReturnOfferViewData (Y6 phase 2)", () => {
+describe("buildPostpartumCycleReturnOfferViewData", () => {
   it("mirrors hasNewCycleStart into `visible` and carries the accept/keep/confirm copy", () => {
     expect(buildPostpartumCycleReturnOfferViewData(false, "en").visible).toBe(
       false,
@@ -580,5 +580,108 @@ describe("hasRecentEndedBirthPregnancy", () => {
         "2026-08-01",
       ),
     ).toBe(false);
+  });
+});
+
+describe("defensive branches", () => {
+  const now = new Date("2026-06-10T12:00:00.000Z");
+
+  it("starts postpartum dated today when the birth record has no endedAt", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.listPregnancyRecords.mockResolvedValue([
+      endedBirthPregnancy({ endedAt: null }),
+    ]);
+    storage.readActivePostpartum.mockResolvedValue(null);
+
+    const result = await startPostpartumFromBirth(storage, { now });
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ startedAt: "2026-06-10" }),
+    );
+  });
+
+  it("prefers the dated birth over an undated one, and breaks endedAt ties deterministically", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.listPregnancyRecords.mockResolvedValue([
+      endedBirthPregnancy({ id: "pregnancy_undated", endedAt: null }),
+      endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
+      endedBirthPregnancy({ id: "pregnancy_tied", endedAt: "2026-06-01" }),
+    ]);
+    storage.readActivePostpartum.mockResolvedValue(null);
+
+    const result = await startPostpartumFromBirth(storage, { now });
+
+    expect(result.ok).toBe(true);
+    // The undated record must never win over a dated birth.
+    expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ startedAt: "2026-06-01" }),
+    );
+  });
+
+  it("falls back to today when endPostpartum receives an unparseable endedAt", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.readActivePostpartum.mockResolvedValue(activePostpartum());
+
+    const result = await endPostpartum(
+      storage,
+      { reason: "manual", endedAt: "2026-99-99" },
+      now,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ endedAt: "2026-06-10" }),
+    );
+  });
+
+  it("treats a malformed today as no recent birth (fail closed)", () => {
+    expect(
+      hasRecentEndedBirthPregnancy([endedBirthPregnancy()], "not-a-date"),
+    ).toBe(false);
+  });
+});
+
+describe("end and birth-resolution branch completion", () => {
+  const now = new Date("2026-06-10T12:00:00.000Z");
+
+  it("persists an explicitly provided valid endedAt", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.readActivePostpartum.mockResolvedValue(activePostpartum());
+
+    const result = await endPostpartum(
+      storage,
+      { reason: "manual", endedAt: "2026-06-05" },
+      now,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ endedAt: "2026-06-05" }),
+    );
+  });
+
+  it("prefers the dated birth regardless of input order", async () => {
+    for (const records of [
+      [
+        endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
+        endedBirthPregnancy({ id: "pregnancy_undated", endedAt: null }),
+      ],
+      [
+        endedBirthPregnancy({ id: "pregnancy_undated", endedAt: null }),
+        endedBirthPregnancy({ id: "pregnancy_dated", endedAt: "2026-06-01" }),
+      ],
+    ]) {
+      const storage = createLocalAppStorageMock();
+      storage.listPregnancyRecords.mockResolvedValue(records);
+      storage.readActivePostpartum.mockResolvedValue(null);
+
+      const result = await startPostpartumFromBirth(storage, { now });
+
+      expect(result.ok).toBe(true);
+      expect(storage.writePostpartumRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ startedAt: "2026-06-01" }),
+      );
+    }
   });
 });

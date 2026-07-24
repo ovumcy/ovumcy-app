@@ -28,11 +28,11 @@ import {
   parseLocalDate,
 } from "./profile-settings-policy";
 
-// Postpartum-mode product logic (Y2): starting postpartum from a just-ended
+// Postpartum-mode product logic: starting postpartum from a just-ended
 // birth, ending it, and the postpartum-dashboard view-data. All week-since-
 // birth math reads only the record's own `startedAt` (the birth date). This
 // module never re-derives cycle predictions or touches the pregnancy pause —
-// cycle-history-service stays the sole owner of that. Y6 phase 2 adds the
+// cycle-history-service stays the sole owner of that. a later phase adds the
 // cycle-return offer (auto-detected "cycle_returned" end path) and the LAM
 // education card; both key off a `hasNewCycleStart` flag computed upstream in
 // dashboard-view-service -- this module still never reads day-log history.
@@ -210,9 +210,6 @@ function resolveMostRecentEndedBirth(
   const births = records.filter(
     (record) => record.status === "ended" && record.endReason === "birth",
   );
-  if (births.length === 0) {
-    return null;
-  }
   // Most recent by endedAt (ISO YYYY-MM-DD sorts lexicographically). A missing
   // endedAt sorts last so a dated birth is always preferred over a degenerate
   // undated one.
@@ -241,14 +238,14 @@ export type PostpartumDashboardCardViewData = {
   body: string;
 };
 
-// Red-flag education content (Y1 phase 2) shown, collapsed by default, at the
+// Red-flag education content shown, collapsed by default, at the
 // bottom of the postpartum dashboard. This is the STATIC set of item ids that
 // belong to the postpartum context -- never derived from or evaluated against
 // logged data (see red-flag-copy.ts's file header for the full tone/scope
 // invariant). No gestational-age concept applies postpartum, so unlike
 // pregnancy's list this one is never filtered. Order matches the product
 // spec; mental_health stays gentle, psychosis_signs is the firm-but-calm
-// escalation after it (Y4), and the dedicated crisis-support block is reached
+// escalation after it, and the dedicated crisis-support block is reached
 // via the standing support-resources row (see supportResources view-data).
 const POSTPARTUM_RED_FLAG_ITEM_IDS: readonly RedFlagItemID[] = [
   "heavy_bleeding_pp",
@@ -258,7 +255,7 @@ const POSTPARTUM_RED_FLAG_ITEM_IDS: readonly RedFlagItemID[] = [
   "breast_symptoms",
   "preeclampsia_pp",
   "mental_health",
-  // Firm-but-calm postpartum-psychosis escalation (Y4), placed right after the
+  // Firm-but-calm postpartum-psychosis escalation, placed right after the
   // gentle mental_health item. Postpartum-only; never in the pregnancy list.
   "psychosis_signs",
 ];
@@ -269,7 +266,7 @@ export type PostpartumDashboardRedFlagItem = {
   body: string;
 };
 
-// Cycle-return offer (Y6 phase 2): a gentle dashboard nudge once the day-log
+// Cycle-return offer: a gentle dashboard nudge once the day-log
 // history shows a cycle start dated AFTER the postpartum birth date.
 // `visible` mirrors the `hasNewCycleStart` input verbatim -- detection itself
 // lives in dashboard-view-service (the sole reader of day-log history for
@@ -298,9 +295,9 @@ export type PostpartumDashboardViewData = {
   hero: PostpartumDashboardHeroViewData;
   recoveryCard: PostpartumDashboardCardViewData;
   lochiaCard: PostpartumDashboardCardViewData;
-  // Cycle-return offer (Y6 phase 2). See PostpartumCycleReturnOfferViewData.
+  // Cycle-return offer. See PostpartumCycleReturnOfferViewData.
   cycleReturnOffer: PostpartumCycleReturnOfferViewData;
-  // LAM (lactational amenorrhea method) education card (Y6 phase 2): compact,
+  // LAM (lactational amenorrhea method) education card: compact,
   // always present while postpartum is active AND no new cycle start yet.
   // Once cycleReturnOffer.visible flips true (same hasNewCycleStart input)
   // this card is superseded by the offer -- null rather than rendering stale
@@ -311,7 +308,7 @@ export type PostpartumDashboardViewData = {
   lamCard: PostpartumDashboardCardViewData | null;
   manageCta: { label: string };
   // Collapsed-by-default "when to contact your care team" education section
-  // (Y1 phase 2), same shared section copy as the pregnancy dashboard's.
+  //, same shared section copy as the pregnancy dashboard's.
   redFlags: {
     title: string;
     intro: string;
@@ -319,7 +316,7 @@ export type PostpartumDashboardViewData = {
     collapseLabel: string;
     items: PostpartumDashboardRedFlagItem[];
   };
-  // EPDS mood-screening surfacing (Y3), built from the screening responses
+  // EPDS mood-screening surfacing, built from the screening responses
   // threaded in by the dashboard container. `screeningOffer.visible` drives the
   // gentle offer card (cadence-truthful; the screen owns session-local
   // dismissal). `screeningHistory` is the "Last check-in" row when at least one
@@ -328,7 +325,7 @@ export type PostpartumDashboardViewData = {
   // dashboard so the screen stays presentational.
   screeningOffer: ScreeningOfferViewData;
   screeningHistory: ScreeningHistorySummaryViewData | null;
-  // Standing "Support resources" row (Y4), a quiet toggle near the manage link
+  // Standing "Support resources" row, a quiet toggle near the manage link
   // that expands in place (RedFlagsCard precedent) to reveal the CrisisSupportCard
   // plus the mental_health red-flag body as context. This carries ONLY the row
   // labels + context copy; the CrisisSupportCard's own view-data (which needs
@@ -366,7 +363,7 @@ export function buildPostpartumDashboardViewData(
   // surface screening; with no responses the offer is simply "due" (first
   // check-in) and there is no history row.
   screeningResponses: readonly ScreeningResponse[] = [],
-  // Cycle-return detection (Y6 phase 2): whether the day-log history contains
+  // Cycle-return detection: whether the day-log history contains
   // a cycle start dated AFTER this record's birth date (record.startedAt).
   // Computed by dashboard-view-service (via cycle-history-service, the sole
   // owner of "what counts as a cycle start") and threaded in -- this module
@@ -505,7 +502,7 @@ function resolveRecoveryBody(
   phase: PostpartumPhase,
   modeOfDelivery: ModeOfDelivery | null,
 ): string {
-  // Phase x mode-of-delivery matrix (Y5 phase 2): nine bodies per locale,
+  // Phase x mode-of-delivery matrix: nine bodies per locale,
   // read from postpartum-copy.ts's recovery.bodies[phase][mode]. A
   // null/unknown mode of delivery (owner declined to say, or the source
   // birth record carried none) falls back to "neutral".

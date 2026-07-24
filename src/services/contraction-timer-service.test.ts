@@ -838,3 +838,93 @@ describe("buildContractionSessionHistoryViewData", () => {
     expect(viewData.emptyLabel.length).toBeGreaterThan(0);
   });
 });
+
+describe("defensive branches", () => {
+  const now = new Date("2026-06-01T12:00:00.000Z");
+
+  it("ignores a contraction entry older than the session start when picking last activity", () => {
+    // The entry predates the session's own startedAt, so it must not extend
+    // (or here, shorten) the recency window.
+    const recent = session({
+      id: "contraction_recent",
+      startedAt: new Date(now.getTime() - 10 * 60_000).toISOString(),
+      contractions: [
+        entry(new Date(now.getTime() - 4 * 60 * 60_000).toISOString()),
+      ],
+    });
+
+    expect(resolveResumableSession([recent], now)).toEqual(recent);
+  });
+
+  it("picks the most recently active of several sessions, in either input order", () => {
+    const older = session({
+      id: "contraction_older",
+      startedAt: new Date(now.getTime() - 60 * 60_000).toISOString(),
+    });
+    const newer = session({
+      id: "contraction_newer",
+      startedAt: new Date(now.getTime() - 5 * 60_000).toISOString(),
+    });
+
+    expect(resolveResumableSession([older, newer], now)).toEqual(newer);
+    expect(resolveResumableSession([newer, older], now)).toEqual(newer);
+  });
+
+  it("reports save_failed instead of persisting when the session draft fails sanitize", async () => {
+    const storage = createLocalAppStorageMock();
+    const corrupt = session({ id: "   " });
+
+    const result = await stopContraction(
+      storage,
+      corrupt,
+      new Date(now.getTime() - 60_000).toISOString(),
+      now,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "save_failed" });
+    expect(storage.writeContractionSession).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a time+counter session id when the platform lacks randomUUID", () => {
+    const cryptoObject = globalThis.crypto as { randomUUID?: () => string };
+    Object.defineProperty(cryptoObject, "randomUUID", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const created = createContractionSession(now);
+      expect(created.id).toMatch(/^contraction_[0-9a-z]+_[0-9a-z]+$/);
+    } finally {
+      delete (cryptoObject as Record<string, unknown>).randomUUID;
+    }
+  });
+
+  it("renders raw date strings in history rows when a stored value does not parse", () => {
+    const history = buildContractionSessionHistoryViewData(
+      [
+        session({ id: "contraction_bad", date: "junk", startedAt: "not-a-time" }),
+        session({
+          id: "contraction_mid",
+          startedAt: "2026-06-01T10:00:00.000Z",
+        }),
+        session({
+          id: "contraction_new",
+          startedAt: "2026-06-01T11:00:00.000Z",
+        }),
+      ],
+      null,
+      "en",
+    );
+
+    // Unparseable values pass through untouched (never crash, never invent a
+    // date); parseable sessions still sort newest first around them.
+    const badRow = history.rows.find((row) => row.id === "contraction_bad");
+    expect(badRow?.dateLabel).toBe("junk");
+    expect(badRow?.startTimeLabel).toBe("not-a-time");
+    const parseableIds = history.rows
+      .filter((row) => row.id !== "contraction_bad")
+      .map((row) => row.id);
+    expect(parseableIds).toEqual(["contraction_new", "contraction_mid"]);
+  });
+});

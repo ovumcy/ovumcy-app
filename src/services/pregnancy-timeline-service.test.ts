@@ -157,7 +157,7 @@ describe("resolveMilestoneWindows", () => {
     ]);
   });
 
-  it("bounds birth_prep (Y0) to weeks 36-42, inclusive", () => {
+  it("bounds birth_prep to weeks 36-42, inclusive", () => {
     const window = resolveMilestoneWindows("who2016").find(
       (candidate) => candidate.id === "birth_prep",
     );
@@ -227,9 +227,9 @@ describe("resolveCurrentMilestones", () => {
     );
   });
 
-  it("returns an empty list once every window has closed (Y0: birth_prep is now the latest-closing window, at week 42)", () => {
-    // gbs (the latest-closing window pre-Y0) ends at week 37; birth_prep
-    // (36-42, added in Y0) now keeps the list non-empty through week 42.
+  it("returns an empty list once every window has closed (birth_prep is now the latest-closing window, at week 42)", () => {
+    // gbs (the latest-closing window before multiples support) ends at week 37; birth_prep
+    // (36-42) now keeps the list non-empty through week 42.
     // Every window in the WHO2016 table is bounded, so nothing remains
     // active past that.
     expect(idsAt(40)).toEqual(["birth_prep"]);
@@ -241,7 +241,7 @@ describe("resolveCurrentMilestones", () => {
     expect(idsAt(0)).toEqual([]);
   });
 
-  it("includes birth_prep (Y0) only within its bounded 36-42 window, inclusive", () => {
+  it("includes birth_prep only within its bounded 36-42 window, inclusive", () => {
     // 35+6 collapses to gaWeeks 35 (floor), so it is equivalent to idsAt(35).
     expect(idsAt(35)).not.toContain("birth_prep");
     expect(idsAt(36)).toContain("birth_prep"); // fromWeek boundary (36+0)

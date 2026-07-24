@@ -13,7 +13,7 @@ import {
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { diffLocalDays, parseLocalDate } from "./profile-settings-policy";
 
-// EPDS mood-screening product logic (Y3): the dashboard offer cadence, the
+// EPDS mood-screening product logic: the dashboard offer cadence, the
 // questionnaire view-data (published items paired with the instrument's scoring
 // key), scoring + banding, and the neutral per-band result copy incl. the
 // item-10 urgent-support override. All view-data assembly lives here so the
@@ -184,23 +184,31 @@ export type ScreeningQuestionnaireViewData = {
   disclaimer: string;
 };
 
+// Exported for direct testing: the catalogs pin items/options to the EPDS
+// shape (10 x 4), so the out-of-range fallbacks are unreachable through the
+// builder by construction — they only guard a future catalog/scores drift.
+export function buildScreeningQuestionViewData(
+  item: { question: string; options: readonly string[] },
+  index: number,
+): ScreeningQuestionViewData {
+  const scores = EPDS_OPTION_SCORES[index] ?? [0, 1, 2, 3];
+  return {
+    index,
+    question: item.question,
+    options: item.options.map((label, optionIndex) => ({
+      label,
+      value: scores[optionIndex] ?? 0,
+    })),
+  };
+}
+
 export function buildScreeningQuestionnaireViewData(
   language: string,
 ): ScreeningQuestionnaireViewData {
   const copy = getScreeningCopy(language);
 
   const questions: ScreeningQuestionViewData[] = copy.items.map(
-    (item, index) => {
-      const scores = EPDS_OPTION_SCORES[index] ?? [0, 1, 2, 3];
-      return {
-        index,
-        question: item.question,
-        options: item.options.map((label, optionIndex) => ({
-          label,
-          value: scores[optionIndex] ?? 0,
-        })),
-      };
-    },
+    (item, index) => buildScreeningQuestionViewData(item, index),
   );
 
   return {
@@ -234,7 +242,7 @@ export type ScreeningResultViewData = {
   // the total/band. The screen renders the shared CrisisSupportCard above the
   // band copy — calm and visually distinct, overriding the band message's
   // prominence — carrying the fixed guidance plus the owner's personal support
-  // contact (Y4 phase 2 upgraded Y3's interim inline urgent-support block). It
+  // contact (upgraded from the interim inline urgent-support block). It
   // is NEVER premium-gated. Null when the flag is clear.
   crisisSupport: CrisisSupportViewData | null;
   disclaimer: string;

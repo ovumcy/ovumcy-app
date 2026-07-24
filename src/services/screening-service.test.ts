@@ -1,4 +1,5 @@
 import type { PostpartumRecord } from "../models/postpartum";
+import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   EPDS_SELF_HARM_ITEM_INDEX,
   createScreeningResponse,
@@ -8,7 +9,9 @@ import {
   buildScreeningHistorySummaryViewData,
   buildScreeningHistoryViewData,
   buildScreeningOfferViewData,
+  buildScreeningQuestionViewData,
   buildScreeningQuestionnaireViewData,
+  deleteAllScreeningData,
   buildScreeningResultViewData,
   resolveScreeningBand,
   scoreScreening,
@@ -261,5 +264,68 @@ describe("buildScreeningHistorySummaryViewData", () => {
     const summary = buildScreeningHistorySummaryViewData(responses, "en");
     expect(summary?.label).toContain("2026-07-01");
     expect(summary?.label).toContain("12");
+  });
+});
+
+describe("defensive branches", () => {
+  it("scores an empty answers array as zero with no self-harm flag", () => {
+    expect(scoreScreening([])).toEqual({
+      score: 0,
+      selfHarmFlag: false,
+      band: "lower",
+    });
+  });
+
+  it("does not offer a screening when today is malformed (fail closed)", () => {
+    const viewData = buildScreeningOfferViewData(
+      activePostpartum(),
+      [],
+      "not-a-date",
+      "en",
+    );
+    expect(viewData.visible).toBe(false);
+  });
+
+  it("ignores responses with unparseable dates when resolving the latest one", () => {
+    // The corrupt-dated response would be the "latest" if trusted; skipping it
+    // makes the 20-days-old response authoritative, so the repeat is due.
+    const viewData = buildScreeningOfferViewData(
+      activePostpartum(),
+      [
+        response("2026-06-11", ZEROS),
+        // Built literally: the create/sanitize helpers reject a bad date, so
+        // only a corrupted stored row can carry one.
+        { ...response("2026-06-01", ZEROS), date: "junk" },
+        response("2026-06-01", ZEROS),
+      ],
+      "2026-07-01",
+      "en",
+    );
+    expect(viewData.visible).toBe(true);
+  });
+
+  it("falls back to canonical EPDS scores for an out-of-range question or option index", () => {
+    const question = buildScreeningQuestionViewData(
+      { question: "q", options: ["a", "b", "c", "d", "e"] },
+      99,
+    );
+    expect(question.options.map((option) => option.value)).toEqual([
+      0, 1, 2, 3, 0,
+    ]);
+  });
+
+  it("reports deleteAllScreeningData outcomes for both success and failure", async () => {
+    const okStorage = createLocalAppStorageMock();
+    await expect(deleteAllScreeningData(okStorage)).resolves.toEqual({
+      ok: true,
+    });
+    expect(okStorage.deleteAllScreeningData).toHaveBeenCalled();
+
+    const brokenStorage = createLocalAppStorageMock();
+    brokenStorage.deleteAllScreeningData.mockRejectedValue(new Error("busy"));
+    await expect(deleteAllScreeningData(brokenStorage)).resolves.toEqual({
+      ok: false,
+      errorCode: "generic",
+    });
   });
 });

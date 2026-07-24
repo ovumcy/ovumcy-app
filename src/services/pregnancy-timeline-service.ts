@@ -156,7 +156,7 @@ const WHO2016_MILESTONE_WINDOWS: readonly PregnancyMilestoneWindow[] = [
   // KICK_COUNTS_START_WEEK onward) already covers every week from here on,
   // so this milestone card would otherwise duplicate it forever.
   { id: "kick_counts_start", fromWeek: KICK_COUNTS_START_WEEK, toWeek: KICK_COUNTS_START_WEEK + 1 },
-  // Birth-preparation milestone (Y0): education only (signs labor may be
+  // Birth-preparation milestone: education only (signs labor may be
   // starting, the 5-1-1 guideline that lives in the contraction timer, and
   // "when your care team told you to come in") -- never instructions-as-
   // verdicts. Bounded like every other window post-CHANGE-4; closes at week

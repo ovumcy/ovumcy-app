@@ -10,7 +10,7 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { calcGestationalAge } from "./pregnancy-timeline-service";
 import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
-// Kick-count session lifecycle + the kick-counter screen's view-data (X6).
+// Kick-count session lifecycle + the kick-counter screen's view-data.
 // An in-progress session (start time, taps) is screen-local state -- this
 // module only persists on finish, via `finishKickCountSession`. The
 // "count to 10" movements-in-2-hours convention is presented as a progress

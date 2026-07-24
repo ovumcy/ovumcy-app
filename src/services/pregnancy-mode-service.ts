@@ -36,7 +36,7 @@ export type StartPregnancyInput = {
   eddBasis: EddBasis;
   edd?: LocalDateISO;
   lmpDate?: LocalDateISO;
-  // Multiples (Y0, education-only; optional, skippable in the wizard). No
+  // Multiples(education-only; optional, skippable in the wizard). No
   // validation beyond the enums themselves -- the invariant "chorionicity
   // only meaningful once fetusCount >= 2" is enforced canonically by
   // sanitizePregnancyRecord at the storage boundary, same as every other
@@ -357,7 +357,7 @@ export type PregnancyDashboardMetricItem = {
   value: string;
 };
 
-// Red-flag education content (Y1 phase 2) shown, collapsed by default, at the
+// Red-flag education content shown, collapsed by default, at the
 // bottom of the pregnancy dashboard. This is the STATIC set of item ids that
 // belong to the pregnancy context -- never derived from or evaluated against
 // logged data (see red-flag-copy.ts's file header for the full tone/scope
@@ -377,7 +377,7 @@ export type PregnancyDashboardRedFlagItem = {
   body: string;
 };
 
-// "Baby this week" card (Y9, education-only). Per-week fetal size +
+// "Baby this week" card (education-only). Per-week fetal size +
 // development content, resolved from gaWeeks -- see resolveBabyWeekEntry.
 // Always-present shape (mirrors kickTeaser/multiplesCard's own
 // always-present-object convention) so the screen stays pure view-data
@@ -405,7 +405,7 @@ export type PregnancyDashboardViewData = {
     title: string;
     body: string;
   };
-  // Multiples content card (Y0, education-only). `visible` mirrors
+  // Multiples content card (education-only). `visible` mirrors
   // kickTeaser/contractionTimer's shape (always-present object, gated by a
   // boolean) rather than an optional field, so the screen stays pure
   // view-data branching. `body` already includes the monochorionic extra
@@ -415,7 +415,7 @@ export type PregnancyDashboardViewData = {
     title: string;
     body: string;
   };
-  // Contraction-timer dashboard card (X7). `visible` is always true while in
+  // Contraction-timer dashboard card. `visible` is always true while in
   // pregnancy dashboard mode (this function only ever runs for an active,
   // trackable pregnancy) -- kept as an explicit field rather than an implicit
   // "always render" for shape-parity with kickTeaser/birthCta, and so a
@@ -447,7 +447,7 @@ export type PregnancyDashboardViewData = {
     label: string;
   };
   // Collapsed-by-default "when to contact your care team" education section
-  // (Y1 phase 2). `items` is already filtered for the current gestational age
+  //. `items` is already filtered for the current gestational age
   // -- the screen renders it verbatim, no GA math or record reads there.
   redFlags: {
     title: string;
@@ -488,7 +488,7 @@ export function buildPregnancyDashboardViewData(
     body: copy.milestones.items[window.id].body,
   }));
 
-  // Multiples (Y0, education-only): fetusCount absent/1 == singleton. The
+  // Multiples (education-only): fetusCount absent/1 == singleton. The
   // monochorionic extra line is appended here (never in the screen) so the
   // presentational layer stays pure view-data branching -- see
   // multiplesCard's own type comment.
@@ -595,7 +595,7 @@ export function buildPregnancyDashboardViewData(
       // trimester-III gate was rejected: from week 28 the CTA would misfire by
       // 2+ months for most users. Preterm births stay fully covered by the
       // always-visible manage link, which offers the birth path at any
-      // gestational age. (Decision recorded in the X8 notes.)
+      // gestational age.
       visible: ga.weeks >= 37,
       label: endCopy.dashboard.birthCta,
     },
@@ -662,7 +662,7 @@ function resolveDaysRemainingLabel(
   return overdue === 1 ? copy.hero.overdueOne : copy.hero.overdue(overdue);
 }
 
-// "Baby this week" (Y9) week-number resolution, kept separate from the copy
+// "Baby this week" week-number resolution, kept separate from the copy
 // catalog itself (which only owns the text, never the resolution rule -- same
 // split as every other i18n catalog in this codebase). 0-3 weeks (before the
 // per-week catalog starts at week 4) use the gentler veryEarly entry; 42+
@@ -684,7 +684,9 @@ function resolveBabyWeekEntry(
   return copy.weeks[clampedWeek];
 }
 
-function formatDisplayDate(value: LocalDateISO, locale: string): string {
+// Exported for direct testing: both call sites receive an already-validated
+// date, so the passthrough fallback is unreachable through them by design.
+export function formatDisplayDate(value: LocalDateISO, locale: string): string {
   const parsed = parseLocalDate(value);
   if (!parsed) {
     return value;

@@ -1,4 +1,5 @@
 import { getBabyWeekCopy } from "../i18n/baby-week-copy";
+import { getPregnancyCopy } from "../i18n/pregnancy-copy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import { createPregnancyRecord, type Chorionicity, type FetusCount } from "../models/pregnancy";
@@ -13,6 +14,7 @@ import {
   endPregnancy,
   startPregnancy,
   updateEddForActivePregnancy,
+  formatDisplayDate,
 } from "./pregnancy-mode-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
@@ -38,7 +40,7 @@ function activeRecord(edd = EDD) {
   });
 }
 
-// Multiples (Y0) variant of activeRecord, for the multiplesCard view-data
+// Multiples variant of activeRecord, for the multiplesCard view-data
 // matrix -- kept separate so every existing activeRecord() call site is
 // unaffected.
 function multiplesRecord(overrides: {
@@ -148,7 +150,7 @@ describe("startPregnancy", () => {
     expect(result).toEqual({ ok: false, errorCode: "save_failed" });
   });
 
-  describe("multiples (Y0)", () => {
+  describe("multiples", () => {
     it("creates a singleton record (no fetusCount/chorionicity) when the fields are omitted, exactly like today", async () => {
       const storage = createLocalAppStorageMock();
       const result = await startPregnancy(
@@ -772,7 +774,7 @@ describe("buildPregnancyDashboardViewData", () => {
     expect(viewData).toBeNull();
   });
 
-  it("includes the birth_prep milestone at week 38 (Y0, within its 36-42 window)", () => {
+  it("includes the birth_prep milestone at week 38(within its 36-42 window)", () => {
     const viewData = buildPregnancyDashboardViewData(
       activeRecord(),
       todayForGaDays(38 * 7),
@@ -785,7 +787,7 @@ describe("buildPregnancyDashboardViewData", () => {
     expect(item?.body.length).toBeGreaterThan(0);
   });
 
-  describe("multiplesCard (Y0)", () => {
+  describe("multiplesCard", () => {
     it("is hidden for a singleton record (no fetusCount)", () => {
       const viewData = buildPregnancyDashboardViewData(
         multiplesRecord(),
@@ -865,7 +867,7 @@ describe("buildPregnancyDashboardViewData", () => {
     });
   });
 
-  describe("redFlags (Y1 phase 2)", () => {
+  describe("redFlags", () => {
     it("hides reduced_movements before week 28 and shows it from week 28", () => {
       const before = buildPregnancyDashboardViewData(
         activeRecord(),
@@ -941,7 +943,7 @@ describe("buildPregnancyDashboardViewData", () => {
     });
   });
 
-  describe("babyThisWeek (Y9)", () => {
+  describe("babyThisWeek", () => {
     const babyWeekCopy = getBabyWeekCopy("en");
 
     it("always includes the catalog title", () => {
@@ -1059,8 +1061,7 @@ describe("buildPregnancyDashboardViewData", () => {
     // `BabyWeekCopy` type (derived via WidenLiteral from the `satisfies
     // BabyWeekEntriesCopy`-checked en catalog) already fails `npm run
     // typecheck` if any locale is missing a week 4-41 key or the
-    // title/multiplesNote/veryEarly fields (verified manually per the task --
-    // see docs/implementation-notes-y9.md). This loop is a lighter-weight,
+    // title/multiplesNote/veryEarly fields. This loop is a lighter-weight,
     // always-on regression guard that every locale's resolved strings are
     // non-empty at runtime too.
     it("resolves non-empty size/development strings for every week 4-41 in every locale", () => {
@@ -1112,5 +1113,100 @@ describe("buildPregnancyStaleCardViewData", () => {
       "en",
     );
     expect(viewData).toBeNull();
+  });
+});
+
+describe("defensive branches", () => {
+  it("rejects an unparseable LMP date distinctly from a missing one", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.readActivePregnancy.mockResolvedValue(null);
+    storage.listPostpartumRecords.mockResolvedValue([]);
+
+    const result = await startPregnancy(storage, {
+      eddBasis: "lmp",
+      lmpDate: "2026-99-99",
+      startedAt: "2026-01-05",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_date" });
+    expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
+  });
+
+  it("treats an omitted EDD as missing for a non-LMP basis", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.readActivePregnancy.mockResolvedValue(null);
+    storage.listPostpartumRecords.mockResolvedValue([]);
+
+    const result = await startPregnancy(storage, {
+      eddBasis: "ultrasound",
+      startedAt: "2026-01-05",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "missing_date" });
+  });
+
+  it("falls back to today when endPregnancy receives an unparseable endedAt", async () => {
+    const storage = createLocalAppStorageMock();
+    storage.readActivePregnancy.mockResolvedValue(activeRecord());
+
+    const result = await endPregnancy(
+      storage,
+      { reason: "birth", endedAt: "2026-99-99" },
+      parseLocalDate("2026-06-10")!,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ endedAt: "2026-06-10" }),
+    );
+  });
+
+  it("renders the due-soon hero labels for one day to go, due today, and one day over", () => {
+    const oneDayToGo = buildPregnancyDashboardViewData(
+      activeRecord(),
+      formatLocalDate(addDays(parseLocalDate(EDD)!, -1)),
+      "en",
+    );
+    const dueToday = buildPregnancyDashboardViewData(
+      activeRecord(),
+      EDD,
+      "en",
+    );
+    const oneDayOver = buildPregnancyDashboardViewData(
+      activeRecord(),
+      formatLocalDate(addDays(parseLocalDate(EDD)!, 1)),
+      "en",
+    );
+
+    const copy = getPregnancyCopy("en");
+    expect(oneDayToGo?.hero.daysRemainingLabel).toBe(copy.hero.dayToGo);
+    expect(dueToday?.hero.daysRemainingLabel).toBe(copy.hero.dueToday);
+    expect(oneDayOver?.hero.daysRemainingLabel).toBe(copy.hero.overdueOne);
+  });
+
+  it("passes an unparseable date through the display formatter untouched", () => {
+    // Both call sites validate first, so the passthrough is exercised here
+    // directly: never crash, never invent a date.
+    expect(formatDisplayDate("junk", "en")).toBe("junk");
+    expect(formatDisplayDate(EDD, "en")).toContain("2026");
+  });
+});
+
+describe("endPregnancy explicit endedAt", () => {
+  it("persists an explicitly provided valid endedAt", async () => {
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+    });
+
+    const result = await endPregnancy(
+      storage,
+      { reason: "birth", modeOfDelivery: "vaginal", endedAt: "2026-06-05" },
+      new Date("2026-06-10T12:00:00.000Z"),
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ endedAt: "2026-06-05" }),
+    );
   });
 });

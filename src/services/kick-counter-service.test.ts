@@ -298,3 +298,71 @@ describe("deleteKickCountSession", () => {
     expect(result).toEqual({ ok: false, errorCode: "generic" });
   });
 });
+
+describe("defensive branches", () => {
+  it("reports save_failed when the start instant is an invalid Date", async () => {
+    const storage = createLocalAppStorageMock();
+
+    const result = await finishKickCountSession(
+      storage,
+      { startedAt: new Date("not-a-date"), kickCount: 8 },
+      new Date("2026-06-01T12:00:00.000Z"),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "save_failed" });
+    expect(storage.writeKickSession).not.toHaveBeenCalled();
+  });
+
+  it("orders same-day sessions deterministically by id, newest first", () => {
+    const viewData = buildKickCounterViewData(
+      activeRecord(),
+      todayForGaDays(200),
+      [
+        session({ id: "kick_a", date: todayForGaDays(199) }),
+        session({ id: "kick_b", date: todayForGaDays(199) }),
+      ],
+      "en",
+    );
+
+    expect(viewData.history.rows.map((row) => row.id)).toEqual([
+      "kick_b",
+      "kick_a",
+    ]);
+  });
+
+  it("renders a raw date string in history rows when a stored value does not parse", () => {
+    const viewData = buildKickCounterViewData(
+      activeRecord(),
+      todayForGaDays(200),
+      [session({ id: "kick_bad", date: "junk" as KickCountSession["date"] })],
+      "en",
+    );
+
+    expect(viewData.history.rows[0]?.dateLabel).toBe("junk");
+  });
+
+  it("falls back to a time+counter session id when the platform lacks randomUUID", async () => {
+    const cryptoObject = globalThis.crypto as { randomUUID?: () => string };
+    Object.defineProperty(cryptoObject, "randomUUID", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const storage = createLocalAppStorageMock();
+      const result = await finishKickCountSession(
+        storage,
+        { startedAt: new Date("2026-06-01T11:00:00.000Z"), kickCount: 8 },
+        new Date("2026-06-01T12:00:00.000Z"),
+      );
+      expect(result.ok).toBe(true);
+      expect(storage.writeKickSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expect.stringMatching(/^kick_[0-9a-z]+_[0-9a-z]+$/),
+        }),
+      );
+    } finally {
+      delete (cryptoObject as Record<string, unknown>).randomUUID;
+    }
+  });
+});
