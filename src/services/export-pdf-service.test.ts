@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { PDFDocument } from "pdf-lib";
 
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import type { ProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { getExportPDFCopy } from "../i18n/export-pdf-copy";
 import { buildExportPDFContent, buildExportPDFReport } from "./export-pdf-service";
@@ -886,5 +887,97 @@ describe("doctor PDF: recorded pregnancy tests", () => {
 
     const reloaded = await PDFDocument.load(content);
     expect(reloaded.getPageCount()).toBeGreaterThanOrEqual(1);
+  });
+
+  // Closes the second of the last two violators of the amended
+  // security-constitution Medical-safety bullet ("While a pregnancy record is
+  // ACTIVE, prediction surfaces stay suppressed regardless of that pause").
+  // buildAdvancedFertilityItemsForPDF anchors on the LIVE profile.lastPeriodStart
+  // rather than a completed cycle, so it can print current-cycle fertility
+  // signals (thermal shift / ovulation confirmation / LH peak) derived from
+  // BBT/mucus/LH data logged after a lifted day-log pause during an active
+  // pregnancy -- phantom math the amended invariant forbids. Mirrors
+  // stats-view-service's `suppressPredictions ? null : projection.cycleAnchorDate`.
+  describe("current-cycle fertility signal suppression for an active pregnancy", () => {
+    const pdfProfile: ProfileRecord = {
+      lastPeriodStart: "2026-02-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: true,
+      temperatureUnit: "c",
+      trackCervicalMucus: true,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: null,
+    };
+    // One COMPLETED cycle (2026-01-01 -> 2026-02-01) plus a CURRENT, open
+    // cycle anchored at profile.lastPeriodStart with an LH peak logged after
+    // it -- the exact "current-cycle fertility signal" shape the amended
+    // invariant targets.
+    const dayLogs = [
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-02-10"), lhTest: "peak" as const },
+    ];
+    const now = new Date("2026-02-15T09:00:00.000Z");
+
+    it("prints the current-cycle LH-peak signal when suppressPredictions is absent (regression: plain PDF unchanged)", () => {
+      const report = buildExportPDFReport({
+        now,
+        dayLogs,
+        profile: pdfProfile,
+        symptomRecords: [],
+      });
+
+      expect(report.advancedFertility).toEqual(
+        expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+      );
+      expect(report.cycles).toHaveLength(1);
+      expect(report.cycles[0]?.startDate).toBe("2026-01-01");
+    });
+
+    it("suppresses the current-cycle LH-peak signal when an active pregnancy record exists, leaving completed-cycle history untouched", () => {
+      const report = buildExportPDFReport({
+        now,
+        dayLogs,
+        profile: pdfProfile,
+        symptomRecords: [],
+        suppressPredictions: true,
+      });
+
+      // No current-cycle fertility signal values -- the section degrades to
+      // its existing empty state (asserted on export-pdf-copy.ts's own
+      // suite: "No advanced fertility signals from recent cycles.").
+      expect(report.advancedFertility).toEqual([]);
+
+      // Completed-cycle history section stays untouched: same single
+      // completed cycle, same entries, regardless of suppression.
+      expect(report.cycles).toHaveLength(1);
+      expect(report.cycles[0]?.startDate).toBe("2026-01-01");
+      expect(report.cycles[0]?.endDate).toBe("2026-01-31");
+    });
+
+    it("defaults suppressPredictions to false when omitted (additive-option regression guard)", () => {
+      const suppressedExplicitlyFalse = buildExportPDFReport({
+        now,
+        dayLogs,
+        profile: pdfProfile,
+        symptomRecords: [],
+        suppressPredictions: false,
+      });
+      const omitted = buildExportPDFReport({
+        now,
+        dayLogs,
+        profile: pdfProfile,
+        symptomRecords: [],
+      });
+
+      expect(omitted.advancedFertility).toEqual(suppressedExplicitlyFalse.advancedFertility);
+    });
   });
 });

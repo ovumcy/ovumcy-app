@@ -1,6 +1,14 @@
 import { createEmptyDayLogRecord, type DayCycleFactorKey } from "../models/day-log";
+import type {
+  ContractionSession,
+  KickCountSession,
+  PregnancyRecord,
+} from "../models/pregnancy";
+import type { PostpartumRecord } from "../models/postpartum";
+import type { ScreeningResponse } from "../models/screening";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
+import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildLocalExportArtifact,
   buildExportCSVRows,
@@ -8,6 +16,76 @@ import {
   loadLocalExportState,
   serializeExportCSV,
 } from "./export-service";
+
+function pregnancyRecordFixture(
+  overrides: Partial<PregnancyRecord> = {},
+): PregnancyRecord {
+  return {
+    id: "pregnancy_export_test",
+    status: "active",
+    edd: "2026-10-01",
+    eddBasis: "lmp",
+    lmpDate: "2026-01-01",
+    schedulePreset: "who2016",
+    startedAt: "2026-01-01",
+    endedAt: null,
+    endReason: null,
+    modeOfDelivery: null,
+    ...overrides,
+  };
+}
+
+function kickSessionFixture(
+  overrides: Partial<KickCountSession> = {},
+): KickCountSession {
+  return {
+    id: "kick_export_test",
+    date: "2026-03-18",
+    durationMinutes: 20,
+    kickCount: 12,
+    ...overrides,
+  };
+}
+
+function contractionSessionFixture(
+  overrides: Partial<ContractionSession> = {},
+): ContractionSession {
+  return {
+    id: "contraction_export_test",
+    date: "2026-03-18",
+    startedAt: "2026-03-18T10:00:00.000Z",
+    contractions: [],
+    ...overrides,
+  };
+}
+
+function postpartumRecordFixture(
+  overrides: Partial<PostpartumRecord> = {},
+): PostpartumRecord {
+  return {
+    id: "postpartum_export_test",
+    status: "active",
+    startedAt: "2026-03-10",
+    modeOfDelivery: "vaginal",
+    endedAt: null,
+    endReason: null,
+    ...overrides,
+  };
+}
+
+function screeningResponseFixture(
+  overrides: Partial<ScreeningResponse> = {},
+): ScreeningResponse {
+  return {
+    id: "screening_export_test",
+    date: "2026-03-12",
+    instrument: "epds",
+    answers: [1, 0, 2, 1, 0, 1, 0, 2, 1, 0],
+    score: 8,
+    selfHarmFlag: false,
+    ...overrides,
+  };
+}
 
 describe("export-service", () => {
   it("loads export state from canonical local day-log summaries", async () => {
@@ -63,7 +141,7 @@ describe("export-service", () => {
     expect(payload).toEqual(
       expect.objectContaining({
         app: "ovumcy",
-        formatVersion: 1,
+        formatVersion: 3,
         range: {
           fromDate: "2026-03-01",
           toDate: "2026-03-18",
@@ -80,8 +158,183 @@ describe("export-service", () => {
             pregnancyTest: "none",
           }),
         ]),
+        // A v3 envelope always carries all five additive collections,
+        // even when empty (this fixture has no pregnancy/postpartum/screening).
+        pregnancies: [],
+        kickSessions: [],
+        contractionSessions: [],
+        postpartumRecords: [],
+        screeningResponses: [],
       }),
     );
+  });
+
+  it("includes pregnancy records, kick sessions, and contraction sessions in the v2 JSON envelope", async () => {
+    const pregnancy = pregnancyRecordFixture({ id: "p1" });
+    const kick = kickSessionFixture({ id: "k1" });
+    const contraction = contractionSessionFixture({ id: "c1" });
+    const storage = createStorageMock({
+      listPregnancyRecords: jest.fn().mockResolvedValue([pregnancy]),
+      listKickSessions: jest.fn().mockResolvedValue([kick]),
+      listContractionSessions: jest.fn().mockResolvedValue([contraction]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "json",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    if (!result.ok || typeof result.artifact.content !== "string") {
+      throw new Error("expected a JSON artifact");
+    }
+
+    const payload = JSON.parse(result.artifact.content);
+    expect(payload.pregnancies).toEqual([pregnancy]);
+    expect(payload.kickSessions).toEqual([kick]);
+    expect(payload.contractionSessions).toEqual([contraction]);
+    // Pregnancy records are episodic, not date-ranged like dayLogs: the
+    // fetch takes no from/to arguments at all.
+    expect(storage.listPregnancyRecords).toHaveBeenCalledWith();
+  });
+
+  it("includes postpartum records (un-ranged) and screening responses (ranged by date) in the v3 JSON envelope", async () => {
+    // A postpartum record whose birth date sits OUTSIDE the export window still
+    // exports (episodic, un-ranged like pregnancies). A screening response
+    // inside the window exports; one outside it is filtered out (ranged like
+    // sessions).
+    const postpartum = postpartumRecordFixture({ id: "pp1", startedAt: "2025-11-01" });
+    const inRangeScreening = screeningResponseFixture({ id: "sc-in", date: "2026-03-10" });
+    const outOfRangeScreening = screeningResponseFixture({ id: "sc-out", date: "2020-01-01" });
+    const storage = createStorageMock({
+      listPostpartumRecords: jest.fn().mockResolvedValue([postpartum]),
+      listScreeningResponses: jest
+        .fn()
+        .mockResolvedValue([inRangeScreening, outOfRangeScreening]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "json",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    if (!result.ok || typeof result.artifact.content !== "string") {
+      throw new Error("expected a JSON artifact");
+    }
+
+    const payload = JSON.parse(result.artifact.content);
+    expect(payload.formatVersion).toBe(3);
+    // Postpartum: full snapshot regardless of range, fetched with no from/to.
+    expect(payload.postpartumRecords).toEqual([postpartum]);
+    expect(storage.listPostpartumRecords).toHaveBeenCalledWith();
+    // Screening: only the in-range response survives the date filter.
+    expect(payload.screeningResponses).toEqual([inRangeScreening]);
+  });
+
+  it("does not fetch postpartum or screening collections when building a CSV artifact (JSON-only)", async () => {
+    const storage = createStorageMock({
+      listPostpartumRecords: jest
+        .fn()
+        .mockResolvedValue([postpartumRecordFixture()]),
+      listScreeningResponses: jest
+        .fn()
+        .mockResolvedValue([screeningResponseFixture()]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "csv",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    if (!result.ok || typeof result.artifact.content !== "string") {
+      throw new Error("expected a CSV artifact");
+    }
+
+    // CSV is unchanged by v3: no postpartum/screening columns, and their repos
+    // are never even read for the CSV format.
+    expect(storage.listPostpartumRecords).not.toHaveBeenCalled();
+    expect(storage.listScreeningResponses).not.toHaveBeenCalled();
+    expect(result.artifact.content).not.toContain("Postpartum");
+    expect(result.artifact.content).not.toContain("Check-in");
+    expect(result.artifact.content).not.toContain("EPDS");
+  });
+
+  it("does not fetch pregnancy-mode collections when building a PDF artifact (pregnancy sections out of v1 PDF scope)", async () => {
+    const storage = createStorageMock({
+      listPregnancyRecords: jest.fn().mockResolvedValue([pregnancyRecordFixture()]),
+      listKickSessions: jest.fn().mockResolvedValue([kickSessionFixture()]),
+      listContractionSessions: jest
+        .fn()
+        .mockResolvedValue([contractionSessionFixture()]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "pdf",
+      new Date("2026-03-18T10:00:00.000Z"),
+      { buildPDFContent: jest.fn().mockResolvedValue(new Uint8Array([0x25])) },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.listPregnancyRecords).not.toHaveBeenCalled();
+    expect(storage.listKickSessions).not.toHaveBeenCalled();
+    expect(storage.listContractionSessions).not.toHaveBeenCalled();
+  });
+
+  it("never reads the managed billing snapshot, and exports full pregnancy data regardless of premium/plan state", async () => {
+    // createLocalAppStorageMock's default readManagedBillingCacheRecord
+    // already resolves to a no-active-plan ("locked") snapshot; the point of
+    // this test is that buildLocalExportArtifact never even calls it.
+    const storage = createStorageMock({
+      listPregnancyRecords: jest
+        .fn()
+        .mockResolvedValue([pregnancyRecordFixture({ id: "p1" })]),
+      listKickSessions: jest
+        .fn()
+        .mockResolvedValue([kickSessionFixture({ id: "k1" })]),
+      listContractionSessions: jest
+        .fn()
+        .mockResolvedValue([contractionSessionFixture({ id: "c1" })]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "json",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    if (!result.ok || typeof result.artifact.content !== "string") {
+      throw new Error("expected a JSON artifact");
+    }
+
+    const payload = JSON.parse(result.artifact.content);
+    expect(payload.pregnancies).toHaveLength(1);
+    expect(payload.kickSessions).toHaveLength(1);
+    expect(payload.contractionSessions).toHaveLength(1);
+    expect(storage.readManagedBillingCacheRecord).not.toHaveBeenCalled();
   });
 
   it("serializes a CSV export with mapped builtin symptoms and custom symptoms in Other", async () => {
@@ -109,6 +362,59 @@ describe("export-service", () => {
     expect(result.artifact.content).toContain("Jaw pain");
     expect(result.artifact.content).toContain("peak");
     expect(result.artifact.content).toContain("Yes");
+  });
+
+  it("adds weight, blood pressure, and kick-count columns to the CSV export, blank when absent", async () => {
+    const dayLogs = [
+      {
+        ...createEmptyDayLogRecord("2026-03-05"),
+        weightKg: 62.5,
+        bpSystolic: 118,
+        bpDiastolic: 76,
+      },
+      // No weight/BP logged, and no kick session on this date either.
+      { ...createEmptyDayLogRecord("2026-03-06") },
+    ];
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue(dayLogs),
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: 2,
+        hasData: true,
+        dateFrom: "2026-03-05",
+        dateTo: "2026-03-06",
+      }),
+      // Two sessions on the same date -- kickCount must be their SUM (5 + 3).
+      listKickSessions: jest.fn().mockResolvedValue([
+        kickSessionFixture({ id: "k1", date: "2026-03-05", kickCount: 5 }),
+        kickSessionFixture({ id: "k2", date: "2026-03-05", kickCount: 3 }),
+      ]),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "csv",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    if (!result.ok || typeof result.artifact.content !== "string") {
+      throw new Error("expected a CSV artifact");
+    }
+
+    const lines: string[] = result.artifact.content.trim().split("\n");
+    expect(lines[0]).toContain("Weight (kg),BP systolic (mmHg),BP diastolic (mmHg),Kick count");
+
+    // Fixture rows have no commas/quotes in any field, so a plain split is
+    // safe here; check only the last 4 (new) columns of each row.
+    const loggedFields = (lines.find((line: string) => line.startsWith("2026-03-05,")) ?? "").split(",");
+    const unloggedFields = (lines.find((line: string) => line.startsWith("2026-03-06,")) ?? "").split(",");
+
+    // Two kick sessions on 2026-03-05 (5 + 3) sum to 8.
+    expect(loggedFields.slice(-4)).toEqual(["62.5", "118", "76", "8"]);
+    expect(unloggedFields.slice(-4)).toEqual(["", "", "", ""]);
   });
 
   it("builds a PDF artifact through the shared PDF content builder", async () => {
@@ -140,6 +446,85 @@ describe("export-service", () => {
       content: new Uint8Array([0x25, 0x50, 0x44, 0x46]),
     });
   });
+
+  // Threads activePregnancy into the PDF content builder as the
+  // additive suppressPredictions option (mirrors stats/calendar's X14
+  // loadStatsScreenState pattern), so export-pdf-service can drop phantom
+  // current-cycle fertility signals while an active pregnancy is tracked.
+  it("threads suppressPredictions: true into the PDF content builder when an active pregnancy record exists", async () => {
+    const storage = createStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(pregnancyRecordFixture()),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const buildPDFContent = jest.fn().mockResolvedValue(new Uint8Array([0x25]));
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "pdf",
+      new Date("2026-03-18T10:00:00.000Z"),
+      { buildPDFContent },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(storage.readActivePregnancy).toHaveBeenCalled();
+    expect(buildPDFContent).toHaveBeenCalledWith(
+      expect.objectContaining({ suppressPredictions: true }),
+    );
+  });
+
+  it("threads suppressPredictions: false into the PDF content builder when there is no active pregnancy record (regression)", async () => {
+    // createLocalAppStorageMock's default readActivePregnancy already
+    // resolves null; this pins that the PDF path keeps today's unsuppressed
+    // behavior when no pregnancy is being tracked.
+    const storage = createStorageMock();
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const buildPDFContent = jest.fn().mockResolvedValue(new Uint8Array([0x25]));
+    const result = await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "pdf",
+      new Date("2026-03-18T10:00:00.000Z"),
+      { buildPDFContent },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(buildPDFContent).toHaveBeenCalledWith(
+      expect.objectContaining({ suppressPredictions: false }),
+    );
+  });
+
+  it("never reads the active-pregnancy record for CSV/JSON exports (PDF-only signal)", async () => {
+    const storage = createStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(pregnancyRecordFixture()),
+    });
+    const loaded = await loadLocalExportState(storage, new Date(2026, 2, 18));
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "csv",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+    await buildLocalExportArtifact(
+      storage,
+      loaded.state,
+      "json",
+      new Date("2026-03-18T10:00:00.000Z"),
+    );
+
+    expect(storage.readActivePregnancy).not.toHaveBeenCalled();
+  });
 });
 
 describe("CSV completeness: pregnancy test, cycle start, uncertain", () => {
@@ -149,11 +534,19 @@ describe("CSV completeness: pregnancy test, cycle start, uncertain", () => {
     toDate: "2026-03-02",
   } as const;
 
-  it("ends the header contract with the three ovumcy-web parity columns", () => {
-    expect(EXPORT_CSV_HEADERS.slice(-3)).toEqual([
+  it("keeps the ovumcy-web parity columns contiguous, then the app-only metric columns", () => {
+    // The web trio must stay in web's order and position (immediately after
+    // the shared columns); the pregnancy-mode metrics are app-only and always
+    // append AFTER them, so a positional CSV consumer of the shared prefix
+    // never shifts.
+    expect(EXPORT_CSV_HEADERS.slice(-7)).toEqual([
       "Pregnancy test",
       "Cycle start",
       "Uncertain",
+      "Weight (kg)",
+      "BP systolic (mmHg)",
+      "BP diastolic (mmHg)",
+      "Kick count",
     ]);
   });
 
@@ -183,7 +576,16 @@ describe("CSV completeness: pregnancy test, cycle start, uncertain", () => {
     const csv = serializeExportCSV([...EXPORT_CSV_HEADERS], rows, range);
     const [, dataLine] = csv.trim().split("\n");
 
-    expect(dataLine?.split(",").slice(-3)).toEqual(["positive", "Yes", "Yes"]);
+    expect(dataLine?.split(",").slice(-7)).toEqual([
+      "positive",
+      "Yes",
+      "Yes",
+      // The app-only metric columns stay empty when nothing was recorded.
+      "",
+      "",
+      "",
+      "",
+    ]);
   });
 
   it("leaves the three columns empty for a day with nothing recorded", () => {
@@ -319,7 +721,7 @@ describe("CSV formula injection neutralization (sanitizeCSVTextCell)", () => {
   });
 });
 
-function createStorageMock() {
+function createStorageMock(extra: Partial<LocalAppStorage> = {}) {
   const defaultSymptoms = createDefaultSymptomRecords();
   const customSymptom = {
     id: "custom_jaw_pain",
@@ -406,5 +808,6 @@ function createStorageMock() {
         dateTo: lastRecord.date,
       };
     }),
+    ...extra,
   });
 }
