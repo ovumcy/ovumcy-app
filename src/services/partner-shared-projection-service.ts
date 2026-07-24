@@ -39,16 +39,28 @@ const exportFlagToBuiltinSymptomID = {
   constipation: "constipation",
 } as const satisfies Record<string, BuiltinSymptomID>;
 
-export function buildPartnerSharedProjectionPayload(input: {
-  accessLevel: PartnerShareAccessLevel;
-  dayLogs: DayLogRecord[];
-  generatedAt: string;
-  generation: number;
-  grantID: string;
-  ownerAccountID: string;
-  profile: ProfileRecord;
-  symptomRecords: SymptomRecord[];
-}): PartnerSharedProjectionPayload {
+export function buildPartnerSharedProjectionPayload(
+  input: {
+    accessLevel: PartnerShareAccessLevel;
+    dayLogs: DayLogRecord[];
+    generatedAt: string;
+    generation: number;
+    grantID: string;
+    ownerAccountID: string;
+    profile: ProfileRecord;
+    symptomRecords: SymptomRecord[];
+  },
+  options: {
+    // Additive; mirrors the stats/calendar suppressPredictions
+    // pattern: true when an active, trackable pregnancy record exists for
+    // the owner. Computed by the storage-aware sync call site
+    // (syncManagedPartnerSharedProjections: activePregnancy !== null) and
+    // threaded in here, since this pure builder has no storage access of
+    // its own. Defaults to false, so every existing caller/test keeps
+    // today's behavior unchanged.
+    suppressPredictions?: boolean;
+  } = {},
+): PartnerSharedProjectionPayload {
   const sharedDayLogs = input.dayLogs
     .map((record) => redactDayLogForPartner(record, input.profile, input.accessLevel))
     .filter((record) => hasPartnerVisibleData(record));
@@ -57,6 +69,31 @@ export function buildPartnerSharedProjectionPayload(input: {
       ? filterReferencedSymptomRecords(sharedDayLogs, input.symptomRecords)
       : [];
 
+  // Below, redactDayLogForPartner ALWAYS forces the shared pregnancyTest
+  // to "none" (privacy: partners must never infer pregnancy state from day
+  // logs). A side effect is that buildPartnerSharedReadState's own later
+  // projection -- built from ONLY this payload, on a device with no owner
+  // storage access (the partner's device, or the owner's own read-only
+  // preview; both round-trip through the encrypted managed-cloud blob) --
+  // can never detect a day-log pause on its own: resolvePregnancyPause's only
+  // signal is the now-redacted pregnancyTest field. So the owner's CURRENT
+  // pause must be recomputed HERE, from the real pre-redaction input, and
+  // OR'd with the threaded activePregnancy signal (audit finding: verified
+  // empirically that today this does NOT leak pregnancyPausedHint's wording --
+  // resolvePregnancyPause on the redacted payload is always null -- but DOES
+  // leak live, forward-rolled currentCycleDay/nextPeriodDate numbers computed
+  // straight through the owner's actual paused state; this closes that gap).
+  const ownerNow = new Date(input.generatedAt);
+  const ownerHistory = buildCycleHistorySummary(input.profile, input.dayLogs, ownerNow);
+  const ownerProjection = buildCurrentCycleProjection(
+    input.profile,
+    ownerHistory,
+    input.dayLogs,
+    ownerNow,
+  );
+  const suppressPredictions =
+    (options.suppressPredictions ?? false) || ownerProjection.isPregnancyPaused;
+
   return {
     schemaVersion: PARTNER_SHARE_SCHEMA_VERSION,
     generatedAt: input.generatedAt,
@@ -64,6 +101,15 @@ export function buildPartnerSharedProjectionPayload(input: {
     accessLevel: input.accessLevel,
     ownerAccountID: input.ownerAccountID,
     grantID: input.grantID,
+    // EXPLICIT field-pick (fail-closed), mirroring redactDayLogForPartner: the
+    // partner profile is built field-by-field, never `...input.profile`. Any
+    // owner-only additive ProfileRecord field is excluded by construction and
+    // can never leak into a partner projection. The crisis-support contact
+    // (crisisContactName/crisisContactPhone) is deliberately NOT listed here
+    // and must NEVER be added — it is owner-only private safety data. The
+    // PartnerSharedProfileRecord Pick type is the compile-time twin of this
+    // allowlist; the leak pins (crisisContact tokens + phone value, both access
+    // levels) prove it structurally and after serialization.
     profile: {
       ageGroup: input.profile.ageGroup,
       cycleLength: input.profile.cycleLength,
@@ -75,7 +121,16 @@ export function buildPartnerSharedProjectionPayload(input: {
       temperatureUnit: input.profile.temperatureUnit,
       trackBBT: input.profile.trackBBT,
       trackCervicalMucus: input.profile.trackCervicalMucus,
-      unpredictableCycle: input.profile.unpredictableCycle,
+      // While suppressPredictions holds (active pregnancy record, or the
+      // owner's own day-log pause not yet lifted), force the SHARED profile's
+      // unpredictableCycle true regardless of the owner's real setting. This
+      // is the only lever buildPartnerSharedReadState's UNMODIFIED, payload-
+      // only projection recomputation can key off later to reach the SAME
+      // neutral facts_only shape a real facts_only owner's partner already
+      // sees (no current-cycle prediction fields, no pregnancy-adjacent
+      // copy) -- no new i18n string, no model change, and every OTHER shared
+      // field (day-log history, summaryMetrics) stays fully accurate.
+      unpredictableCycle: suppressPredictions ? true : input.profile.unpredictableCycle,
       usageGoal: input.profile.usageGoal,
     },
     dayLogs: sharedDayLogs,
@@ -159,14 +214,17 @@ function redactDayLogForPartner(
   profile: ProfileRecord,
   accessLevel: PartnerShareAccessLevel,
 ): DayLogRecord {
-  // Built by explicit field-picking, never `...record` spread: the return type
-  // is the full DayLogRecord, so the TS compiler forces every field to be
-  // listed here. A future additive field on DayLogRecord fails typecheck in
-  // this function instead of silently reaching a partner projection.
+  // Both branches build the redacted record by EXPLICIT field-picking, never a
+  // `...record` spread. This is fail-closed twice over: the return type is the
+  // full DayLogRecord, so the compiler forces every field to be listed here (a
+  // future additive field fails typecheck in this function instead of silently
+  // reaching a partner projection), and owner-only values — pregnancy-mode
+  // metrics (weightKg / bpSystolic / bpDiastolic) among them — are excluded by
+  // construction. pregnancyTest is owner-only unconditionally (no opt-in
+  // exists) and is forced to "none".
   if (accessLevel === "summary") {
     // Summary projection: share only coarse period/cycle markers.
     // Data minimisation: flow is not rendered in the summary UI, so drop it.
-    // pregnancyTest is owner-only per the canonical privacy rule.
     return {
       date: record.date,
       isPeriod: record.isPeriod,
@@ -185,8 +243,7 @@ function redactDayLogForPartner(
     };
   }
 
-  // Full projection: respect owner privacy toggles.
-  // pregnancyTest is owner-only unconditionally — no opt-in exists.
+  // Full projection: keep detailed history but respect owner privacy toggles.
   return {
     date: record.date,
     isPeriod: record.isPeriod,

@@ -1,3 +1,10 @@
+import {
+  createPregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+} from "../models/pregnancy";
+import { createPostpartumRecord } from "../models/postpartum";
+import { createScreeningResponse } from "../models/screening";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { createManagedCloudAPIClient } from "./managed-cloud-api-client";
@@ -335,6 +342,47 @@ describeIfLive("sync-client-service managed live transport", () => {
       notes: "pregnancy round-trip",
     });
 
+    // Premium pregnancy domain (X10) alongside the pregnancyTest day field:
+    // records + kick + contraction must survive the managed encrypted bridge.
+    const pregnancy = createPregnancyRecord({
+      edd: "2026-12-01",
+      eddBasis: "lmp",
+      startedAt: "2026-03-01",
+      lmpDate: "2026-02-24",
+    });
+    const kickSession: KickCountSession = {
+      id: "kick-managed-1",
+      date: "2026-04-04",
+      durationMinutes: 45,
+      kickCount: 14,
+    };
+    const contractionSession: ContractionSession = {
+      id: "contraction-managed-1",
+      date: "2026-04-04",
+      startedAt: "2026-04-04T21:00:00.000Z",
+      contractions: [
+        { startedAt: "2026-04-04T21:00:00.000Z", durationSeconds: 50 },
+        { startedAt: "2026-04-04T21:06:00.000Z", durationSeconds: 55 },
+      ],
+    };
+    await storage.writePregnancyRecord(pregnancy);
+    await storage.writeKickSession(kickSession);
+    await storage.writeContractionSession(contractionSession);
+
+    // Premium postpartum + EPDS screening domain alongside the pregnancy
+    // round-trip: the recovery record and the most-sensitive mood-screening
+    // answers must survive the managed encrypted bridge too.
+    const postpartum = createPostpartumRecord({
+      startedAt: "2026-03-28",
+      modeOfDelivery: "cesarean",
+    });
+    const screening = createScreeningResponse({
+      date: "2026-04-04",
+      answers: [1, 1, 2, 1, 0, 1, 0, 2, 1, 0],
+    });
+    await storage.writePostpartumRecord(postpartum);
+    await storage.writeScreeningResponse(screening);
+
     let preferences: SyncPreferencesRecord = {
       ...createDefaultSyncPreferencesRecord(),
       mode: "managed",
@@ -409,6 +457,12 @@ describeIfLive("sync-client-service managed live transport", () => {
     await expect(storage.readDayLogRecord("2026-04-05")).resolves.toEqual(
       expect.objectContaining({ pregnancyTest: "none" }),
     );
+    await storage.deleteAllPregnancyData();
+    await storage.deleteAllPostpartumData();
+    await storage.deleteAllScreeningData();
+    await expect(storage.readActivePregnancy()).resolves.toBeNull();
+    await expect(storage.readActivePostpartum()).resolves.toBeNull();
+    await expect(storage.listScreeningResponses()).resolves.toEqual([]);
 
     const restoreResult = await runSyncRestore(
       storage,
@@ -428,6 +482,26 @@ describeIfLive("sync-client-service managed live transport", () => {
         notes: "pregnancy round-trip",
       }),
     );
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({
+        id: pregnancy.id,
+        status: "active",
+        edd: "2026-12-01",
+      }),
+    );
+    await expect(storage.listKickSessions()).resolves.toEqual([
+      expect.objectContaining({ id: kickSession.id, kickCount: 14 }),
+    ]);
+    const restoredContractions = await storage.listContractionSessions();
+    expect(restoredContractions).toHaveLength(1);
+    expect(restoredContractions[0]?.contractions).toHaveLength(2);
+    // The postpartum + screening domain arrived intact through the managed bridge.
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: postpartum.id, status: "active" }),
+    );
+    await expect(storage.listScreeningResponses()).resolves.toEqual([
+      expect.objectContaining({ id: screening.id, score: screening.score }),
+    ]);
   });
 });
 

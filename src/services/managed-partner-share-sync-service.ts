@@ -54,10 +54,11 @@ export async function syncManagedPartnerSharedProjections(
     return { skipped: true, syncedCount: 0 };
   }
 
-  const [profile, symptomRecords, summary] = await Promise.all([
+  const [profile, symptomRecords, summary, activePregnancy] = await Promise.all([
     storage.readProfileRecord(),
     storage.listSymptomRecords(),
     storage.readDayLogSummary(),
+    storage.readActivePregnancy(),
   ]);
   const dayLogs =
     summary.hasData && summary.dateFrom && summary.dateTo
@@ -76,16 +77,27 @@ export async function syncManagedPartnerSharedProjections(
       partnerShareSecretStore,
       grant.id,
     );
-    const projection = buildPartnerSharedProjectionPayload({
-      accessLevel: grant.accessLevel,
-      dayLogs,
-      generatedAt: now.toISOString(),
-      generation,
-      grantID: grant.id,
-      ownerAccountID: grant.ownerAccountID,
-      profile,
-      symptomRecords,
-    });
+    const projection = buildPartnerSharedProjectionPayload(
+      {
+        accessLevel: grant.accessLevel,
+        dayLogs,
+        generatedAt: now.toISOString(),
+        generation,
+        grantID: grant.id,
+        ownerAccountID: grant.ownerAccountID,
+        profile,
+        symptomRecords,
+      },
+      {
+        // Mirrors the stats/calendar suppressPredictions pattern: an ACTIVE pregnancy
+        // record must suppress partner-facing predictions even when the
+        // day-log pause itself has already been lifted by a later period
+        // log. The builder additionally recomputes the owner's own
+        // (not-yet-lifted) pause internally, since that signal cannot
+        // survive the day-log pregnancyTest redaction.
+        suppressPredictions: activePregnancy !== null,
+      },
+    );
 
     const uploadResult = await uploadManagedPartnerProjection(
       syncSecretStore,
