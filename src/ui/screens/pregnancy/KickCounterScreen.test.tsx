@@ -13,6 +13,16 @@ jest.mock("../../confirm/open-confirmation", () => ({
   openLeaveConfirmation: jest.fn(),
 }));
 
+// The default-wiring smoke renders without an injected storage; the real
+// appStorage is the SQLite adapter, which has no backing database under Jest,
+// so the bootstrap module resolves to an empty storage mock instead.
+jest.mock("../../../services/app-bootstrap-service", () => {
+  const { createLocalAppStorageMock } = jest.requireActual(
+    "../../../test/create-local-app-storage-mock",
+  );
+  return { appStorage: createLocalAppStorageMock() };
+});
+
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 
 const EDD = "2026-10-08";
@@ -291,6 +301,18 @@ describe("failure paths", () => {
     view.unmount();
     resolvePregnancy(activeRecord());
     await act(async () => {});
+  });
+
+  it("renders with default wiring when no storage or clock is injected", async () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <KickCounterScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      await screen.findByTestId("kick-counter-not-accessible"),
+    ).toBeTruthy();
   });
 
 });

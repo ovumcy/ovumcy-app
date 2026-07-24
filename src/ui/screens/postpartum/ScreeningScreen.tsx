@@ -31,6 +31,14 @@ export type ScreeningScreenProps = {
   initialView?: "questionnaire" | "history";
 };
 
+// Index lookup for the one-question-per-step flow. The null fallback is the
+// contract for an out-of-range index; the stepper's own clamping keeps the
+// index in range, so the fallback is exercised directly rather than through
+// the screen.
+export function questionAtIndex<T>(questions: readonly T[], index: number): T | null {
+  return questions[index] ?? null;
+}
+
 export function ScreeningScreen({
   storage = appStorage,
   now,
@@ -114,8 +122,8 @@ export function ScreeningScreen({
   }, [stage, storage, language]);
 
   const totalQuestions = questionnaire.questions.length;
-  const currentQuestion = questionnaire.questions[questionIndex] ?? null;
-  const selectedValue = answers[questionIndex] ?? null;
+  const currentQuestion = questionAtIndex(questionnaire.questions, questionIndex);
+  const selectedValue = questionAtIndex(answers, questionIndex);
 
   function handleBegin() {
     setQuestionIndex(0);

@@ -23,7 +23,11 @@ type KickCounterScreenProps = {
 };
 
 type LoadStatus = "loading" | "ready";
-type SessionPhase = "idle" | "counting";
+// The in-progress counting session. One value instead of separate
+// phase/startedAt/tapCount states so "counting" and "has a start instant and
+// at least one tap" cannot drift apart: a non-null session IS the counting
+// phase, and its tapCount starts at 1 (the starting tap) by construction.
+type CountingSession = { startedAt: Date; tapCount: number };
 type StatusState = { message: string; tone: "success" | "error" } | null;
 
 const ELAPSED_TICK_MS = 1000;
@@ -42,9 +46,7 @@ export function KickCounterScreen({
   const [sessions, setSessions] = useState<
     Awaited<ReturnType<LocalAppStorage["listKickSessions"]>>
   >([]);
-  const [sessionPhase, setSessionPhase] = useState<SessionPhase>("idle");
-  const [startedAt, setStartedAt] = useState<Date | null>(null);
-  const [tapCount, setTapCount] = useState(0);
+  const [session, setSession] = useState<CountingSession | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<StatusState>(null);
@@ -75,17 +77,20 @@ export function KickCounterScreen({
     };
   }, [storage]);
 
+  // Keyed to the start instant (a stable reference for the whole counting
+  // session), not to `session` itself, so taps do not restart the interval.
+  const sessionStartedAt = session ? session.startedAt : null;
   useEffect(() => {
-    if (sessionPhase !== "counting" || !startedAt) {
+    if (!sessionStartedAt) {
       return;
     }
 
     const interval = setInterval(() => {
-      setElapsedMs(Date.now() - startedAt.getTime());
+      setElapsedMs(Date.now() - sessionStartedAt.getTime());
     }, ELAPSED_TICK_MS);
 
     return () => clearInterval(interval);
-  }, [sessionPhase, startedAt]);
+  }, [sessionStartedAt]);
 
   const viewData = useMemo(
     () =>
@@ -107,26 +112,25 @@ export function KickCounterScreen({
   }
 
   function resetSession() {
-    setSessionPhase("idle");
-    setStartedAt(null);
-    setTapCount(0);
+    setSession(null);
     setElapsedMs(0);
   }
 
   function handleTap() {
-    if (sessionPhase === "idle") {
-      setStartedAt(new Date());
+    if (!session) {
       setElapsedMs(0);
-      setTapCount(1);
-      setSessionPhase("counting");
+      setSession({ startedAt: new Date(), tapCount: 1 });
       return;
     }
 
-    setTapCount((current) => Math.min(current + 1, MAX_KICK_COUNT));
+    setSession({
+      ...session,
+      tapCount: Math.min(session.tapCount + 1, MAX_KICK_COUNT),
+    });
   }
 
   async function handleFinish() {
-    if (sessionPhase !== "counting" || !startedAt || tapCount === 0) {
+    if (!session) {
       return;
     }
 
@@ -135,7 +139,7 @@ export function KickCounterScreen({
 
     const result = await finishKickCountSession(
       storage,
-      { startedAt, kickCount: tapCount },
+      { startedAt: session.startedAt, kickCount: session.tapCount },
       new Date(),
     );
     if (!result.ok) {
@@ -151,7 +155,7 @@ export function KickCounterScreen({
   }
 
   async function handleDiscard() {
-    if (sessionPhase !== "counting") {
+    if (!session) {
       return;
     }
 
@@ -189,12 +193,11 @@ export function KickCounterScreen({
   }
 
   async function handleReminderToggle(value: boolean) {
-    if (!profile) {
-      return;
-    }
-
+    // Merge onto a fresh read (not the mount-time copy) so the toggle never
+    // clobbers profile fields written elsewhere since this screen loaded.
+    const current = await storage.readProfileRecord();
     const nextProfile: ProfileRecord = {
-      ...profile,
+      ...current,
       kickCountReminderEnabled: value,
     };
     setProfile(nextProfile);
@@ -226,10 +229,10 @@ export function KickCounterScreen({
       onReminderToggle={handleReminderToggle}
       onTap={handleTap}
       reminderEnabled={profile?.kickCountReminderEnabled === true}
-      sessionPhase={sessionPhase}
+      sessionPhase={session ? "counting" : "idle"}
       statusMessage={status?.message ?? ""}
       statusTone={status?.tone}
-      tapCount={tapCount}
+      tapCount={session ? session.tapCount : 0}
       viewData={viewData}
     />
   );

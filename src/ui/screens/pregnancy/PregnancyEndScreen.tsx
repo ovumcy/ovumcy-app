@@ -218,11 +218,10 @@ export function PregnancyEndScreen({
     router.back();
   }
 
-  async function handleConfirmEnd() {
-    if (!reason) {
-      return;
-    }
-
+  // The reason rides in from the step that rendered the confirm button (the
+  // flow screen only offers Confirm inside a chosen reason's step), mirroring
+  // the dashboard cycle-return offer's data-with-the-press contract.
+  async function handleConfirmEnd(reason: PregnancyEndReason) {
     const dialog =
       reason === "birth"
         ? copy.birth.dialog
@@ -413,16 +412,9 @@ export function PregnancyEndScreen({
 
   function handleUpdateDueDatePress() {
     setUpdateDueDateError("");
-    // Prefill from the currently active record so the step edits the current
-    // value rather than opening blank. "lmp" is never offered here (see
-    // UpdateDueDateBasis), so a record that was originally LMP-based falls
-    // back to "ultrasound" as a reasonable default starting toggle.
-    setUpdateDueDateBasis(
-      activePregnancyRecord && activePregnancyRecord.eddBasis !== "lmp"
-        ? activePregnancyRecord.eddBasis
-        : "ultrasound",
-    );
-    setUpdateDueDateValue(activePregnancyRecord?.edd ?? "");
+    const prefill = resolveUpdateDueDatePrefill(activePregnancyRecord);
+    setUpdateDueDateBasis(prefill.basis);
+    setUpdateDueDateValue(prefill.value);
     setUpdateDueDateActive(true);
   }
 
@@ -551,7 +543,27 @@ export function PregnancyEndScreen({
   );
 }
 
-function resolveUpdateEddError(
+// Prefills the update-due-date step from the currently active record so it
+// edits the current value rather than opening blank. "lmp" is never offered
+// there (see UpdateDueDateBasis), so a record that was originally LMP-based
+// falls back to "ultrasound" as a reasonable default starting toggle; a null
+// record (the row is only rendered while a pregnancy is active, so this is
+// the defensive shape) opens the blank ultrasound form.
+export function resolveUpdateDueDatePrefill(record: PregnancyRecord | null): {
+  basis: UpdateDueDateBasis;
+  value: string;
+} {
+  return {
+    basis: record && record.eddBasis !== "lmp" ? record.eddBasis : "ultrasound",
+    value: record ? record.edd : "",
+  };
+}
+
+// Maps every service error code to its wizard copy. Exported so the mapping
+// stays pinned code-by-code: the single-step form's own gates keep most codes
+// from ever surfacing through the screen (updateEddForActivePregnancy
+// re-validates as defense in depth).
+export function resolveUpdateEddError(
   code: UpdateEddErrorCode,
   pregnancyCopy: ReturnType<typeof getPregnancyCopy>,
 ): string {

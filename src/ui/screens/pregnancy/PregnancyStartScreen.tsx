@@ -216,7 +216,11 @@ export function PregnancyStartScreen({
   );
 }
 
-function resolveStartError(
+// Maps every service error code to its wizard copy. Exported so the mapping
+// stays pinned code-by-code: the wizard's own step gates keep most codes from
+// ever surfacing through the screen (startPregnancy re-validates as defense
+// in depth).
+export function resolveStartError(
   code: StartPregnancyErrorCode,
   copy: ReturnType<typeof getPregnancyCopy>,
 ): string {

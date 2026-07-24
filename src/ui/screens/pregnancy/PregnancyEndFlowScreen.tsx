@@ -55,7 +55,10 @@ export type PregnancyEndFlowScreenProps = {
   deleteError: string;
   onSelectReason: (reason: PregnancyEndReason) => void;
   onSelectModeOfDelivery: (mode: ModeOfDelivery | null) => void;
-  onConfirmEnd: () => void | Promise<void>;
+  // Confirm carries the step's reason with the press (the button only exists
+  // inside a chosen reason's step), so the container never re-derives it from
+  // state.
+  onConfirmEnd: (reason: PregnancyEndReason) => void | Promise<void>;
   onBack: () => void;
   onCancel: () => void;
   onDeletePress: () => void | Promise<void>;
@@ -588,7 +591,7 @@ export function PregnancyEndFlowScreen({
           <AppButton
             disabled={isSaving}
             label={copy.birth.confirmCta}
-            onPress={onConfirmEnd}
+            onPress={() => onConfirmEnd("birth")}
             testID="pregnancy-end-confirm-button"
           />
         </View>
@@ -626,7 +629,7 @@ export function PregnancyEndFlowScreen({
           <AppButton
             disabled={isSaving}
             label={section.confirmCta}
-            onPress={onConfirmEnd}
+            onPress={() => onConfirmEnd(reason)}
             testID="pregnancy-end-confirm-button"
           />
         </View>

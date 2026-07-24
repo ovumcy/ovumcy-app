@@ -115,21 +115,19 @@ export function ContractionTimerScreen({
       setActiveContractionStartedAt(startContraction(new Date()));
       return;
     }
-    void handleStop();
+    void handleStop(activeContractionStartedAt);
   }
 
-  async function handleStop() {
-    if (activeContractionStartedAt === null) {
-      return;
-    }
-
+  // The in-progress contraction's start instant rides in as an argument from
+  // the toggle that already checked it, keeping this free of a re-check.
+  async function handleStop(contractionStartedAt: string) {
     setIsSaving(true);
     setStatus(null);
 
     const result = await stopContraction(
       storage,
       session,
-      activeContractionStartedAt,
+      contractionStartedAt,
       new Date(),
     );
     if (!result.ok) {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { createDefaultProfileRecord } from "../../../models/profile";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
@@ -6,7 +6,8 @@ import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlemen
 import { addDays, parseLocalDate } from "../../../services/profile-settings-policy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
-import { PregnancyStartScreen } from "./PregnancyStartScreen";
+import { PregnancyStartFlowScreen } from "./PregnancyStartFlowScreen";
+import { PregnancyStartScreen, resolveStartError } from "./PregnancyStartScreen";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -24,6 +25,16 @@ jest.mock("../../../services/pregnancy-entitlement-service", () => {
     ...actual,
     loadPregnancyModuleOwned: jest.fn().mockResolvedValue(true),
   };
+});
+
+// The default-wiring smoke renders without an injected storage; the real
+// appStorage is the SQLite adapter, which has no backing database under Jest,
+// so the bootstrap module resolves to an empty storage mock instead.
+jest.mock("../../../services/app-bootstrap-service", () => {
+  const { createLocalAppStorageMock } = jest.requireActual(
+    "../../../test/create-local-app-storage-mock",
+  );
+  return { appStorage: createLocalAppStorageMock() };
 });
 
 const mockUnlocked = jest.mocked(loadPregnancyModuleOwned);
@@ -323,6 +334,162 @@ describe("PregnancyStartScreen", () => {
 
       expect(await screen.findByTestId("pregnancy-start-error")).toBeTruthy();
     });
+
+    it("validates missing and malformed dates on the ultrasound basis and steps back from confirm", async () => {
+      const copy = getPregnancyCopy("en");
+      renderStart();
+
+      fireEvent.press(
+        await screen.findByTestId("pregnancy-start-basis-ultrasound"),
+      );
+      expect(screen.getByText(copy.wizard.basisOptions.ultrasoundHint)).toBeTruthy();
+      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+
+      // Empty EDD input: the required-date validation on the non-LMP branch.
+      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      expect(
+        await screen.findByText(copy.wizard.validation.missingDate),
+      ).toBeTruthy();
+
+      // Malformed input is rejected as an invalid date, still on the step.
+      fireEvent.changeText(
+        screen.getByTestId("pregnancy-start-date-input"),
+        "not-a-date",
+      );
+      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      expect(
+        await screen.findByText(copy.wizard.validation.invalidDate),
+      ).toBeTruthy();
+
+      // A valid EDD advances to confirm; Back returns to the date step.
+      fireEvent.changeText(
+        screen.getByTestId("pregnancy-start-date-input"),
+        EDD,
+      );
+      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await screen.findByTestId("pregnancy-start-confirm-step");
+      fireEvent.press(screen.getByTestId("pregnancy-start-back-button"));
+      expect(await screen.findByTestId("pregnancy-start-date-step")).toBeTruthy();
+    });
+
+    it("shows the manual-basis hint when the manual basis is selected", async () => {
+      renderStart();
+
+      fireEvent.press(await screen.findByTestId("pregnancy-start-basis-manual"));
+      expect(
+        screen.getByText(getPregnancyCopy("en").wizard.basisOptions.manualHint),
+      ).toBeTruthy();
+    });
   });
 
+  it("unmounts cleanly while the initial load is still in flight", async () => {
+    let resolveProfile: (value: unknown) => void = () => {};
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockReturnValue(
+        new Promise((resolve) => {
+          resolveProfile = resolve;
+        }),
+      ),
+    });
+    const view = renderStart(storage);
+    view.unmount();
+    resolveProfile(profileWithLmp());
+    await act(async () => {});
+  });
+
+  it("renders with default wiring when no storage or clock is injected", async () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyStartScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByTestId("pregnancy-start-basis-step")).toBeTruthy();
+  });
+
+});
+
+describe("resolveStartError", () => {
+  it("maps every start error code to its wizard validation copy", () => {
+    const copy = getPregnancyCopy("en");
+    expect(resolveStartError("active_pregnancy_exists", copy)).toBe(
+      copy.wizard.validation.activeExists,
+    );
+    expect(resolveStartError("missing_date", copy)).toBe(
+      copy.wizard.validation.missingDate,
+    );
+    expect(resolveStartError("invalid_date", copy)).toBe(
+      copy.wizard.validation.invalidDate,
+    );
+    expect(resolveStartError("out_of_range", copy)).toBe(
+      copy.wizard.validation.outOfRange,
+    );
+    expect(resolveStartError("save_failed", copy)).toBe(
+      copy.wizard.validation.saveFailed,
+    );
+  });
+});
+
+describe("PregnancyStartFlowScreen direct states", () => {
+  const noop = () => {};
+
+  function flowProps() {
+    return {
+      language: "en",
+      locked: false,
+      step: 1 as const,
+      basis: "lmp" as const,
+      dateValue: "",
+      preview: {
+        edd: null,
+        eddLabel: null,
+        weeks: null,
+        days: null,
+        gaLabel: null,
+      },
+      error: "",
+      isSaving: false,
+      onBasisSelect: noop,
+      onDateChange: noop,
+      onBack: noop,
+      onNext: noop,
+      onConfirm: noop,
+      onCancel: noop,
+      fetusCount: undefined,
+      chorionicity: undefined,
+      onFetusCountSelect: noop,
+      onChorionicitySelect: noop,
+    };
+  }
+
+  it("renders the locked card with a CTA when a premium CTA handler is wired", () => {
+    const onPremiumCTAPress = jest.fn();
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyStartFlowScreen
+          {...flowProps()}
+          locked
+          onPremiumCTAPress={onPremiumCTAPress}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("pregnancy-start-lock-cta").props.children).toBe(
+      getPregnancyCopy("en").entryCard.lockedCta,
+    );
+    fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
+    expect(onPremiumCTAPress).toHaveBeenCalled();
+  });
+
+  it("renders an empty confirm summary when the preview has no computed dates", () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyStartFlowScreen {...flowProps()} step={3} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("pregnancy-start-confirm-edd").props.children,
+    ).toBe("");
+  });
 });

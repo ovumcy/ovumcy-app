@@ -1,7 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createPregnancyRecord, type ContractionEntry, type ContractionSession } from "../../../models/pregnancy";
-import { addDays, parseLocalDate } from "../../../services/profile-settings-policy";
+import {
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
+} from "../../../services/profile-settings-policy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
 import { getContractionTimerCopy } from "../../../i18n/contraction-timer-copy";
@@ -18,6 +22,16 @@ jest.mock("../../confirm/open-confirmation", () => ({
   openConfirmation: jest.fn(),
   openLeaveConfirmation: jest.fn(),
 }));
+
+// The default-wiring smoke renders without an injected storage; the real
+// appStorage is the SQLite adapter, which has no backing database under Jest,
+// so the bootstrap module resolves to an empty storage mock instead.
+jest.mock("../../../services/app-bootstrap-service", () => {
+  const { createLocalAppStorageMock } = jest.requireActual(
+    "../../../test/create-local-app-storage-mock",
+  );
+  return { appStorage: createLocalAppStorageMock() };
+});
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 
@@ -472,6 +486,76 @@ describe("failure paths", () => {
     view.unmount();
     resolvePregnancy(activeRecord());
     await act(async () => {});
+  });
+
+  it("appends a stop to the same resumed session while it is within the session bounds", async () => {
+    // Anchored to the real clock: the stop handlers timestamp with `new
+    // Date()`, so only a session seeded relative to the wall clock can stay
+    // inside its own 24h span at stop time (the fixed-date suites above all
+    // exercise the roll-over path instead).
+    const realNow = new Date();
+    const seeded = contractionSession({
+      id: "contraction_live",
+      date: formatLocalDate(realNow),
+      startedAt: new Date(realNow.getTime() - 30 * 60_000).toISOString(),
+      contractions: [
+        entry(new Date(realNow.getTime() - 20 * 60_000).toISOString(), 60),
+      ],
+    });
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+      listContractionSessions: jest.fn().mockResolvedValue([seeded]),
+    });
+    renderScreen(storage, realNow);
+
+    const toggle = await screen.findByTestId("contraction-timer-toggle-button");
+    fireEvent.press(toggle);
+    fireEvent.press(toggle);
+
+    await waitFor(() => {
+      expect(storage.writeContractionSession).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "contraction_live" }),
+      );
+    });
+    // Same session id: the stop appended rather than rolling over, so the
+    // resumed session never shows up in the history block below.
+    expect(
+      screen.queryByTestId("contraction-timer-history-row-contraction_live"),
+    ).toBeNull();
+  });
+
+  it("surfaces a failed discard of the current session", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const seeded = contractionSession({
+      id: "contraction_discard_fail",
+      contractions: [entry(NOW.toISOString(), 50)],
+    });
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+      listContractionSessions: jest.fn().mockResolvedValue([seeded]),
+      deleteContractionSession: jest.fn().mockRejectedValue(new Error("busy")),
+    });
+    renderScreen(storage);
+
+    fireEvent.press(await screen.findByTestId("contraction-timer-discard-button"));
+
+    expect(
+      await screen.findByText(
+        getContractionTimerCopy("en").counter.discardFailedStatus,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("renders with default wiring when no storage or clock is injected", async () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <ContractionTimerScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      await screen.findByTestId("contraction-timer-not-accessible"),
+    ).toBeTruthy();
   });
 
 });

@@ -18,7 +18,11 @@ import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
 import { getPostpartumCopy } from "../../../i18n/postpartum-copy";
 import { getScreeningCopy } from "../../../i18n/screening-copy";
 import { openConfirmation } from "../../confirm/open-confirmation";
-import { PregnancyEndScreen } from "./PregnancyEndScreen";
+import {
+  PregnancyEndScreen,
+  resolveUpdateDueDatePrefill,
+  resolveUpdateEddError,
+} from "./PregnancyEndScreen";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -36,6 +40,16 @@ jest.mock("../../confirm/open-confirmation", () => ({
 jest.mock("../../../security/sensitive-action-auth", () => ({
   requestSensitiveActionChallenge: jest.fn(),
 }));
+
+// The default-wiring smoke renders without an injected storage; the real
+// appStorage is the SQLite adapter, which has no backing database under Jest,
+// so the bootstrap module resolves to an empty storage mock instead.
+jest.mock("../../../services/app-bootstrap-service", () => {
+  const { createLocalAppStorageMock } = jest.requireActual(
+    "../../../test/create-local-app-storage-mock",
+  );
+  return { appStorage: createLocalAppStorageMock() };
+});
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockChallenge = jest.mocked(requestSensitiveActionChallenge);
@@ -943,6 +957,235 @@ describe("failure and device-auth paths", () => {
     (storage.deleteAllScreeningData as jest.Mock).mockRejectedValue(new Error("busy"));
     fireEvent.press(screen.getByTestId("pregnancy-end-screening-delete-button"));
     expect(await screen.findByText(del.status.failed)).toBeTruthy();
+  });
+});
+
+describe("handler edges", () => {
+  it("selecting Skip after a mode clears it back to null on the persisted record", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    renderEnd(storage, "birth");
+
+    fireEvent.press(await screen.findByTestId("pregnancy-end-mode-vaginal"));
+    fireEvent.press(screen.getByTestId("pregnancy-end-mode-skip"));
+    fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+
+    await waitFor(() =>
+      expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ endReason: "birth", modeOfDelivery: null }),
+      ),
+    );
+  });
+
+  it("surfaces a failed loss ending on the loss step", async () => {
+    mockOpenConfirmation.mockResolvedValueOnce(true);
+    const storage = activeStorage();
+    (storage.writePregnancyRecord as jest.Mock).mockRejectedValue(
+      new Error("busy"),
+    );
+    renderEnd(storage, "loss");
+
+    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+
+    expect(
+      await screen.findByText(getPregnancyEndCopy("en").status.endFailed),
+    ).toBeTruthy();
+  });
+
+  it("surfaces a failed delayed postpartum start on its manage card", async () => {
+    const recent = {
+      ...endedRecord(),
+      endedAt: "2026-05-01",
+      endReason: "birth" as const,
+    };
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
+      writePostpartumRecord: jest.fn().mockRejectedValue(new Error("busy")),
+    });
+    renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
+
+    fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-start-button"),
+    );
+
+    expect(
+      await screen.findByText(getPostpartumCopy("en").status.startFailed),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("pregnancy-end-postpartum-start-card"),
+    ).toBeTruthy();
+  });
+
+  it("stays silent when the pregnancy-delete device-auth challenge is cancelled", async () => {
+    mockChallenge.mockResolvedValue({ ok: false, reason: "cancelled" });
+    const storage = activeStorage();
+    renderEnd(storage);
+
+    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+
+    await waitFor(() => expect(mockChallenge).toHaveBeenCalled());
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("pregnancy-end-delete-error")).toBeNull();
+  });
+
+  it("stays silent when the postpartum and screening delete challenges are cancelled", async () => {
+    mockChallenge.mockResolvedValue({ ok: false, reason: "cancelled" });
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listPostpartumRecords: jest
+        .fn()
+        .mockResolvedValue([createPostpartumRecord({ startedAt: "2026-04-01" })]),
+      listScreeningResponses: jest.fn().mockResolvedValue([
+        createScreeningResponse({
+          date: "2026-06-01",
+          answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        }),
+      ]),
+    });
+    renderEnd(storage);
+
+    fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-delete-button"),
+    );
+    fireEvent.press(
+      screen.getByTestId("pregnancy-end-screening-delete-button"),
+    );
+
+    await waitFor(() => expect(mockChallenge).toHaveBeenCalledTimes(2));
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+    expect(
+      screen.queryByTestId("pregnancy-end-postpartum-delete-error"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("pregnancy-end-screening-delete-error"),
+    ).toBeNull();
+  });
+
+  it("keeps postpartum and screening data when their delete confirms are declined", async () => {
+    mockChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(false);
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listPostpartumRecords: jest
+        .fn()
+        .mockResolvedValue([createPostpartumRecord({ startedAt: "2026-04-01" })]),
+      listScreeningResponses: jest.fn().mockResolvedValue([
+        createScreeningResponse({
+          date: "2026-06-01",
+          answers: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        }),
+      ]),
+    });
+    renderEnd(storage);
+
+    fireEvent.press(
+      await screen.findByTestId("pregnancy-end-postpartum-delete-button"),
+    );
+    fireEvent.press(
+      screen.getByTestId("pregnancy-end-screening-delete-button"),
+    );
+
+    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
+    expect(storage.deleteAllPostpartumData).not.toHaveBeenCalled();
+    expect(storage.deleteAllScreeningData).not.toHaveBeenCalled();
+  });
+
+  it("unmounts cleanly while the initial load is still in flight", async () => {
+    let resolveRecords: (value: unknown) => void = () => {};
+    const storage = createLocalAppStorageMock({
+      listPregnancyRecords: jest.fn().mockReturnValue(
+        new Promise((resolve) => {
+          resolveRecords = resolve;
+        }),
+      ),
+    });
+    const view = renderEnd(storage);
+    view.unmount();
+    resolveRecords([]);
+    await act(async () => {});
+  });
+
+  it("unmounts cleanly while the delayed-start unlock check is still in flight", async () => {
+    let resolveUnlock: (value: boolean) => void = () => {};
+    const recent = {
+      ...endedRecord(),
+      endedAt: "2026-05-01",
+      endReason: "birth" as const,
+    };
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
+    });
+    const view = renderEnd(
+      storage,
+      undefined,
+      new Date(2026, 5, 15),
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveUnlock = resolve;
+        }),
+    );
+    // Let the first storage batch resolve so the load reaches the unlock read.
+    await act(async () => {});
+    view.unmount();
+    resolveUnlock(true);
+    await act(async () => {});
+  });
+
+  it("renders with default wiring when no storage or clock is injected", async () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyEndScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByTestId("pregnancy-end-empty-card")).toBeTruthy();
+  });
+});
+
+describe("resolveUpdateEddError", () => {
+  it("maps every update error code to the shared wizard validation copy", () => {
+    const copy = getPregnancyCopy("en");
+    expect(resolveUpdateEddError("no_active_pregnancy", copy)).toBe(
+      copy.wizard.validation.saveFailed,
+    );
+    expect(resolveUpdateEddError("missing_date", copy)).toBe(
+      copy.wizard.validation.missingDate,
+    );
+    expect(resolveUpdateEddError("invalid_date", copy)).toBe(
+      copy.wizard.validation.invalidDate,
+    );
+    expect(resolveUpdateEddError("out_of_range", copy)).toBe(
+      copy.wizard.validation.outOfRange,
+    );
+    expect(resolveUpdateEddError("save_failed", copy)).toBe(
+      copy.wizard.validation.saveFailed,
+    );
+  });
+});
+
+describe("resolveUpdateDueDatePrefill", () => {
+  it("opens a blank ultrasound form for the defensive null record", () => {
+    expect(resolveUpdateDueDatePrefill(null)).toEqual({
+      basis: "ultrasound",
+      value: "",
+    });
+  });
+
+  it("falls an LMP-based record back to the ultrasound toggle, keeping its edd", () => {
+    expect(resolveUpdateDueDatePrefill(activeRecord())).toEqual({
+      basis: "ultrasound",
+      value: EDD,
+    });
+  });
+
+  it("keeps a non-LMP basis as the starting toggle", () => {
+    const manualRecord = { ...activeRecord(), eddBasis: "manual" as const };
+    expect(resolveUpdateDueDatePrefill(manualRecord)).toEqual({
+      basis: "manual",
+      value: EDD,
+    });
   });
 });
 

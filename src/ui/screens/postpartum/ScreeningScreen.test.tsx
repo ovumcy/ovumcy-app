@@ -8,7 +8,7 @@ import { createDefaultProfileRecord } from "../../../models/profile";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
-import { ScreeningScreen } from "./ScreeningScreen";
+import { ScreeningScreen, questionAtIndex } from "./ScreeningScreen";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -17,6 +17,16 @@ const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ replace: mockReplace, push: mockPush, back: mockBack }),
 }));
+
+// The default-wiring smoke renders without an injected storage; the real
+// appStorage is the SQLite adapter, which has no backing database under Jest,
+// so the bootstrap module resolves to an empty storage mock instead.
+jest.mock("../../../services/app-bootstrap-service", () => {
+  const { createLocalAppStorageMock } = jest.requireActual(
+    "../../../test/create-local-app-storage-mock",
+  );
+  return { appStorage: createLocalAppStorageMock() };
+});
 
 const NOW = new Date(2026, 6, 1); // 2026-07-01
 
@@ -250,4 +260,64 @@ describe("ScreeningScreen", () => {
     await Promise.resolve();
   });
 
+  it("treats a profile without crisis-contact fields as an empty contact", async () => {
+    // A pre-module profile simply has no crisis keys at all; the load resolves
+    // them to empty strings rather than rendering a contact line.
+    const {
+      crisisContactName: _name,
+      crisisContactPhone: _phone,
+      ...legacyProfile
+    } = createDefaultProfileRecord();
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(legacyProfile),
+    });
+    renderScreening(storage);
+
+    await completeWith([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+
+    await screen.findByTestId("screening-crisis-support");
+    expect(screen.queryByText(/Your support contact:/)).toBeNull();
+  });
+
+  it("closes the history view through the back action", async () => {
+    renderScreening(createLocalAppStorageMock(), "history");
+
+    fireEvent.press(await screen.findByTestId("screening-history-back-button"));
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it("unmounts cleanly while the history list is still loading", async () => {
+    let resolveResponses: (value: unknown) => void = () => {};
+    const storage = createLocalAppStorageMock({
+      listScreeningResponses: jest.fn().mockReturnValue(
+        new Promise((resolve) => {
+          resolveResponses = resolve;
+        }),
+      ),
+    });
+    const view = renderScreening(storage, "history");
+    view.unmount();
+    resolveResponses([]);
+    await act(async () => {});
+  });
+
+  it("renders with default wiring when no storage or clock is injected", async () => {
+    render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <ScreeningScreen />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(await screen.findByTestId("screening-intro-card")).toBeTruthy();
+    await act(async () => {});
+  });
+
+});
+
+describe("questionAtIndex", () => {
+  it("returns the element in range and null past either end", () => {
+    expect(questionAtIndex(["a", "b"], 1)).toBe("b");
+    expect(questionAtIndex(["a", "b"], 2)).toBeNull();
+    expect(questionAtIndex([], 0)).toBeNull();
+  });
 });

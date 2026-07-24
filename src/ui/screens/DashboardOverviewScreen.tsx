@@ -643,7 +643,7 @@ function DashboardPostpartumMode({
   viewData,
   onManagePress,
   onAcceptCycleReturn,
-  isAcceptingCycleReturn = false,
+  isAcceptingCycleReturn,
   onStartScreeningPress,
   onOpenScreeningHistoryPress,
   crisisSupport,
@@ -654,7 +654,8 @@ function DashboardPostpartumMode({
   onAcceptCycleReturn?:
     | ((offer: PostpartumCycleReturnOfferViewData) => void | Promise<void>)
     | undefined;
-  isAcceptingCycleReturn?: boolean;
+  // Required (no local default): the screen-level prop already defaults it.
+  isAcceptingCycleReturn: boolean;
   onStartScreeningPress?: (() => void) | undefined;
   onOpenScreeningHistoryPress?: (() => void) | undefined;
   crisisSupport?: CrisisSupportViewData | undefined;
