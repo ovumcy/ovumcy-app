@@ -100,6 +100,11 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
     syncPreferencesRow,
     symptomRow,
     managedBillingCacheRow,
+    pregnancyRecordRow,
+    kickSessionRow,
+    contractionSessionRow,
+    postpartumRecordRow,
+    screeningResponseRow,
   ] =
     await Promise.all([
       database.getFirstAsync<{ encrypted_payload: string | null }>(
@@ -120,6 +125,21 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
     database.getFirstAsync<{ encrypted_payload: string | null }>(
       "SELECT encrypted_payload FROM managed_billing_cache WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
     ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM pregnancy_records WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM kick_sessions WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM contraction_sessions WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM postpartum_records WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
+    database.getFirstAsync<{ encrypted_payload: string | null }>(
+      "SELECT encrypted_payload FROM screening_responses WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+    ),
   ]);
 
   return Boolean(
@@ -128,7 +148,12 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
       dayLogRow?.encrypted_payload ||
       syncPreferencesRow?.encrypted_payload ||
       symptomRow?.encrypted_payload ||
-      managedBillingCacheRow?.encrypted_payload,
+      managedBillingCacheRow?.encrypted_payload ||
+      pregnancyRecordRow?.encrypted_payload ||
+      kickSessionRow?.encrypted_payload ||
+      contractionSessionRow?.encrypted_payload ||
+      postpartumRecordRow?.encrypted_payload ||
+      screeningResponseRow?.encrypted_payload,
   );
 }
 
@@ -139,4 +164,9 @@ export async function wipeLocalAppTables(database: LocalAppDatabase): Promise<vo
   await database.runAsync("DELETE FROM bootstrap_state;");
   await database.runAsync("DELETE FROM sync_preferences;");
   await database.runAsync("DELETE FROM managed_billing_cache;");
+  await database.runAsync("DELETE FROM pregnancy_records;");
+  await database.runAsync("DELETE FROM kick_sessions;");
+  await database.runAsync("DELETE FROM contraction_sessions;");
+  await database.runAsync("DELETE FROM postpartum_records;");
+  await database.runAsync("DELETE FROM screening_responses;");
 }

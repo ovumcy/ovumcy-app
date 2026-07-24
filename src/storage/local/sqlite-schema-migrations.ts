@@ -4,7 +4,7 @@
 
 import { createDefaultBootstrapState } from "./storage-contract";
 
-const DATABASE_VERSION = 13;
+const DATABASE_VERSION = 16;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
   CREATE TABLE IF NOT EXISTS bootstrap_state (
@@ -99,6 +99,67 @@ const CREATE_SYMPTOMS_SLUG_INDEX = `
 const CREATE_MANAGED_BILLING_CACHE_TABLE = `
   CREATE TABLE IF NOT EXISTS managed_billing_cache (
     id INTEGER PRIMARY KEY CHECK (id = 1),
+    encrypted_payload TEXT
+  );
+`;
+
+// v14: pregnancy-mode tables. Each carries only the minimum plaintext needed
+// for row selection — pregnancy_records keeps `status` for the
+// at-most-one-active query, the session tables keep `day` for date-range
+// filters — while edd, dates, endReason, modeOfDelivery, and session payloads
+// live in the AEAD-protected payload only. The record `id` (an opaque UUID) is
+// both the primary key and the AAD row key, so no separate lookup hash is
+// needed the way day_logs/symptoms derive one.
+const CREATE_PREGNANCY_RECORDS_TABLE = `
+  CREATE TABLE IF NOT EXISTS pregnancy_records (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    encrypted_payload TEXT
+  );
+`;
+
+const CREATE_KICK_SESSIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS kick_sessions (
+    id TEXT PRIMARY KEY,
+    day TEXT NOT NULL,
+    encrypted_payload TEXT
+  );
+`;
+
+const CREATE_CONTRACTION_SESSIONS_TABLE = `
+  CREATE TABLE IF NOT EXISTS contraction_sessions (
+    id TEXT PRIMARY KEY,
+    day TEXT NOT NULL,
+    encrypted_payload TEXT
+  );
+`;
+
+// v15: postpartum-mode table. Same shape rationale as pregnancy_records —
+// keeps only the coarse `status` plaintext for the at-most-one-active query;
+// the birth date, mode of delivery, and end reason (all postpartum-outcome
+// sensitive, same class as pregnancy outcome data) live in the AEAD-protected
+// payload only, bound to buildLocalDataAad("postpartum_records", id). The
+// opaque UUID `id` is both the primary key and the AAD row key.
+const CREATE_POSTPARTUM_RECORDS_TABLE = `
+  CREATE TABLE IF NOT EXISTS postpartum_records (
+    id TEXT PRIMARY KEY,
+    status TEXT NOT NULL,
+    encrypted_payload TEXT
+  );
+`;
+
+// v16: EPDS mood-screening table. Mental-health screening answers are the most
+// sensitive data class in the app: the answer vector and derived score live in
+// the AEAD-protected payload ONLY, bound to
+// buildLocalDataAad("screening_responses", id). The sole plaintext column is
+// the coarse completion `day` (for history ordering + the repeat-cadence query)
+// — never the answers, never the score, never the self-harm flag. The opaque
+// UUID `id` is both the primary key and the AAD row key, mirroring
+// pregnancy_records / postpartum_records.
+const CREATE_SCREENING_RESPONSES_TABLE = `
+  CREATE TABLE IF NOT EXISTS screening_responses (
+    id TEXT PRIMARY KEY,
+    day TEXT NOT NULL,
     encrypted_payload TEXT
   );
 `;
@@ -218,6 +279,15 @@ export async function ensureLocalAppSchema(database: LocalAppDatabase): Promise<
   );
   await withStorageOperationLabel("sqlite/schema/reconcileManagedBillingCache", () =>
     migrateV13ManagedBillingCache(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcilePregnancy", () =>
+    migrateV14PregnancyTables(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcilePostpartum", () =>
+    migrateV15PostpartumTable(database),
+  );
+  await withStorageOperationLabel("sqlite/schema/reconcileScreening", () =>
+    migrateV16ScreeningTable(database),
   );
   await withStorageOperationLabel("sqlite/schema/setUserVersion", () =>
     runSchemaStatement(database, `PRAGMA user_version = ${DATABASE_VERSION};`),
@@ -354,6 +424,38 @@ async function migrateV13ManagedBillingCache(
   database: LocalAppDatabase,
 ): Promise<void> {
   await runSchemaStatement(database, CREATE_MANAGED_BILLING_CACHE_TABLE);
+}
+
+// v13 -> v14: adds the three pregnancy-mode tables. CREATE TABLE IF NOT EXISTS
+// keeps this idempotent for both fresh installs and re-runs, so it can double
+// as the reconcile step like the other table migrations. Additive only — no
+// existing rows are read, rewritten, or dropped.
+async function migrateV14PregnancyTables(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_PREGNANCY_RECORDS_TABLE);
+  await runSchemaStatement(database, CREATE_KICK_SESSIONS_TABLE);
+  await runSchemaStatement(database, CREATE_CONTRACTION_SESSIONS_TABLE);
+}
+
+// v14 -> v15: adds the single postpartum-mode table. CREATE TABLE IF NOT EXISTS
+// keeps this idempotent for both fresh installs and re-runs, so it can double
+// as the reconcile step like the other table migrations. Additive only — no
+// existing rows are read, rewritten, or dropped.
+async function migrateV15PostpartumTable(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_POSTPARTUM_RECORDS_TABLE);
+}
+
+// v15 -> v16: adds the single EPDS mood-screening table. CREATE TABLE IF NOT
+// EXISTS keeps this idempotent for both fresh installs and re-runs, so it can
+// double as the reconcile step like the other table migrations. Additive only
+// — no existing rows are read, rewritten, or dropped.
+async function migrateV16ScreeningTable(
+  database: LocalAppDatabase,
+): Promise<void> {
+  await runSchemaStatement(database, CREATE_SCREENING_RESPONSES_TABLE);
 }
 
 async function reconcileBootstrapStateSchema(
