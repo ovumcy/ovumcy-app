@@ -89,7 +89,7 @@ export function PregnancyEndScreen({
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
   const [deleteError, setDeleteError] = useState("");
-  // Update due date (clinician re-dating, X14). The active record itself is
+  // Update due date (clinician re-dating). The active record itself is
   // kept (not just the `hasActive` flag) so the row's step can prefill from
   // its current edd/basis; updateEddForActivePregnancy re-reads the active
   // record itself, so this copy is only ever used for prefill/display.

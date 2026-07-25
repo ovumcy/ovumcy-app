@@ -1232,7 +1232,7 @@ describe("dashboard-view-service pregnancy mode", () => {
     expect(viewData.staleCard).toBeUndefined();
   });
 
-  // X14 regression guard. The hole: resolvePregnancyPause (cycle-history-
+  // Regression guard. The hole: resolvePregnancyPause (cycle-history-
   // service, untouched) lifts its pause once a period is logged after the
   // latest positive test -- correct when the pregnancy actually ended and a
   // real new cycle starts, wrong while the pregnancy is still active (e.g.

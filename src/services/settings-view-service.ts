@@ -1538,7 +1538,7 @@ export function buildSettingsImportPreviewViewData(
     );
   }
 
-  // The pregnancy-mode + Y7 counts participate in hasChanges so a v2/v3 backup
+  // The pregnancy-mode + postpartum/screening counts participate in hasChanges so a v2/v3 backup
   // whose only new content is one of these collections can actually be
   // confirmed — otherwise the preview would list rows to add while
   // simultaneously claiming "nothing new" with a disabled confirm button.

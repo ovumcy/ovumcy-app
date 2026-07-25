@@ -312,12 +312,12 @@ export async function loadStatsScreenState(
       locale,
       premiumFeatures,
       {
-        // X14 follow-up: an ACTIVE pregnancy record must suppress stats
+        // An ACTIVE pregnancy record must suppress stats
         // predictions even when resolvePregnancyPause (cycle-history-service,
         // untouched) has itself lifted the pause -- e.g. a period/bleeding day
         // logged after the latest positive test while the pregnancy is still
         // being tracked. Same flag, same meaning, same storage read as
-        // loadCalendarScreenState's X14 fix.
+        // loadCalendarScreenState.
         suppressPredictions: activePregnancy !== null,
       },
     ),
@@ -339,7 +339,7 @@ export function buildStatsViewData(
     reminders: false,
   },
   options: {
-    // Additive (X14 follow-up): true when an active, trackable pregnancy
+    // Additive: true when an active, trackable pregnancy
     // record exists. A period logged after the latest positive test lifts
     // resolvePregnancyPause's own pause (cycle-history-service, untouched by
     // this option) -- during an ACTIVE pregnancy that lift is medically wrong,
@@ -554,7 +554,7 @@ export function buildStatsViewData(
     // instructs "log a new period to resume", which is exactly the wrong
     // instruction while a pregnancy is actively tracked (and would promise a
     // resume this flag now correctly refuses). Dedicated pregnancy-mode notice
-    // copy is the X14 open-question-2 follow-up.
+    // copy is still open.
     predictionExplanation: suppressPredictions
       ? ""
       : buildPredictionExplanation(profile, projection, locale),

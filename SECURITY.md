@@ -148,6 +148,49 @@ follows from that:
   `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), an accessibility class iOS already keeps
   out of cross-device Keychain sync and restore.
 
+### Pregnancy, postpartum, and screening data
+
+- **Outcome and screening fields are encrypted-only.** `endReason` and `modeOfDelivery`, plus the EDD
+  and the other dates around them, exist solely inside the AEAD-encrypted payload of
+  `pregnancy_records`. Postpartum outcome fields (`modeOfDelivery`, `endReason`, the birth/end dates)
+  carry the same sensitivity class inside `postpartum_records`. Mental-health screening answers, the
+  derived score, and the self-harm flag exist solely inside the AEAD-encrypted payload of
+  `screening_responses`. Across these five tables (`pregnancy_records`, `kick_sessions`,
+  `contraction_sessions`, `postpartum_records`, `screening_responses`) the only plaintext columns are
+  coarse selection metadata — the `status` enum, and the `day` a kick/contraction session or a
+  screening check-in falls on — never the outcome or the answers themselves, never in a log line,
+  never in an export filename.
+- **Three independent, device-auth-gated hard deletes.** Pregnancy, postpartum, and screening data
+  each have their own destructive action, gated behind the same device authentication challenge as
+  other sensitive actions (`requestSensitiveActionChallenge`, with the same web-bypass allowance used
+  by the existing local-data reset) plus an explicit confirm. Deleting one class never touches
+  another: deleting all pregnancy data removes every row from `pregnancy_records`, `kick_sessions`,
+  and `contraction_sessions` while leaving postpartum and screening rows (and day logs, symptoms, and
+  profile data) untouched; deleting postpartum data clears only `postpartum_records`; deleting
+  screening ("check-in") data clears only `screening_responses`. Screening is deleted **only** via its
+  own action — never as a side effect of the postpartum or pregnancy delete.
+- **Screening answers never persist partially.** The EPDS questionnaire holds answers in component
+  state only; a response is written once, on finish. Abandoning the flow at any point — back, dismiss,
+  navigating away — discards the in-progress answers rather than persisting a partial record. The
+  history view of past check-ins surfaces the completion date and score only; the per-item answers
+  never enter a history view-data shape. On import, the score and self-harm flag are recomputed from
+  the answer vector, so a tampered stored score never enters the local record.
+- **Never shared, never gated by ownership.** The pregnancy/kick/contraction domain, the postpartum
+  domain, and the screening domain are all categorically excluded from partner-share projections (not
+  merely redacted — the projection builder never accepts any of these collections as input), and
+  reading or exporting data the owner already logged in any of these domains is never blocked. The
+  module is a **one-time on-device unlock**, not a subscription: ownership is resolved through
+  `pregnancy-entitlement-service` (fail-closed) and never through the managed billing snapshot, a sync
+  session, or the secret store. An active pregnancy or postpartum record renders fully from local data
+  whatever that ownership check later says; only *starting* new tracking consults it (postpartum
+  reuses the same selector, not a second key).
+- **Crisis-support content is a hard safety boundary, never gated.** The personal crisis-support
+  contact (two additive fields on the local profile, encrypted at rest like the rest of the profile)
+  and the shared crisis-support card that surfaces it — on the EPDS result when the self-harm item is
+  flagged, and on the postpartum dashboard's standing "Support resources" row — are never gated and
+  never read managed billing/entitlement state at all. The surface renders wherever its host renders,
+  and no file in it imports premium/entitlement code.
+
 ### Out of scope
 
 - A compromised device (OS malware, jailbreak/root keyloggers, a thief with an
@@ -471,6 +514,25 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | A failed fetch with nothing ever cached fails closed | `fails closed when the fetch fails and no snapshot was ever cached` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | The cache is never served without a still-present managed session token | `never serves the cache without a managed session token` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` instead of instantly re-locking | `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+
+### Pregnancy, postpartum, and screening data
+
+| Claim | Enforced by |
+| --- | --- |
+| Pregnancy outcome fields (EDD, end reason) are stored in the encrypted payload, never as plaintext columns | `stores pregnancy data in encrypted payloads, never plaintext EDD or end-reason strings` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| Screening answers and the derived score exist only inside the encrypted payload | `round-trips screening responses and stores answers/score only in the encrypted payload` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| A row whose ciphertext was moved between ids or tables fails closed and is dropped rather than decrypted | `drops a pregnancy row whose ciphertext was copied from a different pregnancy id (AAD fail-closed)`, `drops a contraction row holding a kick-session ciphertext (cross-table AAD binding)`, `drops a postpartum row whose ciphertext was copied from a different postpartum id (AAD fail-closed)`, `drops a screening row whose ciphertext was copied from a different id (AAD fail-closed)` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| Deleting one sensitive class never deletes another | `deleteAllPregnancyData clears every pregnancy table but leaves other tables intact`, `deleteAllScreeningData clears screening but leaves postpartum + other data intact (separate sensitive classes)`, `deleteAllPostpartumData does NOT delete screening data (screening is a separate class)` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| A destructive local reset / key mismatch wipes all five tables, leaving no orphaned undecryptable rows | `wipes every local table (including pregnancy, postpartum, and screening) via wipeLocalAppTables` in [src/storage/local/sqlite-local-data-key.test.ts](src/storage/local/sqlite-local-data-key.test.ts); `wipes the pregnancy tables on destructive local reset and leaves them empty and usable`, `wipes the screening table on destructive local reset and leaves it usable` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| The v13 → v16 upgrade creates the five tables with existing data intact | `upgrades a v13 database through v14/v15/v16, creating the pregnancy, postpartum, and screening tables with existing data intact` in [src/storage/local/sqlite-schema-migrations.test.ts](src/storage/local/sqlite-schema-migrations.test.ts) |
+| An abandoned questionnaire persists nothing, and an unanswered item cannot finish one | `persists nothing when the questionnaire is abandoned partway through` in [src/ui/screens/postpartum/ScreeningScreen.test.tsx](src/ui/screens/postpartum/ScreeningScreen.test.tsx), `refuses to finish while any item is unanswered and persists nothing` in [src/ui/screens/postpartum/ScreeningScreen.handlers.test.tsx](src/ui/screens/postpartum/ScreeningScreen.handlers.test.tsx) |
+| The check-in history surfaces date and score only, never the per-item answers | `lists rows newest-first with date and score only (no answers)` in [src/services/screening-service.test.ts](src/services/screening-service.test.ts) |
+| An imported screening score / self-harm flag is recomputed from the answers, so a tampered stored score never applies | `recomputes an imported screening's score + selfHarmFlag from its answers (a drifted stored score is corrected, never trusted)` in [src/services/import-service.test.ts](src/services/import-service.test.ts) |
+| **No pregnancy, postpartum, or screening data reaches a partner projection at either access level** | `never leaks pregnancy-mode day fields into the %s projection`, `never leaks postpartum or screening data into the %s projection` in [src/services/partner-shared-projection-service.test.ts](src/services/partner-shared-projection-service.test.ts) |
+| **The crisis-support contact never reaches a partner projection at either access level** | `never leaks the crisis-support contact into the %s projection` in [src/services/partner-shared-projection-service.test.ts](src/services/partner-shared-projection-service.test.ts) |
+| The crisis-support surface never consults an entitlement loader while rendering or saving | `never consults the premium loader while rendering or saving (never plan-gated)` in [src/ui/components/CrisisSupportCard.test.tsx](src/ui/components/CrisisSupportCard.test.tsx) |
+| Module ownership is fail-closed: a throwing or non-`true` source reads as not owned, and a release build never unlocks from the dev flag | `returns true only when the source answers true`, `fails closed when the source throws`, `treats a non-boolean truthy answer as not owned`, `never unlocks a release build, whatever the flag says` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
+| A locked module shows the lock card instead of the start form | `renders the premium lock card and no form when locked` in [src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx](src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx) |
 
 ### Policy / Planned (human-reviewed, not in the matrix)
 

@@ -720,10 +720,10 @@ describe("buildStatsViewData short/long completed-cycle notices", () => {
 });
 
 describe("buildStatsViewData active-pregnancy prediction suppression", () => {
-  // X14 follow-up: a period logged AFTER the latest positive test lifts
+  // A period logged AFTER the latest positive test lifts
   // resolvePregnancyPause's own pause (cycle-history-service, untouched) --
   // during an ACTIVE pregnancy that lift is medically wrong, and stats has no
-  // dashboard-style mode switch to hide the leak. Mirrors the calendar's X14
+  // dashboard-style mode switch to hide the leak. Mirrors the calendar's
   // lifted-pause fixture: three completed cycles unlock insights, then a
   // positive test (2026-03-20) followed by a logged period (2026-03-25) that
   // re-anchors the projection mid-pregnancy. The varied cycle lengths

@@ -88,7 +88,7 @@ export type ExportPDFBuildInput = {
   dayLogs: readonly DayLogRecord[];
   profile: ProfileRecord;
   symptomRecords: readonly SymptomRecord[];
-  // Additive, mirrors stats/calendar's X14 suppressPredictions pattern:
+  // Additive, mirrors the stats/calendar suppressPredictions pattern:
   // true when an active, trackable pregnancy record exists for the owner
   // (activePregnancy !== null, computed by the storage-aware caller in
   // export-service.ts). Gates ONLY buildAdvancedFertilityItemsForPDF's
@@ -275,7 +275,7 @@ function buildAdvancedFertilityItemsForPDF(
   // last completed cycle's start, so the stats match the cycle the app treats as
   // current rather than the one before it.
   //
-  // Y7b: while an active pregnancy record is being tracked, a null anchor
+  // While an active pregnancy record is being tracked, a null anchor
   // drops ONLY the current-cycle-anchored signals (thermal shift, ovulation
   // confirmation, LH peak) -- mirrors stats-view-service's
   // `suppressPredictions ? null : projection.cycleAnchorDate` exactly, so the
