@@ -293,7 +293,7 @@ describe("partner-shared-projection-service", () => {
     expect(readState.recentRows[0]?.symptomSummary).toBe("Спазмы, Головная боль");
   });
 
-  // Regression pins for the premium pregnancy epic (X10): owner-only pregnancy
+  // Regression pins for the pregnancy module: owner-only pregnancy
   // data must NEVER reach a partner projection at any access level. The
   // pregnancy/kick/contraction collections never enter the projection input,
   // so those tokens are structural regression pins. The day-log weightKg /
@@ -407,7 +407,7 @@ describe("partner-shared-projection-service", () => {
   // only accessLevel / dayLogs / profile / symptomRecords + grant metadata — so
   // nothing postpartum- or screening-shaped can reach a partner projection.
   // These are structural + serialized regression pins guarding that the surface
-  // never grows to admit them (the X10 explicit-pick discipline), for BOTH
+  // never grows to admit them (the explicit-pick discipline), for BOTH
   // access levels. "epds" is the screening instrument value; "answers" +
   // "selfHarmFlag" are the screening answer vector + derived flag; "lochia" is a
   // postpartum bleeding field that must never be added to a shared projection.
@@ -531,7 +531,7 @@ describe("partner-shared-projection-service", () => {
 
         // Sanity check (not vacuous): the owner's REAL projection pause IS
         // lifted in this fixture, so the pin below only holds because of the
-        // threaded activePregnancy flag, mirroring the stats/calendar X14
+        // threaded activePregnancy flag, mirroring the stats/calendar
         // convention (testing.md "Pregnancy pause").
         const ownerHistory = buildCycleHistorySummary(baseProfile, records, now);
         const ownerProjection = buildCurrentCycleProjection(baseProfile, ownerHistory, records, now);

@@ -447,13 +447,13 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
         formatVersion: 2,
         dayLogs: [createEmptyDayLogRecord("2026-03-01")],
       }),
-      // A v2 outcome carries pregnancy-mode rows but zero Y7 counts.
+      // A v2 outcome carries pregnancy-mode rows but zero postpartum/screening counts.
       zeroImportOutcome({ dayLogsAdded: 1, pregnanciesAdded: 1 }),
       importCopy,
       "en",
     );
 
-    // Exact-array pin: the preview must be byte-identical to the pre-Y7 output
+    // Exact-array pin: the preview must be byte-identical to the pre-postpartum output
     // for a v2 outcome — no postpartum/check-in rows.
     expect(preview.detailLines).toEqual([
       "Entries in backup: 1",

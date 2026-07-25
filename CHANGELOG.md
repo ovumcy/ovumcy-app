@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A pregnancy, postpartum, and mood check-in module, unlocked by a one-time
+  on-device purchase rather than a subscription. Pregnancy mode replaces the
+  cycle predictions with due-date tracking, weekly development content,
+  milestones, and care-team red flags; a kick counter and a contraction timer
+  (with a 5-1-1 window summary and gestational-age-aware education) sit
+  alongside it. Ending a pregnancy offers birth, loss, or another outcome with
+  copy suited to each, and a birth can continue into postpartum tracking with
+  recovery and lochia guidance, a cycle-return offer, and an EPDS mood check-in.
+  Crisis-support information, including a personal support contact, is never
+  gated. Reads and exports of anything already logged never consult the unlock,
+  and a cloud subscription neither grants nor revokes it.
+- Five encrypted local tables behind schema v14–v16 for that module, each row
+  AAD-bound like the existing ones and all five covered by the key-mismatch
+  reset. Pregnancy, postpartum, and check-in data each have their own
+  device-auth-gated hard delete that leaves the other two classes untouched.
+  Backup envelope v3, sync snapshot v3, and the additive JSON import carry all
+  five collections; an imported check-in score is recomputed from its answers,
+  so a tampered score never applies. None of this data reaches a partner
+  projection at any access level.
 - Accessibility coverage across the remaining screens: interactive controls now
   carry a role, an accessible name taken from the localized copy already on
   screen, and the state that matters (disabled, selected, checked, expanded).

@@ -62,7 +62,7 @@ export type PregnancyEndFlowScreenProps = {
   onBack: () => void;
   onCancel: () => void;
   onDeletePress: () => void | Promise<void>;
-  // Update due date (clinician re-dating, X14): a non-destructive maintenance
+  // Update due date (clinician re-dating): a non-destructive maintenance
   // action offered only while a pregnancy is active, above the end-reason
   // choices. `updateDueDateActive` toggles between the plain choice screen
   // and this single-step form; everything else mirrors the start wizard's

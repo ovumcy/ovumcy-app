@@ -448,7 +448,7 @@ describe("export-service", () => {
   });
 
   // Threads activePregnancy into the PDF content builder as the
-  // additive suppressPredictions option (mirrors stats/calendar's X14
+  // additive suppressPredictions option (mirrors the stats/calendar
   // loadStatsScreenState pattern), so export-pdf-service can drop phantom
   // current-cycle fertility signals while an active pregnancy is tracked.
   it("threads suppressPredictions: true into the PDF content builder when an active pregnancy record exists", async () => {

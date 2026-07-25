@@ -706,7 +706,7 @@ describe("import-service v1 compatibility", () => {
     expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
     expect(storage.writeKickSession).not.toHaveBeenCalled();
     expect(storage.writeContractionSession).not.toHaveBeenCalled();
-    // Likewise the Y7 repos are untouched by a v1 file.
+    // Likewise the postpartum/screening repos are untouched by a v1 file.
     expect(storage.listPostpartumRecords).not.toHaveBeenCalled();
     expect(storage.listScreeningResponses).not.toHaveBeenCalled();
     expect(storage.writePostpartumRecord).not.toHaveBeenCalled();
@@ -714,7 +714,7 @@ describe("import-service v1 compatibility", () => {
   });
 });
 
-describe("import-service apply (pregnancy-mode collections, v2, X9)", () => {
+describe("import-service apply (pregnancy-mode collections, v2)", () => {
   it("imports pregnancy records, kick sessions, and contraction sessions additively onto a fresh install", async () => {
     const { storage, pregnancies, kickSessions, contractionSessions } =
       createStatefulStorage();
@@ -926,7 +926,7 @@ describe("import-service apply (pregnancy-mode collections, v2, X9)", () => {
   });
 });
 
-describe("import-service apply (postpartum + screening collections, v3, Y7)", () => {
+describe("import-service apply (postpartum + screening collections, v3)", () => {
   it("imports postpartum records and screening responses additively onto a fresh install", async () => {
     const { storage, postpartumRecords, screeningResponses } =
       createStatefulStorage();

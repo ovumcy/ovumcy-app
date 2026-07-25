@@ -342,7 +342,7 @@ describeIfLive("sync-client-service managed live transport", () => {
       notes: "pregnancy round-trip",
     });
 
-    // Premium pregnancy domain (X10) alongside the pregnancyTest day field:
+    // Pregnancy-module domain alongside the pregnancyTest day field:
     // records + kick + contraction must survive the managed encrypted bridge.
     const pregnancy = createPregnancyRecord({
       edd: "2026-12-01",

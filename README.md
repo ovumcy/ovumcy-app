@@ -73,6 +73,7 @@ npm run web
 - local CSV/JSON export and strictly additive offline JSON import/restore (preview, then confirm; existing days are never overwritten)
 - optional encrypted backup and sync instead of cloud-first dependence
 - optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminder emails
+- optional pregnancy, postpartum, and mood check-in module (a separate one-time unlock, not a subscription): pregnancy mode with due-date tracking, kick counter and contraction timer, postpartum recovery tracking, and an EPDS mood check-in with always-available crisis-support information
 
 ## Screens
 
@@ -105,6 +106,8 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
+The pregnancy, postpartum, and mood check-in module sits **outside** this ladder: it is a one-time purchase rather than a tier, unlocked on the device itself, and it needs no account or sync at any point. A cloud subscription neither grants nor revokes it, and the reverse holds too. Data you have already logged with it — pregnancy records, kick and contraction sessions, postpartum records, check-in results — stays readable and exportable on the device regardless of what any purchase or plan says later; ownership is consulted only when starting new tracking. Its crisis-support information is never gated at all.
+
 ## Current Status
 
 This README describes the current `main` branch.
@@ -118,6 +121,7 @@ The app is still an early public alpha, but the main local-first slices already 
 | Local-first device storage | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Cycle tracking + predictions | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Pregnancy test + auto-pause | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Pregnancy / postpartum / check-in module | separate one-time unlock, works on any tier | | |
 | CSV / JSON export | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Offline JSON import / restore (additive) | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Encrypted backup between devices | :x: | :white_check_mark: | :white_check_mark: |

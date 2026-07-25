@@ -68,7 +68,7 @@ describeIfLive("sync-client-service live transport", () => {
       notes: "live sync smoke",
     });
 
-    // Premium pregnancy domain (X10): must survive the encrypted round-trip.
+    // Pregnancy-module domain: must survive the encrypted round-trip.
     const pregnancy = createPregnancyRecord({
       edd: "2026-12-01",
       eddBasis: "lmp",
