@@ -1,17 +1,26 @@
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 
-import type { LocalReminderPlan } from "./local-reminder-plan-service";
+import type {
+  LocalReminderKind,
+  LocalReminderPlan,
+} from "./local-reminder-plan-service";
 import type {
   LocalReminderScheduler,
   LocalReminderSchedulerSyncResult,
 } from "./local-reminder-scheduler-contract";
 
-const OVUMCY_REMINDER_KINDS = new Set<string>([
-  "daily_log",
-  "upcoming_period",
-  "fertile_window",
-] as const);
+// Every kind this scheduler owns. `sync` cancels its own schedules before
+// planning again, so a kind missing here is scheduled and never cancelled --
+// by any path, including the reminders-off one. A Record over the union
+// rather than a Set of strings so a new LocalReminderKind fails to compile
+// until it is listed.
+const OVUMCY_REMINDER_KINDS: Record<LocalReminderKind, true> = {
+  daily_log: true,
+  upcoming_period: true,
+  fertile_window: true,
+  kick_count: true,
+};
 const OVUMCY_REMINDER_CHANNEL_ID = "ovumcy-reminders";
 type ExpoNotificationsModule = typeof import("expo-notifications");
 
@@ -98,13 +107,21 @@ async function ensureNotificationPermission(
   );
 }
 
+// hasOwnProperty, not `in`: an inherited key ("toString") would otherwise
+// match and cancel a notification this app never scheduled.
+function isOvumcyReminderKind(value: unknown): value is LocalReminderKind {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(OVUMCY_REMINDER_KINDS, value)
+  );
+}
+
 async function cancelManagedReminderSchedules(
   Notifications: ExpoNotificationsModule,
 ) {
   const scheduled = await Notifications.getAllScheduledNotificationsAsync();
   for (const request of scheduled) {
-    const kind = request.content.data?.ovumcyReminderKind;
-    if (typeof kind === "string" && OVUMCY_REMINDER_KINDS.has(kind)) {
+    if (isOvumcyReminderKind(request.content.data?.ovumcyReminderKind)) {
       await Notifications.cancelScheduledNotificationAsync(request.identifier);
     }
   }

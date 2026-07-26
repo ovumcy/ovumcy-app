@@ -18,6 +18,17 @@ const DAILY_PLAN = {
   },
 };
 
+const KICK_COUNT_PLAN = {
+  kind: "kick_count" as const,
+  title: "Ovumcy reminder",
+  body: "Open Ovumcy to update today's entry.",
+  trigger: {
+    type: "daily" as const,
+    hour: 21,
+    minute: 30,
+  },
+};
+
 function loadSchedulerModule(executionEnvironment: string) {
   jest.resetModules();
   jest.doMock("expo-constants", () => ({
@@ -83,5 +94,72 @@ describe("platform-local-reminder-scheduler.native", () => {
         }),
       }),
     );
+  });
+
+  it("schedules a kick-count reminder under its own kind", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    await expect(scheduler.sync([KICK_COUNT_PLAN])).resolves.toBe("scheduled");
+
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.objectContaining({
+          data: {
+            ovumcyReminderKind: "kick_count",
+          },
+        }),
+      }),
+    );
+  });
+
+  // sync([]) is the every-reminder-off path (local-reminder-sync-service), and
+  // the same cancel pass runs on a denied permission and on every re-plan. A
+  // kind absent from the cancel set is scheduled daily and cancellable by
+  // nothing short of uninstalling the app.
+  it("cancels an already-scheduled kick-count reminder when reminders are turned off", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "kick-1", content: { data: { ovumcyReminderKind: "kick_count" } } },
+    ]);
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      "kick-1",
+    );
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("leaves notifications it did not schedule alone", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "foreign-1", content: { data: {} } },
+      // an inherited Object.prototype key must not count as a known kind
+      { identifier: "foreign-2", content: { data: { ovumcyReminderKind: "toString" } } },
+    ]);
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
   });
 });
