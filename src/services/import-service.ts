@@ -31,7 +31,7 @@ import {
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { sanitizeDayLogRecord } from "./day-log-policy";
-import { createCustomSymptomRecord } from "./symptom-policy";
+import { createCustomSymptomRecord, normalizeSymptomLabelKey } from "./symptom-policy";
 import {
   clampCycleLength,
   clampPeriodLength,
@@ -278,11 +278,13 @@ async function walkBackupEnvelope(
     apply,
   );
 
-  outcome.symptomsAdded = await importCustomSymptoms(
+  const symptomImportResult = await importCustomSymptoms(
     storage,
     envelope.symptoms,
     apply,
   );
+  outcome.symptomsAdded = symptomImportResult.added;
+  const symptomIDMap = symptomImportResult.idMap;
 
   for (const rawRecord of envelope.dayLogs ?? []) {
     const record = rawRecord as Partial<DayLogRecord> | null;
@@ -300,10 +302,22 @@ async function walkBackupEnvelope(
       continue;
     }
 
+    // Custom-symptom ids are re-minted on import (see importCustomSymptoms
+    // above), so a day log's references to the file's ids must be remapped
+    // to the new (or existing, on a label collision) local ids -- otherwise
+    // every custom-symptom mark on this day silently vanishes the moment
+    // filterKnownSymptomIDs runs against the real on-device records.
+    const remappedSymptomIDs = remapImportedSymptomIDs(
+      record?.symptomIDs,
+      symptomIDMap,
+    );
     const sanitized = sanitizeDayLogRecord({
       ...existing,
       ...(record as DayLogRecord),
       date,
+      ...(remappedSymptomIDs !== undefined
+        ? { symptomIDs: remappedSymptomIDs }
+        : {}),
     });
     if (!hasDayLogData(sanitized)) {
       // Nothing meaningful to restore for this date after sanitizing.
@@ -740,9 +754,15 @@ async function importCustomSymptoms(
   storage: LocalAppStorage,
   symptoms: readonly SymptomRecord[] | undefined,
   apply: boolean,
-): Promise<number> {
+): Promise<{ added: number; idMap: Map<string, string> }> {
+  // Maps each portable symptom's id AS WRITTEN IN THE FILE to the id it
+  // resolves to on this device: the freshly minted id for a new record, or
+  // the EXISTING local record's id when the label already exists (see
+  // below). Built-in ids never need an entry -- they are stable constants
+  // shared by every install, so a day log referencing one already resolves.
+  const idMap = new Map<string, string>();
   if (!symptoms || symptoms.length === 0) {
-    return 0;
+    return { added: 0, idMap };
   }
 
   let existing = await storage.listSymptomRecords();
@@ -756,6 +776,7 @@ async function importCustomSymptoms(
       continue;
     }
     const label = typeof record?.label === "string" ? record.label : "";
+    const originalID = typeof record?.id === "string" ? record.id : "";
 
     // createCustomSymptomRecord validates label/icon/color and rejects
     // duplicates against `existing`, so an invalid or already-present symptom
@@ -767,7 +788,24 @@ async function importCustomSymptoms(
       color: typeof record?.color === "string" ? record.color : "",
     });
     if (!result.ok) {
+      // A label collision means this symptom already lives on-device under a
+      // different id: a day log elsewhere in the same backup that references
+      // the file's id must resolve to that EXISTING record, not a dropped one.
+      if (result.errorCode === "duplicate_label" && originalID) {
+        const existingMatch = existing.find(
+          (candidate) =>
+            normalizeSymptomLabelKey(candidate.label) ===
+            normalizeSymptomLabelKey(label),
+        );
+        if (existingMatch) {
+          idMap.set(originalID, existingMatch.id);
+        }
+      }
       continue;
+    }
+
+    if (originalID) {
+      idMap.set(originalID, result.record.id);
     }
 
     if (apply) {
@@ -777,5 +815,27 @@ async function importCustomSymptoms(
     added += 1;
   }
 
-  return added;
+  return { added, idMap };
+}
+
+// Applies the old-id -> new-id map built by importCustomSymptoms to one day
+// log's imported symptomIDs. Returns undefined ("no override") for anything
+// that isn't an array, so a missing/malformed field falls through to its
+// existing pass-through behavior unchanged. An id with no map entry
+// (built-in, or a symptom that failed to import and was dropped) is left as
+// written -- it is then caught the same way it always was, by
+// filterKnownSymptomIDs at read time.
+function remapImportedSymptomIDs(
+  rawValue: DayLogRecord["symptomIDs"] | undefined,
+  idMap: ReadonlyMap<string, string>,
+): DayLogRecord["symptomIDs"] | undefined {
+  if (!Array.isArray(rawValue)) {
+    return undefined;
+  }
+
+  // Elements are passed through as-is when the map has nothing for them.
+  // Non-string entries are deliberately NOT special-cased here: the sanitize
+  // path this feeds already decides what a malformed element means, and a
+  // guard here would only be a second, untested opinion about it.
+  return rawValue.map((value) => idMap.get(value) ?? value);
 }

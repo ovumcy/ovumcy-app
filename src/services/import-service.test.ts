@@ -20,6 +20,7 @@ import {
   previewImportBackupEnvelope,
   restoreFromJSONBackup,
 } from "./import-service";
+import { createCustomSymptomRecord, filterKnownSymptomIDs } from "./symptom-policy";
 
 // A stateful in-memory storage so writes are observable through reads, letting
 // the merge/skip semantics be asserted round-trip.
@@ -407,6 +408,231 @@ describe("import-service apply (additive merge)", () => {
     expect(outcome.symptomsAdded).toBe(1);
     expect(symptoms.length).toBe(before + 1);
     expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+  });
+});
+
+describe("import-service custom symptom id remap", () => {
+  it("remaps a day log's symptomIDs from the backup file's custom-symptom id to the newly minted local id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // The id the backup file carries for this symptom. It must be
+            // discarded on import (createCustomSymptomRecord always mints a
+            // fresh one), so this exact string must never appear anywhere in
+            // the stored day log below.
+            id: "custom_file_jaw_pain",
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-10", { symptomIDs: ["custom_file_jaw_pain"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(1);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    const mintedRecord = symptoms.find((record) => record.label === "Jaw pain");
+    expect(mintedRecord).toBeDefined();
+    expect(mintedRecord?.id).not.toBe("custom_file_jaw_pain");
+
+    const storedDayLog = dayLogs.get("2026-03-10");
+    expect(storedDayLog?.symptomIDs).toEqual([mintedRecord?.id]);
+    expect(storedDayLog?.symptomIDs).not.toContain("custom_file_jaw_pain");
+
+    // This is the exact check every read path (dashboard/calendar/stats) runs
+    // against stored day logs -- before the fix, the stale file id failed it
+    // and the mark silently disappeared everywhere.
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([mintedRecord?.id]);
+  });
+
+  it("maps the file's id onto the EXISTING local record's id when the label already exists on-device", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+    const preExisting = createCustomSymptomRecord(symptoms, {
+      label: "Jaw pain",
+      icon: "🔥",
+    });
+    if (!preExisting.ok) {
+      throw new Error("Expected the pre-existing custom symptom to be created");
+    }
+    symptoms.push(preExisting.record);
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // Same label, a DIFFERENT id from the pre-existing local record --
+            // this is what a second device's export of the "same" custom
+            // symptom looks like.
+            id: "custom_file_jaw_pain_2",
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-11", { symptomIDs: ["custom_file_jaw_pain_2"] }),
+        ],
+      }),
+    );
+
+    // Additive-merge semantics for the symptom itself are unchanged: a
+    // duplicate label is skipped, never added or overwritten.
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    const storedDayLog = dayLogs.get("2026-03-11");
+    expect(storedDayLog?.symptomIDs).toEqual([preExisting.record.id]);
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([preExisting.record.id]);
+  });
+
+  // A day log carrying no symptomIDs at all -- every entry written before
+  // custom symptoms existed looks like this. The remap must decline to
+  // override rather than substitute an array, leaving the record on exactly
+  // the sanitize path it took before this feature.
+  it("imports a day log that carries no symptomIDs field at all", async () => {
+    const { storage, dayLogs } = createStatefulStorage();
+    const { symptomIDs: _omitted, ...withoutSymptomIDs } = dayLog(
+      "2026-03-12",
+      { isPeriod: true },
+    );
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ dayLogs: [withoutSymptomIDs as DayLogRecord] }),
+    );
+
+    expect(outcome.dayLogsAdded).toBe(1);
+    expect(outcome.dayLogsRejected).toBe(0);
+
+    const storedDayLog = dayLogs.get("2026-03-12");
+    expect(storedDayLog?.isPeriod).toBe(true);
+    expect(storedDayLog?.symptomIDs).toEqual([]);
+  });
+
+  // Ids the map has nothing to say about pass through untouched: a built-in
+  // id is a stable constant every install shares, so it already resolves.
+  // Only the file's own custom ids are rewritten.
+  it("leaves a built-in symptom id untouched when the file's custom symptom carries no id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // No id at all -- an older export, or a hand-edited file.
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          } as unknown as SymptomRecord,
+        ],
+        dayLogs: [
+          dayLog("2026-03-13", { symptomIDs: ["cramps"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(1);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    // The symptom still imports; it simply cannot be referenced by id from
+    // this file, because the file never gave it one.
+    expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+
+    const storedDayLog = dayLogs.get("2026-03-13");
+    expect(storedDayLog?.symptomIDs).toEqual(["cramps"]);
+  });
+
+  it("drops a symptom that fails validation for a reason other than a duplicate label", async () => {
+    const { storage, symptoms } = createStatefulStorage();
+    const before = symptoms.length;
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            id: "custom_file_blank",
+            slug: "blank",
+            label: "   ",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms.length).toBe(before);
+  });
+
+  // Built-in labels are reserved in EVERY locale, while the seeded records
+  // carry the English ones. A backup from a Russian-locale device therefore
+  // collides with a built-in without any local record matching by label --
+  // the symptom is skipped and, having nothing to point at, its id is left
+  // unmapped rather than guessed.
+  it("skips a symptom colliding with a built-in label from another locale without mapping its id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+    const before = symptoms.length;
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            id: "custom_file_headache_ru",
+            slug: "golovnaya-bol",
+            label: "Головная боль",
+            icon: "🤕",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-14", { symptomIDs: ["custom_file_headache_ru"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms.length).toBe(before);
+
+    const storedDayLog = dayLogs.get("2026-03-14");
+    expect(storedDayLog?.symptomIDs).toEqual(["custom_file_headache_ru"]);
+    // Unmapped and unknown, so it is hidden on read exactly as it always was.
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([]);
   });
 });
 
