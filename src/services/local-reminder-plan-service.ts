@@ -144,7 +144,12 @@ export function buildLocalReminderPlans(
   // is suppressed implicitly (null next-period dates), but the fertile-window
   // reminder recomputes its window from the still-set cycle anchor, so it would
   // otherwise fire at a pregnant user. Suppress both here.
-  if (projection.isPregnancyPaused) {
+  // An ACTIVE pregnancy record suppresses them independently of that pause, so
+  // the two signals are ORed: a period logged mid-pregnancy lifts the day-log
+  // pause (resolvePregnancyPause, untouched) and an LMP/ultrasound-dated
+  // pregnancy never sets it at all. Status is checked so an ENDED record
+  // correctly resumes predictions.
+  if (projection.isPregnancyPaused || activePregnancy?.status === "active") {
     return plans;
   }
 

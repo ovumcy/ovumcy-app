@@ -212,6 +212,68 @@ describe("local-reminder-plan-service", () => {
     expect(plans.map((plan) => plan.kind)).toEqual(["daily_log"]);
   });
 
+  // Suppression ORs the two signals (SECURITY.md medical safety): the day-log
+  // pause cannot be relied on during an active pregnancy — a period logged
+  // mid-pregnancy lifts it, and a pregnancy dated from an LMP/ultrasound never
+  // sets it at all. Neither of those may repaint period/fertile reminders.
+  it("suppresses period and fertile reminders for an active pregnancy record with no day-log pause", () => {
+    const profile = {
+      ...createDefaultProfileRecord(),
+      dailyLogReminderEnabled: true,
+      upcomingPeriodReminderEnabled: true,
+      fertileWindowReminderEnabled: true,
+      cycleLength: 28,
+      reminderTime: "20:00",
+    };
+    const now = new Date(2026, 2, 12, 10, 0, 0, 0);
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-05"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const activeRecord = createPregnancyRecord({
+      edd: "2026-10-08",
+      eddBasis: "lmp",
+      lmpDate: "2026-01-01",
+      startedAt: "2026-03-01",
+    });
+
+    // Baseline: no positive test is logged anywhere, so the day-log pause never
+    // engages and these reminders are planned for the very same records.
+    const baseline = buildLocalReminderPlans(profile, records, now, "en");
+    expect(baseline.map((plan) => plan.kind)).toEqual([
+      "daily_log",
+      "upcoming_period",
+      "fertile_window",
+    ]);
+
+    const plans = buildLocalReminderPlans(
+      profile,
+      records,
+      now,
+      "en",
+      undefined,
+      activeRecord,
+    );
+    expect(plans.map((plan) => plan.kind)).toEqual(["daily_log"]);
+
+    // An ENDED record resumes them: the pregnancy is over, the cycle is not.
+    const ended = buildLocalReminderPlans(profile, records, now, "en", undefined, {
+      ...activeRecord,
+      status: "ended" as const,
+      endedAt: "2026-03-10",
+      endReason: "loss" as const,
+      modeOfDelivery: null,
+    });
+    expect(ended.map((plan) => plan.kind)).toEqual([
+      "daily_log",
+      "upcoming_period",
+      "fertile_window",
+    ]);
+  });
+
   // FIX 5.1: push (device-built trigger Date) and the managed email schedule
   // must resolve the SAME local day. Before the fix the email recomputed its
   // delivery in `options.timeZone` while push used device-local Date math, so
