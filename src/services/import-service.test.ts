@@ -529,6 +529,111 @@ describe("import-service custom symptom id remap", () => {
     expect(storedDayLog?.isPeriod).toBe(true);
     expect(storedDayLog?.symptomIDs).toEqual([]);
   });
+
+  // Ids the map has nothing to say about pass through untouched: a built-in
+  // id is a stable constant every install shares, so it already resolves.
+  // Only the file's own custom ids are rewritten.
+  it("leaves a built-in symptom id untouched when the file's custom symptom carries no id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // No id at all -- an older export, or a hand-edited file.
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          } as unknown as SymptomRecord,
+        ],
+        dayLogs: [
+          dayLog("2026-03-13", { symptomIDs: ["cramps"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(1);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    // The symptom still imports; it simply cannot be referenced by id from
+    // this file, because the file never gave it one.
+    expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+
+    const storedDayLog = dayLogs.get("2026-03-13");
+    expect(storedDayLog?.symptomIDs).toEqual(["cramps"]);
+  });
+
+  it("drops a symptom that fails validation for a reason other than a duplicate label", async () => {
+    const { storage, symptoms } = createStatefulStorage();
+    const before = symptoms.length;
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            id: "custom_file_blank",
+            slug: "blank",
+            label: "   ",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms.length).toBe(before);
+  });
+
+  // Built-in labels are reserved in EVERY locale, while the seeded records
+  // carry the English ones. A backup from a Russian-locale device therefore
+  // collides with a built-in without any local record matching by label --
+  // the symptom is skipped and, having nothing to point at, its id is left
+  // unmapped rather than guessed.
+  it("skips a symptom colliding with a built-in label from another locale without mapping its id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+    const before = symptoms.length;
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            id: "custom_file_headache_ru",
+            slug: "golovnaya-bol",
+            label: "Головная боль",
+            icon: "🤕",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-14", { symptomIDs: ["custom_file_headache_ru"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms.length).toBe(before);
+
+    const storedDayLog = dayLogs.get("2026-03-14");
+    expect(storedDayLog?.symptomIDs).toEqual(["custom_file_headache_ru"]);
+    // Unmapped and unknown, so it is hidden on read exactly as it always was.
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([]);
+  });
 });
 
 describe("import-service profile restore (pristine-only)", () => {

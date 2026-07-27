@@ -826,14 +826,16 @@ async function importCustomSymptoms(
 // written -- it is then caught the same way it always was, by
 // filterKnownSymptomIDs at read time.
 function remapImportedSymptomIDs(
-  rawValue: unknown,
+  rawValue: DayLogRecord["symptomIDs"] | undefined,
   idMap: ReadonlyMap<string, string>,
 ): DayLogRecord["symptomIDs"] | undefined {
   if (!Array.isArray(rawValue)) {
     return undefined;
   }
 
-  return rawValue.map((value) =>
-    typeof value === "string" ? idMap.get(value) ?? value : value,
-  );
+  // Elements are passed through as-is when the map has nothing for them.
+  // Non-string entries are deliberately NOT special-cased here: the sanitize
+  // path this feeds already decides what a malformed element means, and a
+  // guard here would only be a second, untested opinion about it.
+  return rawValue.map((value) => idMap.get(value) ?? value);
 }
