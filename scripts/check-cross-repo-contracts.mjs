@@ -128,7 +128,19 @@ async function fetchRemoteFile(repo, filePath) {
         ? " (token present — confirm it has read access to this repo/path/ref)"
         : ` (no token set — a private peer needs OVUMCY_CONTRACTS_TOKEN with read access to ${PEER_OWNER}/${repo}; see docs/cross-repo-contracts.md)`;
     }
-    throw new Error(`GitHub returned ${response.status} for ${repo}/${filePath}@${REF}${hint}`);
+    const error = new Error(
+      `GitHub returned ${response.status} for ${repo}/${filePath}@${REF}${hint}`,
+    );
+    if (!TOKEN && (response.status === 404 || response.status === 403 || response.status === 401)) {
+      // No credentials at all: a private peer is unreadable by construction,
+      // and a public peer answering 401/403/404 without a token is the same
+      // shape. This run cannot see the peer, which is not the same finding as
+      // "the contract diverged" — mark it so the caller can skip rather than
+      // report drift it never observed. Dependabot and fork pull requests take
+      // this path: they receive no repository secrets.
+      error.unreadablePeer = true;
+    }
+    throw error;
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   return { buffer, text: buffer.toString("utf8") };
@@ -913,7 +925,7 @@ async function main() {
     } catch (cause) {
       results.push({
         contract,
-        status: "error",
+        status: cause.unreadablePeer ? "unreadable" : "error",
         lines: [`    could not evaluate: ${cause.message}`],
       });
     }
@@ -921,7 +933,13 @@ async function main() {
 
   for (const result of results) {
     const badge =
-      result.status === "in-sync" ? "IN SYNC" : result.status === "drift" ? "DRIFT" : "ERROR";
+      result.status === "in-sync"
+        ? "IN SYNC"
+        : result.status === "drift"
+          ? "DRIFT"
+          : result.status === "unreadable"
+            ? "SKIPPED"
+            : "ERROR";
     console.log(`[${badge}] ${result.contract.title}`);
     for (const line of result.lines) {
       console.log(line);
@@ -935,13 +953,28 @@ async function main() {
   const inSync = results.filter((result) => result.status === "in-sync");
   const drifted = results.filter((result) => result.status === "drift");
   const errored = results.filter((result) => result.status === "error");
+  const unreadable = results.filter((result) => result.status === "unreadable");
 
-  console.log(`${LOG_PREFIX} summary: ${inSync.length} in sync, ${drifted.length} diverged, ${errored.length} not evaluated`);
-  for (const result of [...drifted, ...errored]) {
-    console.log(`${LOG_PREFIX}   ${result.status === "drift" ? "DIVERGED" : "ERROR   "} ${result.contract.id}`);
+  console.log(
+    `${LOG_PREFIX} summary: ${inSync.length} in sync, ${drifted.length} diverged, ${errored.length} not evaluated, ${unreadable.length} skipped (peer unreadable)`,
+  );
+  for (const result of [...drifted, ...errored, ...unreadable]) {
+    const label =
+      result.status === "drift" ? "DIVERGED" : result.status === "error" ? "ERROR   " : "SKIPPED ";
+    console.log(`${LOG_PREFIX}   ${label} ${result.contract.id}`);
+  }
+  if (unreadable.length > 0) {
+    // Reporting these as failures would announce drift this run never
+    // observed. They stay covered by the push-to-main and scheduled runs,
+    // which do carry the token.
+    console.log(
+      `${LOG_PREFIX} ${unreadable.length} contract(s) skipped: no OVUMCY_CONTRACTS_TOKEN, so the peer could not be read at all.`,
+    );
   }
   if (drifted.length === 0 && errored.length === 0) {
-    console.log(`${LOG_PREFIX} all cross-repo contracts are in sync.`);
+    console.log(
+      `${LOG_PREFIX} every cross-repo contract this run could evaluate is in sync.`,
+    );
   }
 
   return drifted.length === 0 && errored.length === 0 ? 0 : 1;
