@@ -95,8 +95,10 @@ export type ExportPDFBuildInput = {
   // current-cycle anchor (thermal shift / ovulation confirmation / LH peak) --
   // completed-cycle history (the per-cycle tables, calendar markers, extended
   // reports, short-luteal warning) is untouched, since all of it is already
-  // computed from history.completedCycles rather than a live anchor. Defaults
-  // to false, so every existing caller/test keeps today's behavior unchanged.
+  // computed from history.completedCycles rather than a live anchor. The
+  // report builder ORs the un-lifted day-log pause into that same gate
+  // itself, so a false here still suppresses for a paused owner. Defaults
+  // to false, so a caller without the record keeps pause-driven suppression.
   suppressPredictions?: boolean;
 };
 
@@ -193,13 +195,28 @@ export function buildExportPDFReport({
     profile.temperatureUnit,
     personalizedLuteal,
   );
+  // The pause itself is never re-derived here: it comes from the same shared
+  // projection that pauses dashboard, calendar, and stats. Computed before the
+  // advanced-fertility section so its un-lifted pause can gate the
+  // current-cycle signals below.
+  const projection = buildCurrentCycleProjection(
+    profile,
+    history,
+    [...sortedDayLogs],
+    now,
+  );
+
   const pdfCopy = getExportPDFCopy(language);
   const advancedFertilityItems = buildAdvancedFertilityItemsForPDF(
     history,
     sortedDayLogs,
     profile,
     pdfCopy,
-    suppressPredictions,
+    // Both suppression legs (SECURITY.md medical safety): the active record
+    // (the caller's flag) OR the un-lifted day-log pause — the paused
+    // projection deliberately keeps its anchor, so the flag alone would let
+    // a paused owner's PDF keep printing current-cycle fertility signals.
+    suppressPredictions || projection.isPregnancyPaused,
   );
   const extendedReports = buildStatsExtendedReports(history);
   const extendedReportRows: ExportPDFExtendedReportRow[] = (
@@ -217,15 +234,6 @@ export function buildExportPDFReport({
         observationCount: shortLutealHint.observationCount,
       }
     : null;
-
-  // The pause itself is never re-derived here: it comes from the same shared
-  // projection that pauses dashboard, calendar, and stats.
-  const projection = buildCurrentCycleProjection(
-    profile,
-    history,
-    [...sortedDayLogs],
-    now,
-  );
 
   return {
     generatedAt: now.toISOString(),
@@ -275,12 +283,12 @@ function buildAdvancedFertilityItemsForPDF(
   // last completed cycle's start, so the stats match the cycle the app treats as
   // current rather than the one before it.
   //
-  // While an active pregnancy record is being tracked, a null anchor
-  // drops ONLY the current-cycle-anchored signals (thermal shift, ovulation
-  // confirmation, LH peak) -- mirrors stats-view-service's
-  // `suppressPredictions ? null : projection.cycleAnchorDate` exactly, so the
-  // doctor PDF stops printing phantom fertility signals derived from BBT/
-  // mucus/LH data logged after a lifted pause during pregnancy. This function
+  // While suppression holds (an active pregnancy record OR the un-lifted
+  // day-log pause), a null anchor drops ONLY the current-cycle-anchored
+  // signals (thermal shift, ovulation confirmation, LH peak) -- mirrors
+  // stats-view-service's `suppressPredictions ? null :
+  // projection.cycleAnchorDate` exactly, so the doctor PDF stops printing
+  // phantom fertility signals derived from BBT/mucus/LH data. This function
   // never surfaces the completed-cycle facts (observed luteal, signal
   // coverage) in the first place, so suppression here correctly degrades to
   // the section's existing "no advanced fertility signals" empty copy --

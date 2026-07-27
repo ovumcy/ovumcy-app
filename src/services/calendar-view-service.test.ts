@@ -1362,3 +1362,101 @@ describe("calendar-view-service", () => {
     expect(state.editorViewData.visibility.showPregnancyMetrics).toBe(false);
   });
 });
+
+describe("selected-day advanced fertility summary suppression (loadCalendarScreenState)", () => {
+  // The calendar passes suppressPredictions into its cell painters a few lines
+  // above this summary, but the summary itself anchored on
+  // projection.cycleAnchorDate unconditionally — and the paused projection
+  // deliberately KEEPS that anchor, so neither suppression leg reached it:
+  // an active record (pause never set, e.g. LMP-dated pregnancy) and the
+  // un-lifted day-log pause both kept rendering current-cycle fertility
+  // signals in the selected-day panel.
+  const summaryProfile: ProfileRecord = {
+    lastPeriodStart: "2026-03-01",
+    cycleLength: 28,
+    periodLength: 5,
+    autoPeriodFill: true,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "health",
+    trackBBT: false,
+    temperatureUnit: "c",
+    trackCervicalMucus: false,
+    hideSexChip: false,
+    languageOverride: null,
+    themeOverride: null,
+    dismissedCalendarPredictionNoticeKey: null,
+  };
+  const summaryNow = new Date(2026, 2, 17);
+
+  async function seedFertilitySignalStorage() {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord(summaryProfile);
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-01"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-14"),
+      lhTest: "peak",
+    });
+    return storage;
+  }
+
+  it("keeps the summary when neither suppression signal is present (baseline guard)", async () => {
+    const state = await loadCalendarScreenState(
+      await seedFertilitySignalStorage(),
+      summaryNow,
+      "2026-03",
+      "2026-03-16",
+      "en",
+      { showLHTests: true },
+    );
+
+    expect(state.selectedDaySummary.advancedFertilitySummary).not.toBeNull();
+  });
+
+  it("drops the summary while a pregnancy record is active (day-log pause never set)", async () => {
+    const storage = await seedFertilitySignalStorage();
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2026-12-06",
+        eddBasis: "lmp",
+        lmpDate: "2026-03-01",
+        startedAt: "2026-03-10",
+      }),
+    );
+
+    const state = await loadCalendarScreenState(
+      storage,
+      summaryNow,
+      "2026-03",
+      "2026-03-16",
+      "en",
+      { showLHTests: true },
+    );
+
+    expect(state.selectedDaySummary.advancedFertilitySummary).toBeNull();
+  });
+
+  it("drops the summary while the day-log pause is active (no pregnancy record)", async () => {
+    const storage = await seedFertilitySignalStorage();
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-15"),
+      pregnancyTest: "positive",
+    });
+
+    const state = await loadCalendarScreenState(
+      storage,
+      summaryNow,
+      "2026-03",
+      "2026-03-16",
+      "en",
+      { showLHTests: true },
+    );
+
+    expect(state.selectedDaySummary.advancedFertilitySummary).toBeNull();
+  });
+});

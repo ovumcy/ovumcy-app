@@ -346,14 +346,15 @@ export function buildStatsViewData(
     // so this flag suppresses the prediction-bearing sections (BBT current
     // cycle, prediction explanation, personal forecasts, current-cycle
     // fertility signals, phase/mucus top cards) independently of
-    // projection.isPregnancyPaused. Note the paused projection deliberately
-    // keeps cycleAnchorDate, so anchor-driven sections must be gated here --
-    // pause-mirroring alone would not suppress them. Defaults to false, so
-    // every existing caller/test keeps today's pause-only behavior unchanged.
+    // projection.isPregnancyPaused. The builder ORs the day-log pause in
+    // itself (the paused projection deliberately keeps cycleAnchorDate, so
+    // anchor-driven sections are not covered by the pause alone). Defaults to
+    // false, so a caller without the record still gets pause-driven
+    // suppression, never less.
     suppressPredictions?: boolean;
   } = {},
 ): StatsViewData {
-  const suppressPredictions = options.suppressPredictions ?? false;
+  const hasActivePregnancy = options.suppressPredictions ?? false;
   const statsCopy = getStatsCopy(locale);
   const dashboardCopy = getDashboardCopy(locale);
   const dayLogCopy = getDayLogCopy(locale);
@@ -398,6 +399,16 @@ export function buildStatsViewData(
   }
 
   const projection = buildCurrentCycleProjection(profile, history, records, now);
+  // Medical-safety suppression (SECURITY.md), mirroring the dashboard: an
+  // active pregnancy record OR the un-lifted day-log pause hides every
+  // current-cycle fertility signal below. The pause leg cannot ride on the
+  // projection alone -- a paused projection deliberately keeps
+  // cycleAnchorDate, so the anchor-driven sections (BBT trend/coverline,
+  // mucus peak-fertility card, advanced-fertility current-cycle signals)
+  // would keep rendering without this OR. predictionExplanation is the one
+  // deliberate exception: it stays keyed on hasActivePregnancy so the plain
+  // pause keeps its own pregnancyPausedHint (same split as the dashboard).
+  const suppressPredictions = hasActivePregnancy || projection.isPregnancyPaused;
   const reliability = buildStatsReliability(profile, history);
   const factorContext = buildStatsFactorContext(profile, history, records, now);
   const trendPoints = buildStatsTrendPoints(history, locale);
@@ -550,12 +561,13 @@ export function buildStatsViewData(
         }
       : {}),
     ...(premiumLocks ? { premiumLocks } : {}),
-    // Suppression renders no banner rather than pregnancyPausedHint: that copy
-    // instructs "log a new period to resume", which is exactly the wrong
-    // instruction while a pregnancy is actively tracked (and would promise a
-    // resume this flag now correctly refuses). Dedicated pregnancy-mode notice
-    // copy is still open.
-    predictionExplanation: suppressPredictions
+    // Blanked for an active record only: pregnancyPausedHint instructs "log a
+    // new period to resume", which is exactly the wrong instruction while a
+    // pregnancy is actively tracked (and would promise a resume the record
+    // correctly refuses). The plain day-log pause keeps that hint --
+    // buildPredictionExplanation resolves it from the paused projection
+    // itself. Dedicated pregnancy-mode notice copy is still open.
+    predictionExplanation: hasActivePregnancy
       ? ""
       : buildPredictionExplanation(profile, projection, locale),
     notices: buildStatsNotices(profile, history, statsCopy),
@@ -1163,8 +1175,9 @@ function buildTopCards(
   ];
   // Suppression drops the "peak fertility" framing and the phase/cycle-day
   // claim entirely: both key off an anchor the paused projection deliberately
-  // keeps, so the pause alone never hides them. The phase card falls back to
-  // the same unknown-phase rendering a genuinely paused projection produces.
+  // keeps, which is why the caller ORs the pause into this flag rather than
+  // relying on the pause alone. The phase card falls back to the same
+  // unknown-phase rendering a genuinely paused projection produces.
   const mucusFertilityCard = suppressPredictions
     ? null
     : buildMucusFertilityCard(projection, records, locale, statsCopy);

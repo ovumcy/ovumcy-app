@@ -134,11 +134,13 @@ export type DashboardViewData = {
   };
   // Contextual day-save confirmation shown after the today-journal autosaves,
   // ported from ovumcy-web's day-feedback policy. Computed for today from the
-  // canonical projection (pregnancy pause included) — see resolveDaySaveMessage.
+  // canonical projection (pregnancy pause included) plus the active-pregnancy
+  // record — see resolveDaySaveMessage.
   daySaveMessage: string;
 };
 
 export type DaySaveMessageKey =
+  | "pregnancy_active"
   | "pregnancy_paused"
   | "self_care"
   | "fertile"
@@ -147,17 +149,30 @@ export type DaySaveMessageKey =
 const DAY_SAVE_SELF_CARE_MAX_CYCLE_DAY = 3;
 
 // Port of ovumcy-web's resolveDaySaveMessageKey (day_feedback_policy.go): the
-// contextual save-confirmation message key. Priority: a positive-pregnancy pause
-// wins over everything, then unpredictable-cycle mode stays neutral, then the
-// first three cycle days offer a self-care nudge, then the fertile window, else
-// neutral. The pregnancy pause is resolved once in buildCurrentCycleProjection
-// and only READ here — never re-derived in the screen (SECURITY.md medical
-// safety: every prediction surface honors the pause through the projection).
+// contextual save-confirmation message key. Priority: an active pregnancy
+// record wins over everything (an app-only extension of the web policy — web
+// has no pregnancy records), then the positive-pregnancy pause, then
+// unpredictable-cycle mode stays neutral, then the first three cycle days
+// offer a self-care nudge, then the fertile window, else neutral. The two
+// pregnancy signals stay separate keys because their copy differs in cause
+// ("while a pregnancy is tracked" vs "after a positive pregnancy test") — the
+// same split buildDashboardViewData applies to predictionExplanation. The
+// pause is resolved once in buildCurrentCycleProjection and only READ here —
+// never re-derived in the screen (SECURITY.md medical safety: every
+// prediction surface honors suppression through the projection + record).
 export function resolveDaySaveMessageKey(
   day: string,
   profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
+  // True when an active pregnancy record exists. Checked BEFORE the day-log
+  // pause: a period logged mid-pregnancy lifts the pause, and an
+  // LMP/ultrasound-dated pregnancy never sets it, so without this leg a save
+  // during a tracked pregnancy could claim "you are in your fertile window".
+  hasActivePregnancy = false,
 ): DaySaveMessageKey {
+  if (hasActivePregnancy) {
+    return "pregnancy_active";
+  }
   if (projection.isPregnancyPaused) {
     return "pregnancy_paused";
   }
@@ -191,9 +206,14 @@ export function resolveDaySaveMessage(
   profile: ProfileRecord,
   projection: ReturnType<typeof buildCurrentCycleProjection>,
   locale = "en",
+  hasActivePregnancy = false,
 ): string {
   const dashboardCopy = getDashboardCopy(locale);
-  switch (resolveDaySaveMessageKey(day, profile, projection)) {
+  switch (
+    resolveDaySaveMessageKey(day, profile, projection, hasActivePregnancy)
+  ) {
+    case "pregnancy_active":
+      return dashboardCopy.saveMessagePregnancyActive;
     case "pregnancy_paused":
       return dashboardCopy.saveMessagePregnancyPaused;
     case "self_care":
@@ -459,6 +479,7 @@ export function buildDashboardViewData(
       profile,
       projectedCycle,
       locale,
+      hasActivePregnancy,
     ),
   };
 }
