@@ -1272,6 +1272,110 @@ describe("dashboard-view-service pregnancy mode", () => {
     expect(viewData.pregnancyDashboard).toBeDefined();
     expect(viewData.pregnancyEntryCard).toBeUndefined();
   });
+
+  // Regression guard (medical safety). An active record whose GA left the
+  // trackable window renders in CYCLE mode beside the stale card, so the cycle
+  // hero, the current-cycle fertility summary and the prediction hint are all
+  // still on screen. The day-log pause cannot carry suppression there: a
+  // pregnancy started from an LMP/ultrasound date logs no positive test, so
+  // resolvePregnancyPause never pauses and the hero rolled its predictions
+  // forward as if the owner were cycling.
+  it("suppresses hero, fertility summary and prediction hint for a stale active pregnancy that never logged a positive test", () => {
+    const now = pregnancyNowForGaDays(630); // ~50 weeks past the due date
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-01-01", // the pregnancy's own LMP
+    };
+    const records: DayLogRecord[] = [
+      { ...createEmptyDayLogRecord("2026-01-14"), lhTest: "peak" },
+    ];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    // Fixture sanity: no positive test anywhere, so cycle-history-service's own
+    // pause never engages and it keeps projecting a next period.
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
+    expect(projection.isPregnancyPaused).toBe(false);
+    expect(projection.nextPeriodDate).not.toBeNull();
+
+    // Baseline: the same data without the pregnancy record populates every one
+    // of these surfaces, so the suppression below is meaningful.
+    const cycling = buildDashboardViewData(profile, records, history, now, "en", {
+      showAdvancedFertilitySummary: true,
+    });
+    expect(cycling.cycleHero.state).toBe("stale");
+    expect(cycling.cycleHero.caption).toContain(
+      getDashboardCopy("en").approximateDatePrefix,
+    );
+    expect(cycling.advancedFertilitySummary).toBeDefined();
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePregnancy: pregnancyActiveRecord(),
+      showAdvancedFertilitySummary: true,
+    });
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.staleCard).toBeDefined();
+    expect(viewData.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "unknown",
+        caption: getDashboardCopy("en").nextPeriodPrompt,
+        upcomingOvulationLabel: null,
+        progressPercent: null,
+        phaseSegments: [],
+        phaseCards: [],
+      }),
+    );
+    expect(viewData.advancedFertilitySummary).toBeUndefined();
+    expect(viewData.predictionExplanation).toBe("");
+  });
+
+  it("suppresses the cycle hero for a stale active pregnancy after a period logged post-positive-test lifts the day-log pause", () => {
+    const now = pregnancyNowForGaDays(630);
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-01-01",
+    };
+    const records: DayLogRecord[] = [
+      { ...createEmptyDayLogRecord("2027-05-01"), pregnancyTest: "positive" },
+      {
+        ...createEmptyDayLogRecord("2027-05-20"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const history = buildCycleHistorySummary(profile, records, now);
+
+    // Fixture sanity: the period lifted cycle-history-service's own pause.
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
+    expect(projection.isPregnancyPaused).toBe(false);
+
+    const viewData = buildDashboardViewData(profile, records, history, now, "en", {
+      activePregnancy: pregnancyActiveRecord(),
+    });
+
+    expect(viewData.mode).toBe("cycle");
+    expect(viewData.cycleHero.state).toBe("unknown");
+    expect(viewData.cycleHero.caption).toBe(
+      getDashboardCopy("en").nextPeriodPrompt,
+    );
+    expect(viewData.cycleHero.upcomingOvulationLabel).toBeNull();
+  });
+
+  it("keeps the pregnancy-paused hint (not a blank one) while only the day-log pause suppresses predictions", () => {
+    const viewData = buildDashboardViewData(
+      pausedProfile,
+      pausedRecords,
+      buildCycleHistorySummary(pausedProfile, pausedRecords, pausedNow),
+      pausedNow,
+      "en",
+      { activePregnancy: null },
+    );
+
+    expect(viewData.cycleHero.state).toBe("unknown");
+    expect(viewData.predictionExplanation).toBe(
+      getDashboardCopy("en").pregnancyPausedHint,
+    );
+  });
 });
 
 describe("loadDashboardScreenState pregnancy mode", () => {

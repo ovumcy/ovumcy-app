@@ -247,6 +247,92 @@ describe("local-reminder-sync-service", () => {
     });
   });
 
+  // The plan builder suppresses period/fertile reminders for an ACTIVE
+  // pregnancy record, but it can only do so if this service actually reads one.
+  // The read used to be short-circuited on the kick-count flag alone — off by
+  // default — so for a typical pregnant owner the record never arrived and both
+  // delivery channels kept firing cycle reminders.
+  describe("active-pregnancy suppression of the cycle reminders", () => {
+    const now = new Date(2026, 3, 5, 10, 0, 0, 0);
+
+    function cyclePredictionProfile() {
+      return {
+        ...createDefaultProfileRecord(),
+        dailyLogReminderEnabled: true,
+        upcomingPeriodReminderEnabled: true,
+        fertileWindowReminderEnabled: true,
+        managedReminderEmailsEnabled: true,
+        // The kick-count toggle stays OFF (its default) — the state in which
+        // the pregnancy read was previously skipped altogether.
+        kickCountReminderEnabled: false,
+      };
+    }
+
+    function syncedPlanKinds(scheduler: LocalReminderScheduler): string[] {
+      const [plans] = (scheduler.sync as jest.Mock).mock.calls[0] as [
+        { kind: string }[],
+      ];
+      return plans.map((plan) => plan.kind);
+    }
+
+    it("plans period and fertile reminders when no pregnancy record exists", async () => {
+      const storage = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+        readActivePregnancy: jest.fn().mockResolvedValue(null),
+      });
+      const scheduler = createScheduler();
+
+      await syncLocalReminderSchedule(storage, scheduler, cyclePredictionProfile(), {
+        now,
+      });
+
+      expect(syncedPlanKinds(scheduler)).toEqual([
+        "daily_log",
+        "upcoming_period",
+        "fertile_window",
+      ]);
+    });
+
+    it("suppresses them on the device and the managed email channel during an active pregnancy", async () => {
+      const storage = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: "2026-10-08",
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      });
+      const secretStore = createSyncSecretStoreMock();
+      const scheduler = createScheduler();
+      loadManagedPremiumFeaturesMock.mockResolvedValue(
+        premiumFeaturesWithReminders(true),
+      );
+      syncManagedReminderEmailSchedulesMock.mockResolvedValue("synced");
+
+      await syncReminderDeliveryState(
+        storage,
+        secretStore,
+        scheduler,
+        cyclePredictionProfile(),
+        { now },
+      );
+
+      expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
+      expect(syncedPlanKinds(scheduler)).toEqual(["daily_log"]);
+      // The same plan list feeds the managed email schedules, so the leak was
+      // never push-only.
+      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
+        secretStore,
+        expect.anything(),
+        [expect.objectContaining({ kind: "daily_log" })],
+        expect.objectContaining({ enabled: true }),
+      );
+    });
+  });
+
   describe("kick-count reminder wiring(end-to-end through the sync service)", () => {
     const KICK_EDD = "2026-10-08";
 
