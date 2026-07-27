@@ -505,6 +505,30 @@ describe("import-service custom symptom id remap", () => {
       filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
     ).toEqual([preExisting.record.id]);
   });
+
+  // A day log carrying no symptomIDs at all -- every entry written before
+  // custom symptoms existed looks like this. The remap must decline to
+  // override rather than substitute an array, leaving the record on exactly
+  // the sanitize path it took before this feature.
+  it("imports a day log that carries no symptomIDs field at all", async () => {
+    const { storage, dayLogs } = createStatefulStorage();
+    const { symptomIDs: _omitted, ...withoutSymptomIDs } = dayLog(
+      "2026-03-12",
+      { isPeriod: true },
+    );
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ dayLogs: [withoutSymptomIDs as DayLogRecord] }),
+    );
+
+    expect(outcome.dayLogsAdded).toBe(1);
+    expect(outcome.dayLogsRejected).toBe(0);
+
+    const storedDayLog = dayLogs.get("2026-03-12");
+    expect(storedDayLog?.isPeriod).toBe(true);
+    expect(storedDayLog?.symptomIDs).toEqual([]);
+  });
 });
 
 describe("import-service profile restore (pristine-only)", () => {
