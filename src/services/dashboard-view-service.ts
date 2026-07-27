@@ -386,12 +386,24 @@ export function buildDashboardViewData(
     options.screeningResponses ?? [],
     hasNewCycleStart,
   );
+  // Medical-safety suppression (SECURITY.md), mirroring the stats/calendar
+  // suppressPredictions flag: an ACTIVE pregnancy record hides current-cycle
+  // predictions even when resolvePregnancyPause (cycle-history-service,
+  // untouched) reports no pause -- a period logged mid-pregnancy lifts it, and
+  // an LMP/ultrasound-dated pregnancy never sets it at all. ORed with the
+  // day-log pause, so this only ever widens suppression.
+  const hasActivePregnancy = options.activePregnancy?.status === "active";
+  const suppressPredictions =
+    hasActivePregnancy || projectedCycle.isPregnancyPaused;
   const advancedFertilitySummary =
     options.showAdvancedFertilitySummary === true
       ? buildCurrentCycleAdvancedFertilitySummary(
           history,
           historyRecords,
-          projectedCycle.cycleAnchorDate,
+          // A null anchor drops the current-cycle fertility signals (thermal
+          // shift, LH peak, ovulation confirmation) while suppression holds --
+          // the same lever stats-view-service pulls for its equivalent card.
+          suppressPredictions ? null : projectedCycle.cycleAnchorDate,
           profile.temperatureUnit,
           locale,
         )
@@ -412,8 +424,20 @@ export function buildDashboardViewData(
       ? { postpartumStaleCard: pregnancySection.postpartumStaleCard }
       : {}),
     ...(pregnancySection.staleCard ? { staleCard: pregnancySection.staleCard } : {}),
-    cycleHero: buildDashboardCycleHero(profile, projectedCycle, history, locale),
-    predictionExplanation: buildPredictionExplanation(profile, projectedCycle, locale),
+    cycleHero: buildDashboardCycleHero(
+      profile,
+      projectedCycle,
+      history,
+      locale,
+      suppressPredictions,
+    ),
+    // Blanked for an active record only: the day-log pause keeps its own
+    // pregnancyPausedHint, whose "log a new period to resume" instruction is
+    // right there and wrong while a pregnancy is actively tracked (same split
+    // as stats-view-service).
+    predictionExplanation: hasActivePregnancy
+      ? ""
+      : buildPredictionExplanation(profile, projectedCycle, locale),
     predictionDisclaimer: dashboardCopy.predictionDisclaimer,
     ...(advancedFertilitySummary ? { advancedFertilitySummary } : {}),
     quickActionsTitle: dashboardCopy.quickActionsTitle,
@@ -569,6 +593,8 @@ function buildDashboardCycleHero(
   projection: ReturnType<typeof buildCurrentCycleProjection>,
   history: ReturnType<typeof buildCycleHistorySummary>,
   locale: string,
+  // Active pregnancy record OR the day-log pause — see buildDashboardViewData.
+  suppressPredictions: boolean,
 ): DashboardCycleHeroViewData {
   const dashboardCopy = getDashboardCopy(locale);
   const statsCopy = getStatsCopy(locale);
@@ -582,6 +608,27 @@ function buildDashboardCycleHero(
     dashboardCopy,
     locale,
   );
+
+  if (suppressPredictions) {
+    // Checked BEFORE the stale branch below, which deliberately still surfaces
+    // a rolled-forward next-period date, and before the anchor/cycle-day check
+    // an active pregnancy would otherwise walk straight past. Reuses the blank
+    // shape the day-log pause already lands on (a paused projection carries
+    // currentCycleDay === null), with the upcoming-ovulation line dropped
+    // explicitly -- an active pregnancy's projection may still carry one.
+    return {
+      state: "unknown",
+      title: heroTitle,
+      value: statsCopy.phaseLabels.unknown,
+      detail: dashboardCopy.cycleHeroWaiting,
+      caption: dashboardCopy.nextPeriodPrompt,
+      upcomingOvulationLabel: null,
+      progressPercent: null,
+      currentTone: "neutral",
+      phaseSegments: [],
+      phaseCards: [],
+    };
+  }
 
   if (projection.isPredictionStale) {
     // Web parity (canRenderDashboardCycleHero=false when CycleDataStale): the
