@@ -20,6 +20,7 @@ import {
   previewImportBackupEnvelope,
   restoreFromJSONBackup,
 } from "./import-service";
+import { createCustomSymptomRecord, filterKnownSymptomIDs } from "./symptom-policy";
 
 // A stateful in-memory storage so writes are observable through reads, letting
 // the merge/skip semantics be asserted round-trip.
@@ -407,6 +408,102 @@ describe("import-service apply (additive merge)", () => {
     expect(outcome.symptomsAdded).toBe(1);
     expect(symptoms.length).toBe(before + 1);
     expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+  });
+});
+
+describe("import-service custom symptom id remap", () => {
+  it("remaps a day log's symptomIDs from the backup file's custom-symptom id to the newly minted local id", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // The id the backup file carries for this symptom. It must be
+            // discarded on import (createCustomSymptomRecord always mints a
+            // fresh one), so this exact string must never appear anywhere in
+            // the stored day log below.
+            id: "custom_file_jaw_pain",
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-10", { symptomIDs: ["custom_file_jaw_pain"] }),
+        ],
+      }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(1);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    const mintedRecord = symptoms.find((record) => record.label === "Jaw pain");
+    expect(mintedRecord).toBeDefined();
+    expect(mintedRecord?.id).not.toBe("custom_file_jaw_pain");
+
+    const storedDayLog = dayLogs.get("2026-03-10");
+    expect(storedDayLog?.symptomIDs).toEqual([mintedRecord?.id]);
+    expect(storedDayLog?.symptomIDs).not.toContain("custom_file_jaw_pain");
+
+    // This is the exact check every read path (dashboard/calendar/stats) runs
+    // against stored day logs -- before the fix, the stale file id failed it
+    // and the mark silently disappeared everywhere.
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([mintedRecord?.id]);
+  });
+
+  it("maps the file's id onto the EXISTING local record's id when the label already exists on-device", async () => {
+    const { storage, dayLogs, symptoms } = createStatefulStorage();
+    const preExisting = createCustomSymptomRecord(symptoms, {
+      label: "Jaw pain",
+      icon: "🔥",
+    });
+    if (!preExisting.ok) {
+      throw new Error("Expected the pre-existing custom symptom to be created");
+    }
+    symptoms.push(preExisting.record);
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [
+          {
+            // Same label, a DIFFERENT id from the pre-existing local record --
+            // this is what a second device's export of the "same" custom
+            // symptom looks like.
+            id: "custom_file_jaw_pain_2",
+            slug: "jaw-pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [
+          dayLog("2026-03-11", { symptomIDs: ["custom_file_jaw_pain_2"] }),
+        ],
+      }),
+    );
+
+    // Additive-merge semantics for the symptom itself are unchanged: a
+    // duplicate label is skipped, never added or overwritten.
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(outcome.dayLogsAdded).toBe(1);
+
+    const storedDayLog = dayLogs.get("2026-03-11");
+    expect(storedDayLog?.symptomIDs).toEqual([preExisting.record.id]);
+    expect(
+      filterKnownSymptomIDs(symptoms, storedDayLog?.symptomIDs ?? []),
+    ).toEqual([preExisting.record.id]);
   });
 });
 
