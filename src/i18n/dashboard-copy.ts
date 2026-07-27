@@ -68,6 +68,8 @@ const dashboardCopyEn = {
   saveMessageNeutral: "Saved.",
   saveMessagePregnancyPaused:
     "Saved. Cycle predictions are paused after a positive pregnancy test. If you experience bleeding, pain, or dizziness, seek medical care promptly.",
+  saveMessagePregnancyActive:
+    "Saved. Cycle predictions are paused while a pregnancy is tracked. If you experience bleeding, pain, or dizziness, seek medical care promptly.",
   manualCycleStartFailed: "Unable to mark a new cycle start. Please try again.",
   invalidCycleStartDate:
     "A new cycle start can be marked only for today or past days.",
@@ -158,6 +160,8 @@ const dashboardCopyDe: DashboardCopy = {
   saveMessageNeutral: "Gespeichert.",
   saveMessagePregnancyPaused:
     "Gespeichert. Nach einem positiven Schwangerschaftstest sind die Zyklusvorhersagen pausiert. Bei Blutungen, Schmerzen oder Schwindel suchen Sie umgehend ärztliche Hilfe.",
+  saveMessagePregnancyActive:
+    "Gespeichert. Solange eine Schwangerschaft verfolgt wird, sind die Zyklusvorhersagen pausiert. Bei Blutungen, Schmerzen oder Schwindel suchen Sie umgehend ärztliche Hilfe.",
   manualCycleStartFailed:
     "Ein neuer Zyklusbeginn konnte nicht markiert werden. Bitte versuchen Sie es erneut.",
   invalidCycleStartDate:
@@ -248,6 +252,8 @@ const dashboardCopyFr: DashboardCopy = {
   saveMessageNeutral: "Enregistré.",
   saveMessagePregnancyPaused:
     "Enregistré. Après un test de grossesse positif, les prédictions de cycle sont en pause. En cas de saignement, de douleur ou de vertiges, consultez rapidement un médecin.",
+  saveMessagePregnancyActive:
+    "Enregistré. Pendant le suivi d'une grossesse, les prédictions de cycle sont en pause. En cas de saignement, de douleur ou de vertiges, consultez rapidement un médecin.",
   manualCycleStartFailed:
     "Impossible de marquer un nouveau début de cycle. Réessayez.",
   invalidCycleStartDate:
@@ -339,6 +345,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Сохранено.",
     saveMessagePregnancyPaused:
       "Сохранено. После положительного теста на беременность прогнозы цикла приостановлены. При кровотечении, боли или головокружении обратитесь к врачу без промедления.",
+    saveMessagePregnancyActive:
+      "Сохранено. Пока отслеживается беременность, прогнозы цикла приостановлены. При кровотечении, боли или головокружении обратитесь к врачу без промедления.",
     manualCycleStartFailed:
       "Не удалось отметить новое начало цикла. Попробуйте ещё раз.",
     invalidCycleStartDate:
@@ -427,6 +435,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Guardado.",
     saveMessagePregnancyPaused:
       "Guardado. Tras una prueba de embarazo positiva, las predicciones del ciclo quedan en pausa. Si tienes sangrado, dolor o mareo, busca atención médica cuanto antes.",
+    saveMessagePregnancyActive:
+      "Guardado. Mientras se hace seguimiento de un embarazo, las predicciones del ciclo quedan en pausa. Si tienes sangrado, dolor o mareo, busca atención médica cuanto antes.",
     manualCycleStartFailed:
       "No se pudo marcar un nuevo inicio de ciclo. Inténtalo de nuevo.",
     invalidCycleStartDate:
@@ -516,6 +526,8 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     saveMessageNeutral: "Salvato.",
     saveMessagePregnancyPaused:
       "Salvato. Dopo un test di gravidanza positivo, le previsioni del ciclo sono in pausa. In caso di sanguinamento, dolore o vertigini, rivolgiti subito a un medico.",
+    saveMessagePregnancyActive:
+      "Salvato. Mentre è in corso il monitoraggio di una gravidanza, le previsioni del ciclo sono in pausa. In caso di sanguinamento, dolore o vertigini, rivolgiti subito a un medico.",
     manualCycleStartFailed:
       "Impossibile segnare un nuovo inizio ciclo. Riprova.",
     invalidCycleStartDate:

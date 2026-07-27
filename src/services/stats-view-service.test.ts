@@ -886,3 +886,105 @@ describe("buildStatsViewData active-pregnancy prediction suppression", () => {
     expect(phaseCard?.description).toBeUndefined();
   });
 });
+
+describe("buildStatsViewData day-log pause prediction suppression", () => {
+  // The un-lifted counterpart of the fixture above: the same three completed
+  // cycles and post-anchor BBT/mucus/LH signals, but the positive test
+  // (2026-03-20) is never followed by a logged period, so
+  // resolvePregnancyPause's own pause HOLDS. The paused projection
+  // deliberately keeps cycleAnchorDate (2026-03-14), which is exactly why the
+  // builder must OR the pause into suppression itself: without it the BBT
+  // trend/coverline, the mucus peak-fertility card, and the current-cycle
+  // fertility signals all kept rendering for a paused owner — e.g. one who
+  // logged a positive test but never started (or cannot start) the pregnancy
+  // module, so no active record ever covers the gap.
+  const activePauseProfile = createProfileRecord({
+    lastPeriodStart: "2025-12-20",
+    trackBBT: true,
+  });
+  const activePauseRecords: DayLogRecord[] = [
+    createPeriodRecord("2025-12-20"),
+    { ...createEmptyDayLogRecord("2025-12-29"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-01-15"),
+    { ...createEmptyDayLogRecord("2026-01-24"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-02-14"),
+    { ...createEmptyDayLogRecord("2026-02-23"), symptomIDs: ["headache"] },
+    createPeriodRecord("2026-03-14"),
+    { ...createEmptyDayLogRecord("2026-03-20"), pregnancyTest: "positive" },
+    { ...createEmptyDayLogRecord("2026-03-25"), bbt: 36.4 },
+    { ...createEmptyDayLogRecord("2026-03-26"), bbt: 36.5 },
+    {
+      ...createEmptyDayLogRecord("2026-03-27"),
+      bbt: 36.45,
+      cervicalMucus: "eggwhite",
+    },
+    { ...createEmptyDayLogRecord("2026-03-28"), bbt: 36.6, lhTest: "peak" },
+    { ...createEmptyDayLogRecord("2026-03-29"), bbt: 36.55 },
+  ];
+  const activePauseNow = new Date(2026, 2, 29);
+  const premiumFeatures = {
+    advancedFertility: true,
+    advancedInsights: true,
+    doctorPDF: false,
+    extendedReports: false,
+    partnerAccess: false,
+    reminders: false,
+  };
+
+  it("hides BBT trend, the peak-fertility card, and current-cycle fertility signals while the day-log pause is active (no pregnancy record)", () => {
+    const history = buildCycleHistorySummary(
+      activePauseProfile,
+      activePauseRecords,
+      activePauseNow,
+    );
+    const projection = buildCurrentCycleProjection(
+      activePauseProfile,
+      history,
+      activePauseRecords,
+      activePauseNow,
+    );
+    // Fixture sanity: the pause HOLDS and still carries the anchor the gated
+    // sections would otherwise render from.
+    expect(projection.isPregnancyPaused).toBe(true);
+    expect(projection.cycleAnchorDate).toBe("2026-03-14");
+
+    const viewData = buildStatsViewData(
+      activePauseProfile,
+      activePauseRecords,
+      createDefaultSymptomRecords(),
+      activePauseNow,
+      "en",
+      premiumFeatures,
+    );
+
+    expect(viewData.hasInsights).toBe(true);
+    expect(viewData.bbtTrend).toBeUndefined();
+    expect(viewData.topCards).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "mucus-fertility" }),
+      ]),
+    );
+    const phaseCard = viewData.topCards.find(
+      (card) => card.key === "current-phase",
+    );
+    expect(phaseCard?.value).toContain("Unknown");
+    expect(phaseCard?.description).toBeUndefined();
+    // Current-cycle fertility signals drop; completed-cycle facts stay.
+    expect(viewData.advancedFertility?.items).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+    );
+    expect(viewData.advancedFertility?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "signal-coverage" }),
+      ]),
+    );
+    expect(viewData.personalForecasts).toBeUndefined();
+    // The copy split stays: a plain day-log pause keeps its own hint (an
+    // active record blanks it — pinned by the suppression describe above).
+    expect(viewData.predictionExplanation).toBe(
+      "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
+    );
+    // Historical facts untouched by suppression.
+    expect(viewData.trendChart?.points).toHaveLength(3);
+  });
+});

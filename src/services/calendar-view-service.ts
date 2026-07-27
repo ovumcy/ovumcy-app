@@ -232,7 +232,15 @@ export async function loadCalendarScreenState(
       ? buildCurrentCycleAdvancedFertilitySummary(
           history,
           logs,
-          projection.cycleAnchorDate,
+          // A null anchor drops the current-cycle fertility signals (thermal
+          // shift, LH peak, ovulation confirmation) while suppression holds —
+          // the same lever the dashboard and stats equivalents pull. Both
+          // suppression legs matter: the paused projection deliberately keeps
+          // cycleAnchorDate (so pause-mirroring alone would not suppress), and
+          // an active record may exist with the day-log pause lifted.
+          activePregnancy !== null || projection.isPregnancyPaused
+            ? null
+            : projection.cycleAnchorDate,
           profile.temperatureUnit,
           locale,
           {

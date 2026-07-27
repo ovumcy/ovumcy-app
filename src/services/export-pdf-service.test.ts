@@ -962,6 +962,30 @@ describe("doctor PDF: recorded pregnancy tests", () => {
       expect(report.cycles[0]?.endDate).toBe("2026-01-31");
     });
 
+    it("suppresses the current-cycle LH-peak signal while the day-log pause is active (no pregnancy record)", () => {
+      const report = buildExportPDFReport({
+        now,
+        dayLogs: [
+          ...dayLogs,
+          {
+            ...createEmptyDayLogRecord("2026-02-12"),
+            pregnancyTest: "positive" as const,
+          },
+        ],
+        profile: pdfProfile,
+        symptomRecords: [],
+      });
+
+      // No suppressPredictions flag at all — the un-lifted pause alone must
+      // drop the current-cycle signals (the paused projection keeps its
+      // anchor, so the anchor null-out cannot come from the pause itself) ...
+      expect(report.advancedFertility).toEqual([]);
+
+      // ... while completed-cycle history stays untouched.
+      expect(report.cycles).toHaveLength(1);
+      expect(report.cycles[0]?.startDate).toBe("2026-01-01");
+    });
+
     it("defaults suppressPredictions to false when omitted (additive-option regression guard)", () => {
       const suppressedExplicitlyFalse = buildExportPDFReport({
         now,

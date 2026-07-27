@@ -859,6 +859,42 @@ describe("dashboard-view-service", () => {
       );
     });
 
+    it("lets an active pregnancy record win over the fertile window and the day-log pause", () => {
+      const profile = regularProfile();
+      const projection = makeProjection(profile, cycleStartRecords);
+      const window = predictCycleWindow(
+        cycleStart,
+        projection.predictionCycleLength,
+        projection.lutealPhase,
+      );
+      expect(window.fertilityStart).not.toBeNull();
+      // A fertile day with no day-log pause: the record alone must suppress —
+      // an LMP/ultrasound-dated pregnancy never logs a positive test, so
+      // without this leg the save toast claimed a fertile window.
+      expect(
+        resolveDaySaveMessageKey(
+          window.fertilityStart ?? "",
+          profile,
+          projection,
+          true,
+        ),
+      ).toBe("pregnancy_active");
+
+      // With the pause also present the record still wins the copy split: its
+      // message names the tracked pregnancy, not the positive test.
+      const paused = makeProjection(profile, [
+        ...cycleStartRecords,
+        {
+          ...createEmptyDayLogRecord("2026-03-15"),
+          pregnancyTest: "positive",
+        },
+      ]);
+      expect(paused.isPregnancyPaused).toBe(true);
+      expect(resolveDaySaveMessageKey(cycleStart, profile, paused, true)).toBe(
+        "pregnancy_active",
+      );
+    });
+
     it("resolves the save message with the default English locale when none is passed", () => {
       const profile = regularProfile();
       const projection = makeProjection(profile, cycleStartRecords);
@@ -1359,6 +1395,56 @@ describe("dashboard-view-service pregnancy mode", () => {
       getDashboardCopy("en").nextPeriodPrompt,
     );
     expect(viewData.cycleHero.upcomingOvulationLabel).toBeNull();
+  });
+
+  it("never claims a fertile window in the day-save message while a pregnancy record is active", () => {
+    const now = new Date(2026, 2, 24);
+    const profile: ProfileRecord = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-10",
+    };
+    const records: DayLogRecord[] = [
+      {
+        ...createEmptyDayLogRecord("2026-03-10"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+    ];
+    const history = buildCycleHistorySummary(profile, records, now);
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
+    const fertileDay = predictCycleWindow(
+      "2026-03-10",
+      projection.predictionCycleLength,
+      projection.lutealPhase,
+    ).fertilityStart;
+    expect(fertileDay).not.toBeNull();
+    const fertileNow = parseLocalDate(fertileDay ?? "");
+    expect(fertileNow).not.toBeNull();
+
+    // Baseline guard: without the record this exact day announces the fertile
+    // window, so the record-driven rewrite below is meaningful.
+    const cycling = buildDashboardViewData(
+      profile,
+      records,
+      history,
+      fertileNow!,
+      "en",
+    );
+    expect(cycling.daySaveMessage).toBe(
+      getDashboardCopy("en").saveMessageFertile,
+    );
+
+    const viewData = buildDashboardViewData(
+      profile,
+      records,
+      history,
+      fertileNow!,
+      "en",
+      { activePregnancy: pregnancyActiveRecord() },
+    );
+    expect(viewData.daySaveMessage).toBe(
+      getDashboardCopy("en").saveMessagePregnancyActive,
+    );
   });
 
   it("keeps the pregnancy-paused hint (not a blank one) while only the day-log pause suppresses predictions", () => {

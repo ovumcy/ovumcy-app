@@ -534,6 +534,27 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Module ownership is fail-closed: a throwing or non-`true` source reads as not owned, and a release build never unlocks from the dev flag | `returns true only when the source answers true`, `fails closed when the source throws`, `treats a non-boolean truthy answer as not owned`, `never unlocks a release build, whatever the flag says` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
 | A locked module shows the lock card instead of the start form | `renders the premium lock card and no form when locked` in [src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx](src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx) |
 
+### Medical-safety prediction suppression
+
+Predictions are estimates, never medical advice or a method of contraception.
+Suppression ORs two signals: the day-log pregnancy pause (a positive test on or
+after every recorded cycle start, until a later cycle start is logged) and an
+ACTIVE pregnancy record. Either signal alone must hide current-cycle
+predictions and fertility signals — the paused projection deliberately keeps
+its cycle anchor (so the pause alone cannot null anchor-driven surfaces), a
+period logged mid-pregnancy lifts the pause, and an LMP/ultrasound-dated
+pregnancy never sets it, so neither signal ever covers the other.
+
+| Claim | Enforced by |
+| --- | --- |
+| An active pregnancy record suppresses the dashboard cycle hero, fertility summary, and prediction hint even when the day-log pause never engaged or was lifted | `suppresses hero, fertility summary and prediction hint for a stale active pregnancy that never logged a positive test`, `suppresses the cycle hero for a stale active pregnancy after a period logged post-positive-test lifts the day-log pause` in [src/services/dashboard-view-service.test.ts](src/services/dashboard-view-service.test.ts) |
+| An active pregnancy record suppresses the stats prediction-bearing sections after the pause lifts, keeping completed-cycle facts | `suppresses prediction-bearing sections for an active pregnancy even after the pause lifts, keeping completed-cycle facts` in [src/services/stats-view-service.test.ts](src/services/stats-view-service.test.ts) |
+| The un-lifted day-log pause alone hides the stats BBT trend/coverline, the mucus peak-fertility card, and current-cycle fertility signals — no pregnancy record required | `hides BBT trend, the peak-fertility card, and current-cycle fertility signals while the day-log pause is active (no pregnancy record)` in [src/services/stats-view-service.test.ts](src/services/stats-view-service.test.ts) |
+| The calendar's selected-day advanced fertility summary drops under either suppression signal | `drops the summary while a pregnancy record is active (day-log pause never set)`, `drops the summary while the day-log pause is active (no pregnancy record)` in [src/services/calendar-view-service.test.ts](src/services/calendar-view-service.test.ts) |
+| The doctor PDF prints no current-cycle fertility signals under either suppression signal, leaving completed-cycle history untouched | `suppresses the current-cycle LH-peak signal when an active pregnancy record exists, leaving completed-cycle history untouched`, `suppresses the current-cycle LH-peak signal while the day-log pause is active (no pregnancy record)` in [src/services/export-pdf-service.test.ts](src/services/export-pdf-service.test.ts) |
+| The day-save confirmation never claims a fertile window or a self-care cycle day while a pregnancy record is active | `lets an active pregnancy record win over the fertile window and the day-log pause`, `never claims a fertile window in the day-save message while a pregnancy record is active` in [src/services/dashboard-view-service.test.ts](src/services/dashboard-view-service.test.ts) |
+| Period and fertile-window reminders (device push and the managed email channel) stay suppressed under either suppression signal | `suppresses period and fertile reminders after a positive pregnancy test`, `suppresses period and fertile reminders for an active pregnancy record with no day-log pause` in [src/services/local-reminder-plan-service.test.ts](src/services/local-reminder-plan-service.test.ts); `suppresses them on the device and the managed email channel during an active pregnancy` in [src/services/local-reminder-sync-service.test.ts](src/services/local-reminder-sync-service.test.ts) |
+
 ### Policy / Planned (human-reviewed, not in the matrix)
 
 - **No telemetry.** The absence of analytics/ad/tracking SDKs is a dependency-
