@@ -280,6 +280,107 @@ describe("buildStatsViewData", () => {
     );
   });
 
+  // Day counts, the cycle-day card description, the trend-chart unit suffix and
+  // the symptom-frequency summary are assembled here, so they must resolve
+  // through the stats catalog rather than a literal built into the builder.
+  describe("day-count and cycle-day copy follow the active locale", () => {
+    function buildLocalizedStats(locale: string) {
+      return buildStatsViewData(
+        createProfileRecord(),
+        [
+          createPeriodRecord("2025-12-20"),
+          createPeriodRecord("2026-01-17"),
+          {
+            ...createEmptyDayLogRecord("2026-01-18"),
+            symptomIDs: ["cramps"],
+          },
+          createPeriodRecord("2026-02-14"),
+          {
+            ...createEmptyDayLogRecord("2026-02-15"),
+            symptomIDs: ["cramps"],
+          },
+          createPeriodRecord("2026-03-14"),
+        ],
+        createDefaultSymptomRecords(),
+        new Date(2026, 2, 19),
+        locale,
+      );
+    }
+
+    function cardValue(
+      viewData: ReturnType<typeof buildStatsViewData>,
+      key: string,
+    ): string | undefined {
+      return viewData.topCards.find((card) => card.key === key)?.value;
+    }
+
+    it("renders English day counts, chart suffix and cycle day", () => {
+      const viewData = buildLocalizedStats("en");
+
+      expect(viewData.cycleOverview?.averageValue).toBe("28 d");
+      expect(viewData.cycleOverview?.medianValue).toBe("28 d");
+      expect(cardValue(viewData, "last-cycle-length")).toBe("28 d");
+      expect(viewData.trendChart?.valueSuffix).toBe("d");
+      expect(
+        viewData.topCards.find((card) => card.key === "current-phase")
+          ?.description,
+      ).toBe("Cycle day 6");
+      expect(viewData.symptomFrequency?.items[0]?.frequencySummary).toBe(
+        "2 days",
+      );
+    });
+
+    it("renders Russian day counts, chart suffix and cycle day", () => {
+      const viewData = buildLocalizedStats("ru");
+
+      expect(viewData.cycleOverview?.averageValue).toBe("28 д.");
+      expect(viewData.cycleOverview?.medianValue).toBe("28 д.");
+      expect(cardValue(viewData, "last-cycle-length")).toBe("28 д.");
+      expect(viewData.trendChart?.valueSuffix).toBe("д.");
+      expect(
+        viewData.topCards.find((card) => card.key === "current-phase")
+          ?.description,
+      ).toBe("6-й день цикла");
+      expect(viewData.symptomFrequency?.items[0]?.frequencySummary).toBe(
+        "2 дня",
+      );
+    });
+
+    it("renders German, French, Spanish and Italian day counts and cycle day", () => {
+      expect(buildLocalizedStats("de").cycleOverview?.averageValue).toBe(
+        "28 T.",
+      );
+      expect(buildLocalizedStats("de").trendChart?.valueSuffix).toBe("T.");
+      expect(
+        buildLocalizedStats("de").topCards.find(
+          (card) => card.key === "current-phase",
+        )?.description,
+      ).toBe("Zyklustag 6");
+
+      expect(buildLocalizedStats("fr").cycleOverview?.averageValue).toBe("28 j");
+      expect(
+        buildLocalizedStats("fr").topCards.find(
+          (card) => card.key === "current-phase",
+        )?.description,
+      ).toBe("Jour 6 du cycle");
+
+      expect(buildLocalizedStats("es").cycleOverview?.averageValue).toBe("28 d");
+      expect(
+        buildLocalizedStats("es").topCards.find(
+          (card) => card.key === "current-phase",
+        )?.description,
+      ).toBe("Día 6 del ciclo");
+
+      expect(buildLocalizedStats("it").cycleOverview?.averageValue).toBe("28 g");
+      expect(buildLocalizedStats("it").trendChart?.valueSuffix).toBe("g");
+      expect(
+        buildLocalizedStats("it").topCards.find(
+          (card) => card.key === "current-phase",
+        )?.description,
+      ).toBe("Giorno 6 del ciclo");
+    });
+  });
+
   it("switches to facts-only copy when unpredictable mode is enabled", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({

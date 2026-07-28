@@ -43,6 +43,7 @@ const statsCopyEn = {
   lastCycleLength: "Last cycle length",
   lastPeriodLength: "Period length",
   currentPhase: "Current phase",
+  currentCycleDayValue: (day: number) => `Cycle day ${day}`,
   predictionReliability: "Prediction reliability",
   factsOnlyTitle: "Facts only",
   factsOnlyValue: "Predictions off",
@@ -58,6 +59,11 @@ const statsCopyEn = {
   medianLabel: "Median",
   cycleRangeSummary: (minDays: number, maxDays: number) =>
     `Your cycles: ${minDays} to ${maxDays} days`,
+  // Whole-day card values and the cycle-trend chart suffix. The abbreviation
+  // matches the premium sections' `daysValue` so one stats screen never mixes
+  // two day abbreviations.
+  daysShort: "d",
+  daysValue: (days: number) => `${days} d`,
   factorContextTitle: "Recent cycle factors",
   factorContextWindow: (days: number) => `Logged in the last ${days} days.`,
   factorContextHint:
@@ -81,6 +87,8 @@ const statsCopyEn = {
   chartActualLabel: "Actual",
   chartAverageLabel: "Average",
   symptomFrequency: "Symptom frequency",
+  symptomFrequencySummary: (count: number) =>
+    count === 1 ? "1 day" : `${count} days`,
   noSymptomData: "No logged symptom history yet.",
   lastCycleSymptomsTitle: "Last cycle symptoms",
   lastCycleSymptomsSubtitle: "What showed up most often in your last completed cycle.",
@@ -346,6 +354,7 @@ const statsCopyDe: StatsCopy = {
   lastCycleLength: "Länge des letzten Zyklus",
   lastPeriodLength: "Periodendauer",
   currentPhase: "Aktuelle Phase",
+  currentCycleDayValue: (day: number) => `Zyklustag ${day}`,
   predictionReliability: "Zuverlässigkeit der Vorhersage",
   factsOnlyTitle: "Nur Fakten",
   factsOnlyValue: "Vorhersagen aus",
@@ -361,6 +370,8 @@ const statsCopyDe: StatsCopy = {
   medianLabel: "Median",
   cycleRangeSummary: (minDays: number, maxDays: number) =>
     `Ihre Zyklen: ${minDays} bis ${maxDays} Tage`,
+  daysShort: "T.",
+  daysValue: (days: number) => `${days} T.`,
   factorContextTitle: "Jüngste Zyklusfaktoren",
   factorContextWindow: (days: number) =>
     `In den letzten ${days} Tagen erfasst.`,
@@ -385,6 +396,8 @@ const statsCopyDe: StatsCopy = {
   chartActualLabel: "Tatsächlich",
   chartAverageLabel: "Durchschnitt",
   symptomFrequency: "Symptomhäufigkeit",
+  symptomFrequencySummary: (count: number) =>
+    count === 1 ? "1 Tag" : `${count} Tage`,
   noSymptomData: "Es gibt noch keinen erfassten Symptomverlauf.",
   lastCycleSymptomsTitle: "Symptome im letzten Zyklus",
   lastCycleSymptomsSubtitle:
@@ -648,6 +661,7 @@ const statsCopyFr: StatsCopy = {
   lastCycleLength: "Durée du dernier cycle",
   lastPeriodLength: "Durée des règles",
   currentPhase: "Phase actuelle",
+  currentCycleDayValue: (day: number) => `Jour ${day} du cycle`,
   predictionReliability: "Fiabilité de la prédiction",
   factsOnlyTitle: "Seulement les faits",
   factsOnlyValue: "Prédictions désactivées",
@@ -663,6 +677,8 @@ const statsCopyFr: StatsCopy = {
   medianLabel: "Médiane",
   cycleRangeSummary: (minDays: number, maxDays: number) =>
     `Vos cycles : de ${minDays} à ${maxDays} jours`,
+  daysShort: "j",
+  daysValue: (days: number) => `${days} j`,
   factorContextTitle: "Facteurs récents du cycle",
   factorContextWindow: (days: number) =>
     `Enregistrés au cours des ${days} derniers jours.`,
@@ -687,6 +703,8 @@ const statsCopyFr: StatsCopy = {
   chartActualLabel: "Réel",
   chartAverageLabel: "Moyenne",
   symptomFrequency: "Fréquence des symptômes",
+  symptomFrequencySummary: (count: number) =>
+    count === 1 ? "1 jour" : `${count} jours`,
   noSymptomData: "Pas encore d'historique de symptômes enregistrés.",
   lastCycleSymptomsTitle: "Symptômes du dernier cycle",
   lastCycleSymptomsSubtitle:
@@ -951,6 +969,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     lastCycleLength: "Длина последнего цикла",
     lastPeriodLength: "Длительность менструации",
     currentPhase: "Текущая фаза",
+    currentCycleDayValue: (day: number) => `${day}-й день цикла`,
     predictionReliability: "Надёжность прогноза",
     factsOnlyTitle: "Только факты",
     factsOnlyValue: "Прогнозы выключены",
@@ -966,6 +985,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     medianLabel: "Медиана",
     cycleRangeSummary: (minDays: number, maxDays: number) =>
       `Ваши циклы: от ${minDays} до ${maxDays} ${ruDayWordGenitive(maxDays)}`,
+    daysShort: "д.",
+    daysValue: (days: number) => `${days} д.`,
     factorContextTitle: "Недавние факторы цикла",
     factorContextWindow: (days: number) => `Отмечено за последние ${days} ${ruDayWord(days)}.`,
     factorContextHint:
@@ -989,6 +1010,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     chartActualLabel: "Факт",
     chartAverageLabel: "Среднее",
     symptomFrequency: "Частота симптомов",
+    symptomFrequencySummary: (count: number) =>
+      `${count} ${ruDayWord(count)}`,
     noSymptomData: "Пока нет истории записанных симптомов.",
     lastCycleSymptomsTitle: "Симптомы последнего цикла",
     lastCycleSymptomsSubtitle: "Что чаще всего встречалось в вашем последнем завершённом цикле.",
@@ -1240,6 +1263,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     lastCycleLength: "Duración del último ciclo",
     lastPeriodLength: "Duración del período",
     currentPhase: "Fase actual",
+    currentCycleDayValue: (day: number) => `Día ${day} del ciclo`,
     predictionReliability: "Fiabilidad de la predicción",
     factsOnlyTitle: "Solo hechos",
     factsOnlyValue: "Predicciones desactivadas",
@@ -1255,6 +1279,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     medianLabel: "Mediana",
     cycleRangeSummary: (minDays: number, maxDays: number) =>
       `Tus ciclos: de ${minDays} a ${maxDays} días`,
+    daysShort: "d",
+    daysValue: (days: number) => `${days} d`,
     factorContextTitle: "Factores recientes del ciclo",
     factorContextWindow: (days: number) => `Registrado en los últimos ${days} días.`,
     factorContextHint:
@@ -1278,6 +1304,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     chartActualLabel: "Real",
     chartAverageLabel: "Promedio",
     symptomFrequency: "Frecuencia de síntomas",
+    symptomFrequencySummary: (count: number) =>
+      count === 1 ? "1 día" : `${count} días`,
     noSymptomData: "Todavía no hay historial de síntomas registrados.",
     lastCycleSymptomsTitle: "Síntomas del último ciclo",
     lastCycleSymptomsSubtitle: "Lo que apareció con más frecuencia en tu último ciclo completo.",
@@ -1530,6 +1558,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     lastCycleLength: "Lunghezza dell'ultimo ciclo",
     lastPeriodLength: "Durata del ciclo mestruale",
     currentPhase: "Fase corrente",
+    currentCycleDayValue: (day: number) => `Giorno ${day} del ciclo`,
     predictionReliability: "Affidabilità della previsione",
     factsOnlyTitle: "Solo fatti",
     factsOnlyValue: "Previsioni disattivate",
@@ -1545,6 +1574,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     medianLabel: "Mediana",
     cycleRangeSummary: (minDays: number, maxDays: number) =>
       `I tuoi cicli: da ${minDays} a ${maxDays} giorni`,
+    daysShort: "g",
+    daysValue: (days: number) => `${days} g`,
     factorContextTitle: "Fattori recenti del ciclo",
     factorContextWindow: (days: number) => `Registrati negli ultimi ${days} giorni.`,
     factorContextHint:
@@ -1568,6 +1599,8 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     chartActualLabel: "Reale",
     chartAverageLabel: "Media",
     symptomFrequency: "Frequenza dei sintomi",
+    symptomFrequencySummary: (count: number) =>
+      count === 1 ? "1 giorno" : `${count} giorni`,
     noSymptomData: "Ancora nessuna cronologia di sintomi registrati.",
     lastCycleSymptomsTitle: "Sintomi dell'ultimo ciclo",
     lastCycleSymptomsSubtitle: "Cosa è comparso più spesso nel tuo ultimo ciclo completato.",

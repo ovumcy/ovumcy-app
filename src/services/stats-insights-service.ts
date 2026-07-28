@@ -1,3 +1,4 @@
+import { getStatsCopy } from "../i18n/stats-copy";
 import type { DayLogRecord } from "../models/day-log";
 import { DEFAULT_PERIOD_LENGTH } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
@@ -56,6 +57,7 @@ export function buildStatsTrendPoints(
 export function buildStatsSymptomFrequency(
   records: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
+  locale = "en",
 ): StatsSymptomFrequencyItem[] {
   const counts = new Map<string, number>();
   for (const record of records) {
@@ -64,7 +66,7 @@ export function buildStatsSymptomFrequency(
     }
   }
 
-  return buildSymptomFrequencyItems(counts, symptomRecords).slice(
+  return buildSymptomFrequencyItems(counts, symptomRecords, locale).slice(
     0,
     STATS_SYMPTOM_FREQUENCY_LIMIT,
   );
@@ -74,6 +76,7 @@ export function buildLastCycleSymptomFrequency(
   history: StatsCycleHistorySummary,
   records: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
+  locale = "en",
 ): StatsSymptomFrequencyItem[] {
   const buckets = buildCompletedCycleBuckets(history, records);
   const lastBucket = buckets[buckets.length - 1];
@@ -88,7 +91,7 @@ export function buildLastCycleSymptomFrequency(
     }
   }
 
-  return buildSymptomFrequencyItems(counts, symptomRecords).slice(
+  return buildSymptomFrequencyItems(counts, symptomRecords, locale).slice(
     0,
     STATS_LAST_CYCLE_SYMPTOMS_LIMIT,
   );
@@ -445,8 +448,10 @@ function buildPhaseCycleBuckets(
 function buildSymptomFrequencyItems(
   counts: Map<string, number>,
   symptomRecords: readonly SymptomRecord[],
+  locale: string,
 ): StatsSymptomFrequencyItem[] {
   const symptomMap = createSymptomMap(symptomRecords);
+  const statsCopy = getStatsCopy(locale);
 
   return [...counts.entries()]
     .map(([id, count]) => {
@@ -460,7 +465,7 @@ function buildSymptomFrequencyItems(
         label: symptom.label,
         icon: symptom.icon,
         count,
-        frequencySummary: formatLoggedDays(count),
+        frequencySummary: statsCopy.symptomFrequencySummary(count),
       };
     })
     .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -539,8 +544,4 @@ function formatShortDisplayDate(value: string, locale: string): string {
     day: "numeric",
     month: "short",
   }).format(parsed);
-}
-
-function formatLoggedDays(count: number): string {
-  return count === 1 ? "1 day" : `${count} days`;
 }

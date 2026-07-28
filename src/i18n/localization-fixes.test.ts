@@ -112,6 +112,26 @@ describe("A5 stats-copy ru irregularNotice / cycleRangeSummary — genitive afte
   });
 });
 
+describe("A6 stats-copy ru symptomFrequencySummary — ruDayWord agreement", () => {
+  const ru = getStatsCopy("ru");
+
+  it("1 день", () => {
+    expect(ru.symptomFrequencySummary(1)).toBe("1 день");
+  });
+  it("3 дня", () => {
+    expect(ru.symptomFrequencySummary(3)).toBe("3 дня");
+  });
+  it("7 дней", () => {
+    expect(ru.symptomFrequencySummary(7)).toBe("7 дней");
+  });
+  it("11 дней", () => {
+    expect(ru.symptomFrequencySummary(11)).toBe("11 дней");
+  });
+  it("21 день", () => {
+    expect(ru.symptomFrequencySummary(21)).toBe("21 день");
+  });
+});
+
 // ── B. Russian terminology Инсайты → Аналитика ────────────────────────────
 
 describe("B stats-copy ru — Аналитика terminology", () => {
