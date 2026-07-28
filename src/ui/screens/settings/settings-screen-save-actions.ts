@@ -7,8 +7,8 @@ import {
   saveTrackingSettings,
 } from "../../../services/settings-screen-service";
 import {
-  syncReminderDeliveryState,
-  type ReminderDeliverySyncResult,
+  syncLocalReminderSchedule,
+  type LocalReminderSyncResult,
 } from "../../../services/local-reminder-sync-service";
 import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
@@ -180,9 +180,8 @@ export async function runSavePendingSettingsAction(
   }
 
   if (isCycleDirty || isReminderDirty) {
-    const reminderSyncResult = await syncReminderDeliveryState(
+    const reminderSyncResult = await syncLocalReminderSchedule(
       storage,
-      syncSecretStore,
       reminderScheduler,
       nextState.profile,
       {
@@ -203,53 +202,27 @@ export async function runSavePendingSettingsAction(
 }
 
 function resolveReminderStatusMessage(
-  result:
-    | ReminderDeliverySyncResult
-    | { local: "disabled"; email: "disabled" },
+  result: LocalReminderSyncResult,
   viewData: SettingsViewData,
 ): string {
-  switch (result.local) {
+  switch (result) {
     case "permission_denied":
       return viewData.reminders.status.permissionDenied;
     case "unavailable":
       return viewData.reminders.status.unavailable;
-    default:
-      break;
-  }
-
-  switch (result.email) {
-    case "synced":
-      return viewData.reminders.status.savedWithEmail;
-    case "unavailable":
-      return viewData.reminders.status.emailUnavailable;
-    case "failed":
-    case "unauthorized":
-      return viewData.reminders.status.emailSyncFailed;
     default:
       return viewData.reminders.status.saved;
   }
 }
 
 function resolveReminderStatusTone(
-  result:
-    | ReminderDeliverySyncResult
-    | { local: "disabled"; email: "disabled" },
+  result: LocalReminderSyncResult,
 ): "success" | "error" | "info" {
-  switch (result.local) {
+  switch (result) {
     case "permission_denied":
       return "error";
     case "unavailable":
       return "info";
-    default:
-      break;
-  }
-
-  switch (result.email) {
-    case "unavailable":
-      return "info";
-    case "failed":
-    case "unauthorized":
-      return "error";
     default:
       return "success";
   }

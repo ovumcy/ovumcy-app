@@ -680,7 +680,7 @@ describe("SettingsScreen", () => {
     expect(buildPDFContent).toHaveBeenCalledTimes(1);
   });
 
-  it("schedules local device reminders for a free user while email delivery stays locked", async () => {
+  it("schedules local device reminders for a free user with the reminders entitlement locked", async () => {
     const storage = createSettingsStorageMock();
     const reminderScheduler: LocalReminderScheduler = {
       sync: jest.fn().mockResolvedValue("scheduled"),
@@ -696,7 +696,7 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-reminders-section");
-    // No managed session: the email-delivery block stays premium-locked...
+    // No managed session: the managed reminders entitlement stays locked...
     expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
 
     // ...but the local device controls are Free-tier: enabling a reminder
@@ -815,18 +815,6 @@ describe("SettingsScreen", () => {
             headers: { "Content-Type": "application/json" },
           },
         ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            enabled: false,
-            schedules: [],
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
       ) as typeof fetch;
 
     render(
@@ -841,6 +829,12 @@ describe("SettingsScreen", () => {
 
     await screen.findByTestId("settings-reminders-section");
     expect(screen.queryByTestId("settings-reminders-lock")).toBeNull();
+    // Reminders are delivered on this device only. Granting the managed
+    // reminders entitlement unlocks no second delivery channel — there is no
+    // email-delivery control to render in this flag combination either.
+    expect(
+      screen.queryByTestId("settings-toggle-reminder-email-delivery"),
+    ).toBeNull();
 
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
     fireEvent.changeText(screen.getByTestId("settings-reminder-time-input"), "21:30");
@@ -2203,7 +2197,7 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("opens backup and sync from either premium-lock CTA (reminders email, export PDF)", async () => {
+  it("opens backup and sync from either premium-lock CTA (reminders, export PDF)", async () => {
     const storage = createSettingsStorageMock();
 
     const remindersRender = render(
@@ -2256,16 +2250,22 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("saves the upcoming-period, fertile-window, and managed email-delivery reminder toggles", async () => {
+  it("saves the upcoming-period and fertile-window reminder toggles and persists no email-delivery preference", async () => {
     const storage = createSettingsStorageMock();
 
     render(<SettingsScreen now={new Date(2026, 2, 17)} section="reminders" storage={storage} />);
 
     await screen.findByTestId("settings-reminders-section");
 
+    // Reminders-entitlement locked (no managed session): the section offers
+    // the device toggles and nothing else. Together with the unlocked case
+    // above this covers both flag combinations.
+    expect(
+      screen.queryByTestId("settings-toggle-reminder-email-delivery"),
+    ).toBeNull();
+
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-upcoming-period"));
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-fertile-window"));
-    fireEvent.press(screen.getByTestId("settings-toggle-reminder-email-delivery"));
     fireEvent.press(screen.getByTestId("settings-save-all-button"));
 
     await waitFor(() =>
@@ -2273,9 +2273,14 @@ describe("SettingsScreen", () => {
         expect.objectContaining({
           upcomingPeriodReminderEnabled: true,
           fertileWindowReminderEnabled: true,
-          managedReminderEmailsEnabled: true,
         }),
       ),
+    );
+    // The saved profile carries no remote-delivery preference at all.
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        managedReminderEmailsEnabled: expect.anything(),
+      }),
     );
   });
 

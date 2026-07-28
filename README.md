@@ -69,10 +69,10 @@ npm run web
 - dashboard, calendar, insights, settings, exports, and optional backup flows
 - custom symptom catalog and journal-style day logging
 - pregnancy test field with automatic prediction pause on a positive result
-- free local device reminders (daily log, upcoming period, fertile window) scheduled entirely on-device
+- local device reminders (daily log, upcoming period, fertile window) scheduled and delivered entirely on-device — no server involved
 - local CSV/JSON export and strictly additive offline JSON import/restore (preview, then confirm; existing days are never overwritten)
 - optional encrypted backup and sync instead of cloud-first dependence
-- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and reminder emails
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and Ovumcy Cloud reminders
 - optional pregnancy, postpartum, and mood check-in module (a separate one-time unlock, not a subscription): pregnancy mode with due-date tracking, kick counter and contraction timer, postpartum recovery tracking, and an EPDS mood check-in with always-available crisis-support information
 
 ## Screens
@@ -102,7 +102,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 | --- | --- | --- | --- |
 | **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local device reminders, local CSV/JSON export, offline JSON import |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
-| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, reminder emails |
+| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, Ovumcy Cloud reminders |
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
@@ -131,7 +131,7 @@ The app is still an early public alpha, but the main local-first slices already 
 | Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
 | Local device reminder notifications | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |
-| Reminder emails | :x: | :x: | :white_check_mark: |
+| Ovumcy Cloud reminders | :x: | :x: | :white_check_mark: |
 
 ## Short FAQ
 
@@ -179,8 +179,8 @@ The current `main` branch provides:
 - local-first dashboard, calendar, settings, stats, custom symptom management, and export flows backed by the same canonical repositories;
 - strictly additive offline JSON import/restore (`import-service.ts`): parse, preview, then explicit confirm; it never overwrites an existing day or symptom and restores the profile only onto a pristine install, all Free-tier with no account required;
 - pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
-- free local device reminders (daily log, upcoming period with a configurable lead, fertile window) scheduled on-device;
-- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and reminder emails;
+- local device reminders (daily log, upcoming period with a configurable lead, fertile window) scheduled and delivered on-device, with no server-side reminder channel;
+- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and reminders;
 - doctor-friendly PDF export with colored monthly calendar, advanced fertility signals, cycle comparison, and short luteal phase warning;
 - six-locale interface coverage (English, Russian, German, French, Spanish, Italian) for paywall, day-log, calendar, dashboard, and PDF surfaces;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;

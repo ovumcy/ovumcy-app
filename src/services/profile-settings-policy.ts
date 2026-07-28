@@ -221,7 +221,6 @@ export function sanitizeReminderSettingsValues(
     dailyLogReminderEnabled: values.dailyLogReminderEnabled,
     upcomingPeriodReminderEnabled: values.upcomingPeriodReminderEnabled,
     fertileWindowReminderEnabled: values.fertileWindowReminderEnabled,
-    managedReminderEmailsEnabled: values.managedReminderEmailsEnabled,
     reminderTime: normalizeReminderTime(values.reminderTime),
     reminderLeadDays: clampReminderLeadDays(values.reminderLeadDays),
   };

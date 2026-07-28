@@ -197,8 +197,8 @@ describe("runSavePendingSettingsAction: multi-section save sequencing", () => {
       .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
       .mockResolvedValue({ skipped: true, syncedCount: 0 });
     const reminderSyncSpy = jest
-      .spyOn(localReminderSyncService, "syncReminderDeliveryState")
-      .mockResolvedValue({ local: "scheduled", email: "disabled" });
+      .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
+      .mockResolvedValue("scheduled");
 
     const result = await runSavePendingSettingsAction(context, readyState, {
       ...allClean,
@@ -214,7 +214,6 @@ describe("runSavePendingSettingsAction: multi-section save sequencing", () => {
     expect(reminderSyncSpy).toHaveBeenCalledTimes(1);
     expect(reminderSyncSpy).toHaveBeenCalledWith(
       context.storage,
-      context.syncSecretStore,
       context.reminderScheduler,
       trackingState.profile,
       { locale: "en", now },
@@ -230,44 +229,26 @@ describe("runSavePendingSettingsAction: reminder delivery status mapping", () =>
 
   it.each([
     [
-      "permission_denied local overrides any email result",
-      { local: "permission_denied", email: "synced" } as const,
+      "the device refused notification permission",
+      "permission_denied" as const,
       () => viewData.reminders.status.permissionDenied,
       "error",
     ],
     [
-      "unavailable local overrides any email result",
-      { local: "unavailable", email: "synced" } as const,
+      "the device cannot schedule reminders at all",
+      "unavailable" as const,
       () => viewData.reminders.status.unavailable,
       "info",
     ],
     [
-      "scheduled local + synced email",
-      { local: "scheduled", email: "synced" } as const,
-      () => viewData.reminders.status.savedWithEmail,
+      "plans reached the platform scheduler",
+      "scheduled" as const,
+      () => viewData.reminders.status.saved,
       "success",
     ],
     [
-      "scheduled local + unavailable email",
-      { local: "scheduled", email: "unavailable" } as const,
-      () => viewData.reminders.status.emailUnavailable,
-      "info",
-    ],
-    [
-      "scheduled local + failed email",
-      { local: "scheduled", email: "failed" } as const,
-      () => viewData.reminders.status.emailSyncFailed,
-      "error",
-    ],
-    [
-      "scheduled local + unauthorized email",
-      { local: "scheduled", email: "unauthorized" } as const,
-      () => viewData.reminders.status.emailSyncFailed,
-      "error",
-    ],
-    [
-      "scheduled local + disabled email (all reminders off) falls back to plain saved",
-      { local: "scheduled", email: "disabled" } as const,
+      "nothing to schedule (every toggle off)",
+      "disabled" as const,
       () => viewData.reminders.status.saved,
       "success",
     ],
@@ -278,7 +259,7 @@ describe("runSavePendingSettingsAction: reminder delivery status mapping", () =>
       .spyOn(settingsScreenService, "saveReminderSettings")
       .mockResolvedValue({ ok: true, state: readyState });
     jest
-      .spyOn(localReminderSyncService, "syncReminderDeliveryState")
+      .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
       .mockResolvedValue(syncResult);
 
     await runSavePendingSettingsAction(context, readyState, {

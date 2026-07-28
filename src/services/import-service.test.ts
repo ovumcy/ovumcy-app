@@ -736,6 +736,27 @@ describe("import-service profile restore (pristine-only)", () => {
     });
   });
 
+  it("drops a managed reminder-email preference an older backup still carries", async () => {
+    // Transition tolerance: reminder emails were a managed-cloud delivery
+    // channel and the profile flag went with them. A backup written before the
+    // removal still carries `managedReminderEmailsEnabled`; it must restore
+    // like any other legacy backup, with the unknown field simply dropped
+    // rather than smuggled back into the stored profile.
+    const { storage, getProfile } = createStatefulStorage();
+    const legacy = envelope({ profile: backupProfile() });
+    (legacy.profile as unknown as Record<string, unknown>).managedReminderEmailsEnabled =
+      true;
+
+    const outcome = await importBackupEnvelope(storage, legacy);
+
+    expect(outcome.profileRestored).toBe(true);
+    expect(getProfile()).toMatchObject({
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 31,
+    });
+    expect(getProfile()).not.toHaveProperty("managedReminderEmailsEnabled");
+  });
+
   it("counts a crisis-contact-only backup as non-default, and never clobbers a device that already has one", async () => {
     // A crisis contact alone is a non-default field (it is enumerated by the
     // pristine comparison), so it restores onto a fresh device.

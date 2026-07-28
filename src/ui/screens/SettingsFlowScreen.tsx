@@ -114,7 +114,6 @@ export type SettingsFlowScreenProps = {
   onExportToDatePress: () => void;
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
-  onManagedReminderEmailsChange: (value: boolean) => void;
   onHideNotesChange: (value: boolean) => void;
   onShowHistoricalPhasesChange: (value: boolean) => void;
   onHideCycleFactorsChange: (value: boolean) => void;
@@ -212,7 +211,6 @@ export function SettingsFlowScreen({
   onExportToDatePress,
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
-  onManagedReminderEmailsChange,
   onHideNotesChange,
   onShowHistoricalPhasesChange,
   onHideCycleFactorsChange,
@@ -405,7 +403,6 @@ export function SettingsFlowScreen({
             <SettingsRemindersSection
               onDailyLogReminderChange={onDailyLogReminderChange}
               onFertileWindowReminderChange={onFertileWindowReminderChange}
-              onManagedReminderEmailsChange={onManagedReminderEmailsChange}
               onPremiumCTAPress={() => {
                 void onOpenBackupSync();
               }}
