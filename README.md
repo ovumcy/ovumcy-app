@@ -202,7 +202,7 @@ What is already true on `main`:
 What this repository still does **not** claim yet:
 
 - completed Android and iOS manual smoke discipline for every release candidate;
-- in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot — the decided monetization channel order is Google Play Billing first, then Lemon Squeezy web checkout, then App Store (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); premium UI is wired, but in-app premium purchase is **not possible** on-device until Google Play Billing lands;
+- in-app purchase integration that drives a real Ovumcy Cloud subscription into the managed billing snapshot — paid Ovumcy Cloud plans are provisioned by app-store billing, Google Play Billing first and App Store second, per the cross-repo monetization decision (see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)); the former web-checkout channel was removed. Premium UI is wired, but in-app premium purchase is **not possible** on-device until Google Play Billing lands;
 - a *production-enabled* no-account guest landing for partner sharing — the guest-accept flow is built on both the app and managed sides but stays disabled in production until platform-verified deep links land (see [docs/sync-trust-model.md](docs/sync-trust-model.md#guest-partner-access)), so today invite acceptance still uses a free Ovumcy Cloud sign-in step;
 - release-store readiness for broad end-user distribution;
 - a standalone sync server in this repository.
@@ -330,7 +330,7 @@ Done on `main`:
 
 Near-term:
 
-- Google Play Billing integration (the decided first monetization channel — see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)) so a real subscription drives the managed billing snapshot, with in-app premium purchase not possible until this lands; Lemon Squeezy web checkout (already built server-side, second channel, not active in production) and App Store integration (third channel) follow in later phases;
+- Google Play Billing integration (the decided first monetization channel — see [ovumcy-managed/docs/adr-monetization.md](https://github.com/ovumcy/ovumcy-managed/blob/main/docs/adr-monetization.md)) so a real subscription drives the managed billing snapshot, with in-app premium purchase not possible until this lands; App Store integration follows as the second channel, and the former web-checkout channel was removed rather than kept as a fallback;
 - enabling the already-built no-account guest acceptance flow in production so a partner can redeem an invite link straight into the read-only shared view without an Ovumcy Cloud sign-in step — this is gated on platform-verified deep links (Android App Links / iOS Universal Links) so an intercepted invite cannot be redeemed by a stranger;
 - TestFlight and Google Play internal-testing readiness so end-to-end premium can be validated on real devices with sandbox purchases;
 - clearer backup and restore ergonomics building on the shipped offline JSON import;
