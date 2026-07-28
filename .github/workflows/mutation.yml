@@ -3,8 +3,12 @@ name: Mutation (advisory)
 # Advisory mutation-testing lane (Stryker), mirroring the Go `gremlins`
 # discipline. It is NON-GATING: it runs weekly (and on demand) over a focused
 # set of pure domain/policy modules and reports a mutation score. A low score
-# never blocks CI — there is no break threshold and the job is allowed to fail
-# soft.
+# never blocks CI — there is no break threshold and the mutation step is allowed
+# to fail soft.
+#
+# "Advisory" applies to the RESULT, not to the run itself: the toolchain check
+# below is unmasked, so a lane that cannot start Stryker fails loudly instead of
+# reporting a green run that never instrumented a file.
 
 on:
   schedule:
@@ -22,8 +26,9 @@ jobs:
   mutation:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Advisory only: surface the score, never fail the workflow on a low result.
-    continue-on-error: true
+    # NOTE: the advisory masking deliberately sits on the mutation step, not on
+    # the job. Job-level `continue-on-error` also swallowed setup and toolchain
+    # failures, so a Stryker run that crashed on startup still reported success.
 
     steps:
       - name: Checkout
@@ -38,8 +43,38 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Unmasked on purpose: proves the Stryker entrypoint loads and that every
+      # configured mutate target still exists. Costs seconds and catches both
+      # the dependency-resolution breakage and silent scope rot after a rename.
+      - name: Verify mutation toolchain and scope
+        run: |
+          npx stryker --help > /dev/null
+          node --input-type=module -e '
+            import { existsSync } from "node:fs";
+            import { pathToFileURL } from "node:url";
+            const { default: config } = await import(pathToFileURL("stryker.config.mjs").href);
+            const missing = config.mutate.filter((target) => !existsSync(target));
+            if (missing.length > 0) {
+              console.error("mutate targets not found: " + missing.join(", "));
+              process.exit(1);
+            }
+            console.log("stryker toolchain OK; " + config.mutate.length + " mutate targets resolved");
+          '
+
       - name: Run mutation testing
+        id: mutation
+        # Bounded so an overrunning advisory run cannot consume the job budget
+        # and take the report upload down with it.
+        timeout-minutes: 24
+        # Advisory only: surface the score, never fail the workflow on a low
+        # result or on a run that outgrew its budget.
+        continue-on-error: true
         run: npm run mutation
+
+      - name: Record mutation run outcome
+        if: always()
+        run: |
+          echo "Mutation run outcome: \`${{ steps.mutation.outcome }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload mutation report
         if: always()
