@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react-native";
 import { Dimensions } from "react-native";
 
-import { createEmptyDayLogRecord } from "../../models/day-log";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../../models/day-log";
 import { createPregnancyRecord } from "../../models/pregnancy";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import { loadManagedPremiumFeaturesForCurrentSession } from "../../services/managed-premium-features-service";
@@ -311,6 +311,47 @@ describe("CalendarScreen", () => {
         jest.mocked(storage.listDayLogRecordsInRange).mock.calls.length,
       ).toBeGreaterThan(localReadsBeforeRefocus),
     );
+  });
+
+  it("drops a local reload that lands after the selection has moved on", async () => {
+    const storage = createStorageMock();
+    const pendingReads: (() => void)[] = [];
+    let holdReads = false;
+    jest.mocked(storage.listDayLogRecordsInRange).mockImplementation(
+      () =>
+        new Promise<DayLogRecord[]>((resolve) => {
+          if (!holdReads) {
+            resolve([]);
+            return;
+          }
+
+          pendingReads.push(() => resolve([]));
+        }),
+    );
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+
+    // Two reloads in flight at once, answered out of order: the day the owner
+    // has left must not repaint over the day they are on.
+    holdReads = true;
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-15"));
+    await waitFor(() => expect(pendingReads).toHaveLength(1));
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-16"));
+    await waitFor(() => expect(pendingReads).toHaveLength(2));
+
+    await act(async () => {
+      pendingReads[1]?.();
+    });
+    await waitForSelectedDayPanel("Mon, Mar 16");
+
+    await act(async () => {
+      pendingReads[0]?.();
+    });
+
+    expect(screen.getByText("Mon, Mar 16")).toBeTruthy();
+    expect(screen.queryByText("Sun, Mar 15")).toBeNull();
   });
 
   it("shows calendar legend as grouped day styles and marker samples", async () => {
