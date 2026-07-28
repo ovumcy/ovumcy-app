@@ -438,13 +438,8 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
         doctorPDF: true,
         reminders: true,
       },
-      // Server-driven affordances fail closed on cached truth.
+      // Server-driven display state fails closed on cached truth.
       activeSubscription: null,
-      billingManagement: {
-        canManageRenewal: false,
-        canCancelAtPeriodEnd: false,
-        canResumeRenewal: false,
-      },
       offers: [],
     });
   });

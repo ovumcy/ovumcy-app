@@ -16,14 +16,10 @@ import {
   type UpgradeGuestPartnerAccountErrorCode,
   type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
-import {
-  MANAGED_CLOUD_AUTH_BASE_URL,
-  type SyncPreferencesRecord,
-} from "../sync/sync-contract";
-import {
-  createManagedCloudAPIClient,
-  type ManagedCloudAPIErrorCode,
-  type ManagedCloudPartnerAccessGrant,
+import type { SyncPreferencesRecord } from "../sync/sync-contract";
+import type {
+  ManagedCloudAPIErrorCode,
+  ManagedCloudPartnerAccessGrant,
 } from "../sync/managed-cloud-api-client";
 import {
   completeTOTPChallenge,
@@ -37,10 +33,7 @@ import {
 } from "../sync/sync-setup-service";
 import { loadLocalExportState } from "./export-service";
 import { acceptManagedPartnerInviteAsGuest } from "./managed-partner-access-service";
-import {
-  loadManagedBillingSnapshot,
-  persistManagedBillingSnapshotCache,
-} from "./managed-premium-features-service";
+import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
 import {
   createEmptySettingsManagedPremiumAccess,
   createLoadedSettingsState,
@@ -648,92 +641,4 @@ export async function clearUnauthorizedBackupSyncSession(
     null,
     createEmptySettingsManagedPremiumAccess(),
   );
-}
-
-export type BackupSyncRenewalAction = "cancel_at_period_end" | "resume";
-
-export type UpdateBackupSyncRenewalErrorCode =
-  | "not_connected"
-  | "unauthorized"
-  | "billing_management_unavailable"
-  | "billing_subscription_conflict"
-  | "billing_provider_unavailable"
-  | "network_failed"
-  | "generic";
-
-function mapRenewalAPIError(
-  errorCode: ManagedCloudAPIErrorCode,
-): UpdateBackupSyncRenewalErrorCode {
-  switch (errorCode) {
-    case "unauthorized":
-    case "billing_management_unavailable":
-    case "billing_subscription_conflict":
-    case "billing_provider_unavailable":
-    case "network_failed":
-      return errorCode;
-    default:
-      return "generic";
-  }
-}
-
-/**
- * updateBackupSyncRenewal drives PUT /account/billing/renewal for the two
- * flag-gated affordances (cancel at period end / resume renewal). The server
- * both authorises the action and returns the refreshed billing snapshot,
- * which becomes the new screen state and refreshes the offline-grace cache.
- * Confirmation UX (confirm-before-cancel) is owned by the controller; this
- * function assumes the caller already gated the destructive path.
- */
-export async function updateBackupSyncRenewal(
-  storage: LocalAppStorage,
-  secretStore: SyncSecretStore,
-  currentState: LoadedSettingsState,
-  action: BackupSyncRenewalAction,
-  now: Date,
-): Promise<
-  | {
-      ok: true;
-      state: LoadedSettingsState;
-    }
-  | {
-      ok: false;
-      errorCode: UpdateBackupSyncRenewalErrorCode;
-    }
-> {
-  if (currentState.savedSyncPreferences.mode !== "managed") {
-    return { ok: false, errorCode: "not_connected" };
-  }
-
-  const secrets = await secretStore.readSyncSecrets();
-  if (!secrets?.managedAuthSessionToken) {
-    return { ok: false, errorCode: "not_connected" };
-  }
-
-  const renewalResult = await createManagedCloudAPIClient(
-    MANAGED_CLOUD_AUTH_BASE_URL,
-  ).updateBillingRenewal(secrets.managedAuthSessionToken, {
-    cancelAtPeriodEnd: action === "cancel_at_period_end",
-  });
-  if (!renewalResult.ok) {
-    return { ok: false, errorCode: mapRenewalAPIError(renewalResult.errorCode) };
-  }
-
-  // The response is a refreshed billing snapshot: treat it like any other
-  // successful billing fetch for the offline-grace cache.
-  await persistManagedBillingSnapshotCache(storage, renewalResult.billing, now);
-
-  return {
-    ok: true,
-    state: createLoadedSettingsState(
-      currentState.profile,
-      currentState.savedSyncPreferences,
-      currentState.hasStoredSyncSecrets,
-      currentState.hasSyncSession,
-      currentState.symptomRecords,
-      currentState.exportState,
-      currentState.syncPreferences,
-      currentState.syncCapabilities,
-      mapBillingSnapshotToManagedPremiumAccess(renewalResult.billing),
-    ),
-  };
 }

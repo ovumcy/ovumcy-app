@@ -26,9 +26,6 @@ export type ManagedCloudAPIErrorCode =
   | "reminder_schedule_unavailable"
   | "entitlements_unavailable"
   | "entitlements_not_configured"
-  | "billing_management_unavailable"
-  | "billing_subscription_conflict"
-  | "billing_provider_unavailable"
   | "unauthorized"
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
@@ -83,12 +80,6 @@ export type ManagedCloudActiveSubscription = {
   cancelAtPeriodEnd: boolean;
 };
 
-export type ManagedCloudBillingManagement = {
-  canManageRenewal: boolean;
-  canCancelAtPeriodEnd: boolean;
-  canResumeRenewal: boolean;
-};
-
 export type ManagedCloudBillingOfferCopy = {
   title: string;
   body: string;
@@ -126,9 +117,6 @@ export type ManagedCloudBillingSnapshot = {
   // activeSubscription carries the current plan/trial details for display
   // (status, period end, price). Null when no subscription row exists.
   activeSubscription: ManagedCloudActiveSubscription | null;
-  // billingManagement reports which self-service renewal actions the backend
-  // currently allows for this account (drives cancel/resume affordances).
-  billingManagement: ManagedCloudBillingManagement;
   // offers carries billing-surface promos/announcements. Parsing is fully
   // tolerant (mirrors the null-tolerant partner-overview pattern): a missing
   // or malformed offers field yields [], malformed entries are dropped.
@@ -301,16 +289,6 @@ export type ManagedCloudAPIClient = {
   >;
   getBillingSnapshot(
     sessionToken: string,
-  ): Promise<
-    | { ok: true; billing: ManagedCloudBillingSnapshot }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
-  // updateBillingRenewal toggles cancel_at_period_end on the account's
-  // subscription (PUT /account/billing/renewal) and returns the refreshed
-  // billing snapshot on success.
-  updateBillingRenewal(
-    sessionToken: string,
-    input: { cancelAtPeriodEnd: boolean },
   ): Promise<
     | { ok: true; billing: ManagedCloudBillingSnapshot }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
@@ -601,12 +579,6 @@ type RawManagedCloudActiveSubscription = {
   cancel_at_period_end?: boolean;
 };
 
-type RawManagedCloudBillingManagement = {
-  can_manage_renewal?: boolean;
-  can_cancel_at_period_end?: boolean;
-  can_resume_renewal?: boolean;
-};
-
 type RawManagedCloudBillingSnapshot = {
   has_active_plan?: boolean;
   premium_features?: {
@@ -618,7 +590,6 @@ type RawManagedCloudBillingSnapshot = {
     reminders?: boolean;
   };
   active_subscription?: RawManagedCloudActiveSubscription | null;
-  billing_management?: RawManagedCloudBillingManagement;
   // offers stays `unknown`: the guard never validates it, mapBillingOffers
   // absorbs any malformed shape instead of failing the whole snapshot.
   offers?: unknown;
@@ -990,26 +961,6 @@ export function createManagedCloudAPIClient(
         {
           method: "GET",
           sessionToken,
-        },
-        isRawManagedCloudBillingSnapshot,
-      ).then((result) =>
-        result.ok
-          ? { ok: true, billing: mapBillingSnapshot(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
-      );
-    },
-
-    async updateBillingRenewal(sessionToken, input) {
-      return requestJSON<RawManagedCloudBillingSnapshot>(
-        fetchImpl,
-        normalizedBaseURL,
-        "/account/billing/renewal",
-        {
-          method: "PUT",
-          sessionToken,
-          body: {
-            cancel_at_period_end: input.cancelAtPeriodEnd,
-          },
         },
         isRawManagedCloudBillingSnapshot,
       ).then((result) =>
@@ -1445,9 +1396,6 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "reminder_schedule_unavailable":
       case "entitlements_unavailable":
       case "entitlements_not_configured":
-      case "billing_management_unavailable":
-      case "billing_subscription_conflict":
-      case "billing_provider_unavailable":
       case "unauthorized":
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
@@ -1906,9 +1854,6 @@ function mapBillingSnapshot(
   raw: RawManagedCloudBillingSnapshot,
 ): ManagedCloudBillingSnapshot {
   const features = isObject(raw.premium_features) ? raw.premium_features : {};
-  const management = isObject(raw.billing_management)
-    ? raw.billing_management
-    : {};
 
   return {
     hasActivePlan: raw.has_active_plan === true,
@@ -1921,11 +1866,6 @@ function mapBillingSnapshot(
       reminders: features.reminders === true,
     },
     activeSubscription: mapActiveSubscription(raw.active_subscription),
-    billingManagement: {
-      canManageRenewal: management.can_manage_renewal === true,
-      canCancelAtPeriodEnd: management.can_cancel_at_period_end === true,
-      canResumeRenewal: management.can_resume_renewal === true,
-    },
     offers: mapBillingOffers(raw.offers),
   };
 }

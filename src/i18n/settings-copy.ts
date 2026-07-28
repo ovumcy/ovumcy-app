@@ -304,11 +304,6 @@ const settingsCopyEn = {
     uploadOverBackupPrompt:
       "This account already has an encrypted backup copy on the server, but this device has never synced. Uploading now will replace that server copy with this device's data. Replace it?",
     uploadOverBackupAccept: "Replace server copy",
-    renewalCancelLabel: "Turn off auto-renewal",
-    renewalResumeLabel: "Resume auto-renewal",
-    renewalCancelPrompt:
-      "Turn off automatic renewal? Your plan stays active until the end of the already-paid period.",
-    renewalCancelAccept: "Turn off renewal",
     withdrawalTitle: "Right of withdrawal and refunds (EU/EEA)",
     withdrawalBody:
       "If you buy an Ovumcy Cloud plan as a consumer in the EU or EEA, you have 14 days to withdraw without giving a reason. Cloud access starts immediately at your request, so the withdrawal right ends once the service has been fully provided; withdraw earlier and you pay only for the part already used. To withdraw or ask about a refund, write to contact@ovumcy.com.",
@@ -361,9 +356,6 @@ const settingsCopyEn = {
     restored: "Encrypted backup copy restored from the sync server.",
     disconnected: "Sync server session removed from this device.",
     deleted: "Account deleted. Returning to onboarding.",
-    renewalCancelled:
-      "Auto-renewal is off. Your plan stays active until the current period ends.",
-    renewalResumed: "Auto-renewal is on again.",
     errors: {
       loginRequired: "Login is required.",
       passwordRequired: "Password is required.",
@@ -407,10 +399,6 @@ const settingsCopyEn = {
         "Unable to delete your account right now. Nothing was changed. Please try again.",
       deleteAccountCleanupUnavailable:
         "Deletion was stopped safely. The server cannot currently confirm that your synced data would be removed too. Your account and data are unchanged. Please try again later.",
-      renewalUnavailable:
-        "Renewal for this plan cannot be managed from the app.",
-      renewalUpdateFailed:
-        "Unable to update the renewal setting right now. Please try again.",
     },
   },
   symptoms: {
@@ -886,11 +874,6 @@ const settingsCopyDe: SettingsCopy = {
     uploadOverBackupPrompt:
       "Für dieses Konto liegt bereits eine verschlüsselte Sicherungskopie auf dem Server, aber dieses Gerät hat noch nie synchronisiert. Beim Hochladen wird die Serverkopie durch die Daten dieses Geräts ersetzt. Ersetzen?",
     uploadOverBackupAccept: "Serverkopie ersetzen",
-    renewalCancelLabel: "Automatische Verlängerung deaktivieren",
-    renewalResumeLabel: "Automatische Verlängerung fortsetzen",
-    renewalCancelPrompt:
-      "Automatische Verlängerung deaktivieren? Ihr Tarif bleibt bis zum Ende des bereits bezahlten Zeitraums aktiv.",
-    renewalCancelAccept: "Verlängerung deaktivieren",
     withdrawalTitle: "Widerrufsrecht und Erstattungen (EU/EWR)",
     withdrawalBody:
       "Wenn Sie einen Ovumcy-Cloud-Plan als Verbraucherin oder Verbraucher in der EU oder im EWR kaufen, können Sie den Vertrag innerhalb von 14 Tagen ohne Angabe von Gründen widerrufen. Der Cloud-Zugang beginnt auf Ihren Wunsch sofort; das Widerrufsrecht erlischt daher, sobald die Leistung vollständig erbracht ist. Bei früherem Widerruf zahlen Sie nur den bereits genutzten Anteil. Für Widerruf oder Erstattung schreiben Sie an contact@ovumcy.com.",
@@ -945,15 +928,8 @@ const settingsCopyDe: SettingsCopy = {
       "Verschlüsselte Sicherungskopie vom Sync-Server wiederhergestellt.",
     disconnected: "Die Sync-Server-Sitzung wurde von diesem Gerät entfernt.",
     deleted: "Konto gelöscht. Rückkehr zum Onboarding.",
-    renewalCancelled:
-      "Automatische Verlängerung ist aus. Ihr Tarif bleibt bis zum Ende des aktuellen Zeitraums aktiv.",
-    renewalResumed: "Automatische Verlängerung ist wieder aktiv.",
     errors: {
       ...settingsCopyEn.account.errors,
-      renewalUnavailable:
-        "Die Verlängerung dieses Tarifs kann nicht in der App verwaltet werden.",
-      renewalUpdateFailed:
-        "Die Verlängerungseinstellung konnte gerade nicht geändert werden. Bitte versuchen Sie es erneut.",
       loginRequired: "Login ist erforderlich.",
       passwordRequired: "Passwort ist erforderlich.",
       passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
@@ -1506,11 +1482,6 @@ const settingsCopyFr: SettingsCopy = {
     uploadOverBackupPrompt:
       "Ce compte a déjà une copie de sauvegarde chiffrée sur le serveur, mais cet appareil n'a jamais synchronisé. Le téléversement remplacera cette copie serveur par les données de cet appareil. La remplacer ?",
     uploadOverBackupAccept: "Remplacer la copie serveur",
-    renewalCancelLabel: "Désactiver le renouvellement automatique",
-    renewalResumeLabel: "Réactiver le renouvellement automatique",
-    renewalCancelPrompt:
-      "Désactiver le renouvellement automatique ? Votre plan reste actif jusqu'à la fin de la période déjà payée.",
-    renewalCancelAccept: "Désactiver le renouvellement",
     withdrawalTitle: "Droit de rétractation et remboursements (UE/EEE)",
     withdrawalBody:
       "Si vous achetez un forfait Ovumcy Cloud en tant que consommateur dans l'UE ou l'EEE, vous disposez de 14 jours pour vous rétracter sans motif. L'accès au cloud démarre immédiatement à votre demande : le droit de rétractation prend donc fin une fois le service entièrement fourni, et si vous vous rétractez avant, vous ne payez que la part déjà utilisée. Pour vous rétracter ou demander un remboursement, écrivez à contact@ovumcy.com.",
@@ -1567,15 +1538,8 @@ const settingsCopyFr: SettingsCopy = {
       "Copie de sauvegarde chiffrée restaurée depuis le serveur de sync.",
     disconnected: "La session du serveur de sync a été supprimée de cet appareil.",
     deleted: "Compte supprimé. Retour à l'onboarding.",
-    renewalCancelled:
-      "Renouvellement automatique désactivé. Votre plan reste actif jusqu'à la fin de la période en cours.",
-    renewalResumed: "Renouvellement automatique réactivé.",
     errors: {
       ...settingsCopyEn.account.errors,
-      renewalUnavailable:
-        "Le renouvellement de ce plan ne peut pas être géré depuis l'app.",
-      renewalUpdateFailed:
-        "Impossible de modifier le renouvellement pour le moment. Veuillez réessayer.",
       loginRequired: "L'identifiant est obligatoire.",
       passwordRequired: "Le mot de passe est obligatoire.",
       passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
@@ -2121,11 +2085,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploadOverBackupPrompt:
         "На сервере уже есть зашифрованная резервная копия этого аккаунта, а это устройство ещё ни разу не синхронизировалось. Загрузка заменит серверную копию данными этого устройства. Заменить?",
       uploadOverBackupAccept: "Заменить копию на сервере",
-      renewalCancelLabel: "Отключить автопродление",
-      renewalResumeLabel: "Возобновить автопродление",
-      renewalCancelPrompt:
-        "Отключить автоматическое продление? План останется активным до конца уже оплаченного периода.",
-      renewalCancelAccept: "Отключить продление",
       withdrawalTitle: "Право на отказ и возврат средств (ЕС/ЕЭЗ)",
       withdrawalBody:
         "Если вы покупаете план Ovumcy Cloud как потребитель в ЕС или ЕЭЗ, у вас есть 14 дней, чтобы отказаться от договора без объяснения причин. Доступ к облаку открывается сразу по вашему запросу, поэтому право на отказ прекращается, как только услуга оказана полностью; при отказе раньше вы платите только за уже использованную часть. Чтобы отказаться или запросить возврат, напишите на contact@ovumcy.com.",
@@ -2178,9 +2137,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restored: "Зашифрованная резервная копия восстановлена с sync-сервера.",
       disconnected: "Сессия sync-сервера удалена с этого устройства.",
       deleted: "Аккаунт удалён. Возврат к онбордингу.",
-      renewalCancelled:
-        "Автопродление отключено. План останется активным до конца текущего периода.",
-      renewalResumed: "Автопродление снова включено.",
       errors: {
         loginRequired: "Логин обязателен.",
         passwordRequired: "Пароль обязателен.",
@@ -2229,10 +2185,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Сейчас не удалось удалить аккаунт. Ничего не изменилось. Попробуйте ещё раз.",
         deleteAccountCleanupUnavailable:
           "Удаление безопасно остановлено. Сервер сейчас не может подтвердить, что синхронизированные данные тоже будут удалены. Аккаунт и данные не изменились. Попробуйте позже.",
-        renewalUnavailable:
-          "Продлением этого плана нельзя управлять из приложения.",
-        renewalUpdateFailed:
-          "Не удалось изменить настройку продления. Попробуйте ещё раз.",
       },
     },
     symptoms: {
@@ -2702,11 +2654,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploadOverBackupPrompt:
         "Esta cuenta ya tiene una copia de respaldo cifrada en el servidor, pero este dispositivo nunca ha sincronizado. Subir ahora sustituirá esa copia del servidor por los datos de este dispositivo. ¿Sustituirla?",
       uploadOverBackupAccept: "Sustituir copia del servidor",
-      renewalCancelLabel: "Desactivar la renovación automática",
-      renewalResumeLabel: "Reanudar la renovación automática",
-      renewalCancelPrompt:
-        "¿Desactivar la renovación automática? Tu plan sigue activo hasta el final del periodo ya pagado.",
-      renewalCancelAccept: "Desactivar renovación",
       withdrawalTitle: "Derecho de desistimiento y reembolsos (UE/EEE)",
       withdrawalBody:
         "Si compras un plan de Ovumcy Cloud como consumidor en la UE o el EEE, dispones de 14 días para desistir sin dar explicaciones. El acceso a la nube comienza de inmediato a petición tuya, por lo que el derecho de desistimiento se extingue una vez prestado el servicio por completo; si desistes antes, solo pagas la parte ya utilizada. Para desistir o solicitar un reembolso, escribe a contact@ovumcy.com.",
@@ -2762,9 +2709,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "La copia de respaldo cifrada se restauró desde el servidor de sync.",
       disconnected: "La sesión del servidor de sync se eliminó de este dispositivo.",
       deleted: "Cuenta eliminada. Volviendo al onboarding.",
-      renewalCancelled:
-        "La renovación automática está desactivada. Tu plan sigue activo hasta el final del periodo actual.",
-      renewalResumed: "La renovación automática está activada de nuevo.",
       errors: {
         loginRequired: "El login es obligatorio.",
         passwordRequired: "La contraseña es obligatoria.",
@@ -2817,10 +2761,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo eliminar tu cuenta ahora. No se cambió nada. Inténtalo de nuevo.",
         deleteAccountCleanupUnavailable:
           "La eliminación se detuvo de forma segura. El servidor no puede confirmar ahora mismo que tus datos sincronizados también se eliminarían. Tu cuenta y tus datos siguen intactos. Inténtalo de nuevo más tarde.",
-        renewalUnavailable:
-          "La renovación de este plan no se puede gestionar desde la app.",
-        renewalUpdateFailed:
-          "No se pudo cambiar la renovación ahora mismo. Inténtalo de nuevo.",
       },
     },
     symptoms: {
@@ -3293,11 +3233,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       uploadOverBackupPrompt:
         "Questo account ha già un backup cifrato sul server, ma questo dispositivo non ha mai sincronizzato. Caricando ora sostituirai quel backup del server con i dati di questo dispositivo. Sostituirlo?",
       uploadOverBackupAccept: "Sostituisci backup del server",
-      renewalCancelLabel: "Disattiva il rinnovo automatico",
-      renewalResumeLabel: "Riprendi il rinnovo automatico",
-      renewalCancelPrompt:
-        "Disattivare il rinnovo automatico? Il tuo piano resta attivo fino alla fine del periodo già pagato.",
-      renewalCancelAccept: "Disattiva rinnovo",
       withdrawalTitle: "Diritto di recesso e rimborsi (UE/SEE)",
       withdrawalBody:
         "Se acquisti un piano Ovumcy Cloud come consumatore nell'UE o nel SEE, hai 14 giorni per recedere senza doverne indicare il motivo. L'accesso al cloud inizia subito su tua richiesta, quindi il diritto di recesso si estingue una volta che il servizio è stato interamente fornito; se recedi prima, paghi solo la parte già utilizzata. Per recedere o chiedere un rimborso, scrivi a contact@ovumcy.com.",
@@ -3353,9 +3288,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Il backup cifrato è stato ripristinato dal server di sync.",
       disconnected: "La sessione del server di sync è stata rimossa da questo dispositivo.",
       deleted: "Account eliminato. Ritorno alla configurazione iniziale.",
-      renewalCancelled:
-        "Il rinnovo automatico è disattivato. Il tuo piano resta attivo fino alla fine del periodo corrente.",
-      renewalResumed: "Il rinnovo automatico è di nuovo attivo.",
       errors: {
         loginRequired: "Il login è obbligatorio.",
         passwordRequired: "La password è obbligatoria.",
@@ -3408,10 +3340,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Impossibile eliminare il tuo account in questo momento. Nulla è stato modificato. Riprova.",
         deleteAccountCleanupUnavailable:
           "L'eliminazione è stata interrotta per sicurezza. Il server non può confermare in questo momento che anche i tuoi dati sincronizzati verrebbero rimossi. Il tuo account e i tuoi dati restano intatti. Riprova più tardi.",
-        renewalUnavailable:
-          "Il rinnovo di questo piano non può essere gestito dall'app.",
-        renewalUpdateFailed:
-          "Impossibile modificare il rinnovo in questo momento. Riprova.",
       },
     },
     symptoms: {

@@ -14,9 +14,9 @@ import type { SymptomRecord } from "../../models/symptom";
 // ManagedBillingCachedSnapshot is the last-known-good managed billing state
 // persisted for the bounded offline grace window. It carries only what local
 // feature gates derive (plan state + the six premium booleans) plus the
-// fetchedAt timestamp of the successful server fetch; server-driven
-// affordances (active subscription details, renewal management, offers) are
-// deliberately NOT cached so they fail closed while offline.
+// fetchedAt timestamp of the successful server fetch; server-driven display
+// state (active subscription details, offers) is deliberately NOT cached so
+// it fails closed while offline.
 export type ManagedBillingCachedSnapshot = {
   hasActivePlan: boolean;
   premiumFeatures: {

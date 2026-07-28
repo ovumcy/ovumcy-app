@@ -2246,7 +2246,11 @@ describe("BackupSyncScreen", () => {
     }
   });
 
-  it("renders no manage-renewal row when both billing management flags are false", async () => {
+  // The renewal controls are gone with the managed backend's web-checkout
+  // surface. A server that predates that removal still sends billing_management
+  // with every flag set: the snapshot must parse and the screen must render no
+  // renewal affordance regardless.
+  it("renders no manage-renewal row even when the server still sends billing_management", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest
         .fn()
@@ -2258,6 +2262,11 @@ describe("BackupSyncScreen", () => {
       billing: {
         has_active_plan: true,
         premium_features: { partner_access: false },
+        billing_management: {
+          can_manage_renewal: true,
+          can_cancel_at_period_end: true,
+          can_resume_renewal: true,
+        },
       },
     });
 
@@ -2277,7 +2286,7 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByTestId("settings-sync-renewal-resume-button")).toBeNull();
   });
 
-  it("states the EU withdrawal and refund terms on the plan step, with or without a renewal row", async () => {
+  it("states the EU withdrawal and refund terms on the plan step", async () => {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest
         .fn()
@@ -2306,74 +2315,6 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-sync-withdrawal-notice")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-renewal-row")).toBeNull();
     expect(screen.getByText(/14 days to withdraw/)).toBeTruthy();
-  });
-
-  it("shows only the flag-enabled renewal action and requires confirmation before cancelling", async () => {
-    const storage = createSettingsStorageMock({
-      readSyncPreferencesRecord: jest
-        .fn()
-        .mockResolvedValue(createConnectedManagedPreferences()),
-    });
-    const syncSecretStore = createSyncSecretStoreMock();
-    await syncSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
-    const renewalPut = jest.fn(async () =>
-      createJSONResponse({
-        has_active_plan: true,
-        premium_features: {},
-        active_subscription: {
-          status: "active",
-          current_period_ends_at: "2026-04-20T00:00:00.000Z",
-          cancel_at_period_end: true,
-        },
-        billing_management: {
-          can_manage_renewal: true,
-          can_cancel_at_period_end: false,
-          can_resume_renewal: true,
-        },
-      }),
-    );
-    global.fetch = createManagedBillingFetchMock({
-      billing: {
-        has_active_plan: true,
-        premium_features: {},
-        billing_management: {
-          can_manage_renewal: true,
-          can_cancel_at_period_end: true,
-          can_resume_renewal: false,
-        },
-      },
-      onRenewalPut: renewalPut,
-    });
-
-    render(
-      <BackupSyncScreen
-        now={new Date(2026, 2, 20)}
-        storage={storage}
-        syncSecretStore={syncSecretStore}
-      />,
-    );
-
-    await screen.findByTestId("settings-sync-renewal-row");
-    expect(screen.getByTestId("settings-sync-renewal-cancel-button")).toBeTruthy();
-    expect(screen.queryByTestId("settings-sync-renewal-resume-button")).toBeNull();
-
-    // Dismissal / decline resolves false = the subscription stays untouched.
-    mockOpenConfirmation.mockResolvedValueOnce(false);
-    fireEvent.press(screen.getByTestId("settings-sync-renewal-cancel-button"));
-    await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
-    expect(mockOpenConfirmation).toHaveBeenCalledWith(
-      expect.stringContaining("automatic renewal"),
-      expect.any(String),
-      expect.any(String),
-    );
-    expect(renewalPut).not.toHaveBeenCalled();
-
-    // Explicit accept drives the PUT and the row flips to the resume action.
-    mockOpenConfirmation.mockResolvedValueOnce(true);
-    fireEvent.press(screen.getByTestId("settings-sync-renewal-cancel-button"));
-    await waitFor(() => expect(renewalPut).toHaveBeenCalledTimes(1));
-    await screen.findByTestId("settings-sync-renewal-resume-button");
-    expect(screen.queryByTestId("settings-sync-renewal-cancel-button")).toBeNull();
   });
 
   it("renders billing offers in the plan area and persists dismissal", async () => {
@@ -3133,16 +3074,9 @@ function createConnectedManagedSecrets() {
 
 function createManagedBillingFetchMock(options: {
   billing: Record<string, unknown>;
-  onRenewalPut?: (() => Promise<Response>) | undefined;
 }): typeof fetch {
   return jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.includes("/account/billing/renewal")) {
-      if (options.onRenewalPut && init?.method === "PUT") {
-        return options.onRenewalPut();
-      }
-      throw new Error(`Unexpected renewal fetch in test: ${url}`);
-    }
     if (url.includes("/auth/session")) {
       return createJSONResponse({
         account_id: "managed-account-1",

@@ -661,18 +661,6 @@ describe("backup sync view service", () => {
         "sync_purge_unavailable",
         viewData.account.errors.deleteAccountCleanupUnavailable,
       ],
-      [
-        "billing_management_unavailable",
-        viewData.account.errors.renewalUnavailable,
-      ],
-      [
-        "billing_subscription_conflict",
-        viewData.account.errors.renewalUpdateFailed,
-      ],
-      [
-        "billing_provider_unavailable",
-        viewData.account.errors.renewalUpdateFailed,
-      ],
     ];
 
     for (const [errorCode, expected] of cases) {
@@ -751,7 +739,7 @@ describe("backup sync view service", () => {
       const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
 
       const presentation = resolveBackupSyncErrorPresentation(
-        "billing_provider_unavailable",
+        "stale_generation",
         "delete_account",
         viewData.account,
       );

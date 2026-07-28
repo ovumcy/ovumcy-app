@@ -95,8 +95,8 @@ export const EMPTY_MANAGED_PREMIUM_FEATURES: ManagedCloudPremiumFeatures = {
 // fail-closed enforcement (a revoked plan keeps its local unlocks for at
 // most this long while the device cannot reach billing truth). 72 hours is
 // the ceiling; after it every failed fetch fails closed exactly as before.
-// Server-checked actions (sync upload/restore, partner projections, renewal)
-// never read this cache — the server stays their authority.
+// Server-checked actions (sync upload/restore, partner projections) never
+// read this cache — the server stays their authority.
 export const MANAGED_BILLING_CACHE_TTL_MS = 72 * 60 * 60 * 1000;
 
 export function isManagedBillingCacheFresh(
@@ -116,8 +116,8 @@ export function isManagedBillingCacheFresh(
  * persistManagedBillingSnapshotCache refreshes the last-known-good billing
  * snapshot after any successful billing fetch. Only the locally-derived plan
  * state and premium booleans are persisted (pre token-overlay server truth);
- * server-driven affordances (subscription details, renewal flags, offers)
- * intentionally stay out so they fail closed when served from cache.
+ * server-driven display state (subscription details, offers) intentionally
+ * stays out so it fails closed when served from cache.
  * Cache IO failures are swallowed: caching must never break a successful
  * billing fetch.
  */
@@ -155,15 +155,10 @@ async function readFreshCachedBillingSnapshot(
     return {
       hasActivePlan: record.snapshot.hasActivePlan,
       premiumFeatures: { ...record.snapshot.premiumFeatures },
-      // Server-driven display/affordance state is never cached: countdown,
-      // renewal management, and offers all degrade to their empty defaults
-      // while the device is on cached billing truth.
+      // Server-driven display state is never cached: the countdown and the
+      // offers both degrade to their empty defaults while the device is on
+      // cached billing truth.
       activeSubscription: null,
-      billingManagement: {
-        canManageRenewal: false,
-        canCancelAtPeriodEnd: false,
-        canResumeRenewal: false,
-      },
       offers: [],
     };
   } catch {

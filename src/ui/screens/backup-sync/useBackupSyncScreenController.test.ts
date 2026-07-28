@@ -134,9 +134,7 @@ function createManagedPlanFixture(
   overrides: Partial<ReturnType<typeof useBackupSyncManagedPlan>> = {},
 ): ReturnType<typeof useBackupSyncManagedPlan> {
   return {
-    isUpdatingRenewal: false,
     handleRetryPlanCheck: jest.fn(),
-    handleUpdateRenewal: jest.fn(),
     handleDismissOffer: jest.fn(),
     handleOfferCTAPress: jest.fn(),
     ...overrides,
@@ -364,9 +362,6 @@ describe("useBackupSyncScreenController", () => {
 
     void flowProps.onExportRecoveryPhrase();
     expect(recovery.handleExportRecoveryPhrase).toHaveBeenCalledTimes(1);
-
-    void flowProps.onResumeRenewal();
-    expect(managedPlan.handleUpdateRenewal).toHaveBeenCalledWith("resume");
 
     void flowProps.onRetryPlanCheck();
     expect(managedPlan.handleRetryPlanCheck).toHaveBeenCalledTimes(1);

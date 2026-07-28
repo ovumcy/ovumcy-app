@@ -44,7 +44,6 @@ type SettingsSyncSetupSectionProps = {
   onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
-  onCancelRenewal?: (() => void | Promise<void>) | undefined;
   onDisconnect: () => void | Promise<void>;
   onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
@@ -56,7 +55,6 @@ type SettingsSyncSetupSectionProps = {
   onOfferCTAPress?: ((offer: ResolvedBillingOffer) => void) | undefined;
   onPrepare: () => void | Promise<void>;
   onRecoverAccess: () => void | Promise<void>;
-  onResumeRenewal?: (() => void | Promise<void>) | undefined;
   onRetryPlanCheck: () => void | Promise<void>;
   onRecoveryPhraseChange: (value: string) => void;
   onRegister: () => void | Promise<void>;
@@ -85,7 +83,6 @@ export function SettingsSyncSetupSection({
   onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
-  onCancelRenewal,
   onDisconnect,
   onDeleteAccount,
   onDeviceLabelChange,
@@ -97,7 +94,6 @@ export function SettingsSyncSetupSection({
   onOfferCTAPress,
   onPrepare,
   onRecoverAccess,
-  onResumeRenewal,
   onRetryPlanCheck,
   onRecoveryPhraseChange,
   onRegister,
@@ -506,31 +502,6 @@ export function SettingsSyncSetupSection({
               >
                 {presentation.planCountdownMessage}
               </Text>
-            ) : null}
-            {presentation.showRenewalManagement ? (
-              <View
-                style={styles.actionsStack}
-                testID="settings-sync-renewal-row"
-              >
-                {presentation.showCancelRenewal ? (
-                  <AppButton
-                    disabled={presentation.accountActionsDisabled}
-                    label={viewData.renewalCancelLabel}
-                    onPress={onCancelRenewal ?? (() => {})}
-                    testID="settings-sync-renewal-cancel-button"
-                    variant="secondary"
-                  />
-                ) : null}
-                {presentation.showResumeRenewal ? (
-                  <AppButton
-                    disabled={presentation.accountActionsDisabled}
-                    label={viewData.renewalResumeLabel}
-                    onPress={onResumeRenewal ?? (() => {})}
-                    testID="settings-sync-renewal-resume-button"
-                    variant="secondary"
-                  />
-                ) : null}
-              </View>
             ) : null}
             <View
               style={styles.stepHeader}

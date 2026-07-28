@@ -258,15 +258,15 @@ follows from that:
 - **Managed billing snapshot cache is a bounded 72h offline-grace exception, not a
   second source of truth.** `loadManagedBillingSnapshot` persists the last-known-good
   billing snapshot — only `hasActivePlan` and `premiumFeatures`; server-driven
-  affordances like renewal management and offers are deliberately excluded so they
-  fail closed from cache — to the encrypted `managed_billing_cache` table after every
+  display state like the subscription details and offers is deliberately excluded so
+  it fails closed from cache — to the encrypted `managed_billing_cache` table after every
   successful fetch (`MANAGED_BILLING_CACHE_TTL_MS`,
   `src/services/managed-premium-features-service.ts`). If a live fetch then fails,
   the cache is served only while it is at most 72 hours old **and** a managed session
   token is still present on-device; a signed-out or never-connected device gets no
   grace. Past 72 hours, or with nothing ever cached, the gate fails closed exactly as
   it did before this cache existed. Server-checked operations (sync upload/restore,
-  partner projections, renewal) never read this cache — the server remains their sole
+  partner projections) never read this cache — the server remains their sole
   authority. The trade-off is deliberate: a network blip or managed outage should not
   instantly re-lock all six premium gates on a paying device, at the cost of a revoked
   plan keeping its local unlocks for up to 72 hours while the device cannot reach

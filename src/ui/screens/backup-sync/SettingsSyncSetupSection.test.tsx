@@ -771,7 +771,11 @@ describe("SettingsSyncSetupSection", () => {
     ).toBeTruthy();
   });
 
-  it("does not crash pressing renewal-management buttons when no handler is wired", async () => {
+  // The managed backend's web-checkout billing surface is gone, so an active
+  // managed plan renders no in-app renewal controls at all. The plan step keeps
+  // its banner, countdown, and withdrawal notice; cancelling is done wherever
+  // the subscription was bought, as the delete-account warning already says.
+  it("renders an active managed plan step without any renewal controls", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
@@ -781,14 +785,7 @@ describe("SettingsSyncSetupSection", () => {
           {...props}
           hasStoredSyncSecrets
           hasSyncSession
-          onCancelRenewal={undefined}
-          onResumeRenewal={undefined}
           presentation={buildBackupSyncSetupPresentation({
-            billingManagement: {
-              canManageRenewal: true,
-              canCancelAtPeriodEnd: true,
-              canResumeRenewal: true,
-            },
             hasStoredSyncSecrets: true,
             hasSyncSession: true,
             isAuthenticating: false,
@@ -807,15 +804,15 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    const cancelButton = await screen.findByTestId(
-      "settings-sync-renewal-cancel-button",
-    );
-    const resumeButton = screen.getByTestId("settings-sync-renewal-resume-button");
-
-    expect(() => {
-      fireEvent.press(cancelButton);
-      fireEvent.press(resumeButton);
-    }).not.toThrow();
+    expect(await screen.findByTestId("settings-sync-plan-step")).toBeTruthy();
+    expect(screen.getByTestId("settings-sync-withdrawal-notice")).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-renewal-row")).toBeNull();
+    expect(
+      screen.queryByTestId("settings-sync-renewal-cancel-button"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("settings-sync-renewal-resume-button"),
+    ).toBeNull();
   });
 
   it("shows the announcement eyebrow for a non-promo offer and wires a screen-action CTA", async () => {
