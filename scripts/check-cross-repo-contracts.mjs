@@ -1009,6 +1009,21 @@ function collectManifestShapeProblems(manifest) {
         problems.push(`${repo}.${field} must be a non-empty string`);
       }
     }
+    // The branch value flows into a GitHub API request path. Segment-wise
+    // encodeURIComponent keeps `/` and `.` intact by design (branch names
+    // contain both), so shape validation is what rules out values a URL
+    // normalizer could fold into a different endpoint: no `..` segments, no
+    // leading dash, git-ref-plausible characters only.
+    if (typeof entry.branch === "string" && entry.branch.trim() !== "") {
+      const branchOK =
+        /^[A-Za-z0-9](?:[A-Za-z0-9._/-]*[A-Za-z0-9])?$/.test(entry.branch) &&
+        !entry.branch.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+      if (!branchOK) {
+        problems.push(
+          `${repo}.branch must look like a git branch name (no empty, "." or ".." path segments, no leading/trailing separators), found ${JSON.stringify(entry.branch)}`,
+        );
+      }
+    }
     if (!/^[0-9a-f]{40}$/.test(String(entry.commit ?? ""))) {
       problems.push(
         `${repo}.commit must be a full 40-hex SHA, found ${JSON.stringify(entry.commit)}`,
