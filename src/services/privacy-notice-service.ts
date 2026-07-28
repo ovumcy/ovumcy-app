@@ -11,7 +11,7 @@ import type { InterfaceLanguage } from "../models/profile";
 export const PRIVACY_POLICY_URL = "https://ovumcy.com/privacy";
 
 /** Bumped whenever the notice text below changes in a user-relevant way. */
-export const PRIVACY_NOTICE_REVISION = "2026-07-21";
+export const PRIVACY_NOTICE_REVISION = "2026-07-28";
 
 export type PrivacyNoticeSectionID =
   | "on-device"

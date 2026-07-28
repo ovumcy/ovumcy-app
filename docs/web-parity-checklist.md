@@ -297,16 +297,17 @@ that owns the canonical web UX).
   - local device reminders (toggles, reminder time, lead-days control) are
     free-tier, mirroring web's free reminder settings (`reminder_lead_days`,
     web #123: 0–14, default 3, clamped never rejected)
-  - shows a managed-premium locked state on the email-delivery block only,
-    until the reminders entitlement is active
+  - shows the managed-premium locked state for the reminders entitlement while
+    the billing snapshot has not granted it; every reminder control stays usable
+    regardless
   - reminder **delivery channels differ by product and this is intentional**,
     not a parity gap: web delivers reminders server-side — the dashboard
     reminder banner, an outbound webhook (web #124), and a subscribable `.ics`
     calendar feed — whereas the app delivers on-device through local
     notifications (`expo-notifications`), scheduled purely from local data with
-    no server round-trip. Managed reminder **email** is a premium extension
-    beyond the web baseline. No code change closes this difference; it follows
-    from the app being local-first and owning its own notification channel.
+    no server round-trip. The app has no server-side reminder channel at all.
+    No code change closes this difference; it follows from the app being
+    local-first and owning its own notification channel.
 - Danger zone:
   - clear-data path
 
@@ -381,8 +382,7 @@ that owns the canonical web UX).
     precedes ovulation, unlike web's ovulation-date anchor; web's dashboard
     reminder banner (`dashboard_reminder_banner.go`) needs no app equivalent
     because the app dashboard hero already surfaces the next-period estimate
-    persistently; managed EMAIL delivery remains a premium extension beyond
-    the web baseline, gated by the billing snapshot;
+    persistently; the app ships no server-delivered reminder channel of its own;
   - managed partner access is a link-only owner-management flow under `Backup & sync`;
     the app shares the canonical invite URL returned by the managed cloud and
     does not ask for partner email or promise partner email delivery;
@@ -489,7 +489,7 @@ that owns the canonical web UX).
 The following surfaces are intentionally richer in the app than on the canonical web product. They are app-domain extensions, not parity targets.
 
 - Pregnancy test day-log field with automatic prediction pause across dashboard, calendar, and stats.
-- Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, the settings reminder email-delivery block, settings PDF export, and the backup-sync partner area.
+- Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, the settings reminders section, settings PDF export, and the backup-sync partner area.
 - Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
 - Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation solid gray border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
 - Six-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish, Italian).

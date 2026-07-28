@@ -81,7 +81,7 @@ follows from that:
   reported off-device by default.
 - **Premium is gated by the managed billing snapshot; the signed-token overlay
   for the purely-local features is shipped but dormant.** All premium features
-  (advanced fertility, extended reports, partner access, reminder emails,
+  (advanced fertility, extended reports, partner access, reminders,
   doctor PDF, advanced insights) are unlocked by a boolean
   entitlement / `has_active_plan` snapshot read from the managed cloud. Local
   device reminder notifications are a free-tier feature derived entirely from
@@ -553,7 +553,7 @@ pregnancy never sets it, so neither signal ever covers the other.
 | The calendar's selected-day advanced fertility summary drops under either suppression signal | `drops the summary while a pregnancy record is active (day-log pause never set)`, `drops the summary while the day-log pause is active (no pregnancy record)` in [src/services/calendar-view-service.test.ts](src/services/calendar-view-service.test.ts) |
 | The doctor PDF prints no current-cycle fertility signals under either suppression signal, leaving completed-cycle history untouched | `suppresses the current-cycle LH-peak signal when an active pregnancy record exists, leaving completed-cycle history untouched`, `suppresses the current-cycle LH-peak signal while the day-log pause is active (no pregnancy record)` in [src/services/export-pdf-service.test.ts](src/services/export-pdf-service.test.ts) |
 | The day-save confirmation never claims a fertile window or a self-care cycle day while a pregnancy record is active | `lets an active pregnancy record win over the fertile window and the day-log pause`, `never claims a fertile window in the day-save message while a pregnancy record is active` in [src/services/dashboard-view-service.test.ts](src/services/dashboard-view-service.test.ts) |
-| Period and fertile-window reminders (device push and the managed email channel) stay suppressed under either suppression signal | `suppresses period and fertile reminders after a positive pregnancy test`, `suppresses period and fertile reminders for an active pregnancy record with no day-log pause` in [src/services/local-reminder-plan-service.test.ts](src/services/local-reminder-plan-service.test.ts); `suppresses them on the device and the managed email channel during an active pregnancy` in [src/services/local-reminder-sync-service.test.ts](src/services/local-reminder-sync-service.test.ts) |
+| Period and fertile-window device reminders stay suppressed under either suppression signal | `suppresses period and fertile reminders after a positive pregnancy test`, `suppresses period and fertile reminders for an active pregnancy record with no day-log pause` in [src/services/local-reminder-plan-service.test.ts](src/services/local-reminder-plan-service.test.ts); `suppresses them on the device during an active pregnancy` in [src/services/local-reminder-sync-service.test.ts](src/services/local-reminder-sync-service.test.ts) |
 
 ### Policy / Planned (human-reviewed, not in the matrix)
 

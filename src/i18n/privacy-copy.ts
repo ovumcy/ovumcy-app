@@ -45,7 +45,7 @@ const privacyCopyEn: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "When data leaves this device",
-      body: "Only through an optional feature you turn on yourself, and only after this device has encrypted it. Encrypted backup and sync uploads records the server cannot read. An Ovumcy Cloud account holds your login, two-factor settings, subscription state, and partner invitations — never readable health data. Partner sharing creates an encrypted extract for the person you invite, at the access level you choose, and you can revoke it at any time. Optional cloud email reminders carry no cycle details.",
+      body: "Only through an optional feature you turn on yourself, and only after this device has encrypted it. Encrypted backup and sync uploads records the server cannot read. An Ovumcy Cloud account holds your login, two-factor settings, subscription state, and partner invitations — never readable health data. Partner sharing creates an encrypted extract for the person you invite, at the access level you choose, and you can revoke it at any time.",
     },
     exports: {
       title: "Exports and files you create",
@@ -94,7 +94,7 @@ const privacyCopyDe: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "Wann Daten dieses Gerät verlassen",
-      body: "Nur über eine optionale Funktion, die Sie selbst einschalten, und erst nachdem dieses Gerät die Daten verschlüsselt hat. Verschlüsselte Sicherung und Synchronisierung lädt Einträge hoch, die der Server nicht lesen kann. Ein Ovumcy-Cloud-Konto enthält Ihren Login, die Zwei-Faktor-Einstellungen, den Abostatus und Partner-Einladungen — nie lesbare Gesundheitsdaten. Die Partnerfreigabe erzeugt einen verschlüsselten Auszug für die eingeladene Person, auf der von Ihnen gewählten Zugriffsstufe, und Sie können sie jederzeit widerrufen. Optionale E-Mail-Erinnerungen aus der Cloud enthalten keine Zyklusdetails.",
+      body: "Nur über eine optionale Funktion, die Sie selbst einschalten, und erst nachdem dieses Gerät die Daten verschlüsselt hat. Verschlüsselte Sicherung und Synchronisierung lädt Einträge hoch, die der Server nicht lesen kann. Ein Ovumcy-Cloud-Konto enthält Ihren Login, die Zwei-Faktor-Einstellungen, den Abostatus und Partner-Einladungen — nie lesbare Gesundheitsdaten. Die Partnerfreigabe erzeugt einen verschlüsselten Auszug für die eingeladene Person, auf der von Ihnen gewählten Zugriffsstufe, und Sie können sie jederzeit widerrufen.",
     },
     exports: {
       title: "Exporte und erzeugte Dateien",
@@ -143,7 +143,7 @@ const privacyCopyFr: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "Quand des données quittent cet appareil",
-      body: "Uniquement via une fonction optionnelle que vous activez vous-même, et seulement après chiffrement par cet appareil. La sauvegarde et la synchronisation chiffrées envoient des enregistrements que le serveur ne peut pas lire. Un compte Ovumcy Cloud contient votre identifiant, vos réglages de double authentification, l'état de votre abonnement et les invitations de partenaire — jamais de données de santé lisibles. Le partage avec un partenaire crée un extrait chiffré pour la personne invitée, au niveau d'accès que vous choisissez, et vous pouvez le révoquer à tout moment. Les rappels par e-mail optionnels du cloud ne contiennent aucun détail de cycle.",
+      body: "Uniquement via une fonction optionnelle que vous activez vous-même, et seulement après chiffrement par cet appareil. La sauvegarde et la synchronisation chiffrées envoient des enregistrements que le serveur ne peut pas lire. Un compte Ovumcy Cloud contient votre identifiant, vos réglages de double authentification, l'état de votre abonnement et les invitations de partenaire — jamais de données de santé lisibles. Le partage avec un partenaire crée un extrait chiffré pour la personne invitée, au niveau d'accès que vous choisissez, et vous pouvez le révoquer à tout moment.",
     },
     exports: {
       title: "Exports et fichiers que vous créez",
@@ -192,7 +192,7 @@ const privacyCopyRu: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "Когда данные покидают устройство",
-      body: "Только через дополнительную функцию, которую вы включаете сами, и только после того, как устройство их зашифрует. Зашифрованные резервная копия и синхронизация выгружают записи, которые сервер прочитать не может. Аккаунт Ovumcy Cloud хранит логин, настройки двухфакторной защиты, состояние подписки и приглашения партнёра — но никогда читаемые данные о здоровье. Доступ для партнёра создаёт зашифрованную выборку для приглашённого человека на выбранном вами уровне доступа, и его можно отозвать в любой момент. Необязательные напоминания по электронной почте не содержат подробностей цикла.",
+      body: "Только через дополнительную функцию, которую вы включаете сами, и только после того, как устройство их зашифрует. Зашифрованные резервная копия и синхронизация выгружают записи, которые сервер прочитать не может. Аккаунт Ovumcy Cloud хранит логин, настройки двухфакторной защиты, состояние подписки и приглашения партнёра — но никогда читаемые данные о здоровье. Доступ для партнёра создаёт зашифрованную выборку для приглашённого человека на выбранном вами уровне доступа, и его можно отозвать в любой момент.",
     },
     exports: {
       title: "Экспорт и созданные файлы",
@@ -241,7 +241,7 @@ const privacyCopyEs: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "Cuándo salen datos de este dispositivo",
-      body: "Solo mediante una función opcional que actives tú, y solo después de que este dispositivo los cifre. La copia de seguridad y la sincronización cifradas suben registros que el servidor no puede leer. Una cuenta de Ovumcy Cloud guarda tu acceso, la configuración de doble factor, el estado de la suscripción y las invitaciones de pareja, nunca datos de salud legibles. El acceso para tu pareja crea un extracto cifrado para la persona que invitas, con el nivel de acceso que elijas, y puedes revocarlo cuando quieras. Los recordatorios por correo opcionales de la nube no incluyen detalles del ciclo.",
+      body: "Solo mediante una función opcional que actives tú, y solo después de que este dispositivo los cifre. La copia de seguridad y la sincronización cifradas suben registros que el servidor no puede leer. Una cuenta de Ovumcy Cloud guarda tu acceso, la configuración de doble factor, el estado de la suscripción y las invitaciones de pareja, nunca datos de salud legibles. El acceso para tu pareja crea un extracto cifrado para la persona que invitas, con el nivel de acceso que elijas, y puedes revocarlo cuando quieras.",
     },
     exports: {
       title: "Exportaciones y archivos que creas",
@@ -290,7 +290,7 @@ const privacyCopyIt: PrivacyNoticeCopy = {
     },
     leavesDevice: {
       title: "Quando i dati lasciano questo dispositivo",
-      body: "Solo tramite una funzione opzionale che attivi tu e solo dopo che questo dispositivo li ha cifrati. Backup e sincronizzazione cifrati caricano dati che il server non può leggere. Un account Ovumcy Cloud contiene le credenziali, le impostazioni a due fattori, lo stato dell'abbonamento e gli inviti per il partner, mai dati sanitari leggibili. La condivisione con il partner crea un estratto cifrato per la persona che inviti, al livello di accesso che scegli, e puoi revocarla in qualsiasi momento. I promemoria via e-mail opzionali del cloud non contengono dettagli del ciclo.",
+      body: "Solo tramite una funzione opzionale che attivi tu e solo dopo che questo dispositivo li ha cifrati. Backup e sincronizzazione cifrati caricano dati che il server non può leggere. Un account Ovumcy Cloud contiene le credenziali, le impostazioni a due fattori, lo stato dell'abbonamento e gli inviti per il partner, mai dati sanitari leggibili. La condivisione con il partner crea un estratto cifrato per la persona che inviti, al livello di accesso che scegli, e puoi revocarla in qualsiasi momento.",
     },
     exports: {
       title: "Esportazioni e file che crei",

@@ -723,7 +723,6 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     dailyLogReminderEnabled: record.dailyLogReminderEnabled === true,
     upcomingPeriodReminderEnabled: record.upcomingPeriodReminderEnabled === true,
     fertileWindowReminderEnabled: record.fertileWindowReminderEnabled === true,
-    managedReminderEmailsEnabled: record.managedReminderEmailsEnabled === true,
     kickCountReminderEnabled: record.kickCountReminderEnabled === true,
     // Personal crisis-support contact — additive optional strings,
     // absent-tolerant (a backup predating the fields lands on "" via the

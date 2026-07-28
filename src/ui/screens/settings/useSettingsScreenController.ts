@@ -685,9 +685,6 @@ export function useSettingsScreenController({
       onFertileWindowReminderChange: (value) => {
         applyReminderUpdates({ fertileWindowReminderEnabled: value });
       },
-      onManagedReminderEmailsChange: (value) => {
-        applyReminderUpdates({ managedReminderEmailsEnabled: value });
-      },
       onHideNotesChange: (value) => {
         applyTrackingUpdates({ hideNotes: value }, { resetExportMessages: true });
       },

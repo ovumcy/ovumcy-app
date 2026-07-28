@@ -40,8 +40,8 @@ describe("runtime i18n helpers", () => {
     expect(getShellCopy("es").tabs.stats).toBe("Análisis");
     expect(getShellCopy("it").tabs.stats).toBe("Statistiche");
     expect(getSettingsCopy("it").title).toBe("Impostazioni");
-    expect(getSettingsCopy("ru").reminders.emailDeliveryStateOn).toBe(
-      "Email-напоминания Ovumcy Cloud будут синхронизироваться, когда это доступно.",
+    expect(getSettingsCopy("ru").reminders.localOnlyHint).toBe(
+      "Напоминания устройства остаются только на этом устройстве. Данные о здоровье не отправляются на сервер.",
     );
     expect(getSettingsCopy("en").account.restoreAccept).toBe("Restore backup copy");
     expect(getPartnerCopy("ru").sharedViewLoadingSubtitle).toBe(

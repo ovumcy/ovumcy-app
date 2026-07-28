@@ -22,7 +22,7 @@ import {
   type LoadedDashboardState,
 } from "../../services/dashboard-view-service";
 import type { LocalReminderScheduler } from "../../services/local-reminder-scheduler-contract";
-import { syncManagedLocalReminderSchedule } from "../../services/local-reminder-sync-service";
+import { syncLocalReminderSchedule } from "../../services/local-reminder-sync-service";
 import {
   buildManualCycleStartViewData,
 } from "../../services/manual-cycle-start-service";
@@ -95,9 +95,8 @@ export function DashboardScreen({
     setState(loadedState);
     setIsLoading(false);
     if (options?.syncReminders) {
-      await syncManagedLocalReminderSchedule(
+      await syncLocalReminderSchedule(
         storage,
-        syncSecretStore,
         reminderScheduler,
         loadedState.profile,
         {

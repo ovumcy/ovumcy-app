@@ -928,182 +928,33 @@ describe("managed-cloud-api-client", () => {
     });
   });
 
-  it("maps reminder email schedule responses", async () => {
-    const fetch = jest
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            enabled: true,
-            schedules: [
-              {
-                kind: "daily_log",
-                schedule_type: "daily",
-                locale: "en",
-                time_zone: "UTC",
-                daily_hour: 21,
-                daily_minute: 30,
-                next_delivery_at: "2026-04-05T21:30:00.000Z",
-                last_delivered_at: null,
-                created_at: "2026-04-05T08:00:00.000Z",
-                updated_at: "2026-04-05T08:00:00.000Z",
-              },
-            ],
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            enabled: true,
-            schedules: [
-              {
-                kind: "fertile_window",
-                schedule_type: "once",
-                locale: "ru",
-                time_zone: "Europe/Budapest",
-                daily_hour: 0,
-                daily_minute: 0,
-                next_delivery_at: "2026-04-08T06:00:00.000Z",
-                last_delivered_at: null,
-                created_at: "2026-04-05T08:00:00.000Z",
-                updated_at: "2026-04-05T08:10:00.000Z",
-              },
-            ],
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      )
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            enabled: false,
-            schedules: [],
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          },
-        ),
-      );
-
-    const client = createManagedCloudAPIClient(
-      "http://127.0.0.1:8090",
-      fetch as unknown as typeof global.fetch,
-    );
-
-    await expect(
-      client.getReminderEmailSchedules("managed-session-1"),
-    ).resolves.toEqual({
-      ok: true,
-      snapshot: {
-        enabled: true,
-        schedules: [
-          {
-            kind: "daily_log",
-            scheduleType: "daily",
-            locale: "en",
-            timeZone: "UTC",
-            dailyHour: 21,
-            dailyMinute: 30,
-            nextDeliveryAt: "2026-04-05T21:30:00.000Z",
-            lastDeliveredAt: null,
-            createdAt: "2026-04-05T08:00:00.000Z",
-            updatedAt: "2026-04-05T08:00:00.000Z",
-          },
-        ],
-      },
-    });
-
-    await expect(
-      client.replaceReminderEmailSchedules("managed-session-1", {
-        schedules: [
-          {
-            kind: "fertile_window",
-            scheduleType: "once",
-            locale: "ru",
-            timeZone: "Europe/Budapest",
-            dailyHour: 0,
-            dailyMinute: 0,
-            nextDeliveryAt: "2026-04-08T06:00:00.000Z",
-          },
-        ],
-      }),
-    ).resolves.toEqual({
-      ok: true,
-      snapshot: {
-        enabled: true,
-        schedules: [
-          {
-            kind: "fertile_window",
-            scheduleType: "once",
-            locale: "ru",
-            timeZone: "Europe/Budapest",
-            dailyHour: 0,
-            dailyMinute: 0,
-            nextDeliveryAt: "2026-04-08T06:00:00.000Z",
-            lastDeliveredAt: null,
-            createdAt: "2026-04-05T08:00:00.000Z",
-            updatedAt: "2026-04-05T08:10:00.000Z",
-          },
-        ],
-      },
-    });
-
-    await expect(
-      client.clearReminderEmailSchedules("managed-session-1"),
-    ).resolves.toEqual({
-      ok: true,
-      snapshot: {
-        enabled: false,
-        schedules: [],
-      },
-    });
-  });
-
-  it("maps reminder email schedule entitlement errors", async () => {
-    const fetch = jest.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          error: "reminder_schedule_unavailable",
-        }),
-        {
+  // Transition tolerance: the managed cloud no longer serves reminder-email
+  // routes, and `reminder_schedule_unavailable` / `invalid_reminder_schedule`
+  // left the client's error-code union with them. A server that predates the
+  // removal can still answer any endpoint with one of those bodies, so the
+  // reader must degrade it to the generic code instead of throwing or leaking
+  // a raw server string.
+  it("degrades reminder-schedule error codes an older server still sends", async () => {
+    for (const legacyError of [
+      "reminder_schedule_unavailable",
+      "invalid_reminder_schedule",
+    ]) {
+      const fetch = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: legacyError }), {
           status: 403,
           headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+        }),
+      );
 
-    const client = createManagedCloudAPIClient(
-      "http://127.0.0.1:8090",
-      fetch as unknown as typeof global.fetch,
-    );
+      const client = createManagedCloudAPIClient(
+        "http://127.0.0.1:8090",
+        fetch as unknown as typeof global.fetch,
+      );
 
-    await expect(
-      client.replaceReminderEmailSchedules("managed-session-1", {
-        schedules: [
-          {
-            kind: "daily_log",
-            scheduleType: "daily",
-            locale: "en",
-            timeZone: "UTC",
-            dailyHour: 20,
-            dailyMinute: 0,
-            nextDeliveryAt: "2026-04-05T20:00:00.000Z",
-          },
-        ],
-      }),
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: "reminder_schedule_unavailable",
-    });
+      await expect(
+        client.getBillingSnapshot("managed-session-1"),
+      ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    }
   });
 
   it("surfaces the recovery code that comes back on register", async () => {
