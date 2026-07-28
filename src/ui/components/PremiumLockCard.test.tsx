@@ -49,6 +49,25 @@ describe("PremiumLockCard", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it("stays informational when a label is supplied without a handler", () => {
+    render(
+      <AppPreferencesTestProvider>
+        <PremiumLockCard
+          ctaLabel="Unlock pregnancy mode"
+          description="Unlocked with a single purchase."
+          eyebrowLabel="Pregnancy mode"
+          testID="lock"
+          title="Pregnancy mode is a one-time unlock"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    // A one-time-unlock surface keeps its view-data label while no purchase
+    // surface exists to open: the card renders the text and nothing pressable.
+    expect(screen.queryByTestId("lock-cta")).toBeNull();
+    expect(screen.getByTestId("lock").props.accessibilityRole).toBeUndefined();
+  });
+
   it("renders without a CTA when neither ctaLabel nor onPress are passed", () => {
     render(
       <AppPreferencesTestProvider>

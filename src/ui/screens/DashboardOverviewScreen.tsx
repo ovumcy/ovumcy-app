@@ -962,12 +962,17 @@ function PregnancyEntryCard({
   const styles = useThemedStyles(createStyles);
 
   if (viewData.variant === "premium_locked") {
+    // Without a handler the shared card drops its CTA and its pressable
+    // wrapper, leaving an informational card — the same locked state
+    // PregnancyStartFlowScreen renders. A label wired to a no-op would read as
+    // a broken unlock button, and a route that sells the cloud subscription
+    // would misstate a one-time module unlock.
     return (
       <PremiumLockCard
         ctaLabel={viewData.ctaLabel}
         description={viewData.description}
         eyebrowLabel={viewData.eyebrowLabel}
-        onPress={onPremiumCTAPress ?? (() => {})}
+        onPress={onPremiumCTAPress}
         testID="dashboard-pregnancy-entry-card"
         title={viewData.title}
       />
