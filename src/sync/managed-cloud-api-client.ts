@@ -15,7 +15,6 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_recovery_credentials"
   | "invalid_reset_token"
   | "rate_limited"
-  | "invalid_reminder_schedule"
   | "invalid_partner_invite"
   | "invalid_partner_projection"
   | "partner_access_not_found"
@@ -23,7 +22,6 @@ export type ManagedCloudAPIErrorCode =
   | "partner_access_unavailable"
   | "partner_invite_expired"
   | "partner_invite_not_found"
-  | "reminder_schedule_unavailable"
   | "entitlements_unavailable"
   | "entitlements_not_configured"
   | "unauthorized"
@@ -130,31 +128,6 @@ export type ManagedCloudEntitlementToken = {
   // expiresAt is the server-reported expiry (RFC3339). The authoritative expiry
   // is the signed `exp` claim inside the token; this mirror is informational.
   expiresAt: string;
-};
-
-export type ManagedCloudReminderEmailScheduleKind =
-  | "daily_log"
-  | "upcoming_period"
-  | "fertile_window";
-
-export type ManagedCloudReminderEmailScheduleType = "daily" | "once";
-
-export type ManagedCloudReminderEmailSchedule = {
-  kind: ManagedCloudReminderEmailScheduleKind;
-  scheduleType: ManagedCloudReminderEmailScheduleType;
-  locale: string;
-  timeZone: string;
-  dailyHour: number;
-  dailyMinute: number;
-  nextDeliveryAt: string | null;
-  lastDeliveredAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ManagedCloudReminderEmailScheduleSnapshot = {
-  enabled: boolean;
-  schedules: ManagedCloudReminderEmailSchedule[];
 };
 
 export type ManagedCloudPartnerAccessLevel = "summary" | "full";
@@ -304,12 +277,6 @@ export type ManagedCloudAPIClient = {
     | { ok: true; result: ManagedCloudEntitlementToken }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
-  getReminderEmailSchedules(
-    sessionToken: string,
-  ): Promise<
-    | { ok: true; snapshot: ManagedCloudReminderEmailScheduleSnapshot }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
   getPartnerAccess(
     sessionToken: string,
   ): Promise<
@@ -352,23 +319,6 @@ export type ManagedCloudAPIClient = {
     },
   ): Promise<
     | { ok: true; result: ManagedCloudPartnerInviteIssueResult }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
-  replaceReminderEmailSchedules(
-    sessionToken: string,
-    input: {
-      schedules: {
-        kind: ManagedCloudReminderEmailScheduleKind;
-        scheduleType: ManagedCloudReminderEmailScheduleType;
-        locale: string;
-        timeZone: string;
-        dailyHour: number;
-        dailyMinute: number;
-        nextDeliveryAt: string;
-      }[];
-    },
-  ): Promise<
-    | { ok: true; snapshot: ManagedCloudReminderEmailScheduleSnapshot }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
   register(
@@ -495,12 +445,6 @@ export type ManagedCloudAPIClient = {
     | { ok: true; projection: ManagedCloudPartnerProjection }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
-  clearReminderEmailSchedules(
-    sessionToken: string,
-  ): Promise<
-    | { ok: true; snapshot: ManagedCloudReminderEmailScheduleSnapshot }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
-  >;
 };
 
 type FetchLike = typeof fetch;
@@ -598,24 +542,6 @@ type RawManagedCloudBillingSnapshot = {
 type RawManagedCloudEntitlementToken = {
   token: string;
   expires_at: string;
-};
-
-type RawManagedCloudReminderEmailSchedule = {
-  kind: ManagedCloudReminderEmailScheduleKind;
-  schedule_type: ManagedCloudReminderEmailScheduleType;
-  locale: string;
-  time_zone: string;
-  daily_hour: number;
-  daily_minute: number;
-  next_delivery_at?: string | null;
-  last_delivered_at?: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type RawManagedCloudReminderEmailScheduleSnapshot = {
-  enabled: boolean;
-  schedules: RawManagedCloudReminderEmailSchedule[];
 };
 
 type RawManagedCloudPartnerInvite = {
@@ -993,23 +919,6 @@ export function createManagedCloudAPIClient(
       );
     },
 
-    async getReminderEmailSchedules(sessionToken) {
-      return requestJSON<RawManagedCloudReminderEmailScheduleSnapshot>(
-        fetchImpl,
-        normalizedBaseURL,
-        "/account/reminders/email",
-        {
-          method: "GET",
-          sessionToken,
-        },
-        isRawManagedCloudReminderEmailScheduleSnapshot,
-      ).then((result) =>
-        result.ok
-          ? { ok: true, snapshot: mapReminderEmailScheduleSnapshot(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
-      );
-    },
-
     async getPartnerAccess(sessionToken) {
       return requestJSON<RawManagedCloudPartnerAccessOverview>(
         fetchImpl,
@@ -1060,34 +969,6 @@ export function createManagedCloudAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, result: mapPartnerInviteIssueResult(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
-      );
-    },
-
-    async replaceReminderEmailSchedules(sessionToken, input) {
-      return requestJSON<RawManagedCloudReminderEmailScheduleSnapshot>(
-        fetchImpl,
-        normalizedBaseURL,
-        "/account/reminders/email",
-        {
-          method: "PUT",
-          sessionToken,
-          body: {
-            schedules: input.schedules.map((schedule) => ({
-              kind: schedule.kind,
-              schedule_type: schedule.scheduleType,
-              locale: schedule.locale,
-              time_zone: schedule.timeZone,
-              daily_hour: schedule.dailyHour,
-              daily_minute: schedule.dailyMinute,
-              next_delivery_at: schedule.nextDeliveryAt,
-            })),
-          },
-        },
-        isRawManagedCloudReminderEmailScheduleSnapshot,
-      ).then((result) =>
-        result.ok
-          ? { ok: true, snapshot: mapReminderEmailScheduleSnapshot(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -1219,23 +1100,6 @@ export function createManagedCloudAPIClient(
       ).then((result) =>
         result.ok
           ? { ok: true, projection: mapPartnerProjection(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
-      );
-    },
-
-    async clearReminderEmailSchedules(sessionToken) {
-      return requestJSON<RawManagedCloudReminderEmailScheduleSnapshot>(
-        fetchImpl,
-        normalizedBaseURL,
-        "/account/reminders/email",
-        {
-          method: "DELETE",
-          sessionToken,
-        },
-        isRawManagedCloudReminderEmailScheduleSnapshot,
-      ).then((result) =>
-        result.ok
-          ? { ok: true, snapshot: mapReminderEmailScheduleSnapshot(result.payload) }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -1385,7 +1249,6 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "invalid_recovery_credentials":
       case "invalid_reset_token":
       case "rate_limited":
-      case "invalid_reminder_schedule":
       case "invalid_partner_invite":
       case "partner_access_not_found":
       case "partner_access_unavailable":
@@ -1393,7 +1256,6 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_invite_not_found":
       case "invalid_partner_projection":
       case "partner_projection_not_found":
-      case "reminder_schedule_unavailable":
       case "entitlements_unavailable":
       case "entitlements_not_configured":
       case "unauthorized":
@@ -1570,55 +1432,6 @@ function isRawManagedCloudEntitlementToken(
     typeof value.token === "string" &&
     value.token.length > 0 &&
     typeof value.expires_at === "string"
-  );
-}
-
-function isReminderEmailScheduleKind(
-  value: unknown,
-): value is ManagedCloudReminderEmailScheduleKind {
-  return (
-    value === "daily_log" ||
-    value === "upcoming_period" ||
-    value === "fertile_window"
-  );
-}
-
-function isReminderEmailScheduleType(
-  value: unknown,
-): value is ManagedCloudReminderEmailScheduleType {
-  return value === "daily" || value === "once";
-}
-
-function isRawManagedCloudReminderEmailSchedule(
-  value: unknown,
-): value is RawManagedCloudReminderEmailSchedule {
-  return (
-    isObject(value) &&
-    isReminderEmailScheduleKind(value.kind) &&
-    isReminderEmailScheduleType(value.schedule_type) &&
-    typeof value.locale === "string" &&
-    typeof value.time_zone === "string" &&
-    typeof value.daily_hour === "number" &&
-    typeof value.daily_minute === "number" &&
-    (typeof value.next_delivery_at === "string" ||
-      value.next_delivery_at === null ||
-      typeof value.next_delivery_at === "undefined") &&
-    (typeof value.last_delivered_at === "string" ||
-      value.last_delivered_at === null ||
-      typeof value.last_delivered_at === "undefined") &&
-    typeof value.created_at === "string" &&
-    typeof value.updated_at === "string"
-  );
-}
-
-function isRawManagedCloudReminderEmailScheduleSnapshot(
-  value: unknown,
-): value is RawManagedCloudReminderEmailScheduleSnapshot {
-  return (
-    isObject(value) &&
-    typeof value.enabled === "boolean" &&
-    Array.isArray(value.schedules) &&
-    value.schedules.every(isRawManagedCloudReminderEmailSchedule)
   );
 }
 
@@ -1947,32 +1760,6 @@ function mapBillingOfferCopy(
     }
   }
   return copy;
-}
-
-function mapReminderEmailSchedule(
-  raw: RawManagedCloudReminderEmailSchedule,
-): ManagedCloudReminderEmailSchedule {
-  return {
-    kind: raw.kind,
-    scheduleType: raw.schedule_type,
-    locale: raw.locale,
-    timeZone: raw.time_zone,
-    dailyHour: raw.daily_hour,
-    dailyMinute: raw.daily_minute,
-    nextDeliveryAt: raw.next_delivery_at ?? null,
-    lastDeliveredAt: raw.last_delivered_at ?? null,
-    createdAt: raw.created_at,
-    updatedAt: raw.updated_at,
-  };
-}
-
-function mapReminderEmailScheduleSnapshot(
-  raw: RawManagedCloudReminderEmailScheduleSnapshot,
-): ManagedCloudReminderEmailScheduleSnapshot {
-  return {
-    enabled: raw.enabled,
-    schedules: raw.schedules.map(mapReminderEmailSchedule),
-  };
 }
 
 function mapPartnerInvite(

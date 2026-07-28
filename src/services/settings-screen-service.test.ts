@@ -819,7 +819,6 @@ describe("settings services", () => {
       dailyLogReminderEnabled: true,
       upcomingPeriodReminderEnabled: true,
       fertileWindowReminderEnabled: false,
-      managedReminderEmailsEnabled: true,
       reminderTime: "21:30",
       reminderLeadDays: 5,
     });
@@ -831,7 +830,6 @@ describe("settings services", () => {
           dailyLogReminderEnabled: true,
           upcomingPeriodReminderEnabled: true,
           fertileWindowReminderEnabled: false,
-          managedReminderEmailsEnabled: true,
           reminderTime: "21:30",
           reminderLeadDays: 5,
         }),
@@ -842,7 +840,6 @@ describe("settings services", () => {
         dailyLogReminderEnabled: true,
         upcomingPeriodReminderEnabled: true,
         fertileWindowReminderEnabled: false,
-        managedReminderEmailsEnabled: true,
         reminderTime: "21:30",
         reminderLeadDays: 5,
       }),
@@ -864,7 +861,6 @@ describe("settings services", () => {
       dailyLogReminderEnabled: false,
       upcomingPeriodReminderEnabled: true,
       fertileWindowReminderEnabled: false,
-      managedReminderEmailsEnabled: false,
       reminderTime: "08:00",
       reminderLeadDays: 99,
     });

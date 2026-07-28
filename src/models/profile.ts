@@ -94,7 +94,6 @@ export type ProfileRecord = {
   dailyLogReminderEnabled?: boolean;
   upcomingPeriodReminderEnabled?: boolean;
   fertileWindowReminderEnabled?: boolean;
-  managedReminderEmailsEnabled?: boolean;
   // Optional kick-count reminder. Default OFF; only ever
   // meaningful while an active pregnancy exists at/after
   // KICK_COUNTS_START_WEEK -- see local-reminder-plan-service.ts's gating.
@@ -148,7 +147,6 @@ export type ReminderSettingsValues = {
   dailyLogReminderEnabled: boolean;
   upcomingPeriodReminderEnabled: boolean;
   fertileWindowReminderEnabled: boolean;
-  managedReminderEmailsEnabled: boolean;
   reminderTime: ReminderTime;
   reminderLeadDays: number;
 };
@@ -279,7 +277,6 @@ export function createDefaultProfileRecord(): ProfileRecord {
     dailyLogReminderEnabled: false,
     upcomingPeriodReminderEnabled: false,
     fertileWindowReminderEnabled: false,
-    managedReminderEmailsEnabled: false,
     kickCountReminderEnabled: false,
     reminderTime: DEFAULT_REMINDER_TIME,
     reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,

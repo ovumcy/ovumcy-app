@@ -1,37 +1,9 @@
 import { createPregnancyRecord } from "../models/pregnancy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
-import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
-import {
-  syncLocalReminderSchedule,
-  syncReminderDeliveryState,
-} from "./local-reminder-sync-service";
-import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
-import { syncManagedReminderEmailSchedules } from "./managed-reminder-email-schedule-service";
+import { syncLocalReminderSchedule } from "./local-reminder-sync-service";
 import { addDays, parseLocalDate } from "./profile-settings-policy";
 import type { LocalReminderScheduler } from "./local-reminder-scheduler-contract";
-
-jest.mock("./managed-premium-features-service", () => ({
-  loadManagedPremiumFeatures: jest.fn(),
-}));
-jest.mock("./managed-reminder-email-schedule-service", () => ({
-  syncManagedReminderEmailSchedules: jest.fn(),
-}));
-
-const loadManagedPremiumFeaturesMock = loadManagedPremiumFeatures as jest.Mock;
-const syncManagedReminderEmailSchedulesMock =
-  syncManagedReminderEmailSchedules as jest.Mock;
-
-function premiumFeaturesWithReminders(reminders: boolean) {
-  return {
-    advancedFertility: false,
-    advancedInsights: false,
-    doctorPDF: false,
-    extendedReports: false,
-    partnerAccess: false,
-    reminders,
-  };
-}
 
 function createScheduler(): LocalReminderScheduler {
   return {
@@ -106,152 +78,35 @@ describe("local-reminder-sync-service", () => {
         }),
       ]),
     );
+    // Reminders never leave the device: no sync preferences, no managed
+    // session, no billing snapshot are consulted on this path. Regression
+    // against re-coupling the local channel to an account.
+    expect(storage.readSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
-  it("returns disabled and clears the device schedule when nothing is enabled", async () => {
+  it("returns disabled and clears the device schedule without touching storage when nothing is enabled", async () => {
     const storage = createLocalAppStorageMock();
     const scheduler = createScheduler();
 
     await expect(
-      syncLocalReminderSchedule(storage, scheduler, createDefaultProfileRecord(), {
-        now: new Date(2026, 3, 5, 10, 0, 0, 0),
-      }),
-    ).resolves.toBe("disabled");
-
-    expect(scheduler.sync).toHaveBeenCalledWith([]);
-  });
-
-  describe("syncReminderDeliveryState", () => {
-    it("syncs the local device schedule for free users while the email channel stays gated", async () => {
-      const storage = createLocalAppStorageMock();
-      const secretStore = createSyncSecretStoreMock();
-      const scheduler = createScheduler();
-      loadManagedPremiumFeaturesMock.mockResolvedValue(
-        premiumFeaturesWithReminders(false),
-      );
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("disabled");
-      const profile = {
-        ...createDefaultProfileRecord(),
-        dailyLogReminderEnabled: true,
-        // Owner opted into emails, but without the billing entitlement the
-        // email channel must stay fail-closed while local still schedules.
-        managedReminderEmailsEnabled: true,
-      };
-
-      const result = await syncReminderDeliveryState(
+      syncLocalReminderSchedule(
         storage,
-        secretStore,
-        scheduler,
-        profile,
-        { now: new Date(2026, 3, 5, 10, 0, 0, 0) },
-      );
-
-      expect(result.local).toBe("scheduled");
-      expect(result.email).toBe("disabled");
-      expect(scheduler.sync).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ kind: "daily_log" }),
-        ]),
-      );
-      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
-        secretStore,
-        expect.anything(),
-        expect.arrayContaining([
-          expect.objectContaining({ kind: "daily_log" }),
-        ]),
-        expect.objectContaining({ enabled: false }),
-      );
-    });
-
-    it("enables managed email delivery only when billing grants reminders and the owner opted in", async () => {
-      const storage = createLocalAppStorageMock();
-      const secretStore = createSyncSecretStoreMock();
-      const scheduler = createScheduler();
-      loadManagedPremiumFeaturesMock.mockResolvedValue(
-        premiumFeaturesWithReminders(true),
-      );
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("synced");
-      const profile = {
-        ...createDefaultProfileRecord(),
-        dailyLogReminderEnabled: true,
-        managedReminderEmailsEnabled: true,
-      };
-
-      const result = await syncReminderDeliveryState(
-        storage,
-        secretStore,
-        scheduler,
-        profile,
-        { now: new Date(2026, 3, 5, 10, 0, 0, 0) },
-      );
-
-      expect(result.local).toBe("scheduled");
-      expect(result.email).toBe("synced");
-      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
-        secretStore,
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ enabled: true }),
-      );
-    });
-
-    it("keeps email delivery off when billing grants reminders but the owner opted out", async () => {
-      const storage = createLocalAppStorageMock();
-      const secretStore = createSyncSecretStoreMock();
-      const scheduler = createScheduler();
-      loadManagedPremiumFeaturesMock.mockResolvedValue(
-        premiumFeaturesWithReminders(true),
-      );
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("cleared");
-      const profile = {
-        ...createDefaultProfileRecord(),
-        dailyLogReminderEnabled: true,
-        managedReminderEmailsEnabled: false,
-      };
-
-      await syncReminderDeliveryState(storage, secretStore, scheduler, profile, {
-        now: new Date(2026, 3, 5, 10, 0, 0, 0),
-      });
-
-      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
-        secretStore,
-        expect.anything(),
-        expect.anything(),
-        expect.objectContaining({ enabled: false }),
-      );
-    });
-
-    it("clears both channels without a billing lookup when every reminder toggle is off", async () => {
-      const storage = createLocalAppStorageMock();
-      const secretStore = createSyncSecretStoreMock();
-      const scheduler = createScheduler();
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("cleared");
-
-      const result = await syncReminderDeliveryState(
-        storage,
-        secretStore,
         scheduler,
         createDefaultProfileRecord(),
         { now: new Date(2026, 3, 5, 10, 0, 0, 0) },
-      );
+      ),
+    ).resolves.toBe("disabled");
 
-      expect(result.local).toBe("disabled");
-      expect(scheduler.sync).toHaveBeenCalledWith([]);
-      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
-        secretStore,
-        expect.anything(),
-        [],
-        { enabled: false },
-      );
-      expect(loadManagedPremiumFeaturesMock).not.toHaveBeenCalled();
-    });
+    expect(scheduler.sync).toHaveBeenCalledWith([]);
+    expect(storage.listDayLogRecordsInRange).not.toHaveBeenCalled();
+    expect(storage.readSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
   // The plan builder suppresses period/fertile reminders for an ACTIVE
   // pregnancy record, but it can only do so if this service actually reads one.
   // The read used to be short-circuited on the kick-count flag alone — off by
-  // default — so for a typical pregnant owner the record never arrived and both
-  // delivery channels kept firing cycle reminders.
+  // default — so for a typical pregnant owner the record never arrived and the
+  // device kept firing cycle reminders.
   describe("active-pregnancy suppression of the cycle reminders", () => {
     const now = new Date(2026, 3, 5, 10, 0, 0, 0);
 
@@ -261,7 +116,6 @@ describe("local-reminder-sync-service", () => {
         dailyLogReminderEnabled: true,
         upcomingPeriodReminderEnabled: true,
         fertileWindowReminderEnabled: true,
-        managedReminderEmailsEnabled: true,
         // The kick-count toggle stays OFF (its default) — the state in which
         // the pregnancy read was previously skipped altogether.
         kickCountReminderEnabled: false,
@@ -293,7 +147,7 @@ describe("local-reminder-sync-service", () => {
       ]);
     });
 
-    it("suppresses them on the device and the managed email channel during an active pregnancy", async () => {
+    it("suppresses them on the device during an active pregnancy", async () => {
       const storage = createLocalAppStorageMock({
         listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
         readActivePregnancy: jest.fn().mockResolvedValue(
@@ -305,16 +159,10 @@ describe("local-reminder-sync-service", () => {
           }),
         ),
       });
-      const secretStore = createSyncSecretStoreMock();
       const scheduler = createScheduler();
-      loadManagedPremiumFeaturesMock.mockResolvedValue(
-        premiumFeaturesWithReminders(true),
-      );
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("synced");
 
-      await syncReminderDeliveryState(
+      await syncLocalReminderSchedule(
         storage,
-        secretStore,
         scheduler,
         cyclePredictionProfile(),
         { now },
@@ -322,14 +170,6 @@ describe("local-reminder-sync-service", () => {
 
       expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
       expect(syncedPlanKinds(scheduler)).toEqual(["daily_log"]);
-      // The same plan list feeds the managed email schedules, so the leak was
-      // never push-only.
-      expect(syncManagedReminderEmailSchedulesMock).toHaveBeenCalledWith(
-        secretStore,
-        expect.anything(),
-        [expect.objectContaining({ kind: "daily_log" })],
-        expect.objectContaining({ enabled: true }),
-      );
     });
   });
 
@@ -381,27 +221,18 @@ describe("local-reminder-sync-service", () => {
       const storage = createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activePregnancyRecord()),
       });
-      const secretStore = createSyncSecretStoreMock();
       const scheduler = createScheduler();
-      loadManagedPremiumFeaturesMock.mockResolvedValue(
-        premiumFeaturesWithReminders(false),
-      );
-      syncManagedReminderEmailSchedulesMock.mockResolvedValue("disabled");
       const profile = {
         ...createDefaultProfileRecord(),
         kickCountReminderEnabled: true,
         reminderTime: "09:15",
       };
 
-      const result = await syncReminderDeliveryState(
-        storage,
-        secretStore,
-        scheduler,
-        profile,
-        { now: nowForGaDays(28 * 7) },
-      );
+      const result = await syncLocalReminderSchedule(storage, scheduler, profile, {
+        now: nowForGaDays(28 * 7),
+      });
 
-      expect(result.local).toBe("scheduled");
+      expect(result).toBe("scheduled");
       expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
       expect(scheduler.sync).toHaveBeenCalledWith(
         expect.arrayContaining([

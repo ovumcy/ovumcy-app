@@ -19,7 +19,6 @@ import type { SettingsFlowStyles } from "./settings-flow-styles";
 type SettingsRemindersSectionProps = {
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
-  onManagedReminderEmailsChange: (value: boolean) => void;
   onPremiumCTAPress?: (() => void) | undefined;
   onReminderLeadDaysChange: (value: number) => void;
   onReminderTimeChange: (value: string) => void;
@@ -31,14 +30,14 @@ type SettingsRemindersSectionProps = {
   viewData: SettingsViewData;
 };
 
-// Local device reminders are a Free-tier surface (web parity): the toggles,
-// time, and lead-days controls below never sit behind a premium gate. Only
-// the managed EMAIL delivery block at the bottom is premium — it renders the
-// shared PremiumLockCard until the billing snapshot grants reminders.
+// Local device reminders are a Free-tier surface (web parity): every control
+// below works with no account and no plan. Reminders are delivered on this
+// device only — there is no server-side reminder channel to opt into. The
+// shared PremiumLockCard marks the managed cloud's reminders entitlement
+// while the billing snapshot has not granted it.
 export function SettingsRemindersSection({
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
-  onManagedReminderEmailsChange,
   onPremiumCTAPress,
   onReminderLeadDaysChange,
   onReminderTimeChange,
@@ -134,8 +133,6 @@ export function SettingsRemindersSection({
         valueSuffix={` ${viewData.common.daysShort}`}
       />
 
-      <Text style={styles.helperText}>{reminderView.emailHint}</Text>
-
       {!state.managedPremiumAccess.reminders ? (
         <PremiumLockCard
           ctaLabel={premiumLockCopy.ctaLabel}
@@ -146,21 +143,6 @@ export function SettingsRemindersSection({
           title={premiumLockCopy.remindersTitle}
         />
       ) : null}
-
-      <BinaryToggleCard
-        description={reminderView.emailDelivery.hint}
-        descriptionPosition="below"
-        icon="✉️"
-        label={reminderView.emailDelivery.label}
-        onValueChange={onManagedReminderEmailsChange}
-        stateText={
-          state.reminderValues.managedReminderEmailsEnabled
-            ? reminderView.emailDelivery.stateOn
-            : reminderView.emailDelivery.stateOff
-        }
-        testID="settings-toggle-reminder-email-delivery"
-        value={state.reminderValues.managedReminderEmailsEnabled}
-      />
 
       {reminderStatusMessage ? (
         <StatusBanner

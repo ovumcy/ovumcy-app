@@ -137,17 +137,10 @@ export type SettingsViewData = {
     subtitle: string;
     localOnlyHint: string;
     lockedHint: string;
-    emailHint: string;
     timeLabel: string;
     timeHint: string;
     leadDaysLabel: string;
     leadDaysHint: string;
-    emailDelivery: {
-      label: string;
-      hint: string;
-      stateOn: string;
-      stateOff: string;
-    };
     dailyLog: {
       label: string;
       hint: string;
@@ -168,9 +161,6 @@ export type SettingsViewData = {
     };
     status: {
       saved: string;
-      savedWithEmail: string;
-      emailUnavailable: string;
-      emailSyncFailed: string;
       permissionDenied: string;
       unavailable: string;
     };
@@ -669,17 +659,10 @@ export function buildSettingsViewData(
       subtitle: settingsCopy.reminders.subtitle,
       localOnlyHint: settingsCopy.reminders.localOnlyHint,
       lockedHint: settingsCopy.reminders.lockedHint,
-      emailHint: settingsCopy.reminders.emailHint,
       timeLabel: settingsCopy.reminders.timeLabel,
       timeHint: settingsCopy.reminders.timeHint,
       leadDaysLabel: settingsCopy.reminders.leadDaysLabel,
       leadDaysHint: settingsCopy.reminders.leadDaysHint,
-      emailDelivery: {
-        label: settingsCopy.reminders.emailDelivery,
-        hint: settingsCopy.reminders.emailDeliveryHint,
-        stateOn: settingsCopy.reminders.statusOn,
-        stateOff: settingsCopy.reminders.statusOff,
-      },
       dailyLog: {
         label: settingsCopy.reminders.dailyLog,
         hint: settingsCopy.reminders.dailyLogHint,
@@ -700,9 +683,6 @@ export function buildSettingsViewData(
       },
       status: {
         saved: settingsCopy.reminders.saved,
-        savedWithEmail: settingsCopy.reminders.savedWithEmail,
-        emailUnavailable: settingsCopy.reminders.emailUnavailable,
-        emailSyncFailed: settingsCopy.reminders.emailSyncFailed,
         permissionDenied: settingsCopy.reminders.permissionDenied,
         unavailable: settingsCopy.reminders.unavailable,
       },
@@ -1044,8 +1024,6 @@ export function createLoadedSettingsState(
       dailyLogReminderEnabled: profile.dailyLogReminderEnabled === true,
       upcomingPeriodReminderEnabled: profile.upcomingPeriodReminderEnabled === true,
       fertileWindowReminderEnabled: profile.fertileWindowReminderEnabled === true,
-      managedReminderEmailsEnabled:
-        profile.managedReminderEmailsEnabled === true,
       reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
       reminderLeadDays: clampReminderLeadDays(
         profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
@@ -1107,7 +1085,6 @@ export function extractPersistedReminderValues(
     dailyLogReminderEnabled: profile.dailyLogReminderEnabled === true,
     upcomingPeriodReminderEnabled: profile.upcomingPeriodReminderEnabled === true,
     fertileWindowReminderEnabled: profile.fertileWindowReminderEnabled === true,
-    managedReminderEmailsEnabled: profile.managedReminderEmailsEnabled === true,
     reminderTime: profile.reminderTime ?? DEFAULT_REMINDER_TIME,
     reminderLeadDays: clampReminderLeadDays(
       profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
@@ -1167,7 +1144,6 @@ export function areReminderSettingsEqual(
     left.dailyLogReminderEnabled === right.dailyLogReminderEnabled &&
     left.upcomingPeriodReminderEnabled === right.upcomingPeriodReminderEnabled &&
     left.fertileWindowReminderEnabled === right.fertileWindowReminderEnabled &&
-    left.managedReminderEmailsEnabled === right.managedReminderEmailsEnabled &&
     left.reminderTime === right.reminderTime &&
     left.reminderLeadDays === right.reminderLeadDays
   );
