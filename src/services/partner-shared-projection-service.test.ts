@@ -486,7 +486,7 @@ describe("partner-shared-projection-service", () => {
       cycleLength: 28,
     };
 
-    it("verify: predictionExplanation never carries the owner's pregnancy-paused wording, even unsuppressed (existing redaction, not this fix)", () => {
+    it("keeps the owner's pregnancy-paused wording out of a partner projection even when predictions are not suppressed", () => {
       // Regression pin for the audit finding: resolvePregnancyPause's only
       // signal (day-log pregnancyTest) is always "none" in the shared
       // payload, so buildPartnerSharedReadState's OWN projection can never
@@ -571,7 +571,7 @@ describe("partner-shared-projection-service", () => {
     );
 
     it.each(["summary", "full"] as const)(
-      "suppresses partner predictions for a plain (non-active-record) pause, closing the leak this task fixes (%s access)",
+      "suppresses partner predictions for a day-log pause with no active pregnancy record (%s access)",
       (accessLevel) => {
         const now = new Date("2026-03-05T09:00:00.000Z");
         const records = [
