@@ -403,7 +403,13 @@ export function DashboardScreen({
       viewData={state.viewData}
       editorViewData={state.editorViewData}
       onStartPregnancyPress={() => router.push("/pregnancy-start")}
-      onPremiumCTAPress={() => router.push("/backup-sync")}
+      // The only lock card on this dashboard is the pregnancy module's, and
+      // the module is a one-time on-device unlock — not a tier of the cloud
+      // subscription. Until the store purchase path ships there is no unlock
+      // surface to open, and `Backup & sync` is the wrong door: it would sell
+      // a plan that neither grants nor revokes this module. Info-only,
+      // matching PregnancyStartScreen's locked state.
+      onPremiumCTAPress={undefined}
       onBirthPress={() => router.push("/pregnancy-end?reason=birth")}
       onManagePregnancyPress={() => router.push("/pregnancy-end")}
       onManagePostpartumPress={() => router.push("/pregnancy-end")}

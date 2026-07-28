@@ -533,6 +533,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | The crisis-support surface never consults an entitlement loader while rendering or saving | `never consults the premium loader while rendering or saving (never plan-gated)` in [src/ui/components/CrisisSupportCard.test.tsx](src/ui/components/CrisisSupportCard.test.tsx) |
 | Module ownership is fail-closed: a throwing or non-`true` source reads as not owned, and a release build never unlocks from the dev flag | `returns true only when the source answers true`, `fails closed when the source throws`, `treats a non-boolean truthy answer as not owned`, `never unlocks a release build, whatever the flag says` in [src/services/pregnancy-entitlement-service.test.ts](src/services/pregnancy-entitlement-service.test.ts) |
 | A locked module shows the lock card instead of the start form | `renders the premium lock card and no form when locked` in [src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx](src/ui/screens/pregnancy/PregnancyStartScreen.test.tsx) |
+| A locked module's lock card is informational only — it never offers a subscription route, which would misstate a one-time unlock as plan-gated | `renders the locked pregnancy entry card as information only, with no subscription route` in [src/ui/screens/DashboardScreen.test.tsx](src/ui/screens/DashboardScreen.test.tsx) |
 
 ### Medical-safety prediction suppression
 
