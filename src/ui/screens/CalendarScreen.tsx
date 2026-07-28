@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { createEmptyDayLogRecord, hasDayLogData } from "../../models/day-log";
@@ -32,6 +32,7 @@ import type { PartnerShareSecretStore } from "../../security/partner-share-secre
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../sync/app-sync-service";
+import type { ManagedCloudPremiumFeatures } from "../../sync/managed-cloud-api-client";
 import { ScreenScaffold } from "../components/ScreenScaffold";
 import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
@@ -83,14 +84,24 @@ export function CalendarScreen({
   // are never persisted, so the notice returns on the next screen mount.
   const [sessionDismissedNoticeKey, setSessionDismissedNoticeKey] =
     useState<CalendarPredictionNoticeKey | null>(null);
+  // Managed billing truth for the one premium gate this screen has
+  // (`showLHTests`), together with the focus revision it was read at. It is
+  // resolved once per focus by the focus effect below and reused by every
+  // local reload, so month and day selection — and day-log saves — stay
+  // offline-only. `null` means "not resolved yet": the first local load waits
+  // for it, so the editor never renders a locked field set that a paying
+  // device immediately replaces. `revision` is what makes a return to the
+  // screen rebuild the local view, since the managed read can legitimately
+  // answer with the very same features object (an account-less device gets a
+  // shared constant back every time).
+  const [premiumRead, setPremiumRead] = useState<{
+    features: ManagedCloudPremiumFeatures;
+    revision: number;
+  } | null>(null);
   const shellCopy = getShellCopy(language);
   const dashboardCopy = getDashboardCopy(language);
 
   const refreshForActiveSelection = useCallback(async (options?: { syncReminders?: boolean }) => {
-    const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
-      storage,
-      syncSecretStore,
-    );
     const loadedState = await loadCalendarScreenState(
       storage,
       effectiveNow,
@@ -98,7 +109,7 @@ export function CalendarScreen({
       selectedDate,
       language,
       {
-        showLHTests: premiumFeatures.advancedFertility,
+        showLHTests: premiumRead?.features.advancedFertility === true,
       },
     );
     setState(loadedState);
@@ -119,44 +130,81 @@ export function CalendarScreen({
     effectiveNow,
     language,
     monthValue,
+    premiumRead,
     reminderScheduler,
     selectedDate,
     storage,
-    syncSecretStore,
   ]);
 
+  // Refresh-on-focus: the managed billing read is the only network round trip
+  // this screen makes, so it is scoped to focus alone. The dependency list
+  // holds nothing the user can change while the screen is focused — picking a
+  // day or a month must never re-enter it.
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
       void (async () => {
-        const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
+        const loadedFeatures = await loadManagedPremiumFeaturesForCurrentSession(
           storage,
           syncSecretStore,
-        );
-        const loadedState = await loadCalendarScreenState(
-          storage,
-          effectiveNow,
-          monthValue,
-          selectedDate,
-          language,
-          {
-            showLHTests: premiumFeatures.advancedFertility,
-          },
         );
         if (!isMounted) {
           return;
         }
 
-        setState(loadedState);
-        setIsLoading(false);
+        setPremiumRead((current) => ({
+          features: loadedFeatures,
+          revision: (current?.revision ?? 0) + 1,
+        }));
       })();
 
       return () => {
         isMounted = false;
       };
-    }, [effectiveNow, language, monthValue, selectedDate, storage, syncSecretStore]),
+    }, [storage, syncSecretStore]),
   );
+
+  // Selection-driven derivation, purely local: day-log reads plus view-data
+  // assembly for the active month and day. Re-runs on every focus as well,
+  // because `premiumRead` carries the focus revision.
+  useEffect(() => {
+    if (!premiumRead) {
+      return;
+    }
+
+    let isMounted = true;
+
+    void (async () => {
+      const loadedState = await loadCalendarScreenState(
+        storage,
+        effectiveNow,
+        monthValue,
+        selectedDate,
+        language,
+        {
+          showLHTests: premiumRead.features.advancedFertility,
+        },
+      );
+      if (!isMounted) {
+        return;
+      }
+
+      setState(loadedState);
+      setIsLoading(false);
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    effectiveNow,
+    language,
+    monthValue,
+    premiumRead,
+    selectedDate,
+    storage,
+  ]);
 
   const {
     flushPendingDraft,

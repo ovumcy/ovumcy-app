@@ -1,5 +1,11 @@
 import * as React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react-native";
 import { Dimensions } from "react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
@@ -12,14 +18,37 @@ import { openConfirmation } from "../confirm/open-confirmation";
 import { CalendarScreen } from "./CalendarScreen";
 
 const mockUseEffect = React.useEffect;
+const mockUseState = React.useState;
+// Every mounted useFocusEffect registers its focus counter here, so a test can
+// re-focus the whole screen at once (simulateScreenRefocus below).
+const mockFocusCounters = new Set<React.Dispatch<React.SetStateAction<number>>>();
 
 jest.mock("expo-router", () => {
   return {
+    // Test double for expo-router's useFocusEffect on the two axes this screen
+    // depends on: the effect runs on mount and again whenever its callback
+    // identity changes, and a fresh focus re-runs it (cleanup first) even when
+    // the callback is unchanged.
     useFocusEffect: (effect: () => void | (() => void)) => {
-      mockUseEffect(effect, [effect]);
+      const [focusCount, setFocusCount] = mockUseState(0);
+      mockUseEffect(() => {
+        mockFocusCounters.add(setFocusCount);
+        return () => {
+          mockFocusCounters.delete(setFocusCount);
+        };
+      }, []);
+      mockUseEffect(effect, [effect, focusCount]);
     },
   };
 });
+
+async function simulateScreenRefocus() {
+  await act(async () => {
+    for (const setFocusCount of mockFocusCounters) {
+      setFocusCount((current) => current + 1);
+    }
+  });
+}
 
 jest.mock("../confirm/open-confirmation", () => {
   return {
@@ -235,6 +264,52 @@ describe("CalendarScreen", () => {
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-02-01"),
+    );
+  });
+
+  it("reads managed billing on focus only, never when the selection changes", async () => {
+    const storage = createStorageMock();
+
+    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    expect(
+      mockLoadManagedPremiumFeaturesForCurrentSession,
+    ).toHaveBeenCalledTimes(1);
+
+    // Picking a day re-derives the view from local storage only.
+    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitFor(() =>
+      expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-14"),
+    );
+    expect(
+      mockLoadManagedPremiumFeaturesForCurrentSession,
+    ).toHaveBeenCalledTimes(1);
+
+    // Month navigation moves the anchor day, which is the same local path.
+    fireEvent.press(screen.getByTestId("calendar-prev-button"));
+    await waitFor(() =>
+      expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-02-01"),
+    );
+    expect(
+      mockLoadManagedPremiumFeaturesForCurrentSession,
+    ).toHaveBeenCalledTimes(1);
+
+    // Returning to the screen is what the focus effect exists for: the managed
+    // read runs again and the local view is rebuilt behind it.
+    const localReadsBeforeRefocus = jest.mocked(storage.listDayLogRecordsInRange)
+      .mock.calls.length;
+    await simulateScreenRefocus();
+
+    await waitFor(() =>
+      expect(
+        mockLoadManagedPremiumFeaturesForCurrentSession,
+      ).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() =>
+      expect(
+        jest.mocked(storage.listDayLogRecordsInRange).mock.calls.length,
+      ).toBeGreaterThan(localReadsBeforeRefocus),
     );
   });
 
