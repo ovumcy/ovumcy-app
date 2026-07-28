@@ -482,10 +482,21 @@ describe("failure paths", () => {
         }),
       ),
     });
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
     const view = renderScreen(storage);
-    view.unmount();
+    // The load is genuinely mid-flight: the read was issued and left pending.
+    expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
+
+    expect(() => view.unmount()).not.toThrow();
     resolvePregnancy(activeRecord());
     await act(async () => {});
+
+    // The load resolves onto a torn-down tree: nothing is rendered and React
+    // reports no error.
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("appends a stop to the same resumed session while it is within the session bounds", async () => {

@@ -1100,10 +1100,34 @@ describe("handler edges", () => {
         }),
       ),
     });
-    const view = renderEnd(storage);
-    view.unmount();
-    resolveRecords([]);
+    // `endedRecord()` is a birth ended 2026-05-01, i.e. inside the delayed-start
+    // window relative to the injected now. On a still-mounted screen this batch
+    // would therefore go on to read the unlock; that read staying at zero is
+    // what proves the unmount stopped the load, rather than the fixture simply
+    // having nothing left to do.
+    const recent = endedRecord();
+    const loadPostpartumUnlocked = jest.fn(() => Promise.resolve(true));
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const view = renderEnd(
+      storage,
+      undefined,
+      new Date(2026, 5, 15),
+      loadPostpartumUnlocked,
+    );
+    // The load is genuinely mid-flight: the read was issued and left pending.
+    expect(storage.listPregnancyRecords).toHaveBeenCalledTimes(1);
+
+    expect(() => view.unmount()).not.toThrow();
+    resolveRecords([recent]);
     await act(async () => {});
+
+    // The resolved batch lands after teardown: the load stops at the unmount
+    // boundary instead of running on into the unlock read.
+    expect(loadPostpartumUnlocked).not.toHaveBeenCalled();
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("unmounts cleanly while the delayed-start unlock check is still in flight", async () => {
@@ -1117,6 +1141,7 @@ describe("handler edges", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(null),
       listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
     });
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const view = renderEnd(
       storage,
       undefined,
@@ -1128,9 +1153,18 @@ describe("handler edges", () => {
     );
     // Let the first storage batch resolve so the load reaches the unlock read.
     await act(async () => {});
-    view.unmount();
+    // The offer state is still undecided: the unlock read is pending, so the
+    // screen has not rendered the delayed-start offer.
+    expect(screen.queryByTestId("pregnancy-end-postpartum-start-card")).toBeNull();
+
+    expect(() => view.unmount()).not.toThrow();
     resolveUnlock(true);
     await act(async () => {});
+
+    // The unlock answer arrives after teardown: it never repaints the offer.
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
