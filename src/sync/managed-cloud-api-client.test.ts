@@ -123,11 +123,6 @@ describe("managed-cloud-api-client", () => {
           reminders: true,
         },
         activeSubscription: null,
-        billingManagement: {
-          canManageRenewal: false,
-          canCancelAtPeriodEnd: false,
-          canResumeRenewal: false,
-        },
         offers: [],
       },
     });
@@ -265,7 +260,12 @@ describe("managed-cloud-api-client", () => {
     expect(invalid.ok && invalid.billing.offers).toEqual([]);
   });
 
-  it("sends the renewal toggle and maps the refreshed billing snapshot", async () => {
+  it("ignores a billing_management block an older server still sends", async () => {
+    // Transition tolerance: the field was dropped from the managed snapshot
+    // together with the web-checkout surface, but a server that predates that
+    // removal keeps sending it. Parsing must neither fail nor surface it —
+    // cancel_at_period_end on the subscription itself is a separate field and
+    // still maps, since it feeds the countdown copy.
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(
         JSON.stringify({
@@ -290,50 +290,14 @@ describe("managed-cloud-api-client", () => {
       fetch as unknown as typeof global.fetch,
     );
 
-    const result = await client.updateBillingRenewal("managed-session-1", {
-      cancelAtPeriodEnd: true,
-    });
+    const result = await client.getBillingSnapshot("managed-session-1");
 
-    expect(fetch).toHaveBeenCalledWith(
-      "http://127.0.0.1:8091/account/billing/renewal",
-      expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ cancel_at_period_end: true }),
-      }),
-    );
     expect(result.ok).toBe(true);
     if (!result.ok) {
-      throw new Error("expected ok renewal result");
+      throw new Error("expected ok billing snapshot");
     }
     expect(result.billing.activeSubscription?.cancelAtPeriodEnd).toBe(true);
-    expect(result.billing.billingManagement).toEqual({
-      canManageRenewal: true,
-      canCancelAtPeriodEnd: false,
-      canResumeRenewal: true,
-    });
-  });
-
-  it("maps renewal management error codes", async () => {
-    const fetch = jest.fn().mockResolvedValueOnce(
-      new Response(JSON.stringify({ error: "billing_management_unavailable" }), {
-        status: 403,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-
-    const client = createManagedCloudAPIClient(
-      "http://127.0.0.1:8091",
-      fetch as unknown as typeof global.fetch,
-    );
-
-    await expect(
-      client.updateBillingRenewal("managed-session-1", {
-        cancelAtPeriodEnd: true,
-      }),
-    ).resolves.toEqual({
-      ok: false,
-      errorCode: "billing_management_unavailable",
-    });
+    expect(result.billing).not.toHaveProperty("billingManagement");
   });
 
   it("treats null partner overview lists as empty arrays", async () => {

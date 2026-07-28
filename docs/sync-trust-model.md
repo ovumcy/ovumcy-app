@@ -181,7 +181,7 @@ Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended repo
 What this means in practice:
 
 - premium feature flags arrive over an authenticated managed cloud channel and are never persisted to broad key/value storage on the device;
-- the app persists a bounded 72-hour offline-grace cache of the last-known-good billing snapshot (`hasActivePlan` + `premiumFeatures` only) in the encrypted `managed_billing_cache` table, served only while fresh and only under a still-present managed session whose live fetch failed — it is not a second source of truth, and server-checked operations (sync upload/restore, partner projections, renewal) never read it;
+- the app persists a bounded 72-hour offline-grace cache of the last-known-good billing snapshot (`hasActivePlan` + `premiumFeatures` only) in the encrypted `managed_billing_cache` table, served only while fresh and only under a still-present managed session whose live fetch failed — it is not a second source of truth, and server-checked operations (sync upload/restore, partner projections) never read it;
 - the encrypted snapshot envelope on the sync transport is opaque to the server; new payload fields like `pregnancyTest` ride inside the same ciphertext and require no server schema awareness;
 - legacy snapshots that predate a field continue to decode; the storage layer defaults missing values when restoring on a newer client;
 - the doctor PDF is generated entirely on-device from canonical local repositories — the server never sees the PDF, only the encrypted day-log records that feed it.

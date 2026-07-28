@@ -7,7 +7,6 @@ import {
   type SyncPreferencesRecord,
 } from "../sync/sync-contract";
 import type { SyncDeviceManagementErrorCode } from "../sync/sync-client-service";
-import type { ManagedCloudBillingManagement } from "../sync/managed-cloud-api-client";
 import type {
   LoadedSettingsState,
   SettingsViewData,
@@ -62,12 +61,6 @@ export type BackupSyncSetupPresentation = {
   // "Guests never see a recovery phrase" invariant. See also the
   // defense-in-depth refusal in sync-setup-service.prepareSyncSetup.
   shouldShowPrepareAction: boolean;
-  // Renewal management is driven STRICTLY by the server's billing_management
-  // flags: both false (signed out, trial, cached billing truth, self-hosted)
-  // renders no renewal row at all.
-  showCancelRenewal: boolean;
-  showResumeRenewal: boolean;
-  showRenewalManagement: boolean;
   supportsInlineAccountAuth: boolean;
   syncStepTitle: string;
 };
@@ -171,7 +164,6 @@ export function revertBackupSyncDraftState(
 }
 
 export function buildBackupSyncSetupPresentation({
-  billingManagement,
   hasStoredSyncSecrets,
   hasSyncSession,
   isAuthenticating,
@@ -187,7 +179,6 @@ export function buildBackupSyncSetupPresentation({
   syncCapabilities,
   viewData,
 }: {
-  billingManagement?: ManagedCloudBillingManagement | undefined;
   hasStoredSyncSecrets: boolean;
   hasSyncSession: boolean;
   isAuthenticating: boolean;
@@ -232,9 +223,6 @@ export function buildBackupSyncSetupPresentation({
       planMessage = viewData.planInactive;
     }
   }
-
-  const showCancelRenewal = billingManagement?.canCancelAtPeriodEnd === true;
-  const showResumeRenewal = billingManagement?.canResumeRenewal === true;
 
   const syncStepNumber = isManaged ? 4 : 3;
   let guidanceComplete = false;
@@ -289,9 +277,6 @@ export function buildBackupSyncSetupPresentation({
       !canShowSyncActions && hasStoredSyncSecrets && hasSyncSession,
     shouldShowEndpointSummary: preferences.mode === "self_hosted",
     shouldShowPrepareAction: !isGuestPartnerAccount(preferences),
-    showCancelRenewal,
-    showResumeRenewal,
-    showRenewalManagement: showCancelRenewal || showResumeRenewal,
     supportsInlineAccountAuth,
     syncStepTitle: renumberStepTitle(viewData.syncStepTitle, isManaged ? 4 : 3),
   };
@@ -421,11 +406,6 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.syncFailed;
     case "sync_purge_unavailable":
       return viewData.errors.deleteAccountCleanupUnavailable;
-    case "billing_management_unavailable":
-      return viewData.errors.renewalUnavailable;
-    case "billing_subscription_conflict":
-    case "billing_provider_unavailable":
-      return viewData.errors.renewalUpdateFailed;
     default:
       return viewData.errors.saveFailed;
   }

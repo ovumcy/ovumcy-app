@@ -157,20 +157,16 @@ export function useBackupSyncScreenController(
     getSubscriptionCopy(language),
   );
   const presentation = buildBackupSyncSetupPresentation({
-    billingManagement: state.managedPremiumAccess.billingManagement,
     hasStoredSyncSecrets: state.hasStoredSyncSecrets,
     hasSyncSession: state.hasSyncSession,
     isAuthenticating: connection.isAuthenticatingSync,
     isPreparing: recovery.isPreparingSync,
     isRecovering: connection.isRecoveringSync,
     isRestoring: actions.isRestoringSync,
-    // A renewal update or an in-flight account deletion disables the same
-    // action set as a running upload, so the owner cannot double-submit
-    // billing changes or another destructive action mid-deletion.
-    isSyncing:
-      actions.isSyncingNow ||
-      managedPlan.isUpdatingRenewal ||
-      deletion.isDeletingAccount,
+    // An in-flight account deletion disables the same action set as a running
+    // upload, so the owner cannot start another destructive action
+    // mid-deletion.
+    isSyncing: actions.isSyncingNow || deletion.isDeletingAccount,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     notSetLabel: viewData.common.notSet,
@@ -238,9 +234,6 @@ export function useBackupSyncScreenController(
               }
             : current,
         );
-      },
-      onCancelRenewal: () => {
-        void managedPlan.handleUpdateRenewal("cancel_at_period_end");
       },
       onDisconnect: () => {
         void connection.handleDisconnectSync();
@@ -331,9 +324,6 @@ export function useBackupSyncScreenController(
       },
       onRecoverAccess: () => {
         void connection.handleRecoverSync();
-      },
-      onResumeRenewal: () => {
-        void managedPlan.handleUpdateRenewal("resume");
       },
       onRetryPlanCheck: () => {
         void managedPlan.handleRetryPlanCheck();

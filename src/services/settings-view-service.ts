@@ -2,7 +2,6 @@ import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
 import { getSettingsCopy } from "../i18n/settings-copy";
 import type {
   ManagedCloudActiveSubscription,
-  ManagedCloudBillingManagement,
   ManagedCloudBillingOffer,
   ManagedCloudBillingSnapshot,
 } from "../sync/managed-cloud-api-client";
@@ -277,10 +276,6 @@ export type SettingsViewData = {
     restoreDeviceAuthPrompt: string;
     uploadOverBackupPrompt: string;
     uploadOverBackupAccept: string;
-    renewalCancelLabel: string;
-    renewalResumeLabel: string;
-    renewalCancelPrompt: string;
-    renewalCancelAccept: string;
     withdrawalTitle: string;
     withdrawalBody: string;
     offerDismissLabel: string;
@@ -321,8 +316,6 @@ export type SettingsViewData = {
       restored: string;
       disconnected: string;
       deleted: string;
-      renewalCancelled: string;
-      renewalResumed: string;
     };
     errors: {
       loginRequired: string;
@@ -355,8 +348,6 @@ export type SettingsViewData = {
       restoreFailed: string;
       deleteAccountFailed: string;
       deleteAccountCleanupUnavailable: string;
-      renewalUnavailable: string;
-      renewalUpdateFailed: string;
     };
   };
   symptoms: {
@@ -449,10 +440,6 @@ export type SettingsManagedPremiumAccess = {
   // when there is no managed subscription row (self-hosted, signed out, or a
   // plan-less managed account).
   activeSubscription: ManagedCloudActiveSubscription | null;
-  // billingManagement mirrors the live snapshot's renewal affordances; all
-  // false when signed out, self-hosted, or on cached (offline-grace) billing
-  // truth, which hides the manage-renewal row entirely.
-  billingManagement: ManagedCloudBillingManagement;
   // offers carries billing-surface promos/announcements from the LIVE
   // snapshot only ([] on cached truth); backup-sync is the single render
   // surface in v1.
@@ -465,11 +452,6 @@ export function createEmptySettingsManagedPremiumAccess(): SettingsManagedPremiu
     doctorPDF: false,
     reminders: false,
     activeSubscription: null,
-    billingManagement: {
-      canManageRenewal: false,
-      canCancelAtPeriodEnd: false,
-      canResumeRenewal: false,
-    },
     offers: [],
   };
 }
@@ -482,7 +464,6 @@ export function mapBillingSnapshotToManagedPremiumAccess(
     doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
     reminders: billingSnapshot.premiumFeatures.reminders,
     activeSubscription: billingSnapshot.activeSubscription,
-    billingManagement: billingSnapshot.billingManagement,
     offers: billingSnapshot.offers,
   };
 }
@@ -849,10 +830,6 @@ export function buildSettingsViewData(
       restoreDeviceAuthPrompt: settingsCopy.account.restoreDeviceAuthPrompt,
       uploadOverBackupPrompt: settingsCopy.account.uploadOverBackupPrompt,
       uploadOverBackupAccept: settingsCopy.account.uploadOverBackupAccept,
-      renewalCancelLabel: settingsCopy.account.renewalCancelLabel,
-      renewalResumeLabel: settingsCopy.account.renewalResumeLabel,
-      renewalCancelPrompt: settingsCopy.account.renewalCancelPrompt,
-      renewalCancelAccept: settingsCopy.account.renewalCancelAccept,
       withdrawalTitle: settingsCopy.account.withdrawalTitle,
       withdrawalBody: settingsCopy.account.withdrawalBody,
       offerDismissLabel: settingsCopy.account.offerDismissLabel,
@@ -897,8 +874,6 @@ export function buildSettingsViewData(
         restored: settingsCopy.account.restored,
         disconnected: settingsCopy.account.disconnected,
         deleted: settingsCopy.account.deleted,
-        renewalCancelled: settingsCopy.account.renewalCancelled,
-        renewalResumed: settingsCopy.account.renewalResumed,
       },
       errors: {
         loginRequired: settingsCopy.account.errors.loginRequired,
@@ -938,8 +913,6 @@ export function buildSettingsViewData(
         deleteAccountFailed: settingsCopy.account.errors.deleteAccountFailed,
         deleteAccountCleanupUnavailable:
           settingsCopy.account.errors.deleteAccountCleanupUnavailable,
-        renewalUnavailable: settingsCopy.account.errors.renewalUnavailable,
-        renewalUpdateFailed: settingsCopy.account.errors.renewalUpdateFailed,
       },
     },
     symptoms: {

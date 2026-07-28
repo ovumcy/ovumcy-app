@@ -55,7 +55,6 @@ export type BackupSyncFlowScreenProps = {
   onAcknowledgeRecoveryCode: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
-  onCancelRenewal: () => void | Promise<void>;
   onDisconnect: () => void | Promise<void>;
   onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
@@ -73,7 +72,6 @@ export type BackupSyncFlowScreenProps = {
   onLogin: () => void | Promise<void>;
   onModeSelect: (value: SyncPreferencesRecord["mode"]) => void;
   onOfferCTAPress: (offer: ResolvedBillingOffer) => void;
-  onResumeRenewal: () => void | Promise<void>;
   onPartnerAccessLevelChange: (value: ManagedCloudPartnerAccessLevel) => void;
   onPartnerAcceptInvite: () => void | Promise<void>;
   onPartnerAcceptInviteAsGuest: () => void | Promise<void>;
@@ -149,7 +147,6 @@ export function BackupSyncFlowScreen({
   onAcknowledgeRecoveryCode,
   onAuthLoginChange,
   onAuthPasswordChange,
-  onCancelRenewal,
   onDisconnect,
   onDeleteAccount,
   onDeviceLabelChange,
@@ -167,7 +164,6 @@ export function BackupSyncFlowScreen({
   onLogin,
   onModeSelect,
   onOfferCTAPress,
-  onResumeRenewal,
   onPartnerAccessLevelChange,
   onPartnerAcceptInvite,
   onPartnerAcceptInviteAsGuest,
@@ -274,7 +270,6 @@ export function BackupSyncFlowScreen({
         onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
         onAuthLoginChange={onAuthLoginChange}
         onAuthPasswordChange={onAuthPasswordChange}
-        onCancelRenewal={onCancelRenewal}
         onDisconnect={onDisconnect}
         onDeleteAccount={onDeleteAccount}
         onDeviceLabelChange={onDeviceLabelChange}
@@ -286,7 +281,6 @@ export function BackupSyncFlowScreen({
         onOfferCTAPress={onOfferCTAPress}
         onPrepare={onPrepare}
         onRecoverAccess={onRecoverAccess}
-        onResumeRenewal={onResumeRenewal}
         onRetryPlanCheck={onRetryPlanCheck}
         onRecoveryPhraseChange={onRecoveryPhraseChange}
         onRegister={onRegister}
