@@ -101,11 +101,12 @@ const statsCopyEn = {
   phaseMoodTitle: "Phase moods",
   phaseMoodSubtitle: "Average logged mood across your recorded cycle phases.",
   phaseMoodEmpty: "No mood entries in this phase yet.",
-  phaseMoodCount: (count: number) => `${count} logged days`,
+  phaseMoodCount: (count: number) => (count === 1 ? "1 logged day" : `${count} logged days`),
   phaseSymptomsTitle: "Phase symptoms",
   phaseSymptomsSubtitle: "The symptoms you logged most often in each phase.",
   phaseSymptomsEmpty: "No repeated symptom pattern in this phase yet.",
-  phaseSymptomsDays: (count: number) => `${count} logged days in this phase`,
+  phaseSymptomsDays: (count: number) =>
+    count === 1 ? "1 logged day in this phase" : `${count} logged days in this phase`,
   bbtTitle: "BBT trend",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -414,13 +415,17 @@ const statsCopyDe: StatsCopy = {
   phaseMoodSubtitle:
     "Durchschnittlich erfasste Stimmung über Ihre Zyklusphasen hinweg.",
   phaseMoodEmpty: "Für diese Phase gibt es noch keine Stimmungseinträge.",
-  phaseMoodCount: (count: number) => `${count} erfasste Tage`,
+  phaseMoodCount: (count: number) =>
+    count === 1 ? "1 erfasster Tag" : `${count} erfasste Tage`,
   phaseSymptomsTitle: "Symptome nach Phase",
   phaseSymptomsSubtitle:
     "Die Symptome, die Sie in jeder Phase am häufigsten erfasst haben.",
   phaseSymptomsEmpty:
     "Für diese Phase gibt es noch kein wiederkehrendes Symptommuster.",
-  phaseSymptomsDays: (count: number) => `${count} erfasste Tage in dieser Phase`,
+  phaseSymptomsDays: (count: number) =>
+    count === 1
+      ? "1 erfasster Tag in dieser Phase"
+      : `${count} erfasste Tage in dieser Phase`,
   bbtTitle: "BBT-Trend",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -722,14 +727,17 @@ const statsCopyFr: StatsCopy = {
   phaseMoodSubtitle:
     "Humeur moyenne enregistrée selon les phases de votre cycle.",
   phaseMoodEmpty: "Aucune entrée d'humeur pour cette phase pour le moment.",
-  phaseMoodCount: (count: number) => `${count} jours enregistrés`,
+  phaseMoodCount: (count: number) =>
+    count === 1 ? "1 jour enregistré" : `${count} jours enregistrés`,
   phaseSymptomsTitle: "Symptômes selon la phase",
   phaseSymptomsSubtitle:
     "Les symptômes que vous avez le plus souvent enregistrés dans chaque phase.",
   phaseSymptomsEmpty:
     "Pas encore de schéma répété de symptômes dans cette phase.",
   phaseSymptomsDays: (count: number) =>
-    `${count} jours enregistrés dans cette phase`,
+    count === 1
+      ? "1 jour enregistré dans cette phase"
+      : `${count} jours enregistrés dans cette phase`,
   bbtTitle: "Tendance TB",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -1318,11 +1326,15 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseMoodTitle: "Ánimo por fases",
     phaseMoodSubtitle: "Promedio de ánimo registrado en las fases del ciclo.",
     phaseMoodEmpty: "Todavía no hay entradas de ánimo en esta fase.",
-    phaseMoodCount: (count: number) => `${count} días registrados`,
+    phaseMoodCount: (count: number) =>
+      count === 1 ? "1 día registrado" : `${count} días registrados`,
     phaseSymptomsTitle: "Síntomas por fases",
     phaseSymptomsSubtitle: "Los síntomas que registraste con más frecuencia en cada fase.",
     phaseSymptomsEmpty: "Todavía no hay un patrón repetido de síntomas en esta fase.",
-    phaseSymptomsDays: (count: number) => `${count} días registrados en esta fase`,
+    phaseSymptomsDays: (count: number) =>
+      count === 1
+        ? "1 día registrado en esta fase"
+        : `${count} días registrados en esta fase`,
     bbtTitle: "Tendencia de TBC",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",
