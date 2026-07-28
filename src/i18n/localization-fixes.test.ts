@@ -132,6 +132,45 @@ describe("A6 stats-copy ru symptomFrequencySummary — ruDayWord agreement", () 
   });
 });
 
+describe("A7 stats-copy phase day counts — singular agreement in every locale", () => {
+  const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
+
+  // A single logged day rendered the plural noun in en, de, fr and es, so the
+  // phase cards read "1 logged days". The count reaches the template straight
+  // from the phase bucket, so one is an ordinary value, not an edge case.
+  it.each(locales)("%s phaseMoodCount(1) is singular", (lang) => {
+    const single = getStatsCopy(lang).phaseMoodCount(1);
+    const plural = getStatsCopy(lang).phaseMoodCount(2);
+    expect(single).not.toBe(plural.replace("2", "1"));
+  });
+
+  it.each(locales)("%s phaseSymptomsDays(1) is singular", (lang) => {
+    const single = getStatsCopy(lang).phaseSymptomsDays(1);
+    const plural = getStatsCopy(lang).phaseSymptomsDays(2);
+    expect(single).not.toBe(plural.replace("2", "1"));
+  });
+
+  it("renders each locale's singular noun verbatim", () => {
+    expect(getStatsCopy("en").phaseMoodCount(1)).toBe("1 logged day");
+    expect(getStatsCopy("de").phaseMoodCount(1)).toBe("1 erfasster Tag");
+    expect(getStatsCopy("fr").phaseMoodCount(1)).toBe("1 jour enregistré");
+    expect(getStatsCopy("es").phaseMoodCount(1)).toBe("1 día registrado");
+    expect(getStatsCopy("it").phaseMoodCount(1)).toBe("1 giorno registrato");
+    expect(getStatsCopy("ru").phaseMoodCount(1)).toBe("1 записанный день");
+  });
+
+  it("keeps the plural for every other count", () => {
+    expect(getStatsCopy("en").phaseSymptomsDays(3)).toBe("3 logged days in this phase");
+    expect(getStatsCopy("de").phaseSymptomsDays(3)).toBe("3 erfasste Tage in dieser Phase");
+    expect(getStatsCopy("fr").phaseSymptomsDays(3)).toBe(
+      "3 jours enregistrés dans cette phase",
+    );
+    expect(getStatsCopy("es").phaseSymptomsDays(3)).toBe(
+      "3 días registrados en esta fase",
+    );
+  });
+});
+
 // ── B. Russian terminology Инсайты → Аналитика ────────────────────────────
 
 describe("B stats-copy ru — Аналитика terminology", () => {
