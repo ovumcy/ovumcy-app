@@ -52,8 +52,10 @@ export function buildPartnerSharedProjectionPayload(
   },
   options: {
     // Additive; mirrors the stats/calendar suppressPredictions
-    // pattern: true when an active, trackable pregnancy record exists for
-    // the owner. Computed by the storage-aware sync call site
+    // pattern: true when an active pregnancy record exists for the owner --
+    // the record's status alone, with no gestational-age condition, so a
+    // record whose GA has left the trackable window suppresses exactly the
+    // same. Computed by the storage-aware sync call site
     // (syncManagedPartnerSharedProjections: activePregnancy !== null) and
     // threaded in here, since this pure builder has no storage access of
     // its own. Defaults to false, so every existing caller/test keeps
