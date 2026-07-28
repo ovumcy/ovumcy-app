@@ -65,6 +65,24 @@ const config = {
     projectType: "custom",
     configFile: "jest.config.js",
     enableFindRelatedTests: true,
+    // `import-file-picker.web.test.ts` pins `@jest-environment jsdom` in a
+    // docblock. A raw jsdom environment reports no per-test coverage back to
+    // Stryker, and under `coverageAnalysis: "perTest"` a single such suite
+    // fails the whole initial test run ("Missing coverage results for ..."),
+    // so no mutant is ever tested. Its subject `import-file-picker.web.ts` and
+    // the `import-service.ts` constant it borrows are both outside `mutate`,
+    // so skipping it here costs no mutation signal. The suite still runs
+    // unchanged under `npm test` — this override is scoped to the Stryker run.
+    //
+    // Shallow-merged over `jest.config.js`, so the two default ignore patterns
+    // have to be restated here to survive.
+    config: {
+      testPathIgnorePatterns: [
+        "/node_modules/",
+        "/dist/",
+        "import-file-picker\\.web\\.test\\.ts$",
+      ],
+    },
   },
 
   // Be gentle on CI runners; this is a background-quality job, not a fast gate.
