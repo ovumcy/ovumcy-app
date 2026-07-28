@@ -45,6 +45,20 @@ const config = {
     // Period auto-fill: the "observed days up to today only" guard that keeps
     // predicted/future days out of exports, stats, and sync. Pure and testable.
     "src/services/period-auto-fill-service.ts",
+    // Pregnancy dating: LMP/ultrasound anchor -> gestational age, EDD, trimester
+    // and week boundaries. Pure calendar math over `profile-settings-policy`
+    // helpers, backed by a unit suite and a property suite. An off-by-one here
+    // misstates gestational age on every pregnancy surface at once.
+    "src/services/pregnancy-timeline-service.ts",
+    // Pregnancy module ownership: the one-time on-device unlock predicate. It
+    // gates starting pregnancy data and rendering pregnancy surfaces, and must
+    // never gate reading or exporting already-logged data (local-first privacy
+    // boundary). Dependency-free and fully deterministic.
+    "src/services/pregnancy-entitlement-service.ts",
+    // Deliberately NOT in scope: `pregnancy-mode-service.ts`. It orchestrates
+    // `LocalAppStorage` reads/writes rather than computing, so it fails the
+    // purity criterion above; its dating and ownership invariants are already
+    // covered here through the two services it delegates to.
   ],
 
   jest: {
@@ -57,6 +71,14 @@ const config = {
   concurrency: 2,
   timeoutMS: 60000,
   timeoutFactor: 2,
+
+  // Static mutants (those executed once at module load rather than per test)
+  // force a full test-runner restart each time. Stryker measured them at 21% of
+  // the mutants but ~71% of the wall time on this suite, because the jest-expo
+  // preset pays a heavy transform cost on every restart. Dropping them is what
+  // keeps a weekly advisory run inside a bounded budget; module-load constants
+  // are the lowest-signal mutants in these files anyway.
+  ignoreStatic: true,
 
   // ADVISORY: report-only. `high`/`low` colour the report; `break` is
   // deliberately unset so the run never exits non-zero on a low score.
