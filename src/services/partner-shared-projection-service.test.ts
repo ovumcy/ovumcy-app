@@ -487,7 +487,7 @@ describe("partner-shared-projection-service", () => {
     };
 
     it("keeps the owner's pregnancy-paused wording out of a partner projection even when predictions are not suppressed", () => {
-      // Regression pin for the audit finding: resolvePregnancyPause's only
+      // Regression pin: resolvePregnancyPause's only
       // signal (day-log pregnancyTest) is always "none" in the shared
       // payload, so buildPartnerSharedReadState's OWN projection can never
       // set isPregnancyPaused -- dashboardCopy.pregnancyPausedHint
