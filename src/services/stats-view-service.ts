@@ -339,8 +339,10 @@ export function buildStatsViewData(
     reminders: false,
   },
   options: {
-    // Additive: true when an active, trackable pregnancy
-    // record exists. A period logged after the latest positive test lifts
+    // Additive: true when an active pregnancy record exists -- the record's
+    // status alone, with no gestational-age condition, so a record whose GA
+    // has left the trackable window suppresses exactly the same.
+    // A period logged after the latest positive test lifts
     // resolvePregnancyPause's own pause (cycle-history-service, untouched by
     // this option) -- during an ACTIVE pregnancy that lift is medically wrong,
     // so this flag suppresses the prediction-bearing sections (BBT current
