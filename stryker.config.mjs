@@ -85,8 +85,21 @@ const config = {
     },
   },
 
-  // Be gentle on CI runners; this is a background-quality job, not a fast gate.
-  concurrency: 2,
+  // Matched to the 4 vCPUs of a hosted `ubuntu-latest` runner. Each worker is a
+  // separate jest process, and the jest-expo transform cost dominates per-mutant
+  // wall time, so the work is CPU-bound per worker and throughput scales
+  // near-linearly with workers up to the core count.
+  //
+  // This replaces an earlier value of 2, which carried a "be gentle on CI
+  // runners" note: it was chosen defensively rather than from measurement, and
+  // it left the full mutant set at roughly a six-hour run that no bounded weekly
+  // job could finish. Measured on CI at `concurrency: 2`: 8.7 mutants/min, which
+  // at 4 puts the full set inside the workflow's step budget (the arithmetic is
+  // written out in `.github/workflows/mutation.yml`).
+  //
+  // Not raised past the core count: extra workers past that only contend for the
+  // same CPUs while each one costs another jest heap.
+  concurrency: 4,
   timeoutMS: 60000,
   timeoutFactor: 2,
 
