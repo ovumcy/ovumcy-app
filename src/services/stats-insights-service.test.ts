@@ -372,6 +372,37 @@ describe("buildLastCycleSymptomFrequency", () => {
       buildLastCycleSymptomFrequency(history, [], createDefaultSymptomRecords()),
     ).toEqual([]);
   });
+
+  it("renders the frequency summary in the requested locale", () => {
+    const profile = createPhaseProfile({ lastPeriodStart: "2026-01-01" });
+    const records = [
+      periodMarker("2026-01-01"),
+      periodMarker("2026-01-29"),
+      { ...createEmptyDayLogRecord("2026-01-05"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-06"), symptomIDs: ["cramps"] },
+    ];
+    const history = buildCycleHistorySummary(
+      profile,
+      records,
+      new Date(2026, 1, 1),
+    );
+
+    expect(
+      buildLastCycleSymptomFrequency(
+        history,
+        records,
+        createDefaultSymptomRecords(),
+        "ru",
+      )[0]?.frequencySummary,
+    ).toBe("2 дня");
+    expect(
+      buildLastCycleSymptomFrequency(
+        history,
+        records,
+        createDefaultSymptomRecords(),
+      )[0]?.frequencySummary,
+    ).toBe("2 days");
+  });
 });
 
 describe("buildStatsSymptomFrequency", () => {
@@ -390,6 +421,45 @@ describe("buildStatsSymptomFrequency", () => {
 
     expect(result.map((item) => item.id)).toEqual(["cramps", "bloating", "headache"]);
     expect(result[0]).toEqual(expect.objectContaining({ id: "cramps", count: 2 }));
+  });
+
+  it("renders the frequency summary in the requested locale", () => {
+    const symptomRecords = createDefaultSymptomRecords();
+    const records = [
+      { ...createEmptyDayLogRecord("2026-01-01"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-02"), symptomIDs: ["cramps"] },
+      { ...createEmptyDayLogRecord("2026-01-03"), symptomIDs: ["headache"] },
+    ];
+
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "en")[0]
+        ?.frequencySummary,
+    ).toBe("2 days");
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "de")[0]
+        ?.frequencySummary,
+    ).toBe("2 Tage");
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "it")[0]
+        ?.frequencySummary,
+    ).toBe("2 giorni");
+    // Russian day-count agreement: 2 -> few form, 1 -> one form.
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "ru")[0]
+        ?.frequencySummary,
+    ).toBe("2 дня");
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "ru")[1]
+        ?.frequencySummary,
+    ).toBe("1 день");
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "fr")[1]
+        ?.frequencySummary,
+    ).toBe("1 jour");
+    expect(
+      buildStatsSymptomFrequency(records, symptomRecords, "es")[1]
+        ?.frequencySummary,
+    ).toBe("1 día");
   });
 });
 

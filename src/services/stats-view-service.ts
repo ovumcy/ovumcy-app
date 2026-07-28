@@ -414,11 +414,16 @@ export function buildStatsViewData(
   const reliability = buildStatsReliability(profile, history);
   const factorContext = buildStatsFactorContext(profile, history, records, now);
   const trendPoints = buildStatsTrendPoints(history, locale);
-  const symptomFrequency = buildStatsSymptomFrequency(records, localizedSymptomRecords);
+  const symptomFrequency = buildStatsSymptomFrequency(
+    records,
+    localizedSymptomRecords,
+    locale,
+  );
   const lastCycleSymptoms = buildLastCycleSymptomFrequency(
     history,
     records,
     localizedSymptomRecords,
+    locale,
   );
   const phaseInsightsUnlocked =
     history.completedCycleCount >= STATS_MINIMUM_PHASE_INSIGHTS_CYCLES;
@@ -584,7 +589,7 @@ export function buildStatsViewData(
         label: point.label,
         value: point.value,
       })),
-      valueSuffix: "d",
+      valueSuffix: statsCopy.daysShort,
       emptyLabel: statsCopy.noCycleData,
     },
     symptomFrequency: {
@@ -694,12 +699,12 @@ export function buildStatsViewData(
       averageLabel: statsCopy.averageLabel,
       averageValue:
         history.averageCycleLength > 0
-          ? `${Math.round(history.averageCycleLength)} d`
+          ? statsCopy.daysValue(Math.round(history.averageCycleLength))
           : statsCopy.noData,
       medianLabel: statsCopy.medianLabel,
       medianValue:
         history.medianCycleLength > 0
-          ? `${history.medianCycleLength} d`
+          ? statsCopy.daysValue(history.medianCycleLength)
           : statsCopy.noData,
       rangeTitle: statsCopy.cycleRange,
       rangeValue:
@@ -1163,7 +1168,7 @@ function buildTopCards(
       title: statsCopy.lastCycleLength,
       value:
         history.lastCycleLength > 0
-          ? `${history.lastCycleLength} d`
+          ? statsCopy.daysValue(history.lastCycleLength)
           : statsCopy.noData,
     },
     {
@@ -1171,7 +1176,7 @@ function buildTopCards(
       title: statsCopy.lastPeriodLength,
       value:
         history.lastPeriodLength > 0
-          ? `${history.lastPeriodLength} d`
+          ? statsCopy.daysValue(history.lastPeriodLength)
           : statsCopy.noData,
     },
   ];
@@ -1196,7 +1201,7 @@ function buildTopCards(
   } else {
     const description =
       !suppressPredictions && projection.currentCycleDay !== null
-        ? `Cycle day ${projection.currentCycleDay}`
+        ? statsCopy.currentCycleDayValue(projection.currentCycleDay)
         : undefined;
     cards.push({
       key: "current-phase",
