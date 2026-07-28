@@ -80,11 +80,16 @@ export function buildPartnerSharedProjectionPayload(
   // can never detect a day-log pause on its own: resolvePregnancyPause's only
   // signal is the now-redacted pregnancyTest field. So the owner's CURRENT
   // pause must be recomputed HERE, from the real pre-redaction input, and
-  // OR'd with the threaded activePregnancy signal (audit finding: verified
-  // empirically that today this does NOT leak pregnancyPausedHint's wording --
-  // resolvePregnancyPause on the redacted payload is always null -- but DOES
-  // leak live, forward-rolled currentCycleDay/nextPeriodDate numbers computed
-  // straight through the owner's actual paused state; this closes that gap).
+  // OR'd with the threaded activePregnancy signal.
+  //
+  // The redaction alone bounds only half the exposure. Wording cannot cross:
+  // resolvePregnancyPause on the redacted payload is always null, so
+  // pregnancyPausedHint's copy never reaches a partner. Numbers can:
+  // currentCycleDay/nextPeriodDate are computed straight through the owner's
+  // real paused state, so without the recomputation below they ship
+  // forward-rolled, describing a cycle the owner is not having. Suppressing
+  // here is what keeps them out; the "prediction suppression for active
+  // pregnancy / pregnancy-paused owners" suite pins both halves.
   const ownerNow = new Date(input.generatedAt);
   const ownerHistory = buildCycleHistorySummary(input.profile, input.dayLogs, ownerNow);
   const ownerProjection = buildCurrentCycleProjection(
