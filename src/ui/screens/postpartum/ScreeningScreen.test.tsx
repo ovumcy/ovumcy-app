@@ -250,14 +250,28 @@ describe("ScreeningScreen", () => {
         }),
       ),
     });
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    // No `now` prop: the screen falls back to the real clock and still renders.
     const view = render(
       <AppPreferencesTestProvider languageOverride="en">
         <ScreeningScreen initialView="questionnaire" storage={storage} />
       </AppPreferencesTestProvider>,
     );
-    view.unmount();
+    expect(screen.getByTestId("screening-intro-card")).toBeTruthy();
+    // The crisis-contact load is genuinely mid-flight: the read was issued and
+    // left pending.
+    expect(storage.readProfileRecord).toHaveBeenCalledTimes(1);
+
+    expect(() => view.unmount()).not.toThrow();
     resolveProfile({ crisisContactName: undefined, crisisContactPhone: undefined });
-    await Promise.resolve();
+    await act(async () => {});
+
+    // The profile resolves onto a torn-down tree: nothing is rendered and React
+    // reports no error.
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("treats a profile without crisis-contact fields as an empty contact", async () => {
@@ -295,10 +309,22 @@ describe("ScreeningScreen", () => {
         }),
       ),
     });
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
     const view = renderScreening(storage, "history");
-    view.unmount();
+    // The history load is genuinely mid-flight: the read was issued and left
+    // pending, so no rows are painted yet.
+    expect(storage.listScreeningResponses).toHaveBeenCalledTimes(1);
+
+    expect(() => view.unmount()).not.toThrow();
     resolveResponses([]);
     await act(async () => {});
+
+    // The response list resolves onto a torn-down tree: nothing is rendered and
+    // React reports no error.
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {

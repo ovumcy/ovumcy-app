@@ -391,10 +391,21 @@ describe("PregnancyStartScreen", () => {
         }),
       ),
     });
+    const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
     const view = renderStart(storage);
-    view.unmount();
+    // The load is genuinely mid-flight: the read was issued and left pending.
+    expect(storage.readProfileRecord).toHaveBeenCalledTimes(1);
+
+    expect(() => view.unmount()).not.toThrow();
     resolveProfile(profileWithLmp());
     await act(async () => {});
+
+    // The load resolves onto a torn-down tree: nothing is rendered and React
+    // reports no error.
+    expect(screen.toJSON()).toBeNull();
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
