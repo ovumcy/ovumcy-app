@@ -1,30 +1,30 @@
 {
-  "$comment": "Compatibility lock for the four Ovumcy repos. Records the peer commit SHAs that this ovumcy-app checkout's cross-repo contracts (scripts/check-cross-repo-contracts.mjs) were validated against, so 'these four SHAs are known-compatible' is explicit instead of implicit. Validate a workspace with `node scripts/check-cross-repo-contracts.mjs --validate-manifest` (needs local sibling checkouts, or set OVUMCY_PEER_ROOT). Peers are pinned EXACTLY; ovumcy-app is pinned by ancestry (its HEAD must be at or after the recorded base, so ongoing app work on the same line still validates). Refresh the peer SHAs when the contracts are re-validated against newer peer commits. See docs/cross-repo-contracts.md.",
+  "$comment": "Compatibility lock for the four Ovumcy repos. Records the peer commit SHAs that this ovumcy-app checkout's cross-repo contracts (scripts/check-cross-repo-contracts.mjs) were validated against, so 'these four SHAs are known-compatible' is explicit instead of implicit. Validate a workspace with `node scripts/check-cross-repo-contracts.mjs --validate-manifest` (needs local sibling checkouts, or set OVUMCY_PEER_ROOT). Peers are pinned EXACTLY; ovumcy-app is pinned by ancestry (its HEAD must be at or after the recorded base, so ongoing app work on the same line still validates). CI runs `--check-manifest-refs`, which verifies this file's shape and that every recorded branch/commit pair still resolves in its repo; it deliberately does not require a pin to be current, so refreshing stays a decision. Refresh the peer SHAs when the contracts are re-validated against newer peer commits. See docs/cross-repo-contracts.md.",
   "schemaVersion": 1,
-  "generatedAt": "2026-07-20",
+  "generatedAt": "2026-07-28",
   "repos": {
     "ovumcy-app": {
       "role": "RN/Expo client (contract checker + manifest live here)",
-      "branch": "cross-repo/checker-extension",
-      "commit": "e0bd2ef6ebc629cc335bc15e76733082a4883636",
+      "branch": "main",
+      "commit": "ebe442e4616a74ebcda345d6b8d4fcfe09c05f05",
       "pin": "ancestor"
     },
     "ovumcy-web": {
       "role": "Go free-tier parity reference (cycle prediction + observed-ovulation authority)",
       "branch": "main",
-      "commit": "44e4cf7b51f18d717c29fcb448c2c200b011766c",
+      "commit": "19d631807c491fb02965750324c0a26690be191d",
       "pin": "exact"
     },
     "ovumcy-managed": {
       "role": "Go managed cloud (accounts/billing/entitlement/partner routes)",
-      "branch": "chore/hardening",
-      "commit": "0729fb2c1c0fada10f94bbf4a59bd7e982760ea8",
+      "branch": "main",
+      "commit": "9fb092379a6fc14d0cdba48c35d6fef90c37efb5",
       "pin": "exact"
     },
     "ovumcy-sync-community": {
       "role": "Go zero-knowledge sync transport",
-      "branch": "chore/gosec-triage",
-      "commit": "5e97d615f9e68bd2fef97ab4e433df7894b0be39",
+      "branch": "main",
+      "commit": "f33d3b9944bb485322eb535e801ed63418590cbe",
       "pin": "exact"
     }
   }
