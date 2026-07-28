@@ -43,11 +43,22 @@ import { fileURLToPath } from "node:url";
  * Exit code: 0 when every automated contract is in sync; 1 on any drift or any
  * source that could not be evaluated (fail-closed). Manually-reviewed contracts
  * are listed in the doc, not enforced here.
+ *
+ * Two side modes operate on `cross-repo-manifest.json`, the compatibility lock:
+ *   --validate-manifest   compares the recorded SHAs against LOCAL checkouts
+ *                         (git HEADs); a workspace/release step, not a CI one.
+ *   --check-manifest-refs validates the file's shape and re-resolves every
+ *                         recorded branch/commit pair against the GitHub API.
+ *                         Remote-only, so CI can run it; this is the mode the
+ *                         Cross-repo contracts workflow uses.
  */
 
 const LOG_PREFIX = "cross-repo-check:";
 const PEER_OWNER = "ovumcy";
 const APP_REPO = "ovumcy-app";
+// The peers the automated contracts above read from. The manifest must carry an
+// entry for each of them plus the app itself.
+const PEER_REPOS = ["ovumcy-web", "ovumcy-managed", "ovumcy-sync-community"];
 const DEFAULT_REF = "main";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -102,13 +113,14 @@ async function readLocalFile(absPath) {
   return { buffer, text: buffer.toString("utf8") };
 }
 
-async function fetchRemoteFile(repo, filePath) {
-  const url = `https://api.github.com/repos/${PEER_OWNER}/${repo}/contents/${filePath
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/")}?ref=${encodeURIComponent(REF)}`;
+/**
+ * One GitHub API GET with the shared auth and failure semantics. `subject` is
+ * the human-readable thing being read; it appears in every error message. The
+ * token value is never logged.
+ */
+async function githubGet(url, accept, repo, subject) {
   const headers = {
-    Accept: "application/vnd.github.raw",
+    Accept: accept,
     "User-Agent": "ovumcy-cross-repo-check",
     "X-GitHub-Api-Version": "2022-11-28",
   };
@@ -119,19 +131,19 @@ async function fetchRemoteFile(repo, filePath) {
   try {
     response = await fetch(url, { headers, redirect: "error" });
   } catch (cause) {
-    throw new Error(`network error fetching ${repo}/${filePath}: ${cause.message}`);
+    throw new Error(`network error fetching ${subject}: ${cause.message}`);
   }
   if (!response.ok) {
+    const denied =
+      response.status === 404 || response.status === 403 || response.status === 401;
     let hint = "";
-    if (response.status === 404 || response.status === 403 || response.status === 401) {
+    if (denied) {
       hint = TOKEN
         ? " (token present — confirm it has read access to this repo/path/ref)"
         : ` (no token set — a private peer needs OVUMCY_CONTRACTS_TOKEN with read access to ${PEER_OWNER}/${repo}; see docs/cross-repo-contracts.md)`;
     }
-    const error = new Error(
-      `GitHub returned ${response.status} for ${repo}/${filePath}@${REF}${hint}`,
-    );
-    if (!TOKEN && (response.status === 404 || response.status === 403 || response.status === 401)) {
+    const error = new Error(`GitHub returned ${response.status} for ${subject}${hint}`);
+    if (!TOKEN && denied) {
       // No credentials at all: a private peer is unreadable by construction,
       // and a public peer answering 401/403/404 without a token is the same
       // shape. This run cannot see the peer, which is not the same finding as
@@ -142,8 +154,45 @@ async function fetchRemoteFile(repo, filePath) {
     }
     throw error;
   }
+  return response;
+}
+
+async function fetchRemoteFile(repo, filePath) {
+  const url = `https://api.github.com/repos/${PEER_OWNER}/${repo}/contents/${filePath
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/")}?ref=${encodeURIComponent(REF)}`;
+  const response = await githubGet(
+    url,
+    "application/vnd.github.raw",
+    repo,
+    `${repo}/${filePath}@${REF}`,
+  );
   const buffer = Buffer.from(await response.arrayBuffer());
   return { buffer, text: buffer.toString("utf8") };
+}
+
+/**
+ * Resolves a recorded (branch, commit) pair against a repo. Returns the branch
+ * tip, the merge base with the recorded commit, and how far the commit sits
+ * behind the tip. A branch that no longer exists answers 404, which is how a
+ * pin left on a deleted feature branch surfaces.
+ */
+async function fetchRefRelation(repo, branch, commit) {
+  const encodedBranch = branch.split("/").map(encodeURIComponent).join("/");
+  const url = `https://api.github.com/repos/${PEER_OWNER}/${repo}/compare/${encodedBranch}...${encodeURIComponent(commit)}`;
+  const response = await githubGet(
+    url,
+    "application/vnd.github+json",
+    repo,
+    `${repo}/compare/${branch}...${commit.slice(0, 12)}`,
+  );
+  const payload = await response.json();
+  return {
+    tip: payload.base_commit?.sha ?? null,
+    mergeBase: payload.merge_base_commit?.sha ?? null,
+    behindBy: typeof payload.behind_by === "number" ? payload.behind_by : null,
+  };
 }
 
 // -- text helpers -----------------------------------------------------------
@@ -910,6 +959,201 @@ async function validateManifest() {
   return 1;
 }
 
+/**
+ * The manifest's static shape — every field both manifest modes rely on. An
+ * entry that is structurally wrong (a short SHA, a missing branch, a pin mode
+ * the validator does not implement) silently degrades `--validate-manifest`
+ * into a pass, so the shape is checked before anything is resolved remotely.
+ */
+function collectManifestShapeProblems(manifest) {
+  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+    return ["the manifest is not a JSON object"];
+  }
+  const problems = [];
+  if (manifest.schemaVersion !== 1) {
+    problems.push(
+      `schemaVersion must be 1, found ${JSON.stringify(manifest.schemaVersion)}`,
+    );
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(manifest.generatedAt ?? ""))) {
+    problems.push(
+      `generatedAt must be a YYYY-MM-DD date, found ${JSON.stringify(manifest.generatedAt)}`,
+    );
+  }
+  const repos = manifest.repos;
+  if (repos === null || typeof repos !== "object" || Array.isArray(repos)) {
+    problems.push("repos must be an object keyed by repository name");
+    return problems;
+  }
+  const expected = [APP_REPO, ...PEER_REPOS];
+  for (const repo of expected) {
+    if (!Object.hasOwn(repos, repo)) {
+      problems.push(`repos is missing the ${repo} entry`);
+    }
+  }
+  for (const repo of Object.keys(repos)) {
+    if (!expected.includes(repo)) {
+      problems.push(`repos carries an entry for unknown repository ${repo}`);
+    }
+  }
+  for (const repo of expected) {
+    const entry = repos[repo];
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      if (Object.hasOwn(repos, repo)) {
+        problems.push(`${repo} must be an object`);
+      }
+      continue;
+    }
+    for (const field of ["role", "branch"]) {
+      if (typeof entry[field] !== "string" || entry[field].trim() === "") {
+        problems.push(`${repo}.${field} must be a non-empty string`);
+      }
+    }
+    if (!/^[0-9a-f]{40}$/.test(String(entry.commit ?? ""))) {
+      problems.push(
+        `${repo}.commit must be a full 40-hex SHA, found ${JSON.stringify(entry.commit)}`,
+      );
+    }
+    // The app is pinned by ancestry so ongoing app work still validates; the
+    // peers are pinned exactly. validateManifest implements exactly these two.
+    const expectedPin = repo === APP_REPO ? "ancestor" : "exact";
+    if (entry.pin !== expectedPin) {
+      problems.push(
+        `${repo}.pin must be "${expectedPin}", found ${JSON.stringify(entry.pin)}`,
+      );
+    }
+  }
+  return problems;
+}
+
+/**
+ * Remote-mode manifest verification, the half CI can run: the file's shape, and
+ * whether every recorded (branch, commit) pair still resolves on its repository.
+ * A pin left on a deleted feature branch, or on a commit that a squash-merge
+ * orphaned off that branch, is drift — the record no longer describes anything
+ * a reader can check out. Being BEHIND the branch tip is not drift: the manifest
+ * records what the contracts were last validated against, so currency stays a
+ * refresh decision and is reported as a count, never as a failure.
+ *
+ * Skipped-vs-error follows the same rule as the contract run: with no token at
+ * all an unreadable peer is SKIPPED (dependabot and fork runs receive no repo
+ * secrets, so a private peer is invisible by construction); with a token present
+ * every failure stays an ERROR, because a token that exists and does not work is
+ * a misconfiguration and must stay loud.
+ */
+async function checkManifestRefs() {
+  if (MODE !== "remote") {
+    console.error(
+      `${LOG_PREFIX} --check-manifest-refs resolves refs through the GitHub API; unset OVUMCY_PEER_ROOT to use it.`,
+    );
+    return 1;
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(MANIFEST_PATH, "utf8"));
+  } catch (cause) {
+    console.error(`${LOG_PREFIX} cannot read ${MANIFEST_PATH}: ${cause.message}`);
+    return 1;
+  }
+
+  console.log(
+    `${LOG_PREFIX} verifying ${path.basename(MANIFEST_PATH)} (token=${TOKEN ? "present" : "none"})`,
+  );
+  console.log("");
+
+  const shapeProblems = collectManifestShapeProblems(manifest);
+  if (shapeProblems.length > 0) {
+    console.log(`[INVALID] manifest shape`);
+    for (const problem of shapeProblems) {
+      console.log(`    -> ${problem}`);
+    }
+    console.log("");
+    console.log(
+      `${LOG_PREFIX} ${shapeProblems.length} shape problem(s); recorded refs not resolved.`,
+    );
+    return 1;
+  }
+  const repos = manifest.repos;
+  console.log(
+    `[VALID] manifest shape: schemaVersion ${manifest.schemaVersion}, generated ${manifest.generatedAt}, ${Object.keys(repos).length} repo entries`,
+  );
+  console.log("");
+
+  const rows = await Promise.all(
+    [APP_REPO, ...PEER_REPOS].map(async (repo) => {
+      const entry = repos[repo];
+      try {
+        const relation = await fetchRefRelation(repo, entry.branch, entry.commit);
+        if (relation.mergeBase === entry.commit) {
+          const behind =
+            relation.behindBy === null
+              ? ""
+              : `, ${relation.behindBy} commit(s) behind the tip`;
+          return {
+            repo,
+            status: "resolved",
+            lines: [
+              `    ${entry.commit.slice(0, 12)} is on ${entry.branch} (tip ${String(relation.tip).slice(0, 12)}${behind})`,
+            ],
+          };
+        }
+        return {
+          repo,
+          status: "drift",
+          lines: [
+            `    ${entry.commit.slice(0, 12)} is NOT reachable from ${entry.branch} (tip ${String(relation.tip).slice(0, 12)})`,
+            `    -> the recorded pin no longer describes a commit on the recorded branch; re-record it.`,
+          ],
+        };
+      } catch (cause) {
+        const lines = [`    could not resolve: ${cause.message}`];
+        if (/GitHub returned 404/.test(cause.message)) {
+          // The compare endpoint answers 404 for a ref it cannot resolve, so a
+          // deleted branch and an unreadable repository look alike here.
+          lines.push(
+            `    -> a 404 also covers "branch ${entry.branch} no longer exists"; check that before assuming an access problem.`,
+          );
+        }
+        return {
+          repo,
+          status: cause.unreadablePeer ? "unreadable" : "error",
+          lines,
+        };
+      }
+    }),
+  );
+
+  for (const row of rows) {
+    const badge =
+      row.status === "resolved"
+        ? "RESOLVED"
+        : row.status === "drift"
+          ? "DRIFT   "
+          : row.status === "unreadable"
+            ? "SKIPPED "
+            : "ERROR   ";
+    console.log(`[${badge}] ${row.repo} @ ${repos[row.repo].branch}`);
+    for (const line of row.lines) {
+      console.log(line);
+    }
+  }
+  console.log("");
+
+  const drifted = rows.filter((row) => row.status === "drift");
+  const errored = rows.filter((row) => row.status === "error");
+  const unreadable = rows.filter((row) => row.status === "unreadable");
+  console.log(
+    `${LOG_PREFIX} manifest summary: ${rows.length - drifted.length - errored.length - unreadable.length} resolved, ${drifted.length} stale, ${errored.length} not resolved, ${unreadable.length} skipped (repo unreadable)`,
+  );
+  if (unreadable.length > 0) {
+    console.log(
+      `${LOG_PREFIX} ${unreadable.length} entr(y/ies) skipped: no OVUMCY_CONTRACTS_TOKEN, so the repository could not be read at all.`,
+    );
+  }
+  return drifted.length === 0 && errored.length === 0 ? 0 : 1;
+}
+
 // -- runner -----------------------------------------------------------------
 
 async function main() {
@@ -984,7 +1228,17 @@ const VALIDATE_MANIFEST =
   process.argv.includes("--validate-manifest") ||
   /^(1|true)$/i.test(process.env.OVUMCY_VALIDATE_MANIFEST?.trim() ?? "");
 
-(VALIDATE_MANIFEST ? validateManifest() : main())
+const CHECK_MANIFEST_REFS =
+  process.argv.includes("--check-manifest-refs") ||
+  /^(1|true)$/i.test(process.env.OVUMCY_CHECK_MANIFEST_REFS?.trim() ?? "");
+
+const selected = CHECK_MANIFEST_REFS
+  ? checkManifestRefs
+  : VALIDATE_MANIFEST
+    ? validateManifest
+    : main;
+
+selected()
   .then((code) => {
     process.exitCode = code;
   })

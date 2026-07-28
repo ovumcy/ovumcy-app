@@ -4,8 +4,9 @@ name: Cross-repo contracts
 # ovumcy-managed, ovumcy-sync-community) against silent drift. Runs
 # scripts/check-cross-repo-contracts.mjs in remote mode, which fetches each
 # peer's authoritative artifact from the GitHub Contents API and compares it to
-# the copy in this checkout. See docs/cross-repo-contracts.md for the contract
-# register and the required read-only token secret.
+# the copy in this checkout, then re-resolves the compatibility manifest's
+# recorded refs through the same API. See docs/cross-repo-contracts.md for the
+# contract register and the required read-only token secret.
 
 on:
   push:
@@ -52,4 +53,19 @@ jobs:
           # in docs/cross-repo-contracts.md. Fork PRs do not receive this
           # secret, so the private-peer contracts are covered by the push-to-main
           # and weekly-cron runs instead.
+          OVUMCY_CONTRACTS_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+
+      # cross-repo-manifest.json records which four commits the contracts were
+      # validated against. The step above never reads it, so a pin left on a
+      # since-deleted branch is invisible there; this step validates the file's
+      # shape and re-resolves every recorded branch/commit pair through the same
+      # API. It does not require a pin to be current — how far a pin sits behind
+      # its branch tip is reported as a count, not a failure — so refreshing the
+      # manifest stays a decision rather than a merge blocker every peer commit
+      # would trip. Runs even when the step above failed, so one run diagnoses
+      # both.
+      - name: Verify cross-repo manifest
+        if: ${{ !cancelled() }}
+        run: node scripts/check-cross-repo-contracts.mjs --check-manifest-refs
+        env:
           OVUMCY_CONTRACTS_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}

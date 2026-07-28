@@ -36,8 +36,9 @@ The app-side files are always read from the current checkout in both modes. Addi
 - `OVUMCY_CONTRACTS_REF` — git ref to fetch peer files from in remote mode (default `main`).
 - `OVUMCY_CONTRACTS_TOKEN` (falls back to `GH_TOKEN` / `GITHUB_TOKEN`) — read-only token for remote mode.
 
-The script exits `0` when every automated contract is in sync and `1` on any drift or any source that
-could not be evaluated (fail-closed).
+The script exits `0` when every automated contract it could evaluate is in sync and `1` on any drift or any
+source that could not be evaluated (fail-closed). A source that could not be *read at all* — no token, so a
+private peer is invisible by construction — is a third outcome, `SKIPPED`; see [Required CI secret](#required-ci-secret).
 
 ### Required CI secret
 
@@ -49,9 +50,14 @@ secret named **`CROSS_REPO_READ_TOKEN`** as `OVUMCY_CONTRACTS_TOKEN`.
 - Store it as the `CROSS_REPO_READ_TOKEN` Actions secret. The token value is never printed by the script.
 - The two public peers also resolve token-less; if `ovumcy-managed` ever becomes public, the secret can be
   dropped and the check runs unauthenticated.
-- **Fork pull requests** do not receive repo secrets, so the private-peer contracts cannot be fetched
-  there. Those runs report the managed contracts as `ERROR` (fail-closed). The push-to-`main` and weekly
-  cron runs, which do have the secret, are the safety net for that case.
+- **Dependabot and fork pull requests** do not receive repo secrets, so the private peer cannot be fetched
+  there. With **no token at all**, a `401`/`403`/`404` is reported as `SKIPPED` and does not fail the run —
+  "this run could not look" is not the same finding as "the contract diverged", and a red check that means
+  the former trains readers to skim past the latter. The summary names the skipped count and lists which
+  contracts were skipped, so a partial run can never be misread as a full one. With a **token present**
+  every failure stays an `ERROR`: a token that exists and does not work is a misconfiguration, not an
+  absence. The push-to-`main` and weekly cron runs, which do have the secret, are the safety net for the
+  skipped contracts.
 
 ## Automated contracts
 
@@ -215,6 +221,23 @@ known-compatible" is explicit instead of implicit.
   `${OVUMCY_PEER_ROOT}/<repo>` when set, else from siblings of this checkout (`../<repo>`) — and compares.
   Fail-closed: any repo whose HEAD cannot be read is an ERROR, not a silent pass. This mode needs local
   checkouts and is a local/release step (the remote-mode CI run has no peer working trees to git-inspect).
+- **Verified in CI:** `node scripts/check-cross-repo-contracts.mjs --check-manifest-refs` (or
+  `OVUMCY_CHECK_MANIFEST_REFS=1`) runs as the workflow's second step. It needs no working trees, so it is
+  the half of the manifest CI can carry:
+  1. **Shape** — the file parses, `schemaVersion` is `1`, `generatedAt` is a `YYYY-MM-DD` date, and there is
+     exactly one entry per repo (`ovumcy-app` plus the three peers) carrying a non-empty `role` and
+     `branch`, a full 40-hex `commit`, and the `pin` mode that repo is supposed to use. A structurally wrong
+     entry — a short SHA, a pin mode the validator does not implement — would otherwise degrade
+     `--validate-manifest` into a silent pass, so nothing is resolved until the shape holds.
+  2. **Recorded refs** — each `(branch, commit)` pair is re-resolved through the GitHub API, and the commit
+     must still be reachable from the branch. This is what catches a pin left on a branch that has since
+     been deleted, or on a commit a squash-merge orphaned off it: the record no longer describes anything a
+     reader can check out.
+  It deliberately does **not** require a pin to be current. How far a pin sits behind its branch tip is
+  printed as a commit count, never as a failure — the manifest records what the contracts were last
+  validated against, so refreshing it stays a decision instead of a merge blocker that every peer commit
+  would trip. Token handling is the same as the contract run: no token at all means an unreadable
+  repository is `SKIPPED`, a token that fails is an `ERROR`.
 - **Refresh** the peer SHAs when the contracts are re-validated against newer peer commits.
 
 ## Release smoke — account contour (P2.14)
