@@ -72,7 +72,7 @@ npm run web
 - local device reminders (daily log, upcoming period, fertile window) scheduled and delivered entirely on-device — no server involved
 - local CSV/JSON export and strictly additive offline JSON import/restore (preview, then confirm; existing days are never overwritten)
 - optional encrypted backup and sync instead of cloud-first dependence
-- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, partner sharing, and Ovumcy Cloud reminders
+- optional Ovumcy Cloud upgrade for advanced fertility signals, premium insights, doctor-friendly PDF, and partner sharing
 - optional pregnancy, postpartum, and mood check-in module (a separate one-time unlock, not a subscription): pregnancy mode with due-date tracking, kick counter and contraction timer, postpartum recovery tracking, and an EPDS mood check-in with always-available crisis-support information
 
 ## Screens
@@ -102,7 +102,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 | --- | --- | --- | --- |
 | **Free (local)** | none | free | Core tracking, custom symptoms, pregnancy test, basic predictions, local device reminders, local CSV/JSON export, offline JSON import |
 | **Community Sync** | self-hosted `ovumcy-sync-community` | free, your hosting | Everything in Free + encrypted backup/restore between your own devices |
-| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing, Ovumcy Cloud reminders |
+| **Ovumcy Cloud** | managed hosted service | paid, 30-day trial on signup | Everything above + advanced fertility signals, premium cycle insights, extended cycle reports, doctor-friendly PDF, partner sharing |
 
 Health data stays end-to-end encrypted across all three tiers. The cloud only sees opaque ciphertext, account session metadata, and billing snapshot signals.
 
@@ -131,7 +131,6 @@ The app is still an early public alpha, but the main local-first slices already 
 | Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
 | Local device reminder notifications | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |
-| Ovumcy Cloud reminders | :x: | :x: | :white_check_mark: |
 
 ## Short FAQ
 
