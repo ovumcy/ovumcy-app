@@ -45,6 +45,23 @@ const GATED_SEVERITIES = new Set(["high", "critical"]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
+ * True when the text is a zero-padded YYYY-MM-DD naming a date that exists.
+ *
+ * The shape alone is not enough. `2026-13-45` matches the pattern and sorts
+ * above every real date in its year, so an exception written that way outlives
+ * its intended expiry by more than a year — the exact decay the expiry rule is
+ * there to stop, arriving through the typo the rule does not see. Round-tripping
+ * through Date rejects both the impossible month and the impossible day, since
+ * Date normalises out-of-range components and the result no longer matches.
+ */
+function isRealISODate(text) {
+  if (!ISO_DATE.test(text ?? "")) return false;
+  const parsed = new Date(`${text}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed.toISOString().slice(0, 10) === text;
+}
+
+/**
  * Each entry excuses ONE advisory on ONE package. `reason` states why the
  * advisory does not reach this product, not merely that it is inconvenient;
  * `reviewBy` is the date the judgement has to be made again.
@@ -138,10 +155,15 @@ export function collectGatedPackages(report) {
 }
 
 // Advisory URLs look like https://github.com/advisories/GHSA-xxxx-yyyy-zzzz.
+// npm has always populated this, but an id is what a refusal has to name for
+// anyone to act on it, so an absent one says so instead of leaving a blank in
+// the middle of the message.
+const UNKNOWN_ADVISORY = "(no advisory id in the report)";
+
 function advisoryIdFromURL(url) {
-  if (typeof url !== "string") return "";
+  if (typeof url !== "string") return UNKNOWN_ADVISORY;
   const id = url.split("/").pop();
-  return id ?? "";
+  return id && id.length > 0 ? id : UNKNOWN_ADVISORY;
 }
 
 /**
@@ -199,9 +221,9 @@ export function assertWellFormedAllowlist(allowlist) {
         "audit-production: an allowlist entry is missing its package or advisory id.",
       );
     }
-    if (!ISO_DATE.test(entry.reviewBy ?? "")) {
+    if (!isRealISODate(entry.reviewBy)) {
       throw new Error(
-        `audit-production: the exception for ${entry.package} ${entry.advisory} has reviewBy "${entry.reviewBy}", which is not a zero-padded YYYY-MM-DD date and would never expire.`,
+        `audit-production: the exception for ${entry.package} ${entry.advisory} has reviewBy "${entry.reviewBy}", which is not a real zero-padded YYYY-MM-DD date and so would expire late or never.`,
       );
     }
     if (!entry.reason || entry.reason.trim().length === 0) {
