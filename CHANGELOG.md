@@ -110,6 +110,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shift over a later LH peak, mucus-only cycles are excluded from luteal
   observation sets, and the anomalous-cycle baseline uses an unweighted median
   rather than a weighted average.
+- Personalized ovulation predictions no longer land a day early. The luteal
+  phase inferred from logged BBT or cervical-mucus signals was measured as the
+  calendar span from the observed ovulation to the next period start, which
+  counts the ovulation day itself and so ran one day longer than the value the
+  prediction consumes. It is now derived through the inverse of the prediction's
+  own arithmetic, so an ovulation observed on a cycle day is predicted back on
+  that same day; the ovulation date and both edges of the fertile window move
+  with it on the dashboard, the calendar, the doctor PDF, and local reminders.
+  Only accounts with enough signal for a personalized model were affected.
 - Doctor-PDF content honesty: predictions render as conservative estimates with
   their qualifiers intact, matching the documented algorithm.
 - Onboarding and stats flags that are computed correctly now reliably reach the

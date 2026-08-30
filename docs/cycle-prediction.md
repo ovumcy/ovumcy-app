@@ -26,7 +26,7 @@ locally here. The pure policy lives in
 |-------|---------|--------|
 | `cycleStartDate` | First day of the current menstrual period (cycle day 1) | Canonical `profile.lastPeriodStart` / logged period days |
 | `cycleLength` | Length of the cycle in days | Median of observed cycles, or the owner's configured value |
-| `lutealPhase` | Days from ovulation to the next period | **14-day** default (`DEFAULT_LUTEAL_PHASE_DAYS`), refined toward the owner's own value from logged BBT / cervical-mucus signals when enough cycles carry them |
+| `lutealPhase` | Days that **follow** ovulation, up to the day before the next period | **14-day** default (`DEFAULT_LUTEAL_PHASE_DAYS`), refined toward the owner's own value from logged BBT / cervical-mucus signals when enough cycles carry them |
 
 ## The model
 
@@ -35,6 +35,12 @@ next period) is relatively stable per person** — modelled at ~14 days by defau
 and refined toward the owner's own value when logged signals allow — while the
 follicular phase (period → ovulation) absorbs the variation in cycle length. So
 ovulation is counted *backwards* from the next expected period.
+
+The `lutealPhase` parameter counts the days that **follow** ovulation. On a
+28-day cycle with a 14, ovulation is cycle day 14 and the parameter covers cycle
+days 15–28. It is therefore one day shorter than the calendar span from the
+ovulation date to the next period start, which counts the ovulation day itself.
+Every step below reads it that way, in both directions.
 
 ### Constants
 
@@ -66,6 +72,47 @@ if ovulationDay < 5:                      no prediction
 
 `cycleStartDate` is cycle day 1, so the ovulation **date** is
 `cycleStartDate + (ovulationDay − 1)` days.
+
+### Step 2a — the same arithmetic, run backwards (`calcLutealPhase`)
+
+Personalization travels this arithmetic in the other direction: an ovulation
+*observed* from logged signals is turned back into the `lutealPhase` Step 2
+consumes. That is Step 2 solved for the luteal phase, and nothing more:
+
+```
+observedLuteal = cycleLength − observedOvulationDay
+```
+
+Both directions have to use one indexing, or an observation trains a value that
+predicts a different day than the one observed. What using one buys:
+
+> An ovulation observed on cycle day **N** predicts cycle day **N** again on a
+> next cycle of the same length.
+
+The table below is asserted row for row by the "Step 2a reference vectors" cases
+in [`src/services/cycle-prediction-policy.test.ts`](../src/services/cycle-prediction-policy.test.ts).
+The invariant itself is a claim about the *observation* path, so it is pinned
+where that path runs, by
+[`src/services/cycle-luteal-round-trip.test.ts`](../src/services/cycle-luteal-round-trip.test.ts):
+those cases read an ovulation out of logged temperature or mucus entries and
+follow it all the way to a rendered date. A test of the two formulas alone could
+never catch a drift here, and not by oversight: they are exact inverses by
+construction, so the pair always agrees. What can drift is a third thing — the
+step that reads an ovulation out of the logs and works out which argument to
+hand them.
+
+| cycleLength | observed ovulation | → lutealPhase | → predicted ovulation |
+|-------------|--------------------|---------------|-----------------------|
+| 28 | day 14 | 14 (the model default) | day 14 |
+| 28 | day 15 | 13 | day 15 |
+| 21 | day 8  | 13 | day 8  |
+| 35 | day 21 | 14 | day 21 |
+| 40 | day 26 | 14 | day 26 |
+| 30 | day 20 | 10 (equal to the floor, not clamped to it) | day 20 |
+
+Measuring the ovulation-to-next-period span instead and feeding it back in as
+the parameter moves every personalized prediction one day early — the ovulation
+date and both edges of the fertile window alike.
 
 ### Step 3 — fertile window (`predictCycleWindow`)
 
@@ -121,9 +168,19 @@ reproduces them because it runs the identical constants and steps.
   is used.
 - **Luteal phase** defaults to the fixed 14-day model value, but is refined for
   the owner when their logs carry enough signal: when basal body temperature
-  (`detectSustainedThermalShift`) or cervical-mucus entries let the app infer the
-  ovulation-to-next-period length across several cycles, that observed luteal
-  length (lower-clamped at 10 days) replaces the default. With little or no such
+  (`detectSustainedThermalShift`) or cervical-mucus entries let the app read an
+  observed ovulation day across several cycles, each observation becomes a luteal
+  length by Step 2a and the average of them (lower-clamped at 10 days) replaces
+  the default. A cycle whose inferred luteal length falls outside a physiological
+  10–20 day window is **discarded**, not pulled to the nearest edge of it — an
+  implausible inference is treated as a bad reading rather than as a 10 or a 20 —
+  and the refinement needs at least two surviving cycles, so a single odd reading
+  cannot move the estimate on its own. That window bounds the parameter, not the
+  ovulation-to-next-period span, so a cycle whose span sits exactly on the lower
+  edge is discarded. The cervical-mucus signal estimates ovulation as the day
+  after the last egg-white (peak-quality) mucus day of the cycle; self-observed
+  peak days can differ from reference ovulation by a day or more, which is
+  another reason the inferred luteal length stays an estimate. With little or no such
   data the fixed 14-day default stands — a population default estimate, never a
   personal truth. The population mean actually sits a little below 14 (around
   12 days), and individual luteal phases vary widely from person to person and

@@ -6,6 +6,7 @@ import {
 import { DEFAULT_PERIOD_LENGTH } from "../models/profile";
 import type { LocalDateISO, ProfileRecord } from "../models/profile";
 import {
+  calcLutealPhase,
   predictCycleWindow,
   resolveLutealPhase,
   type PredictedCycleWindow,
@@ -483,6 +484,18 @@ function resolveUpcomingOvulationDisplay(
   };
 }
 
+// Plausibility window the observed-luteal inference filters its per-cycle
+// samples through. A value outside it means the ovulation signal was misread (a
+// stray egg-white day early in the cycle, a thermal shift picked up from a
+// disturbed reading), so the cycle is dropped from the sample rather than
+// clamped into it.
+//
+// Both ends bound the parameter in calcOvulationDay's reading of it: the count
+// of days that FOLLOW ovulation. They are NOT bounds on the calendar span from
+// the ovulation date to the next period start, which is one day longer — so
+// filtering the corrected quantity shifts the accepted band of observed spans
+// by one day, and a cycle whose span sits exactly on the lower edge (an
+// ovulation ten calendar days before the next start) is now discarded.
 const MIN_OBSERVED_LUTEAL_DAYS = 10;
 const MAX_OBSERVED_LUTEAL_DAYS = 20;
 const MIN_OBSERVED_LUTEAL_SAMPLES = 2;
@@ -515,13 +528,23 @@ export function inferUserLutealPhase(
       continue;
     }
 
+    const cycleStart = parseLocalDate(cycleStartDate);
     const ovulation = parseLocalDate(ovulationDate);
     const nextStart = parseLocalDate(nextStartDate);
-    if (!ovulation || !nextStart) {
+    if (!cycleStart || !ovulation || !nextStart) {
       continue;
     }
 
-    const lutealLength = diffCalendarDays(ovulation, nextStart);
+    // Derive the parameter through the inverse of the prediction's own
+    // arithmetic rather than measuring the calendar span to nextStart. That
+    // span counts the ovulation day itself, so it runs one day longer than the
+    // luteal phase calcOvulationDay consumes, and feeding it back in predicted
+    // the day BEFORE the observed ovulation on an identical next cycle — the
+    // personalized path shifted ovulation and both fertile-window edges one day
+    // early on every surface that renders them.
+    const cycleLength = diffCalendarDays(cycleStart, nextStart);
+    const ovulationCycleDay = diffCalendarDays(cycleStart, ovulation) + 1;
+    const lutealLength = calcLutealPhase(cycleLength, ovulationCycleDay);
     if (
       lutealLength < MIN_OBSERVED_LUTEAL_DAYS ||
       lutealLength > MAX_OBSERVED_LUTEAL_DAYS
