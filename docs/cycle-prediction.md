@@ -114,6 +114,13 @@ Measuring the ovulation-to-next-period span instead and feeding it back in as
 the parameter moves every personalized prediction one day early — the ovulation
 date and both edges of the fertile window alike.
 
+Every surface that reports an observed luteal length reads it the same way and
+derives it through the same inverse: the prediction's own inference, the
+premium stats "Observed luteal phase" average, and the short-luteal warning
+(which fires below 10 days, matching the clinical definition of days following
+ovulation). One reading across all of them, so the same physiology is never
+reported as two different numbers.
+
 ### Step 3 — fertile window (`predictCycleWindow`)
 
 The fertile window is the **6-day range ending on ovulation day**, reflecting

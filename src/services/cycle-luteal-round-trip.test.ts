@@ -11,6 +11,7 @@ import {
   predictCycleWindow,
 } from "./cycle-prediction-policy";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 
 // The round-trip invariant pinned here: an ovulation OBSERVED on cycle day N
 // must train a luteal-phase parameter that predicts cycle day N again on an
@@ -419,5 +420,33 @@ describe("the live inference reaches the owner surfaces through the projection",
     // recorded, so a change that reached it would be a scope violation rather
     // than a fix.
     expect(projection.nextPeriodDate).toBe("2026-03-26");
+  });
+
+  // The premium surfaces that report an observed luteal length must name the
+  // same quantity the prediction is trained on. They each derive it through
+  // calcLutealPhase from their own anchor, so a surface that slipped back to
+  // measuring the ovulation-to-next-start span would read one day longer than
+  // the projection for the very same logs.
+  it("reports one luteal length across the projection and the stats surface", () => {
+    const cycleLength = 28;
+    const originDate = "2026-01-01";
+    const records = lutealRoundTripRecords(originDate, cycleLength, [15, 15], "bbt");
+
+    const now = new Date(2026, 2, 3, 9, 0, 0);
+    const profile = createProfileRecord({
+      lastPeriodStart: originDate,
+      cycleLength,
+    });
+    const history = buildCycleHistorySummary(profile, records, now);
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
+    const advanced = buildStatsAdvancedFertility(
+      history,
+      records,
+      projection.cycleAnchorDate,
+    );
+
+    expect(advanced?.observedLutealSampleCount).toBe(2);
+    expect(advanced?.observedLutealAverageDays).toBe(projection.lutealPhase);
+    expect(advanced?.observedLutealAverageDays).toBe(13);
   });
 });

@@ -79,9 +79,10 @@ function currentCycleShiftRecords(): DayLogRecord[] {
 
 describe("buildStatsAdvancedFertility", () => {
   it("derives luteal consistency from a true ovulation anchor (LH peak) per cycle", () => {
-    // Mucus-only cycles are skipped for luteal (review 1.4). Anchor on LH peaks:
-    // C1 2026-01-15 -> 2026-01-29 = 14d; C2 2026-02-11 -> 2026-02-26 = 15d;
-    // C3 2026-03-12 -> 2026-03-29 = 17d. min 14, max 17, spread 3.
+    // Mucus-only cycles are skipped for luteal (review 1.4). Anchor on LH peaks,
+    // counting the days that FOLLOW ovulation: C1 peak on cycle day 15 of 28 =
+    // 13d; C2 cycle day 14 of 28 = 14d; C3 cycle day 15 of 31 = 16d.
+    // min 13, max 16, spread 3.
     const records = [lhPeak("2026-01-15"), lhPeak("2026-02-11"), lhPeak("2026-03-12")];
 
     expect(
@@ -90,8 +91,8 @@ describe("buildStatsAdvancedFertility", () => {
       expect.objectContaining({
         observedLutealConsistency: expect.objectContaining({
           kind: "strong_variation",
-          minDays: 14,
-          maxDays: 17,
+          minDays: 13,
+          maxDays: 16,
           spreadDays: 3,
         }),
         observedLutealSampleCount: 3,
@@ -121,8 +122,10 @@ describe("buildStatsAdvancedFertility", () => {
   });
 
   it("includes a cycle whose observed luteal phase is exactly the 10-day floor", () => {
-    // LH peak 2026-01-19 -> next start 2026-01-29 = 10d (inclusive lower bound).
-    const records = [lhPeak("2026-01-19")];
+    // LH peak on cycle day 18 of a 28-day cycle -> 10d of luteal phase, the
+    // inclusive lower bound. The calendar span to the next start is 11 days:
+    // the filter bounds the parameter, not the span.
+    const records = [lhPeak("2026-01-18")];
 
     expect(
       buildStatsAdvancedFertility(createHistory(), records, "2026-03-29"),
