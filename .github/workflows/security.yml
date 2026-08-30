@@ -36,8 +36,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run npm audit for production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - name: Collect the production advisory report
+        # npm exits non-zero whenever it finds anything, so its exit code is
+        # not the verdict; the gate below reads the report and decides.
+        run: |
+          mkdir -p .tmp/security
+          npm audit --omit=dev --json > .tmp/security/audit-production.json || true
+
+      - name: Enforce the production advisory gate
+        run: node scripts/audit-production.mjs .tmp/security/audit-production.json
 
   trivy-fs:
     runs-on: ubuntu-latest
