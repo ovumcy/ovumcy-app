@@ -291,93 +291,59 @@ describe("inferred luteal phase round-trips through prediction", () => {
   });
 });
 
-// The prediction pipeline is calendar-day based and DST-immune by construction:
-// both quantities the INFERENCE measures — the cycle length and the ovulation's
-// offset from the cycle start — are whole-day counts taken through
-// diffCalendarDays, which anchors on Date.UTC. These cases prove it where it
-// would break if the arithmetic ever moved to raw instants: the device zone is
-// switched to one whose clocks move INSIDE the observed cycles, and the
-// inferred parameter must be identical to the UTC control.
-describe("inferred luteal phase survives DST and device time zones", () => {
-  const originalTimeZone = process.env.TZ;
-
-  // Restore by DELETING the key when it was absent. Assigning `undefined` back
-  // would store the literal string "undefined", which every later date in the
-  // run then resolves through as an unknown zone — and the whole suite shares
-  // one process under `jest --runInBand`, so that leaks out of this file.
-  function restoreTimeZone(): void {
-    if (originalTimeZone === undefined) {
-      delete process.env.TZ;
-      return;
-    }
-    process.env.TZ = originalTimeZone;
-  }
-
-  afterEach(restoreTimeZone);
-
+// The inference measures two whole-day counts — the cycle length, and the
+// ovulation's offset from the cycle start — and both go through
+// diffCalendarDays, which anchors on Date.UTC so that one calendar day always
+// counts as one day whatever the device zone does. These cases run the round
+// trip over cycles that straddle a daylight-saving transition, where an
+// arithmetic that subtracted raw instants would see a 23- or 25-hour day and
+// drift.
+//
+// What they deliberately do NOT do is switch zones. Assigning process.env.TZ at
+// runtime does not take effect under this project's Jest setup — measured: with
+// TZ set to "UTC" and then to "Pacific/Kiritimati",
+// `new Date(2026, 0, 1).getTimezoneOffset()` returns the runner's own offset
+// both times. A test built on that would compare the runner's zone against
+// itself and could never fail, which is worse than no coverage. Zone coverage
+// is available only by running the whole suite under an external TZ, and the
+// day-count primitive itself is pinned regardless of zone by
+// profile-settings-date-diff.test.ts.
+describe("inferred luteal phase is unmoved by daylight-saving transitions", () => {
   const cases: {
     name: string;
-    zone: string;
     originDate: string;
     kind: LutealSignalKind;
     observed: number;
   }[] = [
-    // Europe/Berlin springs forward on 2026-03-29, which is cycle day 15 of the
-    // first cycle — the observed ovulation day itself.
-    { name: "spring forward on the ovulation day", zone: "Europe/Berlin", originDate: "2026-03-15", kind: "bbt", observed: 15 },
+    // Europe/Berlin springs forward on 2026-03-29 — cycle day 15 of the first
+    // cycle here, the observed ovulation day itself.
+    { name: "a spring-forward date falls on the observed ovulation", originDate: "2026-03-15", kind: "bbt", observed: 15 },
     // America/Toronto falls back on 2026-11-01, between the first cycle's start
     // and its observed ovulation.
-    { name: "fall back between the cycle start and ovulation", zone: "America/Toronto", originDate: "2026-10-20", kind: "eggwhite", observed: 15 },
-    // A fixed offset far from UTC, where every local midnight lands on a
-    // different UTC day.
-    { name: "fixed far-east offset", zone: "Pacific/Kiritimati", originDate: "2026-01-01", kind: "bbt", observed: 15 },
+    { name: "a fall-back date sits between the cycle start and ovulation", originDate: "2026-10-20", kind: "eggwhite", observed: 15 },
+    // A cycle with no transition anywhere near it, as the control: the
+    // parameter must be the same number as the two above.
+    { name: "a cycle clear of any transition reads the same", originDate: "2026-06-01", kind: "bbt", observed: 15 },
   ];
 
   const cycleLength = 28;
 
   for (const testCase of cases) {
     it(testCase.name, () => {
-      const utcControl = inferInZone(
-        "UTC",
+      const records = lutealRoundTripRecords(
         testCase.originDate,
         cycleLength,
-        testCase.observed,
+        [testCase.observed, testCase.observed],
         testCase.kind,
       );
-      expect(utcControl).toBe(cycleLength - testCase.observed);
-
-      const zoned = inferInZone(
-        testCase.zone,
+      assertLutealRoundTrip(
+        records,
         testCase.originDate,
         cycleLength,
+        2,
         testCase.observed,
-        testCase.kind,
       );
-      expect(zoned).toBe(utcControl);
     });
-  }
-
-  function inferInZone(
-    zone: string,
-    originDate: string,
-    length: number,
-    observed: number,
-    kind: LutealSignalKind,
-  ): number {
-    process.env.TZ = zone;
-    // The records are built INSIDE the zone too, so a zone-dependent day count
-    // would have to cancel out in both directions to escape notice.
-    const records = lutealRoundTripRecords(originDate, length, [observed, observed], kind);
-    const origin = parseLocalDate(originDate);
-    expect(origin).not.toBeNull();
-    const todayValue = formatLocalDate(addDays(origin!, 2 * length + 1));
-    const luteal = inferUserLutealPhase(
-      createProfileRecord({ lastPeriodStart: originDate, cycleLength: length }),
-      records,
-      todayValue,
-    );
-    expect(luteal).not.toBeNull();
-    return luteal!;
   }
 });
 
