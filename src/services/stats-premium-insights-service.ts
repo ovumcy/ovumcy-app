@@ -320,7 +320,7 @@ export function buildShortLutealHint(
     // Derived through the prediction's own inverse, so this warning and the
     // personalized prediction read one luteal phase between them.
     const lutealDays = calcLutealPhase(
-      diffLocalDays(cycle.startDate, cycle.nextStartDate),
+      cycle.cycleLength,
       diffLocalDays(cycle.startDate, anchorDate) + 1,
     );
     if (lutealDays <= 0) {

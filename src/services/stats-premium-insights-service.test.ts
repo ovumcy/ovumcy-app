@@ -331,8 +331,11 @@ describe("buildShortLutealHint", () => {
     // the first elevated day), which gives a short luteal, plus an early LH peak
     // that would give a LONGER (>= 10) luteal if it were used. The warning fires
     // only because the BBT ovulation day takes precedence over the LH peak.
+    // The declared lengths must agree with the start dates: production derives
+    // a cycle's length from exactly this pair, so a summary where they differ
+    // cannot occur and would only test the fixture.
     const history = createHistory(
-      [25, 25, 25],
+      [21, 21, 21],
       ["2026-01-01", "2026-01-22", "2026-02-12", "2026-03-05"],
     );
     const shiftCycle = (

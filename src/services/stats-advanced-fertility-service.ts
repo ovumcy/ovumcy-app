@@ -1,6 +1,10 @@
 import type { DayLogRecord } from "../models/day-log";
 import type { StatsCycleHistorySummary } from "../models/stats";
-import { calcLutealPhase } from "./cycle-prediction-policy";
+import {
+  MAX_OBSERVED_LUTEAL_DAYS,
+  MIN_OBSERVED_LUTEAL_DAYS,
+  calcLutealPhase,
+} from "./cycle-prediction-policy";
 import {
   detectSustainedThermalShift,
   inferBBTOvulationDate,
@@ -9,12 +13,6 @@ import {
 import { diffLocalDays } from "./profile-settings-policy";
 
 const ADVANCED_FERTILITY_CYCLE_LIMIT = 4;
-// The same plausibility window the prediction's own luteal inference filters
-// through (cycle-history-service.ts), bounding the same quantity: the count of
-// days that FOLLOW ovulation, never the ovulation-to-next-start calendar span,
-// which is one day longer because it counts the ovulation day itself.
-const MAX_OBSERVED_LUTEAL_DAYS = 20;
-const MIN_OBSERVED_LUTEAL_DAYS = 10;
 const MAX_OVULATION_CONFIRMATION_GAP_DAYS = 4;
 
 export type StatsThermalShiftSummary = {
@@ -96,7 +94,7 @@ export function buildStatsAdvancedFertility(
       // here names the same quantity the personalized prediction is trained on.
       // Measuring the span to nextStartDate instead would read one day longer.
       const lutealDays = calcLutealPhase(
-        diffLocalDays(cycle.startDate, cycle.nextStartDate),
+        cycle.cycleLength,
         diffLocalDays(cycle.startDate, lutealAnchorDate) + 1,
       );
       if (
