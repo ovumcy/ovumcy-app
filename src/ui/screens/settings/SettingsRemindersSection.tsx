@@ -12,14 +12,12 @@ import { AppTextInput } from "../../components/AppTextInput";
 import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { FeatureCard } from "../../components/FeatureCard";
 import { LabeledSliderField } from "../../components/LabeledSliderField";
-import { PremiumLockCard } from "../../components/PremiumLockCard";
 import { StatusBanner } from "../../components/StatusBanner";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
 type SettingsRemindersSectionProps = {
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
-  onPremiumCTAPress?: (() => void) | undefined;
   onReminderLeadDaysChange: (value: number) => void;
   onReminderTimeChange: (value: string) => void;
   onUpcomingPeriodReminderChange: (value: boolean) => void;
@@ -32,13 +30,11 @@ type SettingsRemindersSectionProps = {
 
 // Local device reminders are a Free-tier surface (web parity): every control
 // below works with no account and no plan. Reminders are delivered on this
-// device only — there is no server-side reminder channel to opt into. The
-// shared PremiumLockCard marks the managed cloud's reminders entitlement
-// while the billing snapshot has not granted it.
+// device only — there is no server-side reminder channel to opt into, and no
+// plan to buy, so this section carries no premium affordance at all.
 export function SettingsRemindersSection({
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
-  onPremiumCTAPress,
   onReminderLeadDaysChange,
   onReminderTimeChange,
   onUpcomingPeriodReminderChange,
@@ -49,7 +45,6 @@ export function SettingsRemindersSection({
   viewData,
 }: SettingsRemindersSectionProps) {
   const reminderView = viewData.reminders;
-  const premiumLockCopy = viewData.premiumLock;
 
   return (
     <FeatureCard
@@ -132,17 +127,6 @@ export function SettingsRemindersSection({
         value={state.reminderValues.reminderLeadDays}
         valueSuffix={` ${viewData.common.daysShort}`}
       />
-
-      {!state.managedPremiumAccess.reminders ? (
-        <PremiumLockCard
-          ctaLabel={premiumLockCopy.ctaLabel}
-          description={reminderView.lockedHint}
-          eyebrowLabel={premiumLockCopy.eyebrowLabel}
-          onPress={onPremiumCTAPress}
-          testID="settings-reminders-lock"
-          title={premiumLockCopy.remindersTitle}
-        />
-      ) : null}
 
       {reminderStatusMessage ? (
         <StatusBanner

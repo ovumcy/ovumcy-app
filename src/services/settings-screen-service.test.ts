@@ -361,15 +361,14 @@ describe("settings services", () => {
       new Date(2026, 2, 18),
     );
 
-    // Premium (Ovumcy Cloud tier) stays locked: doctor PDF / reminders / plan
-    // status must track the billing snapshot only, never the fact that sync
-    // is currently allowed.
+    // Premium (Ovumcy Cloud tier) stays locked: doctor PDF and plan status must
+    // track the billing snapshot only, never the fact that sync is currently
+    // allowed.
     expect(state.managedPremiumAccess).toEqual({
       ...createEmptySettingsManagedPremiumAccess(),
       planStatus: "inactive",
     });
     expect(state.managedPremiumAccess.doctorPDF).toBe(false);
-    expect(state.managedPremiumAccess.reminders).toBe(false);
 
     // Sync (Community Sync tier) stays available: it is decided solely by
     // `sync_entitlement.sync_allowed`, unaffected by the inactive plan above.
@@ -492,7 +491,6 @@ describe("settings services", () => {
           ...createEmptySettingsManagedPremiumAccess(),
           planStatus: "active",
           doctorPDF: true,
-          reminders: true,
         },
         syncCapabilities: expect.objectContaining({
           mode: "managed",

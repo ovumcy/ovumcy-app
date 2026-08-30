@@ -136,7 +136,6 @@ export type SettingsViewData = {
     title: string;
     subtitle: string;
     localOnlyHint: string;
-    lockedHint: string;
     timeLabel: string;
     timeHint: string;
     leadDaysLabel: string;
@@ -425,7 +424,6 @@ export type SettingsViewData = {
 export type SettingsManagedPremiumAccess = {
   planStatus: "unknown" | "inactive" | "active";
   doctorPDF: boolean;
-  reminders: boolean;
   // activeSubscription drives the plan/trial countdown on Backup & Sync. Null
   // when there is no managed subscription row (self-hosted, signed out, or a
   // plan-less managed account).
@@ -440,7 +438,6 @@ export function createEmptySettingsManagedPremiumAccess(): SettingsManagedPremiu
   return {
     planStatus: "unknown",
     doctorPDF: false,
-    reminders: false,
     activeSubscription: null,
     offers: [],
   };
@@ -452,7 +449,6 @@ export function mapBillingSnapshotToManagedPremiumAccess(
   return {
     planStatus: billingSnapshot.hasActivePlan ? "active" : "inactive",
     doctorPDF: billingSnapshot.premiumFeatures.doctorPDF,
-    reminders: billingSnapshot.premiumFeatures.reminders,
     activeSubscription: billingSnapshot.activeSubscription,
     offers: billingSnapshot.offers,
   };
@@ -658,7 +654,6 @@ export function buildSettingsViewData(
       title: settingsCopy.reminders.title,
       subtitle: settingsCopy.reminders.subtitle,
       localOnlyHint: settingsCopy.reminders.localOnlyHint,
-      lockedHint: settingsCopy.reminders.lockedHint,
       timeLabel: settingsCopy.reminders.timeLabel,
       timeHint: settingsCopy.reminders.timeHint,
       leadDaysLabel: settingsCopy.reminders.leadDaysLabel,

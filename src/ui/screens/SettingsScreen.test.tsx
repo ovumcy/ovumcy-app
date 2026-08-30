@@ -373,7 +373,7 @@ describe("SettingsScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/privacy");
   });
 
-  it("saves pending settings before opening backup and sync", async () => {
+  it("saves pending reminder settings when the leave guard is accepted", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("accept");
 
@@ -388,7 +388,11 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-reminders-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
-    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
+    });
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -397,7 +401,8 @@ describe("SettingsScreen", () => {
         }),
       ),
     );
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
+    // Saved, then the navigation the guard was holding back is let through.
+    await waitFor(() => expect(mockDispatch).toHaveBeenCalled());
   });
 
   it("keeps the hub a summary and navigation surface without inline section editors", async () => {
@@ -501,7 +506,6 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-reminders-section");
-    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
     expect(screen.getByTestId("settings-reminder-lead-days-slider")).toBeTruthy();
 
     remindersRender.unmount();
@@ -696,11 +700,12 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-reminders-section");
-    // No managed session: the managed reminders entitlement stays locked...
-    expect(screen.getByTestId("settings-reminders-lock")).toBeTruthy();
+    // Reminders are Free-tier outright: no managed session, and no premium
+    // affordance of any kind in this section...
+    expect(screen.queryByTestId("settings-reminders-lock")).toBeNull();
 
-    // ...but the local device controls are Free-tier: enabling a reminder
-    // and saving must reach the platform scheduler with real plans.
+    // ...while the local device controls work as they always did: enabling a
+    // reminder and saving must reach the platform scheduler with real plans.
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
     fireEvent(
       screen.getByTestId("settings-reminder-lead-days-slider"),
@@ -828,9 +833,8 @@ describe("SettingsScreen", () => {
     );
 
     await screen.findByTestId("settings-reminders-section");
-    expect(screen.queryByTestId("settings-reminders-lock")).toBeNull();
-    // Reminders are delivered on this device only. Granting the managed
-    // reminders entitlement unlocks no second delivery channel — there is no
+    // Reminders are delivered on this device only and are not sold, so a
+    // managed session unlocks no second delivery channel — there is no
     // email-delivery control to render in this flag combination either.
     expect(
       screen.queryByTestId("settings-toggle-reminder-email-delivery"),
@@ -2197,24 +2201,9 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("opens backup and sync from either premium-lock CTA (reminders, export PDF)", async () => {
+  it("opens backup and sync from the export-PDF premium CTA", async () => {
     const storage = createSettingsStorageMock();
 
-    const remindersRender = render(
-      <SettingsScreen
-        now={new Date(2026, 2, 17)}
-        section="reminders"
-        storage={storage}
-      />,
-    );
-
-    await screen.findByTestId("settings-reminders-lock");
-
-    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
-
-    remindersRender.unmount();
-    mockPush.mockClear();
     render(
       <SettingsScreen now={new Date(2026, 2, 17)} section="data" storage={storage} />,
     );
@@ -2500,7 +2489,7 @@ describe("SettingsScreen", () => {
     );
   });
 
-  it("stays on the section and keeps changes when the backup-sync guard is dismissed", async () => {
+  it("stays on the section and keeps changes when the leave guard is dismissed", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
 
@@ -2515,10 +2504,14 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-reminders-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
-    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
+
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
+    });
 
     await waitFor(() => expect(mockOpenLeaveConfirmation).toHaveBeenCalled());
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
@@ -2571,7 +2564,7 @@ describe("SettingsScreen", () => {
     }
   });
 
-  it("discards changes when the backup-sync guard rejects saving, then navigates", async () => {
+  it("discards changes when the leave guard rejects saving, then navigates", async () => {
     const storage = createSettingsStorageMock();
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
@@ -2586,9 +2579,13 @@ describe("SettingsScreen", () => {
     await screen.findByTestId("settings-reminders-section");
 
     fireEvent.press(screen.getByTestId("settings-toggle-reminder-daily-log"));
-    fireEvent.press(screen.getByTestId("settings-reminders-lock"));
 
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
+    expect(preventRemoveCallback).toEqual(expect.any(Function));
+    await act(async () => {
+      preventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
+    });
+
+    await waitFor(() => expect(mockDispatch).toHaveBeenCalled());
     expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
       expect.objectContaining({ dailyLogReminderEnabled: true }),
     );
