@@ -176,7 +176,7 @@ Product-side decisions, tracked outside code:
 
 ## Premium Entitlement and the Sync Plane
 
-Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, reminders) read from the managed billing snapshot, not from the sync transport. Device reminder notifications are free-tier, delivered on-device only, and read no billing state at all — the managed cloud runs no reminder delivery channel.
+Ovumcy Cloud premium gates (advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing) read from the managed billing snapshot, not from the sync transport. Device reminder notifications are free-tier, delivered on-device only, and read no billing state at all — the managed cloud runs no reminder delivery channel, so reminders are not among those gates and no surface treats them as one. The billing snapshot may still carry a `reminders` flag; the client parses it and acts on nothing.
 
 What this means in practice:
 

@@ -297,9 +297,9 @@ that owns the canonical web UX).
   - local device reminders (toggles, reminder time, lead-days control) are
     free-tier, mirroring web's free reminder settings (`reminder_lead_days`,
     web #123: 0–14, default 3, clamped never rejected)
-  - shows the managed-premium locked state for the reminders entitlement while
-    the billing snapshot has not granted it; every reminder control stays usable
-    regardless
+  - carries no premium affordance at all: reminders are free on both products,
+    so there is no locked state to show and every reminder control is usable
+    whatever the billing snapshot says
   - reminder **delivery channels differ by product and this is intentional**,
     not a parity gap: web delivers reminders server-side — the dashboard
     reminder banner, an outbound webhook (web #124), and a subscribable `.ics`
@@ -489,7 +489,7 @@ that owns the canonical web UX).
 The following surfaces are intentionally richer in the app than on the canonical web product. They are app-domain extensions, not parity targets.
 
 - Pregnancy test day-log field with automatic prediction pause across dashboard, calendar, and stats.
-- Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, the settings reminders section, settings PDF export, and the backup-sync partner area.
+- Unified premium paywall placeholders (`PremiumLockCard`) on stats premium sections, settings PDF export, and the backup-sync partner area.
 - Short luteal phase warning in advanced insights, derived from the same canonical local cycle history.
 - Doctor PDF with a colored month-grid calendar (period, fertile window, observed ovulation marker, predicted ovulation solid gray border) and three premium analytic sections (advanced fertility signals, cycle comparison, short luteal warning).
 - Six-locale interface coverage for paywall, day-log, calendar, dashboard, and PDF surfaces (English, Russian, German, French, Spanish, Italian).
