@@ -93,6 +93,14 @@ describe("Step 2a reference vectors (observed ovulation day -> luteal phase)", (
         day: vector.wantDay,
         isExact: vector.wantExact,
       });
+      // wantDay is a free field, so on its own it lets a vector state the very
+      // drift these rows exist to catch — an exact round trip landing a day off
+      // the observation. Bind the two back together wherever the clamp did not
+      // intervene; the clamped row is exempt because there the two genuinely
+      // differ, and that is the point of it.
+      if (vector.wantExact) {
+        expect(vector.wantDay).toBe(vector.observedOvulationDay);
+      }
     });
   }
 });
