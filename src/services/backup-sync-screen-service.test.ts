@@ -141,7 +141,6 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
     expect(result.state.managedPremiumAccess).toEqual({
       planStatus: "active",
       doctorPDF: true,
-      reminders: true,
       activeSubscription: null,
       offers: [],
     });

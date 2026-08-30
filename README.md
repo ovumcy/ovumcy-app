@@ -179,7 +179,7 @@ The current `main` branch provides:
 - strictly additive offline JSON import/restore (`import-service.ts`): parse, preview, then explicit confirm; it never overwrites an existing day or symptom and restores the profile only onto a pristine install, all Free-tier with no account required;
 - pregnancy test logging with automatic prediction pause when the latest test is positive and no subsequent period start has been recorded;
 - local device reminders (daily log, upcoming period with a configurable lead, fertile window) scheduled and delivered on-device, with no server-side reminder channel;
-- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, partner sharing, and reminders;
+- Ovumcy Cloud premium gates with unified paywall placeholders for advanced fertility, advanced insights, extended reports, doctor PDF, and partner sharing;
 - doctor-friendly PDF export with colored monthly calendar, advanced fertility signals, cycle comparison, and short luteal phase warning;
 - six-locale interface coverage (English, Russian, German, French, Spanish, Italian) for paywall, day-log, calendar, dashboard, and PDF surfaces;
 - route, service, storage, and UI boundaries aligned with the long-term client architecture;

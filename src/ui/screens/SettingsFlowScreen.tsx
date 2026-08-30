@@ -403,9 +403,6 @@ export function SettingsFlowScreen({
             <SettingsRemindersSection
               onDailyLogReminderChange={onDailyLogReminderChange}
               onFertileWindowReminderChange={onFertileWindowReminderChange}
-              onPremiumCTAPress={() => {
-                void onOpenBackupSync();
-              }}
               onReminderLeadDaysChange={onReminderLeadDaysChange}
               onReminderTimeChange={onReminderTimeChange}
               onUpcomingPeriodReminderChange={onUpcomingPeriodReminderChange}

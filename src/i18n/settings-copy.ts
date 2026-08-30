@@ -122,8 +122,6 @@ const settingsCopyEn = {
       "Schedule reminders on this device. They work with no account and no plan.",
     localOnlyHint:
       "On-device reminders stay on this device only. They do not send your health data to a server.",
-    lockedHint:
-      "On-device reminders work without an account or plan, and your saved choices stay local.",
     timeLabel: "Reminder time",
     timeHint:
       "Used for daily logging and for the next scheduled cycle reminders on this device.",
@@ -537,7 +535,6 @@ const settingsCopyEn = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Open Ovumcy Cloud",
-    remindersTitle: "Ovumcy Cloud reminders",
     pdfExportTitle: "Doctor-friendly PDF",
   },
 } as const;
@@ -667,8 +664,6 @@ const settingsCopyDe: SettingsCopy = {
       "Planen Sie Erinnerungen auf diesem Gerät. Sie funktionieren ohne Konto und ohne Plan.",
     localOnlyHint:
       "Geräte-Erinnerungen bleiben nur auf diesem Gerät. Es werden keine Gesundheitsdaten an einen Server gesendet.",
-    lockedHint:
-      "Erinnerungen auf diesem Gerät funktionieren ohne Konto und Plan, und Ihre gespeicherten Auswahloptionen bleiben lokal.",
     timeLabel: "Erinnerungszeit",
     timeHint:
       "Wird für tägliche Log-Erinnerungen und für die nächsten geplanten Zyklus-Erinnerungen auf diesem Gerät verwendet.",
@@ -1130,7 +1125,6 @@ const settingsCopyDe: SettingsCopy = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Ovumcy Cloud öffnen",
-    remindersTitle: "Ovumcy-Cloud-Erinnerungen",
     pdfExportTitle: "Arztgerechtes PDF",
   },
 };
@@ -1258,8 +1252,6 @@ const settingsCopyFr: SettingsCopy = {
       "Planifiez des rappels sur cet appareil. Ils fonctionnent sans compte ni abonnement.",
     localOnlyHint:
       "Les rappels de l’appareil restent sur cet appareil uniquement. Ils n’envoient pas vos données de santé à un serveur.",
-    lockedHint:
-      "Les rappels sur cet appareil fonctionnent sans compte ni abonnement, et vos choix enregistrés restent locaux.",
     timeLabel: "Heure du rappel",
     timeHint:
       "Utilisée pour le rappel quotidien et pour les prochains rappels de cycle planifiés sur cet appareil.",
@@ -1725,7 +1717,6 @@ const settingsCopyFr: SettingsCopy = {
   premiumLock: {
     eyebrowLabel: "Premium",
     ctaLabel: "Ouvrir Ovumcy Cloud",
-    remindersTitle: "Rappels Ovumcy Cloud",
     pdfExportTitle: "PDF pour votre médecin",
   },
 };
@@ -1852,8 +1843,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Планируйте напоминания на этом устройстве. Они работают без аккаунта и без плана.",
       localOnlyHint:
         "Напоминания устройства остаются только на этом устройстве. Данные о здоровье не отправляются на сервер.",
-      lockedHint:
-        "Напоминания на этом устройстве работают без аккаунта и плана, а сохранённые настройки остаются на устройстве.",
       timeLabel: "Время напоминания",
       timeHint:
         "Используется для ежедневного напоминания и для ближайших запланированных напоминаний по циклу на этом устройстве.",
@@ -2283,7 +2272,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Премиум",
       ctaLabel: "Открыть Ovumcy Cloud",
-      remindersTitle: "Напоминания Ovumcy Cloud",
       pdfExportTitle: "PDF для врача",
     },
   },
@@ -2407,8 +2395,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Programa recordatorios en este dispositivo. Funcionan sin cuenta ni plan.",
       localOnlyHint:
         "Los recordatorios del dispositivo se quedan solo en este dispositivo. No envían tus datos de salud a un servidor.",
-      lockedHint:
-        "Los recordatorios en este dispositivo funcionan sin cuenta ni plan, y tus opciones guardadas siguen siendo locales.",
       timeLabel: "Hora del recordatorio",
       timeHint:
         "Se usa para el recordatorio diario y para los próximos recordatorios del ciclo programados en este dispositivo.",
@@ -2848,7 +2834,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Premium",
       ctaLabel: "Abrir Ovumcy Cloud",
-      remindersTitle: "Recordatorios de Ovumcy Cloud",
       pdfExportTitle: "PDF para tu profesional de la salud",
     },
   },
@@ -2972,8 +2957,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Pianifica promemoria su questo dispositivo. Funzionano senza account né piano.",
       localOnlyHint:
         "I promemoria del dispositivo restano solo su questo dispositivo. Non inviano i tuoi dati sulla salute a un server.",
-      lockedHint:
-        "I promemoria su questo dispositivo funzionano senza account né piano, e le tue opzioni salvate restano locali.",
       timeLabel: "Ora del promemoria",
       timeHint:
         "Usata per il promemoria giornaliero e per i prossimi promemoria del ciclo programmati su questo dispositivo.",
@@ -3415,7 +3398,6 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     premiumLock: {
       eyebrowLabel: "Premium",
       ctaLabel: "Apri Ovumcy Cloud",
-      remindersTitle: "Promemoria Ovumcy Cloud",
       pdfExportTitle: "PDF per il tuo professionista sanitario",
     },
   },
