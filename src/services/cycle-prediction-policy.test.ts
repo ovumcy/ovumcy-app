@@ -55,18 +55,31 @@ describe("cycle-prediction-policy", () => {
 // defect, which lived in the step that DERIVES the argument from logged
 // signals. That step is pinned by cycle-luteal-round-trip.test.ts.
 describe("Step 2a reference vectors (observed ovulation day -> luteal phase)", () => {
+  // wantDay is the cycle day the round trip lands on and wantExact says whether
+  // it got there without Step 2's reserve clamp. They are separate fields
+  // because of the last row: an observation can imply a luteal phase the cycle
+  // cannot hold, and there the clamp is the designed answer rather than a
+  // broken round trip.
   const vectors: {
     name: string;
     cycleLength: number;
     observedOvulationDay: number;
     wantLutealPhase: number;
+    wantDay: number;
+    wantExact: boolean;
   }[] = [
-    { name: "28-day cycle, ovulation on day 14 is the 14-day model default", cycleLength: 28, observedOvulationDay: 14, wantLutealPhase: 14 },
-    { name: "28-day cycle, ovulation on day 15", cycleLength: 28, observedOvulationDay: 15, wantLutealPhase: 13 },
-    { name: "short 21-day cycle, ovulation on day 8", cycleLength: 21, observedOvulationDay: 8, wantLutealPhase: 13 },
-    { name: "long 35-day cycle, ovulation on day 21", cycleLength: 35, observedOvulationDay: 21, wantLutealPhase: 14 },
-    { name: "long 40-day cycle, ovulation on day 26", cycleLength: 40, observedOvulationDay: 26, wantLutealPhase: 14 },
-    { name: "30-day cycle, ovulation on day 20 lands on the 10-day floor", cycleLength: 30, observedOvulationDay: 20, wantLutealPhase: 10 },
+    { name: "28-day cycle, ovulation on day 14 is the 14-day model default", cycleLength: 28, observedOvulationDay: 14, wantLutealPhase: 14, wantDay: 14, wantExact: true },
+    { name: "28-day cycle, ovulation on day 15", cycleLength: 28, observedOvulationDay: 15, wantLutealPhase: 13, wantDay: 15, wantExact: true },
+    { name: "short 21-day cycle, ovulation on day 8", cycleLength: 21, observedOvulationDay: 8, wantLutealPhase: 13, wantDay: 8, wantExact: true },
+    { name: "long 35-day cycle, ovulation on day 21", cycleLength: 35, observedOvulationDay: 21, wantLutealPhase: 14, wantDay: 21, wantExact: true },
+    { name: "long 40-day cycle, ovulation on day 26", cycleLength: 40, observedOvulationDay: 26, wantLutealPhase: 14, wantDay: 26, wantExact: true },
+    { name: "30-day cycle, ovulation on day 20 lands on the 10-day floor", cycleLength: 30, observedOvulationDay: 20, wantLutealPhase: 10, wantDay: 20, wantExact: true },
+    // The exception the invariant carries. An ovulation observed on day 4 of a
+    // 15-day cycle implies an 11-day luteal phase: physiologically ordinary,
+    // admitted by the plausibility window, and still more than the cycle can
+    // hold, since the reserve caps the parameter at cycleLength - 5 = 10. The
+    // round trip does NOT return day 4 here, and must not pretend to.
+    { name: "15-day cycle, an observation the cycle cannot hold", cycleLength: 15, observedOvulationDay: 4, wantLutealPhase: 11, wantDay: 5, wantExact: false },
   ];
 
   for (const vector of vectors) {
@@ -76,11 +89,9 @@ describe("Step 2a reference vectors (observed ovulation day -> luteal phase)", (
         vector.observedOvulationDay,
       );
       expect(luteal).toBe(vector.wantLutealPhase);
-      // isExact must hold: a luteal phase derived from a real observation that
-      // needed the reserve clamp would pin the clamp, not the model.
       expect(calcOvulationDay(vector.cycleLength, luteal)).toEqual({
-        day: vector.observedOvulationDay,
-        isExact: true,
+        day: vector.wantDay,
+        isExact: vector.wantExact,
       });
     });
   }
