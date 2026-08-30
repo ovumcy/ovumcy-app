@@ -46,6 +46,17 @@ jobs:
       - name: Enforce the production advisory gate
         run: node scripts/audit-production.mjs .tmp/security/audit-production.json
 
+      - name: Upload the production advisory report
+        # A refusal names the problem but not the tree behind it, and the
+        # runner takes the report with it. Keep the evidence for the same
+        # reason trivy-fs keeps its SARIF.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-audit-production-report
+          path: .tmp/security/audit-production.json
+          if-no-files-found: error
+
   trivy-fs:
     runs-on: ubuntu-latest
     permissions:
