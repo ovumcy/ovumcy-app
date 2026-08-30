@@ -6,6 +6,8 @@ import {
 import { DEFAULT_PERIOD_LENGTH } from "../models/profile";
 import type { LocalDateISO, ProfileRecord } from "../models/profile";
 import {
+  MAX_OBSERVED_LUTEAL_DAYS,
+  MIN_OBSERVED_LUTEAL_DAYS,
   calcLutealPhase,
   predictCycleWindow,
   resolveLutealPhase,
@@ -484,20 +486,11 @@ function resolveUpcomingOvulationDisplay(
   };
 }
 
-// Plausibility window the observed-luteal inference filters its per-cycle
-// samples through. A value outside it means the ovulation signal was misread (a
-// stray egg-white day early in the cycle, a thermal shift picked up from a
-// disturbed reading), so the cycle is dropped from the sample rather than
-// clamped into it.
-//
-// Both ends bound the parameter in calcOvulationDay's reading of it: the count
-// of days that FOLLOW ovulation. They are NOT bounds on the calendar span from
-// the ovulation date to the next period start, which is one day longer — so
-// filtering the corrected quantity shifts the accepted band of observed spans
-// by one day, and a cycle whose span sits exactly on the lower edge (an
-// ovulation ten calendar days before the next start) is now discarded.
-const MIN_OBSERVED_LUTEAL_DAYS = 10;
-const MAX_OBSERVED_LUTEAL_DAYS = 20;
+// The plausibility window lives in cycle-prediction-policy, next to the
+// arithmetic it bounds. Filtering the corrected quantity rather than the
+// calendar span shifts the accepted band of observed spans by one day, so a
+// cycle whose span sits exactly on the lower edge — an ovulation ten calendar
+// days before the next start — is now discarded.
 const MIN_OBSERVED_LUTEAL_SAMPLES = 2;
 const MIN_CYCLES_FOR_LUTEAL_INFERENCE = 3;
 

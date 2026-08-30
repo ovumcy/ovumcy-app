@@ -100,6 +100,24 @@ export function calcLutealPhase(
   return cycleLength - ovulationDay;
 }
 
+/**
+ * Plausibility window every observed-luteal sample is filtered through, whether
+ * it feeds a prediction or a rendered statistic. A value outside it means the
+ * ovulation signal was misread (a stray egg-white day early in the cycle, a
+ * thermal shift picked up from a disturbed reading), so the cycle is dropped
+ * from the sample rather than clamped into it.
+ *
+ * Both ends bound the parameter in `calcOvulationDay`'s reading of it: the
+ * count of days that FOLLOW ovulation. They are NOT bounds on the calendar span
+ * from the ovulation date to the next period start, which is one day longer.
+ *
+ * One definition, one home: the inference and the premium observed-luteal
+ * surfaces must admit exactly the same cycles, or a cycle trains the prediction
+ * while vanishing from the number shown for it.
+ */
+export const MIN_OBSERVED_LUTEAL_DAYS = 10;
+export const MAX_OBSERVED_LUTEAL_DAYS = 20;
+
 export function predictCycleWindow(
   cycleStartDate: string,
   cycleLength: number,
