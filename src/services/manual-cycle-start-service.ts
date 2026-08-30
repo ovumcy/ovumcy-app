@@ -8,7 +8,7 @@ import {
   inferUserLutealPhase,
   resolveLatestCycleStartAnchorBeforeOrOn,
 } from "./cycle-history-service";
-import { resolveLutealPhase } from "./cycle-prediction-policy";
+import { calcOvulationDay, resolveLutealPhase } from "./cycle-prediction-policy";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { appendAutoFilledPeriodDays } from "./period-auto-fill-service";
 import { addDays, atLocalDay, diffCalendarDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
@@ -299,10 +299,21 @@ function resolvePotentialImplantationGapDays(
       formatLocalDate(addDays(targetDate, -1)),
     ) ?? 0,
   );
-  const ovulationDate = addDays(
-    previousStart,
-    Math.max(predictionCycleLength - lutealPhase, 1),
+  // Route through the shared arithmetic rather than repeating it: calcOvulationDay
+  // returns a ONE-BASED cycle day, so the date is the start plus day - 1. Adding
+  // the day itself put this estimate a day later than every other surface reads
+  // it, which moved the whole suggestion window with it.
+  const { day: ovulationCycleDay } = calcOvulationDay(
+    predictionCycleLength,
+    lutealPhase,
   );
+  if (ovulationCycleDay === null) {
+    // The cycle is shorter than the model can place an ovulation in, so there
+    // is no window to judge this bleed against. Stay silent rather than guess:
+    // a hedged notice on an invented estimate is worse than none.
+    return [0, false];
+  }
+  const ovulationDate = addDays(previousStart, ovulationCycleDay - 1);
   const gapDays = diffCalendarDays(ovulationDate, targetDate);
 
   return [gapDays, gapDays >= 6 && gapDays <= 12];

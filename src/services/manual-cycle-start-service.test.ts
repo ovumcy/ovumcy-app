@@ -433,8 +433,8 @@ describe("early-bleeding notice structure (medical safety)", () => {
   }
 
   it("fires the hedged notice for a bleed inside the 6-12 day post-ovulation window", () => {
-    // Estimated ovulation = 2026-03-01 + (28 - 14) = 2026-03-15; target 2026-03-23
-    // is +8 days, inside [6, 12].
+    // calcOvulationDay(28, 14) is cycle day 14, so the estimate is
+    // 2026-03-01 + 13 = 2026-03-14; target 2026-03-23 is +9 days, inside [6, 12].
     const viewData = earlyBleedViewData("2026-03-23", new Date(2026, 2, 23));
 
     const notice = viewData?.notices.implantation;
@@ -451,8 +451,58 @@ describe("early-bleeding notice structure (medical safety)", () => {
   });
 
   it("stays silent for an early bleed too soon after the estimated ovulation", () => {
-    // Target 2026-03-19 is only +4 days after the estimated 2026-03-15 ovulation.
+    // Target 2026-03-19 is only +5 days after the estimated 2026-03-14 ovulation.
     const viewData = earlyBleedViewData("2026-03-19", new Date(2026, 2, 19));
+
+    expect(viewData?.notices.implantation).toBeUndefined();
+  });
+
+  // Both edges of the window, and the reason they are worth pinning: the
+  // estimate here must be the date calcOvulationDay names, cycleStart + day - 1.
+  // Adding the cycle day itself instead put ovulation on 2026-03-15 and carried
+  // the whole window a day with it, so the notice appeared a day late at the
+  // bottom and a day late at the top. Nothing else asserts this arithmetic.
+  it("fires on the first day of the window, six days after the estimated ovulation", () => {
+    // 2026-03-20 is +6 from 2026-03-14 — the inclusive lower edge. Read from a
+    // 2026-03-15 ovulation it would be +5, and the notice would stay silent.
+    const viewData = earlyBleedViewData("2026-03-20", new Date(2026, 2, 20));
+
+    expect(viewData?.notices.implantation).toBe(
+      getDashboardCopy("en").implantationWarning,
+    );
+  });
+
+  it("stays silent one day past the window", () => {
+    // 2026-03-27 is +13 from 2026-03-14, just outside [6, 12]. Read from a
+    // 2026-03-15 ovulation it would be +12, and the notice would still fire.
+    const viewData = earlyBleedViewData("2026-03-27", new Date(2026, 2, 27));
+
+    expect(viewData?.notices.implantation).toBeUndefined();
+  });
+
+  it("stays silent when the observed cycles are too short to place an ovulation", () => {
+    // Four observed 12-day cycles: below the 15-day floor the model needs, so
+    // calcOvulationDay yields no day at all. There is no window to judge the
+    // bleed against, and a hedged medical notice hung on an invented estimate
+    // would be worse than none.
+    const profile = createProfileRecord({ lastPeriodStart: "2026-01-01" });
+    const starts = ["2026-01-01", "2026-01-13", "2026-01-25", "2026-02-06", "2026-02-18"];
+    const records = starts.map((date) => ({
+      ...createEmptyDayLogRecord(date),
+      isPeriod: true,
+      cycleStart: true,
+    }));
+    const draftRecord = {
+      ...createEmptyDayLogRecord("2026-02-26"),
+      isPeriod: true,
+    };
+
+    const viewData = buildManualCycleStartViewData(
+      profile,
+      records,
+      draftRecord,
+      new Date(2026, 1, 26),
+    );
 
     expect(viewData?.notices.implantation).toBeUndefined();
   });
