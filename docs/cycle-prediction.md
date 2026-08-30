@@ -115,11 +115,14 @@ the parameter moves every personalized prediction one day early — the ovulatio
 date and both edges of the fertile window alike.
 
 Every surface that reports an observed luteal length reads it the same way and
-derives it through the same inverse: the prediction's own inference, the
-premium stats "Observed luteal phase" average, and the short-luteal warning
-(which fires below 10 days, matching the clinical definition of days following
-ovulation). One reading across all of them, so the same physiology is never
-reported as two different numbers.
+derives it through the same inverse: the prediction's own inference, the premium
+stats "Observed luteal phase" average, and the short-luteal warning. One reading
+across all of them, so the same physiology is never reported as two different
+numbers. That warning compares the same quantity against a 10-day threshold —
+the clinical definition counts the days *following* ovulation too — but it is
+deliberately reluctant: it needs at least **three** cycles with a usable
+ovulation anchor and stays silent unless **every one of them** is under the
+threshold, so a single short cycle never raises it.
 
 ### Step 3 — fertile window (`predictCycleWindow`)
 
