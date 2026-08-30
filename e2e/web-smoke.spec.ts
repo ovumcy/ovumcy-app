@@ -158,7 +158,8 @@ test("web onboarding reaches dashboard and stats unlock after local cycle histor
   await page.getByTestId("settings-hub-open-reminders").click();
   await expect(page).toHaveURL(/\/settings\/reminders$/);
   await expect(page.getByTestId("settings-reminders-section")).toBeVisible();
-  await expect(page.getByTestId("settings-reminders-lock")).toBeVisible();
+  // Reminders are Free-tier: the section renders and nothing in it sells a plan.
+  await expect(page.getByTestId("settings-reminders-lock")).toHaveCount(0);
   await page.getByTestId("settings-section-back-button").click();
   await expect(page).toHaveURL(/\/settings$/);
   await page.getByTestId("settings-open-backup-sync-button").click();
@@ -513,14 +514,18 @@ test("locale visual sweep: ru and de pregnancy + reminders + paywall", async ({
       page.getByTestId("settings-interface-status-banner"),
     ).toBeVisible();
 
-    // Reminders lock card in this locale — on its own settings route
+    // Reminders section in this locale — on its own settings route. It sells
+    // nothing, so what the screenshot proves is that the Free-tier controls and
+    // their hints render in this language.
     await page.getByTestId("settings-section-back-button").click();
     await expect(page).toHaveURL(/\/settings$/);
     await page.getByTestId("settings-hub-open-reminders").click();
     await expect(page).toHaveURL(/\/settings\/reminders$/);
-    await page.getByTestId("settings-reminders-lock").scrollIntoViewIfNeeded();
+    await page
+      .getByTestId("settings-reminders-section")
+      .scrollIntoViewIfNeeded();
     await page.screenshot({
-      path: `e2e/screenshots/visual-locale-${locale}-reminders-lock.png`,
+      path: `e2e/screenshots/visual-locale-${locale}-reminders.png`,
     });
     // Leave settings at the hub so the next locale iteration re-enters there
     // (the tab keeps its stack state between visits).
