@@ -4,6 +4,7 @@ import type {
   StatsComparisonKind,
   StatsCycleHistorySummary,
 } from "../models/stats";
+import { calcLutealPhase } from "./cycle-prediction-policy";
 import { inferBBTOvulationDate } from "./observed-ovulation-service";
 import { diffLocalDays } from "./profile-settings-policy";
 
@@ -29,6 +30,9 @@ const ANOMALOUS_CYCLE_DELTA_DAYS = 4;
 const MIN_SEASONAL_CYCLES_PER_SEASON = 2;
 const MIN_SEASONAL_PATTERN_DELTA_DAYS = 1.5;
 const SHORT_LUTEAL_RECENT_LIMIT = 6;
+// Bounds the count of days that FOLLOW ovulation, matching the model parameter
+// and the clinical definition — not the ovulation-to-next-start calendar span,
+// which counts the ovulation day itself and so reads one day longer.
 const SHORT_LUTEAL_THRESHOLD_DAYS = 10;
 const MIN_SHORT_LUTEAL_OBSERVATIONS = 3;
 
@@ -313,7 +317,12 @@ export function buildShortLutealHint(
       continue;
     }
 
-    const lutealDays = diffLocalDays(anchorDate, cycle.nextStartDate);
+    // Derived through the prediction's own inverse, so this warning and the
+    // personalized prediction read one luteal phase between them.
+    const lutealDays = calcLutealPhase(
+      diffLocalDays(cycle.startDate, cycle.nextStartDate),
+      diffLocalDays(cycle.startDate, anchorDate) + 1,
+    );
     if (lutealDays <= 0) {
       continue;
     }

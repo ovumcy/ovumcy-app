@@ -497,9 +497,9 @@ describe("export-pdf-service", () => {
       expect.objectContaining({ startDate: "2026-03-29", cycleLength: 28 }),
     );
 
-    // All three completed cycles have a 9-day luteal phase (< the 10-day
+    // All three completed cycles have an 8-day luteal phase (< the 10-day
     // short-luteal threshold), so the warning fires with all 3 observations.
-    expect(report.shortLutealWarning).toEqual({ averageDays: 9, observationCount: 3 });
+    expect(report.shortLutealWarning).toEqual({ averageDays: 8, observationCount: 3 });
 
     // Cycle 1 has only egg-white (2026-02-18) and no BBT shift, so the observed
     // marker falls on the day AFTER the last egg-white day (web peak-day rule).

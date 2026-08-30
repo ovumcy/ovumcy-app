@@ -119,6 +119,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that same day; the ovulation date and both edges of the fertile window move
   with it on the dashboard, the calendar, the doctor PDF, and local reminders.
   Only accounts with enough signal for a personalized model were affected.
+  The premium "Observed luteal phase" average and the short-luteal warning are
+  derived the same way now, so the same physiology is no longer reported as two
+  numbers a day apart: the displayed average reads one day shorter, and the
+  warning fires on cases it previously let through by a day.
 - Doctor-PDF content honesty: predictions render as conservative estimates with
   their qualifiers intact, matching the documented algorithm.
 - Onboarding and stats flags that are computed correctly now reliably reach the

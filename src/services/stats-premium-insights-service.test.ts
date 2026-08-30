@@ -225,15 +225,17 @@ describe("buildShortLutealHint", () => {
   });
 
   it("treats a luteal phase of exactly 10 days as not short", () => {
-    // All three luteal phases are exactly 10 days -> none short -> null.
+    // All three luteal phases are exactly 10 days -> none short -> null. The
+    // threshold bounds the days that FOLLOW ovulation, so each peak sits on
+    // cycle day 15 of a 25-day cycle; the calendar span to the next start is 11.
     const history = createHistory(
       [25, 25, 25],
       ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-14"],
     );
     const records: DayLogRecord[] = [
-      lhPeakRecord("2025-12-16"), // -> 2025-12-26 = 10
-      lhPeakRecord("2026-01-10"), // -> 2026-01-20 = 10
-      lhPeakRecord("2026-02-04"), // -> 2026-02-14 = 10
+      lhPeakRecord("2025-12-15"), // cycle day 15 of 25 -> 10
+      lhPeakRecord("2026-01-09"), // cycle day 15 of 25 -> 10
+      lhPeakRecord("2026-02-03"), // cycle day 15 of 25 -> 10
     ];
 
     expect(buildShortLutealHint(history, records)).toBeNull();
@@ -246,9 +248,9 @@ describe("buildShortLutealHint", () => {
       ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-14"],
     );
     const records: DayLogRecord[] = [
-      lhPeakRecord("2025-12-17"), // -> 2025-12-26 = 9
-      lhPeakRecord("2026-01-11"), // -> 2026-01-20 = 9
-      lhPeakRecord("2026-02-05"), // -> 2026-02-14 = 9
+      lhPeakRecord("2025-12-16"), // cycle day 16 of 25 -> 9
+      lhPeakRecord("2026-01-10"), // cycle day 16 of 25 -> 9
+      lhPeakRecord("2026-02-04"), // cycle day 16 of 25 -> 9
     ];
 
     const result = buildShortLutealHint(history, records);
@@ -257,7 +259,8 @@ describe("buildShortLutealHint", () => {
   });
 
   it("returns the average and count when 3+ observed luteal phases are all under 10 days", () => {
-    // C1 LH 2025-12-20 -> 6; C2 LH 2026-01-15 -> 5; C3 LH 2026-02-09 -> 5.
+    // C1 LH on cycle day 20 of 25 -> 5; C2 cycle day 21 of 25 -> 4;
+    // C3 cycle day 21 of 25 -> 4.
     const history = createHistory(
       [25, 25, 25],
       ["2025-12-01", "2025-12-26", "2026-01-20", "2026-02-14"],
@@ -270,7 +273,7 @@ describe("buildShortLutealHint", () => {
 
     const result = buildShortLutealHint(history, records);
     expect(result?.observationCount).toBe(3);
-    expect(result?.averageDays).toBeCloseTo(16 / 3, 5);
+    expect(result?.averageDays).toBeCloseTo(13 / 3, 5);
   });
 
   it("fires on 3-of-6 short cycles, excluding mucus-only cycles from the observation set", () => {
@@ -290,9 +293,9 @@ describe("buildShortLutealHint", () => {
       ],
     );
     const records: DayLogRecord[] = [
-      lhPeakRecord("2025-09-20"), // -> 2025-09-26 = 6
-      lhPeakRecord("2025-10-15"), // -> 2025-10-21 = 6
-      lhPeakRecord("2025-11-09"), // -> 2025-11-15 = 6
+      lhPeakRecord("2025-09-20"), // cycle day 20 of 25 -> 5
+      lhPeakRecord("2025-10-15"), // cycle day 20 of 25 -> 5
+      lhPeakRecord("2025-11-09"), // cycle day 20 of 25 -> 5
       eggWhiteRecord("2025-12-05"), // mucus-only cycle 4 -> skipped
       eggWhiteRecord("2025-12-30"), // mucus-only cycle 5 -> skipped
       eggWhiteRecord("2026-01-24"), // mucus-only cycle 6 -> skipped
@@ -300,7 +303,7 @@ describe("buildShortLutealHint", () => {
 
     const result = buildShortLutealHint(history, records);
     expect(result?.observationCount).toBe(3);
-    expect(result?.averageDays).toBe(6);
+    expect(result?.averageDays).toBe(5);
   });
 
   it("uses LH peak as an anchor when present, ignoring egg-white when the LH peak is later", () => {
@@ -319,7 +322,7 @@ describe("buildShortLutealHint", () => {
 
     const result = buildShortLutealHint(history, records);
     expect(result?.observationCount).toBe(3);
-    expect(result?.averageDays).toBeCloseTo(13 / 3, 5);
+    expect(result?.averageDays).toBeCloseTo(10 / 3, 5);
   });
 
   it("prefers the BBT thermal-shift ovulation day over the LH peak as the luteal anchor", () => {
@@ -348,8 +351,8 @@ describe("buildShortLutealHint", () => {
       lhPeakRecord(lhDate),
     ];
     const records: DayLogRecord[] = [
-      // C1: shift day 2026-01-14, ovulation 2026-01-13 -> next 2026-01-22 = 9
-      // (short). Early LH peak 2026-01-01 -> 21 days if it were the anchor.
+      // C1: shift day 2026-01-14, ovulation 2026-01-13 = cycle day 13 of 21
+      // -> 8 (short). Early LH peak 2026-01-01 -> 20 if it were the anchor.
       ...shiftCycle(
         [
           "2026-01-08",
@@ -364,7 +367,7 @@ describe("buildShortLutealHint", () => {
         ],
         "2026-01-01",
       ),
-      // C2: shift day 2026-02-04, ovulation 2026-02-03 -> next 2026-02-12 = 9.
+      // C2: shift day 2026-02-04, ovulation 2026-02-03 = cycle day 13 of 21 -> 8.
       ...shiftCycle(
         [
           "2026-01-29",
@@ -379,7 +382,7 @@ describe("buildShortLutealHint", () => {
         ],
         "2026-01-22",
       ),
-      // C3: shift day 2026-02-25, ovulation 2026-02-24 -> next 2026-03-05 = 9.
+      // C3: shift day 2026-02-25, ovulation 2026-02-24 = cycle day 13 of 21 -> 8.
       ...shiftCycle(
         [
           "2026-02-19",
@@ -397,9 +400,9 @@ describe("buildShortLutealHint", () => {
     ];
 
     const result = buildShortLutealHint(history, records);
-    // BBT ovulation day -> 9-day luteal in every cycle -> fires; the early LH
+    // BBT ovulation day -> 8-day luteal in every cycle -> fires; the early LH
     // peaks (>= 10-day luteal) are ignored because the BBT shift takes precedence.
     expect(result?.observationCount).toBe(3);
-    expect(result?.averageDays).toBe(9);
+    expect(result?.averageDays).toBe(8);
   });
 });
