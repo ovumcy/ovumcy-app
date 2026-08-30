@@ -528,10 +528,9 @@ export function inferUserLutealPhase(
       continue;
     }
 
-    const cycleStart = parseLocalDate(cycleStartDate);
     const ovulation = parseLocalDate(ovulationDate);
     const nextStart = parseLocalDate(nextStartDate);
-    if (!cycleStart || !ovulation || !nextStart) {
+    if (!ovulation || !nextStart) {
       continue;
     }
 
@@ -542,6 +541,12 @@ export function inferUserLutealPhase(
     // the day BEFORE the observed ovulation on an identical next cycle — the
     // personalized path shifted ovulation and both fertile-window edges one day
     // early on every surface that renders them.
+    //
+    // The start needs no null guard of its own: diffCalendarDays reads a null
+    // start as a zero-day count, and an unparseable start cannot reach here
+    // anyway — buildObservedPeriodClusters drops any record whose date does not
+    // parse, so every value collectCycleStartDates emits has already parsed.
+    const cycleStart = parseLocalDate(cycleStartDate);
     const cycleLength = diffCalendarDays(cycleStart, nextStart);
     const ovulationCycleDay = diffCalendarDays(cycleStart, ovulation) + 1;
     const lutealLength = calcLutealPhase(cycleLength, ovulationCycleDay);
