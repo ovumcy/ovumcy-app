@@ -92,7 +92,7 @@
     },
     "@tootallnate/once": "^3.0.1",
     "flatted": "^3.4.2",
-    "node-forge": "^1.4.0",
+    "node-forge": "^1.4.3",
     "picomatch@^2": "2.3.2",
     "picomatch@^3": "3.0.2",
     "picomatch@^4": "4.0.4",
