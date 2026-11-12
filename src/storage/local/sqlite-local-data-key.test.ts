@@ -12,7 +12,7 @@ import {
 // The key-mismatch auto-reset must be COMPLETE: a reset that wipes the earlier
 // tables but leaves the pregnancy tables, the postpartum table, or the v16
 // screening table holding stale ciphertext is not deterministic
-// (security-detail.md's "reset the local database deterministically"). These
+// (a key mismatch must reset the local database deterministically). These
 // tests pin the full ELEVEN-table list on both reset triggers — canary auth-tag
 // failure and missing-key-with-encrypted-rows — without touching the canary row
 // choice or key handling themselves.
