@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   AppState,
   type ColorValue,
+  type OpaqueColorValue,
   Platform,
   useWindowDimensions,
 } from "react-native";
@@ -26,10 +27,10 @@ import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { GuardedTabBarButton } from "./GuardedTabBarButton";
 import { TabLeaveGuardProvider } from "./TabLeaveGuardContext";
 
-// The tab bar hands icons a React Native ColorValue (which admits null and
-// numbers); Feather accepts only a string colour.
-function featherColor(color: ColorValue): string | undefined {
-  return typeof color === "string" ? color : undefined;
+// The tab bar hands icons a React Native ColorValue, which also admits null and
+// numbers; Feather accepts only a string or a platform (opaque) colour.
+function featherColor(color: ColorValue): string | OpaqueColorValue | undefined {
+  return color === null || typeof color === "number" ? undefined : color;
 }
 
 type ProtectedTabsLayoutProps = {

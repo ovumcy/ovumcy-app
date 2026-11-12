@@ -21,6 +21,7 @@
         {
           "image": "./assets/branding/ovumcy-splash.png",
           "resizeMode": "contain",
+          "imageWidth": 400,
           "backgroundColor": "#f7f0e6"
         }
       ]
