@@ -532,7 +532,8 @@ describe("partner-shared-projection-service", () => {
         // Sanity check (not vacuous): the owner's REAL projection pause IS
         // lifted in this fixture, so the pin below only holds because of the
         // threaded activePregnancy flag, mirroring the stats/calendar
-        // convention (the pregnancy pause is pinned at the projection, calendar and banner layers).
+        // convention (the pregnancy pause is pinned at the projection,
+        // calendar and banner layers).
         const ownerHistory = buildCycleHistorySummary(baseProfile, records, now);
         const ownerProjection = buildCurrentCycleProjection(baseProfile, ownerHistory, records, now);
         expect(ownerProjection.isPregnancyPaused).toBe(false);
