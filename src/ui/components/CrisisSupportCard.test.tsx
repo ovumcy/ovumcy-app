@@ -14,7 +14,7 @@ jest.mock("../../services/managed-premium-features-service", () => ({
 
 const mockLoadPremium = jest.mocked(loadManagedPremiumFeaturesForCurrentSession);
 
-function renderCard(
+async function renderCard(
   contact: { name?: string; phone?: string } = {},
   onSaveContact: (c: { name: string; phone: string }) => void | Promise<void> =
     jest.fn(),
@@ -24,7 +24,7 @@ function renderCard(
     contact.name ?? "",
     contact.phone ?? "",
   );
-  render(
+  await render(
     <AppPreferencesTestProvider languageOverride="en">
       <CrisisSupportCard onSaveContact={onSaveContact} viewData={viewData} />
     </AppPreferencesTestProvider>,
@@ -37,8 +37,8 @@ describe("CrisisSupportCard", () => {
     mockLoadPremium.mockReset();
   });
 
-  it("always renders the fixed guidance and an edit affordance, with no contact line when none is set", () => {
-    renderCard();
+  it("always renders the fixed guidance and an edit affordance, with no contact line when none is set", async () => {
+    await renderCard();
 
     expect(
       screen.getByTestId("crisis-support-card-guidance").props.children,
@@ -47,8 +47,8 @@ describe("CrisisSupportCard", () => {
     expect(screen.queryByTestId("crisis-support-card-contact")).toBeNull();
   });
 
-  it("shows the personal contact line as plain text when a contact is set", () => {
-    renderCard({ name: "Mum", phone: "07700 900000" });
+  it("shows the personal contact line as plain text when a contact is set", async () => {
+    await renderCard({ name: "Mum", phone: "07700 900000" });
 
     expect(
       screen.getByTestId("crisis-support-card-contact").props.children,
@@ -57,26 +57,26 @@ describe("CrisisSupportCard", () => {
 
   it("saves an inline edit through the profile-update path with the typed values", async () => {
     const onSaveContact = jest.fn();
-    renderCard({}, onSaveContact);
+    await renderCard({}, onSaveContact);
 
-    fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
+    await fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
 
     // The one-line privacy note is visible while editing.
     expect(
       screen.getByTestId("crisis-support-card-privacy-note").props.children,
     ).toContain("encrypted");
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("crisis-support-card-name-input"),
       "Mum",
     );
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("crisis-support-card-phone-input"),
       "07700 900000",
     );
 
     await act(async () => {
-      fireEvent.press(screen.getByTestId("crisis-support-card-save-button"));
+      await fireEvent.press(screen.getByTestId("crisis-support-card-save-button"));
       await Promise.resolve();
     });
 
@@ -88,15 +88,15 @@ describe("CrisisSupportCard", () => {
 
   it("never consults the premium loader while rendering or saving (never plan-gated)", async () => {
     const onSaveContact = jest.fn();
-    renderCard({ name: "Mum", phone: "555" }, onSaveContact);
+    await renderCard({ name: "Mum", phone: "555" }, onSaveContact);
 
-    fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
-    fireEvent.changeText(
+    await fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
+    await fireEvent.changeText(
       screen.getByTestId("crisis-support-card-name-input"),
       "Dad",
     );
     await act(async () => {
-      fireEvent.press(screen.getByTestId("crisis-support-card-save-button"));
+      await fireEvent.press(screen.getByTestId("crisis-support-card-save-button"));
       await Promise.resolve();
     });
 
@@ -105,20 +105,20 @@ describe("CrisisSupportCard", () => {
 
   it("discards a cancelled edit and leaves the saved contact untouched", async () => {
     const onSaveContact = jest.fn();
-    renderCard({ name: "Aunt Jo", phone: "0123 456" }, onSaveContact);
+    await renderCard({ name: "Aunt Jo", phone: "0123 456" }, onSaveContact);
 
-    fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
-    fireEvent.changeText(
+    await fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
+    await fireEvent.changeText(
       screen.getByTestId("crisis-support-card-name-input"),
       "Someone Else",
     );
-    fireEvent.press(screen.getByTestId("crisis-support-card-cancel-button"));
+    await fireEvent.press(screen.getByTestId("crisis-support-card-cancel-button"));
 
     // Edit UI is gone, nothing was persisted, and reopening the editor shows
     // the SAVED value again — a cancelled draft never leaks into the next edit.
     expect(screen.queryByTestId("crisis-support-card-edit")).toBeNull();
     expect(onSaveContact).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
+    await fireEvent.press(screen.getByTestId("crisis-support-card-edit-button"));
     expect(screen.getByTestId("crisis-support-card-name-input").props.value).toBe(
       "Aunt Jo",
     );

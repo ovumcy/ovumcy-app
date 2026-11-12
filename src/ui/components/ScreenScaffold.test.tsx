@@ -9,8 +9,8 @@ describe("ScreenScaffold", () => {
     jest.restoreAllMocks();
   });
 
-  it("exposes the screen title as a header so a screen reader can identify the screen", () => {
-    render(
+  it("exposes the screen title as a header so a screen reader can identify the screen", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <ScreenScaffold
           description="Preparing your local month view."
@@ -26,8 +26,8 @@ describe("ScreenScaffold", () => {
     ).toBeTruthy();
   });
 
-  it("renders the eyebrow without turning it into a second header", () => {
-    render(
+  it("renders the eyebrow without turning it into a second header", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <ScreenScaffold
           description="Preparing your local history summary."
@@ -43,7 +43,7 @@ describe("ScreenScaffold", () => {
     expect(screen.getByText("Insights")).toBeTruthy();
   });
 
-  it("keeps the header on the wide layout, where the compact type scale is dropped", () => {
+  it("keeps the header on the wide layout, where the compact type scale is dropped", async () => {
     jest.spyOn(Dimensions, "get").mockReturnValue({
       fontScale: 1,
       height: 900,
@@ -51,7 +51,7 @@ describe("ScreenScaffold", () => {
       width: 1024,
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <ScreenScaffold description="Subtitle" title="Backup & sync">
           <Text>Body</Text>

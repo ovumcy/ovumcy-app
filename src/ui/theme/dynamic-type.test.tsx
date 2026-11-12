@@ -1,5 +1,4 @@
-import { render, screen, within } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { render, screen } from "@testing-library/react-native";
 
 import type { CalendarDayCellViewData } from "../../services/calendar-view-service";
 import type { DashboardCycleHeroViewData } from "../../services/dashboard-view-service";
@@ -85,12 +84,14 @@ const heroViewData: DashboardCycleHeroViewData = {
 };
 
 function textNodesWithin(testID: string) {
-  return within(screen.getByTestId(testID)).UNSAFE_getAllByType(Text);
+  return screen
+    .getByTestId(testID)
+    .queryAll((node) => node.type === "Text");
 }
 
 describe("dynamic type on fixed-geometry surfaces", () => {
-  it("caps every label in the calendar month grid at the dense tier", () => {
-    render(
+  it("caps every label in the calendar month grid at the dense tier", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <CalendarMonthGrid
           days={[
@@ -110,8 +111,8 @@ describe("dynamic type on fixed-geometry surfaces", () => {
     );
 
     // The grid measures itself before it can show the today pill.
-    const capsInGrid = screen
-      .UNSAFE_getAllByType(Text)
+    const capsInGrid = screen.container
+      .queryAll((node) => node.type === "Text")
       .map((node) => node.props.maxFontSizeMultiplier);
 
     expect(capsInGrid.length).toBeGreaterThan(0);
@@ -120,8 +121,8 @@ describe("dynamic type on fixed-geometry surfaces", () => {
     }
   });
 
-  it("caps the stats bar chart value and axis labels at the dense tier", () => {
-    render(
+  it("caps the stats bar chart value and axis labels at the dense tier", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <StatsBarChart
           baselineValue={28}
@@ -148,8 +149,8 @@ describe("dynamic type on fixed-geometry surfaces", () => {
     }
   });
 
-  it("caps the dashboard phase cards at the dense tier", () => {
-    render(
+  it("caps the dashboard phase cards at the dense tier", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <DashboardCycleHero viewData={heroViewData} />
       </AppPreferencesTestProvider>,
@@ -165,8 +166,8 @@ describe("dynamic type on fixed-geometry surfaces", () => {
     }
   });
 
-  it("leaves the hero captions free to scale with the OS setting", () => {
-    render(
+  it("leaves the hero captions free to scale with the OS setting", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <DashboardCycleHero viewData={heroViewData} />
       </AppPreferencesTestProvider>,
@@ -193,8 +194,8 @@ describe("pregnancy counters cap their fixed-geometry figures", () => {
     startedAt: "2026-01-05",
   });
 
-  it("caps the kick-counter tap figures", () => {
-    render(
+  it("caps the kick-counter tap figures", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <KickCounterFlowScreen
           language="en"
@@ -224,9 +225,9 @@ describe("pregnancy counters cap their fixed-geometry figures", () => {
     ).toBe(fontScale.dense);
   });
 
-  it("caps the contraction-timer toggle and elapsed figures", () => {
+  it("caps the contraction-timer toggle and elapsed figures", async () => {
     const session = createContractionSession(new Date("2026-08-01T10:00:00.000Z"));
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <ContractionTimerFlowScreen
           language="en"

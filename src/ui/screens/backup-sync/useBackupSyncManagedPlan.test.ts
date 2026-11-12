@@ -40,7 +40,7 @@ describe("useBackupSyncManagedPlan", () => {
       const refreshedState = createLoadedSettingsStateFixture();
       const core = createBackupSyncSessionCoreMock();
       mockLoadSettingsScreenState.mockResolvedValue(refreshedState);
-      const { result } = renderHook(() => useBackupSyncManagedPlan(core));
+      const { result } = await renderHook(() => useBackupSyncManagedPlan(core));
 
       await act(async () => {
         await result.current.handleRetryPlanCheck();
@@ -61,7 +61,7 @@ describe("useBackupSyncManagedPlan", () => {
     it("dismisses an offer and stores the updated dismissed-id list", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockDismissBillingOffer.mockResolvedValue(["offer-1"]);
-      const { result } = renderHook(() => useBackupSyncManagedPlan(core));
+      const { result } = await renderHook(() => useBackupSyncManagedPlan(core));
 
       await act(async () => {
         await result.current.handleDismissOffer("offer-1");
@@ -76,12 +76,12 @@ describe("useBackupSyncManagedPlan", () => {
   });
 
   describe("handleOfferCTAPress", () => {
-    it("is a no-op for a screen-target offer (v1 renders offers only on this screen already)", () => {
+    it("is a no-op for a screen-target offer (v1 renders offers only on this screen already)", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncManagedPlan(core));
+      const { result } = await renderHook(() => useBackupSyncManagedPlan(core));
       const offer = buildOffer({ type: "screen", screen: "backup-sync" });
 
-      act(() => {
+      await act(() => {
         result.current.handleOfferCTAPress(offer);
       });
 
@@ -89,9 +89,9 @@ describe("useBackupSyncManagedPlan", () => {
       expect(core.router.push).not.toHaveBeenCalled();
     });
 
-    it("is a no-op for a play_checkout offer (inert until Play Billing lands)", () => {
+    it("is a no-op for a play_checkout offer (inert until Play Billing lands)", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncManagedPlan(core));
+      const { result } = await renderHook(() => useBackupSyncManagedPlan(core));
       const offer = buildOffer({
         type: "play_checkout",
         productId: "product-1",
@@ -99,7 +99,7 @@ describe("useBackupSyncManagedPlan", () => {
         offerId: null,
       });
 
-      act(() => {
+      await act(() => {
         result.current.handleOfferCTAPress(offer);
       });
 

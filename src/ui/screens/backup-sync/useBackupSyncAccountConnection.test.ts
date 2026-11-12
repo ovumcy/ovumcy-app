@@ -48,7 +48,7 @@ describe("useBackupSyncAccountConnection", () => {
   describe("handleConnectSync", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleConnectSync("login");
@@ -62,7 +62,7 @@ describe("useBackupSyncAccountConnection", () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleConnectSync("login");
@@ -80,9 +80,9 @@ describe("useBackupSyncAccountConnection", () => {
         connected: true,
         state: core.state!,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
-      act(() => {
+      await act(() => {
         result.current.setAccountLoginValue("owner@example.com");
         result.current.setAccountPasswordValue("hunter2-hunter2");
       });
@@ -107,7 +107,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: false,
         errorCode: "invalid_credentials",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleConnectSync("login");
@@ -130,9 +130,9 @@ describe("useBackupSyncAccountConnection", () => {
         preferences: core.state!.syncPreferences,
         accountID: "account-1",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
-      act(() => {
+      await act(() => {
         result.current.setAccountPasswordValue("hunter2-hunter2");
       });
 
@@ -161,7 +161,7 @@ describe("useBackupSyncAccountConnection", () => {
         connected: true,
         state: connectedState,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleConnectSync("login");
@@ -186,7 +186,7 @@ describe("useBackupSyncAccountConnection", () => {
         state: core.state!,
         recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleConnectSync("register");
@@ -209,7 +209,7 @@ describe("useBackupSyncAccountConnection", () => {
         preferences: core.state!.syncPreferences,
         accountID: "account-1",
       });
-      const rendered = renderHook(() => useBackupSyncAccountConnection(core));
+      const rendered = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await rendered.result.current.handleConnectSync("login");
@@ -220,7 +220,7 @@ describe("useBackupSyncAccountConnection", () => {
 
     it("does nothing without a pending challenge", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleSubmitTOTPChallenge();
@@ -237,7 +237,7 @@ describe("useBackupSyncAccountConnection", () => {
         state: core.state!,
       });
 
-      act(() => {
+      await act(() => {
         result.current.setTotpChallengeCode("123456");
       });
 
@@ -276,7 +276,7 @@ describe("useBackupSyncAccountConnection", () => {
         errorCode: "totp_invalid_code",
       });
 
-      act(() => {
+      await act(() => {
         result.current.setTotpChallengeCode("000000");
       });
 
@@ -315,12 +315,12 @@ describe("useBackupSyncAccountConnection", () => {
     it("cancels the pending challenge and clears feedback", async () => {
       const { core, result } = await renderHookWithPendingChallenge();
 
-      act(() => {
+      await act(() => {
         result.current.setTotpChallengeCode("999999");
       });
       jest.mocked(core.setErrorState).mockClear();
 
-      act(() => {
+      await act(() => {
         result.current.handleCancelTOTPChallenge();
       });
 
@@ -333,7 +333,7 @@ describe("useBackupSyncAccountConnection", () => {
   describe("handleRecoverSync", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleRecoverSync();
@@ -346,7 +346,7 @@ describe("useBackupSyncAccountConnection", () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleRecoverSync();
@@ -364,9 +364,9 @@ describe("useBackupSyncAccountConnection", () => {
         ok: true,
         state: core.state!,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
-      act(() => {
+      await act(() => {
         result.current.setAccountLoginValue("owner@example.com");
         result.current.setAccountPasswordValue("hunter2-hunter2");
       });
@@ -391,7 +391,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: false,
         errorCode: "invalid_recovery_phrase",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleRecoverSync();
@@ -413,7 +413,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: true,
         state: recoveredState,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleRecoverSync();
@@ -439,7 +439,7 @@ describe("useBackupSyncAccountConnection", () => {
 
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -455,7 +455,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: false,
         reason: "unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -475,7 +475,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: false,
         reason: "failed",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -494,7 +494,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: false,
         reason: "cancelled",
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -510,7 +510,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: true,
         state: core.state!,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -528,7 +528,7 @@ describe("useBackupSyncAccountConnection", () => {
     it("does not disconnect when the owner declines the confirm", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();
@@ -548,7 +548,7 @@ describe("useBackupSyncAccountConnection", () => {
         ok: true,
         state: disconnectedState,
       });
-      const { result } = renderHook(() => useBackupSyncAccountConnection(core));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
 
       await act(async () => {
         await result.current.handleDisconnectSync();

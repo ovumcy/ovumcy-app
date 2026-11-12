@@ -1,4 +1,4 @@
-import { usePreventRemove } from "@react-navigation/native";
+import { usePreventRemove } from "expo-router/react-navigation";
 
 import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
 import {

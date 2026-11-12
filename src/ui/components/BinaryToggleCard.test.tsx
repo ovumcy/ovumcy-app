@@ -7,7 +7,7 @@ import { BinaryToggleCard } from "./BinaryToggleCard";
 
 describe("BinaryToggleCard", () => {
   it("uses dark-theme active colors instead of the light washed-out shell", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider themeOverride="dark">
         <BinaryToggleCard
           description="Visible in new entries."

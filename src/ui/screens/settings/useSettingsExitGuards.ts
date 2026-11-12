@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigation, usePreventRemove } from "@react-navigation/native";
+import { useNavigation, usePreventRemove } from "expo-router/react-navigation";
 
 type ParentTabNavigation = {
   addListener: (

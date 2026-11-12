@@ -43,7 +43,7 @@ jest.mock("expo-router", () => {
   };
 });
 
-jest.mock("@react-navigation/native", () => {
+jest.mock("expo-router/react-navigation", () => {
   return {
     useNavigation: () => ({
       dispatch: mockDispatch,
@@ -122,7 +122,7 @@ describe("BackupSyncScreen", () => {
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 17)}
         storage={storage}
@@ -148,7 +148,7 @@ describe("BackupSyncScreen", () => {
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 17)}
         storage={storage}
@@ -158,11 +158,11 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("settings-sync-device-label-input"),
       "Pixel 7",
     );
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
 
     await waitFor(() =>
       expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
@@ -279,7 +279,7 @@ describe("BackupSyncScreen", () => {
         });
 
       try {
-        render(
+        await render(
           <BackupSyncScreen
             now={new Date(2026, 2, 20)}
             storage={storage}
@@ -288,22 +288,22 @@ describe("BackupSyncScreen", () => {
         );
 
         await screen.findByTestId("settings-sync-section");
-        fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+        await fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
         expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
 
-        fireEvent.changeText(
+        await fireEvent.changeText(
           screen.getByTestId("settings-sync-login-input"),
           "alice@example.com",
         );
-        fireEvent.changeText(
+        await fireEvent.changeText(
           screen.getByTestId("settings-sync-password-input"),
           "correct horse battery staple",
         );
-        fireEvent.changeText(
+        await fireEvent.changeText(
           screen.getByTestId("settings-sync-recovery-input"),
           originalSecrets.recoveryPhrase,
         );
-        fireEvent.press(screen.getByTestId("settings-sync-recover-button"));
+        await fireEvent.press(screen.getByTestId("settings-sync-recover-button"));
 
         await waitFor(() =>
           expect(screen.getByTestId("settings-sync-upload-button")).toBeTruthy(),
@@ -371,7 +371,7 @@ describe("BackupSyncScreen", () => {
       ),
     ) as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -478,7 +478,7 @@ describe("BackupSyncScreen", () => {
     const fixture = createConnectedSelfHostedDeviceFixture();
     await fixture.writeSecrets;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={fixture.storage}
@@ -487,13 +487,13 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-sync-devices-section");
 
     // Nothing is fetched until the owner asks for the list.
     expect(screen.queryByTestId("settings-sync-device-device-1")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("settings-sync-devices-load-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-devices-load-button"));
 
     await screen.findByTestId("settings-sync-device-device-1");
     expect(screen.getByTestId("settings-sync-device-device-2")).toBeTruthy();
@@ -538,7 +538,7 @@ describe("BackupSyncScreen", () => {
     const deviceCopy = getDeviceCopy("en");
     mockOpenConfirmation.mockResolvedValue(true);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={fixture.storage}
@@ -547,13 +547,13 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
-    fireEvent.press(
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(
       await screen.findByTestId("settings-sync-devices-load-button"),
     );
     await screen.findByTestId("settings-sync-device-device-2");
 
-    fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
+    await fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
 
     await waitFor(() =>
       expect(fixture.deletedDeviceIDs).toEqual(["device-2"]),
@@ -577,7 +577,7 @@ describe("BackupSyncScreen", () => {
     // Dismissal resolves false = keep the device attached.
     mockOpenConfirmation.mockResolvedValue(false);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={fixture.storage}
@@ -586,13 +586,13 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
-    fireEvent.press(
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(
       await screen.findByTestId("settings-sync-devices-load-button"),
     );
     await screen.findByTestId("settings-sync-device-device-1");
 
-    fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-1"));
+    await fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-1"));
 
     await waitFor(() =>
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
@@ -697,7 +697,7 @@ describe("BackupSyncScreen", () => {
       throw new Error(`Unexpected fetch in test: ${url}`);
     }) as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -854,7 +854,7 @@ describe("BackupSyncScreen", () => {
         }));
     global.fetch = fetchMock as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -867,12 +867,12 @@ describe("BackupSyncScreen", () => {
     await screen.findByTestId("backup-sync-advanced-toggle");
     expect(screen.queryByTestId("settings-partner-section")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(screen.getByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-section");
     expect(screen.queryByTestId("settings-partner-plan-lock")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
-    fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
+    await fireEvent.press(screen.getByTestId("settings-partner-access-level-full"));
+    await fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
 
     await screen.findByTestId("settings-partner-invite-link-card");
     expect(screen.getByTestId("settings-partner-invite-link").props.children).toBe(
@@ -1056,7 +1056,7 @@ describe("BackupSyncScreen", () => {
         }),
       ) as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1072,7 +1072,7 @@ describe("BackupSyncScreen", () => {
       expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
     );
     mockReplace.mockClear();
-    fireEvent.press(screen.getByTestId("settings-partner-accept-button"));
+    await fireEvent.press(screen.getByTestId("settings-partner-accept-button"));
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/backup-sync"),
@@ -1095,7 +1095,7 @@ describe("BackupSyncScreen", () => {
     const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
     global.fetch = fetchMock as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1207,7 +1207,7 @@ describe("BackupSyncScreen", () => {
       );
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1219,7 +1219,7 @@ describe("BackupSyncScreen", () => {
     // appears.
     await screen.findByTestId("settings-partner-accept-guest-button");
 
-    fireEvent.press(screen.getByTestId("settings-partner-accept-guest-button"));
+    await fireEvent.press(screen.getByTestId("settings-partner-accept-guest-button"));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/backup-sync"));
     await waitFor(() =>
@@ -1264,7 +1264,7 @@ describe("BackupSyncScreen", () => {
     const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
     global.fetch = fetchMock as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1275,7 +1275,7 @@ describe("BackupSyncScreen", () => {
     // Visible immediately: no tap on "Advanced" before the choice appears.
     await screen.findByTestId("settings-partner-signin-to-accept-button");
 
-    fireEvent.press(screen.getByTestId("settings-partner-signin-to-accept-button"));
+    await fireEvent.press(screen.getByTestId("settings-partner-signin-to-accept-button"));
 
     // The card and both choice buttons must stay exactly as they were: the
     // token is single-use, and choosing "sign in instead" must not spend it
@@ -1306,7 +1306,7 @@ describe("BackupSyncScreen", () => {
       const fetchMock = jest.fn().mockResolvedValue(createJSONResponse({}));
       global.fetch = fetchMock as typeof fetch;
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 2, 20)}
           storage={storage}
@@ -1329,7 +1329,7 @@ describe("BackupSyncScreen", () => {
       const storage = createUnonboardedStorage();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 2, 20)}
           storage={storage}
@@ -1423,7 +1423,7 @@ describe("BackupSyncScreen", () => {
         throw new Error(`Unexpected fetch in test: ${url}`);
       }) as typeof fetch;
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 2, 20)}
           storage={storage}
@@ -1529,7 +1529,7 @@ describe("BackupSyncScreen", () => {
       throw new Error(`Unexpected fetch in test: ${url}`);
     }) as typeof fetch;
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1537,7 +1537,7 @@ describe("BackupSyncScreen", () => {
       />,
     );
 
-    fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
     await screen.findByTestId("settings-partner-grant-grant-1");
     expect(
       screen.getAllByText(
@@ -1582,7 +1582,7 @@ describe("BackupSyncScreen", () => {
       }),
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1596,7 +1596,7 @@ describe("BackupSyncScreen", () => {
     expect(screen.getByTestId("settings-sync-password-input")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-register-button")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-login-button")).toBeTruthy();
-    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+    await fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
     expect(screen.getByTestId("settings-sync-recovery-import-block")).toBeTruthy();
     expect(screen.queryByTestId("settings-sync-managed-account-banner")).toBeNull();
   });
@@ -1615,7 +1615,7 @@ describe("BackupSyncScreen", () => {
       }),
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1649,7 +1649,7 @@ describe("BackupSyncScreen", () => {
       value: "web",
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1678,7 +1678,7 @@ describe("BackupSyncScreen", () => {
       }),
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1707,7 +1707,7 @@ describe("BackupSyncScreen", () => {
       }),
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1717,7 +1717,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.press(screen.getByTestId("backup-sync-back-button"));
+    await fireEvent.press(screen.getByTestId("backup-sync-back-button"));
 
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
   });
@@ -1758,7 +1758,7 @@ describe("BackupSyncScreen", () => {
     });
     mockOpenConfirmation.mockResolvedValue(false);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 17)}
         storage={storage}
@@ -1768,7 +1768,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
@@ -1814,7 +1814,7 @@ describe("BackupSyncScreen", () => {
       reason: "unavailable",
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 17)}
         storage={storage}
@@ -1824,7 +1824,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -1893,7 +1893,7 @@ describe("BackupSyncScreen", () => {
       reason: "unavailable",
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -1903,7 +1903,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.press(screen.getByTestId("settings-sync-disconnect-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-disconnect-button"));
 
     await waitFor(() =>
       expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1),
@@ -1928,11 +1928,11 @@ describe("BackupSyncScreen", () => {
     });
     mockOpenLeaveConfirmation.mockResolvedValue("reject");
 
-    render(<BackupSyncScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<BackupSyncScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await screen.findByTestId("settings-sync-section");
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("settings-sync-device-label-input"),
       "Draft device",
     );
@@ -2084,7 +2084,7 @@ describe("BackupSyncScreen", () => {
       });
 
     try {
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date("2026-05-17T08:00:00.000Z")}
           storage={storage}
@@ -2094,15 +2094,15 @@ describe("BackupSyncScreen", () => {
 
       await screen.findByTestId("settings-sync-section");
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("settings-sync-login-input"),
         "owner@example.com",
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("settings-sync-password-input"),
         "correct horse battery staple",
       );
-      fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+      await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
 
       // The challenge prompt is rendered once connect returns the deferred
       // result. Until the user submits the code there must be no session
@@ -2111,11 +2111,11 @@ describe("BackupSyncScreen", () => {
       expect(connectSpy).toHaveBeenCalledTimes(1);
       expect(screen.queryByTestId("settings-sync-upload-button")).toBeNull();
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-totp-challenge-code"),
         "123456",
       );
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("backup-sync-totp-challenge-submit"),
       );
 
@@ -2199,7 +2199,7 @@ describe("BackupSyncScreen", () => {
       });
 
     try {
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date("2026-05-17T08:00:00.000Z")}
           storage={storage}
@@ -2208,22 +2208,22 @@ describe("BackupSyncScreen", () => {
       );
 
       await screen.findByTestId("settings-sync-section");
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("settings-sync-login-input"),
         "owner@example.com",
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("settings-sync-password-input"),
         "correct horse battery staple",
       );
-      fireEvent.press(screen.getByTestId("settings-sync-login-button"));
+      await fireEvent.press(screen.getByTestId("settings-sync-login-button"));
 
       await screen.findByTestId("backup-sync-totp-challenge-submit");
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-totp-challenge-code"),
         "000000",
       );
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("backup-sync-totp-challenge-submit"),
       );
 
@@ -2270,7 +2270,7 @@ describe("BackupSyncScreen", () => {
       },
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2301,7 +2301,7 @@ describe("BackupSyncScreen", () => {
       },
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2353,7 +2353,7 @@ describe("BackupSyncScreen", () => {
       },
     });
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2371,7 +2371,7 @@ describe("BackupSyncScreen", () => {
         .accessibilityState,
     ).toEqual(expect.objectContaining({ disabled: true }));
 
-    fireEvent.press(screen.getByTestId("settings-sync-offer-promo-1-dismiss"));
+    await fireEvent.press(screen.getByTestId("settings-sync-offer-promo-1-dismiss"));
 
     await waitFor(() =>
       expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith(
@@ -2409,7 +2409,7 @@ describe("BackupSyncScreen", () => {
     // subscription warning that follows it.
     mockOpenConfirmation.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2418,7 +2418,7 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
     expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
@@ -2460,7 +2460,7 @@ describe("BackupSyncScreen", () => {
     });
     mockOpenConfirmation.mockResolvedValue(true);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2469,7 +2469,7 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
     await waitFor(() =>
@@ -2503,7 +2503,7 @@ describe("BackupSyncScreen", () => {
     const settingsCopy = getSettingsCopy("en");
     mockOpenConfirmation.mockResolvedValue(true);
 
-    render(
+    await render(
       <BackupSyncScreen
         now={new Date(2026, 2, 20)}
         storage={storage}
@@ -2512,7 +2512,7 @@ describe("BackupSyncScreen", () => {
     );
 
     await screen.findByTestId("settings-sync-section");
-    fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
 
     await waitFor(() =>
       expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
@@ -2637,7 +2637,7 @@ describe("BackupSyncScreen", () => {
       await syncSecretStore.writeSyncSecrets(createGuestSecrets());
       global.fetch = createGuestLoadFetchMock(options.guestSessionExpiresAt);
 
-      render(
+      await render(
         <BackupSyncScreen
           now={options.now ?? new Date(2026, 3, 5)}
           storage={storage}
@@ -2680,7 +2680,7 @@ describe("BackupSyncScreen", () => {
         },
       });
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 2, 20)}
           storage={ownerStorage}
@@ -2698,7 +2698,7 @@ describe("BackupSyncScreen", () => {
         ok: false,
         reason: "unavailable",
       });
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
 
       await waitFor(() =>
         expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
@@ -2711,37 +2711,37 @@ describe("BackupSyncScreen", () => {
       ).toBeTruthy();
 
       // A second tap that passes the gate opens the form.
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
     });
 
     it("validates email and password before submitting, with no network call", async () => {
       await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
 
       const fetchSpy = jest.fn();
       global.fetch = fetchSpy as unknown as typeof fetch;
 
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
       expect(
         await screen.findByText(partnerCopy.guestUpgrade.errors.emailRequired),
       ).toBeTruthy();
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-email-input"),
         "owner@example.com",
       );
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
       expect(
         await screen.findByText(partnerCopy.guestUpgrade.errors.passwordRequired),
       ).toBeTruthy();
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-password-input"),
         "short",
       );
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
       expect(
         await screen.findByText(partnerCopy.guestUpgrade.errors.passwordTooShort),
       ).toBeTruthy();
@@ -2751,14 +2751,14 @@ describe("BackupSyncScreen", () => {
 
     it("on success shows the one-time recovery code, hides it on acknowledgement, and the CTA disappears", async () => {
       await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-email-input"),
         "owner@example.com",
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-password-input"),
         "very secure password 12345",
       );
@@ -2771,7 +2771,7 @@ describe("BackupSyncScreen", () => {
         }),
       ) as unknown as typeof fetch;
 
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
 
       const codeNode = await screen.findByTestId(
         "backup-sync-guest-upgrade-recovery-code-value",
@@ -2790,7 +2790,7 @@ describe("BackupSyncScreen", () => {
         "Bearer guest-session-1",
       );
 
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("backup-sync-guest-upgrade-recovery-code-confirm-button"),
       );
       await waitFor(() =>
@@ -2802,14 +2802,14 @@ describe("BackupSyncScreen", () => {
 
     it("hides the CTA on account_not_guest without leaving the form open", async () => {
       await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-email-input"),
         "owner@example.com",
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("backup-sync-guest-upgrade-password-input"),
         "very secure password 12345",
       );
@@ -2818,7 +2818,7 @@ describe("BackupSyncScreen", () => {
         createJSONResponse({ error: "account_not_guest" }, 409),
       ) as unknown as typeof fetch;
 
-      fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
+      await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-submit-button"));
 
       await waitFor(
         () =>
@@ -2941,7 +2941,7 @@ describe("BackupSyncScreen", () => {
       await syncSecretStore.writeSyncSecrets(createGuestSecretsWithMasterKey());
       global.fetch = createGuestRegenerateFetchMock();
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 3, 5)}
           storage={storage}
@@ -2999,7 +2999,7 @@ describe("BackupSyncScreen", () => {
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
 
-      render(
+      await render(
         <BackupSyncScreen
           now={new Date(2026, 2, 20)}
           storage={ownerStorage}
@@ -3010,7 +3010,7 @@ describe("BackupSyncScreen", () => {
 
       const prepareButton = screen.getByTestId("settings-sync-prepare-button");
       expect(prepareButton).toBeTruthy();
-      fireEvent.press(prepareButton);
+      await fireEvent.press(prepareButton);
 
       await waitFor(() =>
         expect(mockOpenConfirmation).toHaveBeenCalledWith(

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { Modal, Platform } from "react-native";
+import { Platform } from "react-native";
 
 import type { ResolvedBillingOffer } from "../../../services/offers-service";
 import { buildBackupSyncSetupPresentation } from "../../../services/backup-sync-view-service";
@@ -83,7 +83,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -102,7 +102,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} />
       </AppPreferencesTestProvider>,
@@ -119,7 +119,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -154,7 +154,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -200,7 +200,7 @@ describe("SettingsSyncSetupSection", () => {
     const props = createBaseProps(viewData);
     const onRetryPlanCheck = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -230,7 +230,7 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     const retry = await screen.findByTestId("settings-sync-plan-retry-button");
-    fireEvent.press(retry);
+    await fireEvent.press(retry);
     expect(onRetryPlanCheck).toHaveBeenCalledTimes(1);
   });
 
@@ -238,7 +238,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -256,7 +256,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} />
       </AppPreferencesTestProvider>,
@@ -278,7 +278,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -319,7 +319,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} />
       </AppPreferencesTestProvider>,
@@ -339,7 +339,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -374,7 +374,7 @@ describe("SettingsSyncSetupSection", () => {
     const props = createBaseProps(viewData);
     const onDeleteAccount = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -402,7 +402,7 @@ describe("SettingsSyncSetupSection", () => {
 
     const deleteButton = await screen.findByTestId("settings-sync-delete-account-button");
     expect(deleteButton).toBeTruthy();
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
     expect(onDeleteAccount).toHaveBeenCalledTimes(1);
   });
 
@@ -410,7 +410,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -450,7 +450,7 @@ describe("SettingsSyncSetupSection", () => {
     const onLogin = jest.fn();
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -475,7 +475,7 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+    await fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
 
     expect(onLogin).toHaveBeenCalledTimes(1);
   });
@@ -485,7 +485,7 @@ describe("SettingsSyncSetupSection", () => {
     const onRecoverAccess = jest.fn();
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -494,8 +494,8 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
-    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+    await fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+    await fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
 
     expect(onRecoverAccess).toHaveBeenCalledTimes(1);
   });
@@ -505,7 +505,7 @@ describe("SettingsSyncSetupSection", () => {
     const onAcknowledgeRecoveryCode = jest.fn();
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -521,7 +521,7 @@ describe("SettingsSyncSetupSection", () => {
     expect(await screen.findByText(viewData.recoveryCodeTitle)).toBeTruthy();
     expect(await screen.findByText(viewData.recoveryCodeHint)).toBeTruthy();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("settings-sync-recovery-code-confirm-button"),
     );
 
@@ -532,7 +532,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} />
       </AppPreferencesTestProvider>,
@@ -547,7 +547,7 @@ describe("SettingsSyncSetupSection", () => {
     const onLogin = jest.fn();
     const onRecoverAccess = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -574,7 +574,7 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+    await fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
 
     expect(onLogin).not.toHaveBeenCalled();
     expect(onRecoverAccess).not.toHaveBeenCalled();
@@ -585,13 +585,13 @@ describe("SettingsSyncSetupSection", () => {
     const props = createBaseProps(viewData);
     const onLogin = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} onLogin={onLogin} />
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
+    await fireEvent(screen.getByTestId("settings-sync-password-input"), "submitEditing");
 
     expect(onLogin).not.toHaveBeenCalled();
   });
@@ -601,17 +601,17 @@ describe("SettingsSyncSetupSection", () => {
     const props = createBaseProps(viewData);
     const onModeSelect = jest.fn();
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection {...props} onModeSelect={onModeSelect} />
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
+    await fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
     expect(onModeSelect).toHaveBeenCalledWith("self_hosted");
 
     onModeSelect.mockClear();
-    rerender(
+    await rerender(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -635,7 +635,7 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
+    await fireEvent.press(screen.getByTestId("settings-sync-mode-self_hosted"));
     expect(onModeSelect).not.toHaveBeenCalled();
   });
 
@@ -644,7 +644,7 @@ describe("SettingsSyncSetupSection", () => {
     const props = createBaseProps(viewData);
     const selfHostedPreferences = { ...props.preferences, mode: "self_hosted" as const };
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -679,7 +679,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -698,7 +698,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -731,7 +731,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -752,7 +752,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -764,7 +764,7 @@ describe("SettingsSyncSetupSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
+    await fireEvent.press(screen.getByTestId("settings-sync-account-pane-restore"));
 
     expect(
       await screen.findByText(viewData.errors.invalidRecoveryPhrase),
@@ -779,7 +779,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -841,7 +841,7 @@ describe("SettingsSyncSetupSection", () => {
       action: { type: "screen", screen: "backup-sync" },
     };
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -853,7 +853,7 @@ describe("SettingsSyncSetupSection", () => {
 
     expect(await screen.findByText(viewData.offerAnnouncementEyebrow)).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("settings-sync-offer-offer-screen-cta"));
+    await fireEvent.press(screen.getByTestId("settings-sync-offer-offer-screen-cta"));
     expect(onOfferCTAPress).toHaveBeenCalledWith(screenOffer);
   });
 
@@ -861,7 +861,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -871,7 +871,7 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     await screen.findByTestId("settings-sync-recovery-modal");
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("settings-sync-recovery-modal-confirm-button"),
     );
 
@@ -882,7 +882,7 @@ describe("SettingsSyncSetupSection", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncSetupSection
           {...props}
@@ -892,11 +892,11 @@ describe("SettingsSyncSetupSection", () => {
     );
 
     await screen.findByTestId("settings-sync-recovery-modal");
-    const phraseModal = screen
-      .UNSAFE_getAllByType(Modal)
+    const phraseModal = screen.container
+      .queryAll((node) => node.type === "Modal")
       .find((modal) => modal.props.visible);
 
-    act(() => {
+    await act(() => {
       phraseModal?.props.onRequestClose();
     });
 
@@ -914,7 +914,7 @@ describe("SettingsSyncSetupSection", () => {
     });
 
     try {
-      render(
+      await render(
         <AppPreferencesTestProvider>
           <SettingsSyncSetupSection
             {...props}
@@ -939,11 +939,15 @@ describe("SettingsSyncSetupSection", () => {
         </AppPreferencesTestProvider>,
       );
 
-      const form = screen
-        .UNSAFE_getAllByProps({ "data-testid": "settings-sync-account-form" })
-        .find((node) => typeof node.props.onSubmit === "function");
+      const form = screen.container
+        .queryAll(
+          (node) =>
+            node.props["data-testid"] === "settings-sync-account-form" &&
+            typeof node.props.onSubmit === "function",
+        )
+        .at(0);
 
-      act(() => {
+      await act(() => {
         form?.props.onSubmit({ preventDefault: jest.fn() });
       });
 

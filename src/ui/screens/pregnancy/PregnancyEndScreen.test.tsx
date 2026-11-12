@@ -85,13 +85,13 @@ function nowForGaDays(gaDays: number): Date {
 // loadPostpartumUnlocked defaults to LOCKED so every pre-existing birth
 // test navigates to the dashboard exactly as before; postpartum-offer tests
 // inject an unlocked resolver explicitly.
-function renderEnd(
+async function renderEnd(
   storage = createLocalAppStorageMock(),
   reasonParam?: string,
   now: Date = new Date(2026, 5, 15),
   loadPostpartumUnlocked: () => Promise<boolean> = () => Promise.resolve(false),
 ) {
-  return render(
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <PregnancyEndScreen
         now={now}
@@ -167,10 +167,10 @@ describe("PregnancyEndScreen", () => {
   it("ends a birth with the chosen mode of delivery and navigates to the dashboard", async () => {
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
-    renderEnd(storage, "birth");
+    await renderEnd(storage, "birth");
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
 
     await waitFor(() =>
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -187,10 +187,10 @@ describe("PregnancyEndScreen", () => {
   it("ends a birth with a null mode of delivery when the question is skipped", async () => {
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
-    renderEnd(storage, "birth");
+    await renderEnd(storage, "birth");
 
     // No mode selected — the default is "skip" (null).
-    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
     await waitFor(() =>
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -205,7 +205,7 @@ describe("PregnancyEndScreen", () => {
 
   describe("multiples: plural birth congratulations", () => {
     it("renders the singular congratulations and mode question for a singleton active pregnancy (unchanged)", async () => {
-      renderEnd(activeStorage(), "birth");
+      await renderEnd(activeStorage(), "birth");
 
       const congratulations = await screen.findByTestId(
         "pregnancy-end-birth-congratulations",
@@ -217,7 +217,7 @@ describe("PregnancyEndScreen", () => {
     });
 
     it("renders the plural congratulations and mode question when the active pregnancy is twins+", async () => {
-      renderEnd(twinsActiveStorage(), "birth");
+      await renderEnd(twinsActiveStorage(), "birth");
 
       const congratulations = await screen.findByTestId(
         "pregnancy-end-birth-congratulations",
@@ -230,7 +230,7 @@ describe("PregnancyEndScreen", () => {
 
     it("keeps loss copy untouched for a twins+ active pregnancy (no plural variant)", async () => {
       mockOpenConfirmation.mockResolvedValue(true);
-      renderEnd(twinsActiveStorage(), "loss");
+      await renderEnd(twinsActiveStorage(), "loss");
 
       const acknowledgment = await screen.findByTestId(
         "pregnancy-end-acknowledgment",
@@ -244,7 +244,7 @@ describe("PregnancyEndScreen", () => {
   it("renders neutral loss copy and ends with reason 'loss' (no mode question)", async () => {
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
-    renderEnd(storage, "loss");
+    await renderEnd(storage, "loss");
 
     const acknowledgment = await screen.findByTestId(
       "pregnancy-end-acknowledgment",
@@ -255,7 +255,7 @@ describe("PregnancyEndScreen", () => {
     // No mode-of-delivery question on the loss path.
     expect(screen.queryByTestId("pregnancy-end-mode-vaginal")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
 
     await waitFor(() =>
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -269,9 +269,9 @@ describe("PregnancyEndScreen", () => {
     // NOT run.
     mockOpenConfirmation.mockResolvedValue(false);
     const storage = activeStorage();
-    renderEnd(storage, "loss");
+    await renderEnd(storage, "loss");
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalled());
     expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
@@ -287,27 +287,27 @@ describe("PregnancyEndScreen", () => {
     // point (see the "birth option visibility" suite below for the
     // below-threshold case).
     const storage = activeStorage();
-    renderEnd(storage);
+    await renderEnd(storage);
 
     expect(await screen.findByTestId("pregnancy-end-reason-birth")).toBeTruthy();
     expect(screen.getByTestId("pregnancy-end-reason-loss")).toBeTruthy();
     expect(screen.getByTestId("pregnancy-end-reason-other")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("pregnancy-end-reason-birth"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-reason-birth"));
     expect(await screen.findByTestId("pregnancy-end-birth-card")).toBeTruthy();
 
     // Back returns to the choice screen; the loss path opens the same way.
-    fireEvent.press(screen.getByTestId("pregnancy-end-back-button"));
-    fireEvent.press(await screen.findByTestId("pregnancy-end-reason-loss"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-back-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-reason-loss"));
     expect(await screen.findByTestId("pregnancy-end-loss-card")).toBeTruthy();
   });
 
   it("gates hard delete behind device auth — a failed challenge does not delete", async () => {
     mockChallenge.mockResolvedValue({ ok: false, reason: "failed" });
     const storage = activeStorage();
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
 
     await waitFor(() => expect(mockChallenge).toHaveBeenCalled());
     expect(storage.deleteAllPregnancyData).not.toHaveBeenCalled();
@@ -319,9 +319,9 @@ describe("PregnancyEndScreen", () => {
     mockChallenge.mockResolvedValue({ ok: true });
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
 
     await waitFor(() =>
       expect(storage.deleteAllPregnancyData).toHaveBeenCalledTimes(1),
@@ -333,9 +333,9 @@ describe("PregnancyEndScreen", () => {
     mockChallenge.mockResolvedValue({ ok: true });
     mockOpenConfirmation.mockResolvedValue(false);
     const storage = activeStorage();
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalled());
     expect(storage.deleteAllPregnancyData).not.toHaveBeenCalled();
@@ -346,7 +346,7 @@ describe("PregnancyEndScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(null),
       listPregnancyRecords: jest.fn().mockResolvedValue([endedRecord()]),
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
     expect(await screen.findByTestId("pregnancy-end-manage-card")).toBeTruthy();
     expect(screen.getByTestId("pregnancy-end-delete-button")).toBeTruthy();
@@ -359,20 +359,20 @@ describe("PregnancyEndScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(null),
       listPregnancyRecords: jest.fn().mockResolvedValue([]),
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
     expect(await screen.findByTestId("pregnancy-end-empty-body")).toBeTruthy();
     expect(screen.queryByTestId("pregnancy-end-delete-button")).toBeNull();
   });
 
   it("renders the pregnancy disclaimer on the end screen", async () => {
-    renderEnd(activeStorage());
+    await renderEnd(activeStorage());
     expect(await screen.findByTestId("pregnancy-end-disclaimer")).toBeTruthy();
   });
 
   describe("birth option visibility (CHANGE 2, week-20 loss-taxonomy gate)", () => {
     it("hides the birth option at 19+6, keeping loss and other", async () => {
-      renderEnd(activeStorage(), undefined, nowForGaDays(19 * 7 + 6));
+      await renderEnd(activeStorage(), undefined, nowForGaDays(19 * 7 + 6));
 
       await screen.findByTestId("pregnancy-end-choice-card");
       expect(screen.queryByTestId("pregnancy-end-reason-birth")).toBeNull();
@@ -381,7 +381,7 @@ describe("PregnancyEndScreen", () => {
     });
 
     it("shows all three reasons at 20+0", async () => {
-      renderEnd(activeStorage(), undefined, nowForGaDays(20 * 7));
+      await renderEnd(activeStorage(), undefined, nowForGaDays(20 * 7));
 
       expect(await screen.findByTestId("pregnancy-end-reason-birth")).toBeTruthy();
       expect(screen.getByTestId("pregnancy-end-reason-loss")).toBeTruthy();
@@ -389,7 +389,7 @@ describe("PregnancyEndScreen", () => {
     });
 
     it("falls the birth deep link back to the choice screen below week 20, never the congratulations card", async () => {
-      renderEnd(activeStorage(), "birth", nowForGaDays(19 * 7 + 6));
+      await renderEnd(activeStorage(), "birth", nowForGaDays(19 * 7 + 6));
 
       await screen.findByTestId("pregnancy-end-choice-card");
       expect(screen.queryByTestId("pregnancy-end-birth-card")).toBeNull();
@@ -398,7 +398,7 @@ describe("PregnancyEndScreen", () => {
     });
 
     it("still honors the birth deep link at 20+0 (at the threshold)", async () => {
-      renderEnd(activeStorage(), "birth", nowForGaDays(20 * 7));
+      await renderEnd(activeStorage(), "birth", nowForGaDays(20 * 7));
 
       expect(await screen.findByTestId("pregnancy-end-birth-card")).toBeTruthy();
     });
@@ -406,7 +406,7 @@ describe("PregnancyEndScreen", () => {
 
   describe("update due date(clinician re-dating)", () => {
     it("shows the row only while a pregnancy is active", async () => {
-      renderEnd(activeStorage());
+      await renderEnd(activeStorage());
       expect(
         await screen.findByTestId("pregnancy-end-update-due-date-row"),
       ).toBeTruthy();
@@ -417,7 +417,7 @@ describe("PregnancyEndScreen", () => {
         readActivePregnancy: jest.fn().mockResolvedValue(null),
         listPregnancyRecords: jest.fn().mockResolvedValue([endedRecord()]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
       await screen.findByTestId("pregnancy-end-manage-card");
       expect(
@@ -431,9 +431,9 @@ describe("PregnancyEndScreen", () => {
         readActivePregnancy: jest.fn().mockResolvedValue(active),
         listPregnancyRecords: jest.fn().mockResolvedValue([active]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-update-due-date-row"),
       );
 
@@ -443,11 +443,11 @@ describe("PregnancyEndScreen", () => {
       // Prefilled from the active record's current edd.
       expect(dateInput.props.value).toBe(EDD);
 
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("pregnancy-end-update-due-date-basis-manual"),
       );
-      fireEvent.changeText(dateInput, "2026-11-05");
-      fireEvent.press(
+      await fireEvent.changeText(dateInput, "2026-11-05");
+      await fireEvent.press(
         screen.getByTestId("pregnancy-end-update-due-date-confirm-button"),
       );
 
@@ -468,14 +468,14 @@ describe("PregnancyEndScreen", () => {
 
     it("returns to the choice screen when cancelled, without saving", async () => {
       const storage = activeStorage();
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-update-due-date-row"),
       );
       await screen.findByTestId("pregnancy-end-update-due-date-step");
 
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("pregnancy-end-update-due-date-back-button"),
       );
 
@@ -485,16 +485,16 @@ describe("PregnancyEndScreen", () => {
 
     it("shows a validation error for an out-of-range date and does not save", async () => {
       const storage = activeStorage();
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-update-due-date-row"),
       );
       const dateInput = await screen.findByTestId(
         "pregnancy-end-update-due-date-input",
       );
-      fireEvent.changeText(dateInput, "2028-01-01");
-      fireEvent.press(
+      await fireEvent.changeText(dateInput, "2028-01-01");
+      await fireEvent.press(
         screen.getByTestId("pregnancy-end-update-due-date-confirm-button"),
       );
 
@@ -509,16 +509,16 @@ describe("PregnancyEndScreen", () => {
     it("offers postpartum tracking after a confirmed birth when premium is unlocked, and starts it with the copied mode of delivery", async () => {
       mockOpenConfirmation.mockResolvedValue(true);
       const { storage, postpartumWrites } = statefulBirthStorage();
-      renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
+      await renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
-      fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
+      await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
 
       // The offer step appears instead of navigating straight to the dashboard.
       await screen.findByTestId("pregnancy-end-postpartum-offer-card");
       expect(mockReplace).not.toHaveBeenCalled();
 
-      fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-offer-start"));
+      await fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-offer-start"));
 
       await waitFor(() => expect(postpartumWrites).toHaveLength(1));
       expect(postpartumWrites[0]).toEqual(
@@ -535,10 +535,10 @@ describe("PregnancyEndScreen", () => {
     it("declining the offer leaves no postpartum record and goes to the dashboard", async () => {
       mockOpenConfirmation.mockResolvedValue(true);
       const { storage, postpartumWrites } = statefulBirthStorage();
-      renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
+      await renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
-      fireEvent.press(
+      await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-postpartum-offer-decline"),
       );
 
@@ -552,9 +552,9 @@ describe("PregnancyEndScreen", () => {
     it("never offers postpartum after a loss, even when premium is unlocked (rule B8)", async () => {
       mockOpenConfirmation.mockResolvedValue(true);
       const storage = activeStorage();
-      renderEnd(storage, "loss", new Date(2026, 5, 15), unlocked);
+      await renderEnd(storage, "loss", new Date(2026, 5, 15), unlocked);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
       await waitFor(() =>
         expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
@@ -568,9 +568,9 @@ describe("PregnancyEndScreen", () => {
     it("goes straight to the dashboard after a birth when premium is locked (offer gated)", async () => {
       mockOpenConfirmation.mockResolvedValue(true);
       const storage = activeStorage();
-      renderEnd(storage, "birth"); // default loadPostpartumUnlocked = locked
+      await renderEnd(storage, "birth"); // default loadPostpartumUnlocked = locked
 
-      fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
       await waitFor(() =>
         expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
@@ -581,7 +581,7 @@ describe("PregnancyEndScreen", () => {
     });
 
     it("never shows the offer on a bare ?reason=birth deep link (needs a just-confirmed birth in-session)", async () => {
-      renderEnd(activeStorage(), "birth", new Date(2026, 5, 15), unlocked);
+      await renderEnd(activeStorage(), "birth", new Date(2026, 5, 15), unlocked);
 
       // The birth confirm step renders; the offer only appears AFTER confirming.
       expect(await screen.findByTestId("pregnancy-end-birth-card")).toBeTruthy();
@@ -601,7 +601,7 @@ describe("PregnancyEndScreen", () => {
         readActivePregnancy: jest.fn().mockResolvedValue(null),
         listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
       });
-      renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
+      await renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
 
       expect(
         await screen.findByTestId("pregnancy-end-postpartum-start-card"),
@@ -618,7 +618,7 @@ describe("PregnancyEndScreen", () => {
         readActivePregnancy: jest.fn().mockResolvedValue(null),
         listPregnancyRecords: jest.fn().mockResolvedValue([old]),
       });
-      renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
+      await renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
 
       await screen.findByTestId("pregnancy-end-manage-card");
       expect(
@@ -636,7 +636,7 @@ describe("PregnancyEndScreen", () => {
         readActivePregnancy: jest.fn().mockResolvedValue(null),
         listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
       });
-      renderEnd(storage, undefined, new Date(2026, 5, 15)); // locked
+      await renderEnd(storage, undefined, new Date(2026, 5, 15)); // locked
 
       await screen.findByTestId("pregnancy-end-manage-card");
       expect(
@@ -656,9 +656,9 @@ describe("PregnancyEndScreen", () => {
         readActivePostpartum: jest.fn().mockResolvedValue(active),
         listPostpartumRecords: jest.fn().mockResolvedValue([active]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-postpartum-end-button"),
       );
 
@@ -684,9 +684,9 @@ describe("PregnancyEndScreen", () => {
         readActivePostpartum: jest.fn().mockResolvedValue(active),
         listPostpartumRecords: jest.fn().mockResolvedValue([active]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-postpartum-delete-button"),
       );
 
@@ -714,9 +714,9 @@ describe("PregnancyEndScreen", () => {
           }),
         ]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-screening-delete-button"),
       );
 
@@ -742,9 +742,9 @@ describe("PregnancyEndScreen", () => {
           }),
         ]),
       });
-      renderEnd(storage);
+      await renderEnd(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-end-screening-delete-button"),
       );
 
@@ -758,9 +758,9 @@ describe("failure and device-auth paths", () => {
     mockOpenConfirmation.mockResolvedValueOnce(true);
     const storage = activeStorage();
     (storage.writePregnancyRecord as jest.Mock).mockRejectedValue(new Error("busy"));
-    renderEnd(storage, "birth");
+    await renderEnd(storage, "birth");
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
     expect(
       await screen.findByText(getPregnancyEndCopy("en").status.endFailed),
@@ -773,12 +773,12 @@ describe("failure and device-auth paths", () => {
     (storage.writePostpartumRecord as jest.Mock).mockRejectedValue(
       new Error("busy"),
     );
-    renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
+    await renderEnd(storage, "birth", new Date(2026, 5, 15), unlocked);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-mode-cesarean"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
     await screen.findByTestId("pregnancy-end-postpartum-offer-card");
-    fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-offer-start"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-offer-start"));
 
     expect(
       await screen.findByText(getPostpartumCopy("en").status.startFailed),
@@ -788,15 +788,15 @@ describe("failure and device-auth paths", () => {
   it("covers the 'other' reason path, cancel, and both end-postpartum sides", async () => {
     mockOpenConfirmation.mockResolvedValue(false);
     const storage = activeStorage();
-    renderEnd(storage, "other");
+    await renderEnd(storage, "other");
 
     // Declined confirm keeps the pregnancy.
-    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
     expect(storage.writePregnancyRecord).not.toHaveBeenCalled();
 
     // Back returns to the reason choice; cancel there leaves the screen.
-    fireEvent.press(screen.getByTestId("pregnancy-end-back-button"));
-    fireEvent.press(await screen.findByTestId("pregnancy-end-choice-cancel-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-back-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-choice-cancel-button"));
     expect(mockBack).toHaveBeenCalled();
   });
 
@@ -822,9 +822,9 @@ describe("failure and device-auth paths", () => {
         }]),
       writePostpartumRecord: write,
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-end-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-end-button"));
     await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
     expect(
       await screen.findByTestId("pregnancy-end-postpartum-error"),
@@ -851,9 +851,9 @@ describe("failure and device-auth paths", () => {
         endReason: null,
       }]),
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-end-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-end-button"));
     await act(async () => {});
     expect(storage.writePostpartumRecord).not.toHaveBeenCalled();
   });
@@ -864,15 +864,15 @@ describe("failure and device-auth paths", () => {
       new Error("busy"),
     );
     const del = getPregnancyEndCopy("en").delete;
-    renderEnd(storage);
+    await renderEnd(storage);
 
     mockChallenge.mockResolvedValueOnce({ ok: false, reason: "unavailable" });
-    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
     expect(await screen.findByText(del.status.deviceAuthUnavailable)).toBeTruthy();
 
     mockChallenge.mockResolvedValueOnce({ ok: true });
     mockOpenConfirmation.mockResolvedValueOnce(true);
-    fireEvent.press(screen.getByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-delete-button"));
     expect(await screen.findByText(del.status.failed)).toBeTruthy();
   });
 
@@ -882,21 +882,21 @@ describe("failure and device-auth paths", () => {
       new Error("busy"),
     );
     const validation = getPregnancyCopy("en").wizard.validation;
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-update-due-date-row"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-update-due-date-row"));
     const input = await screen.findByTestId("pregnancy-end-update-due-date-input");
 
-    fireEvent.changeText(input, "");
-    fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
+    await fireEvent.changeText(input, "");
+    await fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
     expect(await screen.findByText(validation.missingDate)).toBeTruthy();
 
-    fireEvent.changeText(input, "2026-99-99");
-    fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
+    await fireEvent.changeText(input, "2026-99-99");
+    await fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
     expect(await screen.findByText(validation.invalidDate)).toBeTruthy();
 
-    fireEvent.changeText(input, "2026-11-05");
-    fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
+    await fireEvent.changeText(input, "2026-11-05");
+    await fireEvent.press(screen.getByTestId("pregnancy-end-update-due-date-confirm-button"));
     expect(await screen.findByText(validation.saveFailed)).toBeTruthy();
   });
 
@@ -915,20 +915,20 @@ describe("failure and device-auth paths", () => {
       ]),
     });
     const del = getPostpartumCopy("en").delete;
-    renderEnd(storage);
+    await renderEnd(storage);
 
     mockChallenge.mockResolvedValueOnce({ ok: false, reason: "unavailable" });
-    fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-postpartum-delete-button"));
     expect(await screen.findByText(del.status.deviceAuthUnavailable)).toBeTruthy();
 
     mockChallenge.mockResolvedValueOnce({ ok: false, reason: "failed" });
-    fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-delete-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-delete-button"));
     expect(await screen.findByText(del.status.deviceAuthFailed)).toBeTruthy();
 
     mockChallenge.mockResolvedValueOnce({ ok: true });
     mockOpenConfirmation.mockResolvedValueOnce(true);
     (storage.deleteAllPostpartumData as jest.Mock).mockRejectedValue(new Error("busy"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-delete-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-postpartum-delete-button"));
     expect(await screen.findByText(del.status.failed)).toBeTruthy();
   });
 
@@ -946,16 +946,16 @@ describe("failure and device-auth paths", () => {
       ]),
     });
     const del = getScreeningCopy("en").delete;
-    renderEnd(storage);
+    await renderEnd(storage);
 
     mockChallenge.mockResolvedValueOnce({ ok: false, reason: "failed" });
-    fireEvent.press(await screen.findByTestId("pregnancy-end-screening-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-screening-delete-button"));
     expect(await screen.findByText(del.status.deviceAuthFailed)).toBeTruthy();
 
     mockChallenge.mockResolvedValueOnce({ ok: true });
     mockOpenConfirmation.mockResolvedValueOnce(true);
     (storage.deleteAllScreeningData as jest.Mock).mockRejectedValue(new Error("busy"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-screening-delete-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-screening-delete-button"));
     expect(await screen.findByText(del.status.failed)).toBeTruthy();
   });
 });
@@ -964,11 +964,11 @@ describe("handler edges", () => {
   it("selecting Skip after a mode clears it back to null on the persisted record", async () => {
     mockOpenConfirmation.mockResolvedValue(true);
     const storage = activeStorage();
-    renderEnd(storage, "birth");
+    await renderEnd(storage, "birth");
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-mode-vaginal"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-mode-skip"));
-    fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-mode-vaginal"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-mode-skip"));
+    await fireEvent.press(screen.getByTestId("pregnancy-end-confirm-button"));
 
     await waitFor(() =>
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -983,9 +983,9 @@ describe("handler edges", () => {
     (storage.writePregnancyRecord as jest.Mock).mockRejectedValue(
       new Error("busy"),
     );
-    renderEnd(storage, "loss");
+    await renderEnd(storage, "loss");
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
 
     expect(
       await screen.findByText(getPregnancyEndCopy("en").status.endFailed),
@@ -1003,9 +1003,9 @@ describe("handler edges", () => {
       listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
       writePostpartumRecord: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
+    await renderEnd(storage, undefined, new Date(2026, 5, 15), unlocked);
 
-    fireEvent.press(
+    await fireEvent.press(
       await screen.findByTestId("pregnancy-end-postpartum-start-button"),
     );
 
@@ -1020,9 +1020,9 @@ describe("handler edges", () => {
   it("stays silent when the pregnancy-delete device-auth challenge is cancelled", async () => {
     mockChallenge.mockResolvedValue({ ok: false, reason: "cancelled" });
     const storage = activeStorage();
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
 
     await waitFor(() => expect(mockChallenge).toHaveBeenCalled());
     expect(mockOpenConfirmation).not.toHaveBeenCalled();
@@ -1043,12 +1043,12 @@ describe("handler edges", () => {
         }),
       ]),
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(
+    await fireEvent.press(
       await screen.findByTestId("pregnancy-end-postpartum-delete-button"),
     );
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("pregnancy-end-screening-delete-button"),
     );
 
@@ -1077,12 +1077,12 @@ describe("handler edges", () => {
         }),
       ]),
     });
-    renderEnd(storage);
+    await renderEnd(storage);
 
-    fireEvent.press(
+    await fireEvent.press(
       await screen.findByTestId("pregnancy-end-postpartum-delete-button"),
     );
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("pregnancy-end-screening-delete-button"),
     );
 
@@ -1109,7 +1109,7 @@ describe("handler edges", () => {
     const loadPostpartumUnlocked = jest.fn(() => Promise.resolve(true));
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const view = renderEnd(
+    const view = await renderEnd(
       storage,
       undefined,
       new Date(2026, 5, 15),
@@ -1118,14 +1118,16 @@ describe("handler edges", () => {
     // The load is genuinely mid-flight: the read was issued and left pending.
     expect(storage.listPregnancyRecords).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolveRecords([recent]);
     await act(async () => {});
 
     // The resolved batch lands after teardown: the load stops at the unmount
     // boundary instead of running on into the unlock read.
     expect(loadPostpartumUnlocked).not.toHaveBeenCalled();
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
@@ -1142,7 +1144,7 @@ describe("handler edges", () => {
       listPregnancyRecords: jest.fn().mockResolvedValue([recent]),
     });
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    const view = renderEnd(
+    const view = await renderEnd(
       storage,
       undefined,
       new Date(2026, 5, 15),
@@ -1157,18 +1159,20 @@ describe("handler edges", () => {
     // screen has not rendered the delayed-start offer.
     expect(screen.queryByTestId("pregnancy-end-postpartum-start-card")).toBeNull();
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolveUnlock(true);
     await act(async () => {});
 
     // The unlock answer arrives after teardown: it never repaints the offer.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PregnancyEndScreen />
       </AppPreferencesTestProvider>,

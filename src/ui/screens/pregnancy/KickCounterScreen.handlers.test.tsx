@@ -36,8 +36,8 @@ function activeRecord() {
   });
 }
 
-function renderKickCounter(storage = createLocalAppStorageMock()) {
-  return render(
+async function renderKickCounter(storage = createLocalAppStorageMock()) {
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <KickCounterScreen
         now={new Date("2026-07-20T10:00:00.000Z")}
@@ -65,7 +65,7 @@ describe("KickCounterScreen handler guards", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderKickCounter(storage);
+    await renderKickCounter(storage);
     const props = await flowReady();
 
     await act(async () => {
@@ -80,7 +80,7 @@ describe("KickCounterScreen handler guards", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderKickCounter(storage);
+    await renderKickCounter(storage);
     const props = await flowReady();
 
     await act(async () => {
@@ -95,7 +95,7 @@ describe("KickCounterScreen handler guards", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(null),
     });
     mockOpenConfirmation.mockResolvedValue(true);
-    renderKickCounter(storage);
+    await renderKickCounter(storage);
     const props = await flowReady();
 
     await act(async () => {

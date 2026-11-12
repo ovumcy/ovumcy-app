@@ -52,7 +52,7 @@ async function renderHookWithLoadedDevices(
     devices,
     currentDeviceID,
   });
-  const rendered = renderHook(() => useBackupSyncDeviceManagement(core));
+  const rendered = await renderHook(() => useBackupSyncDeviceManagement(core));
   await act(async () => {
     await rendered.result.current.handleLoadDevices();
   });
@@ -67,7 +67,7 @@ describe("useBackupSyncDeviceManagement", () => {
   describe("handleLoadDevices", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncDeviceManagement(core));
+      const { result } = await renderHook(() => useBackupSyncDeviceManagement(core));
 
       await act(async () => {
         await result.current.handleLoadDevices();
@@ -107,7 +107,7 @@ describe("useBackupSyncDeviceManagement", () => {
         ok: false,
         errorCode: "network_failed",
       });
-      const { result } = renderHook(() => useBackupSyncDeviceManagement(core));
+      const { result } = await renderHook(() => useBackupSyncDeviceManagement(core));
 
       await act(async () => {
         await result.current.handleLoadDevices();
@@ -126,7 +126,7 @@ describe("useBackupSyncDeviceManagement", () => {
         ok: false,
         errorCode: "network_failed",
       });
-      const { result } = renderHook(() => useBackupSyncDeviceManagement(core));
+      const { result } = await renderHook(() => useBackupSyncDeviceManagement(core));
 
       await act(async () => {
         await result.current.handleLoadDevices();
@@ -149,7 +149,7 @@ describe("useBackupSyncDeviceManagement", () => {
   describe("handleRemoveDevice", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncDeviceManagement(core));
+      const { result } = await renderHook(() => useBackupSyncDeviceManagement(core));
 
       await act(async () => {
         await result.current.handleRemoveDevice("device-a");
@@ -161,7 +161,7 @@ describe("useBackupSyncDeviceManagement", () => {
 
     it("does nothing when the device list has no matching item (not loaded yet)", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncDeviceManagement(core));
+      const { result } = await renderHook(() => useBackupSyncDeviceManagement(core));
 
       await act(async () => {
         await result.current.handleRemoveDevice("device-a");

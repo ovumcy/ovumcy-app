@@ -26,8 +26,8 @@ jest.mock("expo-router", () => ({
 
 const copy = selectPrivacyNoticeCopy("en");
 
-function renderScreen(openPrivacyPolicy = jest.fn().mockResolvedValue(true)) {
-  render(
+async function renderScreen(openPrivacyPolicy = jest.fn().mockResolvedValue(true)) {
+  await render(
     <AppPreferencesTestProvider languageOverride="en">
       <PrivacyNoticeScreen openPrivacyPolicy={openPrivacyPolicy} />
     </AppPreferencesTestProvider>,
@@ -45,8 +45,8 @@ describe("PrivacyNoticeScreen", () => {
     mockDefaultOpenPrivacyPolicy.mockReset();
   });
 
-  it("renders every notice section and the policy address", () => {
-    renderScreen();
+  it("renders every notice section and the policy address", async () => {
+    await renderScreen();
 
     expect(screen.getByText(copy.title)).toBeTruthy();
     expect(screen.getByTestId("privacy-notice-section-on-device")).toBeTruthy();
@@ -59,9 +59,9 @@ describe("PrivacyNoticeScreen", () => {
   });
 
   it("opens the hosted policy on request", async () => {
-    const { openPrivacyPolicy } = renderScreen();
+    const { openPrivacyPolicy } = await renderScreen();
 
-    fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
+    await fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
 
     await waitFor(() => {
       expect(openPrivacyPolicy).toHaveBeenCalledTimes(1);
@@ -70,9 +70,9 @@ describe("PrivacyNoticeScreen", () => {
   });
 
   it("keeps the address readable when the platform cannot open the link", async () => {
-    renderScreen(jest.fn().mockResolvedValue(false));
+    await renderScreen(jest.fn().mockResolvedValue(false));
 
-    fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
+    await fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
 
     expect(
       await screen.findByTestId("privacy-notice-policy-link-error"),
@@ -80,20 +80,20 @@ describe("PrivacyNoticeScreen", () => {
     expect(screen.getByText(PRIVACY_POLICY_URL)).toBeTruthy();
   });
 
-  it("returns to the previous screen", () => {
-    renderScreen();
+  it("returns to the previous screen", async () => {
+    await renderScreen();
 
-    fireEvent.press(screen.getByTestId("privacy-notice-back-button"));
+    await fireEvent.press(screen.getByTestId("privacy-notice-back-button"));
 
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("falls back to the app entry when there is nothing to go back to", () => {
+  it("falls back to the app entry when there is nothing to go back to", async () => {
     mockCanGoBack.mockReturnValue(false);
-    renderScreen();
+    await renderScreen();
 
-    fireEvent.press(screen.getByTestId("privacy-notice-back-button"));
+    await fireEvent.press(screen.getByTestId("privacy-notice-back-button"));
 
     expect(mockBack).not.toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledWith("/");
@@ -101,13 +101,13 @@ describe("PrivacyNoticeScreen", () => {
   it("falls back to the real policy opener when no override is injected", async () => {
     mockDefaultOpenPrivacyPolicy.mockResolvedValue(true);
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PrivacyNoticeScreen />
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
+    await fireEvent.press(screen.getByTestId("privacy-notice-open-policy-button"));
 
     // The injectable prop exists for tests; production renders the route with
     // no props at all, so the default has to be the wired-up opener.

@@ -52,7 +52,7 @@ describe("useBackupSyncAccountDeletion", () => {
   describe("handleDeleteAccount", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -71,7 +71,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         reason: "unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -91,7 +91,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         reason: "failed",
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -111,7 +111,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         reason: "cancelled",
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -127,7 +127,7 @@ describe("useBackupSyncAccountDeletion", () => {
       const core = createBackupSyncSessionCoreMock();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -150,7 +150,7 @@ describe("useBackupSyncAccountDeletion", () => {
       const core = createBackupSyncSessionCoreMock();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -174,7 +174,7 @@ describe("useBackupSyncAccountDeletion", () => {
         requiresSubscriptionWarning: true,
       });
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -207,7 +207,7 @@ describe("useBackupSyncAccountDeletion", () => {
         hasConnectedSession: true,
         requiresSubscriptionWarning: true,
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -230,7 +230,7 @@ describe("useBackupSyncAccountDeletion", () => {
         requiresSubscriptionWarning: false,
       });
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -248,7 +248,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         errorCode: "generic",
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -278,7 +278,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         errorCode: "sync_purge_unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();
@@ -301,7 +301,7 @@ describe("useBackupSyncAccountDeletion", () => {
       mockOpenConfirmation.mockResolvedValue(true);
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
       jest.spyOn(Date, "now").mockReturnValue(1_800_000_000_000);
-      const { result } = renderHook(() => useBackupSyncAccountDeletion(core));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
         await result.current.handleDeleteAccount();

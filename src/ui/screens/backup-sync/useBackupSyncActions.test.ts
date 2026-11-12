@@ -47,7 +47,7 @@ describe("useBackupSyncActions", () => {
   describe("handleSyncNow", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -63,7 +63,7 @@ describe("useBackupSyncActions", () => {
       const core = createBackupSyncSessionCoreMock({
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -84,7 +84,7 @@ describe("useBackupSyncActions", () => {
         },
       );
       mockOpenConfirmation.mockResolvedValue(true);
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -103,7 +103,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         errorCode: "upload_over_backup_declined",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -126,7 +126,7 @@ describe("useBackupSyncActions", () => {
         errorCode: "unauthorized",
       });
       mockClearUnauthorizedBackupSyncSession.mockResolvedValue(clearedState);
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -154,7 +154,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         errorCode: "network_failed",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -181,7 +181,7 @@ describe("useBackupSyncActions", () => {
         ok: true,
         state: uploadedState,
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleSyncNow();
@@ -205,7 +205,7 @@ describe("useBackupSyncActions", () => {
 
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -222,7 +222,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         reason: "unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -242,7 +242,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         reason: "failed",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -261,7 +261,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         reason: "cancelled",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -278,7 +278,7 @@ describe("useBackupSyncActions", () => {
         ok: true,
         state: core.state!,
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -296,7 +296,7 @@ describe("useBackupSyncActions", () => {
     it("does not call the restore service when the owner declines the confirm", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -318,7 +318,7 @@ describe("useBackupSyncActions", () => {
         errorCode: "unauthorized",
       });
       mockClearUnauthorizedBackupSyncSession.mockResolvedValue(clearedState);
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -346,7 +346,7 @@ describe("useBackupSyncActions", () => {
         ok: false,
         errorCode: "network_failed",
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();
@@ -373,7 +373,7 @@ describe("useBackupSyncActions", () => {
         ok: true,
         state: restoredState,
       });
-      const { result } = renderHook(() => useBackupSyncActions(core));
+      const { result } = await renderHook(() => useBackupSyncActions(core));
 
       await act(async () => {
         await result.current.handleRestoreSync();

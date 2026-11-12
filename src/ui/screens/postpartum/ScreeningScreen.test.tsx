@@ -30,11 +30,11 @@ jest.mock("../../../services/app-bootstrap-service", () => {
 
 const NOW = new Date(2026, 6, 1); // 2026-07-01
 
-function renderScreening(
+async function renderScreening(
   storage: LocalAppStorage = createLocalAppStorageMock(),
   initialView: "questionnaire" | "history" = "questionnaire",
 ) {
-  return render(
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <ScreeningScreen initialView={initialView} now={NOW} storage={storage} />
     </AppPreferencesTestProvider>,
@@ -44,13 +44,13 @@ function renderScreening(
 // Walk the whole questionnaire, selecting the option that scores `score` on each
 // item (every EPDS item has a score-0 option; item 10 also has a score-1 one).
 async function completeWith(scores: number[]) {
-  fireEvent.press(await screen.findByTestId("screening-begin-button"));
+  await fireEvent.press(await screen.findByTestId("screening-begin-button"));
   for (let index = 0; index < scores.length; index += 1) {
-    fireEvent.press(screen.getByTestId(`screening-option-${scores[index]}`));
+    await fireEvent.press(screen.getByTestId(`screening-option-${scores[index]}`));
     if (index < scores.length - 1) {
-      fireEvent.press(screen.getByTestId("screening-next-button"));
+      await fireEvent.press(screen.getByTestId("screening-next-button"));
     } else {
-      fireEvent.press(screen.getByTestId("screening-finish-button"));
+      await fireEvent.press(screen.getByTestId("screening-finish-button"));
     }
   }
   // Finish triggers an async persist whose finally-block setState lands after
@@ -69,7 +69,7 @@ describe("ScreeningScreen", () => {
   });
 
   it("shows the EPDS attribution and privacy note on the intro step", async () => {
-    renderScreening();
+    await renderScreening();
 
     const attribution = await screen.findByTestId("screening-attribution");
     expect(attribution.props.children).toContain("Cox");
@@ -80,7 +80,7 @@ describe("ScreeningScreen", () => {
 
   it("completes the flow and persists exactly one response with the computed score", async () => {
     const storage = createLocalAppStorageMock();
-    renderScreening(storage);
+    await renderScreening(storage);
 
     await completeWith(new Array<number>(10).fill(0));
 
@@ -97,18 +97,18 @@ describe("ScreeningScreen", () => {
 
     // Result shown but no navigation yet; Done returns to the dashboard.
     expect(mockReplace).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByTestId("screening-done-button"));
+    await fireEvent.press(screen.getByTestId("screening-done-button"));
     expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
   });
 
   it("persists nothing when the questionnaire is abandoned partway through", async () => {
     const storage = createLocalAppStorageMock();
-    renderScreening(storage);
+    await renderScreening(storage);
 
-    fireEvent.press(await screen.findByTestId("screening-begin-button"));
-    fireEvent.press(screen.getByTestId("screening-option-2"));
+    await fireEvent.press(await screen.findByTestId("screening-begin-button"));
+    await fireEvent.press(screen.getByTestId("screening-option-2"));
     // Step back off the first question -> returns to intro, discarding answers.
-    fireEvent.press(screen.getByTestId("screening-back-button"));
+    await fireEvent.press(screen.getByTestId("screening-back-button"));
 
     expect(await screen.findByTestId("screening-begin-button")).toBeTruthy();
     expect(storage.writeScreeningResponse).not.toHaveBeenCalled();
@@ -116,7 +116,7 @@ describe("ScreeningScreen", () => {
 
   it("renders the crisis-support block (not the interim urgent card) when item 10 is answered non-zero", async () => {
     const storage = createLocalAppStorageMock();
-    renderScreening(storage);
+    await renderScreening(storage);
 
     // All items scored 0 except item 10 scored 1 -> total 1, band lower, flag set.
     await completeWith([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
@@ -131,7 +131,7 @@ describe("ScreeningScreen", () => {
   });
 
   it("does not render the crisis block for a clear item 10", async () => {
-    renderScreening();
+    await renderScreening();
     await completeWith(new Array<number>(10).fill(0));
     await screen.findByTestId("screening-result-card");
     expect(screen.queryByTestId("screening-crisis-support")).toBeNull();
@@ -145,7 +145,7 @@ describe("ScreeningScreen", () => {
         crisisContactPhone: "07700 900000",
       }),
     });
-    renderScreening(storage);
+    await renderScreening(storage);
 
     await completeWith([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
 
@@ -156,17 +156,17 @@ describe("ScreeningScreen", () => {
 
     // Edit + save routes through storage.writeProfileRecord, merging only the
     // two crisis fields (normalized/trimmed) without clobbering other settings.
-    fireEvent.press(screen.getByTestId("screening-crisis-support-edit-button"));
-    fireEvent.changeText(
+    await fireEvent.press(screen.getByTestId("screening-crisis-support-edit-button"));
+    await fireEvent.changeText(
       screen.getByTestId("screening-crisis-support-name-input"),
       "  Aunt Jo  ",
     );
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("screening-crisis-support-phone-input"),
       "0123 456",
     );
     await act(async () => {
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("screening-crisis-support-save-button"),
       );
       await Promise.resolve();
@@ -194,7 +194,7 @@ describe("ScreeningScreen", () => {
     const storage = createLocalAppStorageMock({
       listScreeningResponses: jest.fn().mockResolvedValue(responses),
     });
-    renderScreening(storage, "history");
+    await renderScreening(storage, "history");
 
     // Newest first, date + score visible in one row label.
     expect(await screen.findByText(/2026-06-20.*score 12 of 30/)).toBeTruthy();
@@ -210,7 +210,7 @@ describe("ScreeningScreen", () => {
   });
 
   it("history view shows an empty state when there are no responses", async () => {
-    renderScreening(createLocalAppStorageMock(), "history");
+    await renderScreening(createLocalAppStorageMock(), "history");
     expect(await screen.findByTestId("screening-history-empty")).toBeTruthy();
   });
 
@@ -218,7 +218,7 @@ describe("ScreeningScreen", () => {
     const storage = createLocalAppStorageMock({
       writeScreeningResponse: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderScreening(storage);
+    await renderScreening(storage);
 
     await completeWith([0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
@@ -227,17 +227,17 @@ describe("ScreeningScreen", () => {
 
 
   it("guards next-with-no-selection, steps back to the previous question, and backs out of question one", async () => {
-    renderScreening();
-    fireEvent.press(await screen.findByTestId("screening-begin-button"));
+    await renderScreening();
+    await fireEvent.press(await screen.findByTestId("screening-begin-button"));
 
     // Next with nothing selected: guarded, stays on question 1.
-    fireEvent.press(screen.getByTestId("screening-next-button"));
+    await fireEvent.press(screen.getByTestId("screening-next-button"));
     // Answer and advance, then step back to question 1.
-    fireEvent.press(screen.getByTestId("screening-option-0"));
-    fireEvent.press(screen.getByTestId("screening-next-button"));
-    fireEvent.press(screen.getByTestId("screening-back-button"));
+    await fireEvent.press(screen.getByTestId("screening-option-0"));
+    await fireEvent.press(screen.getByTestId("screening-next-button"));
+    await fireEvent.press(screen.getByTestId("screening-back-button"));
     // Back from question one returns to the intro, not out of the screen.
-    fireEvent.press(screen.getByTestId("screening-back-button"));
+    await fireEvent.press(screen.getByTestId("screening-back-button"));
     expect(await screen.findByTestId("screening-begin-button")).toBeTruthy();
   });
 
@@ -253,7 +253,7 @@ describe("ScreeningScreen", () => {
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
     // No `now` prop: the screen falls back to the real clock and still renders.
-    const view = render(
+    const view = await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ScreeningScreen initialView="questionnaire" storage={storage} />
       </AppPreferencesTestProvider>,
@@ -263,13 +263,15 @@ describe("ScreeningScreen", () => {
     // left pending.
     expect(storage.readProfileRecord).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolveProfile({ crisisContactName: undefined, crisisContactPhone: undefined });
     await act(async () => {});
 
     // The profile resolves onto a torn-down tree: nothing is rendered and React
     // reports no error.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
@@ -285,7 +287,7 @@ describe("ScreeningScreen", () => {
     const storage = createLocalAppStorageMock({
       readProfileRecord: jest.fn().mockResolvedValue(legacyProfile),
     });
-    renderScreening(storage);
+    await renderScreening(storage);
 
     await completeWith([0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
 
@@ -294,9 +296,9 @@ describe("ScreeningScreen", () => {
   });
 
   it("closes the history view through the back action", async () => {
-    renderScreening(createLocalAppStorageMock(), "history");
+    await renderScreening(createLocalAppStorageMock(), "history");
 
-    fireEvent.press(await screen.findByTestId("screening-history-back-button"));
+    await fireEvent.press(await screen.findByTestId("screening-history-back-button"));
     expect(mockBack).toHaveBeenCalled();
   });
 
@@ -311,24 +313,26 @@ describe("ScreeningScreen", () => {
     });
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const view = renderScreening(storage, "history");
+    const view = await renderScreening(storage, "history");
     // The history load is genuinely mid-flight: the read was issued and left
     // pending, so no rows are painted yet.
     expect(storage.listScreeningResponses).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolveResponses([]);
     await act(async () => {});
 
     // The response list resolves onto a torn-down tree: nothing is rendered and
     // React reports no error.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ScreeningScreen />
       </AppPreferencesTestProvider>,

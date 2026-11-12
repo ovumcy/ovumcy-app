@@ -15,14 +15,18 @@
       ],
       "./plugins/withAndroidNetworkSecurityConfig",
       "./plugins/withIosExcludeDataFromICloudBackup",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/branding/ovumcy-splash.png",
+          "resizeMode": "contain",
+          "imageWidth": 400,
+          "backgroundColor": "#f7f0e6"
+        }
+      ]
     ],
     "icon": "./assets/branding/ovumcy-icon-512.png",
-    "splash": {
-      "image": "./assets/branding/ovumcy-splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f7f0e6"
-    },
     "version": "1.0.0",
     "android": {
       "package": "app.ovumcy.mobile",
@@ -43,13 +47,18 @@
               "pathPrefix": "/backup-sync"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
     "ios": {
       "bundleIdentifier": "app.ovumcy.mobile",
-      "associatedDomains": ["applinks:invite.ovumcy.cloud"],
+      "associatedDomains": [
+        "applinks:invite.ovumcy.cloud"
+      ],
       "infoPlist": {
         "NSFaceIDUsageDescription": "Ovumcy asks for Face ID to confirm it's you before revealing your recovery phrase or making sensitive account and data changes."
       }

@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { Modal } from "react-native";
 
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 
@@ -11,16 +10,32 @@ import {
 } from "./confirmation-bridge";
 import { ConfirmDialogProvider } from "./ConfirmDialogProvider";
 
-function renderProvider() {
-  return render(
+async function renderProvider() {
+  return await render(
     <AppPreferencesTestProvider>
       <ConfirmDialogProvider>{null}</ConfirmDialogProvider>
     </AppPreferencesTestProvider>,
   );
 }
 
+function findModal() {
+  return screen.container
+    .queryAll((node) => node.type === "Modal")
+    .find((node) => node.props.visible !== false);
+}
+
+// The RN Modal mock renders nothing while `visible` is false, so a hidden
+// modal has no host element in the tree.
+function isModalVisible() {
+  return findModal() !== undefined;
+}
+
 function getModal() {
-  return screen.UNSAFE_getByType(Modal);
+  const modal = findModal();
+  if (!modal) {
+    throw new Error("Modal not found");
+  }
+  return modal;
 }
 
 describe("ConfirmDialogProvider", () => {
@@ -28,19 +43,19 @@ describe("ConfirmDialogProvider", () => {
     __resetConfirmationListenerForTesting();
   });
 
-  it("keeps the modal hidden until a confirmation is requested", () => {
-    renderProvider();
-    expect(getModal().props.visible).toBe(false);
+  it("keeps the modal hidden until a confirmation is requested", async () => {
+    await renderProvider();
+    expect(isModalVisible()).toBe(false);
   });
 
-  it("shows the modal with the requested copy when a confirmation is requested", () => {
-    renderProvider();
+  it("shows the modal with the requested copy when a confirmation is requested", async () => {
+    await renderProvider();
 
-    act(() => {
+    await act(() => {
       void requestConfirmation("Discard changes?", "Discard", "Keep");
     });
 
-    expect(getModal().props.visible).toBe(true);
+    expect(isModalVisible()).toBe(true);
     expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
       "Discard changes?",
     );
@@ -49,74 +64,74 @@ describe("ConfirmDialogProvider", () => {
   });
 
   it("resolves true and hides the modal when the accept button is pressed", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmation("ok?", "Yes", "No");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
 
     await expect(promise).resolves.toBe(true);
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("resolves false and hides the modal when the cancel button is pressed", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmation("ok?", "Yes", "No");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
     });
 
     await expect(promise).resolves.toBe(false);
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("resolves false when the backdrop is pressed", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmation("ok?", "Yes", "No");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-backdrop"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-backdrop"));
     });
 
     await expect(promise).resolves.toBe(false);
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("resolves false when the system dismisses the modal via onRequestClose", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmation("ok?", "Yes", "No");
     });
 
-    act(() => {
+    await act(() => {
       getModal().props.onRequestClose();
     });
 
     await expect(promise).resolves.toBe(false);
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("resolves a concurrent request to the safe dismiss outcome without disturbing the visible dialog", async () => {
-    renderProvider();
+    await renderProvider();
     let firstPromise!: Promise<boolean>;
     let secondPromise!: Promise<ConfirmationOutcome>;
 
-    act(() => {
+    await act(() => {
       firstPromise = requestConfirmation("first?", "Yes", "No");
     });
-    act(() => {
+    await act(() => {
       secondPromise = requestConfirmationOutcome("second?", "Yes2", "No2");
     });
 
@@ -129,51 +144,51 @@ describe("ConfirmDialogProvider", () => {
     expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
       "first?",
     );
-    expect(getModal().props.visible).toBe(true);
+    expect(isModalVisible()).toBe(true);
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
     await expect(firstPromise).resolves.toBe(true);
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("accepts a fresh confirmation after a concurrent request was auto-dismissed", async () => {
-    renderProvider();
+    await renderProvider();
     let firstPromise!: Promise<boolean>;
 
-    act(() => {
+    await act(() => {
       firstPromise = requestConfirmation("first?", "Yes", "No");
     });
-    act(() => {
+    await act(() => {
       // Concurrent request is auto-dismissed; it must not leave isPending stuck.
       void requestConfirmation("second?", "Yes2", "No2");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
     await expect(firstPromise).resolves.toBe(true);
 
     // A brand-new confirmation after the first fully resolved still works.
     let thirdPromise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       thirdPromise = requestConfirmation("third?", "Yes3", "No3");
     });
-    expect(getModal().props.visible).toBe(true);
+    expect(isModalVisible()).toBe(true);
     expect(screen.getByTestId("confirm-dialog-message").props.children).toBe(
       "third?",
     );
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
     });
     await expect(thirdPromise).resolves.toBe(false);
   });
 
   it("renders a neutral button and resolves dismiss for three-way prompts", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<ConfirmationOutcome>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmationOutcome(
         "Leave with unsaved changes?",
         "Save and leave",
@@ -184,65 +199,64 @@ describe("ConfirmDialogProvider", () => {
 
     expect(screen.getByText("Keep editing")).toBeTruthy();
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-neutral"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-neutral"));
     });
 
     await expect(promise).resolves.toBe("dismiss");
-    expect(getModal().props.visible).toBe(false);
+    expect(isModalVisible()).toBe(false);
   });
 
   it("resolves dismiss when a three-way prompt is dismissed via the backdrop", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<ConfirmationOutcome>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-backdrop"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-backdrop"));
     });
 
     await expect(promise).resolves.toBe("dismiss");
   });
 
   it("resolves accept and reject from the explicit buttons of a three-way prompt", async () => {
-    renderProvider();
+    await renderProvider();
     let acceptPromise!: Promise<ConfirmationOutcome>;
-    act(() => {
+    await act(() => {
       acceptPromise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
     });
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
     await expect(acceptPromise).resolves.toBe("accept");
 
     let rejectPromise!: Promise<ConfirmationOutcome>;
-    act(() => {
+    await act(() => {
       rejectPromise = requestConfirmationOutcome("Leave?", "Save", "Discard", "Keep");
     });
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-cancel"));
     });
     await expect(rejectPromise).resolves.toBe("reject");
   });
 
   it("ignores stray button presses after the request has already resolved", async () => {
-    renderProvider();
+    await renderProvider();
     let promise!: Promise<boolean>;
-    act(() => {
+    await act(() => {
       promise = requestConfirmation("ok?", "Yes", "No");
     });
 
-    act(() => {
-      fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
+    const staleOnRequestClose = getModal().props.onRequestClose;
+    await act(async () => {
+      await fireEvent.press(screen.getByTestId("confirm-dialog-accept"));
     });
     await expect(promise).resolves.toBe(true);
 
-    expect(() => {
-      act(() => {
-        getModal().props.onRequestClose();
-      });
-    }).not.toThrow();
+    await act(() => {
+      staleOnRequestClose();
+    });
   });
 });

@@ -30,7 +30,7 @@ describe("useBackupSyncGuestUpgrade", () => {
   describe("handleTapKeepAccess", () => {
     it("opens the form once the device-auth gate passes", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
@@ -46,7 +46,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         reason: "unavailable",
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
@@ -64,7 +64,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         reason: "failed",
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
@@ -82,7 +82,7 @@ describe("useBackupSyncGuestUpgrade", () => {
         reason: "cancelled",
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
@@ -96,17 +96,17 @@ describe("useBackupSyncGuestUpgrade", () => {
   describe("handleCancelForm", () => {
     it("closes the form and clears the typed email and password", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
       });
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("a temporary draft password");
       });
 
-      act(() => {
+      await act(() => {
         result.current.handleCancelForm();
       });
 
@@ -119,7 +119,7 @@ describe("useBackupSyncGuestUpgrade", () => {
   describe("handleSubmitUpgrade", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -131,7 +131,7 @@ describe("useBackupSyncGuestUpgrade", () => {
 
     it("requires an email before submitting", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleSubmitUpgrade();
@@ -145,9 +145,9 @@ describe("useBackupSyncGuestUpgrade", () => {
 
     it("requires a password before submitting", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
       });
       await act(async () => {
@@ -162,9 +162,9 @@ describe("useBackupSyncGuestUpgrade", () => {
 
     it("rejects a password shorter than the minimum length", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("short");
       });
@@ -187,9 +187,9 @@ describe("useBackupSyncGuestUpgrade", () => {
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("  owner@example.com  ");
         result.current.setPasswordValue("a very secure password 123");
       });
@@ -219,12 +219,12 @@ describe("useBackupSyncGuestUpgrade", () => {
         state: failedState,
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
       });
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("a very secure password 123");
       });
@@ -250,12 +250,12 @@ describe("useBackupSyncGuestUpgrade", () => {
         state: failedState,
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
       await act(async () => {
         await result.current.handleTapKeepAccess();
       });
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("a very secure password 123");
       });
@@ -281,9 +281,9 @@ describe("useBackupSyncGuestUpgrade", () => {
         recoveryCode: "fresh-code-1234",
       });
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncGuestUpgrade(core));
+      const { result } = await renderHook(() => useBackupSyncGuestUpgrade(core));
 
-      act(() => {
+      await act(() => {
         result.current.setEmailValue("owner@example.com");
         result.current.setPasswordValue("a very secure password 123");
       });
@@ -292,7 +292,7 @@ describe("useBackupSyncGuestUpgrade", () => {
       });
       expect(result.current.generatedRecoveryCode).toBe("fresh-code-1234");
 
-      act(() => {
+      await act(() => {
         result.current.handleAcknowledgeUpgradeRecoveryCode();
       });
 

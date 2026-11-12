@@ -25,7 +25,7 @@ let mockPreventRemoveCallback:
   | ((options: { data: { action: { type: string } } }) => void)
   | null = null;
 
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router/react-navigation", () => ({
   usePreventRemove: (
     preventRemove: boolean,
     callback: (options: { data: { action: { type: string } } }) => void,
@@ -48,7 +48,7 @@ jest.mock(
 // An explicit factory (rather than a bare jest.mock(path) automock) avoids
 // Jest ever loading the real module -- which transitively imports
 // expo-router, and expo-router's own internals need more of
-// @react-navigation/native than the lightweight mock below provides.
+// expo-router/react-navigation than the lightweight mock below provides.
 jest.mock("./useBackupSyncSessionCore", () => ({
   useBackupSyncSessionCore: jest.fn(),
 }));
@@ -253,22 +253,22 @@ describe("useBackupSyncScreenController", () => {
   // keep-editing, never the destructive (discard) answer.
   // ---------------------------------------------------------------------
   describe("usePreventRemove leave guard", () => {
-    it("registers the guard only while the sync draft is dirty", () => {
+    it("registers the guard only while the sync draft is dirty", async () => {
       setUpLoadedController({ isSyncDirty: true });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
       expect(mockPreventRemoveCallback).toEqual(expect.any(Function));
     });
 
-    it("does not register the guard when the draft is clean", () => {
+    it("does not register the guard when the draft is clean", async () => {
       setUpLoadedController({ isSyncDirty: false });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
       expect(mockPreventRemoveCallback).toBeNull();
     });
 
     it("SECURITY: dismissing the leave confirmation resolves to keep-editing -- no revert, no save, no navigation", async () => {
       mockOpenLeaveConfirmation.mockResolvedValue("dismiss");
       const core = setUpLoadedController({ isSyncDirty: true });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
       expect(mockPreventRemoveCallback).toEqual(expect.any(Function));
 
       await act(async () => {
@@ -285,7 +285,7 @@ describe("useBackupSyncScreenController", () => {
     it("discards the draft and then navigates away when the owner picks discard", async () => {
       mockOpenLeaveConfirmation.mockResolvedValue("reject");
       const core = setUpLoadedController({ isSyncDirty: true });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
 
       await act(async () => {
         mockPreventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
@@ -309,7 +309,7 @@ describe("useBackupSyncScreenController", () => {
         isSyncDirty: true,
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(savedState),
       });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
 
       await act(async () => {
         mockPreventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
@@ -332,7 +332,7 @@ describe("useBackupSyncScreenController", () => {
         isSyncDirty: true,
         saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(null),
       });
-      renderHook(() => useBackupSyncScreenController({}));
+      await renderHook(() => useBackupSyncScreenController({}));
 
       await act(async () => {
         mockPreventRemoveCallback?.({ data: { action: { type: "GO_BACK" } } });
@@ -350,9 +350,9 @@ describe("useBackupSyncScreenController", () => {
   // hook's own (already independently-tested) handler. The controller's own
   // job here is only the wiring, so the concern hooks stay mocked.
   // ---------------------------------------------------------------------
-  it("wires each simple pass-through action to its concern-hook handler", () => {
+  it("wires each simple pass-through action to its concern-hook handler", async () => {
     setUpLoadedController();
-    const { result } = renderHook(() => useBackupSyncScreenController({}));
+    const { result } = await renderHook(() => useBackupSyncScreenController({}));
     const flowProps = result.current.flowProps!;
     const recovery = mockUseBackupSyncRecoveryMaterials.mock.results[0]!.value;
     const connection = mockUseBackupSyncAccountConnection.mock.results[0]!.value;
@@ -395,9 +395,9 @@ describe("useBackupSyncScreenController", () => {
   // which the loading gate makes unreachable through the real UI.
   // ---------------------------------------------------------------------
   describe("state-updater handlers", () => {
-    it("onDeviceLabelChange resets feedback and updates only the device label, guarding a null current state", () => {
+    it("onDeviceLabelChange resets feedback and updates only the device label, guarding a null current state", async () => {
       const core = setUpLoadedController();
-      const { result } = renderHook(() => useBackupSyncScreenController({}));
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
 
       result.current.flowProps!.onDeviceLabelChange("Pixel 9");
 
@@ -416,9 +416,9 @@ describe("useBackupSyncScreenController", () => {
       expect(updater(null)).toBeNull();
     });
 
-    it("onEndpointChange resets feedback and updates only the endpoint input, guarding a null current state", () => {
+    it("onEndpointChange resets feedback and updates only the endpoint input, guarding a null current state", async () => {
       const core = setUpLoadedController();
-      const { result } = renderHook(() => useBackupSyncScreenController({}));
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
 
       result.current.flowProps!.onEndpointChange("192.168.1.50:8080");
 
@@ -437,7 +437,7 @@ describe("useBackupSyncScreenController", () => {
       expect(updater(null)).toBeNull();
     });
 
-    it("onModeSelect resets partner state, clears the pending invite buffer, and preserves the endpoint for a non-managed mode", () => {
+    it("onModeSelect resets partner state, clears the pending invite buffer, and preserves the endpoint for a non-managed mode", async () => {
       const partner = createPartnerAccessFixture();
       const core = createBackupSyncSessionCoreMock();
       mockUseBackupSyncSessionCore.mockReturnValue(core);
@@ -459,7 +459,7 @@ describe("useBackupSyncScreenController", () => {
       mockUseBackupSyncGuestUpgrade.mockReturnValue(
         createGuestUpgradeFixture(),
       );
-      const { result } = renderHook(() => useBackupSyncScreenController({}));
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
 
       result.current.flowProps!.onModeSelect("self_hosted");
 
@@ -489,9 +489,9 @@ describe("useBackupSyncScreenController", () => {
       expect(updater(null)).toBeNull();
     });
 
-    it("onModeSelect clears a leftover endpoint input when switching to managed mode", () => {
+    it("onModeSelect clears a leftover endpoint input when switching to managed mode", async () => {
       const core = setUpLoadedController();
-      const { result } = renderHook(() => useBackupSyncScreenController({}));
+      const { result } = await renderHook(() => useBackupSyncScreenController({}));
 
       result.current.flowProps!.onModeSelect("managed");
 

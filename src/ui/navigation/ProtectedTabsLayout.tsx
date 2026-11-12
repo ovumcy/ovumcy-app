@@ -1,8 +1,14 @@
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarButtonProps } from "expo-router/tabs";
 import { Feather } from "@expo/vector-icons";
 import { Redirect, Tabs } from "expo-router";
 import { useEffect, useState } from "react";
-import { AppState, Platform, useWindowDimensions } from "react-native";
+import {
+  AppState,
+  type ColorValue,
+  type OpaqueColorValue,
+  Platform,
+  useWindowDimensions,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getShellCopy } from "../../i18n/shell-copy";
@@ -20,6 +26,12 @@ import { resolveTabBarContentHeight } from "../layout/tab-bar-metrics";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { GuardedTabBarButton } from "./GuardedTabBarButton";
 import { TabLeaveGuardProvider } from "./TabLeaveGuardContext";
+
+// The tab bar hands icons a React Native ColorValue, which also admits null and
+// numbers; Feather accepts only a string or a platform (opaque) colour.
+function featherColor(color: ColorValue): string | OpaqueColorValue | undefined {
+  return color === null || typeof color === "number" ? undefined : color;
+}
 
 type ProtectedTabsLayoutProps = {
   managedPartnerShareRefresh?:
@@ -177,7 +189,7 @@ export function ProtectedTabsLayout({
             tabBarAccessibilityLabel: shellCopy.tabs.dashboard,
             tabBarButton: renderTabBarButton("dashboard"),
             tabBarIcon: ({ color, size }) => (
-              <Feather color={color} name="sun" size={size} />
+              <Feather color={featherColor(color)} name="sun" size={size} />
             ),
           }}
         />
@@ -188,7 +200,7 @@ export function ProtectedTabsLayout({
             tabBarAccessibilityLabel: shellCopy.tabs.calendar,
             tabBarButton: renderTabBarButton("calendar"),
             tabBarIcon: ({ color, size }) => (
-              <Feather color={color} name="calendar" size={size} />
+              <Feather color={featherColor(color)} name="calendar" size={size} />
             ),
           }}
         />
@@ -199,7 +211,7 @@ export function ProtectedTabsLayout({
             tabBarAccessibilityLabel: shellCopy.tabs.stats,
             tabBarButton: renderTabBarButton("stats"),
             tabBarIcon: ({ color, size }) => (
-              <Feather color={color} name="bar-chart-2" size={size} />
+              <Feather color={featherColor(color)} name="bar-chart-2" size={size} />
             ),
           }}
         />
@@ -210,7 +222,7 @@ export function ProtectedTabsLayout({
             tabBarAccessibilityLabel: shellCopy.tabs.settings,
             tabBarButton: renderTabBarButton("settings"),
             tabBarIcon: ({ color, size }) => (
-              <Feather color={color} name="settings" size={size} />
+              <Feather color={featherColor(color)} name="settings" size={size} />
             ),
           }}
         />

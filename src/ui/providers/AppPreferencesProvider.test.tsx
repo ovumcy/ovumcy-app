@@ -64,7 +64,7 @@ describe("AppPreferencesProvider", () => {
       }),
     });
 
-    render(
+    await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,
@@ -81,7 +81,7 @@ describe("AppPreferencesProvider", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createProfileWithTheme("system")),
     });
 
-    render(
+    await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,
@@ -98,7 +98,7 @@ describe("AppPreferencesProvider", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createProfileWithTheme("system")),
     });
 
-    render(
+    await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,
@@ -115,7 +115,7 @@ describe("AppPreferencesProvider", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createProfileWithTheme("system")),
     });
 
-    render(
+    await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,
@@ -134,7 +134,7 @@ describe("AppPreferencesProvider", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createProfileWithTheme("system")),
     });
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,
@@ -149,7 +149,7 @@ describe("AppPreferencesProvider", () => {
     // must follow immediately without touching the stored preference.
     await act(async () => {
       useColorSchemeMock.mockReturnValue("dark");
-      rerender(
+      await rerender(
         <AppPreferencesProvider storage={storage}>
           <ThemeProbe />
         </AppPreferencesProvider>,
@@ -167,7 +167,7 @@ describe("AppPreferencesProvider", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createProfileWithTheme("light")),
     });
 
-    render(
+    await render(
       <AppPreferencesProvider storage={storage}>
         <ThemeProbe />
       </AppPreferencesProvider>,

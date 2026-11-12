@@ -24,8 +24,8 @@ function createDeferred<T>() {
   return { promise, resolve };
 }
 
-function renderAutosave(initialProps: HookProps) {
-  return renderHook((props: HookProps) => useDayLogAutosave(props), {
+async function renderAutosave(initialProps: HookProps) {
+  return await renderHook((props: HookProps) => useDayLogAutosave(props), {
     initialProps,
   });
 }
@@ -35,9 +35,9 @@ describe("useDayLogAutosave", () => {
     jest.useRealTimers();
   });
 
-  it("does not schedule a save while labels have not loaded yet, or while there is no active record", () => {
+  it("does not schedule a save while labels have not loaded yet, or while there is no active record", async () => {
     const onPersist = jest.fn();
-    const { rerender } = renderAutosave({
+    const { rerender } = await renderAutosave({
       debounceMs: 5,
       draftVersion: 0,
       labels: null,
@@ -47,7 +47,7 @@ describe("useDayLogAutosave", () => {
 
     // The screen is still loading (no labels yet) — an edit landing before
     // that must never schedule a persist call.
-    rerender({
+    await rerender({
       debounceMs: 5,
       draftVersion: 1,
       labels: null,
@@ -57,7 +57,7 @@ describe("useDayLogAutosave", () => {
     expect(onPersist).not.toHaveBeenCalled();
 
     // Labels are ready but there is no record to save (e.g. between screens).
-    rerender({
+    await rerender({
       debounceMs: 5,
       draftVersion: 2,
       labels,
@@ -69,9 +69,10 @@ describe("useDayLogAutosave", () => {
 
   it("debounces an edit, reports saving then saved status, and persists the latest draft", async () => {
     const savedRecord = buildRecord({ mood: 4 });
-    const onPersist = jest.fn().mockResolvedValue({ ok: true, record: savedRecord });
+    const persisted = createDeferred<{ ok: true; record: DayLogRecord }>();
+    const onPersist = jest.fn().mockReturnValue(persisted.promise);
     const onSaved = jest.fn();
-    const { result, rerender } = renderAutosave({
+    const { result, rerender } = await renderAutosave({
       debounceMs: 5,
       draftVersion: 0,
       labels,
@@ -80,7 +81,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord(),
     });
 
-    rerender({
+    await rerender({
       debounceMs: 5,
       draftVersion: 1,
       labels,
@@ -91,6 +92,10 @@ describe("useDayLogAutosave", () => {
 
     await waitFor(() => expect(result.current.status?.tone).toBe("info"));
     expect(result.current.status?.message).toBe(labels.savingLabel);
+
+    await act(async () => {
+      persisted.resolve({ ok: true, record: savedRecord });
+    });
 
     await waitFor(() => expect(result.current.status?.tone).toBe("success"));
     expect(result.current.status?.message).toBe(labels.savedLabel);
@@ -105,7 +110,7 @@ describe("useDayLogAutosave", () => {
       .fn()
       .mockResolvedValueOnce({ ok: false })
       .mockResolvedValueOnce({ ok: true, record: buildRecord({ mood: 6 }) });
-    const { result, rerender } = renderAutosave({
+    const { result, rerender } = await renderAutosave({
       debounceMs: 5,
       draftVersion: 0,
       labels,
@@ -113,7 +118,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord(),
     });
 
-    rerender({
+    await rerender({
       debounceMs: 5,
       draftVersion: 1,
       labels,
@@ -127,7 +132,7 @@ describe("useDayLogAutosave", () => {
       tone: "error",
     });
 
-    rerender({
+    await rerender({
       debounceMs: 5,
       draftVersion: 2,
       labels,
@@ -154,7 +159,7 @@ describe("useDayLogAutosave", () => {
       .mockImplementation(async (record: DayLogRecord) => ({ ok: true, record }));
     const onSaved = jest.fn();
 
-    const { result, rerender } = renderAutosave({
+    const { result, rerender } = await renderAutosave({
       debounceMs: 100000,
       draftVersion: 0,
       labels,
@@ -163,7 +168,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord(),
     });
 
-    rerender({
+    await rerender({
       debounceMs: 100000,
       draftVersion: 1,
       labels,
@@ -172,7 +177,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord({ mood: 2 }),
     });
 
-    act(() => {
+    await act(() => {
       void result.current.saveNow();
     });
     expect(onPersist).toHaveBeenCalledTimes(1);
@@ -181,7 +186,7 @@ describe("useDayLogAutosave", () => {
     // A second, newer edit is explicitly saved while the first save is still
     // awaiting `first` — it must queue instead of firing a second concurrent
     // persist call.
-    rerender({
+    await rerender({
       debounceMs: 100000,
       draftVersion: 2,
       labels,
@@ -190,7 +195,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord({ mood: 5 }),
     });
 
-    act(() => {
+    await act(() => {
       void result.current.saveNow();
     });
     expect(onPersist).toHaveBeenCalledTimes(1);
@@ -206,11 +211,11 @@ describe("useDayLogAutosave", () => {
     expect(result.current.hasSaveError).toBe(false);
   });
 
-  it("resetAutosave cancels a pending scheduled save and clears status/error state", () => {
+  it("resetAutosave cancels a pending scheduled save and clears status/error state", async () => {
     jest.useFakeTimers();
 
     const onPersist = jest.fn().mockResolvedValue({ ok: true, record: buildRecord() });
-    const { result, rerender } = renderAutosave({
+    const { result, rerender } = await renderAutosave({
       debounceMs: 50,
       draftVersion: 0,
       labels,
@@ -218,7 +223,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord(),
     });
 
-    rerender({
+    await rerender({
       debounceMs: 50,
       draftVersion: 1,
       labels,
@@ -227,13 +232,13 @@ describe("useDayLogAutosave", () => {
     });
     expect(result.current.status?.tone).toBe("info");
 
-    act(() => {
+    await act(() => {
       result.current.resetAutosave(1);
     });
     expect(result.current.status).toBeNull();
     expect(result.current.hasSaveError).toBe(false);
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(500);
     });
 
@@ -245,7 +250,7 @@ describe("useDayLogAutosave", () => {
 
   it("flushPendingDraft and saveNow are no-ops when there is no active record", async () => {
     const onPersist = jest.fn();
-    const { result } = renderAutosave({
+    const { result } = await renderAutosave({
       debounceMs: 5,
       draftVersion: 0,
       labels,
@@ -266,7 +271,7 @@ describe("useDayLogAutosave", () => {
   it("saveNow flushes immediately without waiting for the debounce window", async () => {
     const savedRecord = buildRecord({ mood: 9 });
     const onPersist = jest.fn().mockResolvedValue({ ok: true, record: savedRecord });
-    const { result, rerender } = renderAutosave({
+    const { result, rerender } = await renderAutosave({
       debounceMs: 100000,
       draftVersion: 0,
       labels,
@@ -274,7 +279,7 @@ describe("useDayLogAutosave", () => {
       record: buildRecord(),
     });
 
-    rerender({
+    await rerender({
       debounceMs: 100000,
       draftVersion: 1,
       labels,

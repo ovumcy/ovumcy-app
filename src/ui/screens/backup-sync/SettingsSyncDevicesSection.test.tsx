@@ -9,10 +9,10 @@ const copy = getDeviceCopy("en");
 function noop() {}
 
 describe("SettingsSyncDevicesSection", () => {
-  it("fires onLoadDevices from the load action, then relabels it once a list exists", () => {
+  it("fires onLoadDevices from the load action, then relabels it once a list exists", async () => {
     const onLoadDevices = jest.fn();
 
-    const { rerender } = render(
+    const { rerender } = await render(
       <AppPreferencesTestProvider>
         <SettingsSyncDevicesSection
           copy={copy}
@@ -27,10 +27,10 @@ describe("SettingsSyncDevicesSection", () => {
     );
 
     expect(screen.getByText(copy.showDevicesLabel)).toBeTruthy();
-    fireEvent.press(screen.getByTestId("settings-sync-devices-load-button"));
+    await fireEvent.press(screen.getByTestId("settings-sync-devices-load-button"));
     expect(onLoadDevices).toHaveBeenCalledTimes(1);
 
-    rerender(
+    await rerender(
       <AppPreferencesTestProvider>
         <SettingsSyncDevicesSection
           copy={copy}
@@ -53,10 +53,10 @@ describe("SettingsSyncDevicesSection", () => {
     ).toBeTruthy();
   });
 
-  it("renders each device with a current-device badge only on this device, and wires remove to the callback", () => {
+  it("renders each device with a current-device badge only on this device, and wires remove to the callback", async () => {
     const onRemoveDevice = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncDevicesSection
           copy={copy}
@@ -88,12 +88,12 @@ describe("SettingsSyncDevicesSection", () => {
       screen.queryByTestId("settings-sync-device-current-device-2"),
     ).toBeNull();
 
-    fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
+    await fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
     expect(onRemoveDevice).toHaveBeenCalledWith("device-2");
   });
 
-  it("shows the error banner when errorMessage is set", () => {
-    render(
+  it("shows the error banner when errorMessage is set", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SettingsSyncDevicesSection
           copy={copy}

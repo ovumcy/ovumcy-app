@@ -36,4 +36,25 @@ module.exports = defineConfig([
       ],
     },
   },
+  // React Compiler advisories enabled by eslint-plugin-react-hooks 7. They
+  // flag render-cascade and ref-timing patterns, not data or security bugs;
+  // adopting them means refactoring the flagged components one by one, so the
+  // exemption lists only the files that predate the rules.
+  {
+    files: [
+      "src/ui/components/DayLogEditorCard.tsx",
+      "src/ui/components/StatusBanner.tsx",
+      "src/ui/providers/AppPreferencesProvider.tsx",
+      "src/ui/screens/BackupSyncFlowScreen.tsx",
+      "src/ui/screens/OnboardingScreen.tsx",
+      "src/ui/screens/backup-sync/SettingsSyncSetupSection.tsx",
+      "src/ui/screens/backup-sync/useBackupSyncSessionCore.ts",
+      "src/ui/screens/day-log/use-day-log-autosave.ts",
+    ],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+    },
+  },
 ]);
