@@ -2661,8 +2661,8 @@ describe("sqlite-app-storage", () => {
 
   it("round-trips the onboarding record through the canonical profile repository", async () => {
     // Onboarding reads/writes merge into the SAME canonical profile row, not
-    // a second onboarding-only store (architecture.md: one canonical profile
-    // repository shared by onboarding/settings/dashboard).
+    // a second onboarding-only store (one canonical profile
+    // repository is shared by onboarding/settings/dashboard).
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
         clear: jest.fn().mockResolvedValue(undefined),
@@ -2736,7 +2736,7 @@ describe("sqlite-app-storage", () => {
 
     // A failed reset must not leave a poisoned cached connection behind: the
     // next operation re-opens the database rather than reusing a half-wiped
-    // handle (security-constitution.md: deterministic reset, never a silent
+    // handle (the reset is deterministic, never a silent
     // partial state).
     await storage.readBootstrapState();
     expect(openDatabaseCallCount).toBe(2);

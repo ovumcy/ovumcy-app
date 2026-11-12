@@ -93,9 +93,8 @@ describe("volatile-web-app-storage", () => {
 
   it("leaves pregnancy metrics absent for a day log written without them", async () => {
     // Volatile web storage has no durable persistence to hold a "legacy"
-    // snapshot (state resets every session by design — see
-    // security-constitution.md on web preview never being durable secure
-    // storage for health data). The relevant guarantee here is narrower:
+    // snapshot (state resets every session by design — web
+    // preview is never durable secure storage for health data). The relevant guarantee here is narrower:
     // omitting the fields on write must not default them to a sentinel.
     const storage = createVolatileWebAppStorage();
 

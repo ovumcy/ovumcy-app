@@ -392,8 +392,8 @@ function clampBoundedInt(value: unknown, minValue: number, maxValue: number): nu
 }
 
 // Minimal LocalDateISO shape + calendar-validity check, self-contained here
-// because src/models must not depend on src/services (architecture.md
-// layering: app -> services -> storage -> models). Mirrors the validity
+// because src/models must not depend on src/services (the
+// layering is app -> services -> storage -> models). Mirrors the validity
 // technique in services/profile-settings-policy.ts's parseLocalDate (regex
 // shape + Y/M/D roundtrip through the Date constructor, rejecting e.g.
 // 2026-02-30) without importing it or returning a Date.
