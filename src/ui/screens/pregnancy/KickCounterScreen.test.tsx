@@ -40,8 +40,8 @@ function activeRecord() {
   });
 }
 
-function renderKickCounter(storage = createLocalAppStorageMock(), now = nowForGaDays(196)) {
-  return render(
+async function renderKickCounter(storage = createLocalAppStorageMock(), now = nowForGaDays(196)) {
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <KickCounterScreen now={now} storage={storage} />
     </AppPreferencesTestProvider>,
@@ -54,7 +54,7 @@ describe("KickCounterScreen", () => {
   });
 
   it("shows a neutral not-accessible body with no active pregnancy", async () => {
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       }),
@@ -66,7 +66,7 @@ describe("KickCounterScreen", () => {
   });
 
   it("shows a neutral not-accessible body before week 28", async () => {
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -78,7 +78,7 @@ describe("KickCounterScreen", () => {
   });
 
   it("renders the counter, education line, and disclaimer from week 28", async () => {
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -92,7 +92,7 @@ describe("KickCounterScreen", () => {
   });
 
   it("starts a session on the first tap and increments on subsequent taps", async () => {
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -100,11 +100,11 @@ describe("KickCounterScreen", () => {
     );
 
     const tapButton = await screen.findByTestId("kick-counter-tap-button");
-    fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
     expect(screen.getByTestId("kick-counter-tap-count").props.children).toBe(1);
 
-    fireEvent.press(tapButton);
-    fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
     expect(screen.getByTestId("kick-counter-tap-count").props.children).toBe(3);
     expect(screen.getByTestId("kick-counter-elapsed")).toBeTruthy();
   });
@@ -113,13 +113,13 @@ describe("KickCounterScreen", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderKickCounter(storage, nowForGaDays(28 * 7));
+    await renderKickCounter(storage, nowForGaDays(28 * 7));
 
     const tapButton = await screen.findByTestId("kick-counter-tap-button");
-    fireEvent.press(tapButton);
-    fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
 
-    fireEvent.press(screen.getByTestId("kick-counter-finish-button"));
+    await fireEvent.press(screen.getByTestId("kick-counter-finish-button"));
 
     await waitFor(() => {
       expect(storage.writeKickSession).toHaveBeenCalledWith(
@@ -138,14 +138,14 @@ describe("KickCounterScreen", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderKickCounter(storage, nowForGaDays(28 * 7));
+    await renderKickCounter(storage, nowForGaDays(28 * 7));
 
     const tapButton = await screen.findByTestId("kick-counter-tap-button");
-    fireEvent.press(tapButton);
-    fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
     expect(screen.getByTestId("kick-counter-tap-count").props.children).toBe(2);
 
-    fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
+    await fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
 
     await waitFor(() => {
       expect(screen.getByTestId("kick-counter-tap-count").props.children).toBe(0);
@@ -155,7 +155,7 @@ describe("KickCounterScreen", () => {
 
   it("keeps the in-progress session when the discard confirm is dismissed", async () => {
     mockOpenConfirmation.mockResolvedValue(false);
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -163,10 +163,10 @@ describe("KickCounterScreen", () => {
     );
 
     const tapButton = await screen.findByTestId("kick-counter-tap-button");
-    fireEvent.press(tapButton);
-    fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
+    await fireEvent.press(tapButton);
 
-    fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
+    await fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
 
     await waitFor(() => {
       expect(mockOpenConfirmation).toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe("KickCounterScreen", () => {
   });
 
   it("shows recent session history rows newest first", async () => {
-    renderKickCounter(
+    await renderKickCounter(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         listKickSessions: jest.fn().mockResolvedValue([
@@ -200,10 +200,10 @@ describe("KickCounterScreen", () => {
         { id: "kick_a", date: "2026-07-01", durationMinutes: 20, kickCount: 10 },
       ]),
     });
-    renderKickCounter(storage, nowForGaDays(28 * 7));
+    await renderKickCounter(storage, nowForGaDays(28 * 7));
 
     const deleteButton = await screen.findByTestId("kick-counter-history-delete-kick_a");
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
 
     await waitFor(() => {
       expect(storage.deleteKickSession).toHaveBeenCalledWith("kick_a");
@@ -214,12 +214,12 @@ describe("KickCounterScreen", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderKickCounter(storage, nowForGaDays(28 * 7));
+    await renderKickCounter(storage, nowForGaDays(28 * 7));
 
     const toggle = await screen.findByTestId("kick-counter-reminder-toggle");
     expect(toggle.props.accessibilityState.checked).toBe(false);
 
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
 
     await waitFor(() => {
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -240,15 +240,15 @@ describe("failure paths", () => {
       ]),
       deleteKickSession: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderKickCounter(storage);
+    await renderKickCounter(storage);
 
-    fireEvent.press(await screen.findByTestId("kick-counter-tap-button"));
-    fireEvent.press(screen.getByTestId("kick-counter-finish-button"));
+    await fireEvent.press(await screen.findByTestId("kick-counter-tap-button"));
+    await fireEvent.press(screen.getByTestId("kick-counter-finish-button"));
     expect(
       await screen.findByText(getKickCounterCopy("en").counter.saveFailedStatus),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("kick-counter-history-delete-kick_hist"));
+    await fireEvent.press(screen.getByTestId("kick-counter-history-delete-kick_hist"));
     expect(
       await screen.findByText(getKickCounterCopy("en").history.deleteFailedStatus),
     ).toBeTruthy();
@@ -264,22 +264,22 @@ describe("failure paths", () => {
           { id: "kick_hist", date: "2026-07-10", durationMinutes: 30, kickCount: 9 },
         ]),
       });
-      renderKickCounter(storage);
+      await renderKickCounter(storage);
 
       // Idle finish/discard presses are inert (no session counting yet).
-      fireEvent.press(await screen.findByTestId("kick-counter-finish-button"));
-      fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
+      await fireEvent.press(await screen.findByTestId("kick-counter-finish-button"));
+      await fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
 
       // Counting: the live elapsed tick advances with the clock.
-      fireEvent.press(screen.getByTestId("kick-counter-tap-button"));
+      await fireEvent.press(screen.getByTestId("kick-counter-tap-button"));
       await act(async () => {
         jest.advanceTimersByTime(61_000);
       });
 
       // A declined discard keeps counting; a declined history delete keeps
       // the row.
-      fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
-      fireEvent.press(screen.getByTestId("kick-counter-history-delete-kick_hist"));
+      await fireEvent.press(screen.getByTestId("kick-counter-discard-button"));
+      await fireEvent.press(screen.getByTestId("kick-counter-history-delete-kick_hist"));
       await act(async () => {});
       expect(storage.deleteKickSession).not.toHaveBeenCalled();
       expect(storage.writeKickSession).not.toHaveBeenCalled();
@@ -299,23 +299,25 @@ describe("failure paths", () => {
     });
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const view = renderKickCounter(storage);
+    const view = await renderKickCounter(storage);
     // The load is genuinely mid-flight: the read was issued and left pending.
     expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolvePregnancy(activeRecord());
     await act(async () => {});
 
     // The load resolves onto a torn-down tree: nothing is rendered and React
     // reports no error.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <KickCounterScreen />
       </AppPreferencesTestProvider>,

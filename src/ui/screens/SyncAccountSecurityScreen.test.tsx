@@ -49,12 +49,16 @@ function managedPreferences(): SyncPreferencesRecord {
   };
 }
 
-function renderScreen() {
+async function renderScreen(
+  preferencesRead: Promise<SyncPreferencesRecord> = Promise.resolve(
+    managedPreferences(),
+  ),
+) {
   const storage = createLocalAppStorageMock({
-    readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+    readSyncPreferencesRecord: jest.fn().mockReturnValue(preferencesRead),
   });
   const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
-  return render(
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <SyncAccountSecurityScreen storage={storage} syncSecretStore={syncSecretStore} />
     </AppPreferencesTestProvider>,
@@ -73,7 +77,12 @@ describe("SyncAccountSecurityScreen", () => {
   });
 
   it("shows a loading state before the security section has hydrated", async () => {
-    renderScreen();
+    let resolvePreferences!: (value: SyncPreferencesRecord) => void;
+    await renderScreen(
+      new Promise<SyncPreferencesRecord>((resolve) => {
+        resolvePreferences = resolve;
+      }),
+    );
 
     // Title/description render in both the loading and loaded branches; the
     // back button and the section content only appear once loaded, so their
@@ -85,11 +94,12 @@ describe("SyncAccountSecurityScreen", () => {
     ).toBeNull();
     expect(screen.queryByTestId("account-security-change-submit")).toBeNull();
 
+    resolvePreferences(managedPreferences());
     await screen.findByTestId("account-security-change-submit");
   });
 
   it("renders the back button and the account security section once loaded", async () => {
-    renderScreen();
+    await renderScreen();
 
     await screen.findByTestId("account-security-change-submit");
 
@@ -105,10 +115,10 @@ describe("SyncAccountSecurityScreen", () => {
 
   it("goes back via router.back() when there is history to go back to", async () => {
     mockCanGoBack.mockReturnValue(true);
-    renderScreen();
+    await renderScreen();
     await screen.findByTestId("sync-account-security-back-button");
 
-    fireEvent.press(screen.getByTestId("sync-account-security-back-button"));
+    await fireEvent.press(screen.getByTestId("sync-account-security-back-button"));
 
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
@@ -116,10 +126,10 @@ describe("SyncAccountSecurityScreen", () => {
 
   it("replaces to /backup-sync when there is no history to go back to", async () => {
     mockCanGoBack.mockReturnValue(false);
-    renderScreen();
+    await renderScreen();
     await screen.findByTestId("sync-account-security-back-button");
 
-    fireEvent.press(screen.getByTestId("sync-account-security-back-button"));
+    await fireEvent.press(screen.getByTestId("sync-account-security-back-button"));
 
     expect(mockReplace).toHaveBeenCalledWith("/backup-sync");
     expect(mockBack).not.toHaveBeenCalled();

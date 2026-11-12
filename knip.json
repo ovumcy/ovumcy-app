@@ -5,6 +5,7 @@
     "plugins/*.js",
     "jest.config.js",
     "jest.setup.ts",
+    "jest.setup-env.js",
     "babel.config.js",
     "e2e/**/*.spec.ts",
     "scripts/*.mjs",

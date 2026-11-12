@@ -29,7 +29,7 @@ describe("AppEntryScreen", () => {
   it("routes to onboarding when local setup is not completed", async () => {
     const storage = createStorageMock(false);
 
-    render(<AppEntryScreen storage={storage} />);
+    await render(<AppEntryScreen storage={storage} />);
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/onboarding"),
@@ -39,7 +39,7 @@ describe("AppEntryScreen", () => {
   it("routes to dashboard when onboarding is already completed", async () => {
     const storage = createStorageMock(true);
 
-    render(<AppEntryScreen storage={storage} />);
+    await render(<AppEntryScreen storage={storage} />);
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),

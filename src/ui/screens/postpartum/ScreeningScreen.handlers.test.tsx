@@ -37,7 +37,7 @@ describe("ScreeningScreen handler guards", () => {
   });
 
   it("ignores next while the current question has no answer picked", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ScreeningScreen
           now={new Date("2026-07-20T10:00:00.000Z")}
@@ -47,13 +47,13 @@ describe("ScreeningScreen handler guards", () => {
     );
     const props = await flowReady();
 
-    act(() => {
+    await act(() => {
       props.onBegin();
     });
     expect(mockFlowProps?.stage).toBe("questions");
     expect(mockFlowProps?.questionNumber).toBe(1);
 
-    act(() => {
+    await act(() => {
       mockFlowProps!.onNext();
     });
     expect(mockFlowProps?.questionNumber).toBe(1);
@@ -61,7 +61,7 @@ describe("ScreeningScreen handler guards", () => {
 
   it("refuses to finish while any item is unanswered and persists nothing", async () => {
     const storage = createLocalAppStorageMock();
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ScreeningScreen
           now={new Date("2026-07-20T10:00:00.000Z")}
@@ -71,7 +71,7 @@ describe("ScreeningScreen handler guards", () => {
     );
     const props = await flowReady();
 
-    act(() => {
+    await act(() => {
       props.onBegin();
     });
     await act(async () => {

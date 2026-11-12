@@ -2,6 +2,7 @@ import { type ReactNode, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   View,
@@ -95,7 +96,7 @@ export function CalendarOverviewScreen({
   const hasTentativeOvulationDays = viewData.days.some(
     (day) => day.stateKey === "ovulation_tentative",
   );
-  const scrollViewRef = useRef<ScrollView | null>(null);
+  const scrollViewRef = useRef<ScrollViewInstance | null>(null);
   const editorColumnOffsetRef = useRef(0);
   const manualCycleStartProps =
     manualCycleStart !== undefined ? { manualCycleStart } : {};

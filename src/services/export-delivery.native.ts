@@ -28,7 +28,7 @@ export function createPlatformExportDeliveryClient(): ExportDeliveryClient {
           intermediates: true,
           overwrite: true,
         });
-        file.write(artifact.content);
+        await file.write(artifact.content);
 
         await Sharing.shareAsync(file.uri, {
           mimeType: artifact.mimeType,

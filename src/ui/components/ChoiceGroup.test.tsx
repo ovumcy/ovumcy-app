@@ -4,8 +4,8 @@ import { StyleSheet } from "react-native";
 import { ChoiceGroup } from "./ChoiceGroup";
 
 describe("ChoiceGroup", () => {
-  it("falls back to three columns for grid5 choices in a narrow card", () => {
-    render(
+  it("falls back to three columns for grid5 choices in a narrow card", async () => {
+    await render(
       <ChoiceGroup
         compact
         contentAlign="center"
@@ -23,7 +23,7 @@ describe("ChoiceGroup", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("mood-group"), "layout", {
+    await fireEvent(screen.getByTestId("mood-group"), "layout", {
       nativeEvent: { layout: { height: 120, width: 300, x: 0, y: 0 } },
     });
 
@@ -36,8 +36,8 @@ describe("ChoiceGroup", () => {
     );
   });
 
-  it("keeps five columns when the container is wide enough", () => {
-    render(
+  it("keeps five columns when the container is wide enough", async () => {
+    await render(
       <ChoiceGroup
         compact
         contentAlign="center"
@@ -55,7 +55,7 @@ describe("ChoiceGroup", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("mood-group"), "layout", {
+    await fireEvent(screen.getByTestId("mood-group"), "layout", {
       nativeEvent: { layout: { height: 120, width: 480, x: 0, y: 0 } },
     });
 
@@ -68,8 +68,8 @@ describe("ChoiceGroup", () => {
     );
   });
 
-  it("names the group with the field label so a radio announces what it answers", () => {
-    render(
+  it("names the group with the field label so a radio announces what it answers", async () => {
+    await render(
       <ChoiceGroup
         groupLabel="Prediction mode"
         onSelect={() => {}}
@@ -94,8 +94,8 @@ describe("ChoiceGroup", () => {
     ).toBeTruthy();
   });
 
-  it("leaves the group unnamed when no field label introduces it", () => {
-    render(
+  it("leaves the group unnamed when no field label introduces it", async () => {
+    await render(
       <ChoiceGroup
         onSelect={() => {}}
         options={[{ value: "a", label: "A" }]}

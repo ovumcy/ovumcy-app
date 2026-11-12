@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
 import { usePathname } from "expo-router";
 
 import { GuardedTabBarButton } from "./GuardedTabBarButton";
@@ -13,7 +13,7 @@ jest.mock("expo-router", () => ({
   usePathname: jest.fn(),
 }));
 
-jest.mock("@react-navigation/elements", () => {
+jest.mock("expo-router/react-navigation", () => {
   const mockReact = jest.requireActual("react") as typeof import("react");
   const { Pressable: MockPressable } = jest.requireActual(
     "react-native",
@@ -26,7 +26,7 @@ jest.mock("@react-navigation/elements", () => {
       }: {
         children: React.ReactNode;
       },
-      ref: React.ForwardedRef<View>,
+      ref: React.ForwardedRef<React.ComponentRef<typeof MockPressable>>,
     ) => mockReact.createElement(MockPressable, { ...props, ref }, children),
   );
   MockPlatformPressable.displayName = "MockPlatformPressable";
@@ -55,7 +55,7 @@ describe("GuardedTabBarButton", () => {
     mockUsePathname.mockReturnValue("/settings");
     const onPress = jest.fn();
 
-    render(
+    await render(
       <TabLeaveGuardProvider>
         <SettingsGuardRegistration allowLeave={false} />
         <GuardedTabBarButton onPress={onPress} targetRouteName="calendar" testID="guarded-tab">
@@ -64,7 +64,7 @@ describe("GuardedTabBarButton", () => {
       </TabLeaveGuardProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("guarded-tab"));
+    await fireEvent.press(screen.getByTestId("guarded-tab"));
 
     await waitFor(() => expect(onPress).not.toHaveBeenCalled());
   });
@@ -73,7 +73,7 @@ describe("GuardedTabBarButton", () => {
     mockUsePathname.mockReturnValue("/settings");
     const onPress = jest.fn();
 
-    render(
+    await render(
       <TabLeaveGuardProvider>
         <SettingsGuardRegistration allowLeave />
         <GuardedTabBarButton onPress={onPress} targetRouteName="calendar" testID="guarded-tab">
@@ -82,7 +82,7 @@ describe("GuardedTabBarButton", () => {
       </TabLeaveGuardProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("guarded-tab"));
+    await fireEvent.press(screen.getByTestId("guarded-tab"));
 
     await waitFor(() => expect(onPress).toHaveBeenCalledTimes(1));
   });
@@ -91,7 +91,7 @@ describe("GuardedTabBarButton", () => {
     mockUsePathname.mockReturnValue("/settings");
     const onPress = jest.fn();
 
-    render(
+    await render(
       <TabLeaveGuardProvider>
         <SettingsGuardRegistration allowLeave={false} />
         <GuardedTabBarButton onPress={onPress} targetRouteName="settings" testID="guarded-tab">
@@ -100,7 +100,7 @@ describe("GuardedTabBarButton", () => {
       </TabLeaveGuardProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("guarded-tab"));
+    await fireEvent.press(screen.getByTestId("guarded-tab"));
 
     await waitFor(() => expect(onPress).toHaveBeenCalledTimes(1));
   });

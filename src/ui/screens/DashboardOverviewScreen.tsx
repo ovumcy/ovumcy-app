@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { DayLogRecord } from "../../models/day-log";
@@ -109,7 +116,7 @@ export function DashboardOverviewScreen({
 }: DashboardOverviewScreenProps) {
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
-  const scrollViewRef = useRef<ScrollView | null>(null);
+  const scrollViewRef = useRef<ScrollViewInstance | null>(null);
   const editorCardOffsetRef = useRef(0);
   const quickActionFrameRef = useRef<number | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

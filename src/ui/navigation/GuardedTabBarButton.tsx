@@ -1,5 +1,5 @@
-import { PlatformPressable } from "@react-navigation/elements";
-import type { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
+import { PlatformPressable } from "expo-router/react-navigation";
+import type { BottomTabBarButtonProps } from "expo-router/tabs";
 import { usePathname } from "expo-router";
 import { useCallback } from "react";
 

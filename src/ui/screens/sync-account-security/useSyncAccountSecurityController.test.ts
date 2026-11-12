@@ -56,7 +56,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: true });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
 
@@ -90,7 +90,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: true });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
 
@@ -125,7 +125,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "disableTOTP")
         .mockResolvedValue({ ok: true });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
 
@@ -158,7 +158,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "disableTOTP")
         .mockResolvedValue({ ok: true });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
 
@@ -200,7 +200,7 @@ describe("useSyncAccountSecurityController", () => {
           preferences: localReadyPreferences(),
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -231,7 +231,7 @@ describe("useSyncAccountSecurityController", () => {
           preferences: localReadyPreferences(),
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -240,7 +240,7 @@ describe("useSyncAccountSecurityController", () => {
       });
       expect(result.current.forgotSignedOut).toBe(true);
 
-      act(() => {
+      await act(() => {
         result.current.handleCancelForgot();
       });
       expect(result.current.forgotSignedOut).toBe(false);
@@ -258,7 +258,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountRecoveryService, "resetSyncAccountPassword")
         .mockResolvedValue({ ok: false, errorCode: "invalid_reset_token" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -288,7 +288,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
         .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -313,7 +313,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountRecoveryService, "requestSyncPasswordReset")
         .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -334,8 +334,13 @@ describe("useSyncAccountSecurityController", () => {
   // against an undefined account.
   describe("fail-closed before the account has loaded", () => {
     it("no-ops every mutating handler while preferences is still null", async () => {
+      let resolveRead!: (value: SyncPreferencesRecord) => void;
       const storage = createLocalAppStorageMock({
-        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+        readSyncPreferencesRecord: jest.fn().mockReturnValue(
+          new Promise<SyncPreferencesRecord>((resolve) => {
+            resolveRead = resolve;
+          }),
+        ),
       });
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       const changePasswordSpy = jest.spyOn(
@@ -358,7 +363,7 @@ describe("useSyncAccountSecurityController", () => {
       const verifySpy = jest.spyOn(syncTOTPService, "verifyTOTPEnrollment");
       const disableSpy = jest.spyOn(syncTOTPService, "disableTOTP");
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
 
@@ -383,6 +388,7 @@ describe("useSyncAccountSecurityController", () => {
 
       // Let the mount effect settle so it doesn't leak an unawaited update
       // into the next test.
+      resolveRead(managedPreferences());
       await act(async () => {});
     });
   });
@@ -401,12 +407,12 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
         .mockResolvedValue(null);
 
-      const { result, unmount } = renderHook(() =>
+      const { result, unmount } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       expect(result.current.isLoading).toBe(true);
 
-      unmount();
+      await unmount();
 
       await act(async () => {
         resolveRead(managedPreferences());
@@ -435,12 +441,12 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
         .mockResolvedValue({ ok: true });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setChangeCurrentPassword("old-password-123");
         result.current.setChangeNewPassword("new-password-456");
       });
@@ -480,12 +486,12 @@ describe("useSyncAccountSecurityController", () => {
           preferences: managedPreferences(),
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setForgotLogin("owner@example.com");
         result.current.setForgotRecoveryCode("recoverycode0000000000000000000");
       });
@@ -505,7 +511,7 @@ describe("useSyncAccountSecurityController", () => {
       // The raw reset token never leaves the hook's internal state (it is
       // not part of the returned API); prove it was still captured by
       // checking it reaches the subsequent submit call.
-      act(() => {
+      await act(() => {
         result.current.setForgotNewPassword("brand-new-password-123");
       });
       await act(async () => {
@@ -537,12 +543,12 @@ describe("useSyncAccountSecurityController", () => {
           recoveryCode: "freshcode000freshcode000freshcod",
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setRegeneratePassword("hunter2-hunter2");
       });
 
@@ -570,7 +576,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
         .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -603,12 +609,12 @@ describe("useSyncAccountSecurityController", () => {
         },
       });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setTotpEnrollPassword("hunter2-hunter2");
       });
       await act(async () => {
@@ -617,13 +623,13 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.totpStage).toBe("enrolling");
       expect(result.current.totpEnrollment).not.toBeNull();
 
-      act(() => {
+      await act(() => {
         result.current.setTotpVerifyCode("000000");
         result.current.setTotpDisablePassword("hunter2-hunter2");
         result.current.setTotpDisableCode("111111");
       });
 
-      act(() => {
+      await act(() => {
         result.current.handleTOTPModeChange("disable");
       });
 
@@ -657,12 +663,12 @@ describe("useSyncAccountSecurityController", () => {
         },
       });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setTotpEnrollPassword("hunter2-hunter2");
       });
 
@@ -693,7 +699,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "startTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -722,7 +728,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
         .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -757,7 +763,7 @@ describe("useSyncAccountSecurityController", () => {
         .spyOn(syncTOTPService, "disableTOTP")
         .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -795,7 +801,7 @@ describe("useSyncAccountSecurityController", () => {
         },
       });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -803,12 +809,12 @@ describe("useSyncAccountSecurityController", () => {
       await act(async () => {
         await result.current.handleStartTOTPEnrollment();
       });
-      act(() => {
+      await act(() => {
         result.current.setTotpVerifyCode("123456");
       });
       expect(result.current.totpStage).toBe("enrolling");
 
-      act(() => {
+      await act(() => {
         result.current.handleCancelTOTPEnrollment();
       });
 
@@ -836,7 +842,7 @@ describe("useSyncAccountSecurityController", () => {
           recoveryCode: "freshcode000freshcode000freshcod",
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -846,7 +852,7 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.revealedRecoveryCode).not.toBe("");
       expect(result.current.regenerateStatus).toBe("success");
 
-      act(() => {
+      await act(() => {
         result.current.handleAcknowledgeRecoveryCode();
       });
 
@@ -874,7 +880,7 @@ describe("useSyncAccountSecurityController", () => {
           preferences: managedPreferences(),
         });
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
@@ -886,7 +892,7 @@ describe("useSyncAccountSecurityController", () => {
       );
       expect(result.current.regenerateStatus).toBe("idle");
 
-      act(() => {
+      await act(() => {
         result.current.handleAcknowledgeRecoveryCode();
       });
 
@@ -931,12 +937,12 @@ describe("useSyncAccountSecurityController", () => {
         jest.spyOn(console, "debug").mockImplementation(() => {}),
       ];
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
       );
       await act(async () => {});
 
-      act(() => {
+      await act(() => {
         result.current.setTotpEnrollPassword("hunter2-hunter2");
       });
       await act(async () => {
@@ -946,7 +952,7 @@ describe("useSyncAccountSecurityController", () => {
         "JBSWY3DPEHPK3PXP",
       );
 
-      act(() => {
+      await act(() => {
         result.current.setRegeneratePassword("hunter2-hunter2");
       });
       await act(async () => {

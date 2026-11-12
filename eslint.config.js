@@ -36,4 +36,15 @@ module.exports = defineConfig([
       ],
     },
   },
+  // React Compiler advisories enabled by eslint-plugin-react-hooks 7. They
+  // flag render-cascade and ref-timing patterns, not data or security bugs;
+  // adopting them means refactoring the flagged components one by one.
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+    },
+  },
 ]);

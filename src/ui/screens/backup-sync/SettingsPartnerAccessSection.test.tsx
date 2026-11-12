@@ -77,7 +77,7 @@ function createBaseProps() {
 }
 
 describe("SettingsPartnerAccessSection", () => {
-  it("wires the revoke/open controls for pending invites and owned and shared grants, across both access levels", () => {
+  it("wires the revoke/open controls for pending invites and owned and shared grants, across both access levels", async () => {
     const onRevokeInvite = jest.fn();
     const onOpenGrant = jest.fn();
     const onRevokeGrant = jest.fn();
@@ -95,7 +95,7 @@ describe("SettingsPartnerAccessSection", () => {
       ],
     };
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsPartnerAccessSection
           {...createBaseProps()}
@@ -115,7 +115,7 @@ describe("SettingsPartnerAccessSection", () => {
       screen.getByTestId("settings-partner-invite-info-invite-1").props
         .accessibilityLabel,
     ).toContain(copy.accessLevelSummary);
-    fireEvent.press(screen.getByTestId("settings-partner-revoke-invite-invite-1"));
+    await fireEvent.press(screen.getByTestId("settings-partner-revoke-invite-invite-1"));
     expect(onRevokeInvite).toHaveBeenCalledWith("invite-1");
 
     // Owned grant renders with "full" (the "summary" arm is exercised by
@@ -124,20 +124,20 @@ describe("SettingsPartnerAccessSection", () => {
       screen.getByTestId("settings-partner-grant-info-grant-1").props
         .accessibilityLabel,
     ).toContain(copy.accessLevelFull);
-    fireEvent.press(screen.getByTestId("settings-partner-open-grant-grant-1"));
-    fireEvent.press(screen.getByTestId("settings-partner-revoke-grant-grant-1"));
+    await fireEvent.press(screen.getByTestId("settings-partner-open-grant-grant-1"));
+    await fireEvent.press(screen.getByTestId("settings-partner-revoke-grant-grant-1"));
     expect(onOpenGrant).toHaveBeenCalledWith("grant-1");
     expect(onRevokeGrant).toHaveBeenCalledWith("grant-1");
 
     // Shared-with-me grant open action.
     expect(screen.getByTestId("settings-partner-shared-grant-grant-9")).toBeTruthy();
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("settings-partner-open-shared-grant-grant-9"),
     );
     expect(onOpenGrant).toHaveBeenCalledWith("grant-9");
   });
 
-  it("shows the premium lock card instead of owner controls when the plan is locked, even with existing invite history", () => {
+  it("shows the premium lock card instead of owner controls when the plan is locked, even with existing invite history", async () => {
     const overview: ManagedCloudPartnerAccessOverview = {
       owned: {
         invites: [createInvite()],
@@ -146,7 +146,7 @@ describe("SettingsPartnerAccessSection", () => {
       sharedWithMe: [],
     };
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SettingsPartnerAccessSection
           {...createBaseProps()}
@@ -166,8 +166,8 @@ describe("SettingsPartnerAccessSection", () => {
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
   });
 
-  it("shows the error banner when errorMessage is set", () => {
-    render(
+  it("shows the error banner when errorMessage is set", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SettingsPartnerAccessSection
           {...createBaseProps()}

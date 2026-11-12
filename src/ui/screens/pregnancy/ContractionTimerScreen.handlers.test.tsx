@@ -48,7 +48,7 @@ describe("ContractionTimerScreen handler guards", () => {
           }),
       ),
     });
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ContractionTimerScreen
           now={new Date("2026-07-20T10:00:00.000Z")}

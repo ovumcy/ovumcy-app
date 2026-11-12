@@ -35,32 +35,32 @@ describe("useAppScreenProtection", () => {
     jest.clearAllMocks();
   });
 
-  it("skips privacy protection in development", () => {
-    const view = render(<ProtectedScreen isDevelopment />);
+  it("skips privacy protection in development", async () => {
+    const view = await render(<ProtectedScreen isDevelopment />);
 
     expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
     expect(enableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
 
-    view.unmount();
+    await view.unmount();
 
     expect(allowScreenCaptureAsync).not.toHaveBeenCalled();
     expect(disableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
   });
 
-  it("skips privacy protection when the user turns it off", () => {
-    const view = render(<ProtectedScreen enabled={false} isDevelopment={false} />);
+  it("skips privacy protection when the user turns it off", async () => {
+    const view = await render(<ProtectedScreen enabled={false} isDevelopment={false} />);
 
     expect(preventScreenCaptureAsync).not.toHaveBeenCalled();
     expect(enableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
 
-    view.unmount();
+    await view.unmount();
 
     expect(allowScreenCaptureAsync).not.toHaveBeenCalled();
     expect(disableAppSwitcherProtectionAsync).not.toHaveBeenCalled();
   });
 
-  it("enables privacy protection while the production app shell is mounted", () => {
-    const view = render(<ProtectedScreen isDevelopment={false} />);
+  it("enables privacy protection while the production app shell is mounted", async () => {
+    const view = await render(<ProtectedScreen isDevelopment={false} />);
 
     expect(preventScreenCaptureAsync).toHaveBeenCalledWith(
       "ovumcy.app-screen-protection",
@@ -70,7 +70,7 @@ describe("useAppScreenProtection", () => {
       expect(enableAppSwitcherProtectionAsync).toHaveBeenCalledWith(0.7);
     }
 
-    view.unmount();
+    await view.unmount();
 
     expect(allowScreenCaptureAsync).toHaveBeenCalledWith(
       "ovumcy.app-screen-protection",
@@ -81,14 +81,14 @@ describe("useAppScreenProtection", () => {
     }
   });
 
-  it("cleans up privacy protection when the user turns it off", () => {
-    const view = render(<ProtectedScreen isDevelopment={false} />);
+  it("cleans up privacy protection when the user turns it off", async () => {
+    const view = await render(<ProtectedScreen isDevelopment={false} />);
 
     expect(preventScreenCaptureAsync).toHaveBeenCalledWith(
       "ovumcy.app-screen-protection",
     );
 
-    view.rerender(<ProtectedScreen enabled={false} isDevelopment={false} />);
+    await view.rerender(<ProtectedScreen enabled={false} isDevelopment={false} />);
 
     expect(allowScreenCaptureAsync).toHaveBeenCalledWith(
       "ovumcy.app-screen-protection",

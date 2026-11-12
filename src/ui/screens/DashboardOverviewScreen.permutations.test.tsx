@@ -76,7 +76,7 @@ describe("DashboardOverviewScreen permutations", () => {
       },
     };
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen
           editorViewData={state.editorViewData}
@@ -124,7 +124,7 @@ describe("DashboardOverviewScreen permutations", () => {
       throw new Error("expected a postpartum dashboard");
     }
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen
           editorViewData={state.editorViewData}
@@ -170,7 +170,7 @@ describe("DashboardOverviewScreen permutations", () => {
   it("renders a mid-pregnancy weight-only metric row with no handlers", async () => {
     const state = await loadMidGaState({ weightKg: 66.2 });
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -184,7 +184,7 @@ describe("DashboardOverviewScreen permutations", () => {
   it("renders a mid-pregnancy blood-pressure-only metric row with no handlers", async () => {
     const state = await loadMidGaState({ bpSystolic: 118, bpDiastolic: 76 });
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -208,7 +208,7 @@ describe("DashboardOverviewScreen permutations", () => {
     });
     const state = await loadDashboardScreenState(storage, NOW, "en");
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -233,7 +233,7 @@ describe("DashboardOverviewScreen permutations", () => {
     });
     const state = await loadDashboardScreenState(storage, NOW, "en");
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -252,7 +252,7 @@ describe("DashboardOverviewScreen permutations", () => {
     });
     const state = await loadDashboardScreenState(storage, NOW, "en");
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -280,7 +280,7 @@ describe("DashboardOverviewScreen permutations", () => {
     });
     const state = await loadDashboardScreenState(storage, NOW, "en");
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen
           {...baseProps(state)}
@@ -295,7 +295,7 @@ describe("DashboardOverviewScreen permutations", () => {
 
     // The support-resources row expands in place; its crisis card renders
     // inertly without a save handler.
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("dashboard-postpartum-support-resources-toggle"),
     );
     expect(
@@ -328,7 +328,7 @@ describe("DashboardOverviewScreen permutations", () => {
   it("renders the unlocked pregnancy entry card with no handlers", async () => {
     const state = await loadPausedState(true);
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,
@@ -342,7 +342,7 @@ describe("DashboardOverviewScreen permutations", () => {
   it("renders the locked pregnancy entry card with no handlers", async () => {
     const state = await loadPausedState(false);
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <DashboardOverviewScreen {...baseProps(state)} viewData={state.viewData} />
       </AppPreferencesTestProvider>,

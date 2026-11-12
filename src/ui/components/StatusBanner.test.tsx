@@ -3,8 +3,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
 import { StatusBanner } from "./StatusBanner";
 
-function renderBanner(languageOverride: "en" | "ru" = "en") {
-  return render(
+async function renderBanner(languageOverride: "en" | "ru" = "en") {
+  return await render(
     <AppPreferencesTestProvider languageOverride={languageOverride}>
       <StatusBanner message="Saved locally" onDismiss={jest.fn()} tone="success" />
     </AppPreferencesTestProvider>,
@@ -13,7 +13,7 @@ function renderBanner(languageOverride: "en" | "ru" = "en") {
 
 describe("StatusBanner", () => {
   it("renders localized default tone and dismiss labels", async () => {
-    renderBanner("ru");
+    await renderBanner("ru");
 
     await waitFor(() => expect(screen.getByText("Готово")).toBeTruthy());
     expect(screen.getByLabelText("Закрыть")).toBeTruthy();
@@ -22,7 +22,7 @@ describe("StatusBanner", () => {
   it("lets callers override the localized dismiss label", async () => {
     const onDismiss = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatusBanner
           dismissLabel="Dismiss error"
@@ -34,7 +34,7 @@ describe("StatusBanner", () => {
     );
 
     await waitFor(() => expect(screen.getByText("Error")).toBeTruthy());
-    fireEvent.press(screen.getByLabelText("Dismiss error"));
+    await fireEvent.press(screen.getByLabelText("Dismiss error"));
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });

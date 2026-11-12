@@ -67,13 +67,13 @@ const baseViewData: DashboardCycleHeroViewData = {
   ],
 };
 
-function renderHero(overrides: Partial<typeof baseViewData> = {}) {
+async function renderHero(overrides: Partial<typeof baseViewData> = {}) {
   const viewData = {
     ...baseViewData,
     ...overrides,
   };
 
-  return render(
+  return await render(
     <AppPreferencesTestProvider>
       <DashboardCycleHero viewData={viewData} />
     </AppPreferencesTestProvider>,
@@ -81,8 +81,8 @@ function renderHero(overrides: Partial<typeof baseViewData> = {}) {
 }
 
 describe("DashboardCycleHero", () => {
-  it("shows a dedicated ovulation marker when ovulation is not the current phase", () => {
-    renderHero();
+  it("shows a dedicated ovulation marker when ovulation is not the current phase", async () => {
+    await renderHero();
 
     expect(screen.getByTestId("dashboard-cycle-hero-ovulation-marker")).toBeTruthy();
     expect(
@@ -90,8 +90,8 @@ describe("DashboardCycleHero", () => {
     ).toEqual(expect.objectContaining({ selected: false }));
   });
 
-  it("keeps all phase cards on the same fixed-size grid", () => {
-    renderHero();
+  it("keeps all phase cards on the same fixed-size grid", async () => {
+    await renderHero();
 
     const gridStyle = StyleSheet.flatten(
       screen.getByTestId("dashboard-cycle-hero-phase-grid").props.style,
@@ -124,8 +124,8 @@ describe("DashboardCycleHero", () => {
     );
   });
 
-  it("drops the extra ovulation marker when ovulation is already active", () => {
-    renderHero({
+  it("drops the extra ovulation marker when ovulation is already active", async () => {
+    await renderHero({
       currentTone: "ovulation",
       progressPercent: 13 / 28,
       phaseCards: baseViewData.phaseCards.map((phaseCard) => ({
@@ -140,8 +140,8 @@ describe("DashboardCycleHero", () => {
     ).toEqual(expect.objectContaining({ selected: true }));
   });
 
-  it("renders the upcoming-ovulation line next to the next-period caption", () => {
-    renderHero({ upcomingOvulationLabel: "Ovulation: Apr 24" });
+  it("renders the upcoming-ovulation line next to the next-period caption", async () => {
+    await renderHero({ upcomingOvulationLabel: "Ovulation: Apr 24" });
 
     expect(
       screen.getByTestId("dashboard-cycle-hero-upcoming-ovulation").props.children,
@@ -153,8 +153,8 @@ describe("DashboardCycleHero", () => {
     ).toBeTruthy();
   });
 
-  it("omits the upcoming-ovulation line entirely when the projection has no upcoming date", () => {
-    renderHero({ upcomingOvulationLabel: null });
+  it("omits the upcoming-ovulation line entirely when the projection has no upcoming date", async () => {
+    await renderHero({ upcomingOvulationLabel: null });
 
     expect(screen.queryByTestId("dashboard-cycle-hero-upcoming-ovulation")).toBeNull();
   });

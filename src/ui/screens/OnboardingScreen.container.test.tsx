@@ -51,10 +51,10 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
     await screen.findByTestId("onboarding-next-button");
 
-    fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
+    await fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
 
     expect(mockPush).toHaveBeenCalledWith("/privacy");
     // Reading the notice must not commit anything: the transparency obligation
@@ -72,7 +72,7 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     expect(screen.queryByTestId("onboarding-next-button")).toBeTruthy();
     await screen.findByTestId("onboarding-next-button");
@@ -89,7 +89,7 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
@@ -113,19 +113,19 @@ describe("OnboardingScreen", () => {
         .mockResolvedValue(defaultProfile),
     });
     const now = new Date(2026, 2, 20);
-    const view = render(
+    const view = await render(
       <OnboardingScreen now={now} reloadKey="before-clear" storage={storage} />,
     );
 
     await screen.findByTestId("onboarding-next-button");
     expect(screen.queryByTestId("onboarding-step-one-note")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
 
     await screen.findByTestId("onboarding-step-one-error");
 
-    act(() => {
-      view.rerender(
+    await act(async () => {
+      await view.rerender(
         <OnboardingScreen now={now} reloadKey="after-clear" storage={storage} />,
       );
     });
@@ -163,7 +163,7 @@ describe("OnboardingScreen", () => {
       }),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
     expect(screen.queryByTestId("onboarding-next-button")).toBeNull();
@@ -182,19 +182,19 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
 
     // Pressing Next with no date selected surfaces the step-1 validation error.
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
     await screen.findByTestId("onboarding-step-one-error");
 
     // Picking a date runs onDateSelected: clears the error and records the date.
-    fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-19"));
+    await fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-19"));
     expect(screen.queryByTestId("onboarding-step-one-error")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
 
     await screen.findByTestId("onboarding-finish-button");
     expect(screen.queryByTestId("onboarding-next-button")).toBeNull();
@@ -229,7 +229,7 @@ describe("OnboardingScreen", () => {
       }),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
     expect(screen.queryByTestId("onboarding-finish-button")).toBeNull();
@@ -253,11 +253,11 @@ describe("OnboardingScreen", () => {
       }),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
 
-    fireEvent.press(screen.getByTestId("onboarding-back-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-back-button"));
 
     await screen.findByTestId("onboarding-next-button");
     expect(screen.queryByTestId("onboarding-finish-button")).toBeNull();
@@ -289,11 +289,11 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
 
-    fireEvent.press(screen.getByTestId("onboarding-back-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-back-button"));
 
     await screen.findByTestId("onboarding-next-button");
     const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
@@ -316,10 +316,10 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
 
     const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
       .invalidLastPeriodStart;
@@ -341,10 +341,10 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
 
     const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
       .lastPeriodRange;
@@ -366,11 +366,11 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
-    fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-19"));
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-19"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
 
     const expectedError = buildOnboardingViewData(
       createOnboardingRecordFixture(),
@@ -395,11 +395,11 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(defaultProfile),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-step-one-note");
 
-    fireEvent.press(screen.getByTestId("onboarding-step-one-note-dismiss"));
+    await fireEvent.press(screen.getByTestId("onboarding-step-one-note-dismiss"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -423,13 +423,13 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-next-button");
-    fireEvent.press(screen.getByTestId("onboarding-next-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-next-button"));
     await screen.findByTestId("onboarding-step-one-error");
 
-    fireEvent.press(screen.getByTestId("onboarding-step-one-error-dismiss"));
+    await fireEvent.press(screen.getByTestId("onboarding-step-one-error-dismiss"));
 
     expect(screen.queryByTestId("onboarding-step-one-error")).toBeNull();
     expect(storage.writeOnboardingRecord).not.toHaveBeenCalled();
@@ -452,18 +452,18 @@ describe("OnboardingScreen", () => {
       }),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
 
-    fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 40);
-    fireEvent(screen.getByTestId("onboarding-period-length-slider"), "valueChange", 6);
-    fireEvent.press(screen.getByTestId("onboarding-age-group-age_40_45"));
-    fireEvent.press(screen.getByTestId("onboarding-usage-goal-trying_to_conceive"));
-    fireEvent.press(screen.getByTestId("onboarding-prediction-mode-irregular"));
-    fireEvent.press(screen.getByTestId("onboarding-toggle-auto-period-fill"));
+    await fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 40);
+    await fireEvent(screen.getByTestId("onboarding-period-length-slider"), "valueChange", 6);
+    await fireEvent.press(screen.getByTestId("onboarding-age-group-age_40_45"));
+    await fireEvent.press(screen.getByTestId("onboarding-usage-goal-trying_to_conceive"));
+    await fireEvent.press(screen.getByTestId("onboarding-prediction-mode-irregular"));
+    await fireEvent.press(screen.getByTestId("onboarding-toggle-auto-period-fill"));
 
-    fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
 
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"),
@@ -509,7 +509,7 @@ describe("OnboardingScreen", () => {
     });
     const onFinished = jest.fn();
 
-    render(
+    await render(
       <OnboardingScreen
         now={new Date(2026, 2, 20)}
         onFinished={onFinished}
@@ -518,7 +518,7 @@ describe("OnboardingScreen", () => {
     );
 
     await screen.findByTestId("onboarding-finish-button");
-    fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
 
     await waitFor(() => expect(onFinished).toHaveBeenCalled());
     expect(mockReplace).not.toHaveBeenCalled();
@@ -539,17 +539,17 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
-    fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
 
     const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
       .dateRequired;
     await screen.findByText(expectedError);
     expect(storage.writeProfileRecord).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId("onboarding-step-two-error-dismiss"));
+    await fireEvent.press(screen.getByTestId("onboarding-step-two-error-dismiss"));
     expect(screen.queryByText(expectedError)).toBeNull();
   });
 
@@ -570,7 +570,7 @@ describe("OnboardingScreen", () => {
       }),
     });
 
-    render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
+    await render(<OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
     expect(
@@ -583,8 +583,8 @@ describe("OnboardingScreen", () => {
     // from live slider state and disables Finish before any storage write
     // can be attempted, so an incompatible combination can never reach
     // finishOnboarding through the UI.
-    fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 15);
-    fireEvent(screen.getByTestId("onboarding-period-length-slider"), "valueChange", 6);
+    await fireEvent(screen.getByTestId("onboarding-cycle-length-slider"), "valueChange", 15);
+    await fireEvent(screen.getByTestId("onboarding-period-length-slider"), "valueChange", 6);
 
     await screen.findByTestId("onboarding-step-two-error");
     expect(
@@ -613,10 +613,10 @@ describe("OnboardingScreen", () => {
     });
     const now = new Date(2026, 2, 20);
 
-    render(<OnboardingScreen now={now} storage={storage} />);
+    await render(<OnboardingScreen now={now} storage={storage} />);
 
     await screen.findByTestId("onboarding-finish-button");
-    fireEvent.press(screen.getByTestId("onboarding-finish-button"));
+    await fireEvent.press(screen.getByTestId("onboarding-finish-button"));
 
     const expectedError = buildOnboardingViewData(onboardingRecord, now, "en").errors
       .generic;
@@ -645,10 +645,10 @@ describe("OnboardingScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(createDefaultProfileRecord()),
     });
 
-    const view = render(
+    const view = await render(
       <OnboardingScreen now={new Date(2026, 2, 20)} storage={storage} />,
     );
-    view.unmount();
+    await view.unmount();
 
     await act(async () => {
       resolveBootstrap({

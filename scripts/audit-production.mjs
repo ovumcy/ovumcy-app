@@ -66,57 +66,7 @@ function isRealISODate(text) {
  * advisory does not reach this product, not merely that it is inconvenient;
  * `reviewBy` is the date the judgement has to be made again.
  */
-export const ALLOWLIST = [
-  {
-    package: "image-size",
-    advisory: "GHSA-w3rx-r6r6-pgpr",
-    reason:
-      "Infinite loop in the ICNS parser. image-size is reached only through metro and the @expo build tooling: it runs on a developer machine or a CI runner while bundling, is not part of the shipped bundle, and never executes on a user's device or touches health data. Triggering it means getting a crafted image into the build inputs, which requires write access to this repository. No published version of image-size is unaffected (the advisory range is `*`), so the only upstream fix is a major Expo SDK upgrade, tracked separately.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "image-size",
-    advisory: "GHSA-5p2g-fcmc-qvqq",
-    reason:
-      "Infinite loops in the JXL and HEIF parsers. Same package, same reachability and same absence of a fixed version as the ICNS advisory above.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "decode-uri-component",
-    advisory: "GHSA-qr28-fpjm-wq7f",
-    reason:
-      "Quadratic-time decoding of percent-encoded runs. Reached at runtime only through expo-router > query-string@7 parsing an in-app URL, so the worst case is a CPU stall of the app on a crafted link the user opens on their own device: no data is read, written or sent. The only patched line (0.5.x) is ESM-only while query-string@7 loads it with require(), so an override breaks deep-link parsing; the fix arrives with the Expo SDK upgrade that moves expo-router off query-string@7.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "decode-uri-component",
-    advisory: "GHSA-vcc3-ghjq-m6fr",
-    reason:
-      "Exponential decoding of malformed percent-encoded input. Same package, same reachability, same bounded impact and same ESM-only fix as GHSA-qr28-fpjm-wq7f above.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "glob",
-    advisory: "GHSA-3g3m-2fjr-6pw4",
-    reason:
-      "AbortSignal cancellation bypass. glob@13 is reached only through @expo/config and the Expo CLI tooling, which run on a developer machine or CI runner during prebuild and bundling; it is not in the shipped bundle and never runs on a user's device. The patched glob@14 is a major the @expo packages do not declare, so the fix is the Expo SDK upgrade.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "minimatch",
-    advisory: "GHSA-g3hv-75wg-m249",
-    reason:
-      "Glob-pattern amplification DoS. Reached only through the same @expo build tooling as glob above, matching patterns this repository writes; not shipped, never runs on a device. The patched minimatch@11 is a major the @expo packages do not declare.",
-    reviewBy: "2026-11-30",
-  },
-  {
-    package: "deepmerge",
-    advisory: "GHSA-gcqx-w48m-w2h4",
-    reason:
-      "Prototype poisoning of merged objects. Reached only through @expo/config while it merges this repository's own app config at build time; not shipped and never fed external input. No patched version is published.",
-    reviewBy: "2026-11-30",
-  },
-];
+export const ALLOWLIST = [];
 
 /**
  * Reads and parses an `npm audit --omit=dev --json` report from disk.
@@ -136,11 +86,11 @@ export function readAuditReport(reportFile) {
  *
  * npm's `via` array holds either an object (this package is where the advisory
  * itself lives) or a string naming another vulnerable package it depends on.
- * Following the strings is what makes the gate complete: on the live report
- * seven of the nine gated packages, the whole metro and @expo chain, carry no
- * object via at all and inherit everything from image-size. Reading only the
- * objects would leave those seven unexamined, and the gate would be resting on
- * the accident that their root happens to be listed.
+ * Following the strings is what makes the gate complete: a whole tooling chain
+ * (a bundler and every package above it) commonly carries no object via at all
+ * and inherits everything from one leaf library. Reading only the objects would
+ * leave that chain unexamined, and the gate would be resting on the accident
+ * that its root happens to be listed.
  */
 function rootAdvisoriesFor(report, packageName, seen) {
   if (seen.has(packageName)) return [];

@@ -229,11 +229,11 @@ describe("CalendarScreen", () => {
   it("loads a selected day through the shared local repository", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
 
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-14"),
@@ -243,7 +243,7 @@ describe("CalendarScreen", () => {
   it("renders the persistent not-medical-advice prediction disclaimer (web parity)", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     const disclaimer = await screen.findByTestId(
       "calendar-prediction-disclaimer",
@@ -256,11 +256,11 @@ describe("CalendarScreen", () => {
   it("moves the selected-day panel to the new month anchor when month navigation changes", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
 
-    fireEvent.press(screen.getByTestId("calendar-prev-button"));
+    await fireEvent.press(screen.getByTestId("calendar-prev-button"));
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-02-01"),
@@ -270,7 +270,7 @@ describe("CalendarScreen", () => {
   it("reads managed billing on focus only, never when the selection changes", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
     expect(
@@ -278,7 +278,7 @@ describe("CalendarScreen", () => {
     ).toHaveBeenCalledTimes(1);
 
     // Picking a day re-derives the view from local storage only.
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-14"),
     );
@@ -287,7 +287,7 @@ describe("CalendarScreen", () => {
     ).toHaveBeenCalledTimes(1);
 
     // Month navigation moves the anchor day, which is the same local path.
-    fireEvent.press(screen.getByTestId("calendar-prev-button"));
+    await fireEvent.press(screen.getByTestId("calendar-prev-button"));
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-02-01"),
     );
@@ -329,16 +329,16 @@ describe("CalendarScreen", () => {
         }),
     );
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
 
     // Two reloads in flight at once, answered out of order: the day the owner
     // has left must not repaint over the day they are on.
     holdReads = true;
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-15"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-15"));
     await waitFor(() => expect(pendingReads).toHaveLength(1));
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-16"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-16"));
     await waitFor(() => expect(pendingReads).toHaveLength(2));
 
     await act(async () => {
@@ -388,7 +388,7 @@ describe("CalendarScreen", () => {
       },
     ]);
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
 
@@ -449,23 +449,23 @@ describe("CalendarScreen", () => {
       },
     ]);
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(
       () => expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
       { timeout: 3000 },
     );
-    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
 
     await screen.findByTestId("day-log-period-toggle");
     await waitFor(() => expect(screen.getByText("Old symptom")).toBeTruthy(), {
       timeout: 3000,
     });
-    fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
+    await fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
     expect(screen.getByText("Jaw pain")).toBeTruthy();
   });
 
@@ -482,10 +482,10 @@ describe("CalendarScreen", () => {
       return createEmptyDayLogRecord(date);
     });
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(
@@ -500,10 +500,10 @@ describe("CalendarScreen", () => {
   it("opens empty days directly in edit mode", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
 
     await screen.findByTestId("day-log-period-toggle");
     expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy();
@@ -520,10 +520,10 @@ describe("CalendarScreen", () => {
       reminders: false,
     });
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
 
     await screen.findByTestId("day-log-period-toggle");
 
@@ -543,7 +543,7 @@ describe("CalendarScreen", () => {
 
     const storage = await createAdvancedFertilityStorage();
 
-    render(<CalendarScreen now={new Date(2026, 3, 6)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 3, 6)} storage={storage} />);
 
     await screen.findByTestId("calendar-advanced-fertility-summary");
 
@@ -600,7 +600,7 @@ describe("CalendarScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
     expect(screen.getByTestId("calendar-prediction-mode-banner")).toBeTruthy();
@@ -629,10 +629,10 @@ describe("CalendarScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await screen.findByTestId("calendar-prediction-mode-banner");
-    fireEvent.press(screen.getByTestId("calendar-prediction-mode-banner-dismiss"));
+    await fireEvent.press(screen.getByTestId("calendar-prediction-mode-banner-dismiss"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -658,7 +658,7 @@ describe("CalendarScreen", () => {
       }),
     );
 
-    const firstMount = render(
+    const firstMount = await render(
       <CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />,
     );
 
@@ -669,7 +669,7 @@ describe("CalendarScreen", () => {
       ),
     ).toBeTruthy();
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("calendar-prediction-mode-banner-dismiss"),
     );
 
@@ -680,8 +680,8 @@ describe("CalendarScreen", () => {
 
     // Session-only by contract: a fresh mount surfaces the notice again while
     // the pregnancy is still active.
-    firstMount.unmount();
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await firstMount.unmount();
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
     await screen.findByTestId("calendar-prediction-mode-banner");
   });
 
@@ -705,7 +705,7 @@ describe("CalendarScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    render(
+    await render(
       <CalendarScreen
         autosaveDebounceMs={1}
         now={new Date(2026, 2, 17)}
@@ -714,9 +714,9 @@ describe("CalendarScreen", () => {
     );
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
     await screen.findByTestId("day-log-period-toggle");
-    fireEvent.press(screen.getByTestId("day-log-period-toggle"));
+    await fireEvent.press(screen.getByTestId("day-log-period-toggle"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
@@ -756,7 +756,7 @@ describe("CalendarScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    render(
+    await render(
       <CalendarScreen
         autosaveDebounceMs={1}
         now={new Date(2026, 2, 17)}
@@ -765,9 +765,9 @@ describe("CalendarScreen", () => {
     );
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
     await screen.findByTestId("day-log-period-toggle");
-    fireEvent.press(screen.getByTestId("day-log-period-toggle"));
+    await fireEvent.press(screen.getByTestId("day-log-period-toggle"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
@@ -807,7 +807,7 @@ describe("CalendarScreen", () => {
       mood: 4,
     });
 
-    render(
+    await render(
       <CalendarScreen
         autosaveDebounceMs={1000}
         now={new Date(2026, 2, 17)}
@@ -816,10 +816,10 @@ describe("CalendarScreen", () => {
     );
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-13"));
     await screen.findByTestId("day-log-period-toggle");
-    fireEvent.press(screen.getByTestId("day-log-period-toggle"));
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("day-log-period-toggle"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
 
     await waitFor(
       () => expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
@@ -860,17 +860,17 @@ describe("CalendarScreen", () => {
       notes: "Needs follow-up",
     });
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
     );
-    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
     await screen.findByTestId("day-log-delete-button");
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     await waitFor(
       () => expect(screen.getByTestId("calendar-day-add-button")).toBeTruthy(),
@@ -882,25 +882,25 @@ describe("CalendarScreen", () => {
     );
 
     // The add button (view mode, no entry) reopens the editor directly.
-    fireEvent.press(screen.getByTestId("calendar-day-add-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-add-button"));
     await screen.findByTestId("day-log-period-toggle");
   });
 
   it("cancels an edit without discarding the persisted entry", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
     );
-    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
     await screen.findByTestId("day-log-cancel-button");
 
-    fireEvent.press(screen.getByTestId("day-log-cancel-button"));
+    await fireEvent.press(screen.getByTestId("day-log-cancel-button"));
 
     // Back to the read-only summary; the entry itself was never touched.
     await waitFor(() =>
@@ -913,16 +913,16 @@ describe("CalendarScreen", () => {
   it("navigates forward a month then back to today via the today shortcut", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-next-button"));
+    await fireEvent.press(screen.getByTestId("calendar-next-button"));
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-04-01"),
     );
 
-    fireEvent.press(screen.getByTestId("calendar-today-button"));
+    await fireEvent.press(screen.getByTestId("calendar-today-button"));
 
     await waitFor(() =>
       expect(storage.readDayLogRecord).toHaveBeenCalledWith("2026-03-17"),
@@ -932,19 +932,19 @@ describe("CalendarScreen", () => {
   it("cancels deleting a persisted entry when the owner declines the confirmation prompt", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
     );
-    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
     await screen.findByTestId("day-log-delete-button");
 
     mockOpenConfirmation.mockResolvedValueOnce(false);
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     expect(storage.deleteDayLogRecord).not.toHaveBeenCalled();
@@ -957,17 +957,17 @@ describe("CalendarScreen", () => {
     const storage = createStorageMock();
     storage.deleteDayLogRecord = jest.fn().mockRejectedValue(new Error("boom"));
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-edit-button")).toBeTruthy(),
     );
-    fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-edit-button"));
     await screen.findByTestId("day-log-delete-button");
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     expect(
       await screen.findByText("Unable to clear this entry. Please try again."),
@@ -977,16 +977,16 @@ describe("CalendarScreen", () => {
   it("shows a success status after marking a manual cycle start", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
     );
 
-    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -1001,17 +1001,17 @@ describe("CalendarScreen", () => {
   it("cancels a manual cycle start when the owner declines the confirmation prompt", async () => {
     const storage = createStorageMock();
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
     );
 
     mockOpenConfirmation.mockResolvedValueOnce(false);
-    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
@@ -1023,16 +1023,16 @@ describe("CalendarScreen", () => {
     const storage = createStorageMock();
     storage.writeProfileRecord = jest.fn().mockRejectedValue(new Error("boom"));
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
-    fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
     await waitForSelectedDayPanel("Sat, Mar 14");
     await waitFor(() =>
       expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
     );
 
-    fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("calendar-day-cycle-start-button"));
 
     expect(
       await screen.findByText(
@@ -1050,7 +1050,7 @@ describe("CalendarScreen", () => {
       },
     ]);
 
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
 
     await waitForCalendarReady();
 
@@ -1073,7 +1073,7 @@ describe("CalendarScreen", () => {
   });
 
   it("announces every actionable calendar control with a role, a name, and its state", async () => {
-    render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />);
 
     await waitForCalendarReady();
 
@@ -1112,7 +1112,7 @@ describe("CalendarScreen", () => {
     });
 
     try {
-      render(
+      await render(
         <CalendarScreen now={new Date(2026, 2, 17)} storage={createStorageMock()} />,
       );
 
@@ -1126,7 +1126,7 @@ describe("CalendarScreen", () => {
       );
       expect(screen.queryByTestId("calendar-legend-expanded")).toBeNull();
 
-      fireEvent.press(toggle);
+      await fireEvent.press(toggle);
 
       const expandedToggle = screen.getByTestId("calendar-legend-toggle");
       expect(expandedToggle.props.accessibilityLabel).toBe("Hide calendar key");

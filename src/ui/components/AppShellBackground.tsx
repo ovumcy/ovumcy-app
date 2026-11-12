@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     width: 260,
   },
   stripeLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: "hidden",
   },
   stripe: {

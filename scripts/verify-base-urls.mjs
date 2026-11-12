@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
  * production key map), each base URL has exactly one correct production
  * value: the canonical `https://sync.ovumcy.cloud` / `https://managed.ovumcy.cloud`
  * hosts. Anything else is rejected outright — most commonly a developer's
- * `.env.local` pointing at a local Docker stack, since Expo SDK 54 loads
+ * `.env.local` pointing at a local Docker stack, since the Expo CLI loads
  * `.env.local` for ANY build on the machine, including a local
  * `expo export -p web` run from `npm run deploy`.
  *

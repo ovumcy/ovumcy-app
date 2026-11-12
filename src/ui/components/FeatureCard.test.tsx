@@ -4,8 +4,8 @@ import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvide
 import { FeatureCard } from "./FeatureCard";
 
 describe("FeatureCard", () => {
-  it("exposes its title as an accessibility header so screen readers can jump between sections", () => {
-    render(
+  it("exposes its title as an accessibility header so screen readers can jump between sections", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <FeatureCard title="Cycle" testID="feature-card" />
       </AppPreferencesTestProvider>,
@@ -14,8 +14,8 @@ describe("FeatureCard", () => {
     expect(screen.getByRole("header", { name: "Cycle" })).toBeTruthy();
   });
 
-  it("adds no header role when the card carries only a description", () => {
-    render(
+  it("adds no header role when the card carries only a description", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <FeatureCard description="A supporting line without a section title" />
       </AppPreferencesTestProvider>,

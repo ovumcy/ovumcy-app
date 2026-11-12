@@ -78,7 +78,7 @@ describe("ProtectedTabsLayout", () => {
   });
 
   it("redirects to onboarding while local setup is incomplete", async () => {
-    render(<ProtectedTabsLayout storage={createStorageMock(false)} />);
+    await render(<ProtectedTabsLayout storage={createStorageMock(false)} />);
 
     await waitFor(() =>
       expect(screen.getByTestId("protected-tabs-redirect")).toHaveTextContent(
@@ -88,7 +88,7 @@ describe("ProtectedTabsLayout", () => {
   });
 
   it("renders protected tabs once onboarding is completed", async () => {
-    render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+    await render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
 
     await waitFor(() => expect(screen.getByTestId("protected-tabs")).toBeTruthy());
     expect(screen.getByTestId("protected-tab-dashboard")).toBeTruthy();
@@ -98,7 +98,7 @@ describe("ProtectedTabsLayout", () => {
   });
 
   it("labels each tab with its title for screen readers (no leading separator)", async () => {
-    render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+    await render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
 
     await waitFor(() => expect(screen.getByTestId("protected-tabs")).toBeTruthy());
 
@@ -122,7 +122,7 @@ describe("ProtectedTabsLayout", () => {
     });
 
     try {
-      render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+      await render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
 
       await waitFor(() =>
         expect(screen.getByTestId("protected-tabs")).toBeTruthy(),
@@ -150,7 +150,7 @@ describe("ProtectedTabsLayout", () => {
     });
 
     try {
-      render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
+      await render(<ProtectedTabsLayout storage={createStorageMock(true)} />);
 
       await waitFor(() =>
         expect(screen.getByTestId("protected-tabs")).toBeTruthy(),
@@ -181,7 +181,7 @@ describe("ProtectedTabsLayout", () => {
       } as ReturnType<typeof AppState.addEventListener>;
     });
 
-    render(
+    await render(
       <ProtectedTabsLayout
         storage={createStorageMock(true)}
         managedPartnerShareRefresh={refresh}
@@ -191,7 +191,7 @@ describe("ProtectedTabsLayout", () => {
 
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
 
-    act(() => {
+    await act(() => {
       appStateChangeHandler?.("active");
     });
 

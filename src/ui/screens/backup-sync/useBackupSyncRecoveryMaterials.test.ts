@@ -41,7 +41,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
   describe("handlePrepareSyncSetup", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -65,7 +65,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         recoveryPhrase: "alpha beta gamma delta epsilon zeta",
         regenerated: false,
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -87,7 +87,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
       });
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -111,7 +111,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         reason: "unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -136,7 +136,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         reason: "failed",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -158,7 +158,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         reason: "cancelled",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -185,7 +185,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         errorCode: "guest_recovery_phrase_blocked",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -210,7 +210,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         errorCode: "insecure_public_http",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -239,7 +239,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         recoveryPhrase: "fresh phrase words here now go",
         regenerated: true,
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handlePrepareSyncSetup();
@@ -259,11 +259,11 @@ describe("useBackupSyncRecoveryMaterials", () => {
   });
 
   describe("handleAcknowledgeRecoveryCode", () => {
-    it("clears the generated recovery code", () => {
+    it("clears the generated recovery code", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
-      act(() => {
+      await act(() => {
         result.current.handleAcknowledgeRecoveryCode();
       });
 
@@ -276,7 +276,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       const core = createBackupSyncSessionCoreMock({
         generatedRecoveryPhrase: "",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handleExportRecoveryPhrase();
@@ -292,7 +292,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         generatedRecoveryPhrase: "alpha beta gamma delta epsilon zeta",
       });
       mockDeliverRecoveryPhraseArtifact.mockResolvedValue({ ok: true });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handleExportRecoveryPhrase();
@@ -316,7 +316,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         errorCode: "delivery_unavailable",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handleExportRecoveryPhrase();
@@ -337,7 +337,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         ok: false,
         errorCode: "delivery_failed",
       });
-      const { result } = renderHook(() => useBackupSyncRecoveryMaterials(core));
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
 
       await act(async () => {
         await result.current.handleExportRecoveryPhrase();

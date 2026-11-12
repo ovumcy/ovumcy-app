@@ -5,7 +5,7 @@ import { useSettingsExitGuards } from "./useSettingsExitGuards";
 
 let mockGetParent: (() => unknown) | undefined;
 
-jest.mock("@react-navigation/native", () => ({
+jest.mock("expo-router/react-navigation", () => ({
   useNavigation: () => ({
     getParent: () => mockGetParent?.(),
   }),
@@ -53,22 +53,22 @@ describe("useSettingsExitGuards: ancestor tab-navigator wiring", () => {
     });
   });
 
-  it("does not crash and wires no listener when there is no parent tab navigator", () => {
+  it("does not crash and wires no listener when there is no parent tab navigator", async () => {
     const getParentSpy = jest.fn().mockReturnValue(undefined);
     mockGetParent = getParentSpy;
     const onConfirmLeave = jest.fn();
 
-    expect(() =>
+    await expect(
       renderHook(() =>
         useSettingsExitGuards({ enabled: true, onConfirmLeave }),
       ),
-    ).not.toThrow();
+    ).resolves.toBeDefined();
     // The walk starts at the nearest ancestor and stops immediately once it
     // resolves to nothing — there is no tab bar to guard.
     expect(getParentSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("skips a malformed ancestor (missing the navigator API) but still wires the valid tab navigator beyond it", () => {
+  it("skips a malformed ancestor (missing the navigator API) but still wires the valid tab navigator beyond it", async () => {
     const validTabNavigation = createTabNavigation({
       currentRoute: { key: "settings-key", name: "settings" },
     });
@@ -80,7 +80,7 @@ describe("useSettingsExitGuards: ancestor tab-navigator wiring", () => {
     mockGetParent = () => malformedAncestor;
     const onConfirmLeave = jest.fn();
 
-    renderHook(() => useSettingsExitGuards({ enabled: true, onConfirmLeave }));
+    await renderHook(() => useSettingsExitGuards({ enabled: true, onConfirmLeave }));
 
     expect(validTabNavigation.addListener).toHaveBeenCalledWith(
       "tabPress",
@@ -88,7 +88,7 @@ describe("useSettingsExitGuards: ancestor tab-navigator wiring", () => {
     );
   });
 
-  it("does not intercept a tab-press that targets the already-active route", () => {
+  it("does not intercept a tab-press that targets the already-active route", async () => {
     let capturedCallback: TabPressCallback | undefined;
     const tabNavigation = createTabNavigation({
       currentRoute: { key: "settings-key", name: "settings" },
@@ -99,10 +99,10 @@ describe("useSettingsExitGuards: ancestor tab-navigator wiring", () => {
     mockGetParent = () => tabNavigation;
     const onConfirmLeave = jest.fn();
 
-    renderHook(() => useSettingsExitGuards({ enabled: true, onConfirmLeave }));
+    await renderHook(() => useSettingsExitGuards({ enabled: true, onConfirmLeave }));
 
     const preventDefault = jest.fn();
-    act(() => {
+    await act(() => {
       capturedCallback?.({ preventDefault, target: "settings-key" });
     });
 

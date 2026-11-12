@@ -4,8 +4,8 @@ import { StyleSheet } from "react-native";
 import { MultiSelectChipGroup } from "./MultiSelectChipGroup";
 
 describe("MultiSelectChipGroup", () => {
-  it("switches compact chips to one column in a narrow card", () => {
-    render(
+  it("switches compact chips to one column in a narrow card", async () => {
+    await render(
       <MultiSelectChipGroup
         compact
         onToggle={() => {}}
@@ -18,7 +18,7 @@ describe("MultiSelectChipGroup", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("factor-group"), "layout", {
+    await fireEvent(screen.getByTestId("factor-group"), "layout", {
       nativeEvent: { layout: { height: 80, width: 300, x: 0, y: 0 } },
     });
 
@@ -33,8 +33,8 @@ describe("MultiSelectChipGroup", () => {
     );
   });
 
-  it("keeps two columns for compact chips when the card is wide enough", () => {
-    render(
+  it("keeps two columns for compact chips when the card is wide enough", async () => {
+    await render(
       <MultiSelectChipGroup
         compact
         onToggle={() => {}}
@@ -47,7 +47,7 @@ describe("MultiSelectChipGroup", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("factor-group"), "layout", {
+    await fireEvent(screen.getByTestId("factor-group"), "layout", {
       nativeEvent: { layout: { height: 80, width: 400, x: 0, y: 0 } },
     });
 
@@ -62,8 +62,8 @@ describe("MultiSelectChipGroup", () => {
     );
   });
 
-  it("names the group and announces each chip by its word, not its emoji", () => {
-    render(
+  it("names the group and announces each chip by its word, not its emoji", async () => {
+    await render(
       <MultiSelectChipGroup
         groupLabel="Cycle factors"
         onToggle={() => {}}

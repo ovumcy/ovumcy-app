@@ -10,33 +10,33 @@ import { AppErrorScreen } from "./AppErrorScreen";
 const deviceCopy = getErrorCopy(resolveDeviceLanguage());
 
 describe("AppErrorScreen", () => {
-  it("renders copy for the device locale", () => {
-    render(<AppErrorScreen message="boom" onRetry={jest.fn()} />);
+  it("renders copy for the device locale", async () => {
+    await render(<AppErrorScreen message="boom" onRetry={jest.fn()} />);
 
     expect(screen.getByText(deviceCopy.title)).toBeTruthy();
     expect(screen.getByText(deviceCopy.description)).toBeTruthy();
     expect(screen.getByText(deviceCopy.retryAction)).toBeTruthy();
   });
 
-  it("shows the error message", () => {
-    render(<AppErrorScreen message="Cannot read property 'x' of undefined" onRetry={jest.fn()} />);
+  it("shows the error message", async () => {
+    await render(<AppErrorScreen message="Cannot read property 'x' of undefined" onRetry={jest.fn()} />);
 
     expect(
       screen.getByText("Cannot read property 'x' of undefined"),
     ).toBeTruthy();
   });
 
-  it("fires the retry callback when pressed", () => {
+  it("fires the retry callback when pressed", async () => {
     const onRetry = jest.fn();
 
-    render(<AppErrorScreen message="boom" onRetry={onRetry} />);
-    fireEvent.press(screen.getByText(deviceCopy.retryAction));
+    await render(<AppErrorScreen message="boom" onRetry={onRetry} />);
+    await fireEvent.press(screen.getByText(deviceCopy.retryAction));
 
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it("exposes the retry control with accessibilityRole button", () => {
-    render(<AppErrorScreen message="boom" onRetry={jest.fn()} />);
+  it("exposes the retry control with accessibilityRole button", async () => {
+    await render(<AppErrorScreen message="boom" onRetry={jest.fn()} />);
 
     expect(
       screen.getByRole("button", { name: deviceCopy.retryAction }),

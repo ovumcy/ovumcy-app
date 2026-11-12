@@ -17,10 +17,10 @@ function createViewData(
 }
 
 describe("ManualCycleStartAction", () => {
-  it("announces the action as a button and forwards the press", () => {
+  it("announces the action as a button and forwards the press", async () => {
     const onPress = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <ManualCycleStartAction
           onPress={onPress}
@@ -36,14 +36,14 @@ describe("ManualCycleStartAction", () => {
       expect.objectContaining({ disabled: false }),
     );
 
-    fireEvent.press(action);
+    await fireEvent.press(action);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("reports the disabled state instead of silently ignoring the press", () => {
+  it("reports the disabled state instead of silently ignoring the press", async () => {
     const onPress = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <ManualCycleStartAction
           disabled
@@ -59,8 +59,8 @@ describe("ManualCycleStartAction", () => {
     ).toEqual(expect.objectContaining({ disabled: true }));
   });
 
-  it("groups the qualifying notices into one announcement under the button", () => {
-    render(
+  it("groups the qualifying notices into one announcement under the button", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <ManualCycleStartAction
           onPress={jest.fn()}
@@ -86,8 +86,8 @@ describe("ManualCycleStartAction", () => {
     expect(screen.getByText("Did you mean 12 March?")).toBeTruthy();
   });
 
-  it("renders no notice group when the action has nothing to qualify", () => {
-    render(
+  it("renders no notice group when the action has nothing to qualify", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <ManualCycleStartAction
           onPress={jest.fn()}

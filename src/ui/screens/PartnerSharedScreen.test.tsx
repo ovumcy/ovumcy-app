@@ -245,11 +245,11 @@ function createProjectionPayload(): PartnerSharedProjectionPayload {
   };
 }
 
-function renderPartnerSharedScreen(
+async function renderPartnerSharedScreen(
   languageOverride: InterfaceLanguage | null = "en",
   now: Date = new Date("2026-04-05T10:00:00.000Z"),
 ) {
-  return render(
+  return await render(
     <AppPreferencesTestProvider languageOverride={languageOverride}>
       <PartnerSharedScreen now={now} />
     </AppPreferencesTestProvider>,
@@ -319,7 +319,7 @@ describe("PartnerSharedScreen", () => {
       value: createProjectionPayload(),
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.getByTestId("partner-shared-history-card")).toBeTruthy();
@@ -352,7 +352,7 @@ describe("PartnerSharedScreen", () => {
       ),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("partner-shared-back-button"));
+    await fireEvent.press(screen.getByTestId("partner-shared-back-button"));
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
@@ -384,7 +384,7 @@ describe("PartnerSharedScreen", () => {
       errorCode: "partner_projection_not_found",
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-empty-card");
     expect(screen.queryByTestId("partner-shared-summary-card")).toBeNull();
@@ -427,7 +427,7 @@ describe("PartnerSharedScreen", () => {
       errorCode: "share_key_unavailable",
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await waitFor(() =>
       expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -447,7 +447,7 @@ describe("PartnerSharedScreen", () => {
     setupMocksWithPayload(stalePayload);
 
     // now is 2026-04-05 → 35 days after generatedAt → stale
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.getByTestId("partner-shared-stale-banner")).toBeTruthy();
@@ -462,7 +462,7 @@ describe("PartnerSharedScreen", () => {
   it("does not show stale notice when snapshot is fresh", async () => {
     setupMocksWithPayload(createProjectionPayload()); // generatedAt 2026-04-05, now 2026-04-05 (2h old)
 
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.queryByTestId("partner-shared-stale-banner")).toBeNull();
@@ -473,7 +473,7 @@ describe("PartnerSharedScreen", () => {
   it("shows 90-day qualifier on history card when rows are present", async () => {
     setupMocksWithPayload(createProjectionPayload());
 
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-history-card");
     expect(screen.getByText("Showing the last 90 days.")).toBeTruthy();
@@ -488,7 +488,7 @@ describe("PartnerSharedScreen", () => {
     };
     setupMocksWithPayload(emptyPayload);
 
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-history-card");
     expect(screen.queryByText("Showing the last 90 days.")).toBeNull();
@@ -526,7 +526,7 @@ describe("PartnerSharedScreen", () => {
       value: createProjectionPayload(),
     });
 
-    renderPartnerSharedScreen("ru");
+    await renderPartnerSharedScreen("ru");
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.getByText("Топ симптомов: Спазмы")).toBeTruthy();
@@ -549,29 +549,29 @@ describe("PartnerSharedScreen state orchestration", () => {
     mockLoadManagedPartnerProjection.mockReset();
   });
 
-  it("shows the loading state before the shared view resolves, and back navigation still works", () => {
+  it("shows the loading state before the shared view resolves, and back navigation still works", async () => {
     // Never resolves within this test: proves the loading branch renders
     // (title/subtitle/back button) independent of any service response.
     mockLoadManagedPartnerAccess.mockReturnValue(new Promise(() => {}));
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     expect(screen.getByText("Loading shared view")).toBeTruthy();
     expect(
       screen.getByText("Decrypting the shared partner view on this device."),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("partner-shared-back-button"));
+    await fireEvent.press(screen.getByTestId("partner-shared-back-button"));
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
-  it("falls back to the current wall-clock time when no now override is provided", () => {
+  it("falls back to the current wall-clock time when no now override is provided", async () => {
     // Never resolves: only the synchronous initial render matters here,
     // proving `now ?? new Date()` in the component doesn't throw or hang
     // when the optional `now` prop is omitted (the real app call site).
     mockLoadManagedPartnerAccess.mockReturnValue(new Promise(() => {}));
 
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PartnerSharedScreen />
       </AppPreferencesTestProvider>,
@@ -589,7 +589,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     async (_label, grantID) => {
       mockSearchParams = grantID === undefined ? {} : { grant_id: grantID };
 
-      renderPartnerSharedScreen();
+      await renderPartnerSharedScreen();
 
       await waitFor(() =>
         expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -607,7 +607,7 @@ describe("PartnerSharedScreen state orchestration", () => {
       value: { owned: { invites: [], grants: [] }, sharedWithMe: [] },
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await waitFor(() =>
       expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -619,7 +619,7 @@ describe("PartnerSharedScreen state orchestration", () => {
 
     // readState stayed null, so the empty-state card (with its own back
     // button, separate from the top InlineBackButton) also renders.
-    fireEvent.press(screen.getByTestId("partner-shared-empty-back-button"));
+    await fireEvent.press(screen.getByTestId("partner-shared-empty-back-button"));
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
@@ -653,7 +653,7 @@ describe("PartnerSharedScreen state orchestration", () => {
       value: createProjectionPayload(),
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(mockLoadManagedPartnerProjection).toHaveBeenCalledTimes(1);
@@ -663,7 +663,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     mockSearchParams = { grant_id: ["grant-1"] };
     setupMocksWithPayload(createProjectionPayload());
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
   });
@@ -671,7 +671,7 @@ describe("PartnerSharedScreen state orchestration", () => {
   it("maps a not-connected access error to its sign-in message", async () => {
     mockLoadManagedPartnerAccess.mockResolvedValue({ ok: false, errorCode: "not_connected" });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await waitFor(() =>
       expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -682,7 +682,7 @@ describe("PartnerSharedScreen state orchestration", () => {
   it("maps an unrecognized access error code to the generic retry message", async () => {
     mockLoadManagedPartnerAccess.mockResolvedValue({ ok: false, errorCode: "rate_limited" });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await waitFor(() =>
       expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -719,7 +719,7 @@ describe("PartnerSharedScreen state orchestration", () => {
       errorCode: "invalid_partner_projection",
     });
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await waitFor(() =>
       expect(screen.getByTestId("partner-shared-error-banner")).toBeTruthy(),
@@ -736,7 +736,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(
@@ -761,7 +761,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.getByText("Cycle day")).toBeTruthy();
@@ -785,7 +785,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-summary-card");
     // "Mon D - Mon D" — a real range, not the "—" placeholder.
@@ -812,7 +812,7 @@ describe("PartnerSharedScreen state orchestration", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
+    await renderPartnerSharedScreen("en", new Date("2026-04-05T10:00:00.000Z"));
 
     await screen.findByTestId("partner-shared-summary-card");
     expect(screen.getByText(/^[A-Za-z]{3} \d{1,2}$/)).toBeTruthy();
@@ -823,8 +823,8 @@ describe("PartnerSharedScreen state orchestration", () => {
     setupMocksWithPayload(createProjectionPayload());
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const { unmount } = renderPartnerSharedScreen();
-    unmount();
+    const { unmount } = await renderPartnerSharedScreen();
+    await unmount();
 
     await waitFor(() => expect(mockLoadManagedPartnerProjection).toHaveBeenCalledTimes(1));
     expect(consoleErrorSpy).not.toHaveBeenCalled();
@@ -861,7 +861,7 @@ describe("PartnerSharedScreen privacy invariants and row rendering", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-history-card");
     // The row's detail line is exactly "Period day" — no pregnancy-test
@@ -910,7 +910,7 @@ describe("PartnerSharedScreen privacy invariants and row rendering", () => {
     };
     setupMocksWithPayload(payload);
 
-    renderPartnerSharedScreen();
+    await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-row-2026-04-03");
     expect(

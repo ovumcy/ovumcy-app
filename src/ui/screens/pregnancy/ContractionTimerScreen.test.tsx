@@ -79,8 +79,8 @@ function build511MatchingContractions(now: Date): ContractionEntry[] {
   });
 }
 
-function renderScreen(storage = createLocalAppStorageMock(), now = NOW) {
-  return render(
+async function renderScreen(storage = createLocalAppStorageMock(), now = NOW) {
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <ContractionTimerScreen now={now} storage={storage} />
     </AppPreferencesTestProvider>,
@@ -94,7 +94,7 @@ describe("ContractionTimerScreen", () => {
   });
 
   it("shows a neutral not-accessible body with no active pregnancy", async () => {
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       }),
@@ -113,7 +113,7 @@ describe("ContractionTimerScreen", () => {
       endReason: "birth" as const,
       modeOfDelivery: "vaginal" as const,
     };
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(ended),
       }),
@@ -123,7 +123,7 @@ describe("ContractionTimerScreen", () => {
   });
 
   it("renders the toggle, education line, birth CTA, and disclaimer for any active pregnancy", async () => {
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -142,16 +142,16 @@ describe("ContractionTimerScreen", () => {
     const storage = createLocalAppStorageMock({
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
     const toggle = await screen.findByTestId("contraction-timer-toggle-button");
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
     expect(screen.getByTestId("contraction-timer-toggle-label").props.children).toBe(
       "Contraction ended",
     );
     expect(screen.getByTestId("contraction-timer-elapsed")).toBeTruthy();
 
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
 
     await waitFor(() => {
       expect(storage.writeContractionSession).toHaveBeenCalledWith(
@@ -177,7 +177,7 @@ describe("ContractionTimerScreen", () => {
         entry(new Date(NOW.getTime() - 5 * 60_000).toISOString(), 50),
       ],
     });
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         listContractionSessions: jest.fn().mockResolvedValue([seeded]),
@@ -194,7 +194,7 @@ describe("ContractionTimerScreen", () => {
   });
 
   it("renders the calmer (non-prominent) education presentation without a matching 5-1-1 pattern", async () => {
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
@@ -214,7 +214,7 @@ describe("ContractionTimerScreen", () => {
       startedAt: new Date(termNow.getTime() - 65 * 60_000).toISOString(),
       contractions: build511MatchingContractions(termNow),
     });
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         listContractionSessions: jest.fn().mockResolvedValue([matching]),
@@ -230,14 +230,14 @@ describe("ContractionTimerScreen", () => {
   });
 
   it("navigates to the end-of-pregnancy birth hand-off from the 'I gave birth' button", async () => {
-    renderScreen(
+    await renderScreen(
       createLocalAppStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       }),
     );
 
     const cta = await screen.findByTestId("contraction-timer-birth-cta");
-    fireEvent.press(cta);
+    await fireEvent.press(cta);
     expect(mockPush).toHaveBeenCalledWith("/pregnancy-end?reason=birth");
   });
 
@@ -251,10 +251,10 @@ describe("ContractionTimerScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       listContractionSessions: jest.fn().mockResolvedValue([seeded]),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
     await screen.findByTestId(`contraction-timer-row-${NOW.toISOString()}`);
-    fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
+    await fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
 
     await waitFor(() => {
       expect(mockOpenConfirmation).toHaveBeenCalled();
@@ -273,10 +273,10 @@ describe("ContractionTimerScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       listContractionSessions: jest.fn().mockResolvedValue([seeded]),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
     await screen.findByTestId(`contraction-timer-row-${NOW.toISOString()}`);
-    fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
+    await fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
 
     await waitFor(() => {
       expect(storage.deleteContractionSession).toHaveBeenCalledWith("contraction_discard");
@@ -295,10 +295,10 @@ describe("ContractionTimerScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       listContractionSessions: jest.fn().mockResolvedValue([seeded]),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
     await screen.findByTestId(`contraction-timer-row-${NOW.toISOString()}`);
-    fireEvent.press(screen.getByTestId("contraction-timer-finish-button"));
+    await fireEvent.press(screen.getByTestId("contraction-timer-finish-button"));
 
     expect(storage.deleteContractionSession).not.toHaveBeenCalled();
     await waitFor(() => {
@@ -321,10 +321,10 @@ describe("ContractionTimerScreen", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       listContractionSessions: jest.fn().mockResolvedValue([past]),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
     const deleteButton = await screen.findByTestId("contraction-timer-history-delete-contraction_past");
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
 
     await waitFor(() => {
       expect(storage.deleteContractionSession).toHaveBeenCalledWith("contraction_past");
@@ -333,7 +333,7 @@ describe("ContractionTimerScreen", () => {
 
   describe("GA-aware contraction education (CHANGE 1)", () => {
     it("shows the preterm notice before week 37", async () => {
-      renderScreen(
+      await renderScreen(
         createLocalAppStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         }),
@@ -347,7 +347,7 @@ describe("ContractionTimerScreen", () => {
     });
 
     it("shows the routine 5-1-1 guideline from week 37", async () => {
-      renderScreen(
+      await renderScreen(
         createLocalAppStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         }),
@@ -363,7 +363,7 @@ describe("ContractionTimerScreen", () => {
 
   describe("birth CTA visibility (CHANGE 2, week-20 loss-taxonomy gate)", () => {
     it("hides the birth CTA at 19+6", async () => {
-      renderScreen(
+      await renderScreen(
         createLocalAppStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         }),
@@ -376,7 +376,7 @@ describe("ContractionTimerScreen", () => {
     });
 
     it("shows the birth CTA at 20+0", async () => {
-      renderScreen(
+      await renderScreen(
         createLocalAppStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         }),
@@ -387,7 +387,7 @@ describe("ContractionTimerScreen", () => {
     });
 
     it("keeps the birth CTA visible at week 38, unchanged", async () => {
-      renderScreen(
+      await renderScreen(
         createLocalAppStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
         }),
@@ -415,18 +415,18 @@ describe("failure paths", () => {
       ]),
       deleteContractionSession: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
-    fireEvent.press(await screen.findByTestId("contraction-timer-toggle-button"));
-    fireEvent.press(screen.getByTestId("contraction-timer-toggle-button"));
-    fireEvent.press(screen.getByTestId("contraction-timer-finish-button"));
+    await fireEvent.press(await screen.findByTestId("contraction-timer-toggle-button"));
+    await fireEvent.press(screen.getByTestId("contraction-timer-toggle-button"));
     expect(
       await screen.findByText(
         getContractionTimerCopy("en").counter.saveFailedStatus,
       ),
     ).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("contraction-timer-finish-button"));
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("contraction-timer-history-delete-contraction_hist"),
     );
     expect(
@@ -451,18 +451,18 @@ describe("failure paths", () => {
           },
         ]),
       });
-      renderScreen(storage);
+      await renderScreen(storage);
 
-      fireEvent.press(await screen.findByTestId("contraction-timer-finish-button"));
-      fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
+      await fireEvent.press(await screen.findByTestId("contraction-timer-finish-button"));
+      await fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
 
-      fireEvent.press(screen.getByTestId("contraction-timer-toggle-button"));
+      await fireEvent.press(screen.getByTestId("contraction-timer-toggle-button"));
       await act(async () => {
         jest.advanceTimersByTime(31_000);
       });
 
-      fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
-      fireEvent.press(
+      await fireEvent.press(screen.getByTestId("contraction-timer-discard-button"));
+      await fireEvent.press(
         screen.getByTestId("contraction-timer-history-delete-contraction_hist"),
       );
       await act(async () => {});
@@ -484,17 +484,19 @@ describe("failure paths", () => {
     });
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const view = renderScreen(storage);
+    const view = await renderScreen(storage);
     // The load is genuinely mid-flight: the read was issued and left pending.
     expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolvePregnancy(activeRecord());
     await act(async () => {});
 
     // The load resolves onto a torn-down tree: nothing is rendered and React
     // reports no error.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
@@ -517,11 +519,11 @@ describe("failure paths", () => {
       readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
       listContractionSessions: jest.fn().mockResolvedValue([seeded]),
     });
-    renderScreen(storage, realNow);
+    await renderScreen(storage, realNow);
 
     const toggle = await screen.findByTestId("contraction-timer-toggle-button");
-    fireEvent.press(toggle);
-    fireEvent.press(toggle);
+    await fireEvent.press(toggle);
+    await fireEvent.press(toggle);
 
     await waitFor(() => {
       expect(storage.writeContractionSession).toHaveBeenCalledWith(
@@ -546,9 +548,9 @@ describe("failure paths", () => {
       listContractionSessions: jest.fn().mockResolvedValue([seeded]),
       deleteContractionSession: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderScreen(storage);
+    await renderScreen(storage);
 
-    fireEvent.press(await screen.findByTestId("contraction-timer-discard-button"));
+    await fireEvent.press(await screen.findByTestId("contraction-timer-discard-button"));
 
     expect(
       await screen.findByText(
@@ -558,7 +560,7 @@ describe("failure paths", () => {
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <ContractionTimerScreen />
       </AppPreferencesTestProvider>,

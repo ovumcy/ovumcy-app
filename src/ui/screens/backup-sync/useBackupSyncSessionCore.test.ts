@@ -39,7 +39,7 @@ jest.mock("expo-router", () => {
   };
 });
 
-jest.mock("@react-navigation/native", () => {
+jest.mock("expo-router/react-navigation", () => {
   return {
     useNavigation: () => ({ dispatch: mockNavigationDispatch }),
   };
@@ -90,7 +90,7 @@ describe("useBackupSyncSessionCore", () => {
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
 
@@ -108,7 +108,7 @@ describe("useBackupSyncSessionCore", () => {
         await Promise.resolve();
         await Promise.resolve();
       });
-      unmount();
+      await unmount();
     });
 
     it("treats an empty array as no token at all (nullish fallback)", async () => {
@@ -116,7 +116,7 @@ describe("useBackupSyncSessionCore", () => {
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
 
@@ -129,7 +129,7 @@ describe("useBackupSyncSessionCore", () => {
 
       expect(mockReplace).not.toHaveBeenCalledWith("/backup-sync");
       expect(readManagedPartnerInviteToken()).toBe("");
-      unmount();
+      await unmount();
     });
   });
 
@@ -145,7 +145,7 @@ describe("useBackupSyncSessionCore", () => {
       const syncSecretStore = createSyncSecretStoreMock();
       const before = Date.now();
 
-      const { result, unmount } = renderHook(() =>
+      const { result, unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore }),
       );
 
@@ -156,7 +156,7 @@ describe("useBackupSyncSessionCore", () => {
 
       // Both defaults are read synchronously off the initializer -- no need
       // for the background focus-load to settle before tearing down.
-      unmount();
+      await unmount();
       await act(async () => {
         await Promise.resolve();
       });
@@ -166,14 +166,14 @@ describe("useBackupSyncSessionCore", () => {
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      const { result, unmount } = renderHook(() =>
+      const { result, unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
 
       expect(result.current.exportDeliveryClient).toBeTruthy();
       expect(typeof result.current.exportDeliveryClient.deliver).toBe("function");
 
-      unmount();
+      await unmount();
       await act(async () => {
         await Promise.resolve();
       });
@@ -201,10 +201,10 @@ describe("useBackupSyncSessionCore", () => {
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
-      unmount();
+      await unmount();
 
       await act(async () => {
         deferred.resolve(false);
@@ -238,7 +238,7 @@ describe("useBackupSyncSessionCore", () => {
       // loadSyncSetupState instead of short-circuiting past it.
       mockSearchParams = {};
 
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
 
@@ -246,7 +246,7 @@ describe("useBackupSyncSessionCore", () => {
       // before tearing down -- unmounting any earlier would only re-exercise
       // the readHasCompletedOnboarding guard above, not this one.
       await waitFor(() => expect(loadSyncSetupSpy).toHaveBeenCalled());
-      unmount();
+      await unmount();
 
       await act(async () => {
         deferred.resolve({
@@ -275,7 +275,7 @@ describe("useBackupSyncSessionCore", () => {
         "readDismissedBillingOfferIDs",
       );
 
-      const { unmount } = renderHook(() =>
+      const { unmount } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
 
@@ -283,7 +283,7 @@ describe("useBackupSyncSessionCore", () => {
       // before tearing down -- unmounting any earlier would only re-exercise
       // an upstream guard, not this one.
       await waitFor(() => expect(loadSettingsSpy).toHaveBeenCalled());
-      unmount();
+      await unmount();
 
       await act(async () => {
         deferred.resolve(createLoadedSettingsStateFixture());
@@ -309,7 +309,7 @@ describe("useBackupSyncSessionCore", () => {
       });
       const storageGen2 = createSettingsStorageMock();
 
-      const { result, rerender } = renderHook(
+      const { result, rerender } = await renderHook(
         ({ storage }: { storage: LocalAppStorage }) =>
           useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
         { initialProps: { storage: storageGen1 } },
@@ -328,7 +328,7 @@ describe("useBackupSyncSessionCore", () => {
       // marks generation 1's closure unmounted, and generation 2 (fast
       // defaults) starts fresh and settles completely.
       await act(async () => {
-        rerender({ storage: storageGen2 });
+        await rerender({ storage: storageGen2 });
         await Promise.resolve();
         await Promise.resolve();
         await Promise.resolve();
@@ -360,18 +360,18 @@ describe("useBackupSyncSessionCore", () => {
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
 
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
       expect(result.current.state).toBeNull();
 
-      act(() => {
+      await act(() => {
         result.current.setErrorState({ code: "generic", scope: "local" });
         result.current.setAccountStatusMessage("stale status");
       });
       expect(result.current.errorState).not.toBeNull();
 
-      act(() => {
+      await act(() => {
         result.current.revertUnsavedSync();
       });
 
@@ -396,7 +396,7 @@ describe("useBackupSyncSessionCore", () => {
     async function renderLoadedCore(storageOverrides: Partial<LocalAppStorage> = {}) {
       const storage = createSettingsStorageMock(storageOverrides);
       const syncSecretStore = createSyncSecretStoreMock();
-      const rendered = renderHook(() =>
+      const rendered = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
       await act(async () => {
@@ -414,7 +414,7 @@ describe("useBackupSyncSessionCore", () => {
       const saveSpy = jest.spyOn(backupSyncScreenService, "saveBackupSyncDraft");
       const storage = createSettingsStorageMock();
       const syncSecretStore = createSyncSecretStoreMock();
-      const { result } = renderHook(() =>
+      const { result } = await renderHook(() =>
         useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
       );
       expect(result.current.state).toBeNull();
@@ -458,7 +458,7 @@ describe("useBackupSyncSessionCore", () => {
       expect(result.current.state).toEqual(dirtyState);
 
       let savePromise!: Promise<unknown>;
-      act(() => {
+      await act(() => {
         savePromise = result.current.saveSyncDraftIfNeeded("sync");
       });
       // setIsSavingSyncDraft(true) runs synchronously before the awaited

@@ -4,8 +4,8 @@ import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvide
 import { PremiumLockCard } from "./PremiumLockCard";
 
 describe("PremiumLockCard", () => {
-  it("renders the eyebrow, title, description and CTA", () => {
-    render(
+  it("renders the eyebrow, title, description and CTA", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <PremiumLockCard
           ctaLabel="Open Ovumcy Cloud"
@@ -30,9 +30,9 @@ describe("PremiumLockCard", () => {
     );
   });
 
-  it("calls onPress when pressed", () => {
+  it("calls onPress when pressed", async () => {
     const onPress = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <PremiumLockCard
           ctaLabel="Open"
@@ -45,12 +45,12 @@ describe("PremiumLockCard", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("lock"));
+    await fireEvent.press(screen.getByTestId("lock"));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it("stays informational when a label is supplied without a handler", () => {
-    render(
+  it("stays informational when a label is supplied without a handler", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <PremiumLockCard
           ctaLabel="Unlock pregnancy mode"
@@ -68,8 +68,8 @@ describe("PremiumLockCard", () => {
     expect(screen.getByTestId("lock").props.accessibilityRole).toBeUndefined();
   });
 
-  it("renders without a CTA when neither ctaLabel nor onPress are passed", () => {
-    render(
+  it("renders without a CTA when neither ctaLabel nor onPress are passed", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <PremiumLockCard
           description="Info only."

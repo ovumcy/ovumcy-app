@@ -72,7 +72,7 @@ describe("StatsScreen", () => {
   it("renders the empty-state hero until two completed cycles exist", async () => {
     const storage = createStorageMock();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
@@ -91,7 +91,7 @@ describe("StatsScreen", () => {
   it("renders the persistent not-medical-advice prediction disclaimer in the empty state (web parity)", async () => {
     const storage = createStorageMock();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
@@ -109,7 +109,7 @@ describe("StatsScreen", () => {
   it("routes back to logging from the empty-state CTA", async () => {
     const storage = createStorageMock();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 17)}
@@ -119,7 +119,7 @@ describe("StatsScreen", () => {
     );
 
     await screen.findByTestId("stats-empty-primary-action");
-    fireEvent.press(screen.getByTestId("stats-empty-primary-action"));
+    await fireEvent.press(screen.getByTestId("stats-empty-primary-action"));
 
     await waitFor(() =>
       expect(mockPush).toHaveBeenCalledWith("/(tabs)/dashboard"),
@@ -217,7 +217,7 @@ describe("StatsScreen", () => {
       ]),
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 23)}
@@ -407,7 +407,7 @@ describe("StatsScreen", () => {
       ]),
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 3, 4)}
@@ -470,7 +470,7 @@ describe("StatsScreen", () => {
       ]),
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen
           now={new Date(2026, 2, 8)}
@@ -512,7 +512,7 @@ describe("StatsScreen", () => {
       ]),
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen now={new Date(2026, 2, 8)} storage={storage} />
       </AppPreferencesTestProvider>,
@@ -522,7 +522,7 @@ describe("StatsScreen", () => {
     expect(screen.getByTestId("stats-advanced-fertility-lock")).toBeTruthy();
     expect(screen.getByTestId("stats-extended-reports-lock")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("stats-extended-reports-lock"));
+    await fireEvent.press(screen.getByTestId("stats-extended-reports-lock"));
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/backup-sync"));
   });
@@ -556,7 +556,7 @@ describe("StatsScreen", () => {
       ]),
     });
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <StatsScreen now={new Date(2026, 2, 8)} storage={storage} />
       </AppPreferencesTestProvider>,

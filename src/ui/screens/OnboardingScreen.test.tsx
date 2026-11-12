@@ -45,13 +45,13 @@ function createState(
   };
 }
 
-function renderFlow(
+async function renderFlow(
   state: LoadedOnboardingState,
   overrides?: Partial<ComponentProps<typeof OnboardingFlowScreen>>,
 ) {
   const now = new Date(2026, 2, 17);
 
-  return render(
+  return await render(
     <OnboardingFlowScreen
       guidance={buildCycleGuidanceState(
         state.stepTwoValues.cycleLength,
@@ -87,8 +87,8 @@ function renderFlow(
 }
 
 describe("OnboardingFlowScreen", () => {
-  it("renders the step 1 onboarding copy and quick picks", () => {
-    renderFlow(createState());
+  it("renders the step 1 onboarding copy and quick picks", async () => {
+    await renderFlow(createState());
 
     expect(screen.getByText("When did your last period start?")).toBeTruthy();
     expect(screen.getByText("Choose a date from the last 60 days.")).toBeTruthy();
@@ -105,9 +105,9 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.queryByTestId("onboarding-date-field-button")).toBeNull();
   });
 
-  it("states the local-first privacy posture before the first date is saved", () => {
+  it("states the local-first privacy posture before the first date is saved", async () => {
     const onOpenPrivacyNotice = jest.fn();
-    renderFlow(createState(), { onOpenPrivacyNotice });
+    await renderFlow(createState(), { onOpenPrivacyNotice });
 
     expect(
       screen.getByText(
@@ -115,18 +115,18 @@ describe("OnboardingFlowScreen", () => {
       ),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
+    await fireEvent.press(screen.getByTestId("onboarding-privacy-notice-link"));
 
     expect(onOpenPrivacyNotice).toHaveBeenCalledTimes(1);
   });
 
 
-  it("uses quick day options as the only step 1 date selection path", () => {
+  it("uses quick day options as the only step 1 date selection path", async () => {
     const onDateSelected = jest.fn();
     const state = createState();
     const now = new Date(2026, 2, 17);
 
-    render(
+    await render(
       <OnboardingFlowScreen
         guidance={buildCycleGuidanceState(
           state.stepTwoValues.cycleLength,
@@ -159,13 +159,13 @@ describe("OnboardingFlowScreen", () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-16"));
+    await fireEvent.press(screen.getByTestId("onboarding-day-option-2026-03-16"));
 
     expect(onDateSelected).toHaveBeenCalledWith("2026-03-16");
   });
 
-  it("keeps the step 1 progress label when returning with a saved date", () => {
-    renderFlow(
+  it("keeps the step 1 progress label when returning with a saved date", async () => {
+    await renderFlow(
       createState({
         record: createOnboardingRecord({
           lastPeriodStart: "2026-03-01",
@@ -179,7 +179,7 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.queryByText("Step 2 of 2")).toBeNull();
   });
 
-  it("surfaces step 2 controls and forwards primary callbacks", () => {
+  it("surfaces step 2 controls and forwards primary callbacks", async () => {
     const onCycleLengthChange = jest.fn();
     const onFinish = jest.fn();
     const onPredictionModeSelect = jest.fn();
@@ -192,7 +192,7 @@ describe("OnboardingFlowScreen", () => {
     });
     const now = new Date(2026, 2, 17);
 
-    render(
+    await render(
       <OnboardingFlowScreen
         guidance={buildCycleGuidanceState(
           state.stepTwoValues.cycleLength,
@@ -226,47 +226,47 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.getByText("Usually irregular")).toBeTruthy();
     expect(screen.getByText("No predictions")).toBeTruthy();
 
-    fireEvent(
+    await fireEvent(
       screen.getByTestId("onboarding-cycle-length-slider"),
       "valueChange",
       35,
     );
-    fireEvent.press(screen.getByTestId("onboarding-prediction-mode-facts_only"));
-    fireEvent(screen.getByTestId("onboarding-finish-button"), "onPress");
+    await fireEvent.press(screen.getByTestId("onboarding-prediction-mode-facts_only"));
+    await fireEvent(screen.getByTestId("onboarding-finish-button"), "onPress");
 
     expect(onCycleLengthChange).toHaveBeenCalledWith(35);
     expect(onPredictionModeSelect).toHaveBeenCalledWith("facts_only");
     expect(onFinish).toHaveBeenCalled();
   });
 
-  it("lets the user dismiss the day-one helper note", () => {
+  it("lets the user dismiss the day-one helper note", async () => {
     const onDismissStepOneNotice = jest.fn();
 
-    renderFlow(createState(), { onDismissStepOneNotice });
+    await renderFlow(createState(), { onDismissStepOneNotice });
 
-    fireEvent.press(screen.getByTestId("onboarding-step-one-note-dismiss"));
+    await fireEvent.press(screen.getByTestId("onboarding-step-one-note-dismiss"));
 
     expect(onDismissStepOneNotice).toHaveBeenCalled();
   });
 
-  it("lets the user dismiss a step-one error banner", () => {
-    renderFlow(createState(), {
+  it("lets the user dismiss a step-one error banner", async () => {
+    await renderFlow(createState(), {
       stepOneError: "Failed to save onboarding data. Please try again.",
       stepOneNotice: null,
     });
 
-    fireEvent.press(screen.getByTestId("onboarding-step-one-error-dismiss"));
+    await fireEvent.press(screen.getByTestId("onboarding-step-one-error-dismiss"));
 
     expect(
       screen.queryByText("Failed to save onboarding data. Please try again."),
     ).toBeNull();
   });
 
-  it("shows long-cycle and long-period guidance hints together", () => {
+  it("shows long-cycle and long-period guidance hints together", async () => {
     const now = new Date(2026, 2, 17);
     const record = createOnboardingRecord({ lastPeriodStart: "2026-03-17" });
 
-    renderFlow(
+    await renderFlow(
       createState({
         record,
         selectedDate: "2026-03-17",
@@ -288,11 +288,11 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.queryByText(viewData.stepTwo.messages.infoCycleShort)).toBeNull();
   });
 
-  it("shows the short-cycle guidance hint", () => {
+  it("shows the short-cycle guidance hint", async () => {
     const now = new Date(2026, 2, 17);
     const record = createOnboardingRecord({ lastPeriodStart: "2026-03-17" });
 
-    renderFlow(
+    await renderFlow(
       createState({
         record,
         selectedDate: "2026-03-17",
@@ -313,8 +313,8 @@ describe("OnboardingFlowScreen", () => {
     expect(screen.queryByText(viewData.stepTwo.messages.infoCycleLong)).toBeNull();
   });
 
-  it("announces the step title as a header and the progress as a progress bar", () => {
-    renderFlow(createState());
+  it("announces the step title as a header and the progress as a progress bar", async () => {
+    await renderFlow(createState());
 
     expect(
       screen.getByRole("header", {
@@ -332,8 +332,8 @@ describe("OnboardingFlowScreen", () => {
     });
   });
 
-  it("names every step 2 choice group so a radio says which question it answers", () => {
-    renderFlow(
+  it("names every step 2 choice group so a radio says which question it answers", async () => {
+    await renderFlow(
       createState({
         record: createOnboardingRecord({ lastPeriodStart: "2026-03-17" }),
         selectedDate: "2026-03-17",
@@ -354,7 +354,7 @@ describe("OnboardingFlowScreen", () => {
     }
   });
 
-  it("keeps the heading and the progress announced on the compact phone layout", () => {
+  it("keeps the heading and the progress announced on the compact phone layout", async () => {
     // Under 430pt the flow switches to its compact type scale; the announced
     // structure must not change with the geometry.
     jest.spyOn(Dimensions, "get").mockReturnValue({
@@ -365,7 +365,7 @@ describe("OnboardingFlowScreen", () => {
     });
 
     try {
-      renderFlow(createState());
+      await renderFlow(createState());
 
       expect(
         screen.getByRole("header", {
@@ -380,8 +380,8 @@ describe("OnboardingFlowScreen", () => {
     }
   });
 
-  it("keeps step 2 actions announced with a role and a disabled state", () => {
-    renderFlow(
+  it("keeps step 2 actions announced with a role and a disabled state", async () => {
+    await renderFlow(
       createState({
         record: createOnboardingRecord({ lastPeriodStart: "2026-03-17" }),
         selectedDate: "2026-03-17",

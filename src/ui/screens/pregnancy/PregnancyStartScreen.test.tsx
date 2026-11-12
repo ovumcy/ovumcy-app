@@ -49,8 +49,8 @@ function profileWithLmp() {
   return { ...createDefaultProfileRecord(), lastPeriodStart: "2026-01-01" };
 }
 
-function renderStart(storage = createLocalAppStorageMock(), now = nowForGaDays(171)) {
-  return render(
+async function renderStart(storage = createLocalAppStorageMock(), now = nowForGaDays(171)) {
+  return await render(
     <AppPreferencesTestProvider languageOverride="en">
       <PregnancyStartScreen now={now} storage={storage} />
     </AppPreferencesTestProvider>,
@@ -70,9 +70,9 @@ describe("PregnancyStartScreen", () => {
     const storage = createLocalAppStorageMock({
       readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
     });
-    renderStart(storage);
+    await renderStart(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
 
     const input = screen.getByTestId("pregnancy-start-date-input");
     expect(input.props.value).toBe("2026-01-01");
@@ -82,10 +82,10 @@ describe("PregnancyStartScreen", () => {
     const storage = createLocalAppStorageMock({
       readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
     });
-    renderStart(storage);
+    await renderStart(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-start-basis-ultrasound"));
-    fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-basis-ultrasound"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
 
     expect(screen.getByTestId("pregnancy-start-date-input").props.value).toBe(EDD);
   });
@@ -94,9 +94,9 @@ describe("PregnancyStartScreen", () => {
     const storage = createLocalAppStorageMock({
       readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
     });
-    renderStart(storage);
+    await renderStart(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
 
     expect(screen.getByTestId("pregnancy-start-preview-ga").props.children).toBe(
       "24+3",
@@ -105,7 +105,7 @@ describe("PregnancyStartScreen", () => {
   });
 
   it("renders the pregnancy disclaimer on the wizard", async () => {
-    renderStart(
+    await renderStart(
       createLocalAppStorageMock({
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
       }),
@@ -119,11 +119,11 @@ describe("PregnancyStartScreen", () => {
       readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
       readActivePregnancy: jest.fn().mockResolvedValue(null),
     });
-    renderStart(storage);
+    await renderStart(storage);
 
-    fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-    fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-    fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
 
     await screen.findByTestId("pregnancy-start-confirm-step");
     // startPregnancy persisted the record and the container replaced to dashboard.
@@ -139,11 +139,11 @@ describe("PregnancyStartScreen", () => {
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
 
       await screen.findByTestId("pregnancy-start-confirm-step");
       expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
@@ -166,12 +166,12 @@ describe("PregnancyStartScreen", () => {
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-1"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-1"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
 
       await screen.findByTestId("pregnancy-start-confirm-step");
       const persisted = jest.mocked(storage.writePregnancyRecord).mock.calls[0]![0];
@@ -181,21 +181,21 @@ describe("PregnancyStartScreen", () => {
     });
 
     it("hides the chorionicity question until Twins/Triplets is chosen", async () => {
-      renderStart(
+      await renderStart(
         createLocalAppStorageMock({
           readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         }),
       );
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
       await screen.findByTestId("pregnancy-start-confirm-step");
 
       expect(
         screen.queryByTestId("pregnancy-start-chorionicity-group"),
       ).toBeNull();
 
-      fireEvent.press(screen.getByTestId("pregnancy-start-fetus-count-2"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-fetus-count-2"));
       expect(
         await screen.findByTestId("pregnancy-start-chorionicity-group"),
       ).toBeTruthy();
@@ -206,15 +206,15 @@ describe("PregnancyStartScreen", () => {
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-2"));
-      fireEvent.press(
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-2"));
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-start-chorionicity-mcda"),
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
 
       await screen.findByTestId("pregnancy-start-confirm-step");
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -227,12 +227,12 @@ describe("PregnancyStartScreen", () => {
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-3"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-3"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
 
       await screen.findByTestId("pregnancy-start-confirm-step");
       expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
@@ -245,16 +245,16 @@ describe("PregnancyStartScreen", () => {
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
         readActivePregnancy: jest.fn().mockResolvedValue(null),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-2"));
-      fireEvent.press(
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-fetus-count-2"));
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-start-chorionicity-dcda"),
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-fetus-count-1"));
-      fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-fetus-count-1"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-confirm-button"));
 
       await screen.findByTestId("pregnancy-start-confirm-step");
       const persisted = jest.mocked(storage.writePregnancyRecord).mock.calls[0]![0];
@@ -269,7 +269,7 @@ describe("PregnancyStartScreen", () => {
 
   it("renders the premium lock card and no form when locked", async () => {
     mockUnlocked.mockResolvedValue(false);
-    renderStart(
+    await renderStart(
       createLocalAppStorageMock({
         readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
       }),
@@ -282,39 +282,39 @@ describe("PregnancyStartScreen", () => {
 
     // Info-only until the purchase flow ships: pressing the lock never routes
     // to plan options — the module is a one-time unlock, not a subscription.
-    fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
     expect(mockPush).not.toHaveBeenCalled();
   });
 
   describe("wizard edges and failure paths", () => {
     it("validates a missing and an out-of-range date without leaving the step", async () => {
-      renderStart();
+      await renderStart();
 
       // Straight to Next with an empty date: required-date validation.
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
       expect(
         await screen.findByTestId("pregnancy-start-error"),
       ).toBeTruthy();
 
       // A far-future LMP is rejected as out of range, still on the date step.
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("pregnancy-start-date-input"),
         "2030-01-01",
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
       expect(await screen.findByTestId("pregnancy-start-error")).toBeTruthy();
       expect(screen.getByTestId("pregnancy-start-date-step")).toBeTruthy();
     });
 
     it("steps back through the wizard and leaves the screen from step one", async () => {
-      renderStart();
+      await renderStart();
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-back-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-back-button"));
       // Back from the date step lands on the basis step, where leaving is an
       // explicit cancel.
-      fireEvent.press(await screen.findByTestId("pregnancy-start-cancel-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-cancel-button"));
       expect(mockBack).toHaveBeenCalled();
     });
 
@@ -322,60 +322,60 @@ describe("PregnancyStartScreen", () => {
       const storage = createLocalAppStorageMock({
         writePregnancyRecord: jest.fn().mockRejectedValue(new Error("busy")),
       });
-      renderStart(storage);
+      await renderStart(storage);
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
-      fireEvent.changeText(
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.changeText(
         await screen.findByTestId("pregnancy-start-date-input"),
         "2026-01-01",
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
-      fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
 
       expect(await screen.findByTestId("pregnancy-start-error")).toBeTruthy();
     });
 
     it("validates missing and malformed dates on the ultrasound basis and steps back from confirm", async () => {
       const copy = getPregnancyCopy("en");
-      renderStart();
+      await renderStart();
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId("pregnancy-start-basis-ultrasound"),
       );
       expect(screen.getByText(copy.wizard.basisOptions.ultrasoundHint)).toBeTruthy();
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
 
       // Empty EDD input: the required-date validation on the non-LMP branch.
-      fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
       expect(
         await screen.findByText(copy.wizard.validation.missingDate),
       ).toBeTruthy();
 
       // Malformed input is rejected as an invalid date, still on the step.
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("pregnancy-start-date-input"),
         "not-a-date",
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
       expect(
         await screen.findByText(copy.wizard.validation.invalidDate),
       ).toBeTruthy();
 
       // A valid EDD advances to confirm; Back returns to the date step.
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("pregnancy-start-date-input"),
         EDD,
       );
-      fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
       await screen.findByTestId("pregnancy-start-confirm-step");
-      fireEvent.press(screen.getByTestId("pregnancy-start-back-button"));
+      await fireEvent.press(screen.getByTestId("pregnancy-start-back-button"));
       expect(await screen.findByTestId("pregnancy-start-date-step")).toBeTruthy();
     });
 
     it("shows the manual-basis hint when the manual basis is selected", async () => {
-      renderStart();
+      await renderStart();
 
-      fireEvent.press(await screen.findByTestId("pregnancy-start-basis-manual"));
+      await fireEvent.press(await screen.findByTestId("pregnancy-start-basis-manual"));
       expect(
         screen.getByText(getPregnancyCopy("en").wizard.basisOptions.manualHint),
       ).toBeTruthy();
@@ -393,23 +393,25 @@ describe("PregnancyStartScreen", () => {
     });
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    const view = renderStart(storage);
+    const view = await renderStart(storage);
     // The load is genuinely mid-flight: the read was issued and left pending.
     expect(storage.readProfileRecord).toHaveBeenCalledTimes(1);
 
-    expect(() => view.unmount()).not.toThrow();
+    const container = view.container;
+
+    await expect(view.unmount()).resolves.toBeUndefined();
     resolveProfile(profileWithLmp());
     await act(async () => {});
 
     // The load resolves onto a torn-down tree: nothing is rendered and React
     // reports no error.
-    expect(screen.toJSON()).toBeNull();
+    expect(container.children).toHaveLength(0);
     expect(consoleErrorSpy).not.toHaveBeenCalled();
     consoleErrorSpy.mockRestore();
   });
 
   it("renders with default wiring when no storage or clock is injected", async () => {
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PregnancyStartScreen />
       </AppPreferencesTestProvider>,
@@ -473,9 +475,9 @@ describe("PregnancyStartFlowScreen direct states", () => {
     };
   }
 
-  it("renders the locked card with a CTA when a premium CTA handler is wired", () => {
+  it("renders the locked card with a CTA when a premium CTA handler is wired", async () => {
     const onPremiumCTAPress = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PregnancyStartFlowScreen
           {...flowProps()}
@@ -488,12 +490,12 @@ describe("PregnancyStartFlowScreen direct states", () => {
     expect(screen.getByTestId("pregnancy-start-lock-cta").props.children).toBe(
       getPregnancyCopy("en").entryCard.lockedCta,
     );
-    fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-lock"));
     expect(onPremiumCTAPress).toHaveBeenCalled();
   });
 
-  it("renders an empty confirm summary when the preview has no computed dates", () => {
-    render(
+  it("renders an empty confirm summary when the preview has no computed dates", async () => {
+    await render(
       <AppPreferencesTestProvider languageOverride="en">
         <PregnancyStartFlowScreen {...flowProps()} step={3} />
       </AppPreferencesTestProvider>,

@@ -154,13 +154,13 @@ function createStorageMock(overrides = {}) {
   });
 }
 
-function renderDashboard(
+async function renderDashboard(
   storage: ReturnType<typeof createStorageMock>,
   now = new Date(2026, 2, 17),
   languageOverride: "en" | "ru" = "en",
   autosaveDebounceMs?: number,
 ) {
-  return render(
+  return await render(
     <AppPreferencesTestProvider languageOverride={languageOverride}>
       <DashboardScreen
         now={now}
@@ -376,7 +376,7 @@ describe("DashboardScreen", () => {
   it(
     "renders settings-driven dashboard visibility like the web contract",
     async () => {
-      renderDashboard(createStorageMock());
+      await renderDashboard(createStorageMock());
 
       await screen.findByTestId("day-log-period-toggle");
 
@@ -410,7 +410,7 @@ describe("DashboardScreen", () => {
   );
 
   it("renders the persistent not-medical-advice prediction disclaimer (web parity)", async () => {
-    renderDashboard(createStorageMock());
+    await renderDashboard(createStorageMock());
 
     const disclaimer = await screen.findByTestId(
       "dashboard-prediction-disclaimer",
@@ -421,7 +421,7 @@ describe("DashboardScreen", () => {
   });
 
   it("hides notes from the daily editor when the privacy toggle is enabled", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readProfileRecord: jest.fn().mockResolvedValue({
           lastPeriodStart: "2026-03-10",
@@ -458,7 +458,7 @@ describe("DashboardScreen", () => {
       reminders: false,
     });
 
-    renderDashboard(createStorageMock());
+    await renderDashboard(createStorageMock());
 
     await screen.findByTestId("day-log-period-toggle");
 
@@ -478,7 +478,7 @@ describe("DashboardScreen", () => {
 
     const storage = await createAdvancedFertilityStorage();
 
-    renderDashboard(storage, new Date(2026, 3, 6));
+    await renderDashboard(storage, new Date(2026, 3, 6));
 
     await screen.findByTestId("dashboard-advanced-fertility-summary");
 
@@ -518,7 +518,7 @@ describe("DashboardScreen", () => {
   it("keeps the advanced fertility summary locked without the premium entitlement", async () => {
     const storage = await createAdvancedFertilityStorage();
 
-    renderDashboard(storage, new Date(2026, 3, 3));
+    await renderDashboard(storage, new Date(2026, 3, 3));
 
     await screen.findByTestId("day-log-period-toggle");
 
@@ -526,7 +526,7 @@ describe("DashboardScreen", () => {
   });
 
   it("switches to facts-only copy when unpredictable mode is enabled", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readProfileRecord: jest.fn().mockResolvedValue({
           lastPeriodStart: "2026-03-10",
@@ -564,7 +564,7 @@ describe("DashboardScreen", () => {
   });
 
   it("renders custom symptom options from the shared symptom catalog", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         listSymptomRecords: jest.fn().mockResolvedValue([
           ...createDefaultSymptomRecords(),
@@ -591,7 +591,7 @@ describe("DashboardScreen", () => {
       screen.getByTestId("day-log-more-symptoms-button").props.accessibilityState,
     ).toEqual(expect.objectContaining({ expanded: false }));
 
-    fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
+    await fireEvent.press(screen.getByTestId("day-log-more-symptoms-button"));
 
     expect(screen.getByText("Jaw pain")).toBeTruthy();
     expect(
@@ -600,7 +600,7 @@ describe("DashboardScreen", () => {
   });
 
   it("shows localized builtin symptom labels in the daily log", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readProfileRecord: jest.fn().mockResolvedValue({
           lastPeriodStart: "2026-03-10",
@@ -644,33 +644,33 @@ describe("DashboardScreen", () => {
   });
 
   it("shows quick actions and reveals flow controls when period is toggled from the shortcut", async () => {
-    renderDashboard(createStorageMock());
+    await renderDashboard(createStorageMock());
 
     await screen.findByTestId("dashboard-quick-action-period");
     expect(screen.getByTestId("dashboard-quick-actions-title")).toBeTruthy();
     expect(screen.getByTestId("dashboard-manual-cycle-start-button")).toBeTruthy();
     expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
     expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
   });
 
   it("clears temporary quick action highlight state after the timeout window", async () => {
-    renderDashboard(createStorageMock());
+    await renderDashboard(createStorageMock());
 
     await screen.findByTestId("dashboard-quick-action-mood");
     jest.useFakeTimers();
 
     const moodAction = screen.getByTestId("dashboard-quick-action-mood");
 
-    fireEvent.press(moodAction);
+    await fireEvent.press(moodAction);
 
     expect(screen.getByTestId("dashboard-quick-action-mood").props.accessibilityState).toEqual(
       expect.objectContaining({ selected: true }),
     );
 
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(1500);
     });
 
@@ -680,11 +680,11 @@ describe("DashboardScreen", () => {
   });
 
   it("clears an unsaved dashboard draft back to the empty day state", async () => {
-    renderDashboard(createStorageMock());
+    await renderDashboard(createStorageMock());
 
     await screen.findByTestId("dashboard-quick-action-period");
 
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-delete-button")).toBeTruthy(),
@@ -693,7 +693,7 @@ describe("DashboardScreen", () => {
       expect.objectContaining({ checked: true }),
     );
 
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
@@ -723,11 +723,11 @@ describe("DashboardScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
+    await renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
 
     await screen.findByTestId("day-log-period-toggle");
 
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
     await waitFor(() =>
       expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
@@ -760,10 +760,10 @@ describe("DashboardScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
+    await renderDashboard(storage, new Date(2026, 2, 17), "en", 1);
 
     await screen.findByTestId("day-log-period-toggle");
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
     expect(screen.queryByTestId("day-log-save-button")).toBeNull();
 
     await waitFor(() =>
@@ -797,12 +797,12 @@ describe("DashboardScreen", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
-    const view = renderDashboard(storage, new Date(2026, 2, 17), "en", 1000);
+    const view = await renderDashboard(storage, new Date(2026, 2, 17), "en", 1000);
 
     await screen.findByTestId("day-log-period-toggle");
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
-    view.unmount();
+    await view.unmount();
 
     await waitFor(async () =>
       expect(await storage.readDayLogRecord("2026-03-17")).toEqual(
@@ -817,10 +817,10 @@ describe("DashboardScreen", () => {
   it("shows a success status after marking a manual cycle start", async () => {
     const storage = createStorageMock();
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("dashboard-manual-cycle-start-button");
-    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
@@ -835,11 +835,11 @@ describe("DashboardScreen", () => {
   it("cancels a manual cycle start when the owner declines the confirmation prompt", async () => {
     const storage = createStorageMock();
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("dashboard-manual-cycle-start-button");
     mockOpenConfirmation.mockResolvedValueOnce(false);
-    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     expect(storage.writeProfileRecord).not.toHaveBeenCalledWith(
@@ -851,10 +851,10 @@ describe("DashboardScreen", () => {
     const storage = createStorageMock();
     storage.writeProfileRecord = jest.fn().mockRejectedValue(new Error("boom"));
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("dashboard-manual-cycle-start-button");
-    fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
+    await fireEvent.press(screen.getByTestId("dashboard-manual-cycle-start-button"));
 
     expect(
       await screen.findByText(
@@ -874,11 +874,11 @@ describe("DashboardScreen", () => {
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([persistedToday]),
     });
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("day-log-delete-button");
     mockOpenConfirmation.mockResolvedValueOnce(false);
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(1));
     expect(storage.deleteDayLogRecord).not.toHaveBeenCalled();
@@ -899,10 +899,10 @@ describe("DashboardScreen", () => {
       deleteDayLogRecord: jest.fn().mockRejectedValue(new Error("boom")),
     });
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("day-log-delete-button");
-    fireEvent.press(screen.getByTestId("day-log-delete-button"));
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
 
     expect(
       await screen.findByText("Unable to clear this entry. Please try again."),
@@ -919,7 +919,7 @@ describe("DashboardScreen", () => {
       ]),
     });
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await waitFor(() =>
       expect(screen.getByTestId("dashboard-prediction-explanation")).toBeTruthy(),
@@ -936,7 +936,7 @@ describe("DashboardScreen", () => {
     ).toBeNull();
 
     // The pause never blocks logging today's entry.
-    fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+    await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
     expect(screen.getByTestId("day-log-flow-none")).toBeTruthy();
   });
 
@@ -963,7 +963,7 @@ describe("DashboardScreen", () => {
     // 2026-03-15 is 73 raw days past the 2026-01-01 anchor — well past the
     // 28-day cycle length with no new period logged, so the projection
     // reports stale cycle data.
-    renderDashboard(storage, new Date(2026, 2, 15));
+    await renderDashboard(storage, new Date(2026, 2, 15));
 
     await screen.findByTestId("day-log-period-toggle");
 
@@ -981,7 +981,7 @@ describe("DashboardScreen", () => {
   it("announces the day-logging surface: headers, named quick actions, and grouped phase cards", async () => {
     const storage = createStorageMock();
 
-    renderDashboard(storage);
+    await renderDashboard(storage);
 
     await screen.findByTestId("day-log-period-toggle");
 
@@ -1018,7 +1018,7 @@ describe("DashboardScreen", () => {
 
   it("renders the locked pregnancy entry card as information only, with no subscription route", async () => {
     mockLoadPregnancyModuleOwned.mockResolvedValue(false);
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         listDayLogRecordsInRange: jest
           .fn()
@@ -1049,7 +1049,7 @@ describe("DashboardScreen", () => {
 
   it("navigates to pregnancy setup from the unlocked entry card", async () => {
     mockLoadPregnancyModuleOwned.mockResolvedValue(true);
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         listDayLogRecordsInRange: jest
           .fn()
@@ -1061,12 +1061,12 @@ describe("DashboardScreen", () => {
     const cta = await screen.findByTestId("dashboard-pregnancy-entry-card-cta");
     expect(cta).toBeTruthy();
 
-    fireEvent.press(cta);
+    await fireEvent.press(cta);
     expect(mockPush).toHaveBeenCalledWith("/pregnancy-start");
   });
 
   it("renders the pregnancy dashboard hero and disclaimer, suppressing the cycle hero", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1092,7 +1092,7 @@ describe("DashboardScreen", () => {
 
   describe("baby this week", () => {
     it("renders the card directly below the hero with the current week's size and development content", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1123,7 +1123,7 @@ describe("DashboardScreen", () => {
     });
 
     it("shows the catalog's multiples note for a twins pregnancy", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1148,7 +1148,7 @@ describe("DashboardScreen", () => {
 
   describe("multiples: dashboard multiplesCard", () => {
     it("hides the multiples card for a singleton pregnancy", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1169,7 +1169,7 @@ describe("DashboardScreen", () => {
     });
 
     it("shows the base multiples card (below the hero) for twins with dcda chorionicity, no monochorionic line", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1191,7 +1191,7 @@ describe("DashboardScreen", () => {
     });
 
     it("shows the monochorionic extra line for twins with mcda chorionicity", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1213,7 +1213,7 @@ describe("DashboardScreen", () => {
   });
 
   it("surfaces the 'I gave birth' CTA from week 37 (term) and navigates to the end flow", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1228,12 +1228,12 @@ describe("DashboardScreen", () => {
     );
 
     const cta = await screen.findByTestId("dashboard-pregnancy-birth-cta");
-    fireEvent.press(cta);
+    await fireEvent.press(cta);
     expect(mockPush).toHaveBeenCalledWith("/pregnancy-end?reason=birth");
   });
 
   it("hides the birth CTA before week 37 but always shows the manage link", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1252,12 +1252,12 @@ describe("DashboardScreen", () => {
     const link = await screen.findByTestId("dashboard-pregnancy-manage-link");
     expect(screen.queryByTestId("dashboard-pregnancy-birth-cta")).toBeNull();
 
-    fireEvent.press(link);
+    await fireEvent.press(link);
     expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
   });
 
   it("navigates to the kick counter from the kick teaser card at week 28+", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1272,12 +1272,12 @@ describe("DashboardScreen", () => {
     );
 
     const teaser = await screen.findByTestId("dashboard-pregnancy-kick-teaser");
-    fireEvent.press(teaser);
+    await fireEvent.press(teaser);
     expect(mockPush).toHaveBeenCalledWith("/kick-counter");
   });
 
   it("hides the kick teaser card before week 28", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1296,7 +1296,7 @@ describe("DashboardScreen", () => {
   });
 
   it("renders the contraction-timer card and navigates to it, subdued outside the third trimester", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1311,12 +1311,12 @@ describe("DashboardScreen", () => {
     );
 
     const card = await screen.findByTestId("dashboard-pregnancy-contraction-timer");
-    fireEvent.press(card);
+    await fireEvent.press(card);
     expect(mockPush).toHaveBeenCalledWith("/contraction-timer");
   });
 
   it("renders the contraction-timer card prominently from the third trimester", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1331,7 +1331,7 @@ describe("DashboardScreen", () => {
     );
 
     const card = await screen.findByTestId("dashboard-pregnancy-contraction-timer");
-    fireEvent.press(card);
+    await fireEvent.press(card);
     expect(mockPush).toHaveBeenCalledWith("/contraction-timer");
   });
 
@@ -1349,7 +1349,7 @@ describe("DashboardScreen", () => {
       modeOfDelivery: null,
     };
     mockLoadPregnancyModuleOwned.mockResolvedValue(true);
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(null),
         listDayLogRecordsInRange: jest
@@ -1370,7 +1370,7 @@ describe("DashboardScreen", () => {
   });
 
   it("shows a stale-pregnancy card instead of the pregnancy dashboard when the EDD passed well beyond the trackable window", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1392,7 +1392,7 @@ describe("DashboardScreen", () => {
   });
 
   it("navigates to manage pregnancy tracking from the stale-pregnancy card's CTA", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1407,12 +1407,12 @@ describe("DashboardScreen", () => {
     );
 
     const cta = await screen.findByTestId("dashboard-pregnancy-stale-card-cta");
-    fireEvent.press(cta);
+    await fireEvent.press(cta);
     expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
   });
 
   it("does not show a stale-pregnancy card for a normal in-window pregnancy", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePregnancy: jest.fn().mockResolvedValue(
           createPregnancyRecord({
@@ -1432,7 +1432,7 @@ describe("DashboardScreen", () => {
 
   describe("red flags", () => {
     it("renders the pregnancy red-flags section collapsed by default, expands to show items, and hides reduced_movements before week 28", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1457,7 +1457,7 @@ describe("DashboardScreen", () => {
           .props.accessibilityState,
       ).toEqual(expect.objectContaining({ expanded: false }));
 
-      fireEvent.press(toggle);
+      await fireEvent.press(toggle);
 
       expect(
         await screen.findByTestId("dashboard-pregnancy-red-flags-expanded"),
@@ -1475,7 +1475,7 @@ describe("DashboardScreen", () => {
     });
 
     it("renders the postpartum red-flags section collapsed by default and expands to show all eight items incl. the psychosis escalation", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({
@@ -1493,7 +1493,7 @@ describe("DashboardScreen", () => {
         screen.queryByTestId("dashboard-postpartum-red-flags-expanded"),
       ).toBeNull();
 
-      fireEvent.press(toggle);
+      await fireEvent.press(toggle);
 
       expect(
         await screen.findByTestId("dashboard-postpartum-red-flags-expanded"),
@@ -1515,7 +1515,7 @@ describe("DashboardScreen", () => {
     // Default dashboard now is 2026-03-17; a birth on 2026-03-03 is 14 days
     // (2+0 weeks) ago -> early phase, well inside the trackable window.
     it("renders the postpartum dashboard above the still-visible cycle sections", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({
@@ -1547,7 +1547,7 @@ describe("DashboardScreen", () => {
     // coverage lives in postpartum-mode-service.test.ts; this
     // pins the mode-of-delivery-aware body reaching the rendered screen.
     it("resolves a mode-of-delivery-aware recovery body for a cesarean birth, but not a vaginal one", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({
@@ -1561,9 +1561,9 @@ describe("DashboardScreen", () => {
       await screen.findByTestId("dashboard-postpartum-mode");
       expect(screen.getByText(/abdominal surgery/)).toBeTruthy();
 
-      screen.unmount();
+      await screen.unmount();
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({
@@ -1584,7 +1584,7 @@ describe("DashboardScreen", () => {
       // returns locked; the record must still render, and the unlock selector
       // must not even be called for a rendered record.
       mockLoadPregnancyModuleOwned.mockResolvedValue(false);
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({ startedAt: "2026-03-03" }),
@@ -1599,7 +1599,7 @@ describe("DashboardScreen", () => {
     });
 
     it("gives an active pregnancy precedence over a stray active postpartum", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePregnancy: jest.fn().mockResolvedValue(
             createPregnancyRecord({
@@ -1621,7 +1621,7 @@ describe("DashboardScreen", () => {
     });
 
     it("shows a stale-postpartum card past the 26-week window and navigates to manage", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({ startedAt: "2025-06-01" }),
@@ -1633,12 +1633,12 @@ describe("DashboardScreen", () => {
       expect(screen.queryByTestId("dashboard-postpartum-mode")).toBeNull();
       // Additive: cycle sections still render underneath.
       expect(screen.getByTestId("dashboard-cycle-hero")).toBeTruthy();
-      fireEvent.press(cta);
+      await fireEvent.press(cta);
       expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
     });
 
     it("navigates to manage postpartum tracking from the dashboard manage link", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({ startedAt: "2026-03-03" }),
@@ -1647,7 +1647,7 @@ describe("DashboardScreen", () => {
       );
 
       const link = await screen.findByTestId("dashboard-postpartum-manage-link");
-      fireEvent.press(link);
+      await fireEvent.press(link);
       expect(mockPush).toHaveBeenCalledWith("/pregnancy-end");
     });
 
@@ -1655,7 +1655,7 @@ describe("DashboardScreen", () => {
       // After endPostpartum the record is "ended", so readActivePostpartum
       // resolves null and the dashboard renders plain cycle mode — no
       // postpartum hero, cards, or stale card linger.
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(null),
           listPostpartumRecords: jest.fn().mockResolvedValue([
@@ -1714,7 +1714,7 @@ describe("DashboardScreen", () => {
     }
 
     it("offer visibility matrix: shown with a cycle start after birth, hidden with one only before birth, hidden with no active postpartum", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1726,9 +1726,9 @@ describe("DashboardScreen", () => {
         }),
       );
       await screen.findByTestId("dashboard-postpartum-cycle-return-offer");
-      screen.unmount();
+      await screen.unmount();
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1745,9 +1745,9 @@ describe("DashboardScreen", () => {
       expect(
         screen.queryByTestId("dashboard-postpartum-cycle-return-offer"),
       ).toBeNull();
-      screen.unmount();
+      await screen.unmount();
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest.fn().mockResolvedValue(null),
@@ -1770,7 +1770,7 @@ describe("DashboardScreen", () => {
       });
       mockOpenConfirmation.mockResolvedValue(true);
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest.fn(async () => active),
@@ -1784,7 +1784,7 @@ describe("DashboardScreen", () => {
       const acceptButton = await screen.findByTestId(
         "dashboard-postpartum-cycle-return-offer-accept",
       );
-      fireEvent.press(acceptButton);
+      await fireEvent.press(acceptButton);
 
       await waitFor(() =>
         expect(writePostpartumRecord).toHaveBeenCalledTimes(1),
@@ -1815,7 +1815,7 @@ describe("DashboardScreen", () => {
       mockOpenConfirmation.mockResolvedValue(false);
       const writePostpartumRecord = jest.fn().mockResolvedValue(undefined);
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1831,7 +1831,7 @@ describe("DashboardScreen", () => {
       const acceptButton = await screen.findByTestId(
         "dashboard-postpartum-cycle-return-offer-accept",
       );
-      fireEvent.press(acceptButton);
+      await fireEvent.press(acceptButton);
 
       await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalled());
       expect(writePostpartumRecord).not.toHaveBeenCalled();
@@ -1843,7 +1843,7 @@ describe("DashboardScreen", () => {
 
     it('"Keep" dismisses the offer for this screen session only, without calling the service', async () => {
       const writePostpartumRecord = jest.fn().mockResolvedValue(undefined);
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1859,7 +1859,7 @@ describe("DashboardScreen", () => {
       const keepButton = await screen.findByTestId(
         "dashboard-postpartum-cycle-return-offer-keep",
       );
-      fireEvent.press(keepButton);
+      await fireEvent.press(keepButton);
 
       expect(mockOpenConfirmation).not.toHaveBeenCalled();
       expect(writePostpartumRecord).not.toHaveBeenCalled();
@@ -1871,7 +1871,7 @@ describe("DashboardScreen", () => {
     });
 
     it("LAM card is present while active with no new cycle start, and absent once a new cycle start exists", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1880,9 +1880,9 @@ describe("DashboardScreen", () => {
         }),
       );
       await screen.findByTestId("dashboard-postpartum-lam-card");
-      screen.unmount();
+      await screen.unmount();
 
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1898,7 +1898,7 @@ describe("DashboardScreen", () => {
     });
 
     it("the LAM card body states the three-conditions framing", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           ...readProfileRecordOverride(),
           readActivePostpartum: jest
@@ -1915,7 +1915,7 @@ describe("DashboardScreen", () => {
 
   describe("crisis support", () => {
     it("renders a quiet standing support-resources row that expands in place to the crisis-support card", async () => {
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({ startedAt: "2026-03-03" }),
@@ -1933,7 +1933,7 @@ describe("DashboardScreen", () => {
         ),
       ).toBeNull();
 
-      fireEvent.press(toggle);
+      await fireEvent.press(toggle);
 
       expect(
         await screen.findByTestId(
@@ -1954,7 +1954,7 @@ describe("DashboardScreen", () => {
       // selector must not even be consulted for a rendered record — yet the
       // crisis-support row must still be present. HARD RULE pin.
       mockLoadPregnancyModuleOwned.mockResolvedValue(false);
-      renderDashboard(
+      await renderDashboard(
         createStorageMock({
           readActivePostpartum: jest.fn().mockResolvedValue(
             createPostpartumRecord({ startedAt: "2026-03-03" }),
@@ -1986,9 +1986,9 @@ describe("DashboardScreen", () => {
           crisisContactPhone: "07700 900000",
         }),
       });
-      renderDashboard(storage);
+      await renderDashboard(storage);
 
-      fireEvent.press(
+      await fireEvent.press(
         await screen.findByTestId(
           "dashboard-postpartum-support-resources-toggle",
         ),
@@ -1998,19 +1998,19 @@ describe("DashboardScreen", () => {
         await screen.findByText("Your support contact: Mum — 07700 900000"),
       ).toBeTruthy();
 
-      fireEvent.press(
+      await fireEvent.press(
         screen.getByTestId("dashboard-postpartum-crisis-support-edit-button"),
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("dashboard-postpartum-crisis-support-name-input"),
         "Aunt Jo",
       );
-      fireEvent.changeText(
+      await fireEvent.changeText(
         screen.getByTestId("dashboard-postpartum-crisis-support-phone-input"),
         "0123 456",
       );
       await act(async () => {
-        fireEvent.press(
+        await fireEvent.press(
           screen.getByTestId("dashboard-postpartum-crisis-support-save-button"),
         );
         await Promise.resolve();
@@ -2028,7 +2028,7 @@ describe("DashboardScreen", () => {
 
 describe("DashboardScreen postpartum action edges", () => {
   it("routes the screening offer and history presses", async () => {
-    renderDashboard(
+    await renderDashboard(
       createStorageMock({
         readActivePostpartum: jest.fn().mockResolvedValue(
           createPostpartumRecord({ startedAt: "2026-06-01" }),
@@ -2045,9 +2045,9 @@ describe("DashboardScreen postpartum action edges", () => {
       new Date("2026-07-20T10:00:00.000Z"),
     );
 
-    fireEvent.press(await screen.findByTestId("dashboard-screening-offer-button"));
+    await fireEvent.press(await screen.findByTestId("dashboard-screening-offer-button"));
     expect(mockPush).toHaveBeenCalledWith("/postpartum-screening");
-    fireEvent.press(screen.getByTestId("dashboard-screening-history-link"));
+    await fireEvent.press(screen.getByTestId("dashboard-screening-history-link"));
     expect(mockPush).toHaveBeenCalledWith("/postpartum-screening?view=history");
   });
 
@@ -2066,9 +2066,9 @@ describe("DashboardScreen postpartum action edges", () => {
       ]),
       writePostpartumRecord: jest.fn().mockRejectedValue(new Error("busy")),
     });
-    renderDashboard(storage, new Date("2026-07-20T10:00:00.000Z"));
+    await renderDashboard(storage, new Date("2026-07-20T10:00:00.000Z"));
 
-    fireEvent.press(
+    await fireEvent.press(
       await screen.findByTestId("dashboard-postpartum-cycle-return-offer-accept"),
     );
 

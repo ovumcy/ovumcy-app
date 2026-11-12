@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation } from "expo-router/react-navigation";
 
 import { getShellCopy } from "../../../i18n/shell-copy";
 import { getPartnerCopy } from "../../../i18n/partner-copy";

@@ -70,8 +70,8 @@ function baseProps() {
 }
 
 describe("SyncAccountSecuritySection", () => {
-  it("renders all three sections in their default state", () => {
-    render(
+  it("renders all three sections in their default state", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection {...baseProps()} />
       </AppPreferencesTestProvider>,
@@ -92,9 +92,9 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.queryByTestId("account-security-forgot-cancel")).toBeNull();
   });
 
-  it("submits the change-password form via the press handler", () => {
+  it("submits the change-password form via the press handler", async () => {
     const onChangePassword = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -103,12 +103,12 @@ describe("SyncAccountSecuritySection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("account-security-change-submit"));
+    await fireEvent.press(screen.getByTestId("account-security-change-submit"));
     expect(onChangePassword).toHaveBeenCalledTimes(1);
   });
 
-  it("maps change-password error codes to localized strings", () => {
-    render(
+  it("maps change-password error codes to localized strings", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -122,8 +122,8 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
-  it("maps the client-side password_too_short code on change and reset flows", () => {
-    const { rerender } = render(
+  it("maps the client-side password_too_short code on change and reset flows", async () => {
+    const { rerender } = await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -137,7 +137,7 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
     expect(screen.getByText(copy.errors.passwordTooShort)).toBeTruthy();
 
-    rerender(
+    await rerender(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -153,8 +153,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText(copy.errors.passwordTooShort)).toBeTruthy();
   });
 
-  it("shows the success banner once change-password completes", () => {
-    render(
+  it("shows the success banner once change-password completes", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -168,8 +168,8 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
-  it("shows the success banner once TOTP enrollment completes", () => {
-    render(
+  it("shows the success banner once TOTP enrollment completes", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -185,8 +185,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText(totpCopy.enroll.successMessage)).toBeTruthy();
   });
 
-  it("shows the success banner once TOTP is disabled", () => {
-    render(
+  it("shows the success banner once TOTP is disabled", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -202,8 +202,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText(totpCopy.disable.successMessage)).toBeTruthy();
   });
 
-  it("transitions the forgot-password section to the new-password stage", () => {
-    render(
+  it("transitions the forgot-password section to the new-password stage", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -220,8 +220,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.queryByTestId("account-security-forgot-submit")).toBeNull();
   });
 
-  it("shows the reset-token expiry hint on the new-password stage when provided", () => {
-    render(
+  it("shows the reset-token expiry hint on the new-password stage when provided", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -234,8 +234,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText("Expires in 15 minutes")).toBeTruthy();
   });
 
-  it("shows the completed banner when the reset flow finishes", () => {
-    render(
+  it("shows the completed banner when the reset flow finishes", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -250,8 +250,8 @@ describe("SyncAccountSecuritySection", () => {
   });
 
   // FIX 7.1
-  it("surfaces the signed-out notice after a reset when forgotSignedOut is set", () => {
-    render(
+  it("surfaces the signed-out notice after a reset when forgotSignedOut is set", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -269,8 +269,8 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
-  it("hides the signed-out notice when forgotSignedOut is false", () => {
-    render(
+  it("hides the signed-out notice when forgotSignedOut is false", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -286,8 +286,8 @@ describe("SyncAccountSecuritySection", () => {
   });
 
   // FIX 7.2
-  it("shows the distinct rate-limited message and disables submit when a flow is rate-limited", () => {
-    render(
+  it("shows the distinct rate-limited message and disables submit when a flow is rate-limited", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -305,8 +305,8 @@ describe("SyncAccountSecuritySection", () => {
     ).toBe(true);
   });
 
-  it("maps invalid_recovery_credentials to the generic localized error", () => {
-    render(
+  it("maps invalid_recovery_credentials to the generic localized error", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -320,9 +320,9 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
-  it("opens the reveal modal when a recovery code arrives and acknowledges it", () => {
+  it("opens the reveal modal when a recovery code arrives and acknowledges it", async () => {
     const onAcknowledgeRecoveryCode = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -338,14 +338,14 @@ describe("SyncAccountSecuritySection", () => {
     );
     expect(valueNode.props.selectable).toBe(true);
 
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("account-security-recovery-code-confirm"),
     );
     expect(onAcknowledgeRecoveryCode).toHaveBeenCalledTimes(1);
   });
 
-  it("maps regenerate invalid_current_password to the localized error", () => {
-    render(
+  it("maps regenerate invalid_current_password to the localized error", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -361,9 +361,9 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("renders the TOTP enable form by default and dispatches start enrollment", () => {
+  it("renders the TOTP enable form by default and dispatches start enrollment", async () => {
     const onStartTOTPEnrollment = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -374,12 +374,12 @@ describe("SyncAccountSecuritySection", () => {
 
     expect(screen.getByTestId("account-security-totp-tab-enable")).toBeTruthy();
     expect(screen.getByTestId("account-security-totp-enroll-password")).toBeTruthy();
-    fireEvent.press(screen.getByTestId("account-security-totp-enroll-submit"));
+    await fireEvent.press(screen.getByTestId("account-security-totp-enroll-submit"));
     expect(onStartTOTPEnrollment).toHaveBeenCalledTimes(1);
   });
 
-  it("surfaces the freshly generated TOTP secret in the enrolling stage", () => {
-    render(
+  it("surfaces the freshly generated TOTP secret in the enrolling stage", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -403,9 +403,9 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByTestId("account-security-totp-verify-submit")).toBeTruthy();
   });
 
-  it("renders the disable form when the disable tab is active", () => {
+  it("renders the disable form when the disable tab is active", async () => {
     const onDisableTOTP = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -421,14 +421,14 @@ describe("SyncAccountSecuritySection", () => {
     expect(
       screen.getByTestId("account-security-totp-disable-code"),
     ).toBeTruthy();
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByTestId("account-security-totp-disable-submit"),
     );
     expect(onDisableTOTP).toHaveBeenCalledTimes(1);
   });
 
-  it("maps totp_invalid_code to the localized banner copy", () => {
-    render(
+  it("maps totp_invalid_code to the localized banner copy", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -447,8 +447,8 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
-  it("shows the enabled 2FA status banner", () => {
-    render(
+  it("shows the enabled 2FA status banner", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={true} />
       </AppPreferencesTestProvider>,
@@ -460,8 +460,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText(totpCopy.section.statusEnabled)).toBeTruthy();
   });
 
-  it("shows the disabled 2FA status banner", () => {
-    render(
+  it("shows the disabled 2FA status banner", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={false} />
       </AppPreferencesTestProvider>,
@@ -470,8 +470,8 @@ describe("SyncAccountSecuritySection", () => {
     expect(screen.getByText(totpCopy.section.statusDisabled)).toBeTruthy();
   });
 
-  it("hides the 2FA status banner when the state is unknown", () => {
-    render(
+  it("hides the 2FA status banner when the state is unknown", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection {...baseProps()} twoFactorEnabled={null} />
       </AppPreferencesTestProvider>,
@@ -482,9 +482,9 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeNull();
   });
 
-  it("dispatches onTOTPModeChange when pressing the enable/disable tabs", () => {
+  it("dispatches onTOTPModeChange when pressing the enable/disable tabs", async () => {
     const onTOTPModeChange = jest.fn();
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -493,10 +493,10 @@ describe("SyncAccountSecuritySection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.press(screen.getByTestId("account-security-totp-tab-disable"));
+    await fireEvent.press(screen.getByTestId("account-security-totp-tab-disable"));
     expect(onTOTPModeChange).toHaveBeenNthCalledWith(1, "disable");
 
-    fireEvent.press(screen.getByTestId("account-security-totp-tab-enable"));
+    await fireEvent.press(screen.getByTestId("account-security-totp-tab-enable"));
     expect(onTOTPModeChange).toHaveBeenNthCalledWith(2, "enable");
   });
 
@@ -508,8 +508,8 @@ describe("SyncAccountSecuritySection", () => {
       ["new_password_required", () => copy.errors.newPasswordRequired],
       ["new_password_must_differ", () => copy.errors.newPasswordMustDiffer],
       ["unauthorized", () => copy.errors.unauthorized],
-    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
-      render(
+    ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection {...baseProps()} changeErrorCode={errorCode} />
         </AppPreferencesTestProvider>,
@@ -518,8 +518,8 @@ describe("SyncAccountSecuritySection", () => {
       expect(screen.getByText(expected())).toBeTruthy();
     });
 
-    it("falls back to the generic message for an endpoint-policy error code", () => {
-      render(
+    it("falls back to the generic message for an endpoint-policy error code", async () => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection
             {...baseProps()}
@@ -539,8 +539,8 @@ describe("SyncAccountSecuritySection", () => {
       ["login_required", () => copy.errors.loginRequired],
       ["recovery_code_required", () => copy.errors.recoveryCodeRequired],
       ["network_failed", () => copy.errors.networkFailed],
-    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
-      render(
+    ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection {...baseProps()} forgotErrorCode={errorCode} />
         </AppPreferencesTestProvider>,
@@ -557,8 +557,8 @@ describe("SyncAccountSecuritySection", () => {
       ["reset_token_required", () => copy.errors.resetTokenRequired],
       ["invalid_reset_token", () => copy.errors.invalidResetToken],
       ["weak_new_password", () => copy.errors.weakNewPassword],
-    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
-      render(
+    ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection
             {...baseProps()}
@@ -572,8 +572,8 @@ describe("SyncAccountSecuritySection", () => {
     });
   });
 
-  it("maps regenerate not_connected to its localized copy", () => {
-    render(
+  it("maps regenerate not_connected to its localized copy", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
@@ -594,8 +594,8 @@ describe("SyncAccountSecuritySection", () => {
       ["totp_not_configured", () => totpCopy.errors.totpNotConfigured],
       ["totp_already_enabled", () => totpCopy.errors.totpAlreadyEnabled],
       ["network_failed", () => totpCopy.errors.networkFailed],
-    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
-      render(
+    ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection {...baseProps()} totpErrorCode={errorCode} />
         </AppPreferencesTestProvider>,
@@ -604,8 +604,8 @@ describe("SyncAccountSecuritySection", () => {
       expect(screen.getByText(expected())).toBeTruthy();
     });
 
-    it("falls back to the generic message for an endpoint-policy error code", () => {
-      render(
+    it("falls back to the generic message for an endpoint-policy error code", async () => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection
             {...baseProps()}
@@ -626,8 +626,8 @@ describe("SyncAccountSecuritySection", () => {
       ["totp_secret_failed", () => totpCopy.errors.totpSecretFailed],
       ["not_connected", () => totpCopy.errors.notConnected],
       ["unauthorized", () => totpCopy.errors.unauthorized],
-    ] as const)("maps %s to its localized copy", (errorCode, expected) => {
-      render(
+    ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection
             {...baseProps()}
@@ -640,8 +640,8 @@ describe("SyncAccountSecuritySection", () => {
       expect(screen.getByText(expected())).toBeTruthy();
     });
 
-    it("shows the distinct rate-limited message and disables the disable-TOTP submit", () => {
-      render(
+    it("shows the distinct rate-limited message and disables the disable-TOTP submit", async () => {
+      await render(
         <AppPreferencesTestProvider>
           <SyncAccountSecuritySection
             {...baseProps()}

@@ -81,7 +81,7 @@ describe("useBackupSyncPartnerAccess", () => {
   describe("handleIssuePartnerInvite", () => {
     it("does nothing when there is no loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleIssuePartnerInvite();
@@ -113,9 +113,9 @@ describe("useBackupSyncPartnerAccess", () => {
           inviteURL: "https://invite.ovumcy.cloud/i/abc123",
         },
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
-      act(() => {
+      await act(() => {
         result.current.setPartnerInviteAccessLevel("full");
       });
 
@@ -136,7 +136,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: false,
         errorCode: "not_connected",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleIssuePartnerInvite();
@@ -172,7 +172,7 @@ describe("useBackupSyncPartnerAccess", () => {
         },
       });
       mockStoreIssuedManagedPartnerInviteKey.mockRejectedValue(new Error("boom"));
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleIssuePartnerInvite();
@@ -208,7 +208,7 @@ describe("useBackupSyncPartnerAccess", () => {
           inviteURL: "https://invite.ovumcy.cloud/i/abc123",
         },
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleIssuePartnerInvite();
@@ -231,7 +231,7 @@ describe("useBackupSyncPartnerAccess", () => {
         state: null,
         pendingPartnerInviteToken: "invite-token",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInvite();
@@ -244,7 +244,7 @@ describe("useBackupSyncPartnerAccess", () => {
       const core = createBackupSyncSessionCoreMock({
         pendingPartnerInviteToken: "",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInvite();
@@ -261,7 +261,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: false,
         errorCode: "partner_invite_expired",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInvite();
@@ -299,7 +299,7 @@ describe("useBackupSyncPartnerAccess", () => {
         },
       });
       mockStoreAcceptedManagedPartnerGrantKey.mockRejectedValue(new Error("boom"));
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInvite();
@@ -337,7 +337,7 @@ describe("useBackupSyncPartnerAccess", () => {
           grant,
         },
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInvite();
@@ -367,7 +367,7 @@ describe("useBackupSyncPartnerAccess", () => {
       const core = createBackupSyncSessionCoreMock({
         pendingPartnerInviteToken: "",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInviteAsGuest();
@@ -384,7 +384,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: false,
         errorCode: "partner_invite_not_found",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInviteAsGuest();
@@ -409,7 +409,7 @@ describe("useBackupSyncPartnerAccess", () => {
         grant: createGrant(),
       });
       mockStoreAcceptedManagedPartnerGrantKey.mockRejectedValue(new Error("boom"));
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInviteAsGuest();
@@ -437,7 +437,7 @@ describe("useBackupSyncPartnerAccess", () => {
         state: guestState,
         grant,
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleAcceptPartnerInviteAsGuest();
@@ -471,13 +471,13 @@ describe("useBackupSyncPartnerAccess", () => {
   });
 
   describe("handleChoosePartnerSignIn", () => {
-    it("only resets partner feedback and leaves the pending invite untouched", () => {
+    it("only resets partner feedback and leaves the pending invite untouched", async () => {
       const core = createBackupSyncSessionCoreMock({
         pendingPartnerInviteToken: "invite-token",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
-      act(() => {
+      await act(() => {
         result.current.handleChoosePartnerSignIn();
       });
 
@@ -494,7 +494,7 @@ describe("useBackupSyncPartnerAccess", () => {
   describe("handleRevokePartnerInvite", () => {
     it("does nothing without a loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerInvite("invite-1");
@@ -507,7 +507,7 @@ describe("useBackupSyncPartnerAccess", () => {
     it("asks for confirmation with the expected copy and does not revoke on decline", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerInvite("invite-1");
@@ -528,7 +528,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: false,
         errorCode: "not_connected",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerInvite("invite-1");
@@ -561,7 +561,7 @@ describe("useBackupSyncPartnerAccess", () => {
           updatedAt: "2026-03-20T08:00:00.000Z",
         },
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerInvite("invite-1");
@@ -583,7 +583,7 @@ describe("useBackupSyncPartnerAccess", () => {
   describe("handleRevokePartnerGrant", () => {
     it("does nothing without a loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({ state: null });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -595,7 +595,7 @@ describe("useBackupSyncPartnerAccess", () => {
     it("does not revoke when the owner declines the confirm", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockOpenConfirmation.mockResolvedValue(false);
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -616,7 +616,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: false,
         errorCode: "not_connected",
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -637,7 +637,7 @@ describe("useBackupSyncPartnerAccess", () => {
         ok: true,
         value: createGrant({ revokedAt: "2026-03-20T08:00:00.000Z" }),
       });
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -662,7 +662,7 @@ describe("useBackupSyncPartnerAccess", () => {
         value: createGrant({ revokedAt: "2026-03-20T08:00:00.000Z" }),
       });
       mockClearManagedPartnerGrantKey.mockRejectedValue(new Error("boom"));
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -682,11 +682,11 @@ describe("useBackupSyncPartnerAccess", () => {
   });
 
   describe("handleOpenPartnerGrant", () => {
-    it("navigates to the read-only partner-shared route with the grant id", () => {
+    it("navigates to the read-only partner-shared route with the grant id", async () => {
       const core = createBackupSyncSessionCoreMock();
-      const { result } = renderHook(() => useBackupSyncPartnerAccess(core));
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
-      act(() => {
+      await act(() => {
         result.current.handleOpenPartnerGrant("grant-42");
       });
 

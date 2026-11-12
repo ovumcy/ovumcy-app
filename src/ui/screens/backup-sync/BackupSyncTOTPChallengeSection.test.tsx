@@ -9,8 +9,8 @@ const copy = selectTOTPCopy("en");
 function noop() {}
 
 describe("BackupSyncTOTPChallengeSection", () => {
-  it("renders the challenge title, code field, and action buttons", () => {
-    render(
+  it("renders the challenge title, code field, and action buttons", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <BackupSyncTOTPChallengeSection
           challengeExpiresAt="2026-05-17T10:05:00.000Z"
@@ -37,12 +37,12 @@ describe("BackupSyncTOTPChallengeSection", () => {
     ).toBeNull();
   });
 
-  it("propagates code changes and submit/cancel handlers", () => {
+  it("propagates code changes and submit/cancel handlers", async () => {
     const onCodeChange = jest.fn();
     const onSubmit = jest.fn();
     const onCancel = jest.fn();
 
-    render(
+    await render(
       <AppPreferencesTestProvider>
         <BackupSyncTOTPChallengeSection
           challengeExpiresAt="2026-05-17T10:05:00.000Z"
@@ -56,20 +56,20 @@ describe("BackupSyncTOTPChallengeSection", () => {
       </AppPreferencesTestProvider>,
     );
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       screen.getByTestId("backup-sync-totp-challenge-code"),
       "123456",
     );
-    fireEvent.press(screen.getByTestId("backup-sync-totp-challenge-submit"));
-    fireEvent.press(screen.getByTestId("backup-sync-totp-challenge-cancel"));
+    await fireEvent.press(screen.getByTestId("backup-sync-totp-challenge-submit"));
+    await fireEvent.press(screen.getByTestId("backup-sync-totp-challenge-cancel"));
 
     expect(onCodeChange).toHaveBeenCalledWith("123456");
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the localized error banner when an errorMessage is provided", () => {
-    render(
+  it("renders the localized error banner when an errorMessage is provided", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <BackupSyncTOTPChallengeSection
           challengeExpiresAt="2026-05-17T10:05:00.000Z"
@@ -86,8 +86,8 @@ describe("BackupSyncTOTPChallengeSection", () => {
     expect(screen.getByText(copy.errors.totpInvalidCode)).toBeTruthy();
   });
 
-  it("hides the expiry text when no challengeExpiresAt is given", () => {
-    render(
+  it("hides the expiry text when no challengeExpiresAt is given", async () => {
+    await render(
       <AppPreferencesTestProvider>
         <BackupSyncTOTPChallengeSection
           challengeExpiresAt=""
