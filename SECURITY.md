@@ -103,7 +103,10 @@ follows from that:
 - **Sensitive-action re-auth.** High-sensitivity actions request a device
   biometric / passcode challenge (`expo-local-authentication`); browser preview
   is treated as unavailable unless a caller explicitly opts into a web bypass
-  behind another guard.
+  behind another guard. Restore from a sync backup is one of these actions. The
+  offline JSON restore is not: it only ever adds records, never overwrites,
+  merges or deletes, and is gated by a dry-run preview plus an explicit confirm
+  instead of a device challenge.
 - **Export and import artifact cleanup.** Generated export files (cycle
   CSV/JSON/PDF and the private recovery-phrase export) are swept from the cache
   directory so they do not linger after sharing. The JSON-import flow's picked
@@ -471,6 +474,13 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | --- | --- |
 | A sensitive action succeeds only on a successful device challenge; unavailable security and user cancellation are distinguished | `succeeds when local authentication succeeds`, `maps unavailable device security to an unavailable result`, `maps user cancellation to a cancelled result` in [src/security/sensitive-action-auth.test.ts](src/security/sensitive-action-auth.test.ts) |
 | Browser preview is unavailable for device challenges unless the caller opts into an explicit web bypass | `treats browser preview as unavailable for sensitive device challenges`, `allows an explicit web bypass when the caller already has another guard` in [src/security/sensitive-action-auth.test.ts](src/security/sensitive-action-auth.test.ts) |
+
+### Offline JSON restore gating
+
+| Claim | Enforced by |
+| --- | --- |
+| Picking a file only previews: nothing is written until the explicit confirm step runs on the previewed envelope | `writes nothing while previewing a picked file and hands the envelope to the confirm step`, `writes only when the confirm step runs on the previewed envelope` in [src/ui/screens/settings/settings-screen-import-actions.test.ts](src/ui/screens/settings/settings-screen-import-actions.test.ts) |
+| The restore never overwrites existing data | `never overwrites a date that already has data` in [src/services/import-service.test.ts](src/services/import-service.test.ts) |
 
 ### Export and import artifact cleanup
 

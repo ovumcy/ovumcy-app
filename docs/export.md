@@ -128,6 +128,8 @@ The **Restore from backup** section of Settings restores a JSON export made by t
 2. **Preview.** The file is parsed and a dry run counts what the restore would do, per category, without writing anything. The preview and the apply share one code path, so the confirmed counts match the previewed ones.
 3. **Confirm.** Only after an explicit confirmation is the file applied.
 
+Because the restore is additive, it asks for the preview and the confirmation only; it does not request device authentication. Restoring a sync backup is a different action and does.
+
 The restore is strictly additive. Nothing already on the device is overwritten, merged into or deleted, so importing the same file twice changes nothing the second time.
 
 - **Day logs.** A date that already holds data is skipped. A date without data receives the imported record, after it has been passed through the same normalization as a save from the day screen: unknown enum values fall back to `none`, notes are cut to 2000 characters, out-of-range values are dropped. A record with no parseable `date` is counted as rejected; a record that is empty after normalization is counted as skipped.
