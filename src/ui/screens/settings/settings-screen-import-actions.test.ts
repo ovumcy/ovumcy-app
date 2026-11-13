@@ -54,15 +54,24 @@ async function loadReadyState(): Promise<LoadedSettingsState> {
   );
 }
 
+function calledMutators(storage: object): string[] {
+  return Object.entries(storage)
+    .filter(
+      ([name, fn]) =>
+        /^(write|delete|clear)/.test(name) &&
+        jest.isMockFunction(fn) &&
+        fn.mock.calls.length > 0,
+    )
+    .map(([name]) => name);
+}
+
 describe("offline JSON restore gates", () => {
   it("writes nothing while previewing a picked file and hands the envelope to the confirm step", async () => {
     const { context, storage } = createContext();
 
     await runPickImportFileAction(context);
 
-    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
-    expect(storage.writeSymptomRecord).not.toHaveBeenCalled();
-    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(calledMutators(storage)).toEqual([]);
     expect(context.setImportErrorMessage).not.toHaveBeenCalled();
     const pending = context.setPendingImportPreview.mock.calls.at(-1)?.[0] as
       | PendingImportPreview

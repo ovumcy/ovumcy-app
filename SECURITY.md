@@ -480,7 +480,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Claim | Enforced by |
 | --- | --- |
 | Picking a file only previews: nothing is written until the explicit confirm step runs on the previewed envelope | `writes nothing while previewing a picked file and hands the envelope to the confirm step`, `writes only when the confirm step runs on the previewed envelope` in [src/ui/screens/settings/settings-screen-import-actions.test.ts](src/ui/screens/settings/settings-screen-import-actions.test.ts) |
-| The restore never overwrites existing data | `never overwrites a date that already has data` in [src/services/import-service.test.ts](src/services/import-service.test.ts) |
+| The restore never overwrites existing data | `never overwrites a date that already has data`, `never overwrites a pregnancy record, kick session, or contraction session whose id already exists on-device`, `never overwrites a postpartum record or screening response whose id already exists on-device`, `skips an imported active pregnancy record when the device already has a DIFFERENT active record (never overwrites, never ends, never throws)`, `skips an imported active postpartum record when the device already has a DIFFERENT active record (never overwrites, never ends, never throws)` in [src/services/import-service.test.ts](src/services/import-service.test.ts) |
 
 ### Export and import artifact cleanup
 
