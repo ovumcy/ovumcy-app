@@ -2,7 +2,9 @@ import { fromByteArray, toByteArray } from "base64-js";
 
 import { createEmptyDayLogRecord } from "../models/day-log";
 import {
+  buildLegacySyncPayloadAad,
   buildSyncPayloadAad,
+  createRecoveredSyncSecretsRecord,
   createSyncSecretsRecord,
   decryptSyncPayload,
   encryptSyncPayload,
@@ -313,7 +315,7 @@ describe("sync-client-service", () => {
         decryptSyncPayload(
           preparedSecrets.record.masterKeyHex,
           encryptedEnvelope,
-          buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+          buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
         ),
       );
 
@@ -969,7 +971,7 @@ describe("sync-client-service", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       snapshotPayload,
-      buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
     );
     const ciphertextBytes = new TextEncoder().encode(
       JSON.stringify(encryptedEnvelope),
@@ -3873,7 +3875,7 @@ describe("runSyncRestore additional branches", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       garbagePayload,
-      buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
     );
     const ciphertextBytes = new TextEncoder().encode(JSON.stringify(encryptedEnvelope));
     const apiClientFactory = jest.fn().mockReturnValue(
@@ -4241,5 +4243,173 @@ describe("disconnectSyncAccount and clearLocalSyncSession additional branches", 
     // No secrets existed, so there is nothing to wipe — readSyncSecrets still
     // resolves null afterward, proving writeSyncSecrets was never reached.
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+});
+
+describe("snapshot AAD across devices", () => {
+  type Secrets = ReturnType<typeof createSyncSecretsRecord>["record"];
+  type UploadedBlob = { schemaVersion: number; ciphertextBase64: string };
+
+  const selfHostedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted" as const,
+    endpointInput: "192.168.1.20:8080",
+    normalizedEndpoint: "http://192.168.1.20:8080",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected" as const,
+    preparedAt: "2026-03-20T08:00:00.000Z",
+  };
+  const dayLog = { ...createEmptyDayLogRecord("2026-03-10"), notes: "Cycle start" };
+
+  function createUploadStorage() {
+    return createLocalAppStorageMock({
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: 1,
+        hasData: true,
+        dateFrom: "2026-03-10",
+        dateTo: "2026-03-10",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([dayLog]),
+    });
+  }
+
+  async function uploadFromDevice(secrets: Secrets): Promise<UploadedBlob> {
+    const uploads: UploadedBlob[] = [];
+    const putBlob = jest.fn().mockImplementation(async (_token, input) => {
+      uploads.push(input);
+      return {
+        ok: true,
+        blob: {
+          schemaVersion: input.schemaVersion,
+          generation: input.generation,
+          checksumSHA256: input.checksumSHA256,
+          ciphertextBase64: input.ciphertextBase64,
+          ciphertextSize: toByteArray(input.ciphertextBase64).byteLength,
+          updatedAt: "2026-03-20T08:10:00.000Z",
+        },
+      };
+    });
+    const result = await runSyncUpload(
+      createUploadStorage(),
+      createSyncSecretStoreMock({ ...secrets, authSessionToken: "session-1" }),
+      selfHostedPreferences,
+      new Date("2026-03-20T08:10:00.000Z"),
+      jest.fn().mockReturnValue(
+        createAPIClientMock({
+          getCapabilities: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "network" }),
+          putBlob,
+        }),
+      ),
+    );
+    expect(result.ok).toBe(true);
+    expect(uploads).toHaveLength(1);
+    return uploads[0] as UploadedBlob;
+  }
+
+  async function restoreOnDevice(secrets: Secrets, blob: UploadedBlob) {
+    const storage = createLocalAppStorageMock();
+    const result = await runSyncRestore(
+      storage,
+      createSyncSecretStoreMock({ ...secrets, authSessionToken: "session-2" }),
+      selfHostedPreferences,
+      jest.fn().mockReturnValue(
+        createAPIClientMock({
+          getBlob: jest.fn().mockResolvedValue({
+            ok: true,
+            blob: {
+              ...blob,
+              generation: 7,
+              checksumSHA256: "aa",
+              ciphertextSize: toByteArray(blob.ciphertextBase64).byteLength,
+              updatedAt: "2026-03-20T08:12:00.000Z",
+            },
+          }),
+        }),
+      ),
+    );
+    return { result, storage };
+  }
+
+  function recoveredDevice(source: ReturnType<typeof createSyncSecretsRecord>) {
+    return createRecoveredSyncSecretsRecord(
+      source.recoveryPhrase,
+      source.record.wrappedKey,
+      "Recovered phone",
+      new Date("2026-03-21T08:00:00.000Z"),
+    );
+  }
+
+  async function legacyBlob(secrets: Secrets, deviceID: string): Promise<UploadedBlob> {
+    const source = createLocalAppStorageMock();
+    const payload = encodeSyncSnapshot({
+      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      createdAt: "2026-03-20T08:12:00.000Z",
+      bootstrapState: await source.readBootstrapState(),
+      profile: await source.readProfileRecord(),
+      symptomRecords: [],
+      dayLogs: [dayLog],
+      pregnancies: [],
+      kickSessions: [],
+      contractionSessions: [],
+      postpartumRecords: [],
+      screeningResponses: [],
+    });
+    const envelope = encryptSyncPayload(
+      secrets.masterKeyHex,
+      payload,
+      buildLegacySyncPayloadAad(deviceID),
+    );
+    return {
+      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      ciphertextBase64: fromByteArray(new TextEncoder().encode(JSON.stringify(envelope))),
+    };
+  }
+
+  it("restores on a recovered device a snapshot another device uploaded", async () => {
+    const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+    const deviceB = recoveredDevice(deviceA);
+    expect(deviceB.device.deviceID).not.toBe(deviceA.record.device.deviceID);
+
+    const blob = await uploadFromDevice(deviceA.record);
+    const { result, storage } = await restoreOnDevice(deviceB, blob);
+
+    expect(result.ok).toBe(true);
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+  });
+
+  it("restores a legacy device-bound blob on the device that wrote it", async () => {
+    const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+    const blob = await legacyBlob(deviceA.record, deviceA.record.device.deviceID);
+
+    const { result, storage } = await restoreOnDevice(deviceA.record, blob);
+
+    expect(result.ok).toBe(true);
+    expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+  });
+
+  it("refuses a legacy device-bound blob written by another device", async () => {
+    const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+    const deviceB = recoveredDevice(deviceA);
+    const blob = await legacyBlob(deviceA.record, deviceA.record.device.deviceID);
+
+    const { result, storage } = await restoreOnDevice(deviceB, blob);
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  it("refuses a blob whose reported schema version differs from the sealed one", async () => {
+    const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+    const blob = await uploadFromDevice(deviceA.record);
+
+    const { result, storage } = await restoreOnDevice(deviceA.record, {
+      ...blob,
+      schemaVersion: blob.schemaVersion - 1,
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
   });
 });

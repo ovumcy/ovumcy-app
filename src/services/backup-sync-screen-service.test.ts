@@ -1387,7 +1387,7 @@ describe("restoreBackupSyncSnapshot", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       snapshotPayload,
-      buildSyncPayloadAad(preparedSecrets.record.device.deviceID),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
     );
     const ciphertextBytes = new TextEncoder().encode(
       JSON.stringify(encryptedEnvelope),

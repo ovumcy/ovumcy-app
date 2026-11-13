@@ -24,7 +24,8 @@ const XCHACHA_NONCE_BYTE_LENGTH = 24;
 const RECOVERY_WRAP_INFO = utf8ToBytes("ovumcy-sync-wrap");
 const RECOVERY_FINGERPRINT_INFO = utf8ToBytes("ovumcy-sync-fingerprint");
 const RECOVERY_WRAP_AAD_VERSION = "ovumcy-sync-wrap-v1";
-const SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v1";
+const SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v2";
+const LEGACY_SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v1";
 
 export function createRecoveryPhrase(): string {
   return entropyToMnemonic(
@@ -38,13 +39,23 @@ export function isValidRecoveryPhrase(value: string): boolean {
 }
 
 /**
- * Builds the AAD for a sync snapshot envelope. Both upload and restore
- * sides must construct the same string; the device identifier prevents
- * an attacker who somehow possessed the master key from re-using a
- * snapshot captured from a different device under the same account.
+ * Builds the AAD for a sync snapshot envelope. Upload and restore construct
+ * the same string from the blob's schema version, so a device that recovered
+ * the account key (and therefore holds a fresh device id) can still open a
+ * snapshot another device uploaded. The account-wide sync key scopes the
+ * blob; the schema version binds the envelope to its declared format.
  */
-export function buildSyncPayloadAad(deviceID: string): Uint8Array {
-  return utf8ToBytes(`${SYNC_PAYLOAD_AAD_VERSION}|${deviceID}`);
+export function buildSyncPayloadAad(schemaVersion: number): Uint8Array {
+  return utf8ToBytes(`${SYNC_PAYLOAD_AAD_VERSION}|${schemaVersion}`);
+}
+
+/**
+ * Builds the pre-v2 snapshot AAD, bound to the uploading device. Only the
+ * restore fallback uses it, for blobs a same-device client wrote earlier;
+ * the next upload rewrites them under the current AAD.
+ */
+export function buildLegacySyncPayloadAad(deviceID: string): Uint8Array {
+  return utf8ToBytes(`${LEGACY_SYNC_PAYLOAD_AAD_VERSION}|${deviceID}`);
 }
 
 export function createSyncSecretsRecord(
@@ -173,6 +184,32 @@ export function decryptSyncPayload(
   aad: Uint8Array,
 ): Uint8Array {
   return decryptPayload(masterKeyHex, envelope, aad);
+}
+
+/**
+ * Opens a snapshot envelope under the current AAD first, then under the
+ * legacy device-bound AAD built from the local device id. A legacy blob
+ * written by another device fails both and throws.
+ */
+export function decryptSyncSnapshotPayload(
+  masterKeyHex: string,
+  envelope: EncryptedSyncEnvelope,
+  schemaVersion: number,
+  localDeviceID: string,
+): Uint8Array {
+  try {
+    return decryptSyncPayload(
+      masterKeyHex,
+      envelope,
+      buildSyncPayloadAad(schemaVersion),
+    );
+  } catch {
+    return decryptSyncPayload(
+      masterKeyHex,
+      envelope,
+      buildLegacySyncPayloadAad(localDeviceID),
+    );
+  }
 }
 
 function createDeviceIdentity(deviceLabel: string, now: Date): SyncDeviceIdentity {

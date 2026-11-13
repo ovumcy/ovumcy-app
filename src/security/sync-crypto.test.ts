@@ -1,7 +1,10 @@
 import {
+  buildLegacySyncPayloadAad,
   buildSyncPayloadAad,
+  createRecoveredSyncSecretsRecord,
   createSyncSecretsRecord,
   decryptSyncPayload,
+  decryptSyncSnapshotPayload,
   encryptSyncPayload,
   isValidRecoveryPhrase,
   unwrapMasterKeyWithRecoveryPhrase,
@@ -31,7 +34,7 @@ describe("sync-crypto", () => {
       new Date("2026-03-19T08:15:00.000Z"),
     );
     const payload = new TextEncoder().encode("sensitive sync payload");
-    const aad = buildSyncPayloadAad(record.device.deviceID);
+    const aad = buildSyncPayloadAad(3);
 
     const envelope = encryptSyncPayload(record.masterKeyHex, payload, aad);
     const decrypted = decryptSyncPayload(record.masterKeyHex, envelope, aad);
@@ -39,26 +42,123 @@ describe("sync-crypto", () => {
     expect(new TextDecoder().decode(decrypted)).toBe("sensitive sync payload");
   });
 
-  it("rejects sync payload decryption with a different device's AAD", () => {
+  it("builds the snapshot AAD from the schema version with no device id", () => {
+    expect(new TextDecoder().decode(buildSyncPayloadAad(3))).toBe("ovumcy-sync-v2|3");
+    expect(new TextDecoder().decode(buildLegacySyncPayloadAad("dev-1"))).toBe(
+      "ovumcy-sync-v1|dev-1",
+    );
+  });
+
+  it("rejects sync payload decryption with a different schema version AAD", () => {
     const { record } = createSyncSecretsRecord(
       "Galaxy",
       new Date("2026-03-19T08:15:00.000Z"),
     );
     const payload = new TextEncoder().encode("sensitive sync payload");
-
     const envelope = encryptSyncPayload(
       record.masterKeyHex,
       payload,
-      buildSyncPayloadAad(record.device.deviceID),
+      buildSyncPayloadAad(3),
     );
 
     expect(() =>
-      decryptSyncPayload(
+      decryptSyncSnapshotPayload(record.masterKeyHex, envelope, 2, record.device.deviceID),
+    ).toThrow();
+  });
+
+  describe("decryptSyncSnapshotPayload", () => {
+    const payload = new TextEncoder().encode("sensitive sync payload");
+
+    it("opens a v2 blob on a device with a different device id", () => {
+      const uploader = createSyncSecretsRecord(
+        "Device A",
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
+      const recovered = createRecoveredSyncSecretsRecord(
+        uploader.recoveryPhrase,
+        uploader.record.wrappedKey,
+        "Device B",
+        new Date("2026-03-19T09:00:00.000Z"),
+      );
+      expect(recovered.device.deviceID).not.toBe(uploader.record.device.deviceID);
+      const envelope = encryptSyncPayload(
+        uploader.record.masterKeyHex,
+        payload,
+        buildSyncPayloadAad(3),
+      );
+
+      const decrypted = decryptSyncSnapshotPayload(
+        recovered.masterKeyHex,
+        envelope,
+        3,
+        recovered.device.deviceID,
+      );
+
+      expect(new TextDecoder().decode(decrypted)).toBe("sensitive sync payload");
+    });
+
+    it("falls back to the legacy AAD built from the local device id", () => {
+      const { record } = createSyncSecretsRecord(
+        "Galaxy",
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
+      const envelope = encryptSyncPayload(
+        record.masterKeyHex,
+        payload,
+        buildLegacySyncPayloadAad(record.device.deviceID),
+      );
+
+      const decrypted = decryptSyncSnapshotPayload(
         record.masterKeyHex,
         envelope,
-        buildSyncPayloadAad(`${record.device.deviceID}-attacker`),
-      ),
-    ).toThrow();
+        3,
+        record.device.deviceID,
+      );
+
+      expect(new TextDecoder().decode(decrypted)).toBe("sensitive sync payload");
+    });
+
+    it("refuses a legacy blob written by another device", () => {
+      const { record } = createSyncSecretsRecord(
+        "Galaxy",
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
+      const envelope = encryptSyncPayload(
+        record.masterKeyHex,
+        payload,
+        buildLegacySyncPayloadAad("another-device"),
+      );
+
+      expect(() =>
+        decryptSyncSnapshotPayload(
+          record.masterKeyHex,
+          envelope,
+          3,
+          record.device.deviceID,
+        ),
+      ).toThrow();
+    });
+
+    it("refuses a blob sealed under an unrelated AAD", () => {
+      const { record } = createSyncSecretsRecord(
+        "Galaxy",
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
+      const envelope = encryptSyncPayload(
+        record.masterKeyHex,
+        payload,
+        new TextEncoder().encode("ovumcy-sync-v2|tampered"),
+      );
+
+      expect(() =>
+        decryptSyncSnapshotPayload(
+          record.masterKeyHex,
+          envelope,
+          3,
+          record.device.deviceID,
+        ),
+      ).toThrow();
+    });
   });
 
   it("rewraps an existing master key with a fresh recovery phrase", () => {
