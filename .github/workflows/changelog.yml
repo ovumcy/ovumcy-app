@@ -17,21 +17,23 @@ jobs:
   changelog-fragment:
     runs-on: ubuntu-latest
     env:
-      # Gate on pull requests only, and not on dependency bumps: the bot cannot
-      # write a fragment. Keyed on the pull request's author rather than
-      # github.actor, so a human re-run does not change the verdict.
-      RUN_GATE: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
+      # One verdict per run: queue runs pass (presence was enforced on the pull
+      # request run), dependency bumps pass (the bot cannot write a fragment),
+      # other pull requests run the gate, anything else fails. Keyed on the pull
+      # request's author rather than github.actor, so a human re-run does not
+      # change the verdict.
+      MODE: ${{ github.event_name == 'merge_group' && 'queue' || (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]') && 'dependabot' || github.event_name == 'pull_request' && 'gate' || 'unhandled' }}
     steps:
       - name: Pass on merge queue runs
-        if: github.event_name == 'merge_group'
+        if: env.MODE == 'queue'
         run: echo "Fragment presence was already enforced on the pull request run."
 
       - name: Pass on dependency updates
-        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        if: env.MODE == 'dependabot'
         run: echo "Dependency bumps carry no fragment."
 
       - name: Checkout
-        if: env.RUN_GATE == 'true'
+        if: env.MODE == 'gate'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -39,13 +41,13 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node.js
-        if: env.RUN_GATE == 'true'
+        if: env.MODE == 'gate'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
       - name: Check changelog fragment
-        if: env.RUN_GATE == 'true'
+        if: env.MODE == 'gate'
         env:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_REF: origin/${{ github.event.pull_request.base.ref }}
@@ -55,9 +57,9 @@ jobs:
           node scripts/check-changelog-fragment.mjs
 
       - name: Fail on unhandled trigger
-        # Without this a run matching no branch above goes green having
+        # A trigger added later without a mode would otherwise go green having
         # verified nothing, and changelog-fragment is meant to be required.
-        if: env.RUN_GATE != 'true' && github.event_name != 'merge_group' && !(github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]')
+        if: env.MODE == 'unhandled'
         run: |
-          echo "::error::changelog-fragment matched no known branch (event=${{ github.event_name }}, RUN_GATE=${{ env.RUN_GATE }})."
+          echo "::error::changelog-fragment has no mode for event ${{ github.event_name }}."
           exit 1

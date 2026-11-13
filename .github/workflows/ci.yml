@@ -26,10 +26,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Full history: the in-repo patch-coverage gate below diffs against
-          # the pull request's base, which a shallow checkout cannot reach.
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -56,20 +52,24 @@ jobs:
         run: npm test -- --coverage --coverageReporters=lcov --coverageReporters=json --coverageReporters=text-summary
 
       - name: Upload coverage for the patch-coverage job
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-json
           path: coverage/coverage-final.json
           if-no-files-found: error
           retention-days: 1
+          # A re-run of this job after the upload succeeded must not fail on a
+          # name already taken in this workflow run.
+          overwrite: true
 
       - name: Expo doctor
         run: npm run doctor
 
       - name: Upload coverage to Codecov
         id: codecov
-        # Advisory since the in-repo patch-coverage gate above became the
-        # enforced one (scripts/patchcov.mjs; codecov/patch left the required
+        # Advisory since the in-repo patch-coverage job below became the
+        # enforced gate (scripts/patchcov.mjs; codecov/patch left the required
         # set the same day): the upload feeds dashboards, and an ingest outage
         # must never red a merge again.
         continue-on-error: true

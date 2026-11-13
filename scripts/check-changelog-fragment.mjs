@@ -1,6 +1,7 @@
 // Changelog-fragment gate: a pull request adds one changelog.d/<slug>.md, where
-// the slug is the head branch name without its type prefix (fix/foo-bar ->
-// foo-bar). The fragment is either `none` on its first line (no user-visible
+// the slug is the head branch name without its type prefix, any further
+// slashes turned into hyphens (fix/foo-bar -> foo-bar, fix/sync/retry ->
+// sync-retry). The fragment is either `none` on its first line (no user-visible
 // change; anything below is the reason) or one or more Keep a Changelog
 // section headers each followed by at least one list entry. See
 // changelog.d/README.md for the format.
@@ -26,13 +27,13 @@ const SECTIONS = new Set([
 
 export function fragmentPathForBranch(headRef) {
   const slash = headRef.indexOf("/");
-  const slug = slash >= 0 ? headRef.slice(slash + 1) : headRef;
+  const slug = (slash >= 0 ? headRef.slice(slash + 1) : headRef).replaceAll("/", "-");
   return slug ? `${FRAGMENT_DIR}/${slug}.md` : "";
 }
 
 // Returns a problem description, or "" when the fragment is valid.
 export function validateFragment(name, content) {
-  const lines = content.split(/\r?\n/);
+  const lines = content.replace(/^﻿/, "").split(/\r?\n/);
   if (lines[0].trim() === "none") return "";
   let section = null;
   const entries = new Map();
