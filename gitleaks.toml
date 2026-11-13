@@ -12,7 +12,7 @@ useDefault = true
   # that is legitimately allowed to carry fixture values: TypeScript test
   # files. These paths are never production source and are not reachable at
   # runtime. Mirrors ovumcy-web's '_test\.go$' allowlist, retargeted to this
-  # repo's '*.test.ts' convention.
+  # repo's '*.test.ts' / '*.test.tsx' convention.
   paths = [
     # All TypeScript test files repo-wide. The golden crypto interop vectors
     # live here: the Ed25519 public key and signed entitlement JWT pinned to
@@ -21,7 +21,7 @@ useDefault = true
     # token-verification and the end-to-end entitlement path without any
     # private key. gitleaks' generic-api-key rule flags the base64 token
     # string; it is a public, non-secret test vector.
-    '''\.test\.ts$''',
+    '''\.test\.tsx?$''',
   ]
 
   # Belt-and-suspenders exact-value allowlisting for the golden vector named
