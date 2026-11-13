@@ -616,6 +616,10 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
     ["a 404", jsonResponse({ error: "not_found" }, 404)],
     ["a 429", jsonResponse({ error: "rate_limited" }, 429)],
     ["an unparseable 400 body", new Response("<html>", { status: 400 })],
+    [
+      "a 403 claiming temporary unavailability",
+      jsonResponse({ error: "entitlements_unavailable" }, 403),
+    ],
   ])(
     "yields no cached premium when the billing fetch is answered with %s",
     async (_label, response) => {
