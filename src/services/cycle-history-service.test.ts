@@ -1,4 +1,4 @@
-import { createEmptyDayLogRecord } from "../models/day-log";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import {
   buildCurrentCycleProjection,
@@ -1166,6 +1166,98 @@ describe("cycle-history-service", () => {
 
       expect(projection.isPregnancyPaused).toBe(true);
       expect(projection.pregnancyTestDate).toBe("2026-03-01");
+    });
+  });
+
+  describe("pregnancy pause lifts only on a cycle boundary (web ResolvePregnancyPause parity)", () => {
+    const profile = createProfileRecord({ lastPeriodStart: "2026-01-05" });
+    const baseRecords = [
+      { ...createEmptyDayLogRecord("2026-01-05"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-02-10"), pregnancyTest: "positive" as const },
+    ];
+    const projectionFor = (extra: DayLogRecord[], now: Date) => {
+      const records = [...baseRecords, ...extra];
+      const history = buildCycleHistorySummary(profile, records, now);
+      return buildCurrentCycleProjection(profile, history, records, now);
+    };
+
+    it("stays paused when the only later start is flagged uncertain", () => {
+      const projection = projectionFor(
+        [
+          {
+            ...createEmptyDayLogRecord("2026-03-01"),
+            isPeriod: true,
+            cycleStart: true,
+            isUncertain: true,
+          },
+        ],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.pregnancyTestDate).toBe("2026-02-10");
+    });
+
+    it("lifts on an unflagged two-day period run after the positive test", () => {
+      const projection = projectionFor(
+        [
+          { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true },
+          { ...createEmptyDayLogRecord("2026-03-02"), isPeriod: true },
+        ],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(false);
+    });
+
+    it("stays paused on a lone unflagged period day dated today", () => {
+      const projection = projectionFor(
+        [{ ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true }],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
+    it("stays paused on a lone unflagged period day dated yesterday", () => {
+      const projection = projectionFor(
+        [{ ...createEmptyDayLogRecord("2026-03-09"), isPeriod: true }],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
+    it("stays paused on a two-day run of spotting days", () => {
+      const projection = projectionFor(
+        [
+          { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, flow: "spotting" as const },
+          { ...createEmptyDayLogRecord("2026-03-02"), isPeriod: true, flow: "spotting" as const },
+        ],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
+    it("stays paused when a cycle start is marked on the same day as the positive test", () => {
+      const projection = projectionFor(
+        [{ ...createEmptyDayLogRecord("2026-02-10"), isPeriod: true, cycleStart: true }],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.pregnancyTestDate).toBe("2026-02-10");
+      expect(projection.nextPeriodDate).toBeNull();
+    });
+
+    it("lifts on a marked start dated the day after the positive test", () => {
+      const projection = projectionFor(
+        [{ ...createEmptyDayLogRecord("2026-02-11"), isPeriod: true, cycleStart: true }],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(false);
     });
   });
 

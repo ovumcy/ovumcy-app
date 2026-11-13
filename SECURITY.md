@@ -566,7 +566,8 @@ items) are intentionally excluded — they are reviewed by humans, not by
 
 Predictions are estimates, never medical advice or a method of contraception.
 Suppression ORs two signals: the day-log pregnancy pause (a positive test on or
-after every recorded cycle start, until a later cycle start is logged) and an
+after every recorded cycle start, until a later cycle start is logged — an
+uncertain-marked, spotting or lone unflagged day is not one) and an
 ACTIVE pregnancy record. Either signal alone must hide current-cycle
 predictions and fertility signals — the paused projection deliberately keeps
 its cycle anchor (so the pause alone cannot null anchor-driven surfaces), a

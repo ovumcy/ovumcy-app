@@ -136,7 +136,7 @@ transport invariant in [SECURITY.md](../SECURITY.md).
 
 - Unpredictable-cycle setting (facts-only mode): only the daily kinds are planned; the period and
   fertile-window reminders are not.
-- Prediction pause after a positive pregnancy test (no later period): `upcoming_period` and
+- Prediction pause after a positive pregnancy test (no later cycle start): `upcoming_period` and
   `fertile_window` are both suppressed, matching the calendar, which hides predicted cells. Daily
   kinds are unaffected.
 - Active pregnancy record: suppresses the same two kinds independently of the pause, so the two
