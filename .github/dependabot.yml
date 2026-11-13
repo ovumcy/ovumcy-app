@@ -11,11 +11,26 @@ updates:
     allow:
       - dependency-type: "direct"
     ignore:
-      # Expo SDK pins these packages; upgrade them during an SDK-aligned dependency pass.
+      # The Expo SDK pins these exact versions (expo/bundledNativeModules.json); a patch
+      # bump past the pin fails `expo doctor`. They move with `expo` via `npx expo install
+      # --fix`. `expo` itself stays monitored. A module newly adopted from that list joins here.
+      - dependency-name: "expo-*"
+      - dependency-name: "@expo/*"
+      - dependency-name: "eslint-config-expo"
+      - dependency-name: "jest-expo"
+      - dependency-name: "babel-preset-expo"
+      - dependency-name: "@react-native-async-storage/async-storage"
       - dependency-name: "@react-native-community/datetimepicker"
+      - dependency-name: "@react-native-community/slider"
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "react-native"
+      - dependency-name: "react-native-gesture-handler"
+      - dependency-name: "react-native-reanimated"
+      - dependency-name: "react-native-safe-area-context"
+      - dependency-name: "react-native-screens"
+      - dependency-name: "react-native-svg"
+      - dependency-name: "react-native-web"
       - dependency-name: "react-native-worklets"
       - dependency-name: "*"
         update-types:

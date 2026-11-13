@@ -1,0 +1,8 @@
+# Read by OSV-Scanner and the OpenSSF Scorecard Vulnerabilities check. One entry per advisory:
+# a reason and an ignoreUntil, so an expired entry resurfaces for review instead of hiding the
+# advisory for good.
+
+[[IgnoredVulns]]
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-05-13
+reason = "deepmerge 4.3.1 is dev-only (jest > @jest/core > jest-config, which still requires ^4.3.1) and never ships in the app bundle; no patched release exists."
