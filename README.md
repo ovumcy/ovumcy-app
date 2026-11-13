@@ -44,7 +44,8 @@ Optional sync is designed as encrypted transport, whether the owner connects a s
 Requirements:
 
 - Node.js 22+
-- npm
+- npm 11+ (npm 10 resolves the lockfile's range-keyed overrides differently, so its `npm ci`
+  rejects the lockfile)
 - Android Studio for Android emulator work
 - Xcode on macOS for iOS simulator work
 
