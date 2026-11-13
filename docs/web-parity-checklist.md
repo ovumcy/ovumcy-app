@@ -341,8 +341,10 @@ that owns the canonical web UX).
   deliberately separate, and neither product's import path accepts the
   other's export file, in either direction, CSV included (web exposes no CSV
   import route). The app's JSON export format (`ExportBackupEnvelope` in
-  `src/models/export.ts:76`, with structure `{app, formatVersion, exportedAt,
-  preset, range, summary, profile, symptoms, dayLogs}`) is the app-canonical
+  `src/models/export.ts`, with structure `{app, formatVersion, exportedAt,
+  preset, range, summary, profile, symptoms, dayLogs}` plus the pregnancy,
+  postpartum and screening collections added in format versions 2 and 3; see
+  [export.md](export.md)) is the app-canonical
   backup/restore format; `parseImportEnvelope`
   (`src/services/import-service.ts`) restores only this shape, explicitly
   rejecting any file whose `app`/`formatVersion` fields don't match
