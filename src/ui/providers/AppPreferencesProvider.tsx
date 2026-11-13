@@ -21,10 +21,7 @@ import {
 } from "../../models/profile";
 import { appStorage } from "../../services/app-bootstrap-service";
 import type { LocalAppStorage } from "../../storage/local/storage-contract";
-import {
-  resolveCopyLanguage,
-  resolveDeviceLanguage,
-} from "../../i18n/runtime";
+import { resolveEffectiveLanguage } from "../../i18n/runtime";
 import { darkColors, lightColors, type AppThemeColors } from "../theme/tokens";
 
 // Collapse the stored tri-state preference to the theme the UI actually
@@ -92,7 +89,7 @@ export function createAppPreferencesContextValue(
     clearPreferencePreview: () => {},
     colors: theme === "dark" ? darkColors : lightColors,
     isReady: overrides.isReady ?? true,
-    language: resolveCopyLanguage(languageOverride) ?? resolveDeviceLanguage(),
+    language: resolveEffectiveLanguage(languageOverride),
     languageOverride,
     previewProfilePreferences: () => {},
     refreshPreferences: async () => {},
@@ -181,7 +178,7 @@ export function AppPreferencesProvider({
   const value = useMemo<AppPreferencesContextValue>(() => {
     const effectiveOverrides = previewOverrides ?? persistedOverrides;
     const language =
-      resolveCopyLanguage(effectiveOverrides.languageOverride) ?? resolveDeviceLanguage();
+      resolveEffectiveLanguage(effectiveOverrides.languageOverride);
     const theme = resolveTheme(
       effectiveOverrides.themeOverride,
       systemColorScheme,

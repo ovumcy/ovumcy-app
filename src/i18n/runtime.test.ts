@@ -3,7 +3,43 @@ import { getPartnerCopy } from "./partner-copy";
 import { getShellCopy } from "./shell-copy";
 import { getStatsCopy } from "./stats-copy";
 import { getSettingsCopy } from "./settings-copy";
-import { APP_LANGUAGE_LABELS, resolveCopyLanguage } from "./runtime";
+import {
+  APP_LANGUAGE_LABELS,
+  resolveCopyLanguage,
+  resolveEffectiveLanguage,
+} from "./runtime";
+
+function mockDeviceLocale(locale: string) {
+  jest
+    .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+    .mockReturnValue({ locale } as Intl.ResolvedDateTimeFormatOptions);
+}
+
+describe("resolveEffectiveLanguage", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("uses the device language when there is no override", () => {
+    mockDeviceLocale("ru-RU");
+
+    expect(resolveEffectiveLanguage(null)).toBe("ru");
+    expect(resolveEffectiveLanguage(undefined)).toBe("ru");
+  });
+
+  it("lets an explicit override win over the device language", () => {
+    mockDeviceLocale("ru-RU");
+
+    expect(resolveEffectiveLanguage("en")).toBe("en");
+    expect(resolveEffectiveLanguage("de")).toBe("de");
+  });
+
+  it("falls back to English for an unsupported device locale", () => {
+    mockDeviceLocale("ja-JP");
+
+    expect(resolveEffectiveLanguage(null)).toBe("en");
+  });
+});
 
 describe("runtime i18n helpers", () => {
   it("normalizes extended locale tags into supported interface languages", () => {

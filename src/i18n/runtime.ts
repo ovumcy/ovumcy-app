@@ -31,6 +31,14 @@ export function resolveDeviceLanguage(): InterfaceLanguage {
   }
 }
 
+// Effective UI language: an explicit override always wins; with no override the
+// device locale decides, and an unsupported device locale falls back to English.
+export function resolveEffectiveLanguage(
+  languageOverride: InterfaceLanguage | null | undefined,
+): InterfaceLanguage {
+  return languageOverride ? resolveCopyLanguage(languageOverride) : resolveDeviceLanguage();
+}
+
 function resolveLanguageTag(value: string): string {
   const normalized = String(value).trim().toLowerCase().replaceAll("_", "-");
   const separatorIndex = normalized.indexOf("-");

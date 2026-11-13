@@ -276,8 +276,10 @@ returns the strings for one of the six supported languages: English, Russian,
 Spanish, German, French and Italian. `runtime.ts` resolves a language: a locale
 tag is reduced to its primary subtag and normalized, with English as the
 fallback, and `resolveDeviceLanguage` reads the device locale through `Intl`.
-`AppPreferencesProvider` supplies the active language to screens, using the
-profile's language override when set and the device language otherwise. Russian
+`resolveEffectiveLanguage` picks the active language: the profile's language
+override when set, the device language otherwise (English when the device
+language is unsupported). `AppPreferencesProvider` supplies it to screens and
+the doctor PDF uses it for its labels. Russian
 plural forms come from `ru-plural.ts`. Services that produce user-visible text
 take a language or locale argument instead of reading global state.
 
