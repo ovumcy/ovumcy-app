@@ -87,10 +87,11 @@ follows from that:
   device reminder notifications are a free-tier feature derived entirely from
   on-device data and read no billing state. For the two purely-local
   compute features (doctor PDF, advanced insights) a signed EdDSA
-  entitlement-token overlay is implemented and test-covered, but no production
-  caller constructs the token gate yet, so today those gates too read only the
-  snapshot boolean; switching them to the token is a later activation step
-  (see Accepted Residual Risks). Gating is **additive**: a free
+  entitlement-token overlay is implemented and test-covered, and the production
+  premium-features loader builds the token gate, but the gate is inert until the
+  managed cloud issues tokens: with no fetched or cached token it falls back to
+  the snapshot boolean, which decides those gates today; issuing tokens is the
+  activation step (see Accepted Residual Risks). Gating is **additive**: a free
   or expired account keeps full core cycle-tracking and renders an explicit lock
   card; no health feature is taken away.
 
@@ -227,9 +228,9 @@ follows from that:
   (`src/security/entitlement-token.ts`): the verifier checks the signature
   against an embedded public key keyed by `kid`, checks `iss`/`aud`/`exp`/`sub`,
   and the premium loader trusts a valid token's `entitlements` over the plain
-  snapshot boolean. It is **not activated**: no production screen or service
-  constructs the token gate yet, so today both features are decided purely by
-  the managed billing-snapshot boolean, exactly as before the token landed —
+  snapshot boolean. It is **not activated**: the production premium-features
+  loader builds the token gate, but no token is issued yet, so the gate falls
+  back and both features are decided by the managed billing-snapshot boolean —
   the cross-repo contract memo (`docs/signed-entitlements.md` in the managed
   cloud repo) records the feature as IMPLEMENTED / NOT ACTIVATED, with
   activation as its rollout step 3. Once live, the token raises casual
@@ -571,9 +572,10 @@ pregnancy never sets it, so neither signal ever covers the other.
   the app test suite; only the pure policy and store are tested today. Planned.
 - **Signed premium entitlement tokens (honest non-DRM scope).** The
   entitlement-token verifier and its snapshot-fallback overlay are implemented
-  and pinned by the matrix rows above, but remain dormant: no production caller
-  constructs the token gate, so the two purely-local premium features are still
-  decided by the billing-snapshot boolean until the activation rollout step.
+  and pinned by the matrix rows above, but remain dormant: the production
+  loader builds the token gate, yet with no token issued it falls back, so the
+  two purely-local premium features are still decided by the billing-snapshot
+  boolean until the activation rollout step.
   The remaining policy note is that verification, once live, is *bypassable by
   a forked client* by design. This is not asserted by a single test — it is the
   explicit non-goal recorded in the Accepted-Residual note above, reviewed by

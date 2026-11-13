@@ -12,7 +12,7 @@ Nothing. The application code under `src/`, `app/` and `index.js` contains no `c
 
 ## Error Messages
 
-Failures are returned as typed error codes (for example `invalid_payload`, `unauthorized`, `totp_invalid_code`) or thrown as `Error` values that screens map to localized copy. Messages are built from operation labels and error classes, not from record contents:
+Failures are returned as typed error codes (for example `invalid_payload`, `unauthorized`, `totp_invalid_code`) or thrown as `Error` values that screens map to localized copy. Messages are built from operation labels and error classes, not from record contents; the one part not controlled here is the underlying native message a storage error carries:
 
 - storage errors are wrapped as `<operation label>: <underlying message>` (`withStorageOperationLabel` in `src/storage/local/sqlite-schema-migrations.ts`), where the label is a fixed string such as `sqlite/localDataKey/canaryDecrypt`;
 - crypto failures throw fixed codes (`invalid_recovery_phrase`, `invalid_wrapped_key_metadata`, `invalid_partner_invite`, `invalid_partner_projection`) or the cipher's authentication failure, which carries no plaintext;

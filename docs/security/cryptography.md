@@ -13,7 +13,7 @@ This document is the structured inventory of every cryptographic operation in th
 | SHA-256 | `@noble/hashes` | partner-share and sync blob checksums |
 | BIP-39 mnemonic and seed | `@scure/bip39` (English wordlist) | recovery phrase |
 | Ed25519 verification | `@noble/curves` | entitlement token |
-| Random bytes | `expo-crypto` `getRandomBytes` | every key, nonce and identifier |
+| Random bytes | `expo-crypto` `getRandomBytes` | every key and nonce, the device id and secret, recovery-phrase entropy |
 
 All AEAD calls go through `encryptPayload` / `decryptPayload` in `src/security/payload-crypto.ts`, which takes the associated data as a required argument. The recovery wrap is the one AEAD call that builds the cipher directly in `src/security/sync-crypto.ts`, with the same algorithm.
 
@@ -63,7 +63,7 @@ Enforcement: the test matrix has no row for the sync envelope; its behaviour is 
 | Purpose | Owner-to-partner read-only projection, opaque to the managed cloud. |
 | Algorithm / library | XChaCha20-Poly1305 via `src/security/partner-share-crypto.ts`; envelope JSON is base64-encoded into `ciphertextBase64`; `checksumSHA256` is SHA-256 over the plaintext payload and is re-checked after decryption. |
 | Key source | Two-step derivation, both HKDF-SHA256: `K_invite = HKDF(invite token, salt none, info "ovumcy-partner-share-v1")`, then `K_grant = HKDF(K_invite, salt "ovumcy-partner-share-grant-v1", info "<grantID>\|<ownerAccountID>\|<sourceInviteID>")`. Projections are encrypted under `K_grant`. The invite token must be at least 22 characters after trimming; empty context fields are refused. |
-| Key storage | `PartnerShareSecretsRecord` (grant keys, pending invite keys, consumed-invite markers, generation counters) in `expo-secure-store` under `ovumcy.partner-share-secrets`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`; memory only on web preview. `K_invite` is discarded after `K_grant` is derived (the partner never persists it). |
+| Key storage | `PartnerShareSecretsRecord` (grant keys, pending invite keys, consumed-invite markers, generation counters) in `expo-secure-store` under `ovumcy.partner-share-secrets`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`; memory only on web preview. The partner discards `K_invite` as soon as `K_grant` is derived; the owner keeps it under the pending invite keys until the grant is reconciled. |
 | Nonce | Random 24 bytes per upload. |
 | AAD | `ovumcy-partner-share-v1\|<grantID>\|<accessLevel>\|<schemaVersion>`. After decryption the inner payload's `grantID` and `accessLevel` must equal the envelope's, and `generation` must be an integer at or above the initial generation. |
 | Envelope version | AAD label `ovumcy-partner-share-v1` plus `PARTNER_SHARE_SCHEMA_VERSION`; a mismatching `schemaVersion` is refused. |
@@ -76,13 +76,13 @@ Enforcement rows: [Partner-share crypto and projection privacy](../../SECURITY.m
 | Aspect | Detail |
 | --- | --- |
 | Purpose | Backs up the sync master key so a new device can recover it. Covered by [src/security/sync-crypto.test.ts](../../src/security/sync-crypto.test.ts); the test matrix has no row for it. |
-| Algorithm / library | 16 random bytes encoded as a 12-word BIP-39 English mnemonic (`@scure/bip39`). Wrapping key = `HKDF-SHA256(BIP-39 seed, no salt, info "ovumcy-sync-wrap", 32 bytes)`. The master key is wrapped with XChaCha20-Poly1305. No password-based KDF (Argon2, PBKDF2, scrypt) is used by the app; the phrase carries 128 bits of entropy and the BIP-39 seed step is the only stretching. |
-| Key source | The phrase is generated on device and shown to the user; it is not persisted by the app. |
+| Algorithm / library | 16 random bytes encoded as a 12-word BIP-39 English mnemonic (`@scure/bip39`). Wrapping key = `HKDF-SHA256(BIP-39 seed, no salt, info "ovumcy-sync-wrap", 32 bytes)`. The master key is wrapped with XChaCha20-Poly1305. The only stretching is the BIP-39 seed derivation itself (PBKDF2-HMAC-SHA512, 2048 rounds, inside `@scure/bip39`); the app chooses no KDF parameters of its own, and the phrase carries 128 bits of entropy. |
+| Key source | The phrase is generated on device and shown to the user. It is not written to SecureStore or SQLite; it stays in screen state until acknowledged, and the optional recovery-phrase export writes it to a transient `ovumcy-private-export-*` file that follows the [export artifact cleanup](../../SECURITY.md#export-and-import-artifact-cleanup) lifecycle. |
 | Key storage | The wrapped key metadata (`algorithm`, `kdf: "bip39_seed_hkdf_sha256"`, `mnemonicWordCount`, `wrapNonceHex`, `wrappedMasterKeyHex`, `phraseFingerprintHex`) is part of `SyncSecretsRecord` and is uploaded to the sync server where the backend supports recovery-key storage. |
 | Nonce | Random 24 bytes per wrap. |
 | AAD | `ovumcy-sync-wrap-v1\|<phraseFingerprintHex>\|<mnemonicWordCount>`. The fingerprint is `HKDF-SHA256(seed, info "ovumcy-sync-fingerprint", 8 bytes)` and is compared before the unwrap attempt. |
 | Envelope version | `ovumcy-sync-wrap-v1` label; unwrap refuses metadata whose `algorithm`, `kdf` or word count differ from the single supported value. |
-| Rotation / rekey | A new phrase is created only when sync keys are created again; the old wrapped key stays valid for the old master key. Phrase reveal and key recreation sit behind device authentication (see [Sensitive-action re-authentication](../../SECURITY.md#sensitive-action-re-authentication)). |
+| Rotation / rekey | A new phrase is created only when sync keys are created again; the old wrapped key stays valid for the old master key. Regenerating keys when sync secrets already exist sits behind a confirm dialog and device authentication (see [Sensitive-action re-authentication](../../SECURITY.md#sensitive-action-re-authentication)). The phrase shown at first-time setup, and its export while still on screen, are not behind a separate challenge. |
 
 ### 5. Entitlement token signature verification
 
@@ -95,7 +95,7 @@ Enforcement rows: [Partner-share crypto and projection privacy](../../SECURITY.m
 | Nonce / AAD | Not applicable (signature, not AEAD). |
 | Envelope version | JWS header `alg` and `kid`; an unknown `kid` is refused. |
 | Rotation | Ship two `kid` entries (current and next), let the signer move to the next, retire the old one in a later release. |
-| Scope | The overlay is implemented but no production caller currently decides a gate from it; premium gating reads the managed billing snapshot. Verification is bypassable by a forked client by design. See the Accepted Residual Risks and the *Policy / Planned* list in [SECURITY.md](../../SECURITY.md). |
+| Scope | The gate is built on the production premium-features path (`loadManagedPremiumFeaturesForCurrentSession`, `settings-state-service`), but it is inert until the managed cloud issues tokens: with no fetched or cached token it falls back to the managed billing snapshot, which decides premium today. Verification is bypassable by a forked client by design. See the Accepted Residual Risks and the *Policy / Planned* list in [SECURITY.md](../../SECURITY.md). |
 
 Enforcement rows: [Signed entitlement-token verification](../../SECURITY.md#signed-entitlement-token-verification-purely-local-premium).
 
@@ -104,14 +104,14 @@ Enforcement rows: [Signed entitlement-token verification](../../SECURITY.md#sign
 The app performs no TOTP computation. There is no HMAC-SHA1 or code-generation code and no TOTP library in the dependency list. The sync server generates the shared secret and validates codes. Client-side behaviour is limited to:
 
 - receiving `secretBase32` and the `otpauth://` provisioning URI once at enrollment (`src/sync/sync-totp-service.ts`) for display and QR handoff to an authenticator app;
-- submitting the six-digit code the user types, with the challenge id, on login, enable and disable;
+- submitting the six-digit code the user types: with the challenge id on login, alone on enable, and with the current password on disable;
 - not persisting the secret or codes in SecureStore or local storage.
 
 Server-side secret storage and replay protection are described in [two-factor.md](../two-factor.md). Client validation rows: [Client TOTP validation, challenge, and replay handling](../../SECURITY.md#client-totp-validation-challenge-and-replay-handling).
 
 ### 7. Randomness source
 
-All randomness comes from `getRandomBytes` of `expo-crypto`, the platform CSPRNG, imported in `src/security/payload-crypto.ts` and `src/security/sync-crypto.ts`. It supplies: every AEAD nonce, the local-data key, the sync master key, device secret and device id, and the recovery-phrase entropy. `Math.random` does not appear anywhere under `src/`.
+Security-relevant randomness comes from `getRandomBytes` of `expo-crypto`, the platform CSPRNG, imported in `src/security/payload-crypto.ts` and `src/security/sync-crypto.ts`. It supplies every AEAD nonce, the local-data key, the sync master key, device secret and device id, and the recovery-phrase entropy. Non-secret record ids (pregnancy, postpartum, screening, contraction sessions) use `crypto.randomUUID()`, with a time-and-counter fallback where it is unavailable; they are identifiers, not key material. `Math.random` does not appear anywhere under `src/`.
 
 ## Related Non-Cryptographic Secret Handling
 
