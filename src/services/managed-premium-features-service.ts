@@ -3,6 +3,7 @@ import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { EntitlementTokenStore } from "../security/entitlement-token-store";
 import {
   createManagedCloudAPIClient,
+  isManagedCloudTransportFailure,
   type ManagedCloudBillingSnapshot,
   type ManagedCloudPremiumFeatures,
 } from "../sync/managed-cloud-api-client";
@@ -166,6 +167,12 @@ async function readFreshCachedBillingSnapshot(
   }
 }
 
+export type ManagedBillingLoadOptions = {
+  // Server-checked operations set this: the offline-grace cache is never read,
+  // so a failed live fetch yields no premium at all.
+  liveOnly?: boolean;
+};
+
 export async function loadManagedBillingSnapshot(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
@@ -173,6 +180,7 @@ export async function loadManagedBillingSnapshot(
   // Optional signed-token gate. Absent -> pure snapshot behaviour (today).
   tokenGate?: EntitlementTokenGate,
   now: Date = new Date(),
+  options: ManagedBillingLoadOptions = {},
 ): Promise<ManagedCloudBillingSnapshot | null> {
   if (syncMode !== "managed") {
     return null;
@@ -207,6 +215,16 @@ export async function loadManagedBillingSnapshot(
     billing = billingResult.billing;
     await persistManagedBillingSnapshotCache(storage, billing, now);
   } else {
+    // The offline-grace cache answers only "the server could not be asked"
+    // (no response / temporary unavailability), and only for premium display
+    // surfaces. An explicit refusal, or a caller that reaches a server-checked
+    // operation (`liveOnly`), gets no cached premium.
+    if (
+      options.liveOnly === true ||
+      !isManagedCloudTransportFailure(billingResult.errorCode)
+    ) {
+      return null;
+    }
     const cached = await readFreshCachedBillingSnapshot(storage, now);
     if (!cached) {
       return null;
@@ -234,6 +252,7 @@ export async function loadManagedPremiumFeatures(
   syncMode: SyncMode,
   tokenGate?: EntitlementTokenGate,
   now: Date = new Date(),
+  options: ManagedBillingLoadOptions = {},
 ): Promise<ManagedCloudPremiumFeatures> {
   const billingSnapshot = await loadManagedBillingSnapshot(
     storage,
@@ -241,6 +260,7 @@ export async function loadManagedPremiumFeatures(
     syncMode,
     tokenGate,
     now,
+    options,
   );
   return billingSnapshot?.premiumFeatures ?? EMPTY_MANAGED_PREMIUM_FEATURES;
 }

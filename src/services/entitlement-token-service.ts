@@ -5,6 +5,7 @@ import {
 } from "../security/entitlement-token";
 import {
   createManagedCloudAPIClient,
+  isManagedCloudTransportFailure,
   type ManagedCloudAPIClient,
 } from "../sync/managed-cloud-api-client";
 import { MANAGED_CLOUD_AUTH_BASE_URL } from "../sync/sync-contract";
@@ -16,9 +17,10 @@ import { MANAGED_CLOUD_AUTH_BASE_URL } from "../sync/sync-contract";
  *  1. If a managed session token is available, POST /account/entitlements/token.
  *     - On success: cache the JWT in secure storage and verify it for THIS
  *       request.
- *     - On 503 / absent endpoint / network failure: keep the cached token (the
- *       offline grace — the signed 24h `exp` is the authoritative window) and
- *       verify that instead.
+ *     - On a transport failure (network failure / server temporarily
+ *       unavailable): keep the cached token (the offline grace — the signed
+ *       24h `exp` is the authoritative window) and verify that instead. Any
+ *       other refusal yields no token.
  *  2. Verify the chosen token against the embedded public keys + `now` +
  *     `expectedSub` (the active managed account id). Only a token that passes
  *     verification yields entitlements; an expired token re-locks (the verifier
@@ -101,9 +103,14 @@ async function loadToken(
       await input.store.writeEntitlementToken({ token: fetched.result.token });
       return fetched.result.token;
     }
-    // 503 / absent endpoint / network failure: fall through to the cached
-    // token (offline grace). Pre-rollout (no endpoint) this is the common path
-    // and there is simply no cached token, so the gate falls back to snapshot.
+    // Only a transport failure (no response, or the server's own temporary
+    // unavailability) falls through to the cached token (offline grace). Any
+    // other refusal — a lapsed plan, an unauthorized session, an absent
+    // endpoint — is an answer: no cached token is served and the gate falls
+    // back to the snapshot.
+    if (!isManagedCloudTransportFailure(fetched.errorCode)) {
+      return null;
+    }
   }
 
   const cached = await input.store.readEntitlementToken();

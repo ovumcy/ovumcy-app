@@ -149,6 +149,9 @@ export function useBackupSyncSessionCore({
         storage,
         syncSecretStore,
         loadedState.syncPreferences.mode,
+        undefined,
+        undefined,
+        { liveOnly: true },
       );
 
       const partnerResult = await loadManagedPartnerAccess(
