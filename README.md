@@ -134,7 +134,7 @@ Everything in this list is free, works offline, and needs no account.
 - Calendar and statistics views for spotting patterns over months.
 - On-device reminders to log the day, before your next period, and before the fertile window; see [Reminders](#reminders).
 - CSV and JSON export, and an offline JSON import that previews first and never overwrites a day you already logged.
-- Device authentication (Face ID, Touch ID, fingerprint, or device passcode) before destructive or sensitive actions, and screen-capture protection that is on by default.
+- Device authentication (Face ID, Touch ID, fingerprint, or device passcode) before destructive or sensitive actions such as clearing data or restoring a sync backup (the additive offline JSON import asks for a preview and a confirmation instead), and screen-capture protection that is on by default.
 - Light, dark, or system theme, and a week that starts on Monday or Sunday.
 - English, Russian, Spanish, French, German, and Italian.
 
