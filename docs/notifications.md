@@ -158,6 +158,7 @@ The app has no outbound webhook, no `.ics` calendar feed, and no in-app dashboar
 - Web's ovulation-anchored lead is replaced by the fixed 1-day fertile-window lead above.
 - Web's dashboard banner has no counterpart: the app dashboard already shows the next-period
   estimate persistently.
+
 The webhook, feed, and banner differences are intentional and tracked in
 [web-parity-checklist.md](web-parity-checklist.md). Web's per-cycle-day reminders (a reminder on
 day N of every cycle) are not an intentional difference: they are not implemented in the app yet.
