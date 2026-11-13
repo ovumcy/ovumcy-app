@@ -304,8 +304,8 @@ start is logged. The pause lives in
 `cycle-history-service.buildCurrentCycleProjection` (not in this pure policy) and
 is a cross-cutting **Medical safety** invariant of the security constitution.
 
-"A later cycle start" is the cluster rule behind the cycle-start list, evaluated
-without its today-dependent opening (the same reading as ovumcy-web). Period days
+"A later cycle start" is a boundary in the logged period clusters, read without
+any today-dependent opening (the ovumcy-web rule). Period days
 merge into a cluster until a gap of 5 or more empty days; a cluster lifts the
 pause only through a non-spotting day carrying a non-uncertain cycle-start mark,
 or two consecutive non-spotting period days. Consequently:
@@ -315,7 +315,9 @@ or two consecutive non-spotting period days. Consequently:
   lift it (it would otherwise flicker back the next day when no second day follows);
 - a start dated on the same calendar day as the positive test does not lift it —
   the positive result wins ties;
-- `profile.lastPeriodStart` joins as an explicit start, as in the cycle-start list.
+- `profile.lastPeriodStart` never counts: the app rewrites it from uncertain marks
+  and when a logged start is deleted, so only logged days lift the pause (stricter
+  than ovumcy-web, which counts the onboarding start).
 
 The pause is only one of two suppression signals. An ACTIVE pregnancy record
 suppresses predictions on its own, regardless of the pause: a period logged

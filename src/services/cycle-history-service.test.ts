@@ -1198,6 +1198,49 @@ describe("cycle-history-service", () => {
       expect(projection.pregnancyTestDate).toBe("2026-02-10");
     });
 
+    it.each([
+      [
+        "an uncertain start mirrored into the profile",
+        {
+          ...createEmptyDayLogRecord("2026-03-01"),
+          isPeriod: true,
+          cycleStart: true,
+          isUncertain: true,
+        },
+      ],
+      [
+        "a lone spotting day the profile was re-anchored to",
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, flow: "spotting" as const },
+      ],
+      [
+        "a lone unflagged day the profile was re-anchored to",
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true },
+      ],
+    ])("stays paused when profile.lastPeriodStart points at %s", (_label, record) => {
+      const reanchored = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+      const records = [...baseRecords, record];
+      const now = new Date(2026, 2, 10);
+      const history = buildCycleHistorySummary(reanchored, records, now);
+      const projection = buildCurrentCycleProjection(reanchored, history, records, now);
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
+    it("stays paused on a two-day run of flow-none days carrying the spotting symptom", () => {
+      const spottingDay = (date: string) => ({
+        ...createEmptyDayLogRecord(date),
+        isPeriod: true,
+        flow: "none" as const,
+        symptomIDs: ["spotting"],
+      });
+      const projection = projectionFor(
+        [spottingDay("2026-03-01"), spottingDay("2026-03-02")],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
     it("lifts on an unflagged two-day period run after the positive test", () => {
       const projection = projectionFor(
         [

@@ -1355,13 +1355,14 @@ function sameLocalDay(left: Date, right: Date): boolean {
 }
 
 // The date of the latest positive pregnancy test while it is still the most
-// recent signal, null otherwise. "A later cycle start" is the cluster rule
-// behind collectCycleStartDates, without its today-dependent opening: a cluster
-// opens a cycle only through a non-spotting, non-uncertain explicit start mark
-// or two consecutive non-spotting period days, so a lone unflagged day dated
-// today or yesterday never lifts the pause (it would return the next day when
-// no second day follows). A start on the positive test's own day does not lift
-// it: the positive result wins ties. Mirrors ovumcy-web ResolvePregnancyPause.
+// recent signal, null otherwise. "A later cycle start" is a boundary in the
+// logged period clusters: a non-spotting, non-uncertain explicit start mark or
+// two consecutive non-spotting period days, so a lone unflagged day dated today
+// or yesterday never lifts the pause (it would return the next day when no
+// second day follows). A start on the positive test's own day does not lift
+// it: the positive result wins ties. Follows ovumcy-web ResolvePregnancyPause,
+// except that profile.lastPeriodStart never counts: the app rewrites it from
+// uncertain marks and from day-log deletions, so only logged days lift.
 function resolvePregnancyPause(
   profile: ProfileRecord,
   records: DayLogRecord[],
@@ -1381,7 +1382,12 @@ function resolvePregnancyPause(
   }
 
   let latestBoundary: string | null = null;
-  for (const cluster of buildObservedPeriodClusters(profile, records, todayValue)) {
+  const clusters = buildObservedPeriodClusters(
+    { ...profile, lastPeriodStart: null },
+    records,
+    todayValue,
+  );
+  for (const cluster of clusters) {
     const start = resolveClusterBoundaryWithoutToday(cluster);
     if (start && (!latestBoundary || start > latestBoundary)) {
       latestBoundary = start;
