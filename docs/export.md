@@ -1,6 +1,6 @@
 # Data Export and Import Format
 
-Ovumcy exports the owner's data locally, from `Settings → Data`. Nothing is uploaded: the file is built on the device from the local repositories and handed to the operating system's share sheet (a browser download on the web build). Export and import are Free-tier, need no account, no sync and no network, and are never blocked by the premium or pregnancy-mode state.
+Ovumcy exports the owner's data locally, from `Settings → Data`. Nothing is uploaded: the file is built on the device from the local repositories and handed to the operating system's share sheet (a browser download on the web build). JSON and CSV export and JSON import are Free-tier, need no account, no sync and no network, and are never blocked by the premium or pregnancy-mode state; only the PDF report below is premium.
 
 - **JSON** — a full backup envelope: settings, symptom catalog, per-day records and the pregnancy-mode collections. It is the only format the app can restore.
 - **CSV** — one row per logged day, for spreadsheets. Not restorable.
@@ -14,13 +14,13 @@ Both formats take a date range, chosen with a preset or two custom dates:
 
 | Preset   | Range                                                                                                |
 | -------- | ---------------------------------------------------------------------------------------------------- |
-| `all`    | Earliest logged day through the upper bound.                                                         |
-| `30`     | The last 30 days ending on the upper bound, inclusive.                                               |
+| `all`    | Earliest logged day through the upper bound (so a future-dated day extends it past today).           |
+| `30`     | The last 30 days ending today, inclusive, clamped to the earliest logged day.                        |
 | `90`     | The last 90 days, same rule.                                                                         |
 | `365`    | The last 365 days, same rule.                                                                        |
-| `custom` | Any `YYYY-MM-DD` pair inside the bounds below. A range equal to a preset's is reported as that preset. |
+| `custom` | Any `YYYY-MM-DD` pair accepted by the rules below. A range equal to a preset's is reported as that preset. |
 
-The bounds are the earliest logged day and the later of the latest logged day and today (device local time). A preset's upper bound is today, or the latest logged day when that is earlier; its lower bound is clamped to the earliest logged day. A custom range is refused when either date is not a real calendar date, when `from` is after the upper bound, when `to` falls outside the bounds, or when `to` is before `from`. With no logged days there are no bounds, so no file can be built.
+The bounds are the earliest logged day and the upper bound, which is the later of the latest logged day and today (device local time). A custom range is refused when either date is not a real calendar date, when `from` is after the upper bound, when `to` falls outside the bounds, or when `to` is before `from`; a `from` earlier than the earliest logged day is accepted. With no logged days there are no bounds: the presets yield an empty range, which fails validation, while a custom pair of real dates is accepted and produces a file with no day records.
 
 Before a file is produced the Settings screen shows a summary of the selected range: the number of logged days, whether any exist, and the earliest and latest logged day inside the range. The range is re-validated against fresh storage when the file is built, so a stale selection never exports a different window than the one validated.
 
