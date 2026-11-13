@@ -1253,6 +1253,18 @@ describe("cycle-history-service", () => {
       expect(projection.isPregnancyPaused).toBe(false);
     });
 
+    it("stays paused on unflagged period days with no two consecutive", () => {
+      const projection = projectionFor(
+        [
+          { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true },
+          { ...createEmptyDayLogRecord("2026-03-03"), isPeriod: true },
+        ],
+        new Date(2026, 2, 10),
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+    });
+
     it("stays paused on a lone unflagged period day dated today", () => {
       const projection = projectionFor(
         [{ ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true }],
