@@ -1,6 +1,6 @@
 # Data Export and Import Format
 
-Ovumcy exports the owner's data locally, from `Settings → Data`. Nothing is uploaded: the file is built on the device from the local repositories and handed to the operating system's share sheet (a browser download on the web build). JSON and CSV export and JSON import are Free-tier, need no account, no sync and no network, and are never blocked by the premium or pregnancy-mode state; only the PDF report below is premium.
+Ovumcy exports the owner's data locally, from the **Export data** section of Settings. Nothing is uploaded: the file is built on the device from the local repositories and handed to the operating system's share sheet (a browser download on the web build). JSON and CSV export and JSON import are Free-tier, need no account, no sync and no network, and are never blocked by the premium or pregnancy-mode state; only the PDF report below is premium.
 
 - **JSON** — a full backup envelope: settings, symptom catalog, per-day records and the pregnancy-mode collections. It is the only format the app can restore.
 - **CSV** — one row per logged day, for spreadsheets. Not restorable.
@@ -65,7 +65,7 @@ The file is pretty-printed with two-space indentation. Keys are camelCase, in th
 | `app`, `formatVersion`                  | The literal `"ovumcy"` and the schema version `3`.                                                                                                    | n/a                                |
 | `exportedAt`                            | UTC instant of the export, ISO 8601 with milliseconds. Web differs: it writes local time with an offset.                                              | n/a                                |
 | `preset`, `range`, `summary`            | The selection and its summary as validated. `range` holds `YYYY-MM-DD` strings; `summary.dateFrom`/`dateTo` are `null` when empty.                    | n/a                                |
-| `profile`                               | The whole settings record: cycle and tracking settings, reminders, appearance, the stored cycle start, and the optional crisis-support contact name and phone. | No, always complete                |
+| `profile`                               | The whole settings record: cycle and tracking settings, reminders, appearance, the screen-capture-protection preference, the stored cycle start, and the optional crisis-support contact name and phone. | No, always complete                |
 | `symptoms`                              | The whole symptom catalog, built-in and custom, including archived entries: `id`, `slug`, `label`, `icon`, `color`, `isArchived`, `sortOrder`, `isDefault`. | No, always complete                |
 | `dayLogs`                               | Stored day records inside the range, ascending by date.                                                                                                | Yes                                |
 | `pregnancies`                           | Every pregnancy record on the device.                                                                                                                 | No, episodic                       |
@@ -73,7 +73,7 @@ The file is pretty-printed with two-space indentation. Keys are camelCase, in th
 | `postpartumRecords`                     | Every postpartum record on the device.                                                                                                                | No, episodic                       |
 | `screeningResponses`                    | Mood-screening (EPDS) responses, including the answer vector.                                                                                         | Yes, by completion date            |
 
-Not exported: sync credentials and device keys, the premium entitlement state, the app-lock settings and any recovery phrase. The recovery phrase has its own, separate export.
+Not exported: sync credentials and device keys, the premium entitlement state and any recovery phrase. The recovery phrase has its own, separate export.
 
 A `dayLogs` entry has the fields below. Enum values are lowercase strings, exactly the stored values.
 
@@ -122,7 +122,7 @@ Collections that do not fit one row per day are JSON-only: pregnancies, contract
 
 ## Import (restore)
 
-`Settings → Data → Import` restores a JSON export made by this app. It is free, offline and runs entirely on the device, in three steps: pick, preview, confirm.
+The **Restore from backup** section of Settings restores a JSON export made by this app. It is free, offline and runs entirely on the device, in three steps: pick, preview, confirm.
 
 1. **Pick.** The system document picker offers JSON files. A file over 10 MiB is refused before it is read. The picker's cache copy is deleted after the read attempt, whatever its outcome.
 2. **Preview.** The file is parsed and a dry run counts what the restore would do, per category, without writing anything. The preview and the apply share one code path, so the confirmed counts match the previewed ones.
