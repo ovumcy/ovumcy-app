@@ -43,9 +43,9 @@ export type ManagedCloudAPIErrorCode =
  * True only when a failed managed call says "the server could not be asked"
  * rather than "the server answered no". `network_failed` is the synthetic
  * no-response outcome (thrown fetch, status 599); `entitlements_unavailable`
- * is the server's own temporary-unavailability answer. Every other code is an
- * answer (4xx refusals, `unauthorized`, an unparseable body, a generic or
- * proxy-shaped error whose status the code mapping does not preserve), so
+ * is the server's own temporary-unavailability answer; a 5xx without a
+ * recognized error body is also mapped to `network_failed`. Every other code
+ * is an answer (4xx refusals, `unauthorized`, an unparseable 4xx body), so
  * offline-grace readers must treat it as a refusal and fail closed.
  */
 export function isManagedCloudTransportFailure(
@@ -1286,11 +1286,18 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "totp_secret_failed":
         return payload.error;
       default:
-        return "generic";
+        return unrecognizedErrorCode(response.status);
     }
   } catch {
-    return "generic";
+    return unrecognizedErrorCode(response.status);
   }
+}
+
+// A 5xx without a recognized error body is a server or gateway that could not
+// answer (proxy 502/503/504, crash page), not a refusal: it is reported as a
+// transport failure so offline-grace readers keep the bounded cache.
+function unrecognizedErrorCode(status: number): ManagedCloudAPIErrorCode {
+  return status >= 500 ? "network_failed" : "generic";
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
