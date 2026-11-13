@@ -10,6 +10,8 @@ import {
   saveDayLogEditorRecord,
 } from "./day-log-editor-service";
 
+const FIXED_NOW = new Date(2026, 2, 30, 12);
+
 describe("day-log-editor-service", () => {
   it("loads visibility and unit-aware hints from the canonical profile", async () => {
     const state = await loadDayLogEditorState(
@@ -88,7 +90,7 @@ describe("day-log-editor-service", () => {
       notes: "  note  ",
     });
 
-    const result = await saveDayLogEditorRecord(storage, record);
+    const result = await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     expect(result).toEqual({
       ok: true,
@@ -114,7 +116,7 @@ describe("day-log-editor-service", () => {
       bpDiastolic: 76.2,
     });
 
-    const result = await saveDayLogEditorRecord(storage, record);
+    const result = await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     expect(result).toEqual({
       ok: true,
@@ -139,7 +141,7 @@ describe("day-log-editor-service", () => {
       weightKg: 999,
     });
 
-    const result = await saveDayLogEditorRecord(storage, record);
+    const result = await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     if (!result.ok) {
       throw new Error("expected saveDayLogEditorRecord to succeed");
@@ -159,7 +161,7 @@ describe("day-log-editor-service", () => {
       isPeriod: true,
     });
 
-    const result = await saveDayLogEditorRecord(storage, record);
+    const result = await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     expect(result).toEqual({
       ok: true,
@@ -182,6 +184,26 @@ describe("day-log-editor-service", () => {
     );
   });
 
+  it("auto-fills only up to the injected today, whichever side of midnight it falls", async () => {
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      isPeriod: true,
+    });
+    const beforeMidnight = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+    const afterMidnight = createStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
+    });
+
+    await saveDayLogEditorRecord(beforeMidnight, record, new Date(2026, 2, 18, 23, 59));
+    await saveDayLogEditorRecord(afterMidnight, record, new Date(2026, 2, 19, 0, 1));
+
+    const datesOf = (storage: ReturnType<typeof createStorageMock>) =>
+      (storage.writeDayLogRecord as jest.Mock).mock.calls.map(([written]) => written.date);
+    expect(datesOf(beforeMidnight)).toEqual(["2026-03-17", "2026-03-18"]);
+    expect(datesOf(afterMidnight)).toEqual(["2026-03-17", "2026-03-18", "2026-03-19"]);
+  });
+
   it("does not auto-fill when the previous day is already a period day", async () => {
     const storage = createStorageMock({
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
@@ -195,7 +217,7 @@ describe("day-log-editor-service", () => {
       isPeriod: true,
     });
 
-    await saveDayLogEditorRecord(storage, record);
+    await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     expect(storage.writeDayLogRecord).toHaveBeenCalledTimes(1);
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(
@@ -221,7 +243,7 @@ describe("day-log-editor-service", () => {
       isPeriod: false,
     });
 
-    await saveDayLogEditorRecord(storage, record);
+    await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     const writes = (storage.writeDayLogRecord as jest.Mock).mock.calls.map(
       ([written]) => ({ date: written.date, isPeriod: written.isPeriod }),
@@ -255,7 +277,7 @@ describe("day-log-editor-service", () => {
       isPeriod: false,
     });
 
-    await saveDayLogEditorRecord(storage, record);
+    await saveDayLogEditorRecord(storage, record, FIXED_NOW);
 
     const writes = (storage.writeDayLogRecord as jest.Mock).mock.calls.map(
       ([written]) => ({ date: written.date, isPeriod: written.isPeriod }),

@@ -736,6 +736,46 @@ describe("CalendarScreen", () => {
     );
   });
 
+  it("auto-fills only up to the screen's frozen today, not the wall clock", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: true,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+
+    await render(
+      <CalendarScreen
+        autosaveDebounceMs={1}
+        now={new Date(2026, 2, 17)}
+        storage={storage}
+      />,
+    );
+
+    await waitForCalendarReady();
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-15"));
+    await screen.findByTestId("day-log-period-toggle");
+    await fireEvent.press(screen.getByTestId("day-log-period-toggle"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
+    );
+    expect((await storage.readDayLogRecord("2026-03-17")).isPeriod).toBe(true);
+    expect((await storage.readDayLogRecord("2026-03-18")).isPeriod).toBe(false);
+  });
+
   it("autosaves empty-day edits without leaving edit mode", async () => {
     const storage = createVolatileWebAppStorage();
     await storage.writeProfileRecord({

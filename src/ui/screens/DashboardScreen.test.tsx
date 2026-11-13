@@ -703,7 +703,7 @@ describe("DashboardScreen", () => {
     expect(screen.queryByTestId("day-log-flow-none")).toBeNull();
   });
 
-  it("auto-fills the next period days after autosaving a newly marked first day", async () => {
+  it("keeps days after the screen's frozen today unfilled when autosaving a newly marked first day", async () => {
     const storage = createVolatileWebAppStorage();
     await storage.writeProfileRecord({
       lastPeriodStart: "2026-03-10",
@@ -732,12 +732,14 @@ describe("DashboardScreen", () => {
     await waitFor(() =>
       expect(screen.getByTestId("day-log-status-banner")).toBeTruthy(),
     );
-    expect(await storage.readDayLogRecord("2026-03-18")).toEqual(
+    expect(await storage.readDayLogRecord("2026-03-17")).toEqual(
       expect.objectContaining({
-        date: "2026-03-18",
+        date: "2026-03-17",
         isPeriod: true,
       }),
     );
+    // The save reads the screen's frozen today (03-17), not the wall clock.
+    expect((await storage.readDayLogRecord("2026-03-18")).isPeriod).toBe(false);
   });
 
   it("autosaves day-log edits after the debounce window", async () => {
