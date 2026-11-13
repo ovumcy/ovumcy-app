@@ -38,7 +38,7 @@ flowchart TB
 
 | Layer | Path | Responsibility |
 | --- | --- | --- |
-| Routes | `app/` | One thin file per route (`export default function XRoute() { return <XScreen /> }`). No domain logic, no persistence. |
+| Routes | `app/` | One thin file per route (`export default function XRoute() { return <XScreen /> }`); the root layout `_layout.tsx` also holds the providers and the stack navigator. No domain logic, no persistence. |
 | UI | `src/ui` | Screens (`src/ui/screens`), components, the app-wide preferences provider, the confirm-dialog bridge, theme tokens, tab navigation. Holds feature UI state only. |
 | Services | `src/services` | Reusable product logic: cycle prediction and day-log policies, view-data builders per screen, export/import, reminders, entitlement and billing reads. Takes a `LocalAppStorage` (and secret stores) as arguments. |
 | Sync | `src/sync` | Optional sync and managed-cloud clients, endpoint and password policy, snapshot build/restore. Reads and writes local data only through `LocalAppStorage`. |
