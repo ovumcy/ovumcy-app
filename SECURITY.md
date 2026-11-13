@@ -313,8 +313,9 @@ follows from that:
   where `now` is unix-seconds supplied by the caller — there is no secondary,
   clock-independent freshness check, and the verifier must stay fully offline-capable
   (it is also the code path that checks the cached token during the offline grace in
-  `src/services/entitlement-token-service.ts`). As documented above, no production
-  caller constructs the token gate yet, so this comparison runs only in tests today;
+  `src/services/entitlement-token-service.ts`). As documented above, the production
+  loader builds the token gate but no token is issued yet, so this comparison has nothing
+  to verify outside tests today;
   once activated, the sole realistic source for `now` is the device clock. A clock set
   behind real time makes an already-issued token keep verifying as unexpired for
   longer than its issuer intended; a clock set ahead of real time only expires a token
