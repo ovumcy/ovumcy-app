@@ -286,6 +286,12 @@ async function walkBackupEnvelope(
   outcome.symptomsAdded = symptomImportResult.added;
   const symptomIDMap = symptomImportResult.idMap;
 
+  // The first record for a calendar date decides it; a later record repeating
+  // that date is rejected (the web restore does the same). Tracking this in
+  // the walker, not via storage reads, keeps the preview (which writes
+  // nothing) and the apply (whose earlier writes are visible to later reads)
+  // on the same decision.
+  const seenDayLogDates = new Set<string>();
   for (const rawRecord of envelope.dayLogs ?? []) {
     const record = rawRecord as Partial<DayLogRecord> | null;
     const date = typeof record?.date === "string" ? record.date : "";
@@ -294,6 +300,11 @@ async function walkBackupEnvelope(
       outcome.dayLogsRejected += 1;
       continue;
     }
+    if (seenDayLogDates.has(date)) {
+      outcome.dayLogsRejected += 1;
+      continue;
+    }
+    seenDayLogDates.add(date);
 
     const existing = await storage.readDayLogRecord(date);
     if (hasDayLogData(existing)) {

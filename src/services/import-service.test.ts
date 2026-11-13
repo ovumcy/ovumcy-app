@@ -1460,3 +1460,113 @@ describe("previewImportBackupEnvelope (dry-run, v3 collections)", () => {
     expect(storage.writeScreeningResponse).not.toHaveBeenCalled();
   });
 });
+
+describe("preview and apply agree on a file repeating a date", () => {
+  it("keeps the first record for a repeated date and rejects the repeat in both modes", async () => {
+    const file = envelope({
+      dayLogs: [
+        dayLog("2026-03-10", { mood: 4 }),
+        dayLog("2026-03-10", { mood: 1 }),
+        dayLog("2026-03-11", { mood: 2 }),
+      ],
+    });
+
+    const previewSide = createStatefulStorage();
+    const preview = await previewImportBackupEnvelope(previewSide.storage, file);
+    const applySide = createStatefulStorage();
+    const applied = await importBackupEnvelope(applySide.storage, file);
+
+    expect(preview).toEqual(applied);
+    expect(applied.dayLogsAdded).toBe(2);
+    expect(applied.dayLogsRejected).toBe(1);
+    expect(applied.dayLogsSkipped).toBe(0);
+    expect(applySide.dayLogs.get("2026-03-10")?.mood).toBe(4);
+    expect(previewSide.dayLogs.size).toBe(0);
+  });
+
+  it("rejects a repeat of a date whose first record was skipped", async () => {
+    const file = envelope({
+      dayLogs: [
+        dayLog("2026-03-10", { mood: 4 }),
+        dayLog("2026-03-10", { mood: 1 }),
+      ],
+    });
+    const make = () => {
+      const side = createStatefulStorage();
+      side.dayLogs.set("2026-03-10", dayLog("2026-03-10", { notes: "kept" }));
+      return side;
+    };
+
+    const preview = await previewImportBackupEnvelope(make().storage, file);
+    const applySide = make();
+    const applied = await importBackupEnvelope(applySide.storage, file);
+
+    expect(preview).toEqual(applied);
+    expect(applied.dayLogsSkipped).toBe(1);
+    expect(applied.dayLogsRejected).toBe(1);
+    expect(applySide.dayLogs.get("2026-03-10")?.notes).toBe("kept");
+  });
+
+  it("returns identical counts from preview and apply over mixed files", async () => {
+    const symptom = (id: string, label: string) => ({
+      id,
+      slug: label.toLowerCase(),
+      label,
+      icon: "🔥",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 900,
+      isDefault: false,
+    });
+    const files: ExportBackupEnvelope[] = [
+      envelope({ dayLogs: [] }),
+      envelope({
+        dayLogs: [
+          dayLog("2026-04-01", { mood: 3 }),
+          dayLog("2026-04-01", { mood: 5 }),
+          dayLog("2026-04-01", { notes: "third" }),
+          dayLog("bad"),
+          dayLog("2026-04-02"),
+        ],
+        symptoms: [symptom("a", "Jaw pain"), symptom("b", "Jaw pain")],
+      }),
+      envelope({
+        formatVersion: 3,
+        dayLogs: [
+          dayLog("2026-05-01", { mood: 2 }),
+          dayLog("2026-05-01", { mood: 2 }),
+        ],
+        pregnancies: [
+          pregnancyRecord({ id: "p1" }),
+          pregnancyRecord({ id: "p1" }),
+          pregnancyRecord({ id: "p2" }),
+        ],
+        kickSessions: [kickSession({ id: "k1" }), kickSession({ id: "k1" })],
+        contractionSessions: [
+          contractionSession({ id: "c1" }),
+          contractionSession({ id: "c1" }),
+        ],
+        postpartumRecords: [
+          postpartumRecord({ id: "pp1" }),
+          postpartumRecord({ id: "pp1" }),
+        ],
+        screeningResponses: [
+          screeningResponse({ id: "s1" }),
+          screeningResponse({ id: "s1" }),
+        ],
+      } as Partial<ExportBackupEnvelope>),
+    ];
+
+    for (const file of files) {
+      const preview = await previewImportBackupEnvelope(
+        createStatefulStorage().storage,
+        file,
+      );
+      const applied = await importBackupEnvelope(
+        createStatefulStorage().storage,
+        file,
+      );
+      expect(preview).toEqual(applied);
+    }
+  });
+});
