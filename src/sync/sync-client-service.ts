@@ -6,7 +6,7 @@ import {
   buildSyncPayloadAad,
   createRecoveredSyncSecretsRecord,
   createSyncSecretsRecord,
-  decryptSyncPayload,
+  decryptSyncSnapshotPayload,
   encryptSyncPayload,
   isValidRecoveryPhrase,
 } from "../security/sync-crypto";
@@ -1183,7 +1183,7 @@ export async function runSyncUpload(
   const encryptedEnvelope = encryptSyncPayload(
     prepared.secrets.masterKeyHex,
     payload,
-    buildSyncPayloadAad(prepared.secrets.device.deviceID),
+    buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
   );
   const ciphertextBytes = encodeEncryptedEnvelope(encryptedEnvelope);
   const checksumSHA256 = bytesToHex(sha256(ciphertextBytes));
@@ -1263,10 +1263,11 @@ export async function runSyncRestore(
     encryptedEnvelope = decodeEncryptedEnvelope(
       toByteArray(blobResult.blob.ciphertextBase64),
     );
-    decryptedPayload = decryptSyncPayload(
+    decryptedPayload = decryptSyncSnapshotPayload(
       prepared.secrets.masterKeyHex,
       encryptedEnvelope,
-      buildSyncPayloadAad(prepared.secrets.device.deviceID),
+      blobResult.blob.schemaVersion,
+      prepared.secrets.device.deviceID,
     );
   } catch {
     return { ok: false, errorCode: "invalid_payload" };

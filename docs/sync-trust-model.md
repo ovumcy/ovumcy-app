@@ -74,7 +74,7 @@ The app should therefore treat managed auth and managed sync as separate respons
 
 Recovery phrases are shown only when the app prepares or recreates local sync keys.
 
-The new-phone flow is: install → sign in → enter the recovery phrase to restore the key → download the blob → decrypt on the device. The server participates only as blob storage; it never sees the phrase or the restored key.
+The new-phone flow is: install → sign in → enter the recovery phrase to restore the key → download the blob → decrypt on the device. The recovered device gets a fresh device id, and the snapshot AAD does not bind a device id, so it opens a blob any other device uploaded. The server participates only as blob storage; it never sees the phrase or the restored key.
 
 If an owner loses every device and also loses the recovery phrase, encrypted sync data cannot be recovered.
 
@@ -250,7 +250,7 @@ A guest has no password and no recovery code by design, so a guest who loses the
 Every AEAD encrypt/decrypt boundary in the app — local SQLite payloads, sync snapshot blobs, partner-share projections, recovery-phrase wrap — must thread context-specific associated data (AAD) into the auth tag. This prevents ciphertext blobs from being swapped between rows, devices, or grants without invalidating the tag.
 
 - Local data uses `buildLocalDataAad(tableName, rowKey)` — both encrypt and decrypt sites construct identical context.
-- Sync snapshots use `buildSyncPayloadAad(deviceID)`.
+- Sync snapshots use `buildSyncPayloadAad(schemaVersion)` (`ovumcy-sync-v2|<schemaVersion>`, no device id, so any device holding the account key opens them). Restore falls back to the legacy device-bound AAD built from the local device id, which opens only blobs this device wrote before; the next upload writes v2.
 - Partner-share envelopes bind `(grantID, accessLevel, schemaVersion)` and additionally verify inner payload matches the envelope on those fields after decrypt.
 - Recovery-phrase wrap binds `(phraseFingerprintHex, mnemonicWordCount)`.
 

@@ -397,6 +397,15 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Altering the AAD version label fails the open | `rejects decryption when AAD version label is altered` in [src/security/local-data-crypto.test.ts](src/security/local-data-crypto.test.ts) |
 | The AEAD round-trips any payload and refuses a different AAD or key (property-based) | `round-trips any payload under the same key and aad`, `does not open under a different aad (AAD binding)`, `does not open under a different key` in [src/security/payload-crypto.property.test.ts](src/security/payload-crypto.property.test.ts) |
 
+### Sync snapshot AAD
+
+| Claim | Enforced by |
+| --- | --- |
+| The snapshot AAD is `ovumcy-sync-v2\|<schemaVersion>` with no device id; a different schema version fails the open | `builds the snapshot AAD from the schema version with no device id`, `rejects sync payload decryption with a different schema version AAD` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| A recovered device with a fresh device id restores a snapshot another device uploaded | `restores on a recovered device a snapshot another device uploaded` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| A legacy `ovumcy-sync-v1\|<deviceID>` blob opens only on the device that wrote it | `restores a legacy device-bound blob on the device that wrote it`, `refuses a legacy device-bound blob written by another device` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| A blob whose reported schema version differs from the sealed one is refused without touching local data | `refuses a blob whose reported schema version differs from the sealed one` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+
 ### Partner-share crypto and projection privacy
 
 | Claim | Enforced by |
