@@ -344,10 +344,11 @@ follows from that:
   daily-repeat trigger, and firing itself is then driven by the OS's own system clock,
   outside this app's control. A device clock that is wrong when a plan is built bakes
   an incorrect instant into a one-time trigger, and — since there is no background
-  resync — that only self-corrects the next time a screen mount or settings save
-  rebuilds the schedule. The web adapter never schedules a real reminder
-  (`"unavailable"`), so the exposure is native-only, and the worst case is a missed or
-  mistimed local notification, never a data or entitlement exposure.
+  resync — that only self-corrects the next time a day-log save, a cycle-start action, or
+  a cycle or reminder settings save rebuilds the schedule (see `docs/notifications.md`).
+  The web adapter never schedules a real reminder (`"unavailable"`), so the exposure is
+  native-only, and the worst case is a missed or mistimed local notification, never a data
+  or entitlement exposure.
 - **Accepted as a standard mobile-client baseline.** None of the above cross-checks
   wall-clock time against a network time source: doing so would need either an
   always-available trusted time service (in tension with the local-first,
