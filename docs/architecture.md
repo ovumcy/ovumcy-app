@@ -57,8 +57,8 @@ Dependency rules:
 - Sync is never required by a core local flow. A service that needs a session
   reads sync preferences and secrets and degrades to the local path when they
   are absent. `src/services` and `src/sync` are peers that import each other
-  (for example `sync-setup-service` uses services, and the managed partner-share
-  services use `sync-setup-service`), so there is no strict order between them.
+  (for example `sync-setup-service` uses services, and
+  `managed-partner-share-sync-service` uses `sync-setup-service`), so there is no strict order between them.
 - Storage reaches up only for pure helpers: the adapters import the sanitizers
   in `src/services/day-log-policy.ts`, `onboarding-policy.ts` and
   `profile-settings-policy.ts`, and the sync preference types in
@@ -69,12 +69,14 @@ Dependency rules:
 
 ### Platform splits
 
-Where behaviour differs per platform, a module is split by extension, with a
-`.d.ts` declaring the shared shape: `platform-local-app-storage.{native,web}.ts`,
-the `platform-*-store.{native,web}.ts` secret stores in `src/security`,
-`export-delivery`, `export-artifact-cleanup`, `import-file-picker`,
-`platform-local-reminder-scheduler` and `export-pdf-runtime` in
-`src/services`. Metro picks the variant per target.
+Where behaviour differs per platform, a module is split by extension and Metro
+picks the variant per target. Most splits are `{native,web}.ts` with a `.d.ts`
+declaring the shared shape: `platform-local-app-storage`, the
+`platform-*-store` secret stores in `src/security`, and `export-delivery`,
+`export-artifact-cleanup` and `import-file-picker` in `src/services`. Two
+differ: `platform-local-reminder-scheduler` has a plain `.ts` default beside its
+`.native.ts` and `.web.ts`, and `export-pdf-runtime` has a plain `.ts` (native)
+plus a `.web.ts` override.
 
 ## Boot sequence
 
@@ -187,9 +189,12 @@ sequence:
 - a final `PRAGMA user_version = DATABASE_VERSION` (currently 16), which records
   the version but does not select which steps run.
 
-Migrations are additive: existing rows are not rewritten or dropped. A new
-column or table is added as another idempotent step and its version constant is
-bumped.
+Schema changes are additive: a new column or table is added as another
+idempotent step and its version constant is bumped. Three steps do touch
+existing data: the legacy `onboarding_profile` table is folded into
+`profile_settings` once and then dropped, `bootstrap_state.profile_version` is
+updated on every hydrate, and plaintext rows are re-encrypted in place (see
+Hydration).
 
 ### Hydration
 
@@ -217,19 +222,23 @@ the legacy store and the key and reseeds.
 
 ## Entitlements
 
-Two independent axes exist, and neither grants or revokes the other. The rules
+Two independent entitlement sources exist, and neither grants or revokes the
+other. The rules
 are in [`SECURITY.md`](../SECURITY.md) and
 [`docs/sync-trust-model.md`](sync-trust-model.md); only the shape is given here.
 
 - **Managed billing.** Premium surfaces (advanced fertility, advanced insights,
-  doctor PDF, extended reports, partner access, reminders) read the managed
+  doctor PDF, extended reports, partner access) read the managed
   billing snapshot through `src/services/managed-premium-features-service.ts`.
   The snapshot requires a managed sync mode and a present managed session. When
   the live fetch fails, a persisted last-known-good copy is served for a bounded
   window (`MANAGED_BILLING_CACHE_TTL_MS`, 72 hours), stored encrypted in
-  `managed_billing_cache`. A verified signed entitlement token, when supplied
-  through `EntitlementTokenGate`, overrides the snapshot for the two purely
-  local features; without a valid token the snapshot values stand. Baseline
+  `managed_billing_cache`. The snapshot also carries a `reminders` flag, which
+  nothing gates on. A verified signed entitlement token, read through
+  `EntitlementTokenGate`, overrides the snapshot for the two purely local
+  features (doctor PDF, advanced insights); the gate is built on the production
+  path but is inert until the managed cloud issues tokens, so today the snapshot
+  values stand. Baseline
   tracking, local analytics, CSV/JSON export and local reminders are never gated.
 - **Pregnancy module.** Ownership is a one-time on-device unlock resolved by
   `loadPregnancyModuleOwned` in `src/services/pregnancy-entitlement-service.ts`.
