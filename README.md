@@ -397,7 +397,7 @@ Security:
 
 - [SECURITY.md](SECURITY.md) — security policy, vulnerability reporting, and the claims each test enforces.
 - [docs/security/cryptography.md](docs/security/cryptography.md) — inventory of every cryptographic operation and where its key lives.
-- [docs/security/logging.md](docs/security/logging.md) — logging policy: what the app logs (nothing) and how errors are shown.
+- [docs/security/logging.md](docs/security/logging.md) — logging policy: what the app logs and how errors are shown.
 - [docs/sync-trust-model.md](docs/sync-trust-model.md) — what a sync server and a partner can and cannot see.
 - [docs/two-factor.md](docs/two-factor.md) — optional TOTP second factor for cloud accounts.
 - [docs/deep-links.md](docs/deep-links.md) — Android App Links and iOS Universal Links plan; hosting files in [docs/deep-link-hosting/](docs/deep-link-hosting/).
