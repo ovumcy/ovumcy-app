@@ -166,7 +166,7 @@ export async function loadDayLogEditorState(
 export async function saveDayLogEditorRecord(
   storage: LocalAppStorage,
   record: DayLogRecord,
-  now: Date = new Date(),
+  now: Date,
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
   const [profile, symptomRecords] = await Promise.all([
     storage.readProfileRecord(),

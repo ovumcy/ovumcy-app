@@ -222,7 +222,7 @@ export function CalendarScreen({
           savingLabel: state.editorViewData.actions.savingLabel,
         }
       : null,
-    onPersist: (record) => saveDayLogEditorRecord(storage, record),
+    onPersist: (record) => saveDayLogEditorRecord(storage, record, effectiveNow),
     onSaved: async () => {
       await refreshForActiveSelection({ syncReminders: true });
       await syncManagedPartnerSharedProjections(

@@ -158,7 +158,7 @@ export function DashboardScreen({
           savingLabel: state.editorViewData.actions.savingLabel,
         }
       : null,
-    onPersist: (record) => saveDayLogEditorRecord(storage, record),
+    onPersist: (record) => saveDayLogEditorRecord(storage, record, effectiveNow),
     onSaved: async () => {
       await refresh({ syncReminders: true });
       await syncManagedPartnerSharedProjections(
