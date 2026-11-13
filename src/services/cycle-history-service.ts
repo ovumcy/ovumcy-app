@@ -161,7 +161,7 @@ export function buildCurrentCycleProjection(
 ): StatsCycleProjection {
   const today = atLocalDay(now);
   const todayValue = formatLocalDate(today);
-  const pregnancyPause = resolvePregnancyPause(records);
+  const pregnancyPause = resolvePregnancyPause(profile, records, todayValue);
   const cycleAnchorDate = resolveCurrentCycleAnchorDate(profile, records, todayValue);
   const lutealPhase = resolveLutealPhase(
     inferUserLutealPhase(profile, records, todayValue) ?? 0,
@@ -1354,18 +1354,24 @@ function sameLocalDay(left: Date, right: Date): boolean {
   return formatLocalDate(left) === formatLocalDate(right);
 }
 
-function resolvePregnancyPause(records: readonly DayLogRecord[]): string | null {
+// The date of the latest positive pregnancy test while it is still the most
+// recent signal, null otherwise. "A later cycle start" is the cluster rule
+// behind collectCycleStartDates, without its today-dependent opening: a cluster
+// opens a cycle only through a non-spotting, non-uncertain explicit start mark
+// or two consecutive non-spotting period days, so a lone unflagged day dated
+// today or yesterday never lifts the pause (it would return the next day when
+// no second day follows). A start on the positive test's own day does not lift
+// it: the positive result wins ties. Mirrors ovumcy-web ResolvePregnancyPause.
+function resolvePregnancyPause(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+): string | null {
   let latestPositive: string | null = null;
-  let latestPeriodStart: string | null = null;
   for (const record of records) {
     if (record.pregnancyTest === "positive") {
       if (!latestPositive || record.date > latestPositive) {
         latestPositive = record.date;
-      }
-    }
-    if (record.isPeriod && record.cycleStart) {
-      if (!latestPeriodStart || record.date > latestPeriodStart) {
-        latestPeriodStart = record.date;
       }
     }
   }
@@ -1373,26 +1379,84 @@ function resolvePregnancyPause(records: readonly DayLogRecord[]): string | null 
   if (!latestPositive) {
     return null;
   }
-  if (latestPeriodStart && latestPeriodStart > latestPositive) {
+
+  let latestBoundary: string | null = null;
+  for (const cluster of buildObservedPeriodClusters(profile, records, todayValue)) {
+    const start = resolveClusterBoundaryWithoutToday(cluster);
+    if (start && (!latestBoundary || start > latestBoundary)) {
+      latestBoundary = start;
+    }
+  }
+  if (latestBoundary && latestBoundary > latestPositive) {
     return null;
   }
 
   return latestPositive;
 }
 
+function resolveClusterBoundaryWithoutToday(cluster: ObservedPeriodCluster): string | null {
+  const explicitDay = cluster.days.find((day) => day.explicit && !day.spotting);
+  if (explicitDay) {
+    return explicitDay.date;
+  }
+
+  for (let index = 0; index + 1 < cluster.days.length; index += 1) {
+    const day = cluster.days[index];
+    const next = cluster.days[index + 1];
+    if (!day || !next || day.spotting || next.spotting) {
+      continue;
+    }
+    const dayValue = parseLocalDate(day.date);
+    const nextValue = parseLocalDate(next.date);
+    if (dayValue && nextValue && diffCalendarDays(dayValue, nextValue) === 1) {
+      return day.date;
+    }
+  }
+
+  return null;
+}
+
 
 type ObservedPeriodCluster = {
+  days: PeriodClusterDay[];
   end: string;
   explicitStart: string | null;
   hasUncertainExplicit: boolean;
   start: string;
 };
 
+// One calendar day of a cluster: spotting only when every entry for the day is
+// spotting, explicit only when a non-uncertain cycle-start mark sits on it.
+type PeriodClusterDay = {
+  date: string;
+  explicit: boolean;
+  spotting: boolean;
+};
+
 type PeriodClusterRecord = {
   cycleStart: boolean;
   date: string;
+  isSpotting: boolean;
   isUncertain: boolean;
 };
+
+function isSpottingRecord(record: DayLogRecord): boolean {
+  return (
+    record.flow === "spotting" ||
+    (record.flow === "none" && record.symptomIDs.includes("spotting"))
+  );
+}
+
+function appendClusterDay(cluster: ObservedPeriodCluster, record: PeriodClusterRecord): void {
+  const explicit = record.cycleStart && !record.isUncertain;
+  const last = cluster.days[cluster.days.length - 1];
+  if (last && last.date === record.date) {
+    last.spotting = last.spotting && record.isSpotting;
+    last.explicit = last.explicit || explicit;
+    return;
+  }
+  cluster.days.push({ date: record.date, explicit, spotting: record.isSpotting });
+}
 
 function buildObservedPeriodClusters(
   profile: ProfileRecord,
@@ -1404,6 +1468,7 @@ function buildObservedPeriodClusters(
     .map((record) => ({
       cycleStart: record.cycleStart,
       date: record.date,
+      isSpotting: isSpottingRecord(record),
       isUncertain: record.isUncertain,
     }));
 
@@ -1411,6 +1476,7 @@ function buildObservedPeriodClusters(
     periodRecords.push({
       cycleStart: true,
       date: profile.lastPeriodStart,
+      isSpotting: false,
       isUncertain: false,
     });
   }
@@ -1446,6 +1512,7 @@ function buildObservedPeriodClusters(
     }
 
     currentCluster.end = record.date;
+    appendClusterDay(currentCluster, record);
     if (!record.cycleStart) {
       continue;
     }
@@ -1463,6 +1530,13 @@ function buildObservedPeriodClusters(
 
 function createObservedPeriodCluster(record: PeriodClusterRecord): ObservedPeriodCluster {
   return {
+    days: [
+      {
+        date: record.date,
+        explicit: record.cycleStart && !record.isUncertain,
+        spotting: record.isSpotting,
+      },
+    ],
     end: record.date,
     explicitStart: record.cycleStart && !record.isUncertain ? record.date : null,
     hasUncertainExplicit: record.cycleStart && record.isUncertain,

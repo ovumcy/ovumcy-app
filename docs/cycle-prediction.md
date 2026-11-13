@@ -298,10 +298,31 @@ first ovulation is already in the future and no roll is needed.
 ## Pregnancy pause (app-specific)
 
 Independently of the math above, a positive pregnancy test more recent than every
-recorded cycle start **pauses** predictions across dashboard, calendar, and stats
-until a new cycle start is logged. The pause lives in
+recorded cycle start **pauses** predictions across dashboard, calendar, stats,
+local reminders, the doctor PDF and the partner projection until a later cycle
+start is logged. The pause lives in
 `cycle-history-service.buildCurrentCycleProjection` (not in this pure policy) and
 is a cross-cutting **Medical safety** invariant of the security constitution.
+
+"A later cycle start" is the cluster rule behind the cycle-start list, evaluated
+without its today-dependent opening (the same reading as ovumcy-web). Period days
+merge into a cluster until a gap of 5 or more empty days; a cluster lifts the
+pause only through a non-spotting day carrying a non-uncertain cycle-start mark,
+or two consecutive non-spotting period days. Consequently:
+
+- a day under an uncertain mark, and a spotting day, never lift the pause;
+- a lone unflagged period day, including one dated today or yesterday, does not
+  lift it (it would otherwise flicker back the next day when no second day follows);
+- a start dated on the same calendar day as the positive test does not lift it —
+  the positive result wins ties;
+- `profile.lastPeriodStart` joins as an explicit start, as in the cycle-start list.
+
+The pause is only one of two suppression signals. An ACTIVE pregnancy record
+suppresses predictions on its own, regardless of the pause: a period logged
+mid-pregnancy can lift the day-log pause, yet predictions stay hidden while the
+record is active. The paused projection keeps its cycle anchor, so every
+anchor-driven surface — dashboard, calendar, stats, reminders, doctor PDF and the
+partner projection (forced to the facts-only shape) — combines both signals itself.
 
 ## Assumptions and limitations
 
