@@ -7,7 +7,7 @@ _Part of the [Ovumcy security policy](../../SECURITY.md)._
 Nothing. The application code under `src/`, `app/` and `index.js` contains no `console.*` call, no logging helper and no log persistence. There is no analytics, crash-reporting or diagnostics SDK in the dependency list, and no network channel carries diagnostics; the no-telemetry posture is stated in [SECURITY.md](../../SECURITY.md) (*Data Boundary / Threat Model*, and *Policy / Planned*) and is a dependency- and code-review invariant, not a single test.
 
 - **Where:** there is no sink. No log file, no SQLite table, no SecureStore entry and no AsyncStorage key holds log output, and nothing is sent off the device.
-- **Console only?** The only output surface is whatever the React Native runtime itself writes to the platform console. App code does not add to it.
+- **Console only?** The only output surface is whatever the React Native runtime itself writes to the platform console. App code does not add to it, with one native exception: the iOS launch hook injected by `plugins/withIosExcludeDataFromICloudBackup.js` calls `NSLog` with the app data directory path and the error description when it cannot exclude that directory from iCloud backup. No health data is in that line.
 - **Build scripts:** the Node scripts under `scripts/` (dependency audit, cross-repo contract check, web export, release smoke) print progress and failures to stdout/stderr. They run on a developer or CI machine, never inside the app, and print no user data.
 
 ## Error Messages

@@ -10,7 +10,7 @@ This document is the structured inventory of every cryptographic operation in th
 | --- | --- | --- |
 | XChaCha20-Poly1305 (AEAD) | `@noble/ciphers` | local-data, sync, partner-share envelopes, recovery wrap |
 | HKDF-SHA256 | `@noble/hashes` | recovery wrapping key and fingerprint, partner-share keys |
-| SHA-256 | `@noble/hashes` | partner-share and sync blob checksums |
+| SHA-256 | `@noble/hashes` | partner-share and sync blob checksums; opaque row lookup keys for `day_logs` and `symptoms` |
 | BIP-39 mnemonic and seed | `@scure/bip39` (English wordlist) | recovery phrase |
 | Ed25519 verification | `@noble/curves` | entitlement token |
 | Random bytes | `expo-crypto` `getRandomBytes` | every key and nonce, the device id and secret, recovery-phrase entropy |
@@ -34,7 +34,7 @@ Keys are 32 random bytes held as 64-character lowercase hex strings.
 | Key source | `createLocalDataKeyHex()`: 32 random bytes, generated on first use by `resolveLocalDataKey` (`src/storage/local/sqlite-local-data-key.ts`). |
 | Key storage | `expo-secure-store` under `ovumcy.local-data-key`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` (`src/security/platform-local-data-key-store.native.ts`). On web preview the key is held in memory only. |
 | Nonce | Random 24 bytes per write; never derived or reused deliberately. |
-| AAD | `ovumcy-local-v1\|<table>\|<row key>`, built by `buildLocalDataAad`. Row key is the `day` or `id` value, or `"1"` for singleton tables. Encrypt and decrypt sites build the identical string. |
+| AAD | `ovumcy-local-v1\|<table>\|<row key>`, built by `buildLocalDataAad`. Row key is the `id` value, `"1"` for singleton tables, or, for `day_log` and `symptom` rows, the opaque lookup key: hex SHA-256 of `<namespace>:<local-data key>:<day or id>` (`buildOpaqueLookupKey` in `src/storage/local/sqlite-app-storage.ts`), which is also the row's primary key so the plaintext date or id is not stored. Encrypt and decrypt sites build the identical string. |
 | Envelope version | AAD label `ovumcy-local-v1`; no field in the envelope. |
 | Rotation / rekey | There is no in-place rotation. When the stored key no longer authenticates the canary row (`bootstrap_state`, then `profile_settings`), or a key is absent while encrypted rows exist, `resolveLocalDataKey` deletes every local table, generates a new key and writes it: a deterministic reset, never a crash. |
 | Platform note | Native builds use SQLite with this envelope. Web preview uses volatile in-memory storage (`volatile-web-app-storage.ts`), which is not encrypted and is lost on reload. |
@@ -116,5 +116,5 @@ Security-relevant randomness comes from `getRandomBytes` of `expo-crypto`, the p
 ## Related Non-Cryptographic Secret Handling
 
 - Managed session and refresh tokens live inside `SyncSecretsRecord` (item 2).
-- Pinned certificate fingerprints are stored by `src/security/cert-pin-store.ts`, but pinning is not enforced at runtime; see [sync-trust-model.md](../sync-trust-model.md).
+- `src/security/cert-pin-store.ts` defines a store for pinned certificate fingerprints, but no production code wires it to a storage backend and pinning is not enforced at runtime; see [sync-trust-model.md](../sync-trust-model.md).
 - `keychainAccessible` is an iOS Keychain option; its value is the same for every store listed above.
