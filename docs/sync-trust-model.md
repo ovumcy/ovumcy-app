@@ -247,7 +247,7 @@ A guest has no password and no recovery code by design, so a guest who loses the
 
 ## AEAD Envelope Discipline
 
-Every AEAD encrypt/decrypt boundary in the app — local SQLite payloads, sync snapshot blobs, partner-share projections, recovery-phrase wrap — must thread context-specific associated data (AAD) into the auth tag. This prevents ciphertext blobs from being swapped between rows, devices, or grants without invalidating the tag.
+Every AEAD encrypt/decrypt boundary in the app — local SQLite payloads, sync snapshot blobs, partner-share projections, recovery-phrase wrap — must thread context-specific associated data (AAD) into the auth tag. This prevents ciphertext blobs from being swapped between rows, envelope formats, or grants without invalidating the tag. Sync snapshots are deliberately not bound to a device: every device of the account holds the same sync key, and a recovered device must open another device's upload.
 
 - Local data uses `buildLocalDataAad(tableName, rowKey)` — both encrypt and decrypt sites construct identical context.
 - Sync snapshots use `buildSyncPayloadAad(schemaVersion)` (`ovumcy-sync-v2|<schemaVersion>`, no device id, so any device holding the account key opens them). Restore falls back to the legacy device-bound AAD built from the local device id, which opens only blobs this device wrote before; the next upload writes v2.

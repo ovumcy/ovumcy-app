@@ -19,7 +19,7 @@ All AEAD calls go through `encryptPayload` / `decryptPayload` in `src/security/p
 
 ## Shared Envelope Shape
 
-`EncryptedPayloadEnvelope` is `{ algorithm: "xchacha20poly1305", nonceHex, ciphertextHex }`: a 32-byte key, a fresh 24-byte nonce per encryption from `getRandomBytes`, and the 16-byte Poly1305 tag appended to the ciphertext. The envelope carries no version field. Format versioning is carried by the AAD label (`...-v1`) and, for sync and partner-share, by the outer `schemaVersion`. A change to the format therefore fails authentication under the old label instead of being parsed ambiguously.
+`EncryptedPayloadEnvelope` is `{ algorithm: "xchacha20poly1305", nonceHex, ciphertextHex }`: a 32-byte key, a fresh 24-byte nonce per encryption from `getRandomBytes`, and the 16-byte Poly1305 tag appended to the ciphertext. The envelope carries no version field. Format versioning is carried by the AAD label (`...-v1`, `ovumcy-sync-v2` for sync snapshots) and, for sync and partner-share, by the outer `schemaVersion`. A change to the format therefore fails authentication under the old label instead of being parsed ambiguously.
 
 Keys are 32 random bytes held as 64-character lowercase hex strings.
 
