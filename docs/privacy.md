@@ -35,7 +35,7 @@ All entries use `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`.
 - Local-data encryption key (`src/security/platform-local-data-key-store.native.ts`).
 - Sync secrets (`ovumcy.sync-secrets`): device identity and label, sync master key, wrapped-key metadata, self-hosted and managed session tokens, managed refresh token and expiries.
 - Partner-share keys (`ovumcy.partner-share-secrets`): per-grant keys, pending invite keys, anti-replay and generation counters.
-- Signed entitlement token store (`ovumcy.entitlement-token`) and the TLS pin store (`ovumcy.sync-cert-pins`).
+- Signed entitlement token store (`ovumcy.entitlement-token`).
 
 None of these is health data; they are the keys and credentials that protect it.
 
@@ -117,9 +117,10 @@ In production native builds, screenshots and screen recording are blocked while 
 
 ## Notifications
 
-Reminders are local notifications, scheduled only after the owner grants permission; they are cancelled when permission is withdrawn. No push token is requested and no remote notification content exists. See the OS notification store entry for what the notification holds.
+Reminders are local notifications, scheduled only after the owner grants permission; after permission is withdrawn, the app cancels its scheduled reminders at the next schedule rebuild (a day-log save, a cycle start or a settings save). No push token is requested and no remote notification content exists. See the OS notification store entry for what the notification holds.
 
 ## Known Gaps
 
-- The partner-share secret store has no production caller that clears it on local wipe, account deletion, disconnect or mode switch; only a single grant key can be cleared (`clearManagedPartnerGrantKey`). The entitlement token store likewise has no clear call in those flows. Both live in SecureStore. The TLS pin store (`ovumcy.sync-cert-pins`, not secret) is not cleared on a local wipe either.
+- The partner-share secret store has no production caller that clears it on local wipe, account deletion, disconnect or mode switch; only a single grant key can be cleared (`clearManagedPartnerGrantKey`). The entitlement token store likewise has no clear call in those flows. Both live in SecureStore.
+- A TLS pin store (`src/security/cert-pin-store.ts`) exists but is not wired to a storage backend, so no pins are persisted today; wipe flows will need to clear it once it is.
 - Certificate pinning is not enforced natively (see `SECURITY.md`).
