@@ -48,7 +48,10 @@ flowchart TB
 
 Dependency rules:
 
-- Routes import screens; they do not import services or storage.
+- Routes import screens; they do not import services or storage. The one exception is the root
+  layout `app/_layout.tsx`, which also runs the boot-time export-artifact sweep
+  (`src/services/export-artifact-cleanup`) and applies screen-capture protection
+  (`src/security/app-screen-protection`).
 - Screens call services and pass them `appStorage`. They never import a concrete
   storage adapter; only tests do, to construct fixtures.
 - Services depend on the `LocalAppStorage` interface in
