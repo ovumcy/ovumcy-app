@@ -615,7 +615,7 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
     ["a 403 refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
     ["a 404", jsonResponse({ error: "not_found" }, 404)],
     ["a 429", jsonResponse({ error: "rate_limited" }, 429)],
-    ["an unparseable 502 body", new Response("<html>", { status: 502 })],
+    ["an unparseable 400 body", new Response("<html>", { status: 400 })],
   ])(
     "yields no cached premium when the billing fetch is answered with %s",
     async (_label, response) => {
@@ -632,6 +632,27 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
         ),
       ).resolves.toBeNull();
       expect(storage.readManagedBillingCacheRecord).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["an unparseable 502 gateway page", new Response("<html>", { status: 502 })],
+    ["a 503 with no body", new Response(null, { status: 503 })],
+    ["a 500 with an unknown error code", jsonResponse({ error: "boom" }, 500)],
+  ])(
+    "serves the fresh cache when the billing server could not answer: %s",
+    async (_label, response) => {
+      global.fetch = jest.fn(async () => response.clone()) as unknown as typeof fetch;
+
+      const snapshot = await loadManagedBillingSnapshot(
+        freshCacheStorage(),
+        createSyncSecretStoreMock(MANAGED_SECRETS),
+        "managed",
+        undefined,
+        CACHE_NOW,
+      );
+
+      expect(snapshot?.premiumFeatures.doctorPDF).toBe(true);
     },
   );
 
