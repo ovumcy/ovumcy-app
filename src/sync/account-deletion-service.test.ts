@@ -95,7 +95,7 @@ describe("buildAccountDeletionViewModel", () => {
   // classifies it as a live, non-"none"/"ended" state: the managed backend
   // starts every account on a 30-day trial with no payment method, and
   // in-app purchase is not possible on-device until Google Play Billing (the
-  // first planned IAP channel — see README.md's "Public Alpha Expectations")
+  // first planned IAP channel — see README.md's "Project Status")
   // lands, so a trial can never actually be store/paid-backed today. See the
   // `requiresSubscriptionWarning` doc comment on `AccountDeletionViewModel`
   // for why `ManagedCloudActiveSubscription.source` isn't used to distinguish
