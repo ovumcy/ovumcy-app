@@ -132,6 +132,67 @@ describe("A6 stats-copy ru symptomFrequencySummary — ruDayWord agreement", () 
   });
 });
 
+describe("A8 stats-copy ru cycle counts — one/few/many agreement", () => {
+  const ru = getStatsCopy("ru");
+  const cases: ReadonlyArray<readonly [number, string]> = [
+    [1, "цикл"],
+    [2, "цикла"],
+    [5, "циклов"],
+    [11, "циклов"],
+    [21, "цикл"],
+  ];
+
+  it.each(cases)("advancedFertility.observedLutealDescription(%i) uses %s", (count, noun) => {
+    expect(ru.advancedFertility.observedLutealDescription(count, "13.5")).toBe(
+      `Среднее по сигналам за последние ${count} ${noun}: 13.5 д.`,
+    );
+  });
+
+  it("observedLutealDescription keeps the other locales' wording at 1 and 2", () => {
+    const en = getStatsCopy("en").advancedFertility;
+    expect(en.observedLutealDescription(1, "13.5")).toBe(
+      "Signal-derived average from 1 recent cycles: 13.5 d.",
+    );
+    for (const lang of ["de", "fr", "es", "it"] as const) {
+      const copy = getStatsCopy(lang).advancedFertility;
+      expect(copy.observedLutealDescription(1, "13.5")).toContain("13.5");
+      expect(copy.observedLutealDescription(2, "13.5")).toContain("2");
+    }
+  });
+
+  it.each(cases)("completed-cycle sentences agree at %i", (count, noun) => {
+    const adjective = noun === "цикл" ? "завершённый цикл" : `завершённых ${noun}`;
+    expect(ru.extendedReports.summary(count, 20, 30)).toBe(
+      `${count} ${adjective}. Диапазон 20-30 д.`,
+    );
+    expect(ru.advancedInsights.weightedAverageDescription(count)).toBe(
+      `Последние ${count} ${adjective} имеют больший вес.`,
+    );
+  });
+
+  it("prepositional, genitive and dative cycle phrases agree", () => {
+    const f = ru.advancedFertility;
+    expect(ru.advancedInsights.shortLutealDescription(1)).toContain("в 1 последнем цикле.");
+    expect(ru.advancedInsights.shortLutealDescription(2)).toContain("в 2 последних циклах.");
+    expect(ru.advancedInsights.shortLutealDescription(21)).toContain("в 21 последнем цикле.");
+    expect(f.lutealConsistencyDescription(1, 12, 14, 2)).toContain("в 1 цикле (");
+    expect(f.lutealConsistencyDescription(5, 12, 14, 2)).toContain("в 5 циклах (");
+    expect(f.signalCoverageDescription(1, 1)).toContain("из последних 1 завершённого цикла.");
+    expect(f.signalCoverageDescription(2, 3)).toContain("из последних 3 завершённых циклов.");
+    expect(f.thermalShiftConfirmedDescription("0.3", "°C", 1)).toContain("по 1 измерению.");
+    expect(f.thermalShiftBuildingDescription("0.3", "°C", 3)).toContain("по 3 измерениям.");
+    expect(ru.reliabilitySample(1)).toBe("Основано на 1 завершённом цикле.");
+    expect(ru.reliabilitySample(5)).toBe("Основано на 5 завершённых циклах.");
+    expect(ru.reliabilitySampleRecent(21)).toBe("Основано на последних 21 завершённом цикле.");
+    expect(ru.advancedInsights.phaseSymptomPeakDescription("Лютеиновая", "Спазмы", 40, 1)).toContain(
+      "из 1 отмеченного дня.",
+    );
+    expect(ru.advancedInsights.phaseSymptomPeakDescription("Лютеиновая", "Спазмы", 40, 12)).toContain(
+      "из 12 отмеченных дней.",
+    );
+  });
+});
+
 describe("A7 stats-copy phase day counts — singular agreement in every locale", () => {
   const locales = ["en", "de", "fr", "ru", "es", "it"] as const;
 

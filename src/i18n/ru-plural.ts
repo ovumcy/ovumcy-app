@@ -4,17 +4,30 @@
 // mod10=2-4, mod100∉[12-14] → "несколько" form (дня)
 // otherwise → "много" form (дней)
 
-/** Returns one of «день» / «дня» / «дней» for a given count. */
-export function ruDayWord(days: number): string {
-  const mod100 = days % 100;
-  const mod10 = days % 10;
+/**
+ * Picks the one / few / many form of a Russian count noun phrase.
+ * A case whose few and many forms coincide (prepositional, dative) passes the same string twice.
+ */
+export function ruPlural(count: number, one: string, few: string, many: string): string {
+  const mod100 = count % 100;
+  const mod10 = count % 10;
   if (mod10 === 1 && mod100 !== 11) {
-    return "день";
+    return one;
   }
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "дня";
+    return few;
   }
-  return "дней";
+  return many;
+}
+
+/** Returns one of «день» / «дня» / «дней» for a given count. */
+export function ruDayWord(days: number): string {
+  return ruPlural(days, "день", "дня", "дней");
+}
+
+/** Returns one of «цикл» / «цикла» / «циклов» for a given count. */
+export function ruCycleWord(cycles: number): string {
+  return ruPlural(cycles, "цикл", "цикла", "циклов");
 }
 
 /**
