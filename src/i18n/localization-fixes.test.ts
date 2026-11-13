@@ -144,14 +144,14 @@ describe("A8 stats-copy ru cycle counts — one/few/many agreement", () => {
 
   it.each(cases)("advancedFertility.observedLutealDescription(%i) uses %s", (count, noun) => {
     expect(ru.advancedFertility.observedLutealDescription(count, "13.5")).toBe(
-      `Среднее по сигналам за последние ${count} ${noun}: 13.5 д.`,
+      `Среднее по сигналам за ${count} ${count % 10 === 1 && count % 100 !== 11 ? "последний" : "последних"} ${noun}: 13.5 д.`,
     );
   });
 
   it("observedLutealDescription keeps the other locales' wording at 1 and 2", () => {
     const en = getStatsCopy("en").advancedFertility;
     expect(en.observedLutealDescription(1, "13.5")).toBe(
-      "Signal-derived average from 1 recent cycles: 13.5 d.",
+      "Signal-derived average from 1 recent cycle: 13.5 d.",
     );
     for (const lang of ["de", "fr", "es", "it"] as const) {
       const copy = getStatsCopy(lang).advancedFertility;
@@ -166,7 +166,7 @@ describe("A8 stats-copy ru cycle counts — one/few/many agreement", () => {
       `${count} ${adjective}. Диапазон 20-30 д.`,
     );
     expect(ru.advancedInsights.weightedAverageDescription(count)).toBe(
-      `Последние ${count} ${adjective} имеют больший вес.`,
+      `Больший вес у ${count} ${count % 10 === 1 && count % 100 !== 11 ? "последнего завершённого цикла" : "последних завершённых циклов"}.`,
     );
   });
 
@@ -177,13 +177,13 @@ describe("A8 stats-copy ru cycle counts — one/few/many agreement", () => {
     expect(ru.advancedInsights.shortLutealDescription(21)).toContain("в 21 последнем цикле.");
     expect(f.lutealConsistencyDescription(1, 12, 14, 2)).toContain("в 1 цикле (");
     expect(f.lutealConsistencyDescription(5, 12, 14, 2)).toContain("в 5 циклах (");
-    expect(f.signalCoverageDescription(1, 1)).toContain("из последних 1 завершённого цикла.");
-    expect(f.signalCoverageDescription(2, 3)).toContain("из последних 3 завершённых циклов.");
+    expect(f.signalCoverageDescription(1, 1)).toContain("из 1 последнего завершённого цикла.");
+    expect(f.signalCoverageDescription(2, 3)).toContain("из 3 последних завершённых циклов.");
     expect(f.thermalShiftConfirmedDescription("0.3", "°C", 1)).toContain("по 1 измерению.");
     expect(f.thermalShiftBuildingDescription("0.3", "°C", 3)).toContain("по 3 измерениям.");
     expect(ru.reliabilitySample(1)).toBe("Основано на 1 завершённом цикле.");
     expect(ru.reliabilitySample(5)).toBe("Основано на 5 завершённых циклах.");
-    expect(ru.reliabilitySampleRecent(21)).toBe("Основано на последних 21 завершённом цикле.");
+    expect(ru.reliabilitySampleRecent(21)).toBe("Основано на 21 последнем завершённом цикле.");
     expect(ru.advancedInsights.phaseSymptomPeakDescription("Лютеиновая", "Спазмы", 40, 1)).toContain(
       "из 1 отмеченного дня.",
     );
