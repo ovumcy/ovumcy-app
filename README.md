@@ -52,8 +52,8 @@ This README describes the current `main` branch. The app is an early public alph
 - [Privacy and Security](#privacy-and-security) · [Accessibility](#accessibility) · [Short FAQ](#short-faq)
 - [Project Status](#project-status) · [Roadmap](#roadmap)
 - [Architecture](#architecture) · [Tech Stack](#tech-stack) · [Testing and Quality](#testing-and-quality)
-- [Development](#development) · [Related Projects](#related-projects) · [Contributing](#contributing)
-- [Support the Project](#support-the-project) · [License](#license)
+- [Development](#development) · [Documentation](#documentation) · [Related Projects](#related-projects)
+- [Contributing](#contributing) · [Support the Project](#support-the-project) · [License](#license)
 
 ## Quick Start
 
@@ -382,6 +382,34 @@ Deployment tooling:
 - Keep persistence in `src/storage/`.
 - Keep route files thin.
 - Use `ovumcy-web` as the canonical UX reference for the free owner flows.
+
+## Documentation
+
+Product and data:
+
+- [docs/architecture.md](docs/architecture.md) — layers, boot sequence, local storage and encryption, sync and premium boundaries.
+- [docs/cycle-prediction.md](docs/cycle-prediction.md) — the prediction algorithm, its constants and worked examples.
+- [docs/notifications.md](docs/notifications.md) — on-device reminders: what is scheduled, when it is rebuilt, what a notification contains.
+- [docs/export.md](docs/export.md) — JSON, CSV and PDF export formats and JSON import.
+- [docs/privacy.md](docs/privacy.md) — what data exists where, what leaves the device, and what each wipe clears.
+
+Security:
+
+- [SECURITY.md](SECURITY.md) — security policy, vulnerability reporting, and the claims each test enforces.
+- [docs/security/cryptography.md](docs/security/cryptography.md) — inventory of every cryptographic operation and where its key lives.
+- [docs/security/logging.md](docs/security/logging.md) — logging policy: what the app logs (nothing) and how errors are shown.
+- [docs/sync-trust-model.md](docs/sync-trust-model.md) — what a sync server and a partner can and cannot see.
+- [docs/two-factor.md](docs/two-factor.md) — optional TOTP second factor for cloud accounts.
+- [docs/deep-links.md](docs/deep-links.md) — Android App Links and iOS Universal Links plan; hosting files in [docs/deep-link-hosting/](docs/deep-link-hosting/).
+
+Development and testing:
+
+- [TESTING.md](TESTING.md) — the quality approach and test layers.
+- [docs/manual-smoke.md](docs/manual-smoke.md) — the manual acceptance pass.
+- [docs/e2e-maestro.md](docs/e2e-maestro.md) — native end-to-end flows with Maestro.
+- [docs/web-parity-checklist.md](docs/web-parity-checklist.md) — the owner-flow contract checked against `ovumcy-web`.
+- [docs/cross-repo-contracts.md](docs/cross-repo-contracts.md) — contracts shared with the peer repositories and how CI checks them.
+- [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md) · [changelog.d/](changelog.d/README.md) — contribution workflow and changelog fragments.
 
 ## Related Projects
 
