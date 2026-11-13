@@ -761,6 +761,45 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     };
   }
 
+  describe("report language", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    function reportLanguage(languageOverride: "en" | null) {
+      return buildExportPDFReport({
+        now: new Date("2026-03-20T10:00:00.000Z"),
+        profile: { ...PROFILE, languageOverride },
+        symptomRecords: [],
+        dayLogs: [cycleStartDay("2026-03-01")],
+      }).language;
+    }
+
+    function mockDeviceLocale(locale: string) {
+      jest
+        .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+        .mockReturnValue({ locale } as Intl.ResolvedDateTimeFormatOptions);
+    }
+
+    it("follows the device language when no override is stored", () => {
+      mockDeviceLocale("ru-RU");
+
+      expect(reportLanguage(null)).toBe("ru");
+    });
+
+    it("keeps an explicit override over the device language", () => {
+      mockDeviceLocale("ru-RU");
+
+      expect(reportLanguage("en")).toBe("en");
+    });
+
+    it("falls back to English for an unsupported device locale", () => {
+      mockDeviceLocale("ja-JP");
+
+      expect(reportLanguage(null)).toBe("en");
+    });
+  });
+
   it("omits the section data entirely when no test was ever recorded", () => {
     const report = buildExportPDFReport({
       now: new Date("2026-03-20T10:00:00.000Z"),

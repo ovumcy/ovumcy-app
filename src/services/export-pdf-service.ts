@@ -2,7 +2,7 @@ import { type PDFDocument, type PDFFont, type PDFPage, type RGB } from "pdf-lib"
 
 import { getDayLogCopy } from "../i18n/day-log-copy";
 import { getExportPDFCopy } from "../i18n/export-pdf-copy";
-import { resolveCopyLanguage } from "../i18n/runtime";
+import { resolveEffectiveLanguage } from "../i18n/runtime";
 import type {
   ExportPDFAdvancedFertilityItem,
   ExportPDFCalendarDay,
@@ -166,7 +166,7 @@ export function buildExportPDFReport({
   symptomRecords,
   suppressPredictions = false,
 }: ExportPDFBuildInput): ExportPDFReport {
-  const language = resolveCopyLanguage(profile.languageOverride);
+  const language = resolveEffectiveLanguage(profile.languageOverride);
   const dayLogLabels = getDayLogCopy(language);
   const sortedDayLogs = [...dayLogs].sort((left, right) => left.date.localeCompare(right.date));
   const history = buildCycleHistorySummary(profile, sortedDayLogs, now);

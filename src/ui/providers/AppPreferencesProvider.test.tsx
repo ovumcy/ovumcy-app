@@ -37,9 +37,60 @@ function createProfileWithTheme(
   } as ProfileRecord;
 }
 
+function LanguageProbe() {
+  const { isReady, language } = useAppPreferences();
+
+  return <Text testID="app-language-probe">{isReady ? language : "loading"}</Text>;
+}
+
+function mockDeviceLocale(locale: string) {
+  jest
+    .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+    .mockReturnValue({ locale } as Intl.ResolvedDateTimeFormatOptions);
+}
+
+async function renderLanguageProbe(languageOverride: ProfileRecord["languageOverride"]) {
+  const storage = createLocalAppStorageMock({
+    readProfileRecord: jest.fn().mockResolvedValue({
+      ...createProfileWithTheme(null),
+      languageOverride,
+    }),
+  });
+
+  await render(
+    <AppPreferencesProvider storage={storage}>
+      <LanguageProbe />
+    </AppPreferencesProvider>,
+  );
+
+  await waitFor(() =>
+    expect(screen.getByTestId("app-language-probe").props.children).not.toBe("loading"),
+  );
+
+  return screen.getByTestId("app-language-probe").props.children;
+}
+
 describe("AppPreferencesProvider", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it("follows the device language when no language override is stored", async () => {
+    mockDeviceLocale("ru-RU");
+
+    expect(await renderLanguageProbe(null)).toBe("ru");
+  });
+
+  it("keeps an explicit language override over the device language", async () => {
+    mockDeviceLocale("ru-RU");
+
+    expect(await renderLanguageProbe("en")).toBe("en");
+  });
+
+  it("falls back to English when the device language is unsupported", async () => {
+    mockDeviceLocale("ja-JP");
+
+    expect(await renderLanguageProbe(null)).toBe("en");
   });
 
   it("defaults null stored theme overrides to the explicit light theme contract", async () => {
