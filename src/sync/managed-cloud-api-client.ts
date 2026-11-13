@@ -1253,6 +1253,11 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
 
   try {
     const payload = (await response.json()) as ErrorPayload;
+    // Temporary unavailability is a transport-level signal (offline grace
+    // honours it), so only a 5xx may carry it; on a 4xx it is a refusal.
+    if (payload?.error === "entitlements_unavailable" && response.status < 500) {
+      return "generic";
+    }
     switch (payload?.error) {
       case "invalid_registration_input":
       case "registration_failed":

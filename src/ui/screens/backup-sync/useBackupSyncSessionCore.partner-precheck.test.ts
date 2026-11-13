@@ -11,20 +11,23 @@ import { useBackupSyncSessionCore } from "./useBackupSyncSessionCore";
 
 // "mock"-prefixed names are required inside hoisted jest.mock factories.
 const mockUseEffect = useEffect;
+// Stable identities: a fresh router/params/navigation object per render would
+// change the focus callback's deps every render and re-run the load forever.
+const mockRouter = { back: jest.fn(), push: jest.fn(), replace: jest.fn() };
+const mockSearchParams = {};
+const mockNavigation = { dispatch: jest.fn() };
 
 jest.mock("expo-router", () => ({
   useFocusEffect: (effect: () => void | (() => void)) => {
     mockUseEffect(effect, [effect]);
   },
-  useLocalSearchParams: () => ({}),
-  useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn() }),
+  useLocalSearchParams: () => mockSearchParams,
+  useRouter: () => mockRouter,
 }));
 
-jest.mock(
-  "expo-router/react-navigation",
-  () => ({ useNavigation: () => ({ dispatch: jest.fn() }) }),
-  { virtual: true },
-);
+jest.mock("expo-router/react-navigation", () => ({
+  useNavigation: () => mockNavigation,
+}));
 
 const FIXED_NOW = new Date("2026-03-20T08:00:00.000Z");
 

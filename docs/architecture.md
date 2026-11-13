@@ -234,7 +234,9 @@ are in [`SECURITY.md`](../SECURITY.md) and
   doctor PDF, extended reports, partner access) read the managed
   billing snapshot through `src/services/managed-premium-features-service.ts`.
   The snapshot requires a managed sync mode and a present managed session. When
-  the live fetch fails, a persisted last-known-good copy is served for a bounded
+  the live fetch fails at the transport level (no response, or a 5xx), a
+  persisted last-known-good copy is served to display surfaces — never to
+  server-checked paths, and never after an explicit refusal — for a bounded
   window (`MANAGED_BILLING_CACHE_TTL_MS`, 72 hours), stored encrypted in
   `managed_billing_cache`. The snapshot also carries a `reminders` flag, which
   nothing gates on. A verified signed entitlement token, read through

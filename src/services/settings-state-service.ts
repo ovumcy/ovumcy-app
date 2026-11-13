@@ -54,6 +54,9 @@ export async function loadSettingsScreenState(
           nowSeconds: Math.floor(now.getTime() / 1000),
         }),
         now,
+        // Settings gates the sync upload/restore actions on plan status, a
+        // server-checked path, so it never reads the offline-grace cache.
+        { liveOnly: true },
       );
       if (billingSnapshot) {
         managedPremiumAccess =
