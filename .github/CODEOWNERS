@@ -1,0 +1,9 @@
+# Default owner
+* @terraincognita07
+
+# Security-sensitive surfaces
+/src/security/ @terraincognita07
+/src/sync/ @terraincognita07
+/SECURITY.md @terraincognita07
+/docs/sync-trust-model.md @terraincognita07
+/.github/ @terraincognita07

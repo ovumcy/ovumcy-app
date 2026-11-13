@@ -1,4 +1,4 @@
-[![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml)
+[![CI](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml/badge.svg?event=merge_group)](https://github.com/ovumcy/ovumcy-app/actions/workflows/ci.yml?query=event%3Amerge_group)
 [![Security](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/security.yml)
 [![CodeQL](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/ovumcy/ovumcy-app/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/ovumcy/ovumcy-app/badge)](https://securityscorecards.dev/viewer/?uri=github.com/ovumcy/ovumcy-app)
