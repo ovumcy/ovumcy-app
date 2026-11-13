@@ -1,0 +1,63 @@
+name: Changelog
+
+on:
+  pull_request:
+  # Merge-queue validation runs: a required check must also report on merge_group.
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # The job id is the status-check context name; keep it stable.
+  changelog-fragment:
+    runs-on: ubuntu-latest
+    env:
+      # Gate on pull requests only, and not on dependency bumps: the bot cannot
+      # write a fragment. Keyed on the pull request's author rather than
+      # github.actor, so a human re-run does not change the verdict.
+      RUN_GATE: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]' }}
+    steps:
+      - name: Pass on merge queue runs
+        if: github.event_name == 'merge_group'
+        run: echo "Fragment presence was already enforced on the pull request run."
+
+      - name: Pass on dependency updates
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Dependency bumps carry no fragment."
+
+      - name: Checkout
+        if: env.RUN_GATE == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The gate diffs the branch against its base, so it needs history.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        if: env.RUN_GATE == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Check changelog fragment
+        if: env.RUN_GATE == 'true'
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_REF: origin/${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git fetch --no-tags origin "$PR_BASE_REF"
+          node scripts/check-changelog-fragment.mjs
+
+      - name: Fail on unhandled trigger
+        # Without this a run matching no branch above goes green having
+        # verified nothing, and changelog-fragment is meant to be required.
+        if: env.RUN_GATE != 'true' && github.event_name != 'merge_group' && !(github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]')
+        run: |
+          echo "::error::changelog-fragment matched no known branch (event=${{ github.event_name }}, RUN_GATE=${{ env.RUN_GATE }})."
+          exit 1
