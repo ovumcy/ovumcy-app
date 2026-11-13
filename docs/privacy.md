@@ -49,21 +49,23 @@ Export files (`ovumcy-export-*`, `ovumcy-private-export-*`: CSV, JSON, doctor PD
 
 ### OS notification store
 
-Local reminders are scheduled with `expo-notifications`. The visible text is generic ("Open Ovumcy to update today's entry", "Open Ovumcy to review your next cycle dates", in the interface language; `src/i18n/reminder-copy.ts`). The notification's data payload carries the reminder kind (`daily_log`, `upcoming_period`, `fertile_window`, `kick_count`), which the operating system holds for the scheduled notification. Scheduling is derived entirely from on-device data and needs no network.
+Local reminders are scheduled with `expo-notifications`. The visible text is generic ("Open Ovumcy to update today's entry", "Open Ovumcy to review your next cycle dates", in the interface language; `src/i18n/reminder-copy.ts`). The notification's data payload carries the reminder kind (`daily_log`, `upcoming_period`, `fertile_window`, `kick_count`), which the operating system holds for the scheduled notification. The OS scheduler also holds each trigger: `upcoming_period` and `fertile_window` are one-shot date triggers at a lead date derived from the prediction, and `kick_count` reminders exist only during an active pregnancy, so the schedule itself reveals predicted dates and pregnancy to anything that can read the OS notification store. Scheduling is derived entirely from on-device data and needs no network.
 
 ## Egress
 
-The app ships no analytics, advertising, crash-reporting, attribution or other third-party SDK, and no push or over-the-air update channel. This was checked against `package.json` (no such dependency, no `expo-updates`) and the source (the only `fetch` callers are the sync, managed-cloud and PDF-font code below; `expo-linking`'s `openURL` is used for the privacy policy only). Nothing is sent unless an owner action below runs.
+The app ships no analytics, advertising, crash-reporting, attribution or other third-party SDK, and no over-the-air update channel; the code never requests a push token. This was checked against `package.json` (no such dependency, no `expo-updates`) and the source (the only `fetch` callers are the sync, managed-cloud and PDF-font code below; `expo-linking`'s `openURL` is used for the privacy policy only). Nothing is sent unless an owner action below runs.
 
 | Call | When | Carries |
 |---|---|---|
-| Account auth (`/auth/register`, `/login`, `/refresh`, `/session`, password reset, recovery-code regeneration, TOTP enrol/verify/challenge/disable) to the self-hosted endpoint or the managed cloud | connecting or maintaining an account | email, password or recovery credentials, TOTP codes, session and refresh tokens: account metadata, no health data |
+| Account auth (`/auth/register`, `/login`, `/refresh`, `/session`, `/sync-session`, password change and reset, recovery-code regeneration, TOTP enrol/verify/challenge/disable) to the self-hosted endpoint or the managed cloud | connecting or maintaining an account | email, password or recovery credentials, TOTP codes, session and refresh tokens: account metadata, no health data |
 | `/sync/capabilities`, `/sync/devices`, `/sync/recovery-key` | preparing and managing sync | device ID and label, wrapped-key metadata (the master key wrapped under the recovery phrase; the phrase and master key themselves stay on the device) |
-| `/sync/blob` (upload and restore) | owner uploads or restores a backup | one ciphertext blob (XChaCha20-Poly1305 under sync subkeys) plus size, checksum and generation. The decrypted snapshot contains the profile, symptoms, day logs, pregnancy, postpartum and screening data (`SyncSnapshotV3`), so everything health-related travels, but only as ciphertext |
-| Managed cloud: `/account/billing`, `/account/entitlements/token`, `/account/upgrade`, `/account` (delete) | opening billing surfaces, upgrading, deleting the account | session token; billing, entitlement and subscription state: no health data |
+| `/sync/blob` (upload and restore) | owner uploads or restores a backup | one ciphertext blob (XChaCha20-Poly1305 under sync subkeys) plus size, checksum and generation. The decrypted snapshot contains the bootstrap state, profile, symptoms, day logs, pregnancy, kick and contraction sessions, postpartum and screening data (`SyncSnapshotV3`), so everything health-related travels, but only as ciphertext |
+| `DELETE /account` (self-hosted or managed); managed cloud only: `/account/billing`, `/account/entitlements/token`, `/account/upgrade` | opening billing surfaces, upgrading, deleting the account | session token; billing, entitlement and subscription state: no health data |
 | Managed cloud partner endpoints (`/account/partner/access`, `/invites`, `/invites/accept`, `/grants/<id>`, `/grants/<id>/projection`) and `/auth/partner/invites/accept` | owner invites, revokes or refreshes a partner share; partner accepts or reads | invite and grant IDs, access level, and the partner projection as ciphertext under a per-grant key |
 | PDF font asset | building the doctor PDF from a non-`file:` asset URI (web, Metro dev builds) | nothing from the owner; a request for the app's own bundled font. Release native builds read it from a local file |
 | `openURL` to `https://ovumcy.com/privacy` | owner opens the privacy notice | a fixed URL with no account, health or invite context |
+
+Default hosts: `https://sync.ovumcy.cloud` (self-hosted protocol default) and `https://managed.ovumcy.cloud` (managed cloud); a build can override them with `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` and `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL`, and the owner can point sync at their own server.
 
 Transport rules: every sync and managed-cloud request refuses redirects, and cleartext HTTP is blocked on Android outside emulator and loopback hosts and rejected for non-private hosts by the endpoint policy. Certificate pinning is scaffolded but not enforced natively; TLS relies on the platform CA store (see Accepted Residual Risks in `SECURITY.md`). Server-visible network metadata (IP address, timing, request sizes) is inherent to any request and is not controlled by the app.
 
@@ -77,16 +79,17 @@ The cloud sees account email, billing and entitlement state, device IDs and labe
 
 A partner never reads the owner's store. The owner's device builds a separate projection (`src/services/partner-shared-projection-service.ts`) by naming each kept field; nothing is copied by spreading a record, so a field added to the owner model later is excluded by default.
 
-- `summary` access keeps only period, cycle-start and uncertainty markers; flow, mood, sex activity, temperature, mucus, LH test, cycle factors, symptoms and notes are neutral defaults.
+- Every projection carries the owner and grant ids and a shared profile picked field by field: age group, usage goal, cycle and period length, last period start, irregular- and unpredictable-cycle flags, temperature unit, and the BBT, cervical-mucus, sex-chip and notes visibility toggles. The crisis-support contact is never included.
+- `summary` access keeps only period, cycle-start and uncertainty markers on day logs; flow, mood, sex activity, temperature, mucus, LH test, cycle factors, symptoms and notes are neutral defaults.
 - `full` access adds flow, mood, LH test, cycle factors, symptoms and notes, and honours the owner's toggles: sex activity, basal temperature, cervical mucus and notes are blanked when hidden or untracked.
-- The pregnancy test is forced to `none` at every level. Pregnancy, postpartum and screening data, the crisis-support contact, weight and blood-pressure fields are never part of the projection. Predictions are suppressed in the projection while the owner has an active pregnancy record or a pregnancy-test pause.
+- The pregnancy test is forced to `none` at every level. Pregnancy, postpartum and screening data, the crisis-support contact, weight and blood-pressure fields are never part of the projection. Predictions are suppressed in the projection while the owner has an active pregnancy record or a pregnancy-test pause, by sharing `unpredictableCycle` as true; the partner then sees the same facts-only view as for an owner who set that flag.
 - The projection is encrypted under a per-grant key before upload; the owner can revoke a grant.
 
 ## Data-Subject Rights Mapped to Features
 
 | Right | Feature |
 |---|---|
-| Access, portability | Settings export: CSV and JSON (full local data, including pregnancy, postpartum and screening data), doctor PDF. Export files follow the cache lifecycle above. |
+| Access, portability | Settings export, over a chosen date range: JSON (the full backup, including pregnancy, postpartum and screening data), CSV (day logs plus a per-day kick count), doctor PDF. Export files follow the cache lifecycle above. |
 | Rectification | Every record is editable in place: day logs, profile and cycle settings, symptoms, pregnancy and postpartum records. JSON import restores from a backup file. |
 | Erasure, device | Settings danger zone, "Clear local data": requires the confirmation word and device authentication (a web bypass applies in the browser preview); it clears the sync secrets. |
 | Erasure, account | Delete account: calls the connected backend's account deletion first and aborts without local change on failure; then clears sync secrets and the pending invite token and wipes local data. With no connected session it is local-only. |
@@ -114,9 +117,9 @@ In production native builds, screenshots and screen recording are blocked while 
 
 ## Notifications
 
-Reminders are local notifications, scheduled only after the owner grants permission; they are cancelled when permission is withdrawn. There is no push service and no remote notification content. See the OS notification store entry for what the notification holds.
+Reminders are local notifications, scheduled only after the owner grants permission; they are cancelled when permission is withdrawn. No push token is requested and no remote notification content exists. See the OS notification store entry for what the notification holds.
 
 ## Known Gaps
 
-- The partner-share secret store has no production caller that clears it on local wipe, account deletion, disconnect or mode switch; only a single grant key can be cleared (`clearManagedPartnerGrantKey`). The entitlement token store likewise has no clear call in those flows. Both live in SecureStore.
+- The partner-share secret store has no production caller that clears it on local wipe, account deletion, disconnect or mode switch; only a single grant key can be cleared (`clearManagedPartnerGrantKey`). The entitlement token store likewise has no clear call in those flows. Both live in SecureStore. The TLS pin store (`ovumcy.sync-cert-pins`, not secret) is not cleared on a local wipe either.
 - Certificate pinning is not enforced natively (see `SECURITY.md`).
