@@ -1,19 +1,11 @@
 import type { InterfaceLanguage } from "../models/profile";
 import type { WidenLiteral } from "./catalog-types";
 import { resolveCopyLanguage } from "./runtime";
-import { ruDayWord, ruDayWordGenitive } from "./ru-plural";
+import { ruCycleWord, ruDayWord, ruDayWordGenitive, ruPlural } from "./ru-plural";
 
-// Local helper for Russian participle agreement on «записанный день»
+// Russian participle agreement on «записанный день»
 function ruRecordedDayPhrase(count: number): string {
-  const mod100 = count % 100;
-  const mod10 = count % 10;
-  if (mod10 === 1 && mod100 !== 11) {
-    return `${count} записанный день`;
-  }
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return `${count} записанных дня`;
-  }
-  return `${count} записанных дней`;
+  return `${count} ${ruPlural(count, "записанный день", "записанных дня", "записанных дней")}`;
 }
 
 const statsCopyEn = {
@@ -1049,7 +1041,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       subtitle: "Премиум-паттерны, рассчитанные только по вашей недавней локальной истории циклов.",
       weightedAverageTitle: "Взвешенное среднее",
       weightedAverageDescription: (count: number) =>
-        `Последние ${count} завершённых циклов имеют больший вес.`,
+        `Последние ${count} ${ruPlural(count, "завершённый цикл", "завершённых цикла", "завершённых циклов")} имеют больший вес.`,
       patternDriftTitle: "Дрейф паттерна",
       patternDriftStableValue: "Стабильный ритм",
       patternDriftDriftingValue: "Есть дрейф",
@@ -1098,12 +1090,12 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         percentage: number,
         totalDays: number,
       ) =>
-        `${symptom} чаще всего встречается в фазе «${phase}»: на ${percentage.toFixed(0)}% из ${totalDays} отмеченных дней.`,
+        `${symptom} чаще всего встречается в фазе «${phase}»: на ${percentage.toFixed(0)}% из ${totalDays} ${ruPlural(totalDays, "отмеченного дня", "отмеченных дней", "отмеченных дней")}.`,
       shortLutealTitle: "Короткая лютеиновая фаза",
       shortLutealValue: (averageDays: number) =>
         `В среднем ${averageDays.toFixed(1)} д.`,
       shortLutealDescription: (count: number) =>
-        `Наблюдаемая лютеиновая фаза короче 10 дней в ${count} последних циклах. Типично 11-14 дней. Короткая лютеиновая фаза может влиять на зачатие — стоит обсудить это с врачом.`,
+        `Наблюдаемая лютеиновая фаза короче 10 дней в ${count} ${ruPlural(count, "последнем цикле", "последних циклах", "последних циклах")}. Типично 11-14 дней. Короткая лютеиновая фаза может влиять на зачатие — стоит обсудить это с врачом.`,
       seasonLabels: {
         winter: "зима",
         spring: "весна",
@@ -1118,7 +1110,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         "Премиальные сигналы фертильности на основе локальной истории БТТ и цервикальной слизи.",
       observedLutealTitle: "Наблюдаемая лютеиновая фаза",
       observedLutealDescription: (count: number, value: string) =>
-        `Среднее по сигналам за последние ${count} циклов: ${value} д.`,
+        `Среднее по сигналам за последние ${count} ${ruCycleWord(count)}: ${value} д.`,
       lutealConsistencyTitle: "Стабильность лютеиновой фазы",
       lutealConsistencyStableValue: "Стабильно",
       lutealConsistencyVariableValue: "Есть вариации",
@@ -1129,11 +1121,11 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         maxDays: number,
         spreadDays: number,
       ) =>
-        `Наблюдаемая длина лютеиновой фазы колебалась от ${minDays} до ${maxDays} д. в ${count} циклах (разброс ${spreadDays.toFixed(1)} д.).`,
+        `Наблюдаемая длина лютеиновой фазы колебалась от ${minDays} до ${maxDays} д. в ${count} ${ruPlural(count, "цикле", "циклах", "циклах")} (разброс ${spreadDays.toFixed(1)} д.).`,
       signalCoverageTitle: "Покрытие сигналами",
       signalCoverageValue: (count: number, total: number) => `${count}/${total} циклов`,
       signalCoverageDescription: (count: number, total: number) =>
-        `Фертильная слизь или температурный подъём были в ${count} из последних ${total} завершённых циклов.`,
+        `Фертильная слизь или температурный подъём были в ${count} из последних ${total} ${ruPlural(total, "завершённого цикла", "завершённых циклов", "завершённых циклов")}.`,
       thermalShiftTitle: "Температурный подъём",
       thermalShiftConfirmedValue: "Подтверждён",
       thermalShiftBuildingValue: "Формируется",
@@ -1141,12 +1133,12 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
         rise: string,
         unit: string,
         count: number,
-      ) => `Текущий цикл показывает устойчивый подъём на +${rise} ${unit} по ${count} измерениям.`,
+      ) => `Текущий цикл показывает устойчивый подъём на +${rise} ${unit} по ${count} ${ruPlural(count, "измерению", "измерениям", "измерениям")}.`,
       thermalShiftBuildingDescription: (
         rise: string,
         unit: string,
         count: number,
-      ) => `В текущем цикле формируется возможный подъём на +${rise} ${unit} по ${count} измерениям.`,
+      ) => `В текущем цикле формируется возможный подъём на +${rise} ${unit} по ${count} ${ruPlural(count, "измерению", "измерениям", "измерениям")}.`,
       ovulationConfirmationTitle: "Подтверждение овуляции",
       ovulationConfirmationConfirmedValue: "Сигналы совпали",
       ovulationConfirmationBuildingValue: "Сигналы формируются",
@@ -1192,7 +1184,7 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       title: "Расширенные отчёты",
       subtitle: "Сравнение последних завершённых циклов рядом.",
       summary: (count: number, minDays: number, maxDays: number) =>
-        `${count} завершённых циклов. Диапазон ${minDays}-${maxDays} д.`,
+        `${count} ${ruPlural(count, "завершённый цикл", "завершённых цикла", "завершённых циклов")}. Диапазон ${minDays}-${maxDays} д.`,
       rowTitle: (date: string) => `Начало ${date}`,
       cycleLengthLabel: (days: number) => `Цикл ${days} д.`,
       periodLengthLabel: (days: number) => `Менструация ${days} д.`,
@@ -1227,9 +1219,9 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       stable: "Более стабильный паттерн",
       variable: "Вариативный паттерн",
     },
-    reliabilitySample: (count: number) => `Основано на ${count} завершённых циклах.`,
+    reliabilitySample: (count: number) => `Основано на ${count} ${ruPlural(count, "завершённом цикле", "завершённых циклах", "завершённых циклах")}.`,
     reliabilitySampleRecent: (count: number) =>
-      `Основано на последних ${count} завершённых циклах.`,
+      `Основано на последних ${count} ${ruPlural(count, "завершённом цикле", "завершённых циклах", "завершённых циклах")}.`,
     reliabilityHint:
       "Чем больше завершённых циклов, тем стабильнее становится прогнозируемый диапазон.",
     reliabilityHintVariable:

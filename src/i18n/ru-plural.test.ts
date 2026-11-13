@@ -1,4 +1,37 @@
-import { ruDayWord, ruDayWordGenitive } from "./ru-plural";
+import { ruCycleWord, ruDayWord, ruDayWordGenitive, ruPlural } from "./ru-plural";
+
+describe("ruPlural / ruCycleWord", () => {
+  it.each([
+    [1, "цикл"],
+    [2, "цикла"],
+    [4, "цикла"],
+    [5, "циклов"],
+    [11, "циклов"],
+    [12, "циклов"],
+    [21, "цикл"],
+    [22, "цикла"],
+    [111, "циклов"],
+  ])("ruCycleWord(%i) is %s", (count, word) => {
+    expect(ruCycleWord(count)).toBe(word);
+  });
+
+  it("matches the former hand-rolled participle phrase for every count 0..300", () => {
+    const former = (count: number): string => {
+      const mod100 = count % 100;
+      const mod10 = count % 10;
+      if (mod10 === 1 && mod100 !== 11) return `${count} записанный день`;
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return `${count} записанных дня`;
+      }
+      return `${count} записанных дней`;
+    };
+    for (let count = 0; count <= 300; count += 1) {
+      expect(
+        `${count} ${ruPlural(count, "записанный день", "записанных дня", "записанных дней")}`,
+      ).toBe(former(count));
+    }
+  });
+});
 
 describe("ruDayWord", () => {
   it("returns день for 1 (one-form)", () => {
