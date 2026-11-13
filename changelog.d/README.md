@@ -1,8 +1,9 @@
 # Changelog fragments
 
 Every pull request adds one fragment, `changelog.d/<slug>.md`, instead of editing
-[CHANGELOG.md](../CHANGELOG.md). The slug is the branch name without its type prefix:
-`fix/ci-parity` adds `changelog.d/ci-parity.md`. A file per branch has no shared anchor, so
+[CHANGELOG.md](../CHANGELOG.md). The slug is the branch name without its type prefix, any
+further slashes turned into hyphens: `fix/ci-parity` adds `changelog.d/ci-parity.md`,
+`fix/sync/retry` adds `changelog.d/sync-retry.md`. A file per branch has no shared anchor, so
 concurrent pull requests do not conflict on the `[Unreleased]` section. Dependabot pull requests
 are exempt.
 

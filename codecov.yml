@@ -2,7 +2,7 @@
 # curl -X POST --data-binary @codecov.yml https://codecov.io/validate
 #
 # Codecov is advisory here: the enforced patch gate is the in-repo
-# scripts/patchcov.mjs step inside the required `quality` context (same
+# scripts/patchcov.mjs run by the `patch-coverage` job in ci.yml (same
 # statements-and-branches bar), and `codecov/patch` left the required set on
 # 2026-07-28. These statuses feed the dashboards and PR annotations only.
 
@@ -38,7 +38,7 @@ coverage:
       default:
         # Same 100%-of-the-diff bar the in-repo gate enforces; informational
         # so a codecov outage or scoring drift can never red a PR again —
-        # scripts/patchcov.mjs in the required `quality` job is the gate.
+        # scripts/patchcov.mjs in the `patch-coverage` job is the gate.
         target: 100%
         threshold: 0%
         informational: true
