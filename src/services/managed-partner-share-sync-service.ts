@@ -29,6 +29,9 @@ export async function syncManagedPartnerSharedProjections(
     storage,
     syncSecretStore,
     syncState.preferences.mode,
+    undefined,
+    undefined,
+    { liveOnly: true },
   );
   if (!premiumFeatures.partnerAccess) {
     return { skipped: true, syncedCount: 0 };

@@ -39,6 +39,21 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_response"
   | "generic";
 
+/**
+ * True only when a failed managed call says "the server could not be asked"
+ * rather than "the server answered no". `network_failed` is the synthetic
+ * no-response outcome (thrown fetch, status 599); `entitlements_unavailable`
+ * is the server's own temporary-unavailability answer. Every other code is an
+ * answer (4xx refusals, `unauthorized`, an unparseable body, a generic or
+ * proxy-shaped error whose status the code mapping does not preserve), so
+ * offline-grace readers must treat it as a refusal and fail closed.
+ */
+export function isManagedCloudTransportFailure(
+  errorCode: ManagedCloudAPIErrorCode,
+): boolean {
+  return errorCode === "network_failed" || errorCode === "entitlements_unavailable";
+}
+
 export type ManagedCloudEntitlement = {
   syncAllowed: boolean;
   source: string;

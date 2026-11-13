@@ -321,6 +321,49 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
     expect(snapshot?.premiumFeatures.advancedInsights).toBe(true);
   });
 
+  it("honors a cached token when the server reports temporary unavailability", async () => {
+    mockManagedFetch({
+      billingFeatures: FULL_FALSE_FEATURES,
+      tokenResponse: jsonResponse({ error: "entitlements_unavailable" }, 503),
+    });
+    const store = createMemoryEntitlementTokenStore();
+    await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
+
+    const snapshot = await loadManagedBillingSnapshot(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(MANAGED_SECRETS),
+      "managed",
+      gate(store),
+    );
+
+    expect(snapshot?.premiumFeatures.doctorPDF).toBe(true);
+  });
+
+  it.each([
+    ["a plan-lapse refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
+    ["an unauthorized session", jsonResponse({ error: "unauthorized" }, 401)],
+    ["an absent endpoint", jsonResponse({ error: "not_found" }, 404)],
+  ])(
+    "serves no cached token when the mint is refused with %s",
+    async (_label, tokenResponse) => {
+      mockManagedFetch({ billingFeatures: FULL_FALSE_FEATURES, tokenResponse });
+      const store = createMemoryEntitlementTokenStore();
+      await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
+
+      const snapshot = await loadManagedBillingSnapshot(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(MANAGED_SECRETS),
+        "managed",
+        gate(store),
+      );
+
+      // The valid cached token would unlock both; a refusal leaves the
+      // snapshot booleans (all false) standing.
+      expect(snapshot?.premiumFeatures.doctorPDF).toBe(false);
+      expect(snapshot?.premiumFeatures.advancedInsights).toBe(false);
+    },
+  );
+
   it("re-locks when the cached token is expired and falls back to the snapshot booleans", async () => {
     mockManagedFetch({
       billingFeatures: FULL_FALSE_FEATURES,
@@ -541,5 +584,98 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
       partnerAccess: true,
       reminders: true,
     });
+  });
+
+  function freshCacheStorage() {
+    return createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest
+        .fn()
+        .mockResolvedValue(cachedRecord(FRESH_FETCHED_AT)),
+    });
+  }
+
+  it("serves the fresh cache when the server reports temporary unavailability", async () => {
+    global.fetch = jest.fn(async () =>
+      jsonResponse({ error: "entitlements_unavailable" }, 503),
+    ) as unknown as typeof fetch;
+
+    const snapshot = await loadManagedBillingSnapshot(
+      freshCacheStorage(),
+      createSyncSecretStoreMock(MANAGED_SECRETS),
+      "managed",
+      undefined,
+      CACHE_NOW,
+    );
+
+    expect(snapshot?.premiumFeatures.doctorPDF).toBe(true);
+  });
+
+  it.each([
+    ["an explicit 401", jsonResponse({ error: "unauthorized" }, 401)],
+    ["a 403 refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
+    ["a 404", jsonResponse({ error: "not_found" }, 404)],
+    ["a 429", jsonResponse({ error: "rate_limited" }, 429)],
+    ["an unparseable 502 body", new Response("<html>", { status: 502 })],
+  ])(
+    "yields no cached premium when the billing fetch is answered with %s",
+    async (_label, response) => {
+      global.fetch = jest.fn(async () => response.clone()) as unknown as typeof fetch;
+      const storage = freshCacheStorage();
+
+      await expect(
+        loadManagedBillingSnapshot(
+          storage,
+          createSyncSecretStoreMock(MANAGED_SECRETS),
+          "managed",
+          undefined,
+          CACHE_NOW,
+        ),
+      ).resolves.toBeNull();
+      expect(storage.readManagedBillingCacheRecord).not.toHaveBeenCalled();
+    },
+  );
+
+  it("unlocks nothing through loadManagedPremiumFeatures when the server answered 401 over a fresh cache", async () => {
+    global.fetch = jest.fn(async () =>
+      jsonResponse({ error: "unauthorized" }, 401),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      loadManagedPremiumFeatures(
+        freshCacheStorage(),
+        createSyncSecretStoreMock(MANAGED_SECRETS),
+        "managed",
+        undefined,
+        CACHE_NOW,
+      ),
+    ).resolves.toEqual(FULL_FALSE_FEATURES);
+  });
+
+  it("never reads the cache for a liveOnly (server-checked) load, even on a network failure", async () => {
+    mockFailedBillingFetch();
+    const storage = freshCacheStorage();
+
+    await expect(
+      loadManagedBillingSnapshot(
+        storage,
+        createSyncSecretStoreMock(MANAGED_SECRETS),
+        "managed",
+        undefined,
+        CACHE_NOW,
+        { liveOnly: true },
+      ),
+    ).resolves.toBeNull();
+    expect(storage.readManagedBillingCacheRecord).not.toHaveBeenCalled();
+
+    await expect(
+      loadManagedPremiumFeatures(
+        freshCacheStorage(),
+        createSyncSecretStoreMock(MANAGED_SECRETS),
+        "managed",
+        undefined,
+        CACHE_NOW,
+        { liveOnly: true },
+      ),
+    ).resolves.toEqual(FULL_FALSE_FEATURES);
   });
 });
