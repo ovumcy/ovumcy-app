@@ -444,4 +444,122 @@ describe("deleteOvumcyAccount", () => {
       ["ovumcy.entitlement-token", "ovumcy.local-data-key"].sort(),
     );
   });
+
+  describe("reminder schedule", () => {
+    const localPreferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      setupStatus: "not_configured" as const,
+    };
+
+    function createScheduler() {
+      return { sync: jest.fn().mockResolvedValue("scheduled") };
+    }
+
+    it("rebuilds an empty schedule after the local data is wiped", async () => {
+      const storage = createLocalAppStorageMock();
+      const scheduler = createScheduler();
+
+      const result = await deleteOvumcyAccount(
+        storage,
+        createSyncSecretStoreMock(null),
+        createWipeScopeSecretStoresMock(),
+        localPreferences,
+        jest.fn(),
+        jest.fn(),
+        scheduler,
+      );
+
+      expect(result).toEqual({ ok: true });
+      expect(scheduler.sync).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
+      expect(
+        jest.mocked(storage.clearAllLocalData).mock.invocationCallOrder[0],
+      ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+    });
+
+    it("still rebuilds, and reports failure, when a secret clear fails after the wipe", async () => {
+      const storage = createLocalAppStorageMock();
+      const scheduler = createScheduler();
+
+      const result = await deleteOvumcyAccount(
+        storage,
+        createSyncSecretStoreMock(null),
+        {
+          ...createWipeScopeSecretStoresMock(),
+          entitlementTokenStore: {
+            clearEntitlementToken: jest
+              .fn()
+              .mockRejectedValue(new Error("keychain locked")),
+          },
+        },
+        localPreferences,
+        jest.fn(),
+        jest.fn(),
+        scheduler,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+      expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
+      expect(
+        jest.mocked(storage.clearAllLocalData).mock.invocationCallOrder[0],
+      ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+    });
+
+    it("rebuilds from whatever storage holds when the wipe itself throws", async () => {
+      const storage = createLocalAppStorageMock({
+        clearAllLocalData: jest.fn().mockRejectedValue(new Error("disk full")),
+      });
+      const scheduler = createScheduler();
+
+      const result = await deleteOvumcyAccount(
+        storage,
+        createSyncSecretStoreMock(null),
+        createWipeScopeSecretStoresMock(),
+        localPreferences,
+        jest.fn(),
+        jest.fn(),
+        scheduler,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+      expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    });
+
+    it("leaves the schedule alone when the server delete aborts the flow", async () => {
+      const storage = createLocalAppStorageMock();
+      const scheduler = createScheduler();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+
+      const result = await deleteOvumcyAccount(
+        storage,
+        createSyncSecretStoreMock({
+          ...preparedSecrets.record,
+          managedAuthSessionToken: "managed-session-1",
+        }),
+        createWipeScopeSecretStoresMock(),
+        {
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "managed" as const,
+          setupStatus: "connected" as const,
+        },
+        jest.fn(),
+        jest.fn().mockReturnValue(
+          createManagedClientMock({
+            deleteAccount: jest
+              .fn()
+              .mockResolvedValue({ ok: false, errorCode: "network_failed" }),
+          }),
+        ),
+        scheduler,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "network_failed" });
+      expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+      expect(scheduler.sync).not.toHaveBeenCalled();
+    });
+  });
 });

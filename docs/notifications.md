@@ -93,8 +93,9 @@ runs:
   changed (reminder text is localized, so a language change rebuilds it);
 - after toggling the kick-count reminder on the kick counter screen;
 - after starting a pregnancy, ending it, changing its due date, or deleting all pregnancy data;
-- after deleting all local data (the reset profile has every reminder off, so the schedule is
-  cleared);
+- after deleting all local data, and after account deletion wipes it (the reset profile has every
+  reminder off, so the schedule is cleared); both also rebuild when a secret clear failed after the
+  data was wiped;
 - after a JSON import is confirmed, including one that failed part-way;
 - after a sync snapshot is applied on restore (the restored profile, day logs and pregnancy
   records replace the ones the schedule was built from).
