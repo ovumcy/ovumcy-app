@@ -233,6 +233,13 @@ that owns the canonical web UX).
   - `< 2 completed cycles`: empty hero only
   - `2 completed cycles`: top cards, cycle overview, trend, symptom frequency
   - `3+ completed cycles`: stronger reliability state and deeper stats sections as data allows
+- Recent completed cycles (web Insights cycle stack, `stats_cycle_ribbon.go`):
+  - Free list of the latest `4` completed cycles (start, cycle length, period length), newest
+    first, shown from `2` completed cycles — same cap and minimum as web
+  - fed by the shared completed-cycle summaries through the stats view service; it is recorded
+    history, so it stays visible while predictions are suppressed (active pregnancy or day-log pause)
+  - deviation: the shared-axis ribbon drawing is not ported; rows are text cards
+  - the typical/variable comparison wording stays in the premium extended reports
 
 ### Settings
 

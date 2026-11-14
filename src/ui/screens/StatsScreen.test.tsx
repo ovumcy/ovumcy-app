@@ -451,6 +451,46 @@ describe("StatsScreen", () => {
     ).toBeTruthy();
   });
 
+  it("renders the free completed-cycle list with accessibility labels and no premium", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-02-26",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
+      ]),
+    });
+
+    await render(
+      <AppPreferencesTestProvider>
+        <StatsScreen now={new Date(2026, 2, 8)} storage={storage} />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("stats-completed-cycle-list");
+    expect(screen.getByTestId("stats-extended-reports-lock")).toBeTruthy();
+    expect(screen.queryByTestId("stats-extended-reports")).toBeNull();
+    const rows = screen.getAllByTestId("stats-completed-cycle-row");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.props.accessibilityLabel).toContain("Cycle 28 d");
+    expect(screen.queryByText(/usual pattern/)).toBeNull();
+  });
+
   it("renders the fertile current-phase card (web resolveCyclePhase parity)", async () => {
     // Two completed 28-day cycles (2026-01-01 -> 2026-01-29 -> 2026-02-26)
     // clear the insights gate. "now" = 2026-03-08 is cycle day 11 of the
