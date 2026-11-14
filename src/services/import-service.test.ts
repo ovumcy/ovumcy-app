@@ -402,12 +402,84 @@ describe("import-service apply (additive merge)", () => {
             isDefault: true,
           },
         ],
+        dayLogs: [dayLog("2026-03-10", { symptomIDs: ["custom_a"] })],
       }),
     );
 
     expect(outcome.symptomsAdded).toBe(1);
     expect(symptoms.length).toBe(before + 1);
     expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+  });
+});
+
+describe("import-service custom symptoms follow written days", () => {
+  const jawPain = {
+    id: "custom_a",
+    slug: "jaw-pain",
+    label: "Jaw pain",
+    icon: "🔥",
+    color: "#E8799F",
+    isArchived: false,
+    sortOrder: 900,
+    isDefault: false,
+  };
+
+  it("creates no symptom when every referencing day is skipped", async () => {
+    const { storage, symptoms, dayLogs } = createStatefulStorage();
+    dayLogs.set("2026-03-10", dayLog("2026-03-10", { mood: 4 }));
+    const before = symptoms.length;
+    const file = envelope({
+      symptoms: [jawPain],
+      dayLogs: [dayLog("2026-03-10", { symptomIDs: ["custom_a"] })],
+    });
+
+    const preview = await previewImportBackupEnvelope(storage, file);
+    const outcome = await importBackupEnvelope(storage, file);
+
+    expect(outcome.dayLogsSkipped).toBe(1);
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(preview.symptomsAdded).toBe(0);
+    expect(symptoms).toHaveLength(before);
+    expect(storage.writeSymptomRecord).not.toHaveBeenCalled();
+  });
+
+  it("creates a symptom referenced by one written and one skipped day", async () => {
+    const { storage, symptoms, dayLogs } = createStatefulStorage();
+    dayLogs.set("2026-03-10", dayLog("2026-03-10", { mood: 4 }));
+    const before = symptoms.length;
+    const file = envelope({
+      symptoms: [jawPain],
+      dayLogs: [
+        dayLog("2026-03-10", { symptomIDs: ["custom_a"] }),
+        dayLog("2026-03-11", { symptomIDs: ["custom_a"] }),
+        dayLog("2026-03-12", { symptomIDs: ["custom_a"] }),
+      ],
+    });
+
+    const preview = await previewImportBackupEnvelope(storage, file);
+    expect(storage.writeSymptomRecord).not.toHaveBeenCalled();
+    const outcome = await importBackupEnvelope(storage, file);
+
+    expect(outcome.dayLogsAdded).toBe(2);
+    expect(outcome.symptomsAdded).toBe(1);
+    expect(preview.symptomsAdded).toBe(1);
+    expect(symptoms).toHaveLength(before + 1);
+    expect(storage.writeSymptomRecord).toHaveBeenCalledTimes(1);
+    const minted = symptoms.find((record) => record.label === "Jaw pain");
+    expect(dayLogs.get("2026-03-11")?.symptomIDs).toEqual([minted?.id]);
+  });
+
+  it("creates no symptom that no day references", async () => {
+    const { storage, symptoms } = createStatefulStorage();
+    const before = symptoms.length;
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ symptoms: [jawPain], dayLogs: [dayLog("2026-03-10")] }),
+    );
+
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms).toHaveLength(before);
   });
 });
 
@@ -557,12 +629,12 @@ describe("import-service custom symptom id remap", () => {
       }),
     );
 
-    expect(outcome.symptomsAdded).toBe(1);
     expect(outcome.dayLogsAdded).toBe(1);
 
-    // The symptom still imports; it simply cannot be referenced by id from
-    // this file, because the file never gave it one.
-    expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(true);
+    // The file never gave the symptom an id, so no day can reference it and
+    // it is not created.
+    expect(outcome.symptomsAdded).toBe(0);
+    expect(symptoms.some((record) => record.label === "Jaw pain")).toBe(false);
 
     const storedDayLog = dayLogs.get("2026-03-13");
     expect(storedDayLog?.symptomIDs).toEqual(["cramps"]);
@@ -854,7 +926,11 @@ describe("previewImportBackupEnvelope (dry-run)", () => {
         lastPeriodStart: "2026-03-01",
       },
       dayLogs: [
-        dayLog("2026-03-10", { isPeriod: true, flow: "medium" }),
+        dayLog("2026-03-10", {
+          isPeriod: true,
+          flow: "medium",
+          symptomIDs: ["custom_a"],
+        }),
         dayLog("2026-03-11", { mood: 3 }),
         dayLog("not-a-date", { notes: "bad" }),
       ],

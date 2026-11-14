@@ -17,8 +17,8 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   buildDayLogVisibility,
   type DayLogVisibilityOptions,
+  capDayLogNotes,
   sanitizeDayLogRecord,
-  trimDayLogNotes,
 } from "./day-log-policy";
 import {
   appendAutoFilledPeriodDays,
@@ -337,12 +337,21 @@ export function buildNextDayLogRecordPatch(
   current: DayLogRecord,
   updates: Partial<DayLogRecord>,
 ): DayLogRecord {
-  return sanitizeDayLogRecord({
-    ...current,
-    ...updates,
-    notes:
-      typeof updates.notes === "string" ? trimDayLogNotes(updates.notes) : current.notes,
-  });
+  // The draft keeps the notes as typed (capped, not trimmed): trimming per
+  // keystroke would eat the space between two words. The save path
+  // sanitizes the record again and trims there.
+  const notes =
+    typeof updates.notes === "string"
+      ? capDayLogNotes(updates.notes)
+      : capDayLogNotes(current.notes);
+  return {
+    ...sanitizeDayLogRecord({
+      ...current,
+      ...updates,
+      notes,
+    }),
+    notes,
+  };
 }
 
 // ACOG red-flag guidance, surfaced as a soft, non-diagnostic hint next to the
