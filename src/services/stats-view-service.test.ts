@@ -38,6 +38,7 @@ function createPeriodRecord(
   return {
     ...createEmptyDayLogRecord(date),
     isPeriod: true,
+    cycleStart: true,
     ...overrides,
   };
 }

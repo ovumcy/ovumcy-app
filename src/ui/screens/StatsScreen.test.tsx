@@ -148,6 +148,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-12-20"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2025-12-21"),
@@ -157,6 +158,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-01-17"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2026-01-18"),
@@ -166,6 +168,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-02-14"),
           isPeriod: true,
+          cycleStart: true,
           cycleFactorKeys: ["stress"],
         },
         {
@@ -179,6 +182,7 @@ describe("StatsScreen", () => {
           // full "3-over-6" shift (03-20..03-22) forms by "today".
           ...createEmptyDayLogRecord("2026-03-14"),
           isPeriod: true,
+          cycleStart: true,
           bbt: 36.3,
         },
         {
@@ -313,6 +317,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-10-01"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2025-10-14"),
@@ -326,6 +331,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-10-29"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2025-11-12"),
@@ -339,6 +345,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-11-26"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2025-12-10"),
@@ -352,6 +359,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2025-12-24"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2026-01-08"),
@@ -361,6 +369,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-01-21"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2026-02-04"),
@@ -370,6 +379,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-02-18"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2026-03-12"),
@@ -379,6 +389,7 @@ describe("StatsScreen", () => {
         {
           ...createEmptyDayLogRecord("2026-03-28"),
           isPeriod: true,
+          cycleStart: true,
         },
         {
           ...createEmptyDayLogRecord("2026-03-29"),
@@ -464,9 +475,9 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
-        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
       ]),
     });
 
@@ -506,9 +517,9 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
-        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
       ]),
     });
 
@@ -546,9 +557,9 @@ describe("StatsScreen", () => {
         themeOverride: "light",
       }),
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
-        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-26"), isPeriod: true, cycleStart: true },
         {
           ...createEmptyDayLogRecord("2026-03-01"),
           pregnancyTest: "positive",

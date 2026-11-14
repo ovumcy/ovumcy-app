@@ -271,6 +271,7 @@ describe("calendar-view-service", () => {
     const createPeriodRecord = (date: string) => ({
       ...createEmptyDayLogRecord(date),
       isPeriod: true,
+      cycleStart: true,
       flow: "medium" as const,
     });
     const records = [
@@ -880,6 +881,7 @@ describe("calendar-view-service", () => {
         await storage.writeDayLogRecord({
           ...createEmptyDayLogRecord(date),
           isPeriod: true,
+          cycleStart: true,
           flow: "medium",
         });
       }
