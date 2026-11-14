@@ -49,8 +49,9 @@ flowchart TB
 Dependency rules:
 
 - Routes import screens; they do not import services or storage. The one exception is the root
-  layout `app/_layout.tsx`, which also runs the boot-time export-artifact sweep
-  (`src/services/export-artifact-cleanup`) and applies screen-capture protection
+  layout `app/_layout.tsx`, which also runs the launch tasks
+  (`src/services/app-launch-tasks`: the export-artifact sweep and the reminder
+  rebuild) and applies screen-capture protection
   (`src/security/app-screen-protection`).
 - Screens call services and pass them `appStorage`. They never import a concrete
   storage adapter; only tests do, to construct fixtures.
@@ -87,9 +88,10 @@ plus a `.web.ts` override.
    (`src/security/web-invite-token-scrub-bootstrap.ts`), so the token is removed
    from `window.location` before any router code reads the URL. It then renders
    the expo-router app.
-2. `app/_layout.tsx` (`RootLayout`) starts the export-artifact sweep in a mount
-   effect: `cleanupStaleExportArtifacts()` removes leftovers from the platform
-   cache. On native it deletes files whose names start with `ovumcy-export-` or
+2. `app/_layout.tsx` (`RootLayout`) starts the launch tasks in a mount effect
+   (`runAppLaunchTasks`): the export-artifact sweep, then a reminder schedule
+   rebuild from stored data. The sweep, `cleanupStaleExportArtifacts()`,
+   removes leftovers from the platform cache. On native it deletes files whose names start with `ovumcy-export-` or
    `ovumcy-private-export-` plus the document-picker cache directory, and it
    swallows failures. A process kill mid-share bypasses the delivery code's
    `try/finally`, which is why the sweep runs on boot. The web variant is a

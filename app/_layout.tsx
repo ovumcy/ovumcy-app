@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { appStorage } from "../src/services/app-bootstrap-service";
-import { cleanupStaleExportArtifacts } from "../src/services/export-artifact-cleanup";
-import { rebuildLocalReminderScheduleFromStorage } from "../src/services/local-reminder-sync-service";
+import { runAppLaunchTasks } from "../src/services/app-launch-tasks";
 import { createPlatformLocalReminderScheduler } from "../src/services/platform-local-reminder-scheduler";
 import { useAppScreenProtection } from "../src/security/app-screen-protection";
 import { ConfirmDialogProvider } from "../src/ui/confirm/ConfirmDialogProvider";
@@ -22,17 +21,7 @@ import { AppErrorScreen } from "../src/ui/screens/AppErrorScreen";
 
 export default function RootLayout() {
   useEffect(() => {
-    // F10.b: any export artifact left over from a JS-process kill mid-share
-    // (cycle CSV/JSON, doctor PDF, recovery phrase) is sensitive. Sweep
-    // them out of the platform cache before the user can hand the device
-    // to anyone.
-    void cleanupStaleExportArtifacts();
-    // A one-time reminder that already fired is replaced only by a rebuild,
-    // so every launch rebuilds the schedule from stored data.
-    void rebuildLocalReminderScheduleFromStorage(
-      appStorage,
-      createPlatformLocalReminderScheduler(),
-    );
+    void runAppLaunchTasks(appStorage, createPlatformLocalReminderScheduler());
   }, []);
 
   return (
