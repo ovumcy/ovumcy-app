@@ -247,6 +247,7 @@ export function createSQLiteAppStorage(
   let localDataKeyPromise: Promise<string> | null = null;
   let resetBarrierPromise: Promise<void> | null = null;
   let storageOperationQueue = Promise.resolve();
+  let dayLogTransactionMayBeOpen = false;
 
   function enqueueStorageOperation<T>(task: () => Promise<T>): Promise<T> {
     const result = storageOperationQueue.then(task, task);
@@ -498,6 +499,16 @@ export function createSQLiteAppStorage(
   async function commitDayLogChangesInternal(change: DayLogChangeSet): Promise<void> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
+    if (dayLogTransactionMayBeOpen) {
+      // A failed ROLLBACK left the connection inside the previous transaction;
+      // clear it, or every BEGIN below fails with a nested-transaction error.
+      try {
+        await database.execAsync("ROLLBACK;");
+      } catch {
+        // Nothing was open after all; BEGIN reports any real failure.
+      }
+      dayLogTransactionMayBeOpen = false;
+    }
     await database.execAsync("BEGIN IMMEDIATE;");
     try {
       for (const record of change.writes) {
@@ -517,7 +528,9 @@ export function createSQLiteAppStorage(
       try {
         await database.execAsync("ROLLBACK;");
       } catch {
-        // The original failure is the one worth reporting.
+        // The original failure is the one worth reporting; the next commit
+        // retries the rollback before it begins.
+        dayLogTransactionMayBeOpen = true;
       }
       throw error;
     }
