@@ -260,12 +260,13 @@ describe("sync-snapshot-service", () => {
     expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
   });
 
-  it("keeps the stored cycle start of a snapshot written under the repoint rule", async () => {
+  it("leaves the repoint state out of the snapshot, so every restore re-reads the stored start", async () => {
     const source = createVolatileWebAppStorage();
     await source.writeProfileRecord({
       ...(await source.readProfileRecord()),
       lastPeriodStart: "2026-04-12",
       storedCycleStartRepointVersion: 1,
+      lastPeriodStartBeforeRepoint: "2026-04-20",
     });
     await source.writeDayLogRecord({
       ...createEmptyDayLogRecord("2026-03-01"),
@@ -273,16 +274,45 @@ describe("sync-snapshot-service", () => {
       cycleStart: true,
     });
     await source.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-04-12"), mood: 3 });
+    const built = await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"));
+    expect(built.profile).not.toHaveProperty("storedCycleStartRepointVersion");
+    expect(built.profile).not.toHaveProperty("lastPeriodStartBeforeRepoint");
+
+    const target = createVolatileWebAppStorage();
+    await restoreSyncSnapshot(
+      target,
+      decodeSyncSnapshot(encodeSyncSnapshot(built)),
+      createDefaultSyncPreferencesRecord(),
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+    );
+
+    expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+  });
+
+  it("finishes a restore and rebuilds reminders when the stored-start re-read fails", async () => {
+    const source = createVolatileWebAppStorage();
+    await source.writeProfileRecord({
+      ...(await source.readProfileRecord()),
+      lastPeriodStart: "2026-04-12",
+    });
     const snapshot = decodeSyncSnapshot(
       encodeSyncSnapshot(await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"))),
     );
-
     const target = createVolatileWebAppStorage();
-    await restoreSyncSnapshot(target, snapshot, createDefaultSyncPreferencesRecord(), {
-      sync: jest.fn().mockResolvedValue("scheduled"),
-    });
+    const listDayLogs = target.listDayLogRecordsInRange.bind(target);
+    jest
+      .spyOn(target, "listDayLogRecordsInRange")
+      .mockImplementation((from, to) =>
+        from === "0001-01-01" ? Promise.reject(new Error("read failed")) : listDayLogs(from, to),
+      );
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
 
-    expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-04-12");
+    await restoreSyncSnapshot(target, snapshot, createDefaultSyncPreferencesRecord(), scheduler);
+
+    const profile = await target.readProfileRecord();
+    expect(profile.lastPeriodStart).toBe("2026-04-12");
+    expect(profile.storedCycleStartRepointVersion).toBeUndefined();
+    expect(scheduler.sync).toHaveBeenCalled();
   });
 
   it("round-trips the pregnancy, postpartum, and screening collections through encode -> decode -> restore onto fresh storage", async () => {

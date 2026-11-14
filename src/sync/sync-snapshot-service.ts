@@ -15,7 +15,10 @@ import type {
 import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
 import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
-import { repointLegacyStoredCycleStart } from "../services/stored-cycle-start-repoint-service";
+import {
+  repointLegacyStoredCycleStart,
+  withoutStoredCycleStartRepointState,
+} from "../services/stored-cycle-start-repoint-service";
 import type { SyncPreferencesRecord } from "./sync-contract";
 
 export const SYNC_SNAPSHOT_SCHEMA_VERSION = 3;
@@ -124,7 +127,7 @@ export async function buildSyncSnapshot(
     schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
     createdAt: now.toISOString(),
     bootstrapState,
-    profile,
+    profile: withoutStoredCycleStartRepointState(profile),
     symptomRecords,
     dayLogs,
     pregnancies,
@@ -313,10 +316,15 @@ export async function restoreSyncSnapshot(
     }
   }
 
-  // A snapshot from an older client (its profile has no repoint version)
-  // carries the stored cycle start under the earlier withdrawal rule; re-read
-  // it before anything derives from it.
-  await repointLegacyStoredCycleStart(storage, new Date());
+  // The snapshot may come from an older client, which reads the stored cycle
+  // start under the earlier withdrawal rule; re-read it before anything
+  // derives from it. Best effort: the profile stays unversioned on failure, so
+  // the next launch retries, and the restore itself has already succeeded.
+  try {
+    await repointLegacyStoredCycleStart(storage, new Date());
+  } catch {
+    // Retried at the next launch.
+  }
 
   // The applied snapshot replaced every reminder-plan input (profile toggles,
   // day logs, pregnancy records), so the OS schedule built from the previous
