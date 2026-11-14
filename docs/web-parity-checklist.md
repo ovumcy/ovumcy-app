@@ -477,8 +477,9 @@ that owns the canonical web UX).
     `CycleBoundaries` rule (`collectCycleStartDates`; spotting never opens a
     cycle, an uncertain mark counts as no mark, an unqualified cluster opens
     none), pinned by the fixture's `cycleBoundaries` vectors; the one difference
-    is that `profile.lastPeriodStart` joins only on a date with no logged period
-    day, since the app mirrors manual marks into it. Regression: `cycle-history-service.test.ts`
+    is that `profile.lastPeriodStart` does not join when the day logged on its
+    date is un-ticked, spotting or uncertain-marked, since the app mirrors
+    manual marks into it. Regression: `cycle-history-service.test.ts`
     ("projected period length" suite) plus the updated dashboard hero phase-card
     expectation.
 
