@@ -632,7 +632,7 @@ function buildDashboardCycleHero(
 
   if (suppressPredictions) {
     // Checked BEFORE the stale branch below, which deliberately still surfaces
-    // a rolled-forward next-period date, and before the anchor/cycle-day check
+    // the running cycle's overdue next-period date, and before the anchor/cycle-day check
     // an active pregnancy would otherwise walk straight past. Reuses the blank
     // shape the day-log pause already lands on (a paused projection carries
     // currentCycleDay === null), with the upcoming-ovulation line dropped
@@ -655,8 +655,10 @@ function buildDashboardCycleHero(
     // Web parity (canRenderDashboardCycleHero=false when CycleDataStale): the
     // segmented hero is suppressed in favour of the text-first surface, but
     // predictions are NOT blanked. We surface the rolled-forward cycle day and a
-    // conservative "log your period" hint, plus the rolled-forward next-period
-    // date in approximate wording — mirroring web's dashboard-stale status line.
+    // conservative "log your period" hint, plus the running cycle's next-period
+    // date (already passed) in approximate wording — mirroring web's
+    // dashboard-stale status line. Past length + 7 the projection withholds that
+    // date and the caption falls back to "unknown".
     const staleDayValue =
       projection.currentCycleDay !== null
         ? String(projection.currentCycleDay)

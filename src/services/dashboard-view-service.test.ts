@@ -463,10 +463,11 @@ describe("dashboard-view-service", () => {
     );
   });
 
-  it("keeps a conservative rolled-forward hero when the prior prediction window is stale", () => {
+  it("keeps a conservative hero naming the overdue next period while the cycle is in its late week", () => {
     // Web parity: the segmented hero is suppressed (text-first) when the data is
     // stale, but predictions are NOT blanked. Anchor 2026-02-01, len 28, today
-    // 2026-03-25 rolls forward to day 25 with next period 2026-03-29 shown in
+    // 2026-03-03 (raw cycle day 31) rolls the cycle day to 3, while the next
+    // period stays the running cycle's 2026-03-01 — already passed, shown in
     // conservative ("around") wording plus a "log your period" hint.
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-02-01",
@@ -485,24 +486,41 @@ describe("dashboard-view-service", () => {
       themeOverride: null,
     };
 
-    const history = buildCycleHistorySummary(profile, [], new Date(2026, 2, 25));
+    const history = buildCycleHistorySummary(profile, [], new Date(2026, 2, 3));
     const viewData = buildDashboardViewData(
       profile,
       [],
       history,
-      new Date(2026, 2, 25),
+      new Date(2026, 2, 3),
     );
 
     expect(viewData.cycleHero).toEqual(
       expect.objectContaining({
         state: "stale",
         title: "Day",
-        value: "25",
+        value: "3",
         detail: "Cycle data may be outdated. Log your period when it starts.",
-        caption: "Next period: around Mar 29",
+        caption: "Next period: around Mar 1",
         progressPercent: null,
         phaseCards: [],
         phaseSegments: [],
+      }),
+    );
+
+    // Past length + 7 (raw cycle day 53) the next period is withheld rather
+    // than rolled to a date a whole cycle away.
+    const overdueHistory = buildCycleHistorySummary(profile, [], new Date(2026, 2, 25));
+    const overdue = buildDashboardViewData(
+      profile,
+      [],
+      overdueHistory,
+      new Date(2026, 2, 25),
+    );
+    expect(overdue.cycleHero).toEqual(
+      expect.objectContaining({
+        state: "stale",
+        caption: "Next period: unknown",
+        upcomingOvulationLabel: null,
       }),
     );
   });
@@ -1318,12 +1336,15 @@ describe("dashboard-view-service pregnancy mode", () => {
   // forward as if the owner were cycling.
   it("suppresses hero, fertility summary and prediction hint for a stale active pregnancy that never logged a positive test", () => {
     const now = pregnancyNowForGaDays(630); // ~50 weeks past the due date
+    // The running cycle sits in its late week (raw cycle day 31 of 28): the
+    // cycling baseline still names the overdue next-period date, which a cycle
+    // more than a week past its length would withhold on its own.
     const profile: ProfileRecord = {
       ...createDefaultProfileRecord(),
-      lastPeriodStart: "2026-01-01", // the pregnancy's own LMP
+      lastPeriodStart: formatLocalDate(addDays(now, -30)),
     };
     const records: DayLogRecord[] = [
-      { ...createEmptyDayLogRecord("2026-01-14"), lhTest: "peak" },
+      { ...createEmptyDayLogRecord(formatLocalDate(addDays(now, -16))), lhTest: "peak" },
     ];
     const history = buildCycleHistorySummary(profile, records, now);
 

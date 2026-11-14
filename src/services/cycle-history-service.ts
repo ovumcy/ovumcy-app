@@ -307,13 +307,16 @@ export function buildCurrentCycleProjection(
   }
 
   // Forward-roll (web ProjectCycleStart + DashboardUpcomingPredictions): once
-  // today passes the predicted next-period start we do NOT blank predictions.
-  // We roll the anchor forward by whole cycle lengths so
-  // rolledStart <= today < rolledStart + cycleLength, then recompute the
-  // next-period date, ovulation/fertile window, and current cycle day from the
-  // rolled anchor. The original logged anchor (cycleAnchorDate) is preserved so
-  // history-bounded consumers (stats, calendar baseline period, reminders) keep
-  // anchoring on the real logged cycle, exactly as web keeps stats.LastPeriodStart.
+  // today reaches the predicted next-period start, the anchor is rolled forward
+  // by whole cycle lengths so rolledStart <= today < rolledStart + cycleLength,
+  // and the current cycle day, ovulation/fertile window and phase are
+  // recomputed from the rolled anchor. The next period is NOT rolled: it stays
+  // the one that closes the RUNNING cycle (logged anchor + length, web
+  // RunningCycleNextPeriodStart), so from cycle day m+1 the owner sees the date
+  // the period was due, not a date a whole cycle away. The original logged
+  // anchor (cycleAnchorDate) is preserved so history-bounded consumers (stats,
+  // calendar baseline period, reminders) keep anchoring on the real logged
+  // cycle, exactly as web keeps stats.LastPeriodStart.
   const rawCycleDay = diffCalendarDays(cycleAnchor, today) + 1;
   const referenceLength = predictionCycleLength;
   const isPredictionStale = dashboardCycleDataLooksStale(
@@ -327,21 +330,38 @@ export function buildCurrentCycleProjection(
     predictionCycleLength,
     today,
   );
-  const rolledStartValue = formatLocalDate(rolledStart);
   const rolledCycleDay = diffCalendarDays(rolledStart, today) + 1;
-  const rolledNextPeriodDate = formatLocalDate(
-    addDays(rolledStart, predictionCycleLength),
-  );
+
+  if (cycleDayLooksLong) {
+    // Overdue gate (web DashboardCycleOverdue / pauseDashboardPredictionDisplay):
+    // past length + 7 the running cycle's period is more than a week behind
+    // today and the only later date the model could name is a whole-cycle roll,
+    // so every projected date, range and the phase derived from them is
+    // withheld. The cycle day and the logged anchor stay.
+    return {
+      cycleAnchorDate,
+      currentCycleDay: rolledCycleDay,
+      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale,
+      cycleDayLooksLong,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
+      lutealPhase,
+      projectedPeriodLength,
+      nextPeriodDate: null,
+      nextPeriodWindowStartDate: null,
+      nextPeriodWindowEndDate: null,
+      ovulationDate: null,
+      upcomingOvulationDate: null,
+      predictionCycleLength,
+    };
+  }
+
+  const rolledStartValue = formatLocalDate(rolledStart);
   const rolledWindow = predictCycleWindow(
     rolledStartValue,
     predictionCycleLength,
     lutealPhase,
-  );
-  const rolledNextPeriodWindow = resolveNextPeriodWindow(
-    rolledStart,
-    history,
-    profile,
-    predictionCycleLength,
   );
   // Second (ovulation) forward-roll, layered on top of the cycle-start roll.
   // `rolledWindow.ovulationDate` is the CURRENT projected cycle's ovulation and
@@ -364,13 +384,14 @@ export function buildCurrentCycleProjection(
   // upcoming-ovulation date (too few cycles) or presents it as a range, so the
   // dashboard never shows a falsely precise ovulation day for a sparse/irregular
   // history. Kept in this shared projection so every prediction surface reads one
-  // decision.
+  // decision. The range derives from the running cycle's next-period window,
+  // as web derives it from stats.LastPeriodStart.
   const upcomingOvulation = resolveUpcomingOvulationDisplay(
     profile,
     history,
     upcomingOvulationDate,
     rolledWindow.isExact,
-    rolledNextPeriodWindow,
+    nextPeriodWindow,
     lutealPhase,
   );
 
@@ -394,9 +415,9 @@ export function buildCurrentCycleProjection(
     pregnancyTestDate: null,
     lutealPhase,
     projectedPeriodLength,
-    nextPeriodDate: rolledNextPeriodDate,
-    nextPeriodWindowStartDate: rolledNextPeriodWindow?.startDate ?? null,
-    nextPeriodWindowEndDate: rolledNextPeriodWindow?.endDate ?? null,
+    nextPeriodDate,
+    nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+    nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
     ovulationDate: rolledWindow.ovulationDate,
     upcomingOvulationDate: upcomingOvulation.date,
     upcomingOvulationExact: upcomingOvulation.exact,
@@ -668,8 +689,8 @@ function dashboardCycleDataLooksStale(
  * App analog of web's services.DashboardCycleDayLooksLong
  * (dashboard_cycle.go:68-73): the raw cycle day from the ORIGINAL anchor
  * exceeds reference length + 7. Like web, this is computed from the raw day, so
- * it always implies `isPredictionStale` (ref < ref+7) — a stricter "running
- * long" qualifier on top of the stale signal.
+ * it always implies `isPredictionStale` (ref < ref+7). It is the overdue gate:
+ * `buildCurrentCycleProjection` withholds every projected date when it holds.
  */
 function dashboardCycleDayLooksLong(
   rawCycleDay: number,
