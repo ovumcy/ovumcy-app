@@ -2,6 +2,7 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { cleanupStaleExportArtifacts } from "./export-artifact-cleanup";
 import type { LocalReminderScheduler } from "./local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "./local-reminder-sync-service";
+import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
 
 // Work that runs once per app launch, before the user can interact.
 export async function runAppLaunchTasks(
@@ -16,6 +17,14 @@ export async function runAppLaunchTasks(
     await cleanupStaleExportArtifacts();
   } catch {
     // Best effort: the next launch sweeps again.
+  }
+
+  // One-time re-read of the stored cycle start written under the earlier
+  // withdrawal rule; it runs before the rebuild so reminders use the result.
+  try {
+    await repointLegacyStoredCycleStart(storage, new Date(), { force: false });
+  } catch {
+    // Best effort: the version is not stored, so the next launch retries.
   }
 
   // A one-time reminder that already fired is replaced only by a rebuild, so

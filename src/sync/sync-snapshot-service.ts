@@ -15,6 +15,7 @@ import type {
 import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
 import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
+import { repointLegacyStoredCycleStart } from "../services/stored-cycle-start-repoint-service";
 import type { SyncPreferencesRecord } from "./sync-contract";
 
 export const SYNC_SNAPSHOT_SCHEMA_VERSION = 3;
@@ -311,6 +312,10 @@ export async function restoreSyncSnapshot(
       // Skip an invalid screening response; keep restoring.
     }
   }
+
+  // A snapshot from an older client carries the stored cycle start under the
+  // earlier withdrawal rule; re-read it before anything derives from it.
+  await repointLegacyStoredCycleStart(storage, new Date(), { force: true });
 
   // The applied snapshot replaced every reminder-plan input (profile toggles,
   // day logs, pregnancy records), so the OS schedule built from the previous

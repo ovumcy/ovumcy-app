@@ -46,6 +46,7 @@ import {
 import { sanitizeDayLogRecord } from "../../services/day-log-policy";
 import { normalizeAgeGroup } from "../../services/profile-settings-policy";
 import type {
+  DayLogChangeSet,
   LocalAppStorage,
   LocalBootstrapState,
   LocalDayLogSummary,
@@ -153,6 +154,23 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
           ...state.dayLogRecords,
           [record.date]: sanitizeDayLogRecord(record),
         },
+      };
+    },
+
+    async commitDayLogChanges(change: DayLogChangeSet): Promise<void> {
+      // Built in full before the single assignment, so a throw part-way
+      // leaves the previous state untouched.
+      const nextDayLogRecords = { ...state.dayLogRecords };
+      for (const record of change.writes) {
+        nextDayLogRecords[record.date] = sanitizeDayLogRecord(record);
+      }
+      for (const date of change.deletes) {
+        delete nextDayLogRecords[date];
+      }
+      state = {
+        ...state,
+        dayLogRecords: nextDayLogRecords,
+        ...(change.profile ? { profileRecord: mergeProfileRecord(change.profile) } : {}),
       };
     },
 

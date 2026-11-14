@@ -1296,6 +1296,67 @@ describe("sqlite-app-storage", () => {
     );
   });
 
+  it("commits day-log writes, deletes and the profile inside one transaction", async () => {
+    const { database } = createInspectableFakeDatabase();
+    const executed: string[] = [];
+    let failProfile = false;
+    let failRollback = false;
+    const tracked: LocalAppDatabase = {
+      ...database,
+      execAsync: (source) => {
+        executed.push(source);
+        if (failRollback && source === "ROLLBACK;") {
+          return Promise.reject(new Error("simulated rollback failure"));
+        }
+        return database.execAsync(source);
+      },
+      getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getFirstAsync<T>(source, ...params),
+      getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getAllAsync<T>(source, ...params),
+      runAsync: (source: string, ...params: unknown[]) => {
+        if (failProfile && source.includes("INSERT INTO profile_settings")) {
+          throw new Error("simulated profile write failure");
+        }
+        return database.runAsync(source, ...params);
+      },
+    };
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => tracked,
+    });
+    await storage.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true });
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2026-03-01" };
+
+    await storage.commitDayLogChanges({
+      writes: [{ ...createEmptyDayLogRecord("2026-03-12"), isPeriod: true }],
+      deletes: ["2026-03-10"],
+      profile,
+    });
+
+    expect(executed.slice(-2)).toEqual(["BEGIN IMMEDIATE;", "COMMIT;"]);
+    expect((await storage.listDayLogRecordsInRange("2026-03-01", "2026-03-31")).map((r) => r.date)).toEqual([
+      "2026-03-12",
+    ]);
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+
+    failProfile = true;
+    await expect(
+      storage.commitDayLogChanges({ writes: [], deletes: [], profile }),
+    ).rejects.toThrow("simulated profile write failure");
+    expect(executed.slice(-2)).toEqual(["BEGIN IMMEDIATE;", "ROLLBACK;"]);
+
+    failRollback = true;
+    await expect(
+      storage.commitDayLogChanges({ writes: [], deletes: [], profile }),
+    ).rejects.toThrow("simulated profile write failure");
+  });
+
   it("persists and lists canonical day logs in sqlite", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
