@@ -153,6 +153,10 @@ transport invariant in [SECURITY.md](../SECURITY.md).
   kinds are unaffected.
 - Active pregnancy record: suppresses the same two kinds independently of the pause, so the two
   signals are combined. An ended record lifts the suppression.
+- Overdue gate: once the running cycle is more than a week past its predicted length (the cycle
+  projection's overdue flag, as ovumcy-web's `PredictionsSuppressed`), `upcoming_period` and
+  `fertile_window` are both suppressed until a new cycle start is logged. The flag is read from the
+  projection, so the reminders follow any change to the gate length. Daily kinds are unaffected.
 - Kick-count reminder (the only pregnancy-module reminder): planned when its toggle is on, the
   pregnancy record is active, and the gestational age is at least week 28
   (`KICK_COUNTS_START_WEEK`). It is a daily reminder at the shared reminder time, independent of

@@ -145,7 +145,16 @@ export function buildLocalReminderPlans(
   // pause (resolvePregnancyPause, untouched) and an LMP/ultrasound-dated
   // pregnancy never sets it at all. Status is checked so an ENDED record
   // correctly resumes predictions.
-  if (projection.isPregnancyPaused || activePregnancy?.status === "active") {
+  // The overdue gate (projection.cycleDayLooksLong, web PredictionsSuppressed)
+  // silences both as well: past it the projection names no date, and the
+  // fertile window recomputed from the anchor must not outlive that. The gate
+  // is read from the projection, never recomputed here, so a change to its
+  // length reaches this surface unchanged.
+  if (
+    projection.isPregnancyPaused ||
+    projection.cycleDayLooksLong ||
+    activePregnancy?.status === "active"
+  ) {
     return plans;
   }
 
