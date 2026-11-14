@@ -490,7 +490,11 @@ export function buildStatsViewData(
   const extendedReports = premiumFeatures.extendedReports
     ? buildStatsExtendedReports(history)
     : null;
-  const completedCycleRows = buildStatsCompletedCycleList(history);
+  // The extended reports already list these cycles (with comparison), so the
+  // free list yields to them instead of repeating the rows.
+  const completedCycleRows = extendedReports
+    ? []
+    : buildStatsCompletedCycleList(history);
   // The BBT series and the derived coverline / probable-ovulation marker are
   // current-cycle fertility signals: while suppressPredictions holds (active
   // pregnancy, or the day-log pause), they are phantom math and stay hidden —
