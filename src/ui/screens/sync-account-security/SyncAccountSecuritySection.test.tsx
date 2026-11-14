@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { selectAccountSecurityCopy } from "../../../i18n/account-security-copy";
 import { selectTOTPCopy } from "../../../i18n/totp-copy";
@@ -479,6 +479,45 @@ describe("SyncAccountSecuritySection", () => {
       screen.getByTestId("account-security-totp-enroll-submit").props
         .accessibilityState?.disabled,
     ).toBeFalsy();
+  });
+
+  it("tells the user a lost rotated recovery code must be regenerated", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpErrorCode="totp_recovery_code_lost"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(totpCopy.errors.totpRecoveryCodeLost)).toBeTruthy();
+  });
+
+  it("does not acknowledge the one-time recovery code on a system back/dismiss", async () => {
+    const onAcknowledgeRecoveryCode = jest.fn();
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          revealedRecoveryCode="3f9c2a7e1b6d48c0a5e9f3b27d1c6e84"
+          onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const modal = screen.container
+      .queryAll((node) => node.type === "Modal")
+      .find((node) => node.props.visible);
+    await act(() => {
+      modal?.props.onRequestClose();
+    });
+
+    expect(modal).toBeDefined();
+    expect(onAcknowledgeRecoveryCode).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId("account-security-recovery-code-value"),
+    ).toBeTruthy();
   });
 
   it("tells the user the previous recovery code was replaced when the code comes from TOTP enrollment", async () => {
