@@ -1,5 +1,10 @@
 import { getDayLogCopy } from "../i18n/day-log-copy";
-import { createEmptyDayLogRecord, type DayFlow, type DayLogRecord } from "../models/day-log";
+import {
+  createEmptyDayLogRecord,
+  hasDayLogData,
+  type DayFlow,
+  type DayLogRecord,
+} from "../models/day-log";
 import { createPregnancyRecord } from "../models/pregnancy";
 import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
@@ -107,6 +112,15 @@ describe("day-log-editor-service", () => {
         notes: "note",
       }),
     );
+  });
+
+  it("treats whitespace-only draft notes as no entry content", () => {
+    const record = buildNextDayLogRecordPatch(createEmptyDayLogRecord("2026-03-17"), {
+      notes: "   ",
+    });
+
+    expect(record.notes).toBe("   ");
+    expect(hasDayLogData(record)).toBe(false);
   });
 
   it("carries pregnancy metric fields from a draft patch through save", async () => {
