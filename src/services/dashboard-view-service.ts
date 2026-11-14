@@ -654,16 +654,16 @@ function buildDashboardCycleHero(
   if (projection.isPredictionStale) {
     // Web parity (canRenderDashboardCycleHero=false when CycleDataStale): the
     // segmented hero is suppressed in favour of the text-first surface, but
-    // predictions are NOT blanked. We surface the rolled-forward cycle day and a
-    // conservative "log your period" hint, plus the running cycle's next-period
-    // date (already passed) in approximate wording — mirroring web's
-    // dashboard-stale status line. Past length + 7 the projection withholds that
-    // date and the caption falls back to "unknown", and the cycle day is the raw
-    // day from the logged anchor (web dashboard.html, stats.CurrentCycleDay).
-    const staleDayValue =
-      projection.currentCycleDay !== null
-        ? String(projection.currentCycleDay)
-        : statsCopy.phaseLabels.unknown;
+    // predictions are NOT blanked. We surface the raw cycle day from the logged
+    // anchor marked approximate ("~N", web dashboard.html stats.CurrentCycleDay
+    // under CycleDataStale) — never the rolled day 1-7 — and a conservative
+    // "log your period" hint, plus the running cycle's next-period date in
+    // approximate wording, mirroring web's dashboard-stale status line. Past
+    // the overdue gate the projection withholds that date and the caption
+    // falls back to "unknown".
+    // The producer sets rawCycleDay on every branch that can mark the data
+    // stale (a logged anchor always exists there).
+    const staleDayValue = `~${String(projection.rawCycleDay)}`;
     const staleCaption = projection.nextPeriodDate
       ? `${dashboardCopy.nextPeriod}: ${dashboardCopy.approximateDatePrefix} ${formatDisplayDate(
           projection.nextPeriodDate,
