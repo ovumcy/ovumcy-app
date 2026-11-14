@@ -61,10 +61,36 @@
         "isExact": false,
         "nextPeriodStart": "2026-02-15"
       }
+    },
+    {
+      "name": "25-day cycle, personalised luteal 11 across the end of February (exact)",
+      "$comment": "Hand-derived by calendar arithmetic, not by running the code. Step 1: 11 >= 10, kept as 11. Step 2: 25 >= 15; reserve 25-5 = 20 >= 11, no clamp, so exact; ovulation day = 25-11 = 14 (>= 5). Ovulation date = 2026-02-20 + 13 days: February 2026 has 28 days, so Feb 20 + 8 = Feb 28, + 5 = 2026-03-05. Step 3: window start = Mar 5 - 5 days = 2026-02-28 (after the period start, no clamp); window end = 2026-03-05. Step 4: next period = 2026-02-20 + 25 days = Feb 28 + 17 = 2026-03-17. Check: Mar 5 -> Mar 17 is 12 calendar days, i.e. the ovulation day plus 11 following luteal days.",
+      "input": { "cycleStartDate": "2026-02-20", "cycleLength": 25, "lutealPhase": 11 },
+      "expected": {
+        "calculable": true,
+        "fertilityStart": "2026-02-28",
+        "fertilityEnd": "2026-03-05",
+        "ovulationDate": "2026-03-05",
+        "isExact": true,
+        "nextPeriodStart": "2026-03-17"
+      }
+    },
+    {
+      "name": "32-day cycle, personalised luteal 16 (exact)",
+      "$comment": "Hand-derived by calendar arithmetic, not by running the code. Step 1: 16 >= 10, kept as 16. Step 2: 32 >= 15; reserve 32-5 = 27 >= 16, no clamp, so exact; ovulation day = 32-16 = 16. Ovulation date = 2026-07-15 + 15 days = 2026-07-30. Step 3: window start = Jul 30 - 5 days = 2026-07-25; window end = 2026-07-30. Step 4: next period = 2026-07-15 + 32 days: July has 31 days, so Jul 15 + 16 = Jul 31, + 16 = 2026-08-16. Check: Jul 30 -> Aug 16 is 17 calendar days, i.e. the ovulation day plus 16 following luteal days.",
+      "input": { "cycleStartDate": "2026-07-15", "cycleLength": 32, "lutealPhase": 16 },
+      "expected": {
+        "calculable": true,
+        "fertilityStart": "2026-07-25",
+        "fertilityEnd": "2026-07-30",
+        "ovulationDate": "2026-07-30",
+        "isExact": true,
+        "nextPeriodStart": "2026-08-16"
+      }
     }
   ],
   "projection": {
-    "$comment": "ADDITIVE section (lands in ovumcy-app via its twin PR). Pins the projection/anchor layer that production layers ON TOP of the base window math in `vectors`. Given a cycle-length history plus `lastPeriodStart`, `today`, and an IANA `timezone`, it locks: (1) the median-first prediction length (predictedCycleLength in cycles.go / cycle-prediction-policy.ts), (2) the projected current-cycle start and 1-based cycle day (ProjectCycleStart), (3) the displayed next-period date derived from the UN-shifted projected start, and (4) the ovulation date after the single forward roll (ShiftCycleStartToFutureOvulation) that keeps ovulation on/after `today`. All arithmetic is calendar-day based and DST-immune, so the Europe/Berlin 2026-03-29 spring-forward case must project identically to a UTC run. Histories stay within the recent-cycle window (<= 6) so no tail truncation applies. Consumed by ovumcy-web's TestCycleProjection_GoldenVectors; ovumcy-app's existing reference test decodes only `vectors` and ignores this key until its twin consumer lands. See docs/cycle-prediction.md.",
+    "$comment": "ADDITIVE section (lands in ovumcy-app via its twin PR). Pins the projection/anchor layer that production layers ON TOP of the base window math in `vectors`. Given a cycle-length history plus `lastPeriodStart`, `today`, and an IANA `timezone`, it locks: (1) the median-first prediction length (predictedCycleLength in cycles.go / cycle-prediction-policy.ts), (2) the projected current-cycle start and 1-based cycle day (ProjectCycleStart), (3) the displayed next-period date, which closes the RUNNING cycle (`lastPeriodStart` + prediction length, never rolled a cycle forward: on cycle day m+1 the period is due now, not a cycle later), and (4) the ovulation date after the single forward roll (ShiftCycleStartToFutureOvulation) that keeps ovulation on/after `today`. All arithmetic is calendar-day based and DST-immune, so the Europe/Berlin 2026-03-29 spring-forward case must project identically to a UTC run. Histories stay within the recent-cycle window (<= 6) so no tail truncation applies. Consumed by ovumcy-web's TestCycleProjection_GoldenVectors; ovumcy-app's existing reference test decodes only `vectors` and ignores this key until its twin consumer lands. See docs/cycle-prediction.md.",
     "schemaVersion": 1,
     "vectors": [
       {
@@ -85,7 +111,7 @@
           "predictionLength": 28,
           "projectedCycleStart": "2026-04-12",
           "projectedCycleDay": 1,
-          "displayedNextPeriodStart": "2026-05-10",
+          "displayedNextPeriodStart": "2026-04-12",
           "ovulationDate": "2026-04-25"
         }
       },
@@ -96,9 +122,55 @@
           "predictionLength": 30,
           "projectedCycleStart": "2026-07-01",
           "projectedCycleDay": 1,
-          "displayedNextPeriodStart": "2026-07-31",
+          "displayedNextPeriodStart": "2026-07-01",
           "ovulationDate": "2026-07-16"
         }
+      }
+    ]
+  },
+  "irregularRange": {
+    "$comment": "Irregular range mode: the current cycle's fertile window is [PredictCycleWindow(min).fertilityStart, PredictCycleWindow(max).ovulationDate] (irregularFertilityWindow), where `cycleLength` is the median prediction length. A shortest cycle below the 15-day floor (no calculable window) starts the window at lastPeriodStart; the same start clamp applies to a 15-day cycle whose window would begin before it. A longest cycle below the floor leaves the median window's end in place. A window whose last day falls after 9999-12-31 is withheld as a whole (`withheld: true`, null dates). Consumed by ovumcy-web's TestIrregularRangeWindow_GoldenVectors; ovumcy-app has no twin consumer yet and ignores this key. See docs/cycle-prediction.md.",
+    "schemaVersion": 1,
+    "vectors": [
+      {
+        "name": "regular spread [26..32], median 28: [ovulation(26) - 5, ovulation(32)]",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 28, "minCycleLength": 26, "maxCycleLength": 32, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-07", "windowEnd": "2026-03-18" }
+      },
+      {
+        "name": "min == max (21): the window is the single cycle's own window",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 21, "minCycleLength": 21, "maxCycleLength": 21, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-02", "windowEnd": "2026-03-07" }
+      },
+      {
+        "name": "min 15: window start clamped to the cycle start",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 28, "minCycleLength": 15, "maxCycleLength": 28, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-01", "windowEnd": "2026-03-14" }
+      },
+      {
+        "name": "min 14 (below the 15-day floor): start falls back to the cycle start",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 28, "minCycleLength": 14, "maxCycleLength": 30, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-01", "windowEnd": "2026-03-16" }
+      },
+      {
+        "name": "min 10 (far below the floor): start falls back to the cycle start",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 28, "minCycleLength": 10, "maxCycleLength": 30, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-01", "windowEnd": "2026-03-16" }
+      },
+      {
+        "name": "max 14 (below the floor): end falls back to the median window end",
+        "input": { "lastPeriodStart": "2026-03-01", "cycleLength": 28, "minCycleLength": 12, "maxCycleLength": 14, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "2026-03-01", "windowEnd": "2026-03-14" }
+      },
+      {
+        "name": "9999 edge: window ending exactly on 9999-12-31 is kept",
+        "input": { "lastPeriodStart": "9999-12-10", "cycleLength": 28, "minCycleLength": 26, "maxCycleLength": 36, "lutealPhase": 14 },
+        "expected": { "withheld": false, "windowStart": "9999-12-16", "windowEnd": "9999-12-31" }
+      },
+      {
+        "name": "9999 cut: window ending one day past 9999-12-31 is withheld as a whole",
+        "input": { "lastPeriodStart": "9999-12-10", "cycleLength": 28, "minCycleLength": 26, "maxCycleLength": 37, "lutealPhase": 14 },
+        "expected": { "withheld": true, "windowStart": null, "windowEnd": null }
       }
     ]
   }

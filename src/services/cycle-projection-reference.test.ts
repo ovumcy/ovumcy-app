@@ -1,8 +1,12 @@
 import goldenVectors from "./__fixtures__/cycle-prediction-golden-vectors.json";
+import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
+import type { ProfileRecord } from "../models/profile";
 import { STATS_CYCLE_PREDICTION_WINDOW } from "../models/stats";
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import {
   averageInts,
+  buildCurrentCycleProjection,
+  buildCycleHistorySummary,
   medianInt,
   predictedCycleLength,
   projectCycleStartForward,
@@ -15,6 +19,56 @@ import {
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
+
+// A settings cycle length no vector selects, so a projection that fell back to
+// the profile instead of the observed median would fail stage 1.
+const UNSELECTED_PROFILE_CYCLE_LENGTH = 21;
+
+function profileFor(lastPeriodStart: string): ProfileRecord {
+  return {
+    lastPeriodStart,
+    cycleLength: UNSELECTED_PROFILE_CYCLE_LENGTH,
+    periodLength: 5,
+    autoPeriodFill: true,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "health",
+    trackBBT: false,
+    temperatureUnit: "c",
+    trackCervicalMucus: false,
+    hideSexChip: false,
+    languageOverride: null,
+    themeOverride: null,
+    dismissedCalendarPredictionNoticeKey: null,
+    dismissedOnboardingHelperNoticeKey: null,
+  };
+}
+
+// Runs the production projection over a day-log history whose completed cycles
+// are exactly `cycleLengths`, the last of them closing on `lastPeriod`.
+function projectFromHistory(
+  cycleLengths: readonly number[],
+  lastPeriod: Date,
+  today: Date,
+) {
+  const totalDays = cycleLengths.reduce((sum, length) => sum + length, 0);
+  let cursor = addDays(lastPeriod, -totalDays);
+  const starts = [cursor];
+  for (const length of cycleLengths) {
+    cursor = addDays(cursor, length);
+    starts.push(cursor);
+  }
+  const records: DayLogRecord[] = starts.map((start) => ({
+    ...createEmptyDayLogRecord(formatLocalDate(start)),
+    isPeriod: true,
+    cycleStart: true,
+  }));
+  const profile = profileFor(formatLocalDate(lastPeriod));
+  const history = buildCycleHistorySummary(profile, records, today);
+  expect(history.recentCycleLengths).toEqual(cycleLengths);
+  return buildCurrentCycleProjection(profile, history, records, today);
+}
 
 // Golden-vector parity test for the projection / anchor layer that production
 // layers ON TOP of the pure window math (cycle-prediction-reference.test.ts).
@@ -33,8 +87,11 @@ import {
 //      window) — the mean-vs-median pin ([28,28,28,28,60] → 28, never ~34);
 //   2. the projected current-cycle start + 1-based cycle day
 //      (projectCycleStartForward, web ProjectCycleStart);
-//   3. the displayed next-period date, derived from the UN-shifted projected
-//      start (so the ovulation roll below cannot disturb it);
+//   3. the displayed next-period date, which closes the RUNNING cycle
+//      (lastPeriodStart + length, never rolled), read from the production
+//      projection (buildCurrentCycleProjection) so the vectors pin what the
+//      surfaces show; that projection is also cross-checked against stages 1,
+//      2 and 4;
 //   4. the ovulation date after the single forward roll
 //      (shiftCycleStartToFutureOvulation) that keeps ovulation on/after `today`.
 //
@@ -80,13 +137,22 @@ describe("cycle-projection golden vectors (shared with ovumcy-web)", () => {
       const cycleDay = diffCalendarDays(cycleStart, today!) + 1;
       expect(cycleDay).toBe(expected.projectedCycleDay);
 
-      // 3. Displayed next-period date: the UN-shifted projected start plus the
-      // selected length. Mirrors DashboardUpcomingPredictions, which derives the
-      // displayed next-period BEFORE the ovulation forward roll.
-      const displayedNext = formatLocalDate(
-        addDays(cycleStart, predictionLength),
+      // 3. Displayed next-period date, read from the production projection the
+      // surfaces consume (buildCurrentCycleProjection over a day-log history
+      // carrying exactly this vector's cycle lengths), not re-derived here. It
+      // is the period that closes the RUNNING cycle — lastPeriodStart plus the
+      // selected length, never rolled forward with the stage-2 start — so on
+      // cycle day m+1 it names the day the period is due, not a cycle later.
+      const projection = projectFromHistory(
+        cycleLengths,
+        lastPeriod!,
+        today!,
       );
-      expect(displayedNext).toBe(expected.displayedNextPeriodStart);
+      expect(projection.lutealPhase).toBe(lutealPhase);
+      expect(projection.predictionCycleLength).toBe(expected.predictionLength);
+      expect(projection.currentCycleDay).toBe(expected.projectedCycleDay);
+      expect(projection.nextPeriodDate).toBe(expected.displayedNextPeriodStart);
+      expect(projection.upcomingOvulationDate).toBe(expected.ovulationDate);
 
       // 4. Ovulation date: the window for the projected cycle, rolled forward
       // once if its ovulation already fell before `today` (the exact

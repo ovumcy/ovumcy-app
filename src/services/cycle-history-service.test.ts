@@ -157,69 +157,117 @@ describe("cycle-history-service", () => {
     expect(projection.isPredictionStale).toBe(false);
   });
 
-  it("rolls the anchor forward instead of blanking once the expected next period has passed", () => {
-    // Web ProjectCycleStart parity. Anchor 2026-02-01, len 28, today 2026-03-25.
-    // Raw cycle day from the original anchor = 53 (> reference 28) so the
-    // prediction is stale AND looks long (53 > 28 + 7 = 35). Instead of blanking,
-    // the anchor rolls forward by one whole cycle to 2026-03-01, so the next
-    // period (2026-03-29), ovulation (2026-03-14) and current day (25) all come
-    // from the rolled anchor. The logged anchor itself is preserved.
+  it("keeps the next period on the running cycle through its late week", () => {
+    // Web RunningCycleNextPeriodStart parity. Anchor 2026-02-01, len 28: the
+    // period is due 2026-03-01 (cycle day m+1 = 29). From that day the cycle
+    // day and ovulation roll with the anchor (rolled start 2026-03-01), but the
+    // next period stays 2026-03-01 — due today, then late — and is never
+    // rolled to 2026-03-29. Raw day 35 (2026-03-07) is the last day it is shown:
+    // the overdue gate is strictly greater than length + 7.
     const profile = createProfileRecord({
       lastPeriodStart: "2026-02-01",
     });
+    const project = (now: Date) =>
+      buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, [], now),
+        [],
+        now,
+      );
+
+    // Cycle day m (28): not yet due, nothing stale.
+    expect(project(new Date(2026, 1, 28))).toEqual(
+      expect.objectContaining({
+        currentCycleDay: 28,
+        isPredictionStale: false,
+        cycleDayLooksLong: false,
+        nextPeriodDate: "2026-03-01",
+      }),
+    );
+
+    // Cycle day m+1 (29): due today; the cycle day rolls to 1.
+    expect(project(new Date(2026, 2, 1))).toEqual(
+      expect.objectContaining({
+        cycleAnchorDate: "2026-02-01",
+        currentCycleDay: 1,
+        isPredictionStale: true,
+        cycleDayLooksLong: false,
+        nextPeriodDate: "2026-03-01",
+        ovulationDate: "2026-03-14",
+        upcomingOvulationDate: "2026-03-14",
+        predictionCycleLength: 28,
+      }),
+    );
+
+    // Raw cycle day 35 (= length + 7): still the running cycle's date.
+    expect(project(new Date(2026, 2, 7))).toEqual(
+      expect.objectContaining({
+        currentCycleDay: 7,
+        isPredictionStale: true,
+        cycleDayLooksLong: false,
+        nextPeriodDate: "2026-03-01",
+        ovulationDate: "2026-03-14",
+      }),
+    );
+  });
+
+  it("withholds every projected date once the cycle runs more than a week past its length", () => {
+    // Web DashboardCycleOverdue parity. Anchor 2026-02-01, len 28, today
+    // 2026-03-08: raw cycle day 36 > 28 + 7. The running cycle's period is more
+    // than a week behind and the only later date is a whole-cycle roll, so the
+    // next period, its window, both ovulation dates and the projected phase are
+    // withheld. The logged anchor and the rolled cycle day stay.
+    const profile = createProfileRecord({
+      lastPeriodStart: "2026-02-01",
+    });
+    const now = new Date(2026, 2, 8);
+    const history = buildCycleHistorySummary(profile, [], now);
+    const projection = buildCurrentCycleProjection(profile, history, [], now);
+
+    expect(projection).toEqual(
+      expect.objectContaining({
+        cycleAnchorDate: "2026-02-01",
+        currentCycleDay: 8,
+        currentPhase: "unknown",
+        isPredictionStale: true,
+        cycleDayLooksLong: true,
+        nextPeriodDate: null,
+        nextPeriodWindowStartDate: null,
+        nextPeriodWindowEndDate: null,
+        ovulationDate: null,
+        upcomingOvulationDate: null,
+        predictionCycleLength: 28,
+      }),
+    );
+  });
+
+  it("keeps a logged period as the phase while the overdue gate withholds the projection", () => {
+    // The bleeding is marked uncertain, so it opens no cycle start and the
+    // running cycle (anchor 2026-02-01) stays overdue at raw cycle day 53.
+    const profile = createProfileRecord({
+      lastPeriodStart: "2026-02-01",
+    });
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-25"),
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: true,
+      },
+    ];
     const now = new Date(2026, 2, 25);
-    const history = buildCycleHistorySummary(profile, [], now);
-    const projection = buildCurrentCycleProjection(profile, history, [], now);
+    const history = buildCycleHistorySummary(profile, records, now);
+    const projection = buildCurrentCycleProjection(profile, history, records, now);
 
-    expect(projection).toEqual(
-      expect.objectContaining({
-        cycleAnchorDate: "2026-02-01",
-        currentCycleDay: 25,
-        currentPhase: "luteal",
-        isPredictionStale: true,
-        cycleDayLooksLong: true,
-        nextPeriodDate: "2026-03-29",
-        ovulationDate: "2026-03-14",
-        predictionCycleLength: 28,
-      }),
-    );
+    expect(projection.cycleDayLooksLong).toBe(true);
+    expect(projection.currentPhase).toBe("menstrual");
+    expect(projection.nextPeriodDate).toBeNull();
   });
 
-  it("flags a stale, long-running cycle while still rolling the prediction forward", () => {
-    // Anchor 2026-02-01, len 28, today 2026-03-10. Raw cycle day = 38, which is
-    // > 28 (stale) and > 35 (looks long). Web computes DashboardCycleDayLooksLong
-    // from the RAW day from the original anchor, so looksLong always implies
-    // stale. The rolled anchor is still 2026-03-01 (day 10), next period
-    // 2026-03-29. Ovulation day 14 (2026-03-14) puts the fertility window on
-    // days 9-13, so rolled day 10 is inside it -> "fertile" (this test predates
-    // the fertile phase; day 10 was never actually "follicular", the pre-fix
-    // detectCurrentPhase just had no fertile branch to return instead).
-    const profile = createProfileRecord({
-      lastPeriodStart: "2026-02-01",
-    });
-    const now = new Date(2026, 2, 10);
-    const history = buildCycleHistorySummary(profile, [], now);
-    const projection = buildCurrentCycleProjection(profile, history, [], now);
-
-    expect(projection).toEqual(
-      expect.objectContaining({
-        cycleAnchorDate: "2026-02-01",
-        currentCycleDay: 10,
-        currentPhase: "fertile",
-        isPredictionStale: true,
-        cycleDayLooksLong: true,
-        nextPeriodDate: "2026-03-29",
-        ovulationDate: "2026-03-14",
-        predictionCycleLength: 28,
-      }),
-    );
-  });
-
-  it("rolls multiple whole cycles forward when several periods have been missed", () => {
-    // Anchor 2026-01-01, len 28, today 2026-04-15. Raw cycle day = 105. Elapsed
-    // = 104 days → 3 whole cycles roll the anchor to 2026-03-26 so that
-    // 2026-03-26 <= today < 2026-04-23. Current day 21, next period 2026-04-23,
-    // ovulation 2026-04-08.
+  it("withholds the projection when several periods have been missed", () => {
+    // Anchor 2026-01-01, len 28, today 2026-04-15. Raw cycle day = 105. The
+    // cycle day still rolls three whole cycles (to 2026-03-26, day 21); no
+    // next-period or ovulation date is named.
     const profile = createProfileRecord({
       lastPeriodStart: "2026-01-01",
     });
@@ -233,8 +281,9 @@ describe("cycle-history-service", () => {
         currentCycleDay: 21,
         isPredictionStale: true,
         cycleDayLooksLong: true,
-        nextPeriodDate: "2026-04-23",
-        ovulationDate: "2026-04-08",
+        nextPeriodDate: null,
+        ovulationDate: null,
+        upcomingOvulationDate: null,
         predictionCycleLength: 28,
       }),
     );
@@ -269,14 +318,14 @@ describe("cycle-history-service", () => {
 
   describe("upcoming ovulation forward-roll (web DashboardUpcomingPredictions parity)", () => {
     it("rolls the upcoming ovulation into the next cycle once the current cycle's ovulation has passed", () => {
-      // Anchor 2026-02-01, len 28, today 2026-03-25. The rolled current cycle is
+      // Anchor 2026-03-01, len 28, today 2026-03-25. The current cycle is
       // 2026-03-01..2026-03-29 with ovulation 2026-03-14 — already in the past
       // (today is cycle day 25, luteal). ovulationDate stays the current-cycle
       // date (2026-03-14) for the phase ring and the calendar/PDF markers, while
       // upcomingOvulationDate rolls one whole cycle forward to 2026-04-11
       // (2026-03-29 + 13), never surfacing a past date. Web parity:
       // stats.OvulationDate vs DashboardUpcomingPredictions().OvulationDate.
-      const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+      const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
       const now = new Date(2026, 2, 25);
       const history = buildCycleHistorySummary(profile, [], now);
       const projection = buildCurrentCycleProjection(profile, history, [], now);

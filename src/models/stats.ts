@@ -95,9 +95,11 @@ export type StatsCycleProjection = {
   currentPhase: StatsPhase;
   isPredictionStale: boolean;
   // Mirrors web DashboardCycleDayLooksLong: the raw cycle day from the original
-  // anchor exceeds the reference length + 7. A soft "running long" qualifier
-  // that annotates rather than suppresses. Optional so existing projection
-  // literals (e.g. frozen test fixtures) stay valid; the producer always sets it.
+  // anchor exceeds the reference length + 7 (web DashboardCycleOverdue). When
+  // true the producer withholds every projected date (next period and its
+  // window, current and upcoming ovulation) and the projected phase. Optional so
+  // existing projection literals (e.g. frozen test fixtures) stay valid; the
+  // producer always sets it.
   cycleDayLooksLong?: boolean;
   isPregnancyPaused: boolean;
   pregnancyTestDate: LocalDateISO | null;

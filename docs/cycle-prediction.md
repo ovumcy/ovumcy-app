@@ -264,8 +264,17 @@ instead of a stale or blank one. This layer lives in
    current-cycle start and a 1-based current cycle day. The **logged anchor
    itself is preserved** — calendar, stats, reminders and the doctor PDF stay
    bound to the real logged history, exactly as web keeps `stats.LastPeriodStart`.
-3. **Displayed next period.** Derived from the *un-shifted* projected start plus
-   the prediction length, so the ovulation roll in step 4 can never disturb it.
+3. **Displayed next period.** The logged anchor plus the prediction length: the
+   period that closes the **running** cycle (web `RunningCycleNextPeriodStart`).
+   It is never rolled forward with the step-2 start, and the ovulation roll in
+   step 4 never disturbs it. From cycle day *m*+1 (*m* = prediction length) that
+   period is due today and then late, so the surfaces keep naming that date —
+   already behind `today` — instead of a date a whole cycle away. **Overdue gate:**
+   once the raw cycle day counted from the logged anchor exceeds *m* + 7
+   (`cycleDayLooksLong`, strictly greater, web `DashboardCycleOverdue`), the
+   projection withholds every projected date — next period and its window, the
+   current and upcoming ovulation — and the projected phase (only a logged period
+   still reads as menstrual). The logged anchor and the cycle day stay.
 4. **Roll the ovulation forward (upcoming ovulation).** The ovulation for the
    projected cycle may already be in the past (the owner is mid/late luteal). For
    a "next ovulation" surface this is rolled forward by whole cycles until it
@@ -286,14 +295,16 @@ Recent cycle lengths are newest-last; `today` and the anchor are calendar dates.
 | recent cycle lengths | lastPeriodStart | today | prediction length | projected start (cycle day) | displayed next period | upcoming ovulation |
 |----------------------|-----------------|-------|-------------------|-----------------------------|-----------------------|--------------------|
 | 28, 28, 28, 28, 60 | 2026-01-01 | 2026-01-19 | 28 (median, not mean 34) | 2026-01-01 (day 19) | 2026-01-29 | 2026-02-11 |
-| 28, 28, 28 | 2026-03-15 | 2026-04-12 (Europe/Berlin) | 28 | 2026-04-12 (day 1) | 2026-05-10 | 2026-04-25 |
-| 30, 30 | 2026-06-01 | 2026-07-01 | 30 | 2026-07-01 (day 1) | 2026-07-31 | 2026-07-16 |
+| 28, 28, 28 | 2026-03-15 | 2026-04-12 (Europe/Berlin) | 28 | 2026-04-12 (day 1) | 2026-04-12 | 2026-04-25 |
+| 30, 30 | 2026-06-01 | 2026-07-01 | 30 | 2026-07-01 (day 1) | 2026-07-01 | 2026-07-16 |
 
 In the first row the projected cycle's own ovulation (2026-01-14, cycle day 14)
 has already passed `today`, so the upcoming ovulation rolls one whole cycle
-forward to 2026-02-11 while the displayed next period stays anchored on the
-un-shifted start. In the other two rows `today` lands on cycle day 1, so the
-first ovulation is already in the future and no roll is needed.
+forward to 2026-02-11 while the displayed next period stays on the running
+cycle. In the other two rows `today` is cycle day *m*+1 of the running cycle:
+the projected start rolls to `today` (day 1) and the ovulation follows it, but
+the displayed next period is the running cycle's own — due `today` — not the
+date one cycle later.
 
 ## Pregnancy pause (app-specific)
 
@@ -359,11 +370,19 @@ Every worked-example vector above is pinned to the code by a **shared
 golden-vector fixture**,
 [`src/services/__fixtures__/cycle-prediction-golden-vectors.json`](../src/services/__fixtures__/cycle-prediction-golden-vectors.json),
 consumed by [`src/services/cycle-prediction-reference.test.ts`](../src/services/cycle-prediction-reference.test.ts).
-That same file is, by design, the source of truth for `ovumcy-web`'s Go reference
-test (`internal/services/cycles_reference_test.go`), so any change to either the
-Go (`cycles.go`) or TypeScript (`cycle-prediction-policy.ts`) implementation that
-breaks parity fails CI on both sides. If you change the math, update the fixture,
-this document, and both reference tests in the same change.
+The file is a byte-identical copy of `ovumcy-web`'s
+`internal/services/testdata/cycle-prediction-golden-vectors.json`, which is
+authoritative: it is re-vendored verbatim, never edited here, and
+`scripts/check-cross-repo-contracts.mjs` fails on any byte drift. Web's Go
+reference test (`internal/services/cycles_reference_test.go`) consumes the same
+numbers, so a change to either the Go (`cycles.go`) or TypeScript
+(`cycle-prediction-policy.ts`) implementation that breaks parity fails CI. If you
+change the math, update the fixture, this document, and both reference tests in
+the same change.
+
+The fixture's `irregularRange` section (the irregular-mode fertile window,
+consumed by web's `TestIrregularRangeWindow_GoldenVectors`) has no consumer in
+this repository yet: it is vendored with the file and ignored by the app tests.
 
 The retrospective observed-ovulation signals (the "3-over-6" BBT detector and
 the cervical-mucus peak-day heuristic) are guarded by
@@ -377,7 +396,9 @@ projection/anchor layer (median-first length, forward-projected start, displayed
 next period, and the upcoming-ovulation roll). It is consumed by
 [`src/services/cycle-projection-reference.test.ts`](../src/services/cycle-projection-reference.test.ts)
 here and by `ovumcy-web`'s `internal/services/cycle_projection_reference_test.go`,
-which replay the identical projection sequence against the same numbers. The file
+which replay the identical projection sequence against the same numbers; the app
+test reads the displayed next period from the production projection
+(`buildCurrentCycleProjection`) rather than recomputing it. The file
 is vendored **byte-identical** between the repositories, so a projection-math
 change must likewise update the fixture, this document, and both projection
 reference tests together.
