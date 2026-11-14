@@ -11,7 +11,11 @@ import {
 import type { ProfileRecord } from "../models/profile";
 import { createDefaultProfileRecord } from "../models/profile";
 import type { BuiltinSymptomID, SymptomRecord } from "../models/symptom";
-import { buildCycleHistorySummary, buildCurrentCycleProjection } from "./cycle-history-service";
+import {
+  buildCycleHistorySummary,
+  buildCurrentCycleProjection,
+  resolveDisplayCycleDay,
+} from "./cycle-history-service";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { buildExportCSVRows } from "./export-service";
 import { getSymptomDisplayLabel } from "./symptom-presentation-service";
@@ -188,7 +192,7 @@ export function buildPartnerSharedReadState(
     isStale,
     temperatureUnit: payload.profile.temperatureUnit,
     cycleStatus: {
-      currentCycleDay: projection.currentCycleDay,
+      currentCycleDay: resolveDisplayCycleDay(projection),
       nextPeriodDate: projection.nextPeriodDate,
       nextPeriodWindowEndDate: projection.nextPeriodWindowEndDate,
       nextPeriodWindowStartDate: projection.nextPeriodWindowStartDate,

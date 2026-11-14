@@ -319,7 +319,14 @@ instead of a stale or blank one. This layer lives in
    (web shows `stats.CurrentCycleDay` unrolled), not the step-2 rolled day. The
    calendar grid paints no predicted period, fertile window or ovulation cell
    past the gate (web `PredictionsSuppressed` in `calendar_days.go`); logged
-   days keep their recorded state.
+   days keep their recorded state. **Stale band:** from the day the raw cycle day
+   exceeds the overdue length (the shorter of the prediction and reference
+   lengths, web `CycleDataStale`) up to the gate, the projection also withholds
+   the chained cycle's upcoming ovulation and ovulation range and reads the
+   phase as unknown (a logged period day still reads menstrual). The published
+   `currentCycleDay` stays the step-2 rolled day (the shared vectors pin it);
+   stats and the partner snapshot display the raw day instead
+   (`resolveDisplayCycleDay`), as the dashboard hero shows "~N".
 4. **Roll the ovulation forward (upcoming ovulation).** The ovulation for the
    projected cycle may already be in the past (the owner is mid/late luteal). For
    a "next ovulation" surface this is rolled forward by whole cycles until it
@@ -328,7 +335,10 @@ instead of a stale or blank one. This layer lives in
    separate from the current cycle's ovulation date: the current-cycle date still
    drives the phase (follicular / fertile / ovulation / luteal) and the
    history-bounded calendar and PDF markers, mirroring how web keeps
-   `stats.OvulationDate` distinct from the dashboard upcoming prediction.
+   `stats.OvulationDate` distinct from the dashboard upcoming prediction. The
+   projection publishes it only outside the stale band (see step 3): the worked
+   examples below show the pure roll, which the vectors pin, while a day past
+   the overdue length carries no upcoming ovulation on the surfaces.
 
 All of this arithmetic is calendar-day based and therefore DST-immune: the
 Europe/Berlin spring-forward case below projects identically to a UTC run.

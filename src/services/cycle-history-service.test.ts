@@ -186,19 +186,24 @@ describe("cycle-history-service", () => {
         isPredictionStale: false,
         cycleDayLooksLong: false,
         nextPeriodDate: "2026-03-01",
+        // Last non-stale day: the upcoming ovulation is still published.
+        upcomingOvulationDate: "2026-03-14",
       }),
     );
 
-    // Cycle day m+1 (29): due today; the cycle day rolls to 1.
+    // Cycle day m+1 (29): due today; the published cycle day rolls to 1, the
+    // raw day stays 29, and the chained cycle's upcoming ovulation is withheld.
     expect(project(new Date(2026, 2, 1))).toEqual(
       expect.objectContaining({
         cycleAnchorDate: "2026-02-01",
         currentCycleDay: 1,
+        rawCycleDay: 29,
+        currentPhase: "unknown",
         isPredictionStale: true,
         cycleDayLooksLong: false,
         nextPeriodDate: "2026-03-01",
         ovulationDate: "2026-03-14",
-        upcomingOvulationDate: "2026-03-14",
+        upcomingOvulationDate: null,
         predictionCycleLength: 28,
       }),
     );
@@ -207,12 +212,38 @@ describe("cycle-history-service", () => {
     expect(project(new Date(2026, 2, 7))).toEqual(
       expect.objectContaining({
         currentCycleDay: 7,
+        rawCycleDay: 35,
+        currentPhase: "unknown",
         isPredictionStale: true,
         cycleDayLooksLong: false,
         nextPeriodDate: "2026-03-01",
         ovulationDate: "2026-03-14",
+        upcomingOvulationDate: null,
       }),
     );
+  });
+
+  it("withholds the upcoming ovulation, the phase and the range in the stale band only", () => {
+    const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+    const project = (now: Date) =>
+      buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, [], now),
+        [],
+        now,
+      );
+
+    const lastFresh = project(new Date(2026, 1, 28));
+    expect(lastFresh.isPredictionStale).toBe(false);
+    expect(lastFresh.upcomingOvulationDate).toBe("2026-03-14");
+    expect(lastFresh.currentPhase).not.toBe("unknown");
+
+    const firstStale = project(new Date(2026, 2, 1));
+    expect(firstStale.isPredictionStale).toBe(true);
+    expect(firstStale.upcomingOvulationDate).toBeNull();
+    expect(firstStale.upcomingOvulationWindowStartDate ?? null).toBeNull();
+    expect(firstStale.upcomingOvulationWindowEndDate ?? null).toBeNull();
+    expect(firstStale.currentPhase).toBe("unknown");
   });
 
   it("withholds every projected date once the cycle runs more than a week past its length", () => {

@@ -24,6 +24,7 @@ import {
   buildStatsFactorContext,
   buildStatsReliability,
   hasDataDrivenPredictionSpan,
+  resolveDisplayCycleDay,
   shouldShowAgeVariabilityHint,
   shouldShowIrregularityNotice,
   shouldShowIrregularModeRecommendation,
@@ -475,7 +476,7 @@ export function buildStatsViewData(
     premiumFeatures.advancedInsights &&
     !suppressPredictions &&
     !overduePredictionsSuppressed
-      ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
+      ? buildStatsPersonalForecasts(symptomPatterns, resolveDisplayCycleDay(projection))
       : [];
   const premiumInsights = premiumFeatures.advancedInsights
     ? buildStatsPremiumInsights(history)
@@ -1308,9 +1309,10 @@ function buildTopCards(
   } else if (mucusFertilityCard) {
     cards.push(mucusFertilityCard);
   } else {
+    const displayCycleDay = resolveDisplayCycleDay(projection);
     const description =
-      !suppressPredictions && projection.currentCycleDay !== null
-        ? statsCopy.currentCycleDayValue(projection.currentCycleDay)
+      !suppressPredictions && displayCycleDay !== null
+        ? statsCopy.currentCycleDayValue(displayCycleDay)
         : undefined;
     cards.push({
       key: "current-phase",
