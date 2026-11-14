@@ -52,7 +52,7 @@ describe("clear-all-data reminder rebuild", () => {
     expect(context.router.replace).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the schedule untouched when the wipe fails", async () => {
+  it("rebuilds the schedule from what storage holds when the wipe fails, and reports the failure", async () => {
     const { context, reminderScheduler, storage } = createContext();
     jest.mocked(storage.clearAllLocalData).mockRejectedValue(new Error("busy"));
 
@@ -62,7 +62,31 @@ describe("clear-all-data reminder rebuild", () => {
     expect(context.setClearDataErrorMessage).toHaveBeenLastCalledWith(
       viewData.danger.status.failed,
     );
-    expect(reminderScheduler.sync).not.toHaveBeenCalled();
+    expect(reminderScheduler.sync).toHaveBeenCalledTimes(1);
+    expect(context.router.replace).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds the schedule and reports failure when a secret clear fails after the data wipe", async () => {
+    const { context, reminderScheduler, storage } = createContext();
+    context.wipeScopeSecretStores = {
+      ...context.wipeScopeSecretStores,
+      entitlementTokenStore: {
+        clearEntitlementToken: jest
+          .fn()
+          .mockRejectedValue(new Error("keychain locked")),
+      },
+    };
+
+    await runClearAllDataAction(context);
+
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+    expect(context.setClearDataErrorMessage).toHaveBeenLastCalledWith(
+      viewData.danger.status.failed,
+    );
+    expect(reminderScheduler.sync).toHaveBeenCalledWith([]);
+    expect(
+      jest.mocked(storage.clearAllLocalData).mock.invocationCallOrder[0],
+    ).toBeLessThan(reminderScheduler.sync.mock.invocationCallOrder[0]!);
     expect(context.router.replace).not.toHaveBeenCalled();
   });
 

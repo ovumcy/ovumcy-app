@@ -74,15 +74,17 @@ export async function runClearAllDataAction(context: DangerActionContext) {
     syncSecretStore,
     wipeScopeSecretStores,
   );
+
+  // Reminders planned from the wiped history must not keep firing: rebuild
+  // from the reset profile, which clears the schedule. It also runs when a
+  // secret clear failed after the data wipe.
+  await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
+
   if (!result.ok) {
     setClearDataErrorMessage(viewData.danger.status.failed);
     setIsClearingData(false);
     return;
   }
-
-  // Reminders planned from the wiped history must not keep firing: rebuild
-  // from the reset profile, which clears the schedule.
-  await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
 
   syncProfilePreferences({
     languageOverride: null,

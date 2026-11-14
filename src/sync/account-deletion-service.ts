@@ -4,6 +4,9 @@ import {
   clearWipeScopeSecrets,
   type WipeScopeSecretStores,
 } from "../security/wipe-scope-secrets";
+import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
 import { describeSubscriptionCountdown } from "../services/subscription-countdown-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
@@ -122,6 +125,11 @@ export type DeleteOvumcyAccountErrorCode =
  *                (the same danger-zone path settings uses; this already
  *                clears the managed billing cache table too, so no separate
  *                cache-clear call is needed here). No new schema/migration.
+ *   4. reminders: rebuild the local reminder schedule from the wiped storage,
+ *                which clears it, so no reminder planned from the deleted
+ *                history fires. It runs after the wipe attempt whether the
+ *                wipe or a secret clear failed (the data may already be gone),
+ *                and never after an aborted server delete.
  *
  * The caller (screen controller) owns confirmation, the subscription
  * warning, and routing back to onboarding after a successful result — this
@@ -135,6 +143,7 @@ export async function deleteOvumcyAccount(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
 ): Promise<
   | { ok: true }
   | { ok: false; errorCode: DeleteOvumcyAccountErrorCode }
@@ -177,9 +186,18 @@ export async function deleteOvumcyAccount(
   }
   clearManagedPartnerInviteToken();
 
+  let localDataCleared = true;
   try {
     await storage.clearAllLocalData();
   } catch {
+    localDataCleared = false;
+  }
+
+  // Best effort and never throws: a partly failed wipe may still have removed
+  // the history the reminders were planned from.
+  await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
+
+  if (!localDataCleared) {
     return { ok: false, errorCode: "generic" };
   }
 
