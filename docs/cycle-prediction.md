@@ -240,6 +240,32 @@ Neither signal is a *confirmation* of ovulation. The free stats BBT chart draws
 the coverline and a "probable ovulation" marker only once a shift is detected;
 until then there is nothing physiologically meaningful to draw.
 
+## Where a cycle starts
+
+Every consumer of a cycle start — the completed-cycle count and lengths, the
+running-cycle anchor, the calendar's recorded start, luteal inference, the
+postpartum "new cycle" check and the pregnancy pause — reads one rule,
+`collectCycleStartDates` in
+[`src/services/cycle-history-service.ts`](../src/services/cycle-history-service.ts)
+(ovumcy-web `CycleBoundaries`). Period days up to today merge into a cluster until
+a gap of 5 or more empty days. A cluster opens a cycle on its earliest
+
+1. non-spotting day carrying a cycle-start mark that is not flagged uncertain, else
+2. non-spotting day followed by a consecutive non-spotting day, else
+3. non-spotting day dated today or yesterday (the period may still be running; it
+   stops counting once a later day passes without a second period day).
+
+A spotting day never opens a cycle, even when marked; an uncertain mark counts as
+no mark; a cluster matching none of the three opens no cycle and does not split
+the cycle around it. A day counts as spotting when its flow is spotting, or when
+the Spotting symptom is its only bleeding signal (no flow chosen).
+
+`profile.lastPeriodStart` joins the clusters as an explicit non-spotting day only
+when no period day is logged on its date. The app mirrors every manual cycle-start
+mark into it, uncertain and spotting marks included, so a logged day decides what
+its own date is; a stored start without a logged period day (onboarding or
+Settings) is a boundary of its own, as web's onboarding start is.
+
 ## Projection and anchor layer
 
 The section above is the pure *window* math for a single known cycle start.
@@ -321,20 +347,20 @@ start is logged. The pause lives in
 `cycle-history-service.buildCurrentCycleProjection` (not in this pure policy) and
 is a cross-cutting **Medical safety** invariant of the security constitution.
 
-"A later cycle start" is a boundary in the logged period clusters, read without
-any today-dependent opening (the ovumcy-web rule). Period days
-merge into a cluster until a gap of 5 or more empty days; a cluster lifts the
-pause only through a non-spotting day carrying a non-uncertain cycle-start mark,
-or two consecutive non-spotting period days. Consequently:
+"A later cycle start" is a boundary of the same clusters the anchor reads (see
+*Where a cycle starts*), minus the today rule (3): only a marked start or a
+two-day run lifts the pause (the ovumcy-web rule). Consequently:
 
 - a day under an uncertain mark, and a spotting day, never lift the pause;
 - a lone unflagged period day, including one dated today or yesterday, does not
   lift it (it would otherwise flicker back the next day when no second day follows);
 - a start dated on the same calendar day as the positive test does not lift it —
   the positive result wins ties;
-- `profile.lastPeriodStart` never counts: the app rewrites it from uncertain marks
-  and when a logged start is deleted, so only logged days lift the pause (stricter
-  than ovumcy-web, which counts the onboarding start).
+- a stored start without a logged period day on its date counts like a marked
+  start, exactly as in the anchor;
+- because the pause and the anchor read one cluster boundary, a lifted pause always
+  leaves the anchor after the positive test — predictions never resume anchored on
+  bleeding that began before it.
 
 The pause is only one of two suppression signals. An ACTIVE pregnancy record
 suppresses predictions on its own, regardless of the pause: a period logged
@@ -385,6 +411,14 @@ numbers, so a change to either the Go (`cycles.go`) or TypeScript
 (`cycle-prediction-policy.ts`) implementation that breaks parity fails CI. If you
 change the math, update the fixture, this document, and both reference tests in
 the same change.
+
+The fixture's `cycleBoundaries` section pins *Where a cycle starts* together with
+its two readers, the anchor and the pregnancy pause: V1–V6 straddle a positive test
+with a spotting, lone, uncertain or marked-spotting first day, S1–S7 cover the
+today rule, unqualified clusters, the same-day tie and the stored start, and every
+case asserts that a lifted pause leaves the anchor after the test. It is consumed by
+[`src/services/cycle-boundaries-reference.test.ts`](../src/services/cycle-boundaries-reference.test.ts)
+here and by web's `internal/services/cycle_boundaries_reference_test.go`.
 
 The fixture's `irregularRange` section (the irregular-mode fertile window,
 consumed by web's `TestIrregularRangeWindow_GoldenVectors`) has no consumer in

@@ -139,6 +139,7 @@ describe("cycle-history-service", () => {
     const records = cycleStarts.map((date) => ({
       ...createEmptyDayLogRecord(date),
       isPeriod: true,
+      cycleStart: true,
     }));
     const now = new Date(2026, 1, 20);
 
@@ -252,6 +253,7 @@ describe("cycle-history-service", () => {
       {
         ...createEmptyDayLogRecord("2026-03-25"),
         isPeriod: true,
+        flow: "spotting" as const,
         cycleStart: true,
         isUncertain: true,
       },
@@ -517,6 +519,7 @@ describe("cycle-history-service", () => {
         records.push({
           ...createEmptyDayLogRecord(dateValue),
           isPeriod: true,
+          cycleStart: true,
         });
         cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + length);
       }
@@ -526,8 +529,8 @@ describe("cycle-history-service", () => {
     it("returns no range window with fewer than 3 completed cycles", () => {
       const profile = createProfileRecord({ lastPeriodStart: "2026-01-01" });
       const records = [
-        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
       ];
       const now = new Date(2026, 1, 5);
 
@@ -606,6 +609,7 @@ describe("cycle-history-service", () => {
       const records = cycleStarts.map((date) => ({
         ...createEmptyDayLogRecord(date),
         isPeriod: true,
+        cycleStart: true,
       }));
       const now = new Date(2026, 2, 28);
       const starts = collectCycleStartDates(profile, records, "2026-02-23");
@@ -930,8 +934,8 @@ describe("cycle-history-service", () => {
         periodLength: 6,
       });
       const records = [
-        { ...createEmptyDayLogRecord("2026-02-07"), isPeriod: true },
-        { ...createEmptyDayLogRecord("2026-02-16"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-02-07"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-16"), isPeriod: true, cycleStart: true },
       ];
       const now = new Date(2026, 1, 17);
       const history = buildCycleHistorySummary(profile, records, now);
@@ -1128,6 +1132,7 @@ describe("cycle-history-service", () => {
       const records = ["2026-01-01", "2026-01-11", "2026-01-21"].map((date) => ({
         ...createEmptyDayLogRecord(date),
         isPeriod: true,
+        cycleStart: true,
       }));
       const now = new Date(2026, 0, 25);
 
@@ -1156,6 +1161,7 @@ describe("cycle-history-service", () => {
         ...["2026-01-01", "2026-01-11", "2026-01-23", "2026-02-03"].map((date) => ({
           ...createEmptyDayLogRecord(date),
           isPeriod: true,
+          cycleStart: true,
         })),
         // Extends the anchor cluster (gap 1 day) without becoming a new start,
         // so today itself is a logged period day.
@@ -1188,7 +1194,7 @@ describe("cycle-history-service", () => {
       // names the running cycle's date, day 19 names none.
       const profile = createProfileRecord({ lastPeriodStart: "2026-02-03" });
       const records = ["2026-01-01", "2026-01-11", "2026-01-23", "2026-02-03"].map(
-        (date) => ({ ...createEmptyDayLogRecord(date), isPeriod: true }),
+        (date) => ({ ...createEmptyDayLogRecord(date), isPeriod: true, cycleStart: true }),
       );
       const project = (now: Date) =>
         buildCurrentCycleProjection(
@@ -1406,19 +1412,18 @@ describe("cycle-history-service", () => {
     });
   });
 
-  describe("collectCycleStartDates and uncertain-only clusters (no fallback to the first observed day)", () => {
-    it("excludes a cluster whose only cycle-start flag is marked uncertain on the FIRST day of the cluster", () => {
+  describe("collectCycleStartDates cluster boundary (web CycleBoundaries parity)", () => {
+    it("counts an uncertain mark as no mark: a lone uncertain day older than yesterday opens nothing", () => {
       const profile = createProfileRecord({ lastPeriodStart: null });
       const records = [
         { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, cycleStart: true, isUncertain: true },
-        { ...createEmptyDayLogRecord("2026-01-11"), isPeriod: true },
         { ...createEmptyDayLogRecord("2026-02-15"), isPeriod: true, cycleStart: true },
       ];
 
       expect(collectCycleStartDates(profile, records, "2026-02-15")).toEqual(["2026-02-15"]);
     });
 
-    it("excludes a cluster whose only cycle-start flag is marked uncertain on a LATER (non-first) day", () => {
+    it("counts an uncertain mark as no mark: the cluster still opens on its two-day run", () => {
       const profile = createProfileRecord({ lastPeriodStart: null });
       const records = [
         { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true },
@@ -1431,7 +1436,113 @@ describe("cycle-history-service", () => {
         { ...createEmptyDayLogRecord("2026-02-15"), isPeriod: true, cycleStart: true },
       ];
 
-      expect(collectCycleStartDates(profile, records, "2026-02-15")).toEqual(["2026-02-15"]);
+      expect(collectCycleStartDates(profile, records, "2026-02-15")).toEqual([
+        "2026-01-10",
+        "2026-02-15",
+      ]);
+    });
+
+    it("opens a cycle on the first non-spotting day, never on leading spotting", () => {
+      const profile = createProfileRecord({ lastPeriodStart: null });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-08"), isPeriod: true, flow: "spotting" as const, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-09"), isPeriod: true, flow: "spotting" as const },
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, flow: "medium" as const },
+        { ...createEmptyDayLogRecord("2026-01-11"), isPeriod: true, flow: "medium" as const },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-01-20")).toEqual(["2026-01-10"]);
+    });
+
+    it("merges entries sharing a date: spotting only when every entry is, explicit when any is", () => {
+      const profile = createProfileRecord({ lastPeriodStart: null });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, flow: "spotting" as const },
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, flow: "medium" as const },
+        { ...createEmptyDayLogRecord("2026-01-11"), isPeriod: true, flow: "medium" as const },
+        { ...createEmptyDayLogRecord("2026-02-10"), isPeriod: true, flow: "spotting" as const },
+        { ...createEmptyDayLogRecord("2026-02-10"), isPeriod: true, flow: "spotting" as const, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-11"), isPeriod: true, flow: "medium" as const },
+        { ...createEmptyDayLogRecord("2026-02-12"), isPeriod: true, flow: "medium" as const },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-02-20")).toEqual([
+        "2026-01-10",
+        "2026-02-11",
+      ]);
+    });
+
+    it("opens a lone non-spotting day only while it is dated today or yesterday", () => {
+      const profile = createProfileRecord({ lastPeriodStart: null });
+      const records = [{ ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true }];
+
+      expect(collectCycleStartDates(profile, records, "2026-01-10")).toEqual(["2026-01-10"]);
+      expect(collectCycleStartDates(profile, records, "2026-01-11")).toEqual(["2026-01-10"]);
+      expect(collectCycleStartDates(profile, records, "2026-01-12")).toEqual([]);
+    });
+
+    it("lets a logged day decide its own date over a mirrored stored start", () => {
+      const uncertain = [
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, cycleStart: true, isUncertain: true },
+      ];
+      const spotting = [
+        { ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true, flow: "spotting" as const, cycleStart: true },
+      ];
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-10" });
+
+      expect(collectCycleStartDates(profile, uncertain, "2026-01-20")).toEqual([]);
+      expect(collectCycleStartDates(profile, spotting, "2026-01-20")).toEqual([]);
+    });
+
+    it("keeps a stored start with no logged period day as a boundary of its own", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-10" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-01-10"), mood: 3 },
+        { ...createEmptyDayLogRecord("2026-01-12"), isPeriod: true },
+      ];
+
+      expect(collectCycleStartDates(profile, records, "2026-01-20")).toEqual(["2026-01-10"]);
+      expect(collectCycleStartDates(profile, records, "2026-01-09")).toEqual([]);
+    });
+
+    it("lifts the pause with the anchor after the test when an uncertain mark before it is mirrored into the stored start", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-06-09" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-05-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-06-09"), isPeriod: true, cycleStart: true, isUncertain: true },
+        { ...createEmptyDayLogRecord("2026-06-10"), pregnancyTest: "positive" as const },
+        { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-06-12"), isPeriod: true },
+      ];
+      const now = new Date(2026, 5, 20);
+      const projection = buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, records, now),
+        records,
+        now,
+      );
+
+      expect(projection.isPregnancyPaused).toBe(false);
+      expect(projection.cycleAnchorDate).toBe("2026-06-11");
+    });
+
+    it("holds the pause on a stored start with no logged period day dated before the test", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-06-09" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-06-10"), pregnancyTest: "positive" as const },
+        { ...createEmptyDayLogRecord("2026-06-11"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-06-12"), isPeriod: true },
+      ];
+      const now = new Date(2026, 5, 20);
+      const projection = buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, records, now),
+        records,
+        now,
+      );
+
+      expect(projection.isPregnancyPaused).toBe(true);
+      expect(projection.cycleAnchorDate).toBe("2026-06-09");
     });
 
     it("silently excludes a malformed lastPeriodStart date (Feb 30 does not exist) from cycle-start detection", () => {
@@ -1456,6 +1567,7 @@ describe("cycle-history-service", () => {
         ...["2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26"].map((date) => ({
           ...createEmptyDayLogRecord(date),
           isPeriod: true,
+          cycleStart: true,
         })),
         // "stress" logged on 2 different days inside cycle 0 (2026-01-01..28).
         { ...createEmptyDayLogRecord("2026-01-05"), cycleFactorKeys: ["stress" as const] },

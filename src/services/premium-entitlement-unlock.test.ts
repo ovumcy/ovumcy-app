@@ -199,6 +199,7 @@ function richInsightsFixture(): {
   const period = (date: string): DayLogRecord => ({
     ...createEmptyDayLogRecord(date),
     isPeriod: true,
+    cycleStart: true,
   });
   const records: DayLogRecord[] = [
     period("2025-10-01"),
