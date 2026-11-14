@@ -1,3 +1,4 @@
+import { clearManagedPartnerInviteToken } from "../security/managed-partner-invite-token-buffer";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import {
   clearWipeScopeSecrets,
@@ -31,6 +32,7 @@ export async function clearAllLocalSettingsData(
   try {
     await storage.clearAllLocalData();
     await clearWipeScopeSecrets(secretStore, wipeScopeSecretStores);
+    clearManagedPartnerInviteToken();
     return { ok: true };
   } catch {
     return {

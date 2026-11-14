@@ -216,6 +216,20 @@ describe("partner-share-secret-store", () => {
         createEmptyPartnerShareSecretsRecord(),
       );
     });
+
+    it("runs after a mutation already in flight, so the record is not written back", async () => {
+      const backend = createBackendMock();
+      const store = createPartnerShareSecretStore(backend);
+
+      const mutation = store.mutatePartnerShareSecrets((record) => ({
+        ...record,
+        pendingInviteKeysByInviteID: { invite_1: "ee".repeat(32) },
+      }));
+      const clear = store.clearPartnerShareSecrets();
+      await Promise.all([mutation, clear]);
+
+      expect(backend.state.has(STORE_KEY)).toBe(false);
+    });
   });
 
   describe("mutatePartnerShareSecrets", () => {
