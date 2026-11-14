@@ -50,8 +50,10 @@ Dependency rules:
 
 - Routes import screens; they do not import services or storage. The one exception is the root
   layout `app/_layout.tsx`, which also runs the launch tasks
-  (`src/services/app-launch-tasks`: the export-artifact sweep and the reminder
-  rebuild) and applies screen-capture protection
+  (`src/services/app-launch-tasks`: the stored-cycle-start repoint, the
+  export-artifact sweep and the reminder rebuild) and renders nothing until the
+  repoint has finished or failed, so no screen reads a pre-repoint profile; it
+  also applies screen-capture protection
   (`src/security/app-screen-protection`).
 - Screens call services and pass them `appStorage`. They never import a concrete
   storage adapter; only tests do, to construct fixtures.

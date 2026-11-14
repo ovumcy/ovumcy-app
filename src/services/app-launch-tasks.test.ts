@@ -1,3 +1,4 @@
+import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { runAppLaunchTasks } from "./app-launch-tasks";
 import { cleanupStaleExportArtifacts } from "./export-artifact-cleanup";
@@ -35,6 +36,38 @@ describe("runAppLaunchTasks", () => {
     // Every toggle off: the rebuild clears the schedule.
     expect(scheduler.sync).toHaveBeenCalledTimes(1);
     expect(scheduler.sync).toHaveBeenCalledWith([]);
+  });
+
+  it("settles the profile gate only after the repoint has written the profile", async () => {
+    let stored: ProfileRecord = createDefaultProfileRecord();
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn(async () => stored),
+      writeProfileRecord: jest.fn(async (profile) => {
+        await Promise.resolve();
+        stored = profile;
+      }),
+    });
+    const seenAtSettle: unknown[] = [];
+
+    await runAppLaunchTasks(storage, createScheduler(), () => {
+      seenAtSettle.push(stored.storedCycleStartRepointVersion);
+    });
+
+    expect(seenAtSettle).toHaveLength(1);
+    expect(seenAtSettle[0]).toBeDefined();
+  });
+
+  it("settles the profile gate and still loads when the repoint fails", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockRejectedValue(new Error("locked")),
+    });
+    const onSettled = jest.fn();
+
+    await expect(
+      runAppLaunchTasks(storage, createScheduler(), onSettled),
+    ).resolves.toBeUndefined();
+
+    expect(onSettled).toHaveBeenCalledTimes(1);
   });
 
   it("still rebuilds the schedule when the artifact sweep fails", async () => {

@@ -1366,6 +1366,84 @@ describe("sqlite-app-storage", () => {
     ).rejects.toThrow("simulated profile write failure");
   });
 
+  it("clears a transaction left open by a failed rollback before the next commit begins", async () => {
+    const { database } = createInspectableFakeDatabase();
+    let transactionOpen = false;
+    let failProfile = true;
+    let failNextRollback = true;
+    const tracked: LocalAppDatabase = {
+      ...database,
+      execAsync: (source) => {
+        if (source === "BEGIN IMMEDIATE;") {
+          if (transactionOpen) {
+            return Promise.reject(new Error("cannot start a transaction within a transaction"));
+          }
+          transactionOpen = true;
+        } else if (source === "ROLLBACK;") {
+          if (failNextRollback) {
+            failNextRollback = false;
+            return Promise.reject(new Error("simulated rollback failure"));
+          }
+          transactionOpen = false;
+        } else if (source === "COMMIT;") {
+          transactionOpen = false;
+        }
+        return database.execAsync(source);
+      },
+      getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getFirstAsync<T>(source, ...params),
+      getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getAllAsync<T>(source, ...params),
+      runAsync: (source: string, ...params: unknown[]) => {
+        if (failProfile && source.includes("INSERT INTO profile_settings")) {
+          throw new Error("simulated profile write failure");
+        }
+        return database.runAsync(source, ...params);
+      },
+    };
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => tracked,
+    });
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2026-03-01" };
+
+    // Hydration runs its own transactions; arm the failures after it.
+    failProfile = false;
+    failNextRollback = false;
+    await storage.commitDayLogChanges({ writes: [], deletes: [], profile: null });
+    failProfile = true;
+    failNextRollback = true;
+
+    await expect(
+      storage.commitDayLogChanges({ writes: [], deletes: [], profile }),
+    ).rejects.toThrow("simulated profile write failure");
+    expect(transactionOpen).toBe(true);
+
+    failProfile = false;
+    await storage.commitDayLogChanges({
+      writes: [{ ...createEmptyDayLogRecord("2026-03-12"), isPeriod: true }],
+      deletes: [],
+      profile,
+    });
+
+    expect(transactionOpen).toBe(false);
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+
+    // A rollback that finds nothing open does not block the next commit.
+    failProfile = true;
+    await expect(
+      storage.commitDayLogChanges({ writes: [], deletes: [], profile }),
+    ).rejects.toThrow("simulated profile write failure");
+    expect(transactionOpen).toBe(false);
+    failProfile = false;
+    await storage.commitDayLogChanges({ writes: [], deletes: [], profile });
+  });
+
   it("persists and lists canonical day logs in sqlite", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {

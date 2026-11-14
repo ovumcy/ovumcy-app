@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import type { ErrorBoundaryProps } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { appStorage } from "../src/services/app-bootstrap-service";
@@ -20,9 +20,20 @@ import { AppErrorScreen } from "../src/ui/screens/AppErrorScreen";
 // been cleaned and the token (if any) is stashed in the in-memory buffer.
 
 export default function RootLayout() {
+  const [profileSettled, setProfileSettled] = useState(false);
   useEffect(() => {
-    void runAppLaunchTasks(appStorage, createPlatformLocalReminderScheduler());
+    void runAppLaunchTasks(
+      appStorage,
+      createPlatformLocalReminderScheduler(),
+      () => setProfileSettled(true),
+    ).catch(() => {
+      // The profile gate is opened before the rebuild, which is best effort.
+    });
   }, []);
+
+  if (!profileSettled) {
+    return null;
+  }
 
   return (
     <AppPreferencesProvider>

@@ -5,10 +5,24 @@ import { rebuildLocalReminderScheduleFromStorage } from "./local-reminder-sync-s
 import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
 
 // Work that runs once per app launch, before the user can interact.
+// `onProfileSettled` fires once the one-time stored-cycle-start repoint has
+// finished or failed; the shell renders screens only after it, so no screen
+// reads (and later saves back) a profile from before the repoint.
 export async function runAppLaunchTasks(
   storage: LocalAppStorage,
   scheduler: LocalReminderScheduler,
+  onProfileSettled?: () => void,
 ): Promise<void> {
+  // One-time re-read of the stored cycle start written under the earlier
+  // withdrawal rule; it runs before the rebuild so reminders use the result.
+  try {
+    await repointLegacyStoredCycleStart(storage, new Date());
+  } catch {
+    // Best effort: the version is not stored, so the next launch retries.
+  } finally {
+    onProfileSettled?.();
+  }
+
   // Any export artifact left over from a JS-process kill mid-share (cycle
   // CSV/JSON, doctor PDF, recovery phrase) is sensitive. Sweep them out of
   // the platform cache before the user can hand the device to anyone.
@@ -17,14 +31,6 @@ export async function runAppLaunchTasks(
     await cleanupStaleExportArtifacts();
   } catch {
     // Best effort: the next launch sweeps again.
-  }
-
-  // One-time re-read of the stored cycle start written under the earlier
-  // withdrawal rule; it runs before the rebuild so reminders use the result.
-  try {
-    await repointLegacyStoredCycleStart(storage, new Date());
-  } catch {
-    // Best effort: the version is not stored, so the next launch retries.
   }
 
   // A one-time reminder that already fired is replaced only by a rebuild, so
