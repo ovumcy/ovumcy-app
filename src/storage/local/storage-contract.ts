@@ -147,6 +147,12 @@ export type LocalDayLogSummary = {
   dateTo: DayLogRecord["date"] | null;
 };
 
+export type DayLogChangeSet = {
+  writes: readonly DayLogRecord[];
+  deletes: readonly DayLogRecord["date"][];
+  profile: ProfileRecord | null;
+};
+
 export interface LocalAppStorage {
   readBootstrapState(): Promise<LocalBootstrapState>;
   writeBootstrapState(state: LocalBootstrapState): Promise<void>;
@@ -160,6 +166,9 @@ export interface LocalAppStorage {
   readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord>;
   writeDayLogRecord(record: DayLogRecord): Promise<void>;
   deleteDayLogRecord(date: DayLogRecord["date"]): Promise<void>;
+  // Writes and deletes day-log rows and, when given, the profile as one unit:
+  // either every change lands or none does.
+  commitDayLogChanges(change: DayLogChangeSet): Promise<void>;
   listDayLogRecordsInRange(
     from: DayLogRecord["date"],
     to: DayLogRecord["date"],

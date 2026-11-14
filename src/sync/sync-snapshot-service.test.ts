@@ -236,6 +236,30 @@ describe("sync-snapshot-service", () => {
     expect(decoded.dayLogs[0]?.pregnancyTest).toBe("positive");
   });
 
+  it("repoints a stored cycle start withdrawn under the earlier rule after restore", async () => {
+    const source = createVolatileWebAppStorage();
+    await source.writeProfileRecord({
+      ...(await source.readProfileRecord()),
+      lastPeriodStart: "2026-04-12",
+    });
+    await source.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-01"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await source.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-04-12"), mood: 3 });
+    const snapshot = decodeSyncSnapshot(
+      encodeSyncSnapshot(await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"))),
+    );
+
+    const target = createVolatileWebAppStorage();
+    await restoreSyncSnapshot(target, snapshot, createDefaultSyncPreferencesRecord(), {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    });
+
+    expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+  });
+
   it("round-trips the pregnancy, postpartum, and screening collections through encode -> decode -> restore onto fresh storage", async () => {
     const source = createVolatileWebAppStorage();
     const active = sampleActivePregnancy();
