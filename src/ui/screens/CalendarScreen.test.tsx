@@ -377,10 +377,12 @@ describe("CalendarScreen", () => {
       {
         ...createEmptyDayLogRecord("2026-01-17"),
         isPeriod: true,
+        cycleStart: true,
       },
       {
         ...createEmptyDayLogRecord("2026-02-14"),
         isPeriod: true,
+        cycleStart: true,
       },
       {
         ...createEmptyDayLogRecord("2026-03-14"),
