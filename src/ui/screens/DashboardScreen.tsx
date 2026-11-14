@@ -101,12 +101,14 @@ export function DashboardScreen({
         loadedState.profile,
         {
           locale: language,
-          now: effectiveNow,
+          // the injected instant only: without one the rebuild reads the
+          // clock, so a screen open past midnight never plans from yesterday
+          now,
         },
       );
     }
     return loadedState;
-  }, [effectiveNow, language, reminderScheduler, storage, syncSecretStore]);
+  }, [effectiveNow, language, now, reminderScheduler, storage, syncSecretStore]);
 
   useFocusEffect(
     useCallback(() => {

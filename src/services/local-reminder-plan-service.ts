@@ -31,9 +31,8 @@ export type LocalReminderPlan =
       kind: LocalReminderKind;
       title: string;
       body: string;
-      // Resolved IANA time zone the reminder's local day is anchored to. Both
-      // the device push trigger and the managed email schedule must read this
-      // single value so the two channels never resolve to different local days.
+      // Resolved IANA time zone the reminder's local day is anchored to; the
+      // one-time trigger instant is computed in this zone.
       timeZone?: string;
       trigger: {
         type: "daily";
@@ -58,15 +57,12 @@ export function buildLocalReminderPlans(
   now: Date,
   locale = "en",
   timeZone?: string,
-  // Optional and defaulted to null so every pre-existing call site (which
-  // knows nothing about pregnancy state) keeps compiling and behaving
-  // identically -- omitting it simply means no kick_count plan is ever
-  // produced, the same as before this parameter existed.
+  // Null means no active pregnancy record: no kick_count plan is produced and
+  // no record-based suppression applies.
   activePregnancy: PregnancyRecord | null = null,
 ): LocalReminderPlan[] {
   // One resolved zone, stamped on every plan and used to turn calendar days
-  // into concrete instants. Defaults to the device zone so the non-managed
-  // (push-only) path keeps its previous device-local behavior unchanged.
+  // into concrete instants. Defaults to the device zone.
   const resolvedTimeZone = resolveReminderTimeZone(timeZone);
   const reminderTime = normalizeReminderTime(
     profile.reminderTime ?? DEFAULT_REMINDER_TIME,
@@ -254,8 +250,6 @@ function resolveUpcomingTriggerDate(
 }
 
 // Resolve the requested zone, falling back to the device zone and finally UTC.
-// Kept identical in spirit to the email service's resolver so a plan built
-// without an explicit zone lands on the same value the email path would pick.
 export function resolveReminderTimeZone(timeZone: string | undefined): string {
   const normalized = String(timeZone ?? "").trim();
   if (normalized.length > 0) {

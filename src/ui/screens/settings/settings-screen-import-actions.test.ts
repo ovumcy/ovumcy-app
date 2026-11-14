@@ -30,6 +30,8 @@ function createContext() {
   const storage = createSettingsStorageMock();
   const context = {
     effectiveNow: now,
+    reminderNow: now,
+    reminderScheduler: { sync: jest.fn().mockResolvedValue("scheduled") },
     importFilePickerClient: {
       pick: jest.fn().mockResolvedValue({ status: "picked", content: backupJSON }),
     },
@@ -89,5 +91,44 @@ describe("offline JSON restore gates", () => {
 
     expect(storage.writeDayLogRecord).toHaveBeenCalledTimes(1);
     expect(context.setPendingImportPreview).toHaveBeenLastCalledWith(null);
+  });
+});
+
+describe("reminder rebuild after a JSON import", () => {
+  async function pickPending(context: ReturnType<typeof createContext>["context"]) {
+    await runPickImportFileAction(context);
+    return context.setPendingImportPreview.mock.calls.at(-1)?.[0] as PendingImportPreview;
+  }
+
+  it("rebuilds the schedule from storage after the confirmed import, not during the preview", async () => {
+    const { context, storage } = createContext();
+    const pending = await pickPending(context);
+    expect(context.reminderScheduler.sync).not.toHaveBeenCalled();
+
+    jest.mocked(storage.readProfileRecord).mockResolvedValue({
+      ...(await storage.readProfileRecord()),
+      dailyLogReminderEnabled: true,
+      reminderTime: "20:15",
+    });
+    await runConfirmImportAction(context, await loadReadyState(), pending);
+
+    expect(context.reminderScheduler.sync).toHaveBeenCalledTimes(1);
+    expect(context.reminderScheduler.sync).toHaveBeenCalledWith([
+      expect.objectContaining({
+        kind: "daily_log",
+        trigger: { type: "daily", hour: 20, minute: 15 },
+      }),
+    ]);
+  });
+
+  it("still rebuilds when the import fails part-way", async () => {
+    const { context, storage } = createContext();
+    const pending = await pickPending(context);
+    jest.mocked(storage.writeDayLogRecord).mockRejectedValueOnce(new Error("disk full"));
+
+    await runConfirmImportAction(context, await loadReadyState(), pending);
+
+    expect(context.setImportErrorMessage).toHaveBeenCalled();
+    expect(context.reminderScheduler.sync).toHaveBeenCalledTimes(1);
   });
 });

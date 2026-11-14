@@ -1,6 +1,7 @@
 import { act, render, waitFor } from "@testing-library/react-native";
 
 import { createPregnancyRecord } from "../../../models/pregnancy";
+import type { ProfileRecord } from "../../../models/profile";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -51,6 +52,50 @@ async function flowReady(): Promise<KickCounterFlowScreenProps> {
   await waitFor(() => expect(mockFlowProps).not.toBeNull());
   return mockFlowProps!;
 }
+
+describe("KickCounterScreen reminder toggle", () => {
+  beforeEach(() => {
+    mockFlowProps = null;
+  });
+
+  it("rebuilds the reminder schedule on each toggle, from the profile it wrote", async () => {
+    let storedProfile: ProfileRecord | null = null;
+    const base = createLocalAppStorageMock();
+    const defaultProfile = await base.readProfileRecord();
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(activeRecord()),
+      readProfileRecord: jest.fn(async () => storedProfile ?? defaultProfile),
+      writeProfileRecord: jest.fn(async (record: ProfileRecord) => {
+        storedProfile = record;
+      }),
+    });
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <KickCounterScreen
+          now={new Date("2026-07-20T10:00:00.000Z")}
+          reminderScheduler={scheduler}
+          storage={storage}
+        />
+      </AppPreferencesTestProvider>,
+    );
+    const props = await flowReady();
+
+    await act(async () => {
+      await props.onReminderToggle(true);
+    });
+    expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    expect(scheduler.sync).toHaveBeenLastCalledWith([
+      expect.objectContaining({ kind: "kick_count" }),
+    ]);
+
+    await act(async () => {
+      await props.onReminderToggle(false);
+    });
+    expect(scheduler.sync).toHaveBeenCalledTimes(2);
+    expect(scheduler.sync).toHaveBeenLastCalledWith([]);
+  });
+});
 
 describe("KickCounterScreen handler guards", () => {
   beforeEach(() => {
