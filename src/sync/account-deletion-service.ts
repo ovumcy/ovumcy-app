@@ -65,6 +65,16 @@ export type AccountDeletionViewModel = {
   // the store-neutral cancellation warning and require a distinct,
   // deliberate acknowledgment before deleting.
   requiresSubscriptionWarning: boolean;
+  // billingStatusUnknown is true when a connected managed account has no
+  // confirmed billing answer: the live billing fetch failed, so the snapshot
+  // is still "unknown" and carries no subscription. "Unknown" is never the
+  // same as "no subscription" — the UI must show a could-not-confirm warning
+  // and require the same deliberate acknowledgment. A confirmed answer
+  // (active or inactive) is never unknown; self-hosted and signed-out states
+  // have no managed billing to confirm, so they are never flagged. Nothing
+  // outside the live billing result (sync capabilities, cached snapshots)
+  // fills the gap.
+  billingStatusUnknown: boolean;
 };
 
 /**
@@ -81,6 +91,7 @@ export function buildAccountDeletionViewModel(input: {
   hasConnectedSession: boolean;
   preferences: SyncPreferencesRecord;
   activeSubscription: ManagedCloudActiveSubscription | null;
+  planStatus: "unknown" | "inactive" | "active";
   now: Date;
 }): AccountDeletionViewModel {
   const countdown = describeSubscriptionCountdown(
@@ -93,6 +104,11 @@ export function buildAccountDeletionViewModel(input: {
     hasConnectedSession: input.hasConnectedSession,
     requiresSubscriptionWarning:
       countdown.kind === "active" || countdown.kind === "canceling",
+    billingStatusUnknown:
+      input.preferences.mode === "managed" &&
+      input.hasConnectedSession &&
+      input.planStatus === "unknown" &&
+      input.activeSubscription === null,
   };
 }
 

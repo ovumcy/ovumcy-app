@@ -46,6 +46,7 @@ describe("useBackupSyncAccountDeletion", () => {
       mode: "managed",
       hasConnectedSession: true,
       requiresSubscriptionWarning: false,
+      billingStatusUnknown: false,
     });
   });
 
@@ -172,6 +173,7 @@ describe("useBackupSyncAccountDeletion", () => {
         mode: "managed",
         hasConnectedSession: true,
         requiresSubscriptionWarning: true,
+        billingStatusUnknown: false,
       });
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
@@ -211,6 +213,7 @@ describe("useBackupSyncAccountDeletion", () => {
         mode: "managed",
         hasConnectedSession: true,
         requiresSubscriptionWarning: true,
+        billingStatusUnknown: false,
       });
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
@@ -225,6 +228,60 @@ describe("useBackupSyncAccountDeletion", () => {
       expect(result.current.isDeletingAccount).toBe(false);
     });
 
+    it("shows the could-not-confirm warning when billing is unknown and proceeds once it is accepted", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockBuildAccountDeletionViewModel.mockReturnValue({
+        mode: "managed",
+        hasConnectedSession: true,
+        requiresSubscriptionWarning: false,
+        billingStatusUnknown: true,
+      });
+      mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockBuildAccountDeletionViewModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          planStatus: core.state!.managedPremiumAccess.planStatus,
+        }),
+      );
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
+      expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
+        2,
+        `${core.viewData.account.deleteAccountBillingUnknownWarningTitle}\n\n${core.viewData.account.deleteAccountBillingUnknownWarningMessage}`,
+        core.viewData.account.deleteAccountSubscriptionWarningAccept,
+      );
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+    });
+
+    it("dismissal of the could-not-confirm warning is keep: aborts without deleting anything", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      mockBuildAccountDeletionViewModel.mockReturnValue({
+        mode: "managed",
+        hasConnectedSession: true,
+        requiresSubscriptionWarning: false,
+        billingStatusUnknown: true,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
+      expect(mockDeleteOvumcyAccount).not.toHaveBeenCalled();
+      expect(core.router.replace).not.toHaveBeenCalled();
+    });
+
     it("skips the subscription-warning confirm entirely when not required (pure trial) and deletes after the single confirm", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
@@ -233,6 +290,7 @@ describe("useBackupSyncAccountDeletion", () => {
         mode: "managed",
         hasConnectedSession: true,
         requiresSubscriptionWarning: false,
+        billingStatusUnknown: false,
       });
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
