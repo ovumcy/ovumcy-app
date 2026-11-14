@@ -308,8 +308,8 @@ export function useSyncAccountSecurityController({
     });
     if (!result.ok) {
       setTotpErrorCode(result.errorCode);
-      setTotpStatus("idle");
       if (result.errorCode === "totp_enrollment_restart_required") {
+        setTotpStatus("idle");
         setTotpStage("idle");
         setTotpEnrollment(null);
         setTotpVerifyCode("");
@@ -334,6 +334,8 @@ export function useSyncAccountSecurityController({
           setTotpVerifyCode("");
         }
       }
+      // Stays "submitting" through the re-check so verify cannot be re-sent.
+      setTotpStatus("idle");
       return;
     }
     setTotpStage("completed");

@@ -109,12 +109,12 @@ export type SyncAccountSecuritySectionProps = {
   onCancelTOTPEnrollment: () => void;
 };
 
+function ignoreRequestClose() {}
+
 // FIX 7.2: when a flow is rate-limited the backend wants the user to pause, so
 // the submit affordance is briefly disabled in addition to showing the distinct
 // wait message. The controller clears the error on the next edit/submit, which
 // re-enables the button — no countdown is needed.
-function ignoreRequestClose() {}
-
 function isRateLimited(code: AnyErrorCode | TOTPErrorCode | null): boolean {
   return code === "rate_limited";
 }
