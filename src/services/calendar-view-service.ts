@@ -722,8 +722,10 @@ function buildCalendarPredictionMaps(
       tentativeOvulation,
     };
   }
-  if (projection.cycleDayLooksLong === true) {
-    appendConfirmedCurrentCycleOvulation(profile, projection, records, today, ovulation);
+  // The gate and the stale band are only ever set with a logged anchor.
+  const anchorDate = projection.cycleAnchorDate;
+  if (projection.cycleDayLooksLong === true && anchorDate) {
+    appendConfirmedCurrentCycleOvulation(profile, anchorDate, records, today, ovulation);
     return {
       predictedPeriod,
       preFertile,
@@ -752,17 +754,9 @@ function buildCalendarPredictionMaps(
   // already missed, so only that one period is drawn — no fertile window, no
   // ovulation day and no later cycle rolled forward from the missed start.
   // Completed past cycles keep their own historical markers.
-  if (projection.isPredictionStale) {
-    if (projection.cycleAnchorDate) {
-      appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
-    }
-    const runningNextPeriodDate = resolveCalendarBaselineNextPeriodDate(
-      projection.cycleAnchorDate,
-      projection.predictionCycleLength,
-    );
-    if (runningNextPeriodDate) {
-      appendPredictedPeriod(predictedPeriod, runningNextPeriodDate, predictedPeriodLength);
-    }
+  if (projection.isPredictionStale && anchorDate && projection.nextPeriodDate) {
+    appendPredictedPeriod(predictedPeriod, anchorDate, predictedPeriodLength);
+    appendPredictedPeriod(predictedPeriod, projection.nextPeriodDate, predictedPeriodLength);
     if (profile.showHistoricalPhases) {
       appendHistoricalCycles(
         preFertile,
@@ -774,7 +768,7 @@ function buildCalendarPredictionMaps(
         projection.lutealPhase,
       );
     }
-    appendConfirmedCurrentCycleOvulation(profile, projection, records, today, ovulation);
+    appendConfirmedCurrentCycleOvulation(profile, anchorDate, records, today, ovulation);
     return {
       predictedPeriod,
       preFertile,
@@ -902,22 +896,20 @@ function applyCurrentCycleBBTSignal(
  */
 function appendConfirmedCurrentCycleOvulation(
   profile: ProfileRecord,
-  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  anchorDate: string,
   records: readonly DayLogRecord[],
   today: Date,
   ovulation: Set<string>,
 ) {
-  if (!profile.trackBBT || !projection.cycleAnchorDate) {
+  if (!profile.trackBBT) {
     return;
   }
+  // Past the cycle length the anchor always lies before today.
   const todayValue = formatLocalDate(today);
-  if (projection.cycleAnchorDate > todayValue) {
-    return;
-  }
   const recordsUpToToday = records.filter((record) => record.date <= todayValue);
   const confirmed = inferBBTOvulationDate(
     recordsUpToToday,
-    projection.cycleAnchorDate,
+    anchorDate,
     formatLocalDate(addDays(today, 1)),
   );
   if (confirmed) {
