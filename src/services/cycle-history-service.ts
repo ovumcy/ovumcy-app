@@ -721,9 +721,11 @@ function dashboardCycleDayLooksLong(
  * App analog of web's dashboardCycleOverdueLength (dashboard_cycle.go): the
  * shorter of the projection length and the average-first reference length
  * (web DashboardCycleReferenceLength). The average and median come from the
- * same recent lengths, so a median without an average never occurs; without
- * observed cycles the owner's configured length stands in. Both candidates are
- * positive here, so web's zero-never-wins guard reduces to a plain minimum.
+ * same recent lengths. The observed average is trusted from the same
+ * completed-cycle count as the projection (resolvePredictionCycleLength);
+ * below it the owner's configured length stands in, so one short cycle cannot
+ * open the gate before the projected period. Both candidates are positive
+ * here, so web's zero-never-wins guard reduces to a plain minimum.
  */
 function resolveOverdueCycleLength(
   profile: ProfileRecord,
@@ -731,6 +733,7 @@ function resolveOverdueCycleLength(
   predictionCycleLength: number,
 ): number {
   const referenceLength =
+    history.completedCycleCount >= STATS_MINIMUM_INSIGHTS_CYCLES &&
     history.averageCycleLength > 0
       ? Math.floor(history.averageCycleLength + 0.5)
       : profile.cycleLength;

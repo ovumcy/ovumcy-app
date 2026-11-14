@@ -296,6 +296,35 @@ describe("cycle-history-service", () => {
     );
   });
 
+  it("ignores a single short completed cycle when sizing the overdue gate", () => {
+    // One completed 21-day cycle: the projection keeps the configured 28 days,
+    // so the stale band and the gate measure against 28, not 21.
+    const { records, lastStart } = periodMarkersFromGaps(new Date(2025, 10, 1), [21]);
+    const profile = createProfileRecord({ lastPeriodStart: isoDate(lastStart) });
+    const project = (rawDay: number) => {
+      const now = new Date(
+        lastStart.getFullYear(),
+        lastStart.getMonth(),
+        lastStart.getDate() + rawDay - 1,
+      );
+      return buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, records, now),
+        records,
+        now,
+      );
+    };
+
+    expect(project(28)).toEqual(
+      expect.objectContaining({ isPredictionStale: false, predictionCycleLength: 28 }),
+    );
+    expect(project(29)).toEqual(
+      expect.objectContaining({ isPredictionStale: true, cycleDayLooksLong: false }),
+    );
+    expect(project(35)).toEqual(expect.objectContaining({ cycleDayLooksLong: false }));
+    expect(project(36)).toEqual(expect.objectContaining({ cycleDayLooksLong: true }));
+  });
+
   it("keeps a logged period as the phase while the overdue gate withholds the projection", () => {
     // The bleeding is marked uncertain, so it opens no cycle start and the
     // running cycle (anchor 2026-02-01) stays overdue at raw cycle day 53.
