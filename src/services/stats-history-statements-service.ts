@@ -75,8 +75,9 @@ export function buildSymptomPhaseRecurrenceStatements(
   }
 
   const symptomMap = new Map(symptomRecords.map((record) => [record.id, record]));
-  const observed = new Set<string>();
-  const hits = new Map<string, Set<string>>();
+  // Phase → indexes of the cycles whose phase occurrence carries the mark.
+  const observed: PhaseOccurrences = new Map();
+  const hits = new Map<string, PhaseOccurrences>();
   buckets.forEach((bucket, cycleIndex) => {
     for (const record of bucket.records) {
       const phase = resolveRecordPhase(bucket.context, record);
@@ -85,27 +86,24 @@ export function buildSymptomPhaseRecurrenceStatements(
       if (phase === null) {
         continue;
       }
-      const occurrence = `${cycleIndex}:${phase}`;
-      observed.add(occurrence);
+      addOccurrence(observed, phase, cycleIndex);
       for (const symptomID of record.symptomIDs) {
         if (!symptomMap.has(symptomID)) {
           continue;
         }
-        const occurrences = hits.get(symptomID) ?? new Set<string>();
-        occurrences.add(occurrence);
+        const occurrences = hits.get(symptomID) ?? new Map();
+        addOccurrence(occurrences, phase, cycleIndex);
         hits.set(symptomID, occurrences);
       }
     }
   });
 
-  const totals = countByPhase(observed);
   const statements: StatsSymptomPhaseRecurrenceStatement[] = [];
   for (const [symptomID, occurrences] of hits) {
     const symptom = symptomMap.get(symptomID)!;
-    const counts = countByPhase(occurrences);
     for (const phase of PHASE_ORDER) {
-      const count = counts.get(phase) ?? 0;
-      const total = totals.get(phase) ?? 0;
+      const count = occurrences.get(phase)?.size ?? 0;
+      const total = observed.get(phase)?.size ?? 0;
       if (
         total < STATS_MINIMUM_PHASE_INSIGHTS_CYCLES ||
         count < STATS_STATEMENT_RECURRENCE_MIN_HITS ||
@@ -138,13 +136,16 @@ export function buildSymptomPhaseRecurrenceStatements(
     .slice(0, STATS_STATEMENT_RECURRENCE_LIMIT);
 }
 
-function countByPhase(occurrences: Iterable<string>): Map<StatsPhase, number> {
-  const counts = new Map<StatsPhase, number>();
-  for (const occurrence of occurrences) {
-    const phase = occurrence.slice(occurrence.indexOf(":") + 1) as StatsPhase;
-    counts.set(phase, (counts.get(phase) ?? 0) + 1);
-  }
-  return counts;
+type PhaseOccurrences = Map<StatsPhase, Set<number>>;
+
+function addOccurrence(
+  occurrences: PhaseOccurrences,
+  phase: StatsPhase,
+  cycleIndex: number,
+): void {
+  const cycles = occurrences.get(phase) ?? new Set<number>();
+  cycles.add(cycleIndex);
+  occurrences.set(phase, cycles);
 }
 
 function mean(values: readonly number[]): number {

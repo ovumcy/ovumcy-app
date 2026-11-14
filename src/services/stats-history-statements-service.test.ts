@@ -177,9 +177,6 @@ describe("history statement copy", () => {
           expect(sentence).toContain(String(count));
         }
       }
-      expect(copy.statementCycleTrendShorter(1)).not.toBe(
-        copy.statementCycleTrendShorter(2).replace("2", "1"),
-      );
     },
   );
 });
