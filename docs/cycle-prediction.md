@@ -322,7 +322,8 @@ instead of a stale or blank one. This layer lives in
    days keep their recorded state. **Stale band:** from the day the raw cycle day
    exceeds the overdue length (the shorter of the prediction and reference
    lengths, web `CycleDataStale`) up to the gate, the projection also withholds
-   the chained cycle's upcoming ovulation and ovulation range and reads the
+   both ovulation dates (the rolled window's and the upcoming one, which
+   describe a cycle not yet started) and the ovulation range, and reads the
    phase as unknown (a logged period day still reads menstrual). The published
    `currentCycleDay` stays the step-2 rolled day (the shared vectors pin it);
    stats and the partner snapshot display the raw day instead
