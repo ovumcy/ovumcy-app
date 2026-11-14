@@ -1,3 +1,7 @@
+import {
+  readManagedPartnerInviteToken,
+  stashManagedPartnerInviteToken,
+} from "../security/managed-partner-invite-token-buffer";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -37,6 +41,18 @@ describe("settings-danger-zone-service", () => {
     });
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+  });
+
+  it("drops a pending managed partner invite token", async () => {
+    stashManagedPartnerInviteToken("invite-token");
+
+    await clearAllLocalSettingsData(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(),
+      createWipeScopeSecretStoresMock(),
+    );
+
+    expect(readManagedPartnerInviteToken()).toBe("");
   });
 
   it("leaves no wipe-scope SecureStore key behind after clearing local data", async () => {

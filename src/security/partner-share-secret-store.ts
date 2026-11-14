@@ -92,8 +92,14 @@ export function createPartnerShareSecretStore(
   // promise.
   let mutateChain: Promise<unknown> = Promise.resolve();
 
+  // Queued on the mutate chain so a read-update-write turn already in flight
+  // cannot write the record back after the delete.
   async function clearPartnerShareSecrets(): Promise<void> {
-    await backend.deleteItem(PARTNER_SHARE_SECRET_STORE_KEY);
+    const next = mutateChain.then(() =>
+      backend.deleteItem(PARTNER_SHARE_SECRET_STORE_KEY),
+    );
+    mutateChain = next.catch(() => undefined);
+    await next;
   }
 
   async function readPartnerShareSecrets(): Promise<PartnerShareSecretsRecord> {
