@@ -243,6 +243,59 @@ describe("cycle-history-service", () => {
     );
   });
 
+  it("measures the stale band and the overdue gate against the shorter of the projection and reference lengths", () => {
+    // Web dashboardCycleOverdueLength parity: cycles [20, 29, 29] project at
+    // the median 29 while the average-first reference length is 26, so the
+    // stale band opens past day 26 and the gate past day 33 (26 + 7), not past
+    // 29 and 36.
+    const { records, lastStart } = periodMarkersFromGaps(new Date(2025, 10, 1), [20, 29, 29]);
+    const profile = createProfileRecord({ lastPeriodStart: isoDate(lastStart) });
+    const project = (rawDay: number) => {
+      const now = new Date(
+        lastStart.getFullYear(),
+        lastStart.getMonth(),
+        lastStart.getDate() + rawDay - 1,
+      );
+      return buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, records, now),
+        records,
+        now,
+      );
+    };
+
+    const history = buildCycleHistorySummary(
+      profile,
+      records,
+      new Date(lastStart.getFullYear(), lastStart.getMonth(), lastStart.getDate() + 10),
+    );
+    expect(history.recentCycleLengths).toEqual([20, 29, 29]);
+    expect(history.medianCycleLength).toBe(29);
+    expect(Math.floor(history.averageCycleLength + 0.5)).toBe(26);
+
+    expect(project(26)).toEqual(
+      expect.objectContaining({ isPredictionStale: false, predictionCycleLength: 29 }),
+    );
+    expect(project(27)).toEqual(
+      expect.objectContaining({
+        isPredictionStale: true,
+        cycleDayLooksLong: false,
+        rawCycleDay: 27,
+        currentCycleDay: 27,
+      }),
+    );
+    expect(project(33)).toEqual(
+      expect.objectContaining({ cycleDayLooksLong: false, rawCycleDay: 33 }),
+    );
+    expect(project(34)).toEqual(
+      expect.objectContaining({
+        cycleDayLooksLong: true,
+        currentCycleDay: 34,
+        nextPeriodDate: null,
+      }),
+    );
+  });
+
   it("keeps a logged period as the phase while the overdue gate withholds the projection", () => {
     // The bleeding is marked uncertain, so it opens no cycle start and the
     // running cycle (anchor 2026-02-01) stays overdue at raw cycle day 53.

@@ -712,6 +712,35 @@ describe("calendar-view-service", () => {
     expect(lateWeek.days.find((day) => day.date === "2026-03-01")).toEqual(
       expect.objectContaining({ stateKey: "predicted" }),
     );
+    // Web ProjectionChainSuppressed: past the cycle length only the running
+    // cycle's own period is drawn — no cycle chained from the missed start
+    // (2026-03-29) and no fertile window or ovulation day.
+    expect(
+      lateWeek.days
+        .filter((day) => day.stateKey === "predicted")
+        .map((day) => day.date),
+    ).toEqual(["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05"]);
+    expect(
+      lateWeek.days.filter((day) =>
+        ["pre_fertile", "fertility_edge", "fertility_peak", "ovulation", "ovulation_tentative"].includes(
+          day.stateKey,
+        ),
+      ),
+    ).toEqual([]);
+    expect(lateWeek.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
+    // With historical phases on, the running cycle still carries no window.
+    const lateWeekHistorical = buildCalendarViewData(
+      { ...profile, showHistoricalPhases: true, trackBBT: true },
+      [],
+      new Date(2026, 2, 5),
+      new Date(2026, 2, 1),
+      "2026-03-05",
+    );
+    expect(
+      lateWeekHistorical.days
+        .filter((day) => day.stateKey !== "neutral" && day.stateKey !== "predicted")
+        .map((day) => day.stateKey),
+    ).toEqual([]);
 
     const overdue = buildCalendarViewData(
       profile,
@@ -739,6 +768,84 @@ describe("calendar-view-service", () => {
     expect(overdue.days.find((day) => day.date === "2026-03-20")).toEqual(
       expect.objectContaining({ stateKey: "period" }),
     );
+  });
+
+  it("keeps a BBT-confirmed ovulation day past the overdue gate and no other prediction", () => {
+    // Web calendar_days.go ConfirmedCurrentCycleOvulation: the day before a
+    // sustained thermal shift is an observation, so it stays on the grid when
+    // the overdue gate (raw cycle day 40 > 28 + 7) withholds every projection.
+    const profile = {
+      lastPeriodStart: "2026-02-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: true,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    };
+    const records: DayLogRecord[] = [
+      {
+        ...createEmptyDayLogRecord("2026-02-01"),
+        isPeriod: true,
+        cycleStart: true,
+        flow: "medium",
+      },
+      ...["08", "09", "10", "11", "12", "13"].map((day) => ({
+        ...createEmptyDayLogRecord(`2026-02-${day}`),
+        bbt: 36.4,
+      })),
+      ...["14", "15", "16"].map((day) => ({
+        ...createEmptyDayLogRecord(`2026-02-${day}`),
+        bbt: 36.7,
+      })),
+    ];
+
+    const viewData = buildCalendarViewData(
+      profile,
+      records,
+      new Date(2026, 2, 12),
+      new Date(2026, 1, 1),
+      "2026-03-12",
+    );
+
+    expect(
+      viewData.days.filter((day) => day.hasOvulationMarker === true).map((day) => day.date),
+    ).toEqual(["2026-02-13"]);
+    expect(
+      viewData.days.filter((day) =>
+        ["predicted", "pre_fertile", "fertility_edge", "fertility_peak", "ovulation_tentative"].includes(
+          day.stateKey,
+        ),
+      ),
+    ).toEqual([]);
+
+    // The gate's other suppression signals still withhold the marker.
+    const unpredictable = buildCalendarViewData(
+      { ...profile, unpredictableCycle: true },
+      records,
+      new Date(2026, 2, 12),
+      new Date(2026, 1, 1),
+      "2026-03-12",
+    );
+    expect(unpredictable.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
+
+    // Without a sustained thermal shift no marker is named.
+    const noShift = buildCalendarViewData(
+      profile,
+      records.slice(0, 7),
+      new Date(2026, 2, 12),
+      new Date(2026, 1, 1),
+      "2026-03-12",
+    );
+    expect(noShift.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
   });
 
   it("explains saved markers separately from the selected day meaning", async () => {
