@@ -1309,8 +1309,8 @@ describe("cycle-history-service", () => {
         { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, flow: "spotting" as const },
       ],
       [
-        "a lone unflagged day the profile was re-anchored to",
-        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true },
+        "a day un-ticked as a period after it was marked",
+        { ...createEmptyDayLogRecord("2026-03-01"), mood: 3 },
       ],
     ])("stays paused when profile.lastPeriodStart points at %s", (_label, record) => {
       const reanchored = createProfileRecord({ lastPeriodStart: "2026-03-01" });
@@ -1494,15 +1494,38 @@ describe("cycle-history-service", () => {
       expect(collectCycleStartDates(profile, spotting, "2026-01-20")).toEqual([]);
     });
 
-    it("keeps a stored start with no logged period day as a boundary of its own", () => {
+    it("keeps a stored start with no row on its date as a boundary of its own", () => {
       const profile = createProfileRecord({ lastPeriodStart: "2026-01-10" });
-      const records = [
-        { ...createEmptyDayLogRecord("2026-01-10"), mood: 3 },
-        { ...createEmptyDayLogRecord("2026-01-12"), isPeriod: true },
-      ];
+      const records = [{ ...createEmptyDayLogRecord("2026-01-12"), isPeriod: true }];
 
       expect(collectCycleStartDates(profile, records, "2026-01-20")).toEqual(["2026-01-10"]);
       expect(collectCycleStartDates(profile, records, "2026-01-09")).toEqual([]);
+    });
+
+    it("marks the onboarding-seeded unmarked day under the stored start as explicit", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-01-10" });
+      const records = [{ ...createEmptyDayLogRecord("2026-01-10"), isPeriod: true }];
+
+      expect(collectCycleStartDates(profile, records, "2026-01-20")).toEqual(["2026-01-10"]);
+    });
+
+    it("withdraws the stored start when its day was un-ticked as a period, and the pause holds", () => {
+      const profile = createProfileRecord({ lastPeriodStart: "2026-06-12" });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-05-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-06-10"), pregnancyTest: "positive" as const },
+        { ...createEmptyDayLogRecord("2026-06-12"), mood: 3 },
+      ];
+      const now = new Date(2026, 5, 20);
+      const projection = buildCurrentCycleProjection(
+        profile,
+        buildCycleHistorySummary(profile, records, now),
+        records,
+        now,
+      );
+
+      expect(collectCycleStartDates(profile, records, "2026-06-20")).toEqual(["2026-05-01"]);
+      expect(projection.isPregnancyPaused).toBe(true);
     });
 
     it("lifts the pause with the anchor after the test when an uncertain mark before it is mirrored into the stored start", () => {

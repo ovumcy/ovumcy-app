@@ -260,11 +260,12 @@ no mark; a cluster matching none of the three opens no cycle and does not split
 the cycle around it. A day counts as spotting when its flow is spotting, or when
 the Spotting symptom is its only bleeding signal (no flow chosen).
 
-`profile.lastPeriodStart` joins the clusters as an explicit non-spotting day only
-when no period day is logged on its date. The app mirrors every manual cycle-start
-mark into it, uncertain and spotting marks included, so a logged day decides what
-its own date is; a stored start without a logged period day (onboarding or
-Settings) is a boundary of its own, as web's onboarding start is.
+`profile.lastPeriodStart` joins the clusters as an explicit non-spotting day, as
+web's onboarding start does (it also marks the unmarked day onboarding seeds on
+its date), unless the day logged on its date withdraws it: un-ticked as a period,
+spotting, or under an uncertain mark. The app mirrors every manual cycle-start
+mark into it, those included, and un-ticking a day does not clear it, so the
+logged day decides.
 
 ## Projection and anchor layer
 
