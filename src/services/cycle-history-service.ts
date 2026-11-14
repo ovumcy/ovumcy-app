@@ -276,8 +276,17 @@ export function buildCurrentCycleProjection(
   // range and the phase derived from them is withheld. The logged anchor and
   // the raw cycle day stay (web shows stats.CurrentCycleDay, counted from
   // stats.LastPeriodStart, never a rolled day).
+  //
+  // Both the stale band and the gate measure against the shorter of the
+  // projection length and the average-first reference length (web
+  // dashboardCycleOverdueLength), so a right-skewed history opens them no later
+  // than the date the projection itself missed.
   const rawCycleDay = currentCycleDay;
-  const referenceLength = predictionCycleLength;
+  const referenceLength = resolveOverdueCycleLength(
+    profile,
+    history,
+    predictionCycleLength,
+  );
   const isPredictionStale = dashboardCycleDataLooksStale(
     rawCycleDay,
     referenceLength,
@@ -290,6 +299,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay: rawCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale,
+      rawCycleDay,
       cycleDayLooksLong,
       isPregnancyPaused: false,
       pregnancyTestDate: null,
@@ -310,6 +320,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale,
+      rawCycleDay,
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
@@ -329,6 +340,7 @@ export function buildCurrentCycleProjection(
       currentCycleDay,
       currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
       isPredictionStale,
+      rawCycleDay,
       isPregnancyPaused: false,
       pregnancyTestDate: null,
       lutealPhase,
@@ -412,6 +424,7 @@ export function buildCurrentCycleProjection(
         : ovulationDate,
     ),
     isPredictionStale,
+    rawCycleDay,
     cycleDayLooksLong,
     isPregnancyPaused: false,
     pregnancyTestDate: null,
@@ -702,6 +715,26 @@ function dashboardCycleDayLooksLong(
     return false;
   }
   return rawCycleDay > referenceLength + 7;
+}
+
+/**
+ * App analog of web's dashboardCycleOverdueLength (dashboard_cycle.go): the
+ * shorter of the projection length and the average-first reference length
+ * (web DashboardCycleReferenceLength). The average and median come from the
+ * same recent lengths, so a median without an average never occurs; without
+ * observed cycles the owner's configured length stands in. Both candidates are
+ * positive here, so web's zero-never-wins guard reduces to a plain minimum.
+ */
+function resolveOverdueCycleLength(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  predictionCycleLength: number,
+): number {
+  const referenceLength =
+    history.averageCycleLength > 0
+      ? Math.floor(history.averageCycleLength + 0.5)
+      : profile.cycleLength;
+  return Math.min(predictionCycleLength, referenceLength);
 }
 
 function resolveNextPeriodWindow(

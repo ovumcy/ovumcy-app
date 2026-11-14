@@ -466,9 +466,11 @@ describe("dashboard-view-service", () => {
   it("keeps a conservative hero naming the overdue next period while the cycle is in its late week", () => {
     // Web parity: the segmented hero is suppressed (text-first) when the data is
     // stale, but predictions are NOT blanked. Anchor 2026-02-01, len 28, today
-    // 2026-03-03 (raw cycle day 31) rolls the cycle day to 3, while the next
-    // period stays the running cycle's 2026-03-01 — already passed, shown in
-    // conservative ("around") wording plus a "log your period" hint.
+    // 2026-03-03 is raw cycle day 31: the hero shows "~31" (web shows the raw
+    // stats.CurrentCycleDay with "~" under CycleDataStale), never the rolled
+    // day 3, while the next period stays the running cycle's 2026-03-01 —
+    // already passed, shown in conservative ("around") wording plus a "log
+    // your period" hint.
     const profile: ProfileRecord = {
       lastPeriodStart: "2026-02-01",
       cycleLength: 28,
@@ -498,7 +500,7 @@ describe("dashboard-view-service", () => {
       expect.objectContaining({
         state: "stale",
         title: "Day",
-        value: "3",
+        value: "~31",
         detail: "Cycle data may be outdated. Log your period when it starts.",
         caption: "Next period: around Mar 1",
         progressPercent: null,
@@ -518,7 +520,7 @@ describe("dashboard-view-service", () => {
     );
     expect(overdue.cycleHero).toEqual(
       expect.objectContaining({
-        value: "53",
+        value: "~53",
         state: "stale",
         caption: "Next period: unknown",
         upcomingOvulationLabel: null,

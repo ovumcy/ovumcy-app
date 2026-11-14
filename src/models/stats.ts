@@ -101,6 +101,10 @@ export type StatsCycleProjection = {
   // existing projection literals (e.g. frozen test fixtures) stay valid; the
   // producer always sets it.
   cycleDayLooksLong?: boolean;
+  // The cycle day counted from the logged anchor, never rolled forward (web
+  // stats.CurrentCycleDay). The stale dashboard hero shows it as "~N". Optional
+  // for the same reason as cycleDayLooksLong; null without a usable anchor.
+  rawCycleDay?: number | null;
   isPregnancyPaused: boolean;
   pregnancyTestDate: LocalDateISO | null;
   lutealPhase: number;
