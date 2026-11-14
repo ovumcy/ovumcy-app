@@ -212,6 +212,13 @@ when the native open fails with an invalid-handle error. All operations run
 through a queue, and `clearAllLocalData` raises a reset barrier so that no read
 or write interleaves with the wipe.
 
+The legacy import carries only the bootstrap state and the profile, then clears
+every legacy key, day logs and symptoms included. Nothing is lost by that: native
+builds have stored day logs in SQLite since the AsyncStorage adapter gained them,
+and the only build that ever kept day logs in AsyncStorage was the web build,
+which never runs this import (web now uses the volatile in-memory store). No
+release predates SQLite.
+
 ### Key mismatch reset
 
 `resolveLocalDataKey` (`sqlite-local-data-key.ts`) reads the key from secure
