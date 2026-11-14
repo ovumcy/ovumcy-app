@@ -12,6 +12,7 @@ import { buildPregnancyStartDefaults } from "./pregnancy-mode-service";
 import {
   STORED_CYCLE_START_REPOINT_VERSION,
   repointLegacyStoredCycleStart,
+  withoutStoredCycleStartRepointState,
 } from "./stored-cycle-start-repoint-service";
 
 const NOW = new Date(2026, 5, 20);
@@ -94,6 +95,19 @@ describe("stored cycle start write path", () => {
     );
 
     expect(await storedStart(storage)).toBe("2026-06-12");
+  });
+
+  it("writes no profile with a save when no stored start exists", async () => {
+    const storage = await seed({ lastPeriodStart: null }, [may]);
+    const before = await storage.readProfileRecord();
+
+    await saveDayLogEditorRecord(
+      storage,
+      { ...createEmptyDayLogRecord("2026-06-12"), notes: "x" },
+      NOW,
+    );
+
+    expect(await storage.readProfileRecord()).toEqual(before);
   });
 
   it("repoints on clear-day from rows on or before today, never to a future row", async () => {
@@ -184,7 +198,7 @@ describe("one-time stored cycle start repoint", () => {
     expect(profile.lastPeriodStartBeforeRepoint).toBeUndefined();
   });
 
-  it("keeps the stored start of a backup written under the repoint rule", async () => {
+  it("re-reads an imported profile even when the backup carries a repoint version", async () => {
     const storage = createVolatileWebAppStorage();
 
     await importBackupEnvelope(storage, {
@@ -192,15 +206,49 @@ describe("one-time stored cycle start repoint", () => {
         ...createDefaultProfileRecord(),
         lastPeriodStart: "2026-06-12",
         cycleLength: 30,
-        storedCycleStartRepointVersion: STORED_CYCLE_START_REPOINT_VERSION,
+        storedCycleStartRepointVersion: 99,
       },
       dayLogs: [may, { ...createEmptyDayLogRecord("2026-06-12"), mood: 3 }],
       symptoms: [],
     } as unknown as Parameters<typeof importBackupEnvelope>[1]);
 
     const profile = await storage.readProfileRecord();
-    expect(profile.lastPeriodStart).toBe("2026-06-12");
+    expect(profile.lastPeriodStart).toBe("2026-05-01");
     expect(profile.storedCycleStartRepointVersion).toBe(STORED_CYCLE_START_REPOINT_VERSION);
+  });
+
+  it("keeps a profile-restoring import when the re-read fails, leaving it for the next launch", async () => {
+    const storage = createVolatileWebAppStorage();
+    const listDayLogs = storage.listDayLogRecordsInRange.bind(storage);
+    jest
+      .spyOn(storage, "listDayLogRecordsInRange")
+      .mockImplementation((from, to) =>
+        from === "0001-01-01" ? Promise.reject(new Error("read failed")) : listDayLogs(from, to),
+      );
+
+    const outcome = await importBackupEnvelope(storage, {
+      profile: { ...createDefaultProfileRecord(), lastPeriodStart: "2026-06-12", cycleLength: 30 },
+      dayLogs: [may],
+      symptoms: [],
+    } as unknown as Parameters<typeof importBackupEnvelope>[1]);
+
+    expect(outcome.profileRestored).toBe(true);
+    const profile = await storage.readProfileRecord();
+    expect(profile.lastPeriodStart).toBe("2026-06-12");
+    expect(profile.storedCycleStartRepointVersion).toBeUndefined();
+  });
+
+  it("keeps the repoint version and the stashed start out of every outgoing profile", () => {
+    const outgoing = withoutStoredCycleStartRepointState({
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-05-01",
+      storedCycleStartRepointVersion: STORED_CYCLE_START_REPOINT_VERSION,
+      lastPeriodStartBeforeRepoint: "2026-06-12",
+    });
+
+    expect(outgoing).not.toHaveProperty("storedCycleStartRepointVersion");
+    expect(outgoing).not.toHaveProperty("lastPeriodStartBeforeRepoint");
+    expect(outgoing.lastPeriodStart).toBe("2026-05-01");
   });
 
   it("repoints after a JSON import brings in the profile and its rows", async () => {

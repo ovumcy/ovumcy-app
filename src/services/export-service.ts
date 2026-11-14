@@ -30,6 +30,7 @@ import {
   validateExportRangeValues,
 } from "./export-policy";
 import { formatLocalDate } from "./profile-settings-policy";
+import { withoutStoredCycleStartRepointState } from "./stored-cycle-start-repoint-service";
 import { normalizeSymptomLabelKey } from "./symptom-policy";
 import { celsiusToUnit, roundTemperature } from "./temperature-policy";
 
@@ -348,7 +349,7 @@ function buildJSONArtifact(
       toDate: values.toDate || null,
     },
     summary,
-    profile,
+    profile: withoutStoredCycleStartRepointState(profile),
     symptoms: symptomRecords,
     dayLogs,
     // Pregnancy records are episodic (they can span far beyond the selected

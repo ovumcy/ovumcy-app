@@ -1345,6 +1345,15 @@ describe("sqlite-app-storage", () => {
     ]);
     expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
 
+    // Without a profile only the rows change.
+    await storage.commitDayLogChanges({
+      writes: [{ ...createEmptyDayLogRecord("2026-03-13"), isPeriod: true }],
+      deletes: [],
+      profile: null,
+    });
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+    expect((await storage.listDayLogRecordsInRange("2026-03-13", "2026-03-13")).length).toBe(1);
+
     failProfile = true;
     await expect(
       storage.commitDayLogChanges({ writes: [], deletes: [], profile }),

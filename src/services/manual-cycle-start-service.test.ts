@@ -150,6 +150,41 @@ describe("manual-cycle-start-service", () => {
     );
   });
 
+  it.each([
+    // Inside the marked cluster the stored start is repointed to the boundary
+    // the rows still give: no confirmed mark is left there, so the cluster
+    // opens on its first of two consecutive period days.
+    ["inside the marked cluster", "2026-03-10", "2026-03-09"],
+    ["after the marked cluster", "2026-03-15", "2026-03-15"],
+    ["absent", null, null],
+  ])(
+    "resolves a stored start %s under an uncertain mark",
+    async (_label, storedStart, expected) => {
+      const profile = createProfileRecord({ lastPeriodStart: storedStart });
+      const records = [
+        { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-03-09"), isPeriod: true },
+        { ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true, cycleStart: true },
+      ];
+      const storage = createLocalAppStorageMock();
+
+      const result = await applyManualCycleStart(
+        storage,
+        profile,
+        records,
+        { ...createEmptyDayLogRecord("2026-03-09"), isPeriod: true },
+        new Date(2026, 2, 17),
+        "en",
+        { markUncertain: true, replaceExisting: true },
+      );
+
+      expect(result).toEqual(expect.objectContaining({ ok: true }));
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastPeriodStart: expected }),
+      );
+    },
+  );
+
   it("auto-fills the rest of the period window after a confirmed cycle start", async () => {
     const profile = createProfileRecord({
       autoPeriodFill: true,
