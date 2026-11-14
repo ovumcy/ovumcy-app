@@ -1182,6 +1182,155 @@ describe("handler edges", () => {
   });
 });
 
+describe("PregnancyEndScreen reminder rebuild", () => {
+  function renderWithScheduler(
+    storage: ReturnType<typeof createLocalAppStorageMock>,
+    scheduler: { sync: jest.Mock },
+    reasonParam?: string,
+  ) {
+    return render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyEndScreen
+          now={new Date(2026, 5, 15)}
+          reasonParam={reasonParam}
+          reminderScheduler={scheduler}
+          storage={storage}
+          loadPostpartumUnlocked={() => Promise.resolve(false)}
+        />
+      </AppPreferencesTestProvider>,
+    );
+  }
+
+  function newScheduler() {
+    return { sync: jest.fn().mockResolvedValue("scheduled") };
+  }
+
+  async function submitDueDate(
+    storage: ReturnType<typeof createLocalAppStorageMock>,
+    scheduler: { sync: jest.Mock },
+  ) {
+    await renderWithScheduler(storage, scheduler);
+    await fireEvent.press(
+      await screen.findByTestId("pregnancy-end-update-due-date-row"),
+    );
+    const input = await screen.findByTestId("pregnancy-end-update-due-date-input");
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-update-due-date-basis-manual"),
+    );
+    await fireEvent.changeText(input, "2026-11-05");
+    await fireEvent.press(
+      screen.getByTestId("pregnancy-end-update-due-date-confirm-button"),
+    );
+  }
+
+  afterEach(() => {
+    mockReplace.mockReset();
+    mockBack.mockReset();
+    mockOpenConfirmation.mockReset();
+    mockChallenge.mockReset();
+  });
+
+  it("rebuilds once after a confirmed end, never before the record is written", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const scheduler = newScheduler();
+    const storage = activeStorage();
+    await renderWithScheduler(storage, scheduler, "birth");
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+
+    await waitFor(() => expect(scheduler.sync).toHaveBeenCalledTimes(1));
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.invocationCallOrder[0],
+    ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+  });
+
+  it("does not rebuild when the end fails to save", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const scheduler = newScheduler();
+    const storage = activeStorage();
+    (storage.writePregnancyRecord as jest.Mock).mockRejectedValue(new Error("busy"));
+    await renderWithScheduler(storage, scheduler, "birth");
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+
+    expect(
+      await screen.findByText(getPregnancyEndCopy("en").status.endFailed),
+    ).toBeTruthy();
+    expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds once after a due-date change, after the record is written", async () => {
+    const active = activeRecord();
+    const scheduler = newScheduler();
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(active),
+      listPregnancyRecords: jest.fn().mockResolvedValue([active]),
+    });
+
+    await submitDueDate(storage, scheduler);
+
+    await waitFor(() => expect(scheduler.sync).toHaveBeenCalledTimes(1));
+    expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.invocationCallOrder[0],
+    ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+    expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard");
+  });
+
+  it("does not rebuild when the due-date change fails to save", async () => {
+    const active = activeRecord();
+    const scheduler = newScheduler();
+    const storage = createLocalAppStorageMock({
+      readActivePregnancy: jest.fn().mockResolvedValue(active),
+      listPregnancyRecords: jest.fn().mockResolvedValue([active]),
+      writePregnancyRecord: jest.fn().mockRejectedValue(new Error("busy")),
+    });
+
+    await submitDueDate(storage, scheduler);
+
+    expect(
+      await screen.findByText(getPregnancyCopy("en").wizard.validation.saveFailed),
+    ).toBeTruthy();
+    expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds once after delete-all, after the delete", async () => {
+    mockChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(true);
+    const scheduler = newScheduler();
+    const storage = activeStorage();
+    await renderWithScheduler(storage, scheduler);
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+
+    await waitFor(() => expect(scheduler.sync).toHaveBeenCalledTimes(1));
+    expect(storage.deleteAllPregnancyData).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(storage.deleteAllPregnancyData).mock.invocationCallOrder[0],
+    ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it("does not rebuild when delete-all fails", async () => {
+    mockChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(true);
+    const scheduler = newScheduler();
+    const storage = activeStorage();
+    (storage.deleteAllPregnancyData as jest.Mock).mockRejectedValue(
+      new Error("busy"),
+    );
+    await renderWithScheduler(storage, scheduler);
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+
+    expect(
+      await screen.findByText(getPregnancyEndCopy("en").delete.status.failed),
+    ).toBeTruthy();
+    expect(scheduler.sync).not.toHaveBeenCalled();
+    expect(mockBack).not.toHaveBeenCalled();
+  });
+});
+
 describe("resolveUpdateEddError", () => {
   it("maps every update error code to the shared wizard validation copy", () => {
     const copy = getPregnancyCopy("en");
