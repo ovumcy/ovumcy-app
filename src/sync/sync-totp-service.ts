@@ -159,8 +159,9 @@ export async function startTOTPEnrollment(
  * returns the new one; it is the only working recovery code from then on, so
  * the caller must show it once. `recoveryCode` is null when the backend issued
  * none (managed, or a community server that predates rotation). A community
- * 429 means the pending secret's verify budget is spent and the secret is
- * gone, so it surfaces as `totp_enrollment_restart_required`.
+ * 429 may mean the pending secret's verify budget is spent and the secret is
+ * gone (the general rate limit answers identically), so it surfaces as
+ * `totp_enrollment_restart_required`.
  */
 export async function verifyTOTPEnrollment(
   secretStore: SyncSecretStore,
