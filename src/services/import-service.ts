@@ -59,11 +59,12 @@ import {
 //     rather than failing the whole import.
 //   - custom symptoms: a symptom whose label already exists is skipped; a new
 //     one is created only when at least one day referencing it is written.
-//   - profile settings are restored ONLY while the local profile is still
-//     pristine (field-for-field equal to createDefaultProfileRecord(), i.e. no
-//     user-entered data yet). Any user-entered value — even a language
-//     override — blocks the profile restore, so a restore can never clobber the
-//     user's current configuration.
+//   - profile settings are restored ONLY while the device is still pristine
+//     (profile field-for-field equal to createDefaultProfileRecord() and no
+//     stored day log, i.e. no user-entered data yet). Any user-entered value —
+//     even a language override — or any local day log blocks the profile
+//     restore, so a restore can never clobber the user's current configuration
+//     or reinterpret existing history.
 //   - pregnancy records / kick-count sessions / contraction sessions (written
 //     by formatVersion 2 and later exports; the parser reads these
 //     collections under any accepted formatVersion and treats a missing one as
@@ -677,12 +678,16 @@ async function importScreeningResponses(
   return { added, skipped };
 }
 
-// Restore the envelope's profile only while the on-device profile is still
-// pristine. The pristine signal is a strict field-for-field comparison against
-// createDefaultProfileRecord(): an onboarding-completed flag cannot serve here
+// Restore the envelope's profile only while the device is still pristine: the
+// on-device profile is field-for-field equal to createDefaultProfileRecord()
+// AND no day log is stored. An onboarding-completed flag cannot serve here
 // because onboarding always records a cycle-start date before the settings
 // screen is reachable, so the flag is uniformly true at import time. Strict
 // equality fails safe — any doubt reads as "user data present, keep it".
+// Day logs are the only other data counted: the profile holds the cycle
+// configuration that history is read against, whereas custom symptoms are
+// vocabulary and pregnancy, session and screening records carry their own
+// dates and ids and never read the restored cycle fields.
 async function restorePristineProfile(
   storage: LocalAppStorage,
   candidate: unknown,
@@ -702,6 +707,15 @@ async function restorePristineProfile(
 
   const current = await storage.readProfileRecord();
   if (!profileFieldsEqual(current, defaults)) {
+    return false;
+  }
+
+  // A default profile under existing day logs is not an empty device: the
+  // restored cycle start and lengths would reinterpret that history. The
+  // check precedes any write of the walk, so preview and apply read the same
+  // answer.
+  const localLogs = await storage.readDayLogSummary();
+  if (localLogs.totalEntries > 0) {
     return false;
   }
 

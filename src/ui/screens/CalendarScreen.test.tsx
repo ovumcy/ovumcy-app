@@ -928,6 +928,46 @@ describe("CalendarScreen", () => {
     await screen.findByTestId("day-log-period-toggle");
   });
 
+  it("repoints the stored start against the screen's own today when clearing a day", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      ...(await storage.readProfileRecord()),
+      lastPeriodStart: "2026-03-14",
+      languageOverride: "en",
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-02-10"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-14"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    // Dated after the screen's today but before the wall clock: only a clear
+    // that honours the screen's today leaves it out of the repoint.
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-25"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await fireEvent.press(await screen.findByTestId("calendar-day-edit-button"));
+    await fireEvent.press(await screen.findByTestId("day-log-delete-button"));
+
+    await waitFor(
+      () => expect(screen.getByTestId("calendar-day-add-button")).toBeTruthy(),
+      { timeout: 3000 },
+    );
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-02-10");
+  });
+
   it("cancels an edit without discarding the persisted entry", async () => {
     const storage = createStorageMock();
 
