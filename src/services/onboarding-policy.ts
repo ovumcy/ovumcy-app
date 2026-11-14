@@ -15,6 +15,7 @@ import {
 import {
   addDays,
   buildCycleGuidanceState as buildSharedCycleGuidanceState,
+  diffCalendarDays,
   formatLocalDate,
   normalizeUsageGoal,
   atLocalDay,
@@ -186,9 +187,7 @@ export function buildDayOptions(
 
   for (let cursor = new Date(maxDate); cursor >= minDate; cursor = addDays(cursor, -1)) {
     const current = new Date(cursor);
-    const dayOffset = Math.round(
-      (maxDate.getTime() - current.getTime()) / 86400000,
-    );
+    const dayOffset = diffCalendarDays(current, maxDate);
     const relativeLabel = resolveRelativeDayLabel(dayOffset, locale, relativeLabels);
     const formattedDate = formatter.format(current);
 

@@ -87,8 +87,10 @@ export const EXPORT_CSV_HEADERS = [
   "Cycle factors",
   "Other",
   "Notes",
-  // These three mirror the ovumcy-web Free-tier CSV contract, in the same
-  // order, so an export from either owner surface parses the same way.
+  // These three columns use the ovumcy-web Free-tier header names, in that
+  // relative order. The columns above are not an exact mirror of web's: the app
+  // adds `LH test` and has no `Swelling` column, so a consumer matches columns
+  // by header name rather than by position.
   "Pregnancy test",
   "Cycle start",
   "Uncertain",

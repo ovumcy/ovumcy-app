@@ -95,7 +95,7 @@ export function StatsOverviewPremiumSections({
           description={lock.description}
           eyebrowLabel={lock.eyebrowLabel}
           key={testID}
-          onPress={onPremiumCTAPress ?? (() => {})}
+          onPress={onPremiumCTAPress}
           testID={testID}
           title={lock.title}
         />

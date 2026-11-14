@@ -63,23 +63,25 @@ import {
 //     user-entered data yet). Any user-entered value — even a language
 //     override — blocks the profile restore, so a restore can never clobber the
 //     user's current configuration.
-//   - pregnancy records / kick-count sessions / contraction sessions (
-//     formatVersion 2 only): each record is sanitized (an invalid one is
+//   - pregnancy records / kick-count sessions / contraction sessions (written
+//     by formatVersion 2 and later exports; the parser reads these
+//     collections under any accepted formatVersion and treats a missing one as
+//     empty): each record is sanitized (an invalid one is
 //     skipped, never fatal) and skipped whenever its id already exists
 //     on-device. Pregnancy records additionally honor the one-active-pregnancy
 //     invariant: an incoming "active" record is skipped whenever the device
 //     (or an earlier record from this same import) already has a DIFFERENT
-//     active record — never overwriting, ending, or throwing past it. A
-//     formatVersion 1 file never carries these keys, so it imports exactly as
-//     before.
-//   - postpartum records / screening responses (formatVersion 3 only):
+//     active record — never overwriting, ending, or throwing past it. A file
+//     without these keys imports exactly as before.
+//   - postpartum records / screening responses (written by formatVersion 3
+//     exports; read under any accepted formatVersion like the collections above):
 //     postpartum records mirror the pregnancy path exactly (sanitize-or-skip,
 //     id-dedup, ended-before-active ordering + the one-active-postpartum
 //     invariant). Screening responses mirror the session path (sanitize-or-skip,
 //     id-dedup, no active concept); the sanitizer RECOMPUTES score/selfHarmFlag
 //     from the validated answer vector, so a drifted or tampered stored score
-//     can never be imported as-is. A formatVersion 1/2 file never carries these
-//     keys, so it imports exactly as before.
+//     can never be imported as-is. A file without these keys imports exactly
+//     as before.
 //
 // Individual bad records are counted, not fatal; only a structurally invalid
 // file fails outright.

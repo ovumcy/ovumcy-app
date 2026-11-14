@@ -16,6 +16,20 @@ npm test
 
 Security issues should not be reported publicly. Use [SECURITY.md](SECURITY.md).
 
+## Translations
+
+Copy lives in typed catalogs under `src/i18n/` (one module per surface, for example
+`day-log-copy.ts` and `stats-copy.ts`), with one entry per supported language: en, ru, de, fr,
+es, it. There is no external catalog file to edit. The compiler requires every language to be
+present in each catalog, so a missing translation fails `npm run typecheck`. Language resolution
+is described in the i18n runtime section of [docs/architecture.md](docs/architecture.md).
+
+- Keep the existing register of each language. Russian addresses the reader formally
+  («вы», «сохраните»), never informally.
+- Russian counts use the helpers in `src/i18n/ru-plural.ts` instead of hand-written plural
+  rules.
+- Do not put secrets or health data into copy, and keep wording free of medical advice.
+
 ## Pull Request Rules
 
 - Keep changes scoped and atomic.
