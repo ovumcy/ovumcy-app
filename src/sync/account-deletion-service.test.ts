@@ -410,7 +410,7 @@ describe("deleteOvumcyAccount", () => {
     expect(backend.keys()).toEqual(storageOwnedKeys);
   });
 
-  it("clears every other secret, reports failure and keeps local data when one secret clear throws", async () => {
+  it("clears every other secret and still wipes local data, but reports failure, when one secret clear throws", async () => {
     const inventory = listSecureStoreKeysFromSource();
     const backend = createInMemorySecureStoreBackend(
       inventory.map((entry) => entry.key),
@@ -439,7 +439,7 @@ describe("deleteOvumcyAccount", () => {
     );
 
     expect(result).toEqual({ ok: false, errorCode: "generic" });
-    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     expect(backend.keys()).toEqual(
       ["ovumcy.entitlement-token", "ovumcy.local-data-key"].sort(),
     );

@@ -113,9 +113,11 @@ export type DeleteOvumcyAccountErrorCode =
  *                account is gone, so unlike disconnect there is no reason to
  *                keep the local wrapped master key around), plus the pending
  *                managed partner invite buffer — mirroring the existing
- *                session-boundary invariant. Every clear is attempted; if any
- *                fails the result is `generic` and step 3 does not run, so a
- *                failed secret wipe is reported, never a success.
+ *                session-boundary invariant. Every clear is attempted; a
+ *                failing one does not stop step 3 (the server account is
+ *                already gone, so local health data must not outlive it), and
+ *                the result is `generic`, so a failed secret wipe is reported,
+ *                never a success.
  *   3. local:    wipe all local data via `storage.clearAllLocalData()`
  *                (the same danger-zone path settings uses; this already
  *                clears the managed billing cache table too, so no separate
@@ -164,16 +166,22 @@ export async function deleteOvumcyAccount(
   // No session for the active mode (or genuinely local-only): nothing to
   // call on the server, proceed straight to the local teardown below.
 
+  // Session boundary: same buffer cleared on disconnect and mode-switch
+  // must not survive account deletion either. Secrets first, then the local
+  // database, which is wiped even when a secret clear failed.
+  let secretsCleared = true;
   try {
-    // Session boundary: same buffer cleared on disconnect and mode-switch
-    // must not survive account deletion either. Order mirrors
-    // `clearAllLocalSettingsData`: secrets first, then the local database.
     await clearWipeScopeSecrets(secretStore, wipeScopeSecretStores);
-    clearManagedPartnerInviteToken();
+  } catch {
+    secretsCleared = false;
+  }
+  clearManagedPartnerInviteToken();
+
+  try {
     await storage.clearAllLocalData();
   } catch {
     return { ok: false, errorCode: "generic" };
   }
 
-  return { ok: true };
+  return secretsCleared ? { ok: true } : { ok: false, errorCode: "generic" };
 }
