@@ -810,10 +810,10 @@ describe("sync-api-client", () => {
     });
   });
 
-  it("treats an empty recovery code from totp verify as none", async () => {
+  it("treats a blank recovery code from totp verify as none", async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce(
       new Response(
-        JSON.stringify({ status: "totp_enabled", recovery_code: "" }),
+        JSON.stringify({ status: "totp_enabled", recovery_code: "   " }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
     );

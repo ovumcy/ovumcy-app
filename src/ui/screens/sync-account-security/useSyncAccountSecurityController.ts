@@ -43,6 +43,12 @@ export type SyncAccountSecurityTOTPStage =
   | "verifying" // submitting code
   | "completed";
 
+// UI-only: 2FA turned on but the rotated recovery code never reached the screen.
+export type TOTPRecoveryCodeLostErrorCode = "totp_recovery_code_lost";
+
+const RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<VerifyTOTPEnrollmentErrorCode> =
+  new Set(["network_failed", "generic", "totp_already_enabled"]);
+
 export type SyncAccountSecurityControllerOptions = {
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
@@ -121,6 +127,7 @@ export function useSyncAccountSecurityController({
     | StartTOTPEnrollmentErrorCode
     | VerifyTOTPEnrollmentErrorCode
     | DisableTOTPErrorCode
+    | TOTPRecoveryCodeLostErrorCode
     | null
   >(null);
 
@@ -212,6 +219,7 @@ export function useSyncAccountSecurityController({
     if (result.ok) {
       setPreferences(result.preferences);
       setRevealedRecoveryCode(result.recoveryCode);
+      setRevealedRecoveryCodeFromTOTP(false);
       setForgotStage("completed");
       setForgotStatus("success");
       setForgotSignedOut(true);
@@ -248,6 +256,7 @@ export function useSyncAccountSecurityController({
     );
     if (result.ok) {
       setRevealedRecoveryCode(result.recoveryCode);
+      setRevealedRecoveryCodeFromTOTP(false);
       setRegenerateStatus("success");
       setRegeneratePassword("");
     } else {
@@ -304,6 +313,26 @@ export function useSyncAccountSecurityController({
         setTotpStage("idle");
         setTotpEnrollment(null);
         setTotpVerifyCode("");
+        return;
+      }
+      // A community server enables 2FA and rotates the recovery code before it
+      // answers, so a lost or unreadable response can leave the account with a
+      // code this device never saw.
+      if (
+        preferences.mode !== "managed" &&
+        RESPONSE_MAY_BE_LOST_CODES.has(result.errorCode)
+      ) {
+        const status = await describeSyncAccountTwoFactor(
+          syncSecretStore,
+          preferences,
+        );
+        if (status?.twoFactorEnabled) {
+          setTwoFactorEnabled(true);
+          setTotpErrorCode("totp_recovery_code_lost");
+          setTotpStage("idle");
+          setTotpEnrollment(null);
+          setTotpVerifyCode("");
+        }
       }
       return;
     }

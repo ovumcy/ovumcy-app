@@ -360,7 +360,7 @@ describe("sync-totp-service", () => {
       });
     });
 
-    it("maps a community 429 to totp_enrollment_restart_required because the pending secret is discarded", async () => {
+    it("maps a community 429 to totp_enrollment_restart_required because the pending secret may be discarded", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const apiFactory = jest.fn().mockReturnValue(
         communityClientMock({

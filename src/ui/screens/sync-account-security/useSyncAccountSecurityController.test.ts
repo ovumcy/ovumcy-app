@@ -33,6 +33,16 @@ function managedPreferences(): SyncPreferencesRecord {
   };
 }
 
+function selfHostedPreferences(): SyncPreferencesRecord {
+  return {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "self_hosted",
+    endpointInput: "192.168.1.20:8080",
+    deviceLabel: "Pixel 7",
+    setupStatus: "connected",
+  };
+}
+
 describe("useSyncAccountSecurityController", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
@@ -859,9 +869,11 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.revealedRecoveryCodeFromTOTP).toBe(false);
     });
 
-    it("never logs the recovery code issued by TOTP enrollment", async () => {
+    it("never logs or persists the recovery code issued by TOTP enrollment", async () => {
       const storage = createLocalAppStorageMock({
-        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(selfHostedPreferences()),
       });
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
@@ -896,6 +908,105 @@ describe("useSyncAccountSecurityController", () => {
       for (const spy of consoleSpies) {
         expect(spy).not.toHaveBeenCalled();
       }
+      for (const fn of [
+        ...Object.values(storage),
+        ...Object.values(syncSecretStore),
+      ]) {
+        if (jest.isMockFunction(fn)) {
+          expect(JSON.stringify(fn.mock.calls)).not.toContain(
+            "supersecretrecoverycode111111111",
+          );
+        }
+      }
+    });
+  });
+
+  describe("handleVerifyTOTPEnrollment (lost response)", () => {
+    it("tells a community user the rotated code was lost when 2FA turned out to be on", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValueOnce({ twoFactorEnabled: false })
+        .mockResolvedValueOnce({ twoFactorEnabled: true });
+      jest
+        .spyOn(syncTOTPService, "verifyTOTPEnrollment")
+        .mockResolvedValue({ ok: false, errorCode: "network_failed" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe("totp_recovery_code_lost");
+      expect(result.current.twoFactorEnabled).toBe(true);
+      expect(result.current.totpStage).toBe("idle");
+      expect(result.current.totpEnrollment).toBeNull();
+      expect(result.current.revealedRecoveryCode).toBe("");
+    });
+
+    it("keeps the original error when 2FA is still off after a lost response", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false });
+      jest
+        .spyOn(syncTOTPService, "verifyTOTPEnrollment")
+        .mockResolvedValue({ ok: false, errorCode: "totp_already_enabled" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe("totp_already_enabled");
+      expect(result.current.twoFactorEnabled).toBe(false);
+      expect(
+        syncAccountSessionService.describeSyncAccountTwoFactor,
+      ).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not re-check 2FA for a community code rejection", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false });
+      jest
+        .spyOn(syncTOTPService, "verifyTOTPEnrollment")
+        .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe("totp_invalid_code");
+      expect(
+        syncAccountSessionService.describeSyncAccountTwoFactor,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -436,7 +436,10 @@ export function createSyncAPIClient(
         "invalid_response",
       ).then((result) =>
         result.ok
-          ? { ok: true, recoveryCode: result.payload.recovery_code || null }
+          ? {
+              ok: true,
+              recoveryCode: result.payload.recovery_code?.trim() || null,
+            }
           : { ok: false, errorCode: result.errorCode },
       );
     },

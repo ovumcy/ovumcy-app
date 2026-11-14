@@ -33,6 +33,7 @@ import type {
   SyncAccountSecurityStatus,
   SyncAccountSecurityTOTPMode,
   SyncAccountSecurityTOTPStage,
+  TOTPRecoveryCodeLostErrorCode,
 } from "./useSyncAccountSecurityController";
 
 type AnyErrorCode =
@@ -44,7 +45,8 @@ type AnyErrorCode =
 type TOTPErrorCode =
   | StartTOTPEnrollmentErrorCode
   | VerifyTOTPEnrollmentErrorCode
-  | DisableTOTPErrorCode;
+  | DisableTOTPErrorCode
+  | TOTPRecoveryCodeLostErrorCode;
 
 export type SyncAccountSecuritySectionProps = {
   copy: AccountSecurityCopy;
@@ -111,6 +113,8 @@ export type SyncAccountSecuritySectionProps = {
 // the submit affordance is briefly disabled in addition to showing the distinct
 // wait message. The controller clears the error on the next edit/submit, which
 // re-enables the button — no countdown is needed.
+function ignoreRequestClose() {}
+
 function isRateLimited(code: AnyErrorCode | TOTPErrorCode | null): boolean {
   return code === "rate_limited";
 }
@@ -553,7 +557,9 @@ export function SyncAccountSecuritySection({
 
       <Modal
         animationType="fade"
-        onRequestClose={onAcknowledgeRecoveryCode}
+        // Back must not discard a code that is shown only once; only the
+        // explicit confirm button acknowledges it.
+        onRequestClose={ignoreRequestClose}
         transparent
         visible={isRevealVisible}
       >
@@ -613,6 +619,8 @@ function resolveTOTPErrorMessage(
       return copy.errors.totpSecretFailed;
     case "totp_enrollment_restart_required":
       return copy.errors.totpEnrollmentRestartRequired;
+    case "totp_recovery_code_lost":
+      return copy.errors.totpRecoveryCodeLost;
     case "not_connected":
       return copy.errors.notConnected;
     case "rate_limited":

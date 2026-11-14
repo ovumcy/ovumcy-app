@@ -56,6 +56,7 @@ export type TOTPCopy = {
     unauthorized: string;
     totpEnrollInvalidCode: string;
     totpEnrollmentRestartRequired: string;
+    totpRecoveryCodeLost: string;
     generic: string;
   };
 };
@@ -117,6 +118,8 @@ const totpCopyEn: TOTPCopy = {
       "Code is incorrect. If setup was also started on another device, only the newest setup counts: finish it there, or cancel and start again here.",
     totpEnrollmentRestartRequired:
       "Too many attempts for this setup, so it was cancelled. Enter your password to start again.",
+    totpRecoveryCodeLost:
+      "Two-factor is now on, but the new recovery code did not reach this device, and your previous code no longer works. Use “Regenerate recovery code” to get a new one.",
     generic: "Something went wrong. Try again.",
   },
 };
@@ -182,6 +185,8 @@ const totpCopyDe: TOTPCopy = {
       "Der Code ist falsch. Wurde die Einrichtung auch auf einem anderen Gerät gestartet, gilt nur die neueste: Schließen Sie sie dort ab oder brechen Sie ab und starten Sie hier neu.",
     totpEnrollmentRestartRequired:
       "Zu viele Versuche für diese Einrichtung, sie wurde abgebrochen. Geben Sie Ihr Passwort ein, um neu zu starten.",
+    totpRecoveryCodeLost:
+      "Die Zwei-Faktor-Authentifizierung ist jetzt aktiv, aber der neue Wiederherstellungscode hat dieses Gerät nicht erreicht, und Ihr bisheriger Code funktioniert nicht mehr. Holen Sie sich über „Wiederherstellungscode erneuern“ einen neuen.",
     generic: "Etwas ist schiefgegangen. Bitte erneut versuchen.",
   },
 };
@@ -248,6 +253,8 @@ const totpCopyFr: TOTPCopy = {
       "Code incorrect. Si la configuration a aussi été lancée sur un autre appareil, seule la plus récente compte : terminez-la là-bas, ou annulez et recommencez ici.",
     totpEnrollmentRestartRequired:
       "Trop d'essais pour cette configuration, elle a été annulée. Entrez votre mot de passe pour recommencer.",
+    totpRecoveryCodeLost:
+      "Le deuxième facteur est maintenant activé, mais le nouveau code de récupération n'est pas parvenu à cet appareil et votre ancien code ne fonctionne plus. Utilisez « Régénérer le code de récupération » pour en obtenir un nouveau.",
     generic: "Quelque chose a échoué. Réessayez.",
   },
 };
@@ -311,6 +318,8 @@ const totpCopyRu: TOTPCopy = {
       "Код неверный. Если настройку начали и на другом устройстве, действует только самая новая: завершите её там или отмените и начните заново здесь.",
     totpEnrollmentRestartRequired:
       "Слишком много попыток для этой настройки, она отменена. Введите пароль, чтобы начать заново.",
+    totpRecoveryCodeLost:
+      "Двухфакторка включена, но новый код восстановления не дошёл до этого устройства, а прежний код больше не работает. Получите новый через «Перевыпустить код восстановления».",
     generic: "Что-то пошло не так. Повторите попытку.",
   },
 };
@@ -377,6 +386,8 @@ const totpCopyEs: TOTPCopy = {
       "Código incorrecto. Si también iniciaste la configuración en otro dispositivo, solo cuenta la más reciente: termínala allí o cancela y empieza de nuevo aquí.",
     totpEnrollmentRestartRequired:
       "Demasiados intentos para esta configuración; se canceló. Introduce tu contraseña para empezar de nuevo.",
+    totpRecoveryCodeLost:
+      "La verificación en dos pasos ya está activada, pero el nuevo código de recuperación no llegó a este dispositivo y tu código anterior ya no funciona. Usa «Regenerar código de recuperación» para obtener uno nuevo.",
     generic: "Algo salió mal. Inténtalo de nuevo.",
   },
 };
@@ -438,6 +449,8 @@ const totpCopyIt: TOTPCopy = {
       "Codice non corretto. Se la configurazione è stata avviata anche su un altro dispositivo, vale solo la più recente: completala lì, oppure annulla e ricomincia qui.",
     totpEnrollmentRestartRequired:
       "Troppi tentativi per questa configurazione, che è stata annullata. Inserisci la password per ricominciare.",
+    totpRecoveryCodeLost:
+      "L'autenticazione a due fattori è ora attiva, ma il nuovo codice di recupero non è arrivato su questo dispositivo e il codice precedente non funziona più. Usa «Rigenera codice di recupero» per ottenerne uno nuovo.",
     generic: "Qualcosa è andato storto. Riprova.",
   },
 };
