@@ -152,7 +152,12 @@ describe("cycle-projection golden vectors (shared with ovumcy-web)", () => {
       expect(projection.predictionCycleLength).toBe(expected.predictionLength);
       expect(projection.currentCycleDay).toBe(expected.projectedCycleDay);
       expect(projection.nextPeriodDate).toBe(expected.displayedNextPeriodStart);
-      expect(projection.upcomingOvulationDate).toBe(expected.ovulationDate);
+      // The stale band (web CycleDataStale) withholds the chained cycle's
+      // upcoming ovulation from the published projection; the roll itself is
+      // pinned against the vector in stage 4 below.
+      expect(projection.upcomingOvulationDate).toBe(
+        projection.isPredictionStale ? null : expected.ovulationDate,
+      );
 
       // 4. Ovulation date: the window for the projected cycle, rolled forward
       // once if its ovulation already fell before `today` (the exact

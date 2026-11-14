@@ -409,6 +409,33 @@ export function buildCurrentCycleProjection(
     lutealPhase,
   );
 
+  // Stale band (web CycleDataStale): the running cycle is past its overdue
+  // length, so the rolled window describes a cycle the owner has not started.
+  // The chained cycle's upcoming ovulation / range is withheld and the phase
+  // reads "unknown" (a logged period day is still a fact). The rolled
+  // currentCycleDay stays as published; display surfaces read the raw day via
+  // `resolveDisplayCycleDay`.
+  if (isPredictionStale) {
+    return {
+      cycleAnchorDate,
+      currentCycleDay: rolledCycleDay,
+      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale,
+      rawCycleDay,
+      cycleDayLooksLong,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
+      lutealPhase,
+      projectedPeriodLength,
+      nextPeriodDate,
+      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
+      ovulationDate: rolledWindow.ovulationDate,
+      upcomingOvulationDate: null,
+      predictionCycleLength,
+    };
+  }
+
   return {
     cycleAnchorDate,
     currentCycleDay: rolledCycleDay,
@@ -715,6 +742,25 @@ function dashboardCycleDayLooksLong(
     return false;
   }
   return rawCycleDay > referenceLength + 7;
+}
+
+/**
+ * The cycle day a display surface (stats, partner share) shows. In the stale
+ * band it is the raw day counted from the logged anchor (as the dashboard hero's
+ * "~N"), never the rolled day 1-7 of a cycle the owner has not started;
+ * otherwise it is the projection's `currentCycleDay`. The published
+ * `currentCycleDay` itself is unchanged.
+ */
+export function resolveDisplayCycleDay(
+  projection: Pick<
+    StatsCycleProjection,
+    "currentCycleDay" | "isPredictionStale" | "rawCycleDay"
+  >,
+): number | null {
+  if (projection.isPredictionStale && typeof projection.rawCycleDay === "number") {
+    return projection.rawCycleDay;
+  }
+  return projection.currentCycleDay;
 }
 
 /**
