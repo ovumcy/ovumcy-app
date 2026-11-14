@@ -42,15 +42,29 @@ function listSourceFiles(directory: string): string[] {
  * `expo-secure-store`, so a store added elsewhere cannot escape the list.
  */
 export function listSecureStoreKeysFromSource(): SecureStoreKeyEntry[] {
+  return listSecureStoreKeys(
+    listSourceFiles(SRC_DIR).map((file) => ({
+      relativePath: relative(SRC_DIR, file).split(sep).join("/"),
+      source: readFileSync(file, "utf8"),
+    })),
+    (storeModule) =>
+      readFileSync(join(SECURITY_DIR, `${storeModule}.ts`), "utf8"),
+  );
+}
+
+// The rule behind `listSecureStoreKeysFromSource`, over given sources, so the
+// rejecting branches can be exercised without planting files in src/.
+export function listSecureStoreKeys(
+  files: { relativePath: string; source: string }[],
+  readStoreModule: (storeModule: string) => string,
+): SecureStoreKeyEntry[] {
   const entries: SecureStoreKeyEntry[] = [];
 
-  for (const file of listSourceFiles(SRC_DIR)) {
-    const source = readFileSync(file, "utf8");
+  for (const { relativePath, source } of files) {
     if (!SECURE_STORE_IMPORT.test(source)) {
       continue;
     }
 
-    const relativePath = relative(SRC_DIR, file).split(sep).join("/");
     if (!/^security\/platform-[\w-]+\.native\.ts$/.test(relativePath)) {
       throw new Error(
         `${relativePath} imports expo-secure-store outside a src/security platform store factory`,
@@ -62,7 +76,7 @@ export function listSecureStoreKeysFromSource(): SecureStoreKeyEntry[] {
       throw new Error(`${relativePath} does not import a ./<store> factory`);
     }
     const storeModule = moduleMatch[1];
-    const storeSource = readFileSync(join(SECURITY_DIR, `${storeModule}.ts`), "utf8");
+    const storeSource = readStoreModule(storeModule);
     const keys = [...storeSource.matchAll(OVUMCY_KEY_LITERAL)].map(
       (match) => match[1] as string,
     );
