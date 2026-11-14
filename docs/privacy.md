@@ -36,6 +36,7 @@ All entries use `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`.
 - Sync secrets (`ovumcy.sync-secrets`): device identity and label, sync master key, wrapped-key metadata, self-hosted and managed session tokens, managed refresh token and expiries.
 - Partner-share keys (`ovumcy.partner-share-secrets`): per-grant keys, pending invite keys, anti-replay and generation counters.
 - Signed entitlement token store (`ovumcy.entitlement-token`).
+- Sync certificate pins (`ovumcy.sync-cert-pins`): a store with a SecureStore backend, but no flow writes a pin today; the wipe paths delete the entry regardless.
 
 None of these is health data; they are the keys and credentials that protect it.
 
@@ -91,8 +92,8 @@ A partner never reads the owner's store. The owner's device builds a separate pr
 |---|---|
 | Access, portability | Settings export, over a chosen date range: JSON (the full backup, including pregnancy, postpartum and screening data), CSV (day logs plus a per-day kick count), doctor PDF. Export files follow the cache lifecycle above. |
 | Rectification | Every record is editable in place: day logs, profile and cycle settings, symptoms, pregnancy and postpartum records. JSON import restores from a backup file. |
-| Erasure, device | Settings danger zone, "Clear local data": requires the confirmation word and device authentication (a web bypass applies in the browser preview); it clears the sync secrets. |
-| Erasure, account | Delete account: calls the connected backend's account deletion first and aborts without local change on failure; then clears sync secrets and the pending invite token and wipes local data. With no connected session it is local-only. |
+| Erasure, device | Settings danger zone, "Clear local data": requires the confirmation word and device authentication (a web bypass applies in the browser preview); it wipes local data, then deletes every SecureStore entry except the regenerated local-data key: sync secrets, partner-share keys, entitlement token, certificate pins. |
+| Erasure, account | Delete account: calls the connected backend's account deletion first and aborts without local change on failure; then deletes the same SecureStore entries and the pending invite token, and wipes local data. If a SecureStore entry cannot be deleted, the others are still deleted, local data is left in place and the deletion reports a failure. With no connected session it is local-only. |
 | Erasure, by domain | Separate device-authenticated hard deletes for pregnancy, postpartum and screening data. |
 
 Whether and how long the backend retains data after account deletion is determined server-side and is not documented here.
@@ -100,7 +101,7 @@ Whether and how long the backend retains data after account deletion is determin
 ## Retention and Deletion Behaviour
 
 - Data stays on the device until the owner deletes it; the app applies no automatic expiry to health data.
-- "Clear local data" and account deletion run `clearAllLocalData`: they delete every row of all eleven tables listed above, clear the legacy AsyncStorage data, delete the local-data encryption key and seed fresh rows under a newly generated key. The danger-zone path also clears the sync secrets (`src/services/settings-danger-zone-service.ts`).
+- "Clear local data" and account deletion run `clearAllLocalData`: they delete every row of all eleven tables listed above, clear the legacy AsyncStorage data, delete the local-data encryption key and seed fresh rows under a newly generated key. Both paths also delete the sync secrets, partner-share keys, entitlement token and certificate pins from SecureStore (`clearWipeScopeSecrets`, `src/security/wipe-scope-secrets.ts`); each deletion is attempted even when another fails, and any failure makes the action report failure. Disconnect and sync-mode switch keep the partner-share keys, the entitlement token and the pins.
 - If the stored key no longer authenticates the stored rows, the storage layer wipes and reseeds rather than failing or exposing partial data.
 - Restoring a sync snapshot replaces local data (it wipes first, then writes the snapshot).
 - Cloud backups can only be removed through the backend: account deletion, or a self-hoster's own server controls.
@@ -121,6 +122,6 @@ Reminders are local notifications, scheduled only after the owner grants permiss
 
 ## Known Gaps
 
-- The partner-share secret store has no production caller that clears it on local wipe, account deletion, disconnect or mode switch; only a single grant key can be cleared (`clearManagedPartnerGrantKey`). The entitlement token store likewise has no clear call in those flows. Both live in SecureStore.
-- A TLS pin store (`src/security/cert-pin-store.ts`) exists but is not wired to a storage backend, so no pins are persisted today; wipe flows will need to clear it once it is.
+- Disconnect and sync-mode switch do not clear the partner-share secret store or the entitlement token; only a single grant key can be cleared outside the wipe paths (`clearManagedPartnerGrantKey`).
+- The TLS pin store (`src/security/cert-pin-store.ts`) has a SecureStore backend, but no flow writes a pin yet; the wipe paths delete its entry.
 - Certificate pinning is not enforced natively (see `SECURITY.md`).
