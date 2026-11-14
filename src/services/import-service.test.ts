@@ -53,6 +53,12 @@ function createStatefulStorage(
     writeDayLogRecord: jest.fn(async (record: DayLogRecord) => {
       dayLogs.set(record.date, record);
     }),
+    readDayLogSummary: jest.fn(async () => ({
+      totalEntries: dayLogs.size,
+      hasData: dayLogs.size > 0,
+      dateFrom: null,
+      dateTo: null,
+    })),
     listSymptomRecords: jest.fn(async () => symptoms),
     writeSymptomRecord: jest.fn(async (record: SymptomRecord) => {
       symptoms.push(record);
@@ -737,6 +743,34 @@ describe("import-service profile restore (pristine-only)", () => {
     });
   });
 
+  it("keeps a default profile that already sits under local day logs, and still adds the rows", async () => {
+    const { storage, dayLogs, getProfile } = createStatefulStorage();
+    dayLogs.set("2026-02-01", { ...createEmptyDayLogRecord("2026-02-01"), notes: "local" });
+    const file = envelope({
+      profile: backupProfile(),
+      dayLogs: [{ ...createEmptyDayLogRecord("2026-03-02"), mood: 3 }],
+    });
+
+    const preview = await previewImportBackupEnvelope(storage, file);
+    const outcome = await importBackupEnvelope(storage, file);
+
+    expect(preview.profileRestored).toBe(false);
+    expect(outcome.profileRestored).toBe(false);
+    expect(outcome.dayLogsAdded).toBe(1);
+    expect(dayLogs.has("2026-03-02")).toBe(true);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    expect(getProfile()).toEqual(createDefaultProfileRecord());
+  });
+
+  it("restores the profile on a truly empty device and the preview says so", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+    const file = envelope({ profile: backupProfile() });
+
+    expect((await previewImportBackupEnvelope(storage, file)).profileRestored).toBe(true);
+    expect((await importBackupEnvelope(storage, file)).profileRestored).toBe(true);
+    expect(getProfile().lastPeriodStart).toBe("2026-03-01");
+  });
+
   it("never touches the profile on a configured device", async () => {
     const configured = {
       ...createDefaultProfileRecord(),
@@ -976,7 +1010,8 @@ describe("previewImportBackupEnvelope (dry-run)", () => {
       dayLogsSkipped: 1,
       dayLogsRejected: 1,
       symptomsAdded: 1,
-      profileRestored: true,
+      // The device already holds a day log, so it is not pristine.
+      profileRestored: false,
       pregnanciesAdded: 0,
       pregnanciesSkipped: 0,
       kickSessionsAdded: 0,

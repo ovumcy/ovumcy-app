@@ -243,7 +243,11 @@ export function DashboardScreen({
     setIsSaving(true);
     setStatus(null);
 
-    const result = await clearDayLogEditorRecord(storage, state.todayEntry.date);
+    const result = await clearDayLogEditorRecord(
+      storage,
+      state.todayEntry.date,
+      effectiveNow,
+    );
     if (!result.ok) {
       setStatus({
         message: state.editorViewData.actions.deleteFailedLabel,

@@ -297,7 +297,11 @@ export function CalendarScreen({
     setIsSaving(true);
     setStatus(null);
 
-    const result = await clearDayLogEditorRecord(storage, state.selectedRecord.date);
+    const result = await clearDayLogEditorRecord(
+      storage,
+      state.selectedRecord.date,
+      effectiveNow,
+    );
     if (!result.ok) {
       setStatus({
         message: state.editorViewData.actions.deleteFailedLabel,
