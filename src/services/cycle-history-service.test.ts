@@ -192,7 +192,7 @@ describe("cycle-history-service", () => {
     );
 
     // Cycle day m+1 (29): due today; the published cycle day rolls to 1, the
-    // raw day stays 29, and the chained cycle's upcoming ovulation is withheld.
+    // raw day stays 29, and both ovulation dates (the chained cycle's) are withheld.
     expect(project(new Date(2026, 2, 1))).toEqual(
       expect.objectContaining({
         cycleAnchorDate: "2026-02-01",
@@ -202,7 +202,7 @@ describe("cycle-history-service", () => {
         isPredictionStale: true,
         cycleDayLooksLong: false,
         nextPeriodDate: "2026-03-01",
-        ovulationDate: "2026-03-14",
+        ovulationDate: null,
         upcomingOvulationDate: null,
         predictionCycleLength: 28,
       }),
@@ -217,7 +217,7 @@ describe("cycle-history-service", () => {
         isPredictionStale: true,
         cycleDayLooksLong: false,
         nextPeriodDate: "2026-03-01",
-        ovulationDate: "2026-03-14",
+        ovulationDate: null,
         upcomingOvulationDate: null,
       }),
     );
@@ -237,9 +237,11 @@ describe("cycle-history-service", () => {
     expect(lastFresh.isPredictionStale).toBe(false);
     expect(lastFresh.upcomingOvulationDate).toBe("2026-03-14");
     expect(lastFresh.currentPhase).not.toBe("unknown");
+    expect(lastFresh.ovulationDate).not.toBeNull();
 
     const firstStale = project(new Date(2026, 2, 1));
     expect(firstStale.isPredictionStale).toBe(true);
+    expect(firstStale.ovulationDate).toBeNull();
     expect(firstStale.upcomingOvulationDate).toBeNull();
     expect(firstStale.upcomingOvulationWindowStartDate ?? null).toBeNull();
     expect(firstStale.upcomingOvulationWindowEndDate ?? null).toBeNull();

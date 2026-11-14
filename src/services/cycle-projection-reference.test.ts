@@ -154,9 +154,15 @@ describe("cycle-projection golden vectors (shared with ovumcy-web)", () => {
       expect(projection.nextPeriodDate).toBe(expected.displayedNextPeriodStart);
       // The stale band (web CycleDataStale) withholds the chained cycle's
       // upcoming ovulation from the published projection; the roll itself is
-      // pinned against the vector in stage 4 below.
+      // pinned against the vector in stage 4 below. The stale flag is pinned
+      // independently (raw day past the prediction length; every vector's
+      // reference length is at least its prediction length), so a projection
+      // turning stale too early fails here instead of passing with null.
+      const expectedStale =
+        diffCalendarDays(lastPeriod!, today!) + 1 > expected.predictionLength;
+      expect(projection.isPredictionStale).toBe(expectedStale);
       expect(projection.upcomingOvulationDate).toBe(
-        projection.isPredictionStale ? null : expected.ovulationDate,
+        expectedStale ? null : expected.ovulationDate,
       );
 
       // 4. Ovulation date: the window for the projected cycle, rolled forward
