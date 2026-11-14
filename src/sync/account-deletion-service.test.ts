@@ -3,6 +3,12 @@ import { clearManagedPartnerInviteToken, readManagedPartnerInviteToken, stashMan
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
+  createInMemorySecureStoreBackend,
+  createSecretStoresOverBackend,
+  createWipeScopeSecretStoresMock,
+  listSecureStoreKeysFromSource,
+} from "../test/secure-store-inventory";
+import {
   buildAccountDeletionViewModel,
   deleteOvumcyAccount,
 } from "./account-deletion-service";
@@ -187,6 +193,7 @@ describe("deleteOvumcyAccount", () => {
     const result = await deleteOvumcyAccount(
       storage,
       secretStore,
+      createWipeScopeSecretStoresMock(),
       preferences,
       jest.fn(),
       managedClientFactory,
@@ -224,6 +231,7 @@ describe("deleteOvumcyAccount", () => {
     const result = await deleteOvumcyAccount(
       storage,
       secretStore,
+      createWipeScopeSecretStoresMock(),
       preferences,
       apiClientFactory,
     );
@@ -248,6 +256,7 @@ describe("deleteOvumcyAccount", () => {
     const result = await deleteOvumcyAccount(
       storage,
       secretStore,
+      createWipeScopeSecretStoresMock(),
       preferences,
       apiClientFactory,
       managedClientFactory,
@@ -284,6 +293,7 @@ describe("deleteOvumcyAccount", () => {
     const result = await deleteOvumcyAccount(
       storage,
       secretStore,
+      createWipeScopeSecretStoresMock(),
       preferences,
       jest.fn(),
       managedClientFactory,
@@ -324,6 +334,7 @@ describe("deleteOvumcyAccount", () => {
     const result = await deleteOvumcyAccount(
       storage,
       secretStore,
+      createWipeScopeSecretStoresMock(),
       preferences,
       apiClientFactory,
     );
@@ -346,8 +357,91 @@ describe("deleteOvumcyAccount", () => {
       setupStatus: "not_configured" as const,
     };
 
-    const result = await deleteOvumcyAccount(storage, secretStore, preferences);
+    const result = await deleteOvumcyAccount(
+      storage,
+      secretStore,
+      createWipeScopeSecretStoresMock(),
+      preferences,
+    );
 
     expect(result).toEqual({ ok: false, errorCode: "generic" });
+  });
+
+  it("leaves no wipe-scope SecureStore key behind after deleting the account", async () => {
+    const inventory = listSecureStoreKeysFromSource();
+    // The local-data key belongs to the storage reset, which deletes it and
+    // reseeds a fresh one; every other SecureStore key is the deletion's.
+    const storageOwnedKeys = inventory
+      .filter((entry) => entry.storeModule === "local-data-key-store")
+      .map((entry) => entry.key);
+    expect(storageOwnedKeys).toEqual(["ovumcy.local-data-key"]);
+    expect(inventory.length).toBeGreaterThan(storageOwnedKeys.length);
+
+    const backend = createInMemorySecureStoreBackend(
+      inventory.map((entry) => entry.key),
+    );
+    const { syncSecretStore, wipeScopeSecretStores } =
+      createSecretStoresOverBackend(backend);
+    await syncSecretStore.writeSyncSecrets({
+      ...createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"))
+        .record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const storage = createLocalAppStorageMock();
+    const deleteAccount = jest.fn().mockResolvedValue({ ok: true });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      setupStatus: "connected" as const,
+    };
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      syncSecretStore,
+      wipeScopeSecretStores,
+      preferences,
+      jest.fn(),
+      jest.fn().mockReturnValue(createManagedClientMock({ deleteAccount })),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(deleteAccount).toHaveBeenCalledWith("managed-session-1");
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+    expect(backend.keys()).toEqual(storageOwnedKeys);
+  });
+
+  it("clears every other secret, reports failure and keeps local data when one secret clear throws", async () => {
+    const inventory = listSecureStoreKeysFromSource();
+    const backend = createInMemorySecureStoreBackend(
+      inventory.map((entry) => entry.key),
+    );
+    const { syncSecretStore, wipeScopeSecretStores } =
+      createSecretStoresOverBackend(backend);
+    const storage = createLocalAppStorageMock();
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      setupStatus: "not_configured" as const,
+    };
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      syncSecretStore,
+      {
+        ...wipeScopeSecretStores,
+        entitlementTokenStore: {
+          clearEntitlementToken: jest
+            .fn()
+            .mockRejectedValue(new Error("keychain locked")),
+        },
+      },
+      preferences,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "generic" });
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(backend.keys()).toEqual(
+      ["ovumcy.entitlement-token", "ovumcy.local-data-key"].sort(),
+    );
   });
 });

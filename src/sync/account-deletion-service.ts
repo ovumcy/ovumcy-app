@@ -1,5 +1,9 @@
 import { clearManagedPartnerInviteToken } from "../security/managed-partner-invite-token-buffer";
 import type { SyncSecretStore } from "../security/sync-secret-store";
+import {
+  clearWipeScopeSecrets,
+  type WipeScopeSecretStores,
+} from "../security/wipe-scope-secrets";
 import { describeSubscriptionCountdown } from "../services/subscription-countdown-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
@@ -102,12 +106,16 @@ export type DeleteOvumcyAccountErrorCode =
  *                (managed session in managed mode, community session in
  *                self-hosted mode). No session / local-only mode -> skip.
  *                A failing call ABORTS here — nothing local is touched.
- *   2. secrets:  clear sync secrets in full via `secretStore.clearSyncSecrets`
+ *   2. secrets:  delete every wipe-scope SecureStore entry via
+ *                `clearWipeScopeSecrets` — sync secrets in full, partner-share
+ *                secrets, the entitlement token and the sync certificate pins
  *                (the same call `clearAllLocalSettingsData` makes — the
  *                account is gone, so unlike disconnect there is no reason to
  *                keep the local wrapped master key around), plus the pending
  *                managed partner invite buffer — mirroring the existing
- *                session-boundary invariant.
+ *                session-boundary invariant. Every clear is attempted; if any
+ *                fails the result is `generic` and step 3 does not run, so a
+ *                failed secret wipe is reported, never a success.
  *   3. local:    wipe all local data via `storage.clearAllLocalData()`
  *                (the same danger-zone path settings uses; this already
  *                clears the managed billing cache table too, so no separate
@@ -121,6 +129,7 @@ export type DeleteOvumcyAccountErrorCode =
 export async function deleteOvumcyAccount(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
+  wipeScopeSecretStores: WipeScopeSecretStores,
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
@@ -159,7 +168,7 @@ export async function deleteOvumcyAccount(
     // Session boundary: same buffer cleared on disconnect and mode-switch
     // must not survive account deletion either. Order mirrors
     // `clearAllLocalSettingsData`: secrets first, then the local database.
-    await secretStore.clearSyncSecrets();
+    await clearWipeScopeSecrets(secretStore, wipeScopeSecretStores);
     clearManagedPartnerInviteToken();
     await storage.clearAllLocalData();
   } catch {

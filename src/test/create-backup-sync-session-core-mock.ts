@@ -17,6 +17,7 @@ import { createAppPreferencesContextValue } from "../ui/providers/AppPreferences
 import type { BackupSyncSessionCore } from "../ui/screens/backup-sync/useBackupSyncSessionCore";
 import { createLocalAppStorageMock } from "./create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "./create-sync-secret-store-mock";
+import { createWipeScopeSecretStoresMock } from "./secure-store-inventory";
 
 const DEFAULT_EXPORT_STATE: LoadedExportState = {
   values: { preset: "all", fromDate: "2026-03-01", toDate: "2026-03-20" },
@@ -82,9 +83,12 @@ export function createBackupSyncSessionCoreMock(
   const language = "en" as const;
   const preferences = createAppPreferencesContextValue({});
   const state = createLoadedSettingsStateFixture();
+  const wipeScopeSecretStores = createWipeScopeSecretStoresMock();
 
   const core: BackupSyncSessionCore = {
     // Resolved dependencies
+    certPinStore: wipeScopeSecretStores.certPinStore,
+    entitlementTokenStore: wipeScopeSecretStores.entitlementTokenStore,
     exportDeliveryClient: { deliver: jest.fn() },
     partnerShareSecretStore: createPartnerShareSecretStoreStub(),
     storage: createLocalAppStorageMock(),

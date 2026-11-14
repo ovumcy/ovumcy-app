@@ -37,7 +37,8 @@ export interface CertPinStoreBackend {
 
 export interface CertPinStore {
   // clearAll removes every recorded pin. Reserved for destructive reset
-  // flows (`disconnectSyncAccount`, factory reset). Not part of the cert
+  // flows ("clear local data" and account deletion, via
+  // `clearWipeScopeSecrets`); disconnect keeps the pins. Not part of the cert
   // rotation path — that's per-host via `clearPin`.
   clearAll(): Promise<void>;
   clearPin(host: string): Promise<void>;
