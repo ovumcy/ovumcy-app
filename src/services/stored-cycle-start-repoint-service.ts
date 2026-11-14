@@ -14,18 +14,15 @@ const MIN_DAY_LOG_DATE = "0001-01-01";
 // read under a wider withdrawal rule (any non-period, spotting or
 // uncertain-marked row on its date). This re-reads such data once under that
 // rule and stores the result, so the narrower read side shows the same start.
-// Runs once per profile at launch (behind the stored version) and after every
-// bulk write that can bring such data in (JSON import, sync restore).
+// The stored version marks a profile written under the repoint rule, so it
+// runs at launch and after a sync restore or a profile-restoring import only
+// when the profile in storage came from an older client.
 export async function repointLegacyStoredCycleStart(
   storage: LocalAppStorage,
   now: Date,
-  options: { force: boolean },
 ): Promise<void> {
   const profile = await storage.readProfileRecord();
-  if (
-    !options.force &&
-    (profile.storedCycleStartRepointVersion ?? 0) >= STORED_CYCLE_START_REPOINT_VERSION
-  ) {
+  if ((profile.storedCycleStartRepointVersion ?? 0) >= STORED_CYCLE_START_REPOINT_VERSION) {
     return;
   }
 

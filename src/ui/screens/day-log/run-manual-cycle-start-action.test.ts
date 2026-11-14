@@ -180,8 +180,8 @@ describe("run-manual-cycle-start-action", () => {
       }),
     );
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-      // The uncertain mark replaces the stored start's own cluster, so the
-      // stored start is repointed to the latest boundary the rows still give.
+      // The short-gap confirmation makes the mark uncertain, so it is not
+      // mirrored; the stored start lies outside the marked cluster and stays.
       expect.objectContaining({ lastPeriodStart: "2026-02-01" }),
     );
   });

@@ -148,21 +148,21 @@ describe("one-time stored cycle start repoint", () => {
       { ...createEmptyDayLogRecord("2026-06-12"), mood: 3 },
     ]);
 
-    await repointLegacyStoredCycleStart(storage, NOW, { force: false });
+    await repointLegacyStoredCycleStart(storage, NOW);
     const migrated = await storage.readProfileRecord();
     expect(migrated.lastPeriodStart).toBe("2026-05-01");
     expect(migrated.lastPeriodStartBeforeRepoint).toBe("2026-06-12");
     expect(migrated.storedCycleStartRepointVersion).toBe(STORED_CYCLE_START_REPOINT_VERSION);
 
     await storage.writeProfileRecord({ ...migrated, lastPeriodStart: "2026-06-12" });
-    await repointLegacyStoredCycleStart(storage, NOW, { force: false });
+    await repointLegacyStoredCycleStart(storage, NOW);
     expect(await storedStart(storage)).toBe("2026-06-12");
   });
 
   it("only stamps the version when nothing withdraws the stored start", async () => {
     const storage = await seed({ lastPeriodStart: "2026-06-12" }, [may]);
 
-    await repointLegacyStoredCycleStart(storage, NOW, { force: false });
+    await repointLegacyStoredCycleStart(storage, NOW);
 
     const profile = await storage.readProfileRecord();
     expect(profile.lastPeriodStart).toBe("2026-06-12");
@@ -177,11 +177,30 @@ describe("one-time stored cycle start repoint", () => {
     ];
     const storage = await seed({ lastPeriodStart: "2026-06-12" }, uncertainRun);
 
-    await repointLegacyStoredCycleStart(storage, NOW, { force: true });
+    await repointLegacyStoredCycleStart(storage, NOW);
 
     const profile = await storage.readProfileRecord();
     expect(profile.lastPeriodStart).toBe("2026-06-12");
     expect(profile.lastPeriodStartBeforeRepoint).toBeUndefined();
+  });
+
+  it("keeps the stored start of a backup written under the repoint rule", async () => {
+    const storage = createVolatileWebAppStorage();
+
+    await importBackupEnvelope(storage, {
+      profile: {
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: "2026-06-12",
+        cycleLength: 30,
+        storedCycleStartRepointVersion: STORED_CYCLE_START_REPOINT_VERSION,
+      },
+      dayLogs: [may, { ...createEmptyDayLogRecord("2026-06-12"), mood: 3 }],
+      symptoms: [],
+    } as unknown as Parameters<typeof importBackupEnvelope>[1]);
+
+    const profile = await storage.readProfileRecord();
+    expect(profile.lastPeriodStart).toBe("2026-06-12");
+    expect(profile.storedCycleStartRepointVersion).toBe(STORED_CYCLE_START_REPOINT_VERSION);
   });
 
   it("repoints after a JSON import brings in the profile and its rows", async () => {
@@ -194,5 +213,20 @@ describe("one-time stored cycle start repoint", () => {
     } as unknown as Parameters<typeof importBackupEnvelope>[1]);
 
     expect(await storedStart(storage)).toBe("2026-05-01");
+  });
+
+  it("never writes the profile when an import only adds rows to a configured device", async () => {
+    const storage = await seed({ lastPeriodStart: "2026-06-12" }, []);
+    const before = await storage.readProfileRecord();
+
+    const outcome = await importBackupEnvelope(storage, {
+      profile: { ...createDefaultProfileRecord(), lastPeriodStart: "2026-01-01" },
+      dayLogs: [may, { ...createEmptyDayLogRecord("2026-06-12"), mood: 3 }],
+      symptoms: [],
+    } as unknown as Parameters<typeof importBackupEnvelope>[1]);
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(outcome.dayLogsAdded).toBe(2);
+    expect(await storage.readProfileRecord()).toEqual(before);
   });
 });
