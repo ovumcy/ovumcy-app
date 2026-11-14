@@ -6,6 +6,7 @@ import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-servic
 import {
   buildCycleHistorySummary,
   inferUserLutealPhase,
+  repointStoredCycleStart,
   resolveLatestCycleStartAnchorBeforeOrOn,
 } from "./cycle-history-service";
 import { calcOvulationDay, resolveLutealPhase } from "./cycle-prediction-policy";
@@ -188,15 +189,21 @@ export async function applyManualCycleStart(
   }
 
   try {
-    for (const nextRecord of recordsToWrite.values()) {
-      await storage.writeDayLogRecord(nextRecord);
-    }
-    await storage.writeProfileRecord(
-      resetDismissedCalendarPredictionNotice(profile, {
+    await storage.commitDayLogChanges({
+      writes: [...recordsToWrite.values()],
+      deletes: [],
+      profile: resetDismissedCalendarPredictionNotice(profile, {
         ...profile,
-        lastPeriodStart: nextSelectedRecord.date,
+        lastPeriodStart: resolveStoredStartAfterManualMark(
+          profile,
+          records,
+          recordsToWrite,
+          nextSelectedRecord,
+          [clusterStart, clusterEnd],
+          now,
+        ),
       }),
-    );
+    });
   } catch {
     return {
       ok: false,
@@ -208,6 +215,31 @@ export async function applyManualCycleStart(
     ok: true,
     record: nextSelectedRecord,
   };
+}
+
+// A confirmed mark becomes profile.lastPeriodStart. An uncertain mark is not
+// mirrored: the stored start stays, unless it sits inside the marked cluster,
+// where it is repointed to the boundary the rows still give.
+function resolveStoredStartAfterManualMark(
+  profile: ProfileRecord,
+  records: readonly DayLogRecord[],
+  recordsToWrite: ReadonlyMap<string, DayLogRecord>,
+  markedRecord: DayLogRecord,
+  [clusterStart, clusterEnd]: readonly [string, string],
+  now: Date,
+): ProfileRecord["lastPeriodStart"] {
+  if (!markedRecord.isUncertain) {
+    return markedRecord.date;
+  }
+  const storedStart = profile.lastPeriodStart;
+  if (!storedStart || storedStart < clusterStart || storedStart > clusterEnd) {
+    return storedStart;
+  }
+  const mergedRecords = [
+    ...records.filter((current) => !recordsToWrite.has(current.date)),
+    ...recordsToWrite.values(),
+  ];
+  return repointStoredCycleStart(profile, mergedRecords, formatLocalDate(now));
 }
 
 function resolveManualCycleStartPolicy(

@@ -62,7 +62,8 @@ describe("run-manual-cycle-start-action", () => {
     );
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        lastPeriodStart: "2026-03-20",
+        // An uncertain mark is not mirrored into the stored start.
+        lastPeriodStart: "2026-03-10",
       }),
     );
   });
@@ -179,7 +180,9 @@ describe("run-manual-cycle-start-action", () => {
       }),
     );
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ lastPeriodStart: "2026-03-11" }),
+      // The uncertain mark replaces the stored start's own cluster, so the
+      // stored start is repointed to the latest boundary the rows still give.
+      expect.objectContaining({ lastPeriodStart: "2026-02-01" }),
     );
   });
 });

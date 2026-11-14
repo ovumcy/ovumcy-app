@@ -826,7 +826,8 @@ describe("DashboardScreen", () => {
 
     await waitFor(() =>
       expect(storage.writeProfileRecord).toHaveBeenCalledWith(
-        expect.objectContaining({ lastPeriodStart: "2026-03-17" }),
+        // An uncertain mark is not mirrored into the stored start.
+        expect.objectContaining({ lastPeriodStart: "2026-03-10" }),
       ),
     );
     expect(

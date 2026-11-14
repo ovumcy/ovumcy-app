@@ -262,10 +262,18 @@ the Spotting symptom is its only bleeding signal (no flow chosen).
 
 `profile.lastPeriodStart` joins the clusters as an explicit non-spotting day, as
 web's onboarding start does (it also marks the unmarked day onboarding seeds on
-its date), unless the day logged on its date withdraws it: a day that is not a
-period day (un-ticked, or saved without the period box), spotting, or under an
-uncertain mark. The app mirrors every manual cycle-start mark into it, those
-included, and un-ticking a day does not clear it, so the logged day decides.
+its date), unless a day logged on its date is spotting or under an uncertain
+mark. The write paths keep the field current (web `withdrawOnboardingStartOn`):
+a save on its date that un-ticks a period row, marks spotting or carries an
+uncertain cycle-start mark, and clearing that day, repoint it to the latest
+cycle boundary among rows dated on or before today (`repointStoredCycleStart`,
+the same cluster reading as the anchor and the pregnancy pause; null when none
+is left). A BBT, note or symptom save on a date with no row keeps it. Manual
+uncertain marks are not mirrored into it; confirmed marks are. Rows and profile
+are written as one storage unit. Data stored under the earlier rule (any
+non-period row withdrew it) is re-read once at launch behind a stored version,
+the previous value kept in the profile, and again after a JSON import or a sync
+restore. The read-side spotting/uncertain withdrawal is transitional.
 
 ## Projection and anchor layer
 

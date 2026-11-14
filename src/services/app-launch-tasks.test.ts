@@ -30,7 +30,8 @@ describe("runAppLaunchTasks", () => {
     await runAppLaunchTasks(storage, scheduler);
 
     expect(mockCleanup).toHaveBeenCalledTimes(1);
-    expect(storage.readProfileRecord).toHaveBeenCalledTimes(1);
+    // Once for the stored cycle-start repoint, once for the rebuild.
+    expect(storage.readProfileRecord).toHaveBeenCalledTimes(2);
     // Every toggle off: the rebuild clears the schedule.
     expect(scheduler.sync).toHaveBeenCalledTimes(1);
     expect(scheduler.sync).toHaveBeenCalledWith([]);

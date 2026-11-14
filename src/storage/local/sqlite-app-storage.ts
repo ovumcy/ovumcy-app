@@ -68,6 +68,7 @@ import {
   readAsyncStorageProfileRecord,
 } from "./async-storage-app-storage";
 import type {
+  DayLogChangeSet,
   LocalAppStorage,
   LocalBootstrapState,
   LocalDayLogSummary,
@@ -492,6 +493,34 @@ export function createSQLiteAppStorage(
       "DELETE FROM day_logs WHERE day = ?;",
       buildOpaqueLookupKey(localDataKey, "day_log", date),
     );
+  }
+
+  async function commitDayLogChangesInternal(change: DayLogChangeSet): Promise<void> {
+    const database = await getHydratedDatabase();
+    const localDataKey = await getLocalDataKey(database);
+    await database.execAsync("BEGIN IMMEDIATE;");
+    try {
+      for (const record of change.writes) {
+        await upsertDayLogRecord(database, record, localDataKey);
+      }
+      for (const date of change.deletes) {
+        await database.runAsync(
+          "DELETE FROM day_logs WHERE day = ?;",
+          buildOpaqueLookupKey(localDataKey, "day_log", date),
+        );
+      }
+      if (change.profile) {
+        await upsertProfileRecord(database, change.profile, localDataKey);
+      }
+      await database.execAsync("COMMIT;");
+    } catch (error) {
+      try {
+        await database.execAsync("ROLLBACK;");
+      } catch {
+        // The original failure is the one worth reporting.
+      }
+      throw error;
+    }
   }
 
   async function listDayLogRecordsInRangeInternal(
@@ -925,6 +954,9 @@ export function createSQLiteAppStorage(
     },
     deleteDayLogRecord(date) {
       return enqueueStorageOperation(() => deleteDayLogRecordInternal(date));
+    },
+    commitDayLogChanges(change) {
+      return enqueueStorageOperation(() => commitDayLogChangesInternal(change));
     },
     listDayLogRecordsInRange(from, to) {
       return enqueueStorageOperation(() => listDayLogRecordsInRangeInternal(from, to));

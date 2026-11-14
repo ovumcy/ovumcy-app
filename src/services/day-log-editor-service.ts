@@ -25,7 +25,10 @@ import {
   collectAutoFilledPeriodDaysToClear,
   shouldAutoFillPeriodWindowFromSave,
 } from "./period-auto-fill-service";
-import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
+import {
+  repointStoredCycleStart,
+  savedRowWithdrawsStoredCycleStart,
+} from "./cycle-history-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 import {
   filterKnownSymptomIDs,
@@ -33,7 +36,6 @@ import {
 import { buildLocalizedEntryPickerSymptoms } from "./symptom-presentation-service";
 
 const MIN_CANONICAL_DAY_LOG_DATE = "0001-01-01";
-const MAX_CANONICAL_DAY_LOG_DATE = "9999-12-31";
 
 export type DayLogEditorViewData = {
   title: string;
@@ -202,9 +204,17 @@ export async function saveDayLogEditorRecord(
   }
 
   try {
-    for (const nextRecord of recordsToWrite.values()) {
-      await storage.writeDayLogRecord(nextRecord);
-    }
+    const nextProfile = await resolveStoredStartAfterSave(
+      storage,
+      profile,
+      recordsToWrite,
+      formatLocalDate(now),
+    );
+    await storage.commitDayLogChanges({
+      writes: [...recordsToWrite.values()],
+      deletes: [],
+      profile: nextProfile,
+    });
   } catch {
     return { ok: false };
   }
@@ -215,30 +225,60 @@ export async function saveDayLogEditorRecord(
   };
 }
 
+// The profile to write with a save, or null when profile.lastPeriodStart still
+// stands: a save that withdraws it repoints it to the latest boundary left.
+async function resolveStoredStartAfterSave(
+  storage: LocalAppStorage,
+  profile: ProfileRecord,
+  recordsToWrite: ReadonlyMap<string, DayLogRecord>,
+  todayValue: string,
+): Promise<ProfileRecord | null> {
+  const storedStart = profile.lastPeriodStart;
+  const savedOnStoredStart = storedStart ? recordsToWrite.get(storedStart) : undefined;
+  if (!storedStart || !savedOnStoredStart) {
+    return null;
+  }
+  const [previous] = await storage.listDayLogRecordsInRange(storedStart, storedStart);
+  if (!savedRowWithdrawsStoredCycleStart(savedOnStoredStart, previous ?? null)) {
+    return null;
+  }
+  const storedRecords = await storage.listDayLogRecordsInRange(
+    MIN_CANONICAL_DAY_LOG_DATE,
+    todayValue,
+  );
+  const mergedRecords = [
+    ...storedRecords.filter((record) => !recordsToWrite.has(record.date)),
+    ...recordsToWrite.values(),
+  ];
+  return {
+    ...profile,
+    lastPeriodStart: repointStoredCycleStart(profile, mergedRecords, todayValue),
+  };
+}
+
 export async function clearDayLogEditorRecord(
   storage: LocalAppStorage,
   date: DayLogRecord["date"],
+  now: Date = new Date(),
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
   try {
     const profile = await storage.readProfileRecord();
-    await storage.deleteDayLogRecord(date);
+    let nextProfile: ProfileRecord | null = null;
     if (profile.lastPeriodStart === date) {
-      const remainingRecords = await storage.listDayLogRecordsInRange(
-        MIN_CANONICAL_DAY_LOG_DATE,
-        MAX_CANONICAL_DAY_LOG_DATE,
-      );
-      await storage.writeProfileRecord({
+      const todayValue = formatLocalDate(now);
+      const remainingRecords = (
+        await storage.listDayLogRecordsInRange(MIN_CANONICAL_DAY_LOG_DATE, todayValue)
+      ).filter((record) => record.date !== date);
+      nextProfile = {
         ...profile,
-        lastPeriodStart: resolveLatestCycleStartAnchorBeforeOrOn(
-          {
-            ...profile,
-            lastPeriodStart: null,
-          },
-          remainingRecords,
-          MAX_CANONICAL_DAY_LOG_DATE,
-        ),
-      });
+        lastPeriodStart: repointStoredCycleStart(profile, remainingRecords, todayValue),
+      };
     }
+    await storage.commitDayLogChanges({
+      writes: [],
+      deletes: [date],
+      profile: nextProfile,
+    });
     return {
       ok: true,
       record: createEmptyDayLogRecord(date),
