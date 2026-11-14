@@ -39,6 +39,9 @@ function baseProps() {
 
     regeneratePassword: "",
     onRegeneratePasswordChange: noop,
+    regenerateCode: "",
+    onRegenerateCodeChange: noop,
+    regenerateCodeVisible: false,
     regenerateStatus: "idle" as const,
     regenerateErrorCode: null,
     onRegenerate: noop,
@@ -694,6 +697,62 @@ describe("SyncAccountSecuritySection", () => {
 
     expect(screen.getByText(copy.errors.notConnected)).toBeTruthy();
   });
+
+  it("hides the regenerate code field unless a code is required", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("account-security-regenerate-code")).toBeNull();
+  });
+
+  it("shows the regenerate code field and forwards edits when required", async () => {
+    const onRegenerateCodeChange = jest.fn();
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          regenerateCode="12"
+          onRegenerateCodeChange={onRegenerateCodeChange}
+          regenerateCodeVisible
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const field = screen.getByTestId("account-security-regenerate-code");
+    expect(field.props.value).toBe("12");
+    expect(field.props.keyboardType).toBe("number-pad");
+    expect(field.props.accessibilityLabel).toBe(copy.regenerate.codeLabel);
+    await fireEvent.changeText(field, "123456");
+    expect(onRegenerateCodeChange).toHaveBeenCalledWith("123456");
+  });
+
+  it.each([
+    ["totp_invalid_code", () => totpCopy.errors.totpInvalidCode],
+    ["totp_replayed", () => totpCopy.errors.totpReplayed],
+    ["totp_not_configured", () => totpCopy.errors.totpNotConfigured],
+    ["totp_secret_failed", () => totpCopy.errors.totpSecretFailed],
+  ] as const)(
+    "maps regenerate %s to the two-factor copy",
+    async (errorCode, expected) => {
+      await render(
+        <AppPreferencesTestProvider>
+          <SyncAccountSecuritySection
+            {...baseProps()}
+            regenerateCodeVisible
+            regenerateErrorCode={errorCode}
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(
+        screen.getByTestId("account-security-regenerate-error-banner"),
+      ).toBeTruthy();
+      expect(screen.getByText(expected())).toBeTruthy();
+    },
+  );
 
   // resolveTOTPErrorMessage (enable/start stage): the remaining
   // StartTOTPEnrollmentErrorCode branches, plus the generic fallback.

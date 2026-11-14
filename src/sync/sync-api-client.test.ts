@@ -679,6 +679,52 @@ describe("sync-api-client", () => {
     );
     const headers = call?.[1]?.headers as Headers;
     expect(headers.get("Authorization")).toBe("Bearer session-1");
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+      current_password: "correct password 12345",
+    });
+  });
+
+  it("regenerate-recovery-code sends the TOTP code in the body", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ recovery_code: "fresh1234fresh1234fresh1234fresh" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await client.regenerateRecoveryCode("session-1", {
+      currentPassword: "correct password 12345",
+      code: "123456",
+    });
+
+    const call = typedFetchMock.mock.calls[0];
+    expect(call?.[0]).toBe(
+      "http://127.0.0.1:8080/auth/recovery-code/regenerate",
+    );
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+      current_password: "correct password 12345",
+      code: "123456",
+    });
+  });
+
+  it("regenerate-recovery-code maps totp_replayed", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "totp_replayed" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.regenerateRecoveryCode("session-1", {
+      currentPassword: "correct password 12345",
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "totp_replayed" });
   });
 
   it("regenerate-recovery-code maps invalid_current_password", async () => {

@@ -148,7 +148,7 @@ export type SyncAPIClient = {
   >;
   regenerateRecoveryCode(
     sessionToken: string,
-    input: { currentPassword: string },
+    input: { currentPassword: string; code?: string },
   ): Promise<
     | { ok: true; result: SyncRegenerateRecoveryCodeResult }
     | { ok: false; errorCode: SyncAPIErrorCode }
@@ -377,9 +377,10 @@ export function createSyncAPIClient(
         {
           method: "POST",
           sessionToken,
-          body: {
-            current_password: input.currentPassword,
-          },
+          body:
+            input.code === undefined
+              ? { current_password: input.currentPassword }
+              : { current_password: input.currentPassword, code: input.code },
         },
         isRawSyncRecoveryCodePayload,
         "invalid_response",

@@ -79,6 +79,9 @@ export type SyncAccountSecuritySectionProps = {
 
   regeneratePassword: string;
   onRegeneratePasswordChange: (value: string) => void;
+  regenerateCode: string;
+  onRegenerateCodeChange: (value: string) => void;
+  regenerateCodeVisible: boolean;
   regenerateStatus: SyncAccountSecurityStatus;
   regenerateErrorCode: RegenerateSyncRecoveryCodeErrorCode | null;
   onRegenerate: () => void | Promise<void>;
@@ -144,6 +147,9 @@ export function SyncAccountSecuritySection({
   onCancelForgot,
   regeneratePassword,
   onRegeneratePasswordChange,
+  regenerateCode,
+  onRegenerateCodeChange,
+  regenerateCodeVisible,
   regenerateStatus,
   regenerateErrorCode,
   onRegenerate,
@@ -352,9 +358,28 @@ export function SyncAccountSecuritySection({
           testID="account-security-regenerate-password"
           value={regeneratePassword}
         />
+        {regenerateCodeVisible ? (
+          <>
+            <Text style={styles.fieldLabel}>{copy.regenerate.codeLabel}</Text>
+            <AppTextInput
+              accessibilityLabel={copy.regenerate.codeLabel}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="number-pad"
+              onChangeText={onRegenerateCodeChange}
+              style={styles.input}
+              testID="account-security-regenerate-code"
+              value={regenerateCode}
+            />
+          </>
+        ) : null}
         {regenerateErrorCode ? (
           <StatusBanner
-            message={resolveErrorMessage(copy, regenerateErrorCode)}
+            message={resolveRegenerateErrorMessage(
+              copy,
+              totpCopy,
+              regenerateErrorCode,
+            )}
             testID="account-security-regenerate-error-banner"
             tone="error"
           />
@@ -631,6 +656,22 @@ function resolveTOTPErrorMessage(
       return copy.errors.unauthorized;
     default:
       return copy.errors.generic;
+  }
+}
+
+function resolveRegenerateErrorMessage(
+  copy: AccountSecurityCopy,
+  totpCopy: TOTPCopy,
+  code: RegenerateSyncRecoveryCodeErrorCode,
+): string {
+  switch (code) {
+    case "totp_invalid_code":
+    case "totp_replayed":
+    case "totp_not_configured":
+    case "totp_secret_failed":
+      return resolveTOTPErrorMessage(totpCopy, code);
+    default:
+      return resolveErrorMessage(copy, code);
   }
 }
 

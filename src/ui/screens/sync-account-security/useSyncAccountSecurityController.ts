@@ -98,6 +98,10 @@ export function useSyncAccountSecurityController({
 
   // Regenerate recovery code
   const [regeneratePassword, setRegeneratePassword] = useState("");
+  const [regenerateCode, setRegenerateCode] = useState("");
+  // Set when the server refused the rotation for a TOTP code, so the field
+  // stays reachable even when the two-factor status could not be read.
+  const [regenerateCodeDemanded, setRegenerateCodeDemanded] = useState(false);
   const [regenerateStatus, setRegenerateStatus] =
     useState<SyncAccountSecurityStatus>("idle");
   const [regenerateErrorCode, setRegenerateErrorCode] =
@@ -243,6 +247,11 @@ export function useSyncAccountSecurityController({
     setForgotSignedOut(false);
   }
 
+  const regenerateCodeVisible =
+    preferences !== null &&
+    preferences.mode !== "managed" &&
+    (twoFactorEnabled === true || regenerateCodeDemanded);
+
   async function handleRegenerate() {
     if (!preferences) {
       return;
@@ -252,14 +261,23 @@ export function useSyncAccountSecurityController({
     const result = await regenerateSyncAccountRecoveryCode(
       syncSecretStore,
       preferences,
-      { currentPassword: regeneratePassword },
+      regenerateCodeVisible
+        ? { currentPassword: regeneratePassword, code: regenerateCode }
+        : { currentPassword: regeneratePassword },
     );
     if (result.ok) {
       setRevealedRecoveryCode(result.recoveryCode);
       setRevealedRecoveryCodeFromTOTP(false);
       setRegenerateStatus("success");
       setRegeneratePassword("");
+      setRegenerateCode("");
     } else {
+      if (
+        result.errorCode === "totp_invalid_code" ||
+        result.errorCode === "totp_replayed"
+      ) {
+        setRegenerateCodeDemanded(true);
+      }
       setRegenerateErrorCode(result.errorCode);
       setRegenerateStatus("idle");
     }
@@ -424,6 +442,9 @@ export function useSyncAccountSecurityController({
     // regenerate
     regeneratePassword,
     setRegeneratePassword,
+    regenerateCode,
+    setRegenerateCode,
+    regenerateCodeVisible,
     regenerateStatus,
     regenerateErrorCode,
     handleRegenerate,

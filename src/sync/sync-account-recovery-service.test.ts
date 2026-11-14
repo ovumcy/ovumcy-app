@@ -934,5 +934,101 @@ describe("sync-account-recovery-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "generic" });
     });
+
+    it("sends the trimmed TOTP code to the community client", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const regenerateRecoveryCode = jest.fn().mockResolvedValue({
+        ok: true,
+        result: { recoveryCode: "fresh1234fresh1234fresh1234fresh" },
+      });
+      const apiFactory = jest
+        .fn()
+        .mockReturnValue(communityClientMock({ regenerateRecoveryCode }));
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "current password 12345", code: " 123456 " },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "fresh1234fresh1234fresh1234fresh",
+      });
+      expect(regenerateRecoveryCode).toHaveBeenCalledWith(
+        "community-session-1",
+        { currentPassword: "current password 12345", code: "123456" },
+      );
+    });
+
+    it.each(["", "12345", "1234567", "12a456"])(
+      "refuses a malformed TOTP code %p before any network call",
+      async (code) => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const apiFactory = jest.fn();
+
+        const result = await regenerateSyncAccountRecoveryCode(
+          secretStore,
+          selfHostedPreferences(),
+          { currentPassword: "current password 12345", code },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+        expect(apiFactory).not.toHaveBeenCalled();
+      },
+    );
+
+    it("never sends a TOTP code to the managed client", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const regenerateRecoveryCode = jest.fn().mockResolvedValue({
+        ok: true,
+        result: { recoveryCode: "fresh1234fresh1234fresh1234fresh" },
+      });
+      const managedFactory = jest
+        .fn()
+        .mockReturnValue(managedClientMock({ regenerateRecoveryCode }));
+
+      await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        managedPreferences(),
+        { currentPassword: "current password 12345", code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(regenerateRecoveryCode).toHaveBeenCalledWith("managed-session-1", {
+        currentPassword: "current password 12345",
+      });
+    });
+
+    it.each([
+      "totp_invalid_code",
+      "totp_replayed",
+      "totp_not_configured",
+      "totp_secret_failed",
+    ] as const)("passes through community %s", async (errorCode) => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          regenerateRecoveryCode: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode }),
+        }),
+      );
+
+      const result = await regenerateSyncAccountRecoveryCode(
+        secretStore,
+        selfHostedPreferences(),
+        { currentPassword: "current password 12345", code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode });
+    });
   });
 });

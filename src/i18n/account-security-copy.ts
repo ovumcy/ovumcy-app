@@ -34,6 +34,7 @@ export type AccountSecurityCopy = {
     title: string;
     hint: string;
     currentPasswordLabel: string;
+    codeLabel: string;
     submitLabel: string;
   };
 
@@ -100,6 +101,7 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     title: "Regenerate recovery code",
     hint: "Confirm with your current password. The new code replaces the old one.",
     currentPasswordLabel: "Current password",
+    codeLabel: "Two-factor code from your authenticator app",
     submitLabel: "Generate new recovery code",
   },
 
@@ -168,6 +170,7 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     title: "Wiederherstellungscode erneuern",
     hint: "Bestätigen Sie mit Ihrem aktuellen Passwort. Der neue Code ersetzt den alten.",
     currentPasswordLabel: "Aktuelles Passwort",
+    codeLabel: "Zwei-Faktor-Code aus Ihrer Authenticator-App",
     submitLabel: "Neuen Wiederherstellungscode erzeugen",
   },
 
@@ -240,6 +243,7 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     title: "Régénérer le code de récupération",
     hint: "Confirmez avec votre mot de passe actuel. Le nouveau code remplace l'ancien.",
     currentPasswordLabel: "Mot de passe actuel",
+    codeLabel: "Code de double authentification de votre application",
     submitLabel: "Générer un nouveau code de récupération",
   },
 
@@ -312,6 +316,7 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     title: "Перевыпустить код восстановления",
     hint: "Подтвердите текущим паролем. Новый код заменяет старый.",
     currentPasswordLabel: "Текущий пароль",
+    codeLabel: "Код двухфакторки из приложения-аутентификатора",
     submitLabel: "Сгенерировать новый код восстановления",
   },
 
@@ -384,6 +389,7 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     title: "Regenerar código de recuperación",
     hint: "Confirma con tu contraseña actual. El nuevo código reemplaza al anterior.",
     currentPasswordLabel: "Contraseña actual",
+    codeLabel: "Código de doble factor de tu app de autenticación",
     submitLabel: "Generar nuevo código de recuperación",
   },
 
@@ -456,6 +462,7 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     title: "Rigenera codice di recupero",
     hint: "Conferma con la tua password corrente. Il nuovo codice sostituisce quello precedente.",
     currentPasswordLabel: "Password corrente",
+    codeLabel: "Codice a due fattori dalla tua app di autenticazione",
     submitLabel: "Genera nuovo codice di recupero",
   },
 

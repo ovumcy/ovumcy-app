@@ -599,6 +599,104 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.regenerateStatus).toBe("idle");
       expect(result.current.revealedRecoveryCode).toBe("");
     });
+
+    async function renderRegenerate(
+      preferences: SyncPreferencesRecord,
+      twoFactorEnabled: boolean | null,
+    ) {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(preferences),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(
+          twoFactorEnabled === null ? null : { twoFactorEnabled },
+        );
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setRegeneratePassword("hunter2-hunter2");
+        result.current.setRegenerateCode("123456");
+      });
+      return result;
+    }
+
+    it("sends the TOTP code and clears it on success when community 2FA is on", async () => {
+      const regenerate = jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({
+          ok: true,
+          recoveryCode: "freshcode000freshcode000freshcod",
+        });
+      const result = await renderRegenerate(selfHostedPreferences(), true);
+
+      expect(result.current.regenerateCodeVisible).toBe(true);
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+
+      expect(regenerate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        { currentPassword: "hunter2-hunter2", code: "123456" },
+      );
+      expect(result.current.regenerateCode).toBe("");
+    });
+
+    it.each([
+      ["community 2FA is off", selfHostedPreferences(), false],
+      ["community 2FA status is unknown", selfHostedPreferences(), null],
+      ["the account is managed", managedPreferences(), true],
+    ] as const)(
+      "sends no TOTP code when %s",
+      async (_label, preferences, twoFactorEnabled) => {
+        const regenerate = jest
+          .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+          .mockResolvedValue({ ok: false, errorCode: "network_failed" });
+        const result = await renderRegenerate(preferences, twoFactorEnabled);
+
+        expect(result.current.regenerateCodeVisible).toBe(false);
+        await act(async () => {
+          await result.current.handleRegenerate();
+        });
+
+        expect(regenerate).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.anything(),
+          { currentPassword: "hunter2-hunter2" },
+        );
+        expect(result.current.regenerateCodeVisible).toBe(false);
+      },
+    );
+
+    it.each(["totp_invalid_code", "totp_replayed"] as const)(
+      "reveals the code field after the server answers %s",
+      async (errorCode) => {
+        const regenerate = jest
+          .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+          .mockResolvedValueOnce({ ok: false, errorCode })
+          .mockResolvedValueOnce({ ok: false, errorCode: "network_failed" });
+        const result = await renderRegenerate(selfHostedPreferences(), null);
+
+        await act(async () => {
+          await result.current.handleRegenerate();
+        });
+        expect(result.current.regenerateErrorCode).toBe(errorCode);
+        expect(result.current.regenerateCodeVisible).toBe(true);
+
+        await act(async () => {
+          await result.current.handleRegenerate();
+        });
+        expect(regenerate).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.anything(),
+          { currentPassword: "hunter2-hunter2", code: "123456" },
+        );
+      },
+    );
   });
 
   describe("handleTOTPModeChange", () => {
