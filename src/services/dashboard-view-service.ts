@@ -658,7 +658,8 @@ function buildDashboardCycleHero(
     // conservative "log your period" hint, plus the running cycle's next-period
     // date (already passed) in approximate wording — mirroring web's
     // dashboard-stale status line. Past length + 7 the projection withholds that
-    // date and the caption falls back to "unknown".
+    // date and the caption falls back to "unknown", and the cycle day is the raw
+    // day from the logged anchor (web dashboard.html, stats.CurrentCycleDay).
     const staleDayValue =
       projection.currentCycleDay !== null
         ? String(projection.currentCycleDay)

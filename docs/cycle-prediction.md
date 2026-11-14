@@ -274,7 +274,13 @@ instead of a stale or blank one. This layer lives in
    (`cycleDayLooksLong`, strictly greater, web `DashboardCycleOverdue`), the
    projection withholds every projected date — next period and its window, the
    current and upcoming ovulation — and the projected phase (only a logged period
-   still reads as menstrual). The logged anchor and the cycle day stay.
+   still reads as menstrual). The gate is evaluated before any other branch, so
+   a history whose window cannot place an ovulation is withheld the same way.
+   The logged anchor stays, and the cycle day is the **raw** day counted from it
+   (web shows `stats.CurrentCycleDay` unrolled), not the step-2 rolled day. The
+   calendar grid paints no predicted period, fertile window or ovulation cell
+   past the gate (web `PredictionsSuppressed` in `calendar_days.go`); logged
+   days keep their recorded state.
 4. **Roll the ovulation forward (upcoming ovulation).** The ovulation for the
    projected cycle may already be in the past (the owner is mid/late luteal). For
    a "next ovulation" surface this is rolled forward by whole cycles until it

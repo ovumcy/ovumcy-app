@@ -216,7 +216,8 @@ describe("cycle-history-service", () => {
     // 2026-03-08: raw cycle day 36 > 28 + 7. The running cycle's period is more
     // than a week behind and the only later date is a whole-cycle roll, so the
     // next period, its window, both ovulation dates and the projected phase are
-    // withheld. The logged anchor and the rolled cycle day stay.
+    // withheld. The logged anchor and the raw cycle day stay (web dashboard
+    // shows stats.CurrentCycleDay, counted from the logged start, unrolled).
     const profile = createProfileRecord({
       lastPeriodStart: "2026-02-01",
     });
@@ -227,7 +228,7 @@ describe("cycle-history-service", () => {
     expect(projection).toEqual(
       expect.objectContaining({
         cycleAnchorDate: "2026-02-01",
-        currentCycleDay: 8,
+        currentCycleDay: 36,
         currentPhase: "unknown",
         isPredictionStale: true,
         cycleDayLooksLong: true,
@@ -265,8 +266,8 @@ describe("cycle-history-service", () => {
   });
 
   it("withholds the projection when several periods have been missed", () => {
-    // Anchor 2026-01-01, len 28, today 2026-04-15. Raw cycle day = 105. The
-    // cycle day still rolls three whole cycles (to 2026-03-26, day 21); no
+    // Anchor 2026-01-01, len 28, today 2026-04-15. Raw cycle day = 105, shown
+    // unrolled (not day 21 of a cycle rolled three lengths forward); no
     // next-period or ovulation date is named.
     const profile = createProfileRecord({
       lastPeriodStart: "2026-01-01",
@@ -278,7 +279,7 @@ describe("cycle-history-service", () => {
     expect(projection).toEqual(
       expect.objectContaining({
         cycleAnchorDate: "2026-01-01",
-        currentCycleDay: 21,
+        currentCycleDay: 105,
         isPredictionStale: true,
         cycleDayLooksLong: true,
         nextPeriodDate: null,
@@ -1175,6 +1176,46 @@ describe("cycle-history-service", () => {
           nextPeriodDate: "2026-02-14",
           nextPeriodWindowStartDate: "2026-02-13",
           nextPeriodWindowEndDate: "2026-02-15",
+          ovulationDate: null,
+          predictionCycleLength: 11,
+        }),
+      );
+    });
+
+    it("withholds the next period and its window past the overdue gate", () => {
+      // Same history (anchor 2026-02-03, len 11, data-driven window). The
+      // overdue gate (raw day > 11 + 7) holds on this branch too: day 18 still
+      // names the running cycle's date, day 19 names none.
+      const profile = createProfileRecord({ lastPeriodStart: "2026-02-03" });
+      const records = ["2026-01-01", "2026-01-11", "2026-01-23", "2026-02-03"].map(
+        (date) => ({ ...createEmptyDayLogRecord(date), isPeriod: true }),
+      );
+      const project = (now: Date) =>
+        buildCurrentCycleProjection(
+          profile,
+          buildCycleHistorySummary(profile, records, now),
+          records,
+          now,
+        );
+
+      expect(project(new Date(2026, 1, 20))).toEqual(
+        expect.objectContaining({
+          currentCycleDay: 18,
+          nextPeriodDate: "2026-02-14",
+          nextPeriodWindowStartDate: "2026-02-13",
+          nextPeriodWindowEndDate: "2026-02-15",
+        }),
+      );
+      expect(project(new Date(2026, 1, 21))).toEqual(
+        expect.objectContaining({
+          cycleAnchorDate: "2026-02-03",
+          currentCycleDay: 19,
+          currentPhase: "unknown",
+          isPredictionStale: true,
+          cycleDayLooksLong: true,
+          nextPeriodDate: null,
+          nextPeriodWindowStartDate: null,
+          nextPeriodWindowEndDate: null,
           ovulationDate: null,
           predictionCycleLength: 11,
         }),

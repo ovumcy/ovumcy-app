@@ -508,7 +508,7 @@ describe("dashboard-view-service", () => {
     );
 
     // Past length + 7 (raw cycle day 53) the next period is withheld rather
-    // than rolled to a date a whole cycle away.
+    // than rolled to a date a whole cycle away, and the raw day is shown.
     const overdueHistory = buildCycleHistorySummary(profile, [], new Date(2026, 2, 25));
     const overdue = buildDashboardViewData(
       profile,
@@ -518,6 +518,7 @@ describe("dashboard-view-service", () => {
     );
     expect(overdue.cycleHero).toEqual(
       expect.objectContaining({
+        value: "53",
         state: "stale",
         caption: "Next period: unknown",
         upcomingOvulationLabel: null,

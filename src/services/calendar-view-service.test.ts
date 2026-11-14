@@ -634,9 +634,11 @@ describe("calendar-view-service", () => {
       dismissedCalendarPredictionNoticeKey: null,
     });
 
+    // Cycle day 22 of the logged cycle: inside its length, so the projected
+    // ovulation still paints (past length + 7 every prediction cell is withheld).
     const state = await loadCalendarScreenState(
       storage,
-      new Date(2026, 2, 26),
+      new Date(2026, 2, 1),
       "2026-02",
       "2026-02-08",
     );
@@ -664,54 +666,77 @@ describe("calendar-view-service", () => {
     );
   });
 
-  it("keeps painting the missed cycle's period and fertile window after a stale cycle (web forward-roll parity)", () => {
-    // Anchor 2026-02-01, len 28, today 2026-03-25. Web's calendar paints
-    // predicted cycles from stats.NextPeriodStart = anchor + cycleLength =
-    // 2026-03-01 forward (calendar_days.go appendPredictedCycles), so the
-    // "missed" cycle that should have started 2026-03-01 still shows its
-    // predicted period AND its fertile window / ovulation (2026-03-14), rather
-    // than dropping all March predictions.
-    const viewData = buildCalendarViewData(
+  it("paints the missed period in the late week and no prediction past the overdue gate", () => {
+    // Anchor 2026-02-01, len 28: the running cycle's period was due
+    // 2026-03-01. On raw cycle day 33 (2026-03-05, <= 28 + 7) the grid still
+    // paints that missed period (web appendPredictedCycles from
+    // stats.NextPeriodStart). On raw day 53 (2026-03-25, > 28 + 7) web's grid
+    // returns empty prediction maps (calendar_days.go, PredictionsSuppressed /
+    // DashboardCycleOverdue): no predicted, fertile or ovulation cell remains,
+    // while a logged period day keeps its recorded state. The logged bleeding
+    // is marked uncertain so it opens no new cycle start.
+    const profile = {
+      lastPeriodStart: "2026-02-01",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "" as const,
+      usageGoal: "health" as const,
+      trackBBT: false,
+      temperatureUnit: "c" as const,
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: null,
+      themeOverride: null,
+      dismissedCalendarPredictionNoticeKey: null,
+    };
+    const records: DayLogRecord[] = [
       {
-        lastPeriodStart: "2026-02-01",
-        cycleLength: 28,
-        periodLength: 5,
-        autoPeriodFill: false,
-        irregularCycle: false,
-        unpredictableCycle: false,
-        ageGroup: "",
-        usageGoal: "health",
-        trackBBT: false,
-        temperatureUnit: "c",
-        trackCervicalMucus: false,
-        hideSexChip: false,
-        languageOverride: null,
-        themeOverride: null,
-        dismissedCalendarPredictionNoticeKey: null,
+        ...createEmptyDayLogRecord("2026-03-20"),
+        isPeriod: true,
+        cycleStart: true,
+        isUncertain: true,
       },
+    ];
+
+    const lateWeek = buildCalendarViewData(
+      profile,
       [],
+      new Date(2026, 2, 5),
+      new Date(2026, 2, 1),
+      "2026-03-05",
+    );
+    expect(lateWeek.days.find((day) => day.date === "2026-03-01")).toEqual(
+      expect.objectContaining({ stateKey: "predicted" }),
+    );
+
+    const overdue = buildCalendarViewData(
+      profile,
+      records,
       new Date(2026, 2, 25),
       new Date(2026, 2, 1),
-      "2026-03-14",
+      "2026-03-25",
     );
-    const byDate = new Map(viewData.days.map((day) => [day.date, day]));
-
-    expect(byDate.get("2026-03-01")).toEqual(
-      expect.objectContaining({
-        stateKey: "predicted",
-      }),
-    );
-    expect(byDate.get("2026-03-14")).toEqual(
-      expect.objectContaining({
-        stateKey: "ovulation",
-        hasOvulationMarker: true,
-      }),
-    );
-    // The next rolled cycle (2026-03-29) is also painted as predicted.
-    expect(byDate.get("2026-03-29")).toEqual(
-      expect.objectContaining({
-        stateKey: "predicted",
-      }),
+    const predictionStates: string[] = [
+      "predicted",
+      "pre_fertile",
+      "fertility_edge",
+      "fertility_peak",
+      "ovulation",
+      "ovulation_tentative",
+    ];
+    const predictedDays = overdue.days
+      .filter((day) => predictionStates.includes(day.stateKey))
+      .map((day) => day.date);
+    expect(predictedDays).toEqual([]);
+    expect(overdue.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
+    expect(
+      overdue.days.some((day) => day.hasTentativeOvulationMarker === true),
+    ).toBe(false);
+    expect(overdue.days.find((day) => day.date === "2026-03-20")).toEqual(
+      expect.objectContaining({ stateKey: "period" }),
     );
   });
 
