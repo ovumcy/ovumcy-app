@@ -96,6 +96,7 @@ export function SyncAccountSecurityScreen({
         regenerateErrorCode={controller.regenerateErrorCode}
         onRegenerate={controller.handleRegenerate}
         revealedRecoveryCode={controller.revealedRecoveryCode}
+        revealedRecoveryCodeFromTOTP={controller.revealedRecoveryCodeFromTOTP}
         onAcknowledgeRecoveryCode={controller.handleAcknowledgeRecoveryCode}
         totpCopy={totpCopy}
         twoFactorEnabled={controller.twoFactorEnabled}

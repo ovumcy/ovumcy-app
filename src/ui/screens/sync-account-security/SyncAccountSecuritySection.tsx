@@ -82,6 +82,7 @@ export type SyncAccountSecuritySectionProps = {
   onRegenerate: () => void | Promise<void>;
 
   revealedRecoveryCode: string;
+  revealedRecoveryCodeFromTOTP: boolean;
   onAcknowledgeRecoveryCode: () => void;
 
   totpCopy: TOTPCopy;
@@ -143,6 +144,7 @@ export function SyncAccountSecuritySection({
   regenerateErrorCode,
   onRegenerate,
   revealedRecoveryCode,
+  revealedRecoveryCodeFromTOTP,
   onAcknowledgeRecoveryCode,
   totpCopy,
   totpMode,
@@ -467,7 +469,11 @@ export function SyncAccountSecuritySection({
               />
               {totpErrorCode ? (
                 <StatusBanner
-                  message={resolveTOTPErrorMessage(totpCopy, totpErrorCode)}
+                  message={
+                    totpErrorCode === "totp_invalid_code"
+                      ? totpCopy.errors.totpEnrollInvalidCode
+                      : resolveTOTPErrorMessage(totpCopy, totpErrorCode)
+                  }
                   testID="account-security-totp-error-banner"
                   tone="error"
                 />
@@ -557,7 +563,14 @@ export function SyncAccountSecuritySection({
             testID="account-security-recovery-code-modal"
           >
             <Text style={styles.modalTitle}>{copy.reveal.title}</Text>
-            <Text style={styles.helperText}>{copy.reveal.hint}</Text>
+            <Text
+              style={styles.helperText}
+              testID="account-security-recovery-code-hint"
+            >
+              {revealedRecoveryCodeFromTOTP
+                ? totpCopy.enroll.recoveryCodeReplacedHint
+                : copy.reveal.hint}
+            </Text>
             <View style={styles.codeCard}>
               <Text
                 selectable
@@ -598,6 +611,8 @@ function resolveTOTPErrorMessage(
       return copy.errors.totpReplayed;
     case "totp_secret_failed":
       return copy.errors.totpSecretFailed;
+    case "totp_enrollment_restart_required":
+      return copy.errors.totpEnrollmentRestartRequired;
     case "not_connected":
       return copy.errors.notConnected;
     case "rate_limited":

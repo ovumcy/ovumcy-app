@@ -784,7 +784,64 @@ describe("sync-api-client", () => {
       code: "123456",
     });
 
-    expect(result).toEqual({ ok: true });
+    expect(result).toEqual({ ok: true, recoveryCode: null });
+  });
+
+  it("returns the rotated recovery code from totp verify", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "totp_enabled",
+          recovery_code: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.verifyTOTPEnrollment("session-1", {
+      code: "123456",
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+    });
+  });
+
+  it("treats an empty recovery code from totp verify as none", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: "totp_enabled", recovery_code: "" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.verifyTOTPEnrollment("session-1", {
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: true, recoveryCode: null });
+  });
+
+  it("rejects a non-string recovery code from totp verify as invalid_response", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: "totp_enabled", recovery_code: 42 }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.verifyTOTPEnrollment("session-1", {
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_response" });
   });
 
   it("propagates totp_invalid_code on verify failures", async () => {

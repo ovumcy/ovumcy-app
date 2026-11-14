@@ -54,7 +54,7 @@ describe("useSyncAccountSecurityController", () => {
 
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
-        .mockResolvedValue({ ok: true });
+        .mockResolvedValue({ ok: true, recoveryCode: null });
 
       const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
@@ -88,7 +88,7 @@ describe("useSyncAccountSecurityController", () => {
 
       jest
         .spyOn(syncTOTPService, "verifyTOTPEnrollment")
-        .mockResolvedValue({ ok: true });
+        .mockResolvedValue({ ok: true, recoveryCode: null });
 
       const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
@@ -747,6 +747,155 @@ describe("useSyncAccountSecurityController", () => {
         syncAccountSessionService.describeSyncAccountTwoFactor,
       ).toHaveBeenCalledTimes(1);
       expect(result.current.twoFactorEnabled).toBe(false);
+    });
+
+    it("drops the pending enrollment and returns to the password step when a restart is required", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false });
+      jest.spyOn(syncTOTPService, "startTOTPEnrollment").mockResolvedValue({
+        ok: true,
+        enrollment: {
+          secretBase32: "JBSWY3DPEHPK3PXP",
+          provisioningURI: "otpauth://totp/Ovumcy:owner?secret=JBSWY3DPEHPK3PXP",
+        },
+      });
+      jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
+        ok: false,
+        errorCode: "totp_enrollment_restart_required",
+      });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setTotpEnrollPassword("hunter2-hunter2");
+      });
+      await act(async () => {
+        await result.current.handleStartTOTPEnrollment();
+      });
+      await act(() => {
+        result.current.setTotpVerifyCode("123456");
+      });
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe(
+        "totp_enrollment_restart_required",
+      );
+      expect(result.current.totpStage).toBe("idle");
+      expect(result.current.totpEnrollment).toBeNull();
+      expect(result.current.totpVerifyCode).toBe("");
+      expect(result.current.totpStatus).toBe("idle");
+    });
+  });
+
+  describe("handleVerifyTOTPEnrollment (recovery code rotation)", () => {
+    it("reveals the rotated recovery code once and clears it on acknowledge", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
+        ok: true,
+        recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+      });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      expect(result.current.revealedRecoveryCodeFromTOTP).toBe(false);
+
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpStage).toBe("completed");
+      expect(result.current.revealedRecoveryCode).toBe(
+        "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+      );
+      expect(result.current.revealedRecoveryCodeFromTOTP).toBe(true);
+
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryCode();
+      });
+
+      expect(result.current.revealedRecoveryCode).toBe("");
+      expect(result.current.revealedRecoveryCodeFromTOTP).toBe(false);
+    });
+
+    it("opens no reveal when the backend issued no recovery code", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      jest
+        .spyOn(syncTOTPService, "verifyTOTPEnrollment")
+        .mockResolvedValue({ ok: true, recoveryCode: null });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpStage).toBe("completed");
+      expect(result.current.revealedRecoveryCode).toBe("");
+      expect(result.current.revealedRecoveryCodeFromTOTP).toBe(false);
+    });
+
+    it("never logs the recovery code issued by TOTP enrollment", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
+        ok: true,
+        recoveryCode: "supersecretrecoverycode111111111",
+      });
+      const consoleSpies = [
+        jest.spyOn(console, "log").mockImplementation(() => {}),
+        jest.spyOn(console, "warn").mockImplementation(() => {}),
+        jest.spyOn(console, "error").mockImplementation(() => {}),
+        jest.spyOn(console, "info").mockImplementation(() => {}),
+        jest.spyOn(console, "debug").mockImplementation(() => {}),
+      ];
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+      expect(result.current.revealedRecoveryCode).toBe(
+        "supersecretrecoverycode111111111",
+      );
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryCode();
+      });
+
+      for (const spy of consoleSpies) {
+        expect(spy).not.toHaveBeenCalled();
+      }
     });
   });
 

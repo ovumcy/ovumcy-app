@@ -99,6 +99,10 @@ export function useSyncAccountSecurityController({
 
   // Shared reveal modal (used by reset-password and regenerate flows)
   const [revealedRecoveryCode, setRevealedRecoveryCode] = useState("");
+  // True when the revealed code came from completing TOTP enrollment, which
+  // silently replaced the code from registration or the last regeneration.
+  const [revealedRecoveryCodeFromTOTP, setRevealedRecoveryCodeFromTOTP] =
+    useState(false);
 
   // Two-factor authentication (TOTP)
   const [totpMode, setTotpMode] =
@@ -296,12 +300,21 @@ export function useSyncAccountSecurityController({
     if (!result.ok) {
       setTotpErrorCode(result.errorCode);
       setTotpStatus("idle");
+      if (result.errorCode === "totp_enrollment_restart_required") {
+        setTotpStage("idle");
+        setTotpEnrollment(null);
+        setTotpVerifyCode("");
+      }
       return;
     }
     setTotpStage("completed");
     setTotpStatus("success");
     setTotpVerifyCode("");
     setTotpEnrollment(null);
+    if (result.recoveryCode) {
+      setRevealedRecoveryCode(result.recoveryCode);
+      setRevealedRecoveryCodeFromTOTP(true);
+    }
     const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
     setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
@@ -339,6 +352,7 @@ export function useSyncAccountSecurityController({
 
   function handleAcknowledgeRecoveryCode() {
     setRevealedRecoveryCode("");
+    setRevealedRecoveryCodeFromTOTP(false);
     // After acknowledging a regenerate-issued code, the success flag stays
     // long enough to show a confirmation banner if the screen still wants it;
     // we reset it explicitly so the form is ready for further changes.
@@ -385,6 +399,7 @@ export function useSyncAccountSecurityController({
 
     // reveal
     revealedRecoveryCode,
+    revealedRecoveryCodeFromTOTP,
     handleAcknowledgeRecoveryCode,
 
     // two-factor

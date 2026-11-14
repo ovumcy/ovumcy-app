@@ -163,7 +163,10 @@ export type SyncAPIClient = {
   verifyTOTPEnrollment(
     sessionToken: string,
     input: { code: string },
-  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+  ): Promise<
+    | { ok: true; recoveryCode: string | null }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
   disableTOTP(
     sessionToken: string,
     input: { currentPassword: string; code: string },
@@ -202,6 +205,12 @@ type RawSyncTOTPEnrollmentStart = {
 
 type RawSyncStatusPayload = {
   status: string;
+};
+
+// recovery_code is absent on servers that predate rotation-on-enable.
+type RawSyncTOTPEnabledPayload = {
+  status: string;
+  recovery_code?: string;
 };
 
 type RawSyncForgotPasswordResult = {
@@ -412,7 +421,7 @@ export function createSyncAPIClient(
     },
 
     async verifyTOTPEnrollment(sessionToken, input) {
-      return requestJSON<RawSyncStatusPayload>(
+      return requestJSON<RawSyncTOTPEnabledPayload>(
         fetchImpl,
         normalizedBaseURL,
         "/auth/totp/verify",
@@ -423,10 +432,12 @@ export function createSyncAPIClient(
             code: input.code,
           },
         },
-        isRawSyncStatusPayload,
+        isRawSyncTOTPEnabledPayload,
         "invalid_response",
       ).then((result) =>
-        result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode },
+        result.ok
+          ? { ok: true, recoveryCode: result.payload.recovery_code || null }
+          : { ok: false, errorCode: result.errorCode },
       );
     },
 
@@ -862,6 +873,17 @@ function isRawSyncTOTPEnrollmentStart(
 
 function isRawSyncStatusPayload(value: unknown): value is RawSyncStatusPayload {
   return isObject(value) && typeof value.status === "string";
+}
+
+function isRawSyncTOTPEnabledPayload(
+  value: unknown,
+): value is RawSyncTOTPEnabledPayload {
+  return (
+    isObject(value) &&
+    typeof value.status === "string" &&
+    (typeof value.recovery_code === "string" ||
+      typeof value.recovery_code === "undefined")
+  );
 }
 
 function isRawSyncForgotPasswordResult(
