@@ -239,7 +239,8 @@ that owns the canonical web UX).
   - fed by the shared completed-cycle summaries through the stats view service; it is recorded
     history, so it stays visible while predictions are suppressed (active pregnancy or day-log pause)
   - deviation: the shared-axis ribbon drawing is not ported; rows are text cards
-  - the typical/variable comparison wording stays in the premium extended reports
+  - the typical/variable comparison wording stays in the premium extended reports; when those are
+    unlocked they replace the free list rather than repeat its rows
 
 ### Settings
 

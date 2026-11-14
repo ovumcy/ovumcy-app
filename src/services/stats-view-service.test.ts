@@ -753,14 +753,11 @@ describe("buildStatsViewData", () => {
       );
     });
 
-    it("keeps comparison wording premium-only", () => {
+    it("yields to the extended reports when they are unlocked", () => {
       const premium = build(starts, { ...noPremium, extendedReports: true });
 
       expect(premium.extendedReports?.rows[0]?.comparisonLabel).toBeTruthy();
-      expect(premium.completedCycleList?.rows).toHaveLength(4);
-      expect(
-        Object.keys(premium.completedCycleList?.rows[0] ?? {}),
-      ).not.toContain("comparisonLabel");
+      expect(premium.completedCycleList).toBeUndefined();
     });
 
     it("is absent below two completed cycles", () => {
