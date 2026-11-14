@@ -19,7 +19,13 @@ After verification:
 - Every other session of this account is signed out — only the device that completed enrollment stays connected.
 - The next login on any device will ask for a 6-digit code in addition to the password.
 - On a self-hosted (community) server the account recovery code is **replaced**: the code from registration or your last regeneration stops working, and any pending password-reset token dies with it. The app shows the new code exactly once in the *Save this recovery code* dialog. It is held only in screen memory until you tap *I have saved it* (the system back gesture does not close the dialog) or leave the screen — never written to storage, logs, the clipboard, or a URL. Ovumcy Cloud does not rotate the code on enrollment, so no dialog appears there.
-- If the response is lost on the way back (network drop) the server has still turned two-factor on and replaced the code. The app re-checks the account and, when two-factor is on, says the new code never arrived; use *Regenerate recovery code* to get one.
+- If the response is lost on the way back (network drop) the server has still turned two-factor on and replaced the code. The app re-checks the account and, when two-factor is on, says the new code never arrived; use *Regenerate recovery code* to get one (see below).
+
+## Regenerating The Recovery Code With Two-Factor On
+
+On a self-hosted (community) server with two-factor on, *Regenerate recovery code* asks for a current 6-digit code next to your password. A recovery-code reset turns two-factor off, so the server will not hand out a new recovery code for the password alone. The app shows the code field whenever it knows two-factor is on, and also after the server refuses a regeneration for a missing or wrong code (for example when the two-factor status could not be loaded). A wrong code counts toward the same per-account attempt limit as login and disable codes, and a code already used once is refused until the next one appears in your authenticator. The code travels in the request body only and is cleared from the screen after a successful regeneration.
+
+Ovumcy Cloud regenerates the recovery code with the password alone, so no code field appears there.
 
 If verification fails:
 

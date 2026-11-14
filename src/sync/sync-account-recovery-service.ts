@@ -59,6 +59,10 @@ export type RegenerateSyncRecoveryCodeErrorCode =
   | "not_connected"
   | "current_password_required"
   | "invalid_current_password"
+  | "totp_invalid_code"
+  | "totp_replayed"
+  | "totp_not_configured"
+  | "totp_secret_failed"
   | "unauthorized"
   | "rate_limited"
   | "network_failed"
@@ -296,11 +300,15 @@ export async function resetSyncAccountPassword(
  * hijacked session silently rotating the code and locking the legitimate
  * owner out of the recovery surface). Sessions and pending reset tokens are
  * left untouched.
+ *
+ * `code` is the current TOTP code: a community server requires it once the
+ * account has two-factor on, because a recovery-code reset clears TOTP. The
+ * managed API takes the password alone, so it never receives the code.
  */
 export async function regenerateSyncAccountRecoveryCode(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { currentPassword: string },
+  input: { currentPassword: string; code?: string },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
@@ -323,7 +331,7 @@ export async function regenerateSyncAccountRecoveryCode(
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await client.regenerateRecoveryCode(
       secrets.managedAuthSessionToken,
-      input,
+      { currentPassword: input.currentPassword },
     );
     if (!result.ok) {
       return {
@@ -332,6 +340,11 @@ export async function regenerateSyncAccountRecoveryCode(
       };
     }
     return { ok: true, recoveryCode: result.result.recoveryCode };
+  }
+
+  const code = input.code?.trim();
+  if (code !== undefined && !/^\d{6}$/.test(code)) {
+    return { ok: false, errorCode: "totp_invalid_code" };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -347,7 +360,9 @@ export async function regenerateSyncAccountRecoveryCode(
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
   const result = await client.regenerateRecoveryCode(
     secrets.authSessionToken,
-    input,
+    code === undefined
+      ? { currentPassword: input.currentPassword }
+      : { currentPassword: input.currentPassword, code },
   );
   if (!result.ok) {
     return {
@@ -463,6 +478,10 @@ function mapCommunityRegenerateError(
 ): RegenerateSyncRecoveryCodeErrorCode {
   switch (code) {
     case "invalid_current_password":
+    case "totp_invalid_code":
+    case "totp_replayed":
+    case "totp_not_configured":
+    case "totp_secret_failed":
     case "unauthorized":
     case "rate_limited":
     case "network_failed":
