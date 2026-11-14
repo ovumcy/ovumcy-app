@@ -530,3 +530,75 @@ describe("sync-snapshot-service", () => {
     expect(restored.map((response) => response.id)).toEqual([valid.id]);
   });
 });
+
+describe("restoreSyncSnapshot reminder rebuild", () => {
+  it("rebuilds the OS schedule once from the restored profile, after the data is applied", async () => {
+    const target = createVolatileWebAppStorage();
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const profile = {
+      ...createDefaultProfileRecord(),
+      dailyLogReminderEnabled: true,
+    };
+
+    await restoreSyncSnapshot(
+      target,
+      baseSnapshot({ profile }),
+      createDefaultSyncPreferencesRecord(),
+      scheduler,
+    );
+
+    expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    const plans = scheduler.sync.mock.calls[0]![0] as { kind: string }[];
+    expect(plans.map((plan) => plan.kind)).toEqual(["daily_log"]);
+  });
+
+  it("clears the OS schedule when the restored profile has every reminder off", async () => {
+    const target = createVolatileWebAppStorage();
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+
+    await restoreSyncSnapshot(
+      target,
+      baseSnapshot(),
+      createDefaultSyncPreferencesRecord(),
+      scheduler,
+    );
+
+    expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    expect(scheduler.sync).toHaveBeenCalledWith([]);
+  });
+
+  it("does not rebuild when applying the snapshot fails", async () => {
+    const storage = createLocalAppStorageMock();
+    jest
+      .mocked(storage.writeProfileRecord)
+      .mockRejectedValue(new Error("disk full"));
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+
+    await expect(
+      restoreSyncSnapshot(
+        storage,
+        baseSnapshot(),
+        createDefaultSyncPreferencesRecord(),
+        scheduler,
+      ),
+    ).rejects.toThrow("disk full");
+
+    expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("keeps a successful restore when the rebuild itself fails", async () => {
+    const target = createVolatileWebAppStorage();
+    const scheduler = { sync: jest.fn().mockRejectedValue(new Error("os refused")) };
+
+    await expect(
+      restoreSyncSnapshot(
+        target,
+        baseSnapshot(),
+        createDefaultSyncPreferencesRecord(),
+        scheduler,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(scheduler.sync).toHaveBeenCalledTimes(1);
+  });
+});

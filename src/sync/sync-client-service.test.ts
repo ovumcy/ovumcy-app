@@ -993,11 +993,15 @@ describe("sync-client-service", () => {
       }),
     );
 
+    const reminderScheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+
     const result = await runSyncRestore(
       storage,
       secretStore,
       preferences,
       apiClientFactory,
+      undefined,
+      reminderScheduler,
     );
 
     expect(result).toEqual({
@@ -1008,6 +1012,8 @@ describe("sync-client-service", () => {
         setupStatus: "connected",
       }),
     });
+    // The applied snapshot replaced the plan inputs: one schedule rebuild.
+    expect(reminderScheduler.sync).toHaveBeenCalledTimes(1);
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
@@ -3795,6 +3801,7 @@ describe("runSyncRestore additional branches", () => {
         getBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "blob_not_found" }),
       }),
     );
+    const reminderScheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
 
     const result = await runSyncRestore(
       storage,
@@ -3808,9 +3815,12 @@ describe("runSyncRestore additional branches", () => {
         setupStatus: "connected",
       },
       apiClientFactory,
+      undefined,
+      reminderScheduler,
     );
 
     expect(result).toEqual({ ok: false, errorCode: "blob_not_found" });
+    expect(reminderScheduler.sync).not.toHaveBeenCalled();
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
   });
 

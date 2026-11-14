@@ -12,6 +12,9 @@ import type {
   LocalAppStorage,
   LocalBootstrapState,
 } from "../storage/local/storage-contract";
+import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
 import type { SyncPreferencesRecord } from "./sync-contract";
 
 export const SYNC_SNAPSHOT_SCHEMA_VERSION = 3;
@@ -230,6 +233,7 @@ export async function restoreSyncSnapshot(
   storage: LocalAppStorage,
   snapshot: SyncSnapshotV3,
   syncPreferences: SyncPreferencesRecord,
+  reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
 ): Promise<void> {
   await storage.clearAllLocalData();
   await storage.writeBootstrapState(snapshot.bootstrapState);
@@ -307,4 +311,10 @@ export async function restoreSyncSnapshot(
       // Skip an invalid screening response; keep restoring.
     }
   }
+
+  // The applied snapshot replaced every reminder-plan input (profile toggles,
+  // day logs, pregnancy records), so the OS schedule built from the previous
+  // data is stale. Best effort: the rebuild never throws, and a failed one
+  // must not undo a restore that has already succeeded.
+  await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
 }
