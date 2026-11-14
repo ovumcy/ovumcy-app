@@ -138,6 +138,11 @@ describe("overdue gate on stats", () => {
     expect(gated.personalForecasts).toBeUndefined();
     expect(gated.cycleOverview).toEqual(open.cycleOverview);
     expect(gated.bbtTrend).toEqual(open.bbtTrend);
+    expect(open.historyStatements?.items.map((item) => item.key)).toEqual([
+      "cycle_length_trend",
+      "headache:follicular",
+    ]);
+    expect(gated.historyStatements).toEqual(open.historyStatements);
     expect(gated.topCards.map((card) => card.key)).toEqual(
       open.topCards.map((card) => card.key),
     );

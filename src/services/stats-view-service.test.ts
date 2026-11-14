@@ -7,6 +7,11 @@ import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
 } from "./cycle-history-service";
+import {
+  addDays,
+  formatLocalDate,
+  parseLocalDate,
+} from "./profile-settings-policy";
 import { buildStatsViewData, loadStatsScreenState } from "./stats-view-service";
 
 function createProfileRecord(
@@ -772,6 +777,96 @@ describe("buildStatsViewData", () => {
     });
   });
 
+  describe("free history statements", () => {
+    const noPremium = {
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    };
+    const startsFor = (lengths: number[]) => {
+      const starts = ["2026-01-01"];
+      for (const length of lengths) {
+        starts.push(
+          formatLocalDate(addDays(parseLocalDate(starts.at(-1)!)!, length)),
+        );
+      }
+      return starts;
+    };
+    const build = (
+      lengths: number[],
+      extra: DayLogRecord[] = [],
+      options?: { suppressPredictions: boolean },
+    ) => {
+      const starts = startsFor(lengths);
+      return buildStatsViewData(
+        createProfileRecord({ lastPeriodStart: starts.at(-1)! }),
+        [...starts.map((date) => createPeriodRecord(date)), ...extra],
+        createDefaultSymptomRecords(),
+        new Date(2026, 6, 20),
+        "en",
+        noPremium,
+        options,
+      );
+    };
+
+    it("states a steady trend and a phase recurrence without premium, also while predictions are suppressed", () => {
+      const starts = startsFor([28, 28, 28, 28]);
+      const headache = starts.slice(0, 4).map((start, index) => ({
+        ...createEmptyDayLogRecord(
+          formatLocalDate(addDays(parseLocalDate(start)!, 19)),
+        ),
+        mood: 3,
+        symptomIDs: index < 3 ? ["headache"] : [],
+      }));
+
+      for (const options of [undefined, { suppressPredictions: true }]) {
+        const viewData = build([28, 28, 28, 28], headache, options);
+        expect(viewData.historyStatements?.title).toBe(
+          "What your history shows",
+        );
+        expect(viewData.historyStatements?.items).toEqual([
+          {
+            key: "cycle_length_trend",
+            title:
+              "Your cycle length has stayed steady across 4 completed cycles.",
+          },
+          {
+            key: "headache:luteal",
+            icon: "🤕",
+            title: expect.stringContaining("Headache"),
+            detail: "Logged in 3 of 4 recorded phases.",
+          },
+        ]);
+      }
+    });
+
+    it("states a shorter trend with its comparison window", () => {
+      expect(build([30, 30, 30, 26, 26, 26]).historyStatements?.items).toEqual([
+        {
+          key: "cycle_length_trend",
+          title:
+            "Your recent cycles are about 4 days shorter than the earlier ones.",
+          detail: "Compared across 6 completed cycles.",
+        },
+      ]);
+    });
+
+    it("states a longer trend", () => {
+      expect(build([26, 26, 30, 30]).historyStatements?.items[0]).toEqual({
+        key: "cycle_length_trend",
+        title: "Your recent cycles are about 4 days longer than the earlier ones.",
+        detail: "Compared across 4 completed cycles.",
+      });
+    });
+
+    it("is absent below three completed cycles", () => {
+      expect(build([28, 28]).historyStatements).toBeUndefined();
+    });
+  });
+
   it("surfaces the short luteal phase warning in advanced insights when 3+ recent cycles show luteal <10 days", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({ trackCervicalMucus: true }),
@@ -1026,6 +1121,9 @@ describe("buildStatsViewData active-pregnancy prediction suppression", () => {
     // prediction framing is suppressed.
     expect(viewData.hasInsights).toBe(true);
     expect(viewData.trendChart?.points).toHaveLength(4);
+    expect(viewData.historyStatements?.items[0]?.key).toBe(
+      "cycle_length_trend",
+    );
     expect(viewData.predictionDisclaimer).toBe(
       "These are estimates, not medical advice or a method of contraception.",
     );

@@ -14,6 +14,7 @@ import {
   STATS_MINIMUM_PHASE_INSIGHTS_CYCLES,
   type StatsComparisonKind,
   type StatsCycleProjection,
+  type StatsHistoryStatement,
   type StatsPhase,
 } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
@@ -44,6 +45,7 @@ import { detectSustainedThermalShift } from "./observed-ovulation-service";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
 import { buildStatsCompletedCycleList } from "./stats-completed-cycle-list-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
+import { buildStatsHistoryStatements } from "./stats-history-statements-service";
 import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
 import { buildStatsPremiumPhaseInsights } from "./stats-premium-phase-insights-service";
 import {
@@ -108,6 +110,18 @@ export type StatsViewData = {
       title: string;
       cycleLengthLabel: string;
       periodLengthLabel: string;
+    }[];
+  };
+  // Free tier: statements about recorded history (web "What your history
+  // shows"). They read no projected date, so prediction suppression keeps them.
+  historyStatements?: {
+    title: string;
+    subtitle: string;
+    items: {
+      key: string;
+      icon?: string;
+      title: string;
+      detail?: string;
     }[];
   };
   extendedReports?: {
@@ -505,6 +519,11 @@ export function buildStatsViewData(
   const completedCycleRows = extendedReports
     ? []
     : buildStatsCompletedCycleList(history);
+  const historyStatements = buildStatsHistoryStatements(
+    history,
+    records,
+    localizedSymptomRecords,
+  );
   // The BBT series and the derived coverline / probable-ovulation marker are
   // current-cycle fertility signals: while suppressPredictions holds (active
   // pregnancy, or the day-log pause), they are phantom math and stay hidden —
@@ -585,6 +604,17 @@ export function buildStatsViewData(
                 row.periodLength,
               ),
             })),
+          },
+        }
+      : {}),
+    ...(historyStatements.length > 0
+      ? {
+          historyStatements: {
+            title: statsCopy.historyStatementsTitle,
+            subtitle: statsCopy.historyStatementsSubtitle,
+            items: historyStatements.map((statement) =>
+              buildHistoryStatementItem(statement, statsCopy),
+            ),
           },
         }
       : {}),
@@ -1116,6 +1146,37 @@ function buildAdvancedFertilitySection(
     title: statsCopy.advancedFertility.title,
     subtitle: statsCopy.advancedFertility.subtitle,
     items,
+  };
+}
+
+function buildHistoryStatementItem(
+  statement: StatsHistoryStatement,
+  statsCopy: ReturnType<typeof getStatsCopy>,
+): NonNullable<StatsViewData["historyStatements"]>["items"][number] {
+  if (statement.kind === "symptom_phase_recurrence") {
+    return {
+      key: `${statement.id}:${statement.phase}`,
+      icon: statement.icon,
+      title: `${statsCopy.phaseLabels[statement.phase]} · ${statement.label}`,
+      detail: statsCopy.statementSymptomRecurrence(
+        statement.count,
+        statement.total,
+      ),
+    };
+  }
+  if (statement.direction === "steady") {
+    return {
+      key: statement.kind,
+      title: statsCopy.statementCycleTrendSteady(statement.windowSize),
+    };
+  }
+  return {
+    key: statement.kind,
+    title:
+      statement.direction === "shorter"
+        ? statsCopy.statementCycleTrendShorter(statement.days)
+        : statsCopy.statementCycleTrendLonger(statement.days),
+    detail: statsCopy.statementCycleTrendWindow(statement.windowSize),
   };
 }
 

@@ -207,6 +207,7 @@ Ovumcy is layered so each level adds capability without taking anything away fro
 | Advanced fertility signals (LH, BBT shift, ovulation confirmation) | :x: | :x: | :white_check_mark: |
 | Premium cycle insights (weighted average, drift, anomalies, seasonal, short luteal warning) | :x: | :x: | :white_check_mark: |
 | Recent completed cycles list (start, cycle and period length) | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| History statements (cycle-length trend, symptoms that recur in a phase) | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Extended cycle reports (with typical/variable comparison wording) | :x: | :x: | :white_check_mark: |
 | Doctor-friendly PDF with colored calendar | :x: | :x: | :white_check_mark: |
 | Partner sharing (one-way, read-only view for a free guest) | :x: | :x: | :white_check_mark: |

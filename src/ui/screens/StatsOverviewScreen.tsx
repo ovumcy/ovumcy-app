@@ -18,6 +18,7 @@ import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 import { StatsOverviewEmptyState } from "./stats/StatsOverviewEmptyState";
 import { StatsOverviewCompletedCycleListSection } from "./stats/StatsOverviewCompletedCycleListSection";
 import { StatsOverviewExtendedReportsSection } from "./stats/StatsOverviewExtendedReportsSection";
+import { StatsOverviewHistoryStatementsSection } from "./stats/StatsOverviewHistoryStatementsSection";
 import { StatsOverviewPatternSections } from "./stats/StatsOverviewPatternSections";
 import { StatsOverviewPremiumSections } from "./stats/StatsOverviewPremiumSections";
 import { StatsOverviewSummarySections } from "./stats/StatsOverviewSummarySections";
@@ -133,6 +134,10 @@ export function StatsOverviewScreen({
               />
               <StatsOverviewPatternSections
                 pairWidth={pairWidth}
+                styles={styles}
+                viewData={viewData}
+              />
+              <StatsOverviewHistoryStatementsSection
                 styles={styles}
                 viewData={viewData}
               />
