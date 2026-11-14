@@ -1,10 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { useState } from "react";
 
-import { createEmptyDayLogRecord, type DayLogRecord } from "../../models/day-log";
+import {
+  createEmptyDayLogRecord,
+  MAX_DAY_NOTES_LENGTH,
+  type DayLogRecord,
+} from "../../models/day-log";
 import { createDefaultProfileRecord, type ProfileRecord } from "../../models/profile";
 import { createDefaultSymptomRecords } from "../../models/symptom";
 import {
   buildDayLogEditorViewData,
+  buildNextDayLogRecordPatch,
   type DayLogEditorPremiumOptions,
 } from "../../services/day-log-editor-service";
 import { DayLogEditorCard, type DayLogEditorSectionKey } from "./DayLogEditorCard";
@@ -709,6 +715,62 @@ describe("pregnancy metric edge input", () => {
     expect(onPatch).toHaveBeenLastCalledWith({ bpSystolic: 0 });
     await fireEvent.changeText(screen.getByTestId("day-log-bp-diastolic-input"), "xyz");
     expect(onPatch).toHaveBeenLastCalledWith({ bpDiastolic: 0 });
+  });
+});
+
+describe("DayLogEditorCard notes input", () => {
+  function NotesHarness({ onRecord }: { onRecord: (record: DayLogRecord) => void }) {
+    const viewData = buildDayLogEditorViewData(
+      createDefaultProfileRecord(),
+      "2026-05-31",
+      createDefaultSymptomRecords(),
+    );
+    const [record, setRecord] = useState(createEmptyDayLogRecord("2026-05-31"));
+    onRecord(record);
+
+    return (
+      <DayLogEditorCard
+        entryExists={false}
+        isSaving={false}
+        record={record}
+        statusMessage=""
+        viewData={viewData}
+        onPatch={(updates) =>
+          setRecord((current) => buildNextDayLogRecordPatch(current, updates))
+        }
+        onSave={jest.fn()}
+      />
+    );
+  }
+
+  it("keeps a trailing space while typing so the next word is separated", async () => {
+    await render(<NotesHarness onRecord={jest.fn()} />);
+
+    await fireEvent.changeText(screen.getByTestId("day-log-notes-input"), "a ");
+    expect(screen.getByTestId("day-log-notes-input").props.value).toBe("a ");
+    await fireEvent.changeText(screen.getByTestId("day-log-notes-input"), "a b");
+
+    expect(screen.getByTestId("day-log-notes-input").props.value).toBe("a b");
+  });
+
+  it("keeps typed notes through an unrelated edit and still caps the length", async () => {
+    let latest = createEmptyDayLogRecord("2026-05-31");
+    await render(
+      <NotesHarness
+        onRecord={(record) => {
+          latest = record;
+        }}
+      />,
+    );
+
+    await fireEvent.changeText(screen.getByTestId("day-log-notes-input"), "a ");
+    expect(latest.notes).toBe("a ");
+
+    await fireEvent.changeText(
+      screen.getByTestId("day-log-notes-input"),
+      "x".repeat(MAX_DAY_NOTES_LENGTH + 5),
+    );
+    expect(latest.notes).toHaveLength(MAX_DAY_NOTES_LENGTH);
   });
 });
 

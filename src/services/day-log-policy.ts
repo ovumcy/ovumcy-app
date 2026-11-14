@@ -208,6 +208,15 @@ export function normalizeDayBpDiastolic(
   return rounded;
 }
 
+// Length cap without trimming: the editor keeps what the user typed (a
+// trailing space is part of the next word); trimming happens when the record
+// is sanitized for storage.
+export function capDayLogNotes(value: string): string {
+  return value.length <= MAX_DAY_NOTES_LENGTH
+    ? value
+    : value.slice(0, MAX_DAY_NOTES_LENGTH);
+}
+
 export function trimDayLogNotes(value: string): string {
   const normalized = value.trim();
   if (normalized.length <= MAX_DAY_NOTES_LENGTH) {

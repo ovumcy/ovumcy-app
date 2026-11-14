@@ -56,8 +56,8 @@ import {
 //     only empty dates receive the imported entry. Records are run through
 //     sanitizeDayLogRecord, so unknown enum values collapse to neutral defaults
 //     rather than failing the whole import.
-//   - custom symptoms: a symptom whose label already exists is skipped; new
-//     ones are created.
+//   - custom symptoms: a symptom whose label already exists is skipped; a new
+//     one is created only when at least one day referencing it is written.
 //   - profile settings are restored ONLY while the local profile is still
 //     pristine (field-for-field equal to createDefaultProfileRecord(), i.e. no
 //     user-entered data yet). Any user-entered value — even a language
@@ -285,8 +285,10 @@ async function walkBackupEnvelope(
     envelope.symptoms,
     apply,
   );
-  outcome.symptomsAdded = symptomImportResult.added;
   const symptomIDMap = symptomImportResult.idMap;
+  // A custom symptom is created only when a day that references it is
+  // written, so a file whose referencing days are all skipped adds none.
+  const pendingSymptoms = symptomImportResult.pending;
 
   // The first record for a calendar date decides it; a later record repeating
   // that date is rejected (the web restore does the same). Tracking this in
@@ -336,6 +338,18 @@ async function walkBackupEnvelope(
       // Nothing meaningful to restore for this date after sanitizing.
       outcome.dayLogsSkipped += 1;
       continue;
+    }
+
+    for (const symptomID of sanitized.symptomIDs) {
+      const pendingSymptom = pendingSymptoms.get(symptomID);
+      if (!pendingSymptom) {
+        continue;
+      }
+      pendingSymptoms.delete(symptomID);
+      if (apply) {
+        await storage.writeSymptomRecord(pendingSymptom);
+      }
+      outcome.symptomsAdded += 1;
     }
 
     if (apply) {
@@ -766,7 +780,13 @@ async function importCustomSymptoms(
   storage: LocalAppStorage,
   symptoms: readonly SymptomRecord[] | undefined,
   apply: boolean,
-): Promise<{ added: number; idMap: Map<string, string> }> {
+): Promise<{
+  pending: Map<string, SymptomRecord>;
+  idMap: Map<string, string>;
+}> {
+  // Valid new custom symptoms keyed by their freshly minted id, not yet
+  // written; see the walker for when one is committed.
+  const pending = new Map<string, SymptomRecord>();
   // Maps each portable symptom's id AS WRITTEN IN THE FILE to the id it
   // resolves to on this device: the freshly minted id for a new record, or
   // the EXISTING local record's id when the label already exists (see
@@ -774,11 +794,10 @@ async function importCustomSymptoms(
   // shared by every install, so a day log referencing one already resolves.
   const idMap = new Map<string, string>();
   if (!symptoms || symptoms.length === 0) {
-    return { added: 0, idMap };
+    return { pending, idMap };
   }
 
   let existing = await storage.listSymptomRecords();
-  let added = 0;
 
   for (const rawSymptom of symptoms) {
     const record = rawSymptom as Partial<SymptomRecord> | null;
@@ -820,14 +839,13 @@ async function importCustomSymptoms(
       idMap.set(originalID, result.record.id);
     }
 
-    if (apply) {
-      await storage.writeSymptomRecord(result.record);
-    }
+    // Held back, not written: the walker commits a symptom only once a day
+    // that references it is actually written.
+    pending.set(result.record.id, result.record);
     existing = [...existing, result.record];
-    added += 1;
   }
 
-  return { added, idMap };
+  return { pending, idMap };
 }
 
 // Applies the old-id -> new-id map built by importCustomSymptoms to one day
