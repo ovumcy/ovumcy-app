@@ -27,6 +27,7 @@ import {
 } from "./cycle-prediction-policy";
 import {
   addDays,
+  diffCalendarDays,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -349,7 +350,7 @@ function calendarDaysBetween(fromDate: string, toDate: string): number {
   if (!from || !to) {
     return 0;
   }
-  return Math.round((to.getTime() - from.getTime()) / 86400000);
+  return diffCalendarDays(from, to);
 }
 
 // Gap-based cycle-start detection, mirroring web DetectCycleStarts
@@ -523,9 +524,7 @@ function resolveCycleDay(startDate: string, currentDate: string): number {
     return 0;
   }
 
-  return Math.round(
-    (current.getTime() - start.getTime()) / 86400000,
-  ) + 1;
+  return diffCalendarDays(start, current) + 1;
 }
 
 function createSymptomMap(

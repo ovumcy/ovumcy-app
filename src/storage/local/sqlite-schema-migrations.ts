@@ -4,6 +4,9 @@
 
 import { createDefaultBootstrapState } from "./storage-contract";
 
+// Written to `PRAGMA user_version` as a stamp only; nothing reads it back.
+// Every hydrate runs the whole idempotent step sequence regardless of the
+// stored value, so a database with a missing or wrong stamp is still reconciled.
 const DATABASE_VERSION = 16;
 
 const CREATE_BOOTSTRAP_STATE_TABLE = `
@@ -94,8 +97,8 @@ const CREATE_SYMPTOMS_SLUG_INDEX = `
 // v13: last-known-good managed billing snapshot + dismissed offer ids.
 // The row is a singleton and carries no plaintext shadow columns: premium
 // flags are account-adjacent sensitive state, so the whole record lives in
-// the AEAD-protected payload only (security.md forbids plaintext premium-flag
-// persistence).
+// the AEAD-protected payload only (plaintext premium-flag persistence is
+// forbidden).
 const CREATE_MANAGED_BILLING_CACHE_TABLE = `
   CREATE TABLE IF NOT EXISTS managed_billing_cache (
     id INTEGER PRIMARY KEY CHECK (id = 1),

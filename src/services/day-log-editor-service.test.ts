@@ -5,6 +5,7 @@ import { createDefaultSymptomRecords, type SymptomRecord } from "../models/sympt
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import {
   buildNextDayLogRecordPatch,
+  clearDayLogEditorRecord,
   loadDayLogEditorState,
   resolveBleedingSafetyHint,
   saveDayLogEditorRecord,
@@ -338,6 +339,78 @@ describe("day-log-editor-service", () => {
         expect.objectContaining({ value: "fatigue", label: "Усталость" }),
       ]),
     );
+  });
+});
+
+describe("clearDayLogEditorRecord", () => {
+  const cycleStartDay = (date: string): DayLogRecord => ({
+    ...createEmptyDayLogRecord(date),
+    isPeriod: true,
+    cycleStart: true,
+  });
+
+  it("recomputes the anchor from the remaining records when the anchor day is cleared", async () => {
+    const writeProfileRecord = jest.fn().mockResolvedValue(undefined);
+    const deleteDayLogRecord = jest.fn().mockResolvedValue(undefined);
+    const storage = createStorageMock({
+      writeProfileRecord,
+      deleteDayLogRecord,
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue([cycleStartDay("2026-02-10")]),
+    });
+
+    const result = await clearDayLogEditorRecord(storage, "2026-03-10");
+
+    expect(result).toEqual({
+      ok: true,
+      record: createEmptyDayLogRecord("2026-03-10"),
+    });
+    expect(deleteDayLogRecord).toHaveBeenCalledWith("2026-03-10");
+    expect(writeProfileRecord).toHaveBeenCalledTimes(1);
+    expect(writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: "2026-02-10" }),
+    );
+  });
+
+  it("clears the anchor when no cycle start remains", async () => {
+    const writeProfileRecord = jest.fn().mockResolvedValue(undefined);
+    const storage = createStorageMock({ writeProfileRecord });
+
+    const result = await clearDayLogEditorRecord(storage, "2026-03-10");
+
+    expect(result.ok).toBe(true);
+    expect(writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastPeriodStart: null }),
+    );
+  });
+
+  it("leaves the profile untouched when a non-anchor day is cleared", async () => {
+    const writeProfileRecord = jest.fn().mockResolvedValue(undefined);
+    const listDayLogRecordsInRange = jest.fn().mockResolvedValue([]);
+    const storage = createStorageMock({
+      writeProfileRecord,
+      listDayLogRecordsInRange,
+    });
+
+    const result = await clearDayLogEditorRecord(storage, "2026-03-11");
+
+    expect(result.ok).toBe(true);
+    expect(writeProfileRecord).not.toHaveBeenCalled();
+    expect(listDayLogRecordsInRange).not.toHaveBeenCalled();
+  });
+
+  it("reports failure when the delete rejects, without rewriting the profile", async () => {
+    const writeProfileRecord = jest.fn().mockResolvedValue(undefined);
+    const storage = createStorageMock({
+      writeProfileRecord,
+      deleteDayLogRecord: jest.fn().mockRejectedValue(new Error("disk")),
+    });
+
+    await expect(
+      clearDayLogEditorRecord(storage, "2026-03-10"),
+    ).resolves.toEqual({ ok: false });
+    expect(writeProfileRecord).not.toHaveBeenCalled();
   });
 });
 

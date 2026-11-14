@@ -427,7 +427,7 @@ Ovumcy has no ads or trackers. If it is useful to you:
 
 - **Star the repository** ⭐ — the simplest way to help others find the project.
 - **Report bugs and share ideas** in [GitHub Issues](https://github.com/ovumcy/ovumcy-app/issues).
-- **Help with translations** — see [Supported Languages](#supported-languages) and [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Help with translations** — see [Supported Languages](#supported-languages) and the [Translations](CONTRIBUTING.md#translations) section of CONTRIBUTING.md.
 - **Tell a friend** who wants a cycle tracker that keeps their data on their phone.
 
 Want to support Ovumcy with a donation? Crypto options are on [ovumcy.com/support](https://ovumcy.com/support). If none of them works for you, write to [contact@ovumcy.com](mailto:contact@ovumcy.com).

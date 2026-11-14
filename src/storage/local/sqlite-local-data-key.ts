@@ -22,10 +22,11 @@ export async function resolveLocalDataKey(
     // Verify the stored key actually authenticates existing data.
     // SecureStore can desynchronize from on-disk encrypted rows on
     // Android Auto Backup restore (DB restored but key regenerated)
-    // or after a buggy key rotation. Per the SECURITY.md invariant
-    // "the storage layer must reset the local database deterministically
-    // rather than crashing", we attempt a canary decrypt on a singleton
-    // row first and fall through to wipe-and-reseed on auth-tag failure.
+    // or after a buggy key rotation. A key that no longer authenticates the
+    // rows resets the local database deterministically instead of crashing
+    // (see the local-data encryption section of SECURITY.md), so a canary
+    // decrypt on a singleton row runs first and an auth-tag failure falls
+    // through to wipe-and-reseed.
     const canDecrypt = await withStorageOperationLabel(
       "sqlite/localDataKey/canaryDecrypt",
       () => canDecryptCanaryRow(database, existingKey),

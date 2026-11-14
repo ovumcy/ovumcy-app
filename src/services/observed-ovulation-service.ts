@@ -1,6 +1,11 @@
 import type { DayCycleFactorKey, DayLogRecord } from "../models/day-log";
 import type { LocalDateISO } from "../models/profile";
-import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+import {
+  addDays,
+  diffCalendarDays,
+  formatLocalDate,
+  parseLocalDate,
+} from "./profile-settings-policy";
 
 // "3-over-6" coverline rule ported from ovumcy-web
 // (internal/services/cycle_signals.go): the sliding coverline is the MAX of the
@@ -80,11 +85,7 @@ function calendarDaysApart(from: LocalDateISO, to: LocalDateISO): number {
   if (!start || !end) {
     return 0;
   }
-  return Math.round(
-    (Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
-      Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
-      86400000,
-  );
+  return diffCalendarDays(start, end);
 }
 
 // Canonical "3-over-6" thermal-shift detector — the single source of truth for

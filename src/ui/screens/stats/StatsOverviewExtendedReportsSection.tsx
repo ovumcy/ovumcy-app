@@ -28,7 +28,7 @@ export function StatsOverviewExtendedReportsSection({
         ctaLabel={lock.ctaLabel}
         description={lock.description}
         eyebrowLabel={lock.eyebrowLabel}
-        onPress={onPremiumCTAPress ?? (() => {})}
+        onPress={onPremiumCTAPress}
         testID="stats-extended-reports-lock"
         title={lock.title}
       />

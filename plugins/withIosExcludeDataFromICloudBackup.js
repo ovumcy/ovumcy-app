@@ -17,8 +17,8 @@ const { mergeContents } = CodeGenerator;
  * - iOS has no Info.plist equivalent to Android's `allowBackup`. The only per-file
  *   control is the runtime resource value `NSURLIsExcludedFromBackupKey`, which must
  *   be set on a URL that exists on the device — it cannot be baked in at build time.
- * - Expo SDK 54 exposes no JS API for it: neither `expo-file-system` (v19) nor
- *   `expo-sqlite` (v16) surfaces `isExcludedFromBackup`, and `expo-build-properties`
+ * - Expo SDK 58 exposes no JS API for it: neither `expo-file-system` nor
+ *   `expo-sqlite` (both at their SDK 58 versions) surfaces `isExcludedFromBackup`, and `expo-build-properties`
  *   has no iOS backup option. So the exclusion cannot live in the storage layer as
  *   pure JS; it has to run in native code, which in the managed workflow means a
  *   config plugin. This local plugin exists for the same reason as

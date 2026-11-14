@@ -406,6 +406,16 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | A legacy `ovumcy-sync-v1\|<deviceID>` blob opens only on the device that wrote it | `restores a legacy device-bound blob on the device that wrote it`, `refuses a legacy device-bound blob written by another device` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
 | A blob whose reported schema version differs from the sealed one is refused without touching local data | `refuses a blob whose reported schema version differs from the sealed one` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
 
+### Sync envelope and recovery-phrase wrap
+
+| Claim | Enforced by |
+| --- | --- |
+| A sync payload round-trips under the generated master key and matching AAD | `encrypts and decrypts payloads with the generated master key and matching AAD` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| A blob sealed under an unrelated AAD is refused | `refuses a blob sealed under an unrelated AAD` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| The master key is wrapped under a valid 12-word recovery phrase and unwraps back to the same key | `generates a valid 12-word recovery phrase and wraps the master key`, `rewraps an existing master key with a fresh recovery phrase` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| An invalid recovery phrase is refused before any wrap or unwrap | `rejects invalid recovery phrases before wrapping or unwrapping keys` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| A different recovery phrase cannot unwrap the master key | `fails to unwrap a master key with the wrong recovery phrase` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+
 ### Partner-share crypto and projection privacy
 
 | Claim | Enforced by |
