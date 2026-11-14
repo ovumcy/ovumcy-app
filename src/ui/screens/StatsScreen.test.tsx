@@ -491,6 +491,55 @@ describe("StatsScreen", () => {
     expect(screen.queryByText(/usual pattern/)).toBeNull();
   });
 
+  it("renders the free history statements with and without a detail line", async () => {
+    const storage = createStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue({
+        lastPeriodStart: "2026-03-26",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: true,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+      }),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        ...["2026-01-01", "2026-01-29", "2026-02-26", "2026-03-26"].map((date) => ({
+          ...createEmptyDayLogRecord(date),
+          isPeriod: true,
+          cycleStart: true,
+        })),
+        ...["2026-01-20", "2026-02-17", "2026-03-17"].map((date) => ({
+          ...createEmptyDayLogRecord(date),
+          symptomIDs: ["headache"],
+        })),
+      ]),
+    });
+
+    await render(
+      <AppPreferencesTestProvider>
+        <StatsScreen now={new Date(2026, 3, 5)} storage={storage} />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("stats-history-statements");
+    const items = screen.getAllByTestId("stats-history-statement");
+    expect(items).toHaveLength(2);
+    expect(items[0]?.props.accessibilityLabel).toBe(
+      "Your cycle length has stayed steady across 3 completed cycles.",
+    );
+    expect(items[1]?.props.accessibilityLabel).toContain(
+      "Headache. Logged in 3 of 3 recorded phases.",
+    );
+    expect(screen.getByText(/🤕 .*Headache/)).toBeTruthy();
+  });
+
   it("renders the fertile current-phase card (web resolveCyclePhase parity)", async () => {
     // Two completed 28-day cycles (2026-01-01 -> 2026-01-29 -> 2026-02-26)
     // clear the insights gate. "now" = 2026-03-08 is cycle day 11 of the

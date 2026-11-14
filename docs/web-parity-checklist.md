@@ -241,6 +241,17 @@ that owns the canonical web UX).
   - deviation: the shared-axis ribbon drawing is not ported; rows are text cards
   - the typical/variable comparison wording stays in the premium extended reports; when those are
     unlocked they replace the free list rather than repeat its rows
+- History statements (web "What your history shows", `stats_history_statements.go`):
+  - Free cycle-length trend: the recent half of the last `6` completed cycles against the earlier
+    half (odd window drops the middle cycle), from `3` completed cycles; shorter / longer by the
+    rounded day difference with its comparison window, or steady at `0`
+  - Free symptom-phase recurrence: in how many completed phase occurrences a symptom was logged,
+    out of the occurrences with any logged day; shown from `3` occurrences, `2` hits and a strict
+    majority, strongest first, at most `3` — same thresholds and order as web
+  - phases come from the same gap-based completed-cycle buckets as the phase insights; fertile is
+    never a statement phase
+  - recorded history only (no projected date), so they stay visible under every prediction
+    suppression signal: active pregnancy, the day-log pause and the overdue gate
 
 ### Settings
 

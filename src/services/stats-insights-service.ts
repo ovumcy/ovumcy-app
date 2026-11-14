@@ -37,7 +37,7 @@ type CompletedCycleBucket = {
   records: DayLogRecord[];
 };
 
-const PHASE_ORDER: StatsPhase[] = [
+export const PHASE_ORDER: StatsPhase[] = [
   "menstrual",
   "follicular",
   "ovulation",
@@ -390,7 +390,7 @@ export function detectGapBasedCycleStarts(
 // logged period days from the start (capped, defaulted); a context is dropped
 // when calcOvulationDay cannot place ovulation. Each bucket's records are the
 // logs in [start, nextStart).
-function buildPhaseCycleBuckets(
+export function buildPhaseCycleBuckets(
   records: readonly DayLogRecord[],
 ): PhaseCycleBucket[] {
   const starts = detectGapBasedCycleStarts(records);
@@ -488,7 +488,7 @@ function buildSymptomFrequencyItems(
  * luteal phase (14), matching web's `CalcOvulationDay(cycleLength,
  * defaultLutealPhaseDays)` — not the per-owner inferred luteal.
  */
-function resolveRecordPhase(
+export function resolveRecordPhase(
   cycle: { startDate: string; cycleLength: number; periodLength: number },
   record: DayLogRecord,
 ): StatsPhase | null {

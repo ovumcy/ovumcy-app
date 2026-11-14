@@ -8,6 +8,10 @@ function ruRecordedDayPhrase(count: number): string {
   return `${count} ${ruPlural(count, "записанный день", "записанных дня", "записанных дней")}`;
 }
 
+function ruCompletedCyclePhrase(count: number): string {
+  return ruPlural(count, "завершённый цикл", "завершённых цикла", "завершённых циклов");
+}
+
 const statsCopyEn = {
   title: "Insights",
   subtitle: "See how your cycle length, phases, and recorded factors change over time.",
@@ -100,6 +104,19 @@ const statsCopyEn = {
   phaseSymptomsEmpty: "No repeated symptom pattern in this phase yet.",
   phaseSymptomsDays: (count: number) =>
     count === 1 ? "1 logged day in this phase" : `${count} logged days in this phase`,
+  historyStatementsTitle: "What your history shows",
+  historyStatementsSubtitle:
+    "Statements drawn from the days you logged. They describe your records, not a cause.",
+  statementCycleTrendShorter: (days: number) =>
+    `Your recent cycles are about ${days} ${days === 1 ? "day" : "days"} shorter than the earlier ones.`,
+  statementCycleTrendLonger: (days: number) =>
+    `Your recent cycles are about ${days} ${days === 1 ? "day" : "days"} longer than the earlier ones.`,
+  statementCycleTrendSteady: (count: number) =>
+    `Your cycle length has stayed steady across ${count} completed ${count === 1 ? "cycle" : "cycles"}.`,
+  statementCycleTrendWindow: (count: number) =>
+    `Compared across ${count} completed ${count === 1 ? "cycle" : "cycles"}.`,
+  statementSymptomRecurrence: (count: number, total: number) =>
+    `Logged in ${count} of ${total} recorded ${total === 1 ? "phase" : "phases"}.`,
   bbtTitle: "BBT trend",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -420,6 +437,19 @@ const statsCopyDe: StatsCopy = {
     count === 1
       ? "1 erfasster Tag in dieser Phase"
       : `${count} erfasste Tage in dieser Phase`,
+  historyStatementsTitle: "Was Ihr Verlauf zeigt",
+  historyStatementsSubtitle:
+    "Aussagen aus den Tagen, die Sie erfasst haben. Sie beschreiben Ihre Einträge, keine Ursache.",
+  statementCycleTrendShorter: (days: number) =>
+    `Ihre letzten Zyklen sind etwa ${days} ${days === 1 ? "Tag" : "Tage"} kürzer als die früheren.`,
+  statementCycleTrendLonger: (days: number) =>
+    `Ihre letzten Zyklen sind etwa ${days} ${days === 1 ? "Tag" : "Tage"} länger als die früheren.`,
+  statementCycleTrendSteady: (count: number) =>
+    `Ihre Zykluslänge ist über ${count} ${count === 1 ? "abgeschlossenen Zyklus" : "abgeschlossene Zyklen"} stabil geblieben.`,
+  statementCycleTrendWindow: (count: number) =>
+    `Verglichen über ${count} ${count === 1 ? "abgeschlossenen Zyklus" : "abgeschlossene Zyklen"}.`,
+  statementSymptomRecurrence: (count: number, total: number) =>
+    `Erfasst in ${count} von ${total} ${total === 1 ? "erfassten Phase" : "erfassten Phasen"}.`,
   bbtTitle: "BBT-Trend",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -734,6 +764,19 @@ const statsCopyFr: StatsCopy = {
     count === 1
       ? "1 jour enregistré dans cette phase"
       : `${count} jours enregistrés dans cette phase`,
+  historyStatementsTitle: "Ce que montre votre historique",
+  historyStatementsSubtitle:
+    "Des constats tirés des jours que vous avez enregistrés. Ils décrivent vos données, pas une cause.",
+  statementCycleTrendShorter: (days: number) =>
+    `Vos cycles récents sont plus courts d'environ ${days} ${days === 1 ? "jour" : "jours"} que les précédents.`,
+  statementCycleTrendLonger: (days: number) =>
+    `Vos cycles récents sont plus longs d'environ ${days} ${days === 1 ? "jour" : "jours"} que les précédents.`,
+  statementCycleTrendSteady: (count: number) =>
+    `La durée de votre cycle est restée stable sur ${count} ${count === 1 ? "cycle terminé" : "cycles terminés"}.`,
+  statementCycleTrendWindow: (count: number) =>
+    `Comparaison sur ${count} ${count === 1 ? "cycle terminé" : "cycles terminés"}.`,
+  statementSymptomRecurrence: (count: number, total: number) =>
+    `Enregistré dans ${count} sur ${total} ${total === 1 ? "phase enregistrée" : "phases enregistrées"}.`,
   bbtTitle: "Tendance TB",
   bbtUnitCelsius: "°C",
   bbtUnitFahrenheit: "°F",
@@ -1034,6 +1077,19 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseSymptomsSubtitle: "Симптомы, которые вы чаще всего отмечали в каждой фазе.",
     phaseSymptomsEmpty: "Для этой фазы пока нет повторяющегося паттерна симптомов.",
     phaseSymptomsDays: (count: number) => `${ruRecordedDayPhrase(count)} в этой фазе`,
+    historyStatementsTitle: "Что показывает ваша история",
+    historyStatementsSubtitle:
+      "Наблюдения из отмеченных вами дней. Они описывают записи, а не причину.",
+    statementCycleTrendShorter: (days: number) =>
+      `Недавние циклы примерно на ${days} ${ruDayWord(days)} короче предыдущих.`,
+    statementCycleTrendLonger: (days: number) =>
+      `Недавние циклы примерно на ${days} ${ruDayWord(days)} длиннее предыдущих.`,
+    statementCycleTrendSteady: (count: number) =>
+      `Длина цикла остаётся стабильной: сравнили ${count} ${ruCompletedCyclePhrase(count)}.`,
+    statementCycleTrendWindow: (count: number) =>
+      `Сравнили ${count} ${ruCompletedCyclePhrase(count)}.`,
+    statementSymptomRecurrence: (count: number, total: number) =>
+      `Отмечено в ${count} из ${total} ${ruPlural(total, "фазы", "фаз", "фаз")} с записями.`,
     bbtTitle: "Тренд БТТ",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",
@@ -1334,6 +1390,19 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
       count === 1
         ? "1 día registrado en esta fase"
         : `${count} días registrados en esta fase`,
+    historyStatementsTitle: "Lo que muestra tu historial",
+    historyStatementsSubtitle:
+      "Afirmaciones a partir de los días que registraste. Describen tus registros, no una causa.",
+    statementCycleTrendShorter: (days: number) =>
+      `Tus ciclos recientes son unos ${days} ${days === 1 ? "día" : "días"} más cortos que los anteriores.`,
+    statementCycleTrendLonger: (days: number) =>
+      `Tus ciclos recientes son unos ${days} ${days === 1 ? "día" : "días"} más largos que los anteriores.`,
+    statementCycleTrendSteady: (count: number) =>
+      `La duración de tu ciclo se ha mantenido estable en ${count} ${count === 1 ? "ciclo completado" : "ciclos completados"}.`,
+    statementCycleTrendWindow: (count: number) =>
+      `Comparado en ${count} ${count === 1 ? "ciclo completado" : "ciclos completados"}.`,
+    statementSymptomRecurrence: (count: number, total: number) =>
+      `Registrado en ${count} de ${total} ${total === 1 ? "fase registrada" : "fases registradas"}.`,
     bbtTitle: "Tendencia de TBC",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",
@@ -1631,6 +1700,19 @@ const statsCopyCatalog: Record<InterfaceLanguage, StatsCopy> = {
     phaseSymptomsEmpty: "Ancora nessun pattern di sintomi ripetuto in questa fase.",
     phaseSymptomsDays: (count: number) =>
       count === 1 ? "1 giorno registrato in questa fase" : `${count} giorni registrati in questa fase`,
+    historyStatementsTitle: "Cosa mostra la tua cronologia",
+    historyStatementsSubtitle:
+      "Affermazioni basate sui giorni che hai registrato. Descrivono i tuoi dati, non una causa.",
+    statementCycleTrendShorter: (days: number) =>
+      `I tuoi cicli recenti sono più corti di circa ${days} ${days === 1 ? "giorno" : "giorni"} rispetto ai precedenti.`,
+    statementCycleTrendLonger: (days: number) =>
+      `I tuoi cicli recenti sono più lunghi di circa ${days} ${days === 1 ? "giorno" : "giorni"} rispetto ai precedenti.`,
+    statementCycleTrendSteady: (count: number) =>
+      `La durata del tuo ciclo è rimasta stabile su ${count} ${count === 1 ? "ciclo completato" : "cicli completati"}.`,
+    statementCycleTrendWindow: (count: number) =>
+      `Confronto su ${count} ${count === 1 ? "ciclo completato" : "cicli completati"}.`,
+    statementSymptomRecurrence: (count: number, total: number) =>
+      `Registrato in ${count} di ${total} ${total === 1 ? "fase registrata" : "fasi registrate"}.`,
     bbtTitle: "Tendenza BBT",
     bbtUnitCelsius: "°C",
     bbtUnitFahrenheit: "°F",

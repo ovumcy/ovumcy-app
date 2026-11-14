@@ -206,3 +206,32 @@ export type StatsBBTPoint = {
   cycleDay: number;
   value: number;
 };
+
+// History statements (web stats_history_statements.go): sentences about what
+// was recorded, never a projection, so prediction suppression does not hide them.
+export const STATS_STATEMENT_TREND_MAX_WINDOW = 6;
+export const STATS_STATEMENT_RECURRENCE_MIN_HITS = 2;
+export const STATS_STATEMENT_RECURRENCE_LIMIT = 3;
+
+export type StatsCycleTrendDirection = "shorter" | "longer" | "steady";
+
+export type StatsCycleLengthTrendStatement = {
+  kind: "cycle_length_trend";
+  direction: StatsCycleTrendDirection;
+  days: number;
+  windowSize: number;
+};
+
+export type StatsSymptomPhaseRecurrenceStatement = {
+  kind: "symptom_phase_recurrence";
+  id: SymptomID;
+  label: string;
+  icon: string;
+  phase: StatsPhase;
+  count: number;
+  total: number;
+};
+
+export type StatsHistoryStatement =
+  | StatsCycleLengthTrendStatement
+  | StatsSymptomPhaseRecurrenceStatement;
