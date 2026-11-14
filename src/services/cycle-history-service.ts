@@ -1468,8 +1468,8 @@ function isSpottingRecord(record: DayLogRecord): boolean {
 // Period days up to today grouped into bleeding episodes: fewer than five clear
 // days between two of them keep one cluster. The stored start joins as an
 // explicit non-spotting day (ovumcy-web onboarding start) unless the day logged
-// on its date withdraws it: un-ticked as a period, spotting, or under an
-// uncertain mark. The app mirrors every manual mark into
+// on its date withdraws it: not a period day (un-ticked, or saved without the
+// period box), spotting, or under an uncertain mark. The app mirrors every manual mark into
 // profile.lastPeriodStart, those included, and an un-tick does not clear it.
 function buildObservedPeriodClusters(
   profile: ProfileRecord,

@@ -262,10 +262,10 @@ the Spotting symptom is its only bleeding signal (no flow chosen).
 
 `profile.lastPeriodStart` joins the clusters as an explicit non-spotting day, as
 web's onboarding start does (it also marks the unmarked day onboarding seeds on
-its date), unless the day logged on its date withdraws it: un-ticked as a period,
-spotting, or under an uncertain mark. The app mirrors every manual cycle-start
-mark into it, those included, and un-ticking a day does not clear it, so the
-logged day decides.
+its date), unless the day logged on its date withdraws it: a day that is not a
+period day (un-ticked, or saved without the period box), spotting, or under an
+uncertain mark. The app mirrors every manual cycle-start mark into it, those
+included, and un-ticking a day does not clear it, so the logged day decides.
 
 ## Projection and anchor layer
 
