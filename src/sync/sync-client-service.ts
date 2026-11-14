@@ -37,6 +37,7 @@ import {
   MANAGED_SYNC_BASE_URL,
   createDefaultSyncPreferencesRecord,
 } from "./sync-contract";
+import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
 import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIClient,
@@ -1231,6 +1232,7 @@ export async function runSyncRestore(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  reminderScheduler?: LocalReminderScheduler,
 ): Promise<
   | {
       ok: true;
@@ -1286,7 +1288,12 @@ export async function runSyncRestore(
     blobResult.blob.updatedAt,
     "connected",
   );
-  await restoreSyncSnapshot(storage, snapshot, nextPreferences);
+  await restoreSyncSnapshot(
+    storage,
+    snapshot,
+    nextPreferences,
+    reminderScheduler,
+  );
 
   return { ok: true, preferences: nextPreferences };
 }

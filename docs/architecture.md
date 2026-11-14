@@ -91,11 +91,11 @@ plus a `.web.ts` override.
 2. `app/_layout.tsx` (`RootLayout`) starts the launch tasks in a mount effect
    (`runAppLaunchTasks`): the export-artifact sweep, then a reminder schedule
    rebuild from stored data. The sweep, `cleanupStaleExportArtifacts()`,
-   removes leftovers from the platform cache. On native it deletes files whose names start with `ovumcy-export-` or
-   `ovumcy-private-export-` plus the document-picker cache directory, and it
-   swallows failures. A process kill mid-share bypasses the delivery code's
-   `try/finally`, which is why the sweep runs on boot. The web variant is a
-   no-op counterpart for the preview build.
+   removes leftovers from the platform cache. On native it deletes files whose
+   names start with `ovumcy-export-` or `ovumcy-private-export-` plus the
+   document-picker cache directory, and it swallows failures. A process kill
+   mid-share bypasses the delivery code's `try/finally`, which is why the sweep
+   runs on boot. The web variant is a no-op counterpart for the preview build.
 3. `AppPreferencesProvider` reads the profile record through `appStorage` and
    resolves the interface language and theme overrides and the screen-capture
    protection flag. `RootNavigator` applies `useAppScreenProtection`, mounts the
