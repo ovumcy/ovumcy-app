@@ -234,10 +234,11 @@ export async function importBackupEnvelope(
   envelope: ExportBackupEnvelope,
 ): Promise<ImportOutcome> {
   const outcome = await walkBackupEnvelope(storage, envelope, true);
-  if (outcome.profileRestored || outcome.dayLogsAdded > 0) {
-    // Restored rows or a restored profile from an older client carry the
-    // stored cycle start under the earlier withdrawal rule.
-    await repointLegacyStoredCycleStart(storage, new Date(), { force: true });
+  if (outcome.profileRestored) {
+    // A profile restored from an older client (no repoint version) carries the
+    // stored cycle start under the earlier withdrawal rule. On a configured
+    // device the import is strictly additive and never writes the profile.
+    await repointLegacyStoredCycleStart(storage, new Date());
   }
   return outcome;
 }
@@ -780,6 +781,12 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
       record.dismissedOnboardingHelperNoticeKey,
     ),
+    // Kept so a backup written under the repoint rule is not re-read under
+    // the earlier one (stored-cycle-start-repoint-service).
+    ...(Number.isInteger(record.storedCycleStartRepointVersion) &&
+    Number(record.storedCycleStartRepointVersion) > 0
+      ? { storedCycleStartRepointVersion: Number(record.storedCycleStartRepointVersion) }
+      : {}),
   };
 }
 

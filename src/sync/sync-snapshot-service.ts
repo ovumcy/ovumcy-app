@@ -313,9 +313,10 @@ export async function restoreSyncSnapshot(
     }
   }
 
-  // A snapshot from an older client carries the stored cycle start under the
-  // earlier withdrawal rule; re-read it before anything derives from it.
-  await repointLegacyStoredCycleStart(storage, new Date(), { force: true });
+  // A snapshot from an older client (its profile has no repoint version)
+  // carries the stored cycle start under the earlier withdrawal rule; re-read
+  // it before anything derives from it.
+  await repointLegacyStoredCycleStart(storage, new Date());
 
   // The applied snapshot replaced every reminder-plan input (profile toggles,
   // day logs, pregnancy records), so the OS schedule built from the previous

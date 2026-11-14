@@ -22,7 +22,7 @@ export async function runAppLaunchTasks(
   // One-time re-read of the stored cycle start written under the earlier
   // withdrawal rule; it runs before the rebuild so reminders use the result.
   try {
-    await repointLegacyStoredCycleStart(storage, new Date(), { force: false });
+    await repointLegacyStoredCycleStart(storage, new Date());
   } catch {
     // Best effort: the version is not stored, so the next launch retries.
   }

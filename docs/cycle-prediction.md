@@ -272,8 +272,11 @@ is left). A BBT, note or symptom save on a date with no row keeps it. Manual
 uncertain marks are not mirrored into it; confirmed marks are. Rows and profile
 are written as one storage unit. Data stored under the earlier rule (any
 non-period row withdrew it) is re-read once at launch behind a stored version,
-the previous value kept in the profile, and again after a JSON import or a sync
-restore. The read-side spotting/uncertain withdrawal is transitional.
+the previous value kept in the profile. A sync restore or a JSON import that
+restores the profile brings the source's version along, so the re-read runs
+again only for data from an older client; an import into a configured device
+never writes the profile. The read-side spotting/uncertain withdrawal is
+transitional.
 
 ## Projection and anchor layer
 
