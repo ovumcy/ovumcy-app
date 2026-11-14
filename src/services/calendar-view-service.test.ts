@@ -728,6 +728,19 @@ describe("calendar-view-service", () => {
       ),
     ).toEqual([]);
     expect(lateWeek.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
+    // With historical phases on, the running cycle still carries no window.
+    const lateWeekHistorical = buildCalendarViewData(
+      { ...profile, showHistoricalPhases: true, trackBBT: true },
+      [],
+      new Date(2026, 2, 5),
+      new Date(2026, 2, 1),
+      "2026-03-05",
+    );
+    expect(
+      lateWeekHistorical.days
+        .filter((day) => day.stateKey !== "neutral" && day.stateKey !== "predicted")
+        .map((day) => day.stateKey),
+    ).toEqual([]);
 
     const overdue = buildCalendarViewData(
       profile,
@@ -823,6 +836,16 @@ describe("calendar-view-service", () => {
       "2026-03-12",
     );
     expect(unpredictable.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
+
+    // Without a sustained thermal shift no marker is named.
+    const noShift = buildCalendarViewData(
+      profile,
+      records.slice(0, 7),
+      new Date(2026, 2, 12),
+      new Date(2026, 1, 1),
+      "2026-03-12",
+    );
+    expect(noShift.days.some((day) => day.hasOvulationMarker === true)).toBe(false);
   });
 
   it("explains saved markers separately from the selected day meaning", async () => {
