@@ -279,6 +279,8 @@ export type SettingsViewData = {
     deleteAccountSubscriptionWarningTitle: string;
     deleteAccountSubscriptionWarningMessage: string;
     deleteAccountSubscriptionWarningAccept: string;
+    deleteAccountBillingUnknownWarningTitle: string;
+    deleteAccountBillingUnknownWarningMessage: string;
     recoveryTitle: string;
     recoveryHint: string;
     recoveryNotice: string;
@@ -823,6 +825,10 @@ export function buildSettingsViewData(
         settingsCopy.account.deleteAccountSubscriptionWarningMessage,
       deleteAccountSubscriptionWarningAccept:
         settingsCopy.account.deleteAccountSubscriptionWarningAccept,
+      deleteAccountBillingUnknownWarningTitle:
+        settingsCopy.account.deleteAccountBillingUnknownWarningTitle,
+      deleteAccountBillingUnknownWarningMessage:
+        settingsCopy.account.deleteAccountBillingUnknownWarningMessage,
       recoveryTitle: settingsCopy.account.recoveryTitle,
       recoveryHint: settingsCopy.account.recoveryHint,
       recoveryNotice: settingsCopy.account.recoveryNotice,
