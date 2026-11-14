@@ -448,6 +448,24 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
+  it("maps other enrollment verify errors through the shared resolver", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpStage="enrolling"
+          totpEnrollment={{
+            secretBase32: "JBSWY3DPEHPK3PXP",
+            provisioningURI: "otpauth://totp/Ovumcy:o@e.com?secret=JBSWY3DPEHPK3PXP",
+          }}
+          totpErrorCode="totp_replayed"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(totpCopy.errors.totpReplayed)).toBeTruthy();
+  });
+
   it("keeps the plain invalid-code copy on the disable form", async () => {
     await render(
       <AppPreferencesTestProvider>
