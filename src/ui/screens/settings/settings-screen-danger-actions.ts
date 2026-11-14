@@ -4,6 +4,7 @@ import {
 } from "../../../models/profile";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
+import type { WipeScopeSecretStores } from "../../../security/wipe-scope-secrets";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
@@ -26,6 +27,7 @@ type DangerActionContext = {
   syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
   syncSecretStore: SyncSecretStore;
   viewData: SettingsViewData;
+  wipeScopeSecretStores: WipeScopeSecretStores;
 };
 
 export async function runClearAllDataAction(context: DangerActionContext) {
@@ -40,6 +42,7 @@ export async function runClearAllDataAction(context: DangerActionContext) {
     syncProfilePreferences,
     syncSecretStore,
     viewData,
+    wipeScopeSecretStores,
   } = context;
 
   resetClearDataMessages();
@@ -66,7 +69,11 @@ export async function runClearAllDataAction(context: DangerActionContext) {
 
   setIsClearingData(true);
 
-  const result = await clearAllLocalSettingsData(storage, syncSecretStore);
+  const result = await clearAllLocalSettingsData(
+    storage,
+    syncSecretStore,
+    wipeScopeSecretStores,
+  );
   if (!result.ok) {
     setClearDataErrorMessage(viewData.danger.status.failed);
     setIsClearingData(false);

@@ -35,9 +35,14 @@ import {
 } from "../../../services/symptom-policy";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import type { WipeScopeSecretStores } from "../../../security/wipe-scope-secrets";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
+import {
+  certPinStore as defaultCertPinStore,
+  entitlementTokenStore as defaultEntitlementTokenStore,
+} from "../../../sync/app-wipe-scope-secret-stores";
 import { openLeaveConfirmation } from "../../confirm/open-confirmation";
 import { useRegisterTabLeaveGuard } from "../../navigation/TabLeaveGuardContext";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
@@ -75,6 +80,8 @@ import {
 import { useSettingsExitGuards } from "./useSettingsExitGuards";
 
 type UseSettingsScreenControllerOptions = {
+  certPinStore?: WipeScopeSecretStores["certPinStore"];
+  entitlementTokenStore?: WipeScopeSecretStores["entitlementTokenStore"];
   exportDeliveryClient?: ExportDeliveryClient;
   exportServiceDependencies?: ExportServiceDependencies | undefined;
   importFilePickerClient?: ImportFilePickerClient;
@@ -119,6 +126,8 @@ const SETTINGS_SECTION_HREFS: Record<
 };
 
 export function useSettingsScreenController({
+  certPinStore = defaultCertPinStore,
+  entitlementTokenStore = defaultEntitlementTokenStore,
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   exportServiceDependencies,
   importFilePickerClient = createPlatformImportFilePickerClient(),
@@ -495,6 +504,11 @@ export function useSettingsScreenController({
     syncProfilePreferences,
     syncSecretStore,
     viewData,
+    wipeScopeSecretStores: {
+      certPinStore,
+      entitlementTokenStore,
+      partnerShareSecretStore,
+    },
   };
 
   return {

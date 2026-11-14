@@ -25,7 +25,10 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
  */
 export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
   const {
+    certPinStore,
     effectiveNow,
+    entitlementTokenStore,
+    partnerShareSecretStore,
     resetFeedbackMessages,
     router,
     setErrorState,
@@ -96,6 +99,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     const result = await deleteOvumcyAccount(
       storage,
       syncSecretStore,
+      { certPinStore, entitlementTokenStore, partnerShareSecretStore },
       state.savedSyncPreferences,
     );
     if (!result.ok) {

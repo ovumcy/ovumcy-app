@@ -189,6 +189,11 @@ describe("useBackupSyncAccountDeletion", () => {
       expect(mockDeleteOvumcyAccount).toHaveBeenCalledWith(
         core.storage,
         core.syncSecretStore,
+        {
+          certPinStore: core.certPinStore,
+          entitlementTokenStore: core.entitlementTokenStore,
+          partnerShareSecretStore: core.partnerShareSecretStore,
+        },
         core.state!.savedSyncPreferences,
       );
     });

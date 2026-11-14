@@ -36,8 +36,13 @@ import {
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import type { WipeScopeSecretStores } from "../../../security/wipe-scope-secrets";
 import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
+import {
+  certPinStore as defaultCertPinStore,
+  entitlementTokenStore as defaultEntitlementTokenStore,
+} from "../../../sync/app-wipe-scope-secret-stores";
 import { loadSyncSetupState } from "../../../sync/sync-setup-service";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import type {
@@ -59,6 +64,8 @@ function resolveRouteInviteToken(
 }
 
 export type BackupSyncSessionCoreOptions = {
+  certPinStore?: WipeScopeSecretStores["certPinStore"] | undefined;
+  entitlementTokenStore?: WipeScopeSecretStores["entitlementTokenStore"] | undefined;
   exportDeliveryClient?: ExportDeliveryClient | undefined;
   now?: Date | undefined;
   partnerShareSecretStore?: PartnerShareSecretStore | undefined;
@@ -80,6 +87,8 @@ export type BackupSyncSessionCoreOptions = {
 export type BackupSyncSessionCore = ReturnType<typeof useBackupSyncSessionCore>;
 
 export function useBackupSyncSessionCore({
+  certPinStore = defaultCertPinStore,
+  entitlementTokenStore = defaultEntitlementTokenStore,
   exportDeliveryClient = createPlatformExportDeliveryClient(),
   now,
   partnerShareSecretStore = defaultPartnerShareSecretStore,
@@ -336,6 +345,8 @@ export function useBackupSyncSessionCore({
 
   return {
     // Resolved dependencies
+    certPinStore,
+    entitlementTokenStore,
     exportDeliveryClient,
     partnerShareSecretStore,
     storage,
