@@ -75,7 +75,7 @@ describe("manual-cycle-start-service", () => {
     );
   });
 
-  it("marks a new cycle start, clears competing starts in the cluster, and syncs the canonical last-period date", async () => {
+  it("marks a new cycle start, clears competing starts in the cluster, and leaves the stored start for an uncertain mark", async () => {
     const profile = createProfileRecord();
     const records = [
       {
@@ -141,9 +141,11 @@ describe("manual-cycle-start-service", () => {
         isUncertain: false,
       }),
     );
+    // An uncertain mark is not mirrored: the stored start outside the
+    // marked cluster stays where it was.
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({
-        lastPeriodStart: "2026-03-09",
+        lastPeriodStart: "2026-03-01",
       }),
     );
   });

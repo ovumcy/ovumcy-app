@@ -6,6 +6,7 @@ import { createDefaultOnboardingRecord } from "../services/onboarding-policy";
 import {
   createDefaultBootstrapState,
   createDefaultManagedBillingCacheRecord,
+  type DayLogChangeSet,
   type LocalAppStorage,
 } from "../storage/local/storage-contract";
 
@@ -15,7 +16,7 @@ export function createLocalAppStorageMock(
   const defaultProfile = createDefaultProfileRecord();
   const defaultOnboarding = createDefaultOnboardingRecord();
 
-  return {
+  const storage: LocalAppStorage = {
     readBootstrapState: jest.fn().mockResolvedValue({
       ...createDefaultBootstrapState(),
       hasCompletedOnboarding: true,
@@ -37,6 +38,7 @@ export function createLocalAppStorageMock(
       .mockImplementation(async (date: string) => createEmptyDayLogRecord(date)),
     writeDayLogRecord: jest.fn().mockResolvedValue(undefined),
     deleteDayLogRecord: jest.fn().mockResolvedValue(undefined),
+    commitDayLogChanges: jest.fn().mockResolvedValue(undefined),
     listDayLogRecordsInRange: jest.fn().mockResolvedValue([]),
     readDayLogSummary: jest.fn().mockResolvedValue({
       totalEntries: 0,
@@ -69,4 +71,21 @@ export function createLocalAppStorageMock(
     deleteAllScreeningData: jest.fn().mockResolvedValue(undefined),
     ...overrides,
   };
+  if (!overrides.commitDayLogChanges) {
+    // The unit write replays through the single-row methods, so a test that
+    // asserts on writeDayLogRecord / deleteDayLogRecord / writeProfileRecord
+    // sees the same calls either way.
+    storage.commitDayLogChanges = jest.fn(async (change: DayLogChangeSet) => {
+      for (const record of change.writes) {
+        await storage.writeDayLogRecord(record);
+      }
+      for (const date of change.deletes) {
+        await storage.deleteDayLogRecord(date);
+      }
+      if (change.profile) {
+        await storage.writeProfileRecord(change.profile);
+      }
+    });
+  }
+  return storage;
 }

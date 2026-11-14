@@ -31,6 +31,7 @@ import {
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { sanitizeDayLogRecord } from "./day-log-policy";
+import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
 import { createCustomSymptomRecord, normalizeSymptomLabelKey } from "./symptom-policy";
 import {
   clampCycleLength,
@@ -232,7 +233,13 @@ export async function importBackupEnvelope(
   storage: LocalAppStorage,
   envelope: ExportBackupEnvelope,
 ): Promise<ImportOutcome> {
-  return walkBackupEnvelope(storage, envelope, true);
+  const outcome = await walkBackupEnvelope(storage, envelope, true);
+  if (outcome.profileRestored || outcome.dayLogsAdded > 0) {
+    // Restored rows or a restored profile from an older client carry the
+    // stored cycle start under the earlier withdrawal rule.
+    await repointLegacyStoredCycleStart(storage, new Date(), { force: true });
+  }
+  return outcome;
 }
 
 // One-call orchestrator for the settings import UI: parse then apply.

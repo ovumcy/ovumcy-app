@@ -1465,12 +1465,66 @@ function isSpottingRecord(record: DayLogRecord): boolean {
   );
 }
 
+// Where profile.lastPeriodStart points once it no longer stands: the latest
+// cycle boundary among rows dated on or before today, read by the same cluster
+// function as every projection and the pregnancy pause, the stored start itself
+// left out; null when no row opens a cycle.
+export function repointStoredCycleStart(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+): string | null {
+  return resolveLatestCycleStartAnchorBeforeOrOn(
+    { ...profile, lastPeriodStart: null },
+    records,
+    todayValue,
+  );
+}
+
+// Whether saving `next` over `previous` (null: no row on that date) on the
+// stored-start date takes the stored start away (ovumcy-web
+// withdrawOnboardingStartOn): spotting or an uncertain cycle-start mark always
+// does; a non-period save does only when it un-ticks a period row. A BBT, note
+// or symptom save on a date with no row keeps the start.
+export function savedRowWithdrawsStoredCycleStart(
+  next: DayLogRecord,
+  previous: DayLogRecord | null,
+): boolean {
+  if (rowAlwaysWithdrawsStoredCycleStart(next)) {
+    return true;
+  }
+  return !next.isPeriod && previous !== null && previous.isPeriod;
+}
+
+// The withdrawal rule rows were read under before the write path repointed the
+// stored start: any non-period, spotting or uncertain-marked row on its date.
+// Used only to migrate data written under that rule (launch, import, restore).
+export function legacyRowsWithdrawStoredCycleStart(
+  profile: ProfileRecord,
+  records: readonly DayLogRecord[],
+): boolean {
+  const storedStart = profile.lastPeriodStart;
+  return (
+    storedStart !== null &&
+    records.some(
+      (record) =>
+        record.date === storedStart &&
+        (!record.isPeriod || rowAlwaysWithdrawsStoredCycleStart(record)),
+    )
+  );
+}
+
+function rowAlwaysWithdrawsStoredCycleStart(record: DayLogRecord): boolean {
+  return isSpottingRecord(record) || (record.cycleStart && record.isUncertain);
+}
+
 // Period days up to today grouped into bleeding episodes: fewer than five clear
 // days between two of them keep one cluster. The stored start joins as an
-// explicit non-spotting day (ovumcy-web onboarding start) unless the day logged
-// on its date withdraws it: not a period day (un-ticked, or saved without the
-// period box), spotting, or under an uncertain mark. The app mirrors every manual mark into
-// profile.lastPeriodStart, those included, and an un-tick does not clear it.
+// explicit non-spotting day (ovumcy-web onboarding start) unless a row on its
+// date is spotting or under an uncertain mark. The write paths repoint the
+// stored start on those saves, so this read-side withdrawal is transitional:
+// it covers rows stored before the repoint existed and goes once that data has
+// been migrated.
 function buildObservedPeriodClusters(
   profile: ProfileRecord,
   records: DayLogRecord[],
@@ -1495,10 +1549,7 @@ function buildObservedPeriodClusters(
 
   const storedStart = profile.lastPeriodStart;
   const storedRows = records.filter((record) => record.date === storedStart);
-  const storedWithdrawn = storedRows.some(
-    (record) =>
-      !record.isPeriod || isSpottingRecord(record) || (record.cycleStart && record.isUncertain),
-  );
+  const storedWithdrawn = storedRows.some(rowAlwaysWithdrawsStoredCycleStart);
   if (storedStart && storedStart <= todayValue && !storedWithdrawn) {
     pushDay(storedStart, true, false);
   }
