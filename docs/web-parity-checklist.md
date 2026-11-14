@@ -283,6 +283,15 @@ that owns the canonical web UX).
   - age group
   - usage goal
   - save action
+  - a changed last period start moves with its day logs in one commit, as
+    web's `planPeriodStartMove` does: the start mark moves, the old
+    auto-filled run is removed, and the new run is filled up to today under
+    the auto-fill setting. Divergences: the app keeps no per-row provenance
+    stamp, so an old run is recognised by its content alone (a start row with
+    nothing else, followed by bare period days, only while auto-fill is on);
+    a row that holds any data is never removed, and an existing row in the
+    new run keeps its data and only gains the period day.
+    Pinned by `src/services/period-start-move-service.test.ts`.
 - Tracking section:
   - full-width toggle list
   - state text inside toggles

@@ -38,6 +38,10 @@ import {
   type SymptomValidationErrorCode,
 } from "./symptom-policy";
 import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-service";
+import { isPeriodStartMove, planPeriodStartMove } from "./period-start-move-service";
+
+const MIN_DAY_LOG_DATE = "0001-01-01";
+const MAX_DAY_LOG_DATE = "9999-12-31";
 
 type SaveSettingsErrorCode =
   | "invalid_cycle_settings"
@@ -98,7 +102,19 @@ export async function saveCycleSettings(
   });
 
   try {
-    await storage.writeProfileRecord(nextProfile);
+    if (isPeriodStartMove(currentState.profile, nextProfile)) {
+      // The start moves together with its day logs, in one commit: a failed
+      // commit leaves both the profile and the rows as they were.
+      const records = await storage.listDayLogRecordsInRange(
+        MIN_DAY_LOG_DATE,
+        MAX_DAY_LOG_DATE,
+      );
+      await storage.commitDayLogChanges(
+        planPeriodStartMove(currentState.profile, nextProfile, records, now),
+      );
+    } else {
+      await storage.writeProfileRecord(nextProfile);
+    }
   } catch {
     return {
       ok: false,

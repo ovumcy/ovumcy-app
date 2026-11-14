@@ -405,7 +405,7 @@ function findCompetingCycleStartDate(
   return null;
 }
 
-function resolvePeriodClusterBounds(
+export function resolvePeriodClusterBounds(
   records: readonly DayLogRecord[],
   targetDateValue: string,
 ): [string, string] {
