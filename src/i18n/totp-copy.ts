@@ -21,6 +21,7 @@ export type TOTPCopy = {
     verifyLabel: string;
     successMessage: string;
     cancelLabel: string;
+    recoveryCodeReplacedHint: string;
   };
 
   disable: {
@@ -53,6 +54,8 @@ export type TOTPCopy = {
     rateLimited: string;
     networkFailed: string;
     unauthorized: string;
+    totpEnrollInvalidCode: string;
+    totpEnrollmentRestartRequired: string;
     generic: string;
   };
 };
@@ -79,6 +82,8 @@ const totpCopyEn: TOTPCopy = {
     successMessage:
       "Two-factor is on. Other devices were signed out; sign in again to keep using sync.",
     cancelLabel: "Cancel",
+    recoveryCodeReplacedHint:
+      "Turning on two-factor replaced your recovery code. The code from registration or your last regeneration no longer works. Save this one — it is shown only once.",
   },
   disable: {
     currentPasswordLabel: "Current password",
@@ -108,6 +113,10 @@ const totpCopyEn: TOTPCopy = {
     rateLimited: "Too many attempts. Try again later.",
     networkFailed: "Network error. Try again.",
     unauthorized: "Session expired. Sign in again.",
+    totpEnrollInvalidCode:
+      "Code is incorrect. If setup was also started on another device, only the newest setup counts: finish it there, or cancel and start again here.",
+    totpEnrollmentRestartRequired:
+      "Too many attempts for this setup, so it was cancelled. Enter your password to start again.",
     generic: "Something went wrong. Try again.",
   },
 };
@@ -134,6 +143,8 @@ const totpCopyDe: TOTPCopy = {
     successMessage:
       "Zwei-Faktor ist aktiv. Andere Geräte wurden abgemeldet; melden Sie sich neu an, um Sync weiter zu nutzen.",
     cancelLabel: "Abbrechen",
+    recoveryCodeReplacedHint:
+      "Durch das Aktivieren der Zwei-Faktor-Authentifizierung wurde Ihr Wiederherstellungscode ersetzt. Der Code aus der Registrierung oder der letzten Neuerstellung funktioniert nicht mehr. Speichern Sie diesen – er wird nur einmal angezeigt.",
   },
   disable: {
     currentPasswordLabel: "Aktuelles Passwort",
@@ -167,6 +178,10 @@ const totpCopyDe: TOTPCopy = {
     rateLimited: "Zu viele Versuche. Bitte später erneut versuchen.",
     networkFailed: "Netzwerkfehler. Bitte erneut versuchen.",
     unauthorized: "Sitzung abgelaufen. Bitte erneut anmelden.",
+    totpEnrollInvalidCode:
+      "Der Code ist falsch. Wurde die Einrichtung auch auf einem anderen Gerät gestartet, gilt nur die neueste: Schließen Sie sie dort ab oder brechen Sie ab und starten Sie hier neu.",
+    totpEnrollmentRestartRequired:
+      "Zu viele Versuche für diese Einrichtung, sie wurde abgebrochen. Geben Sie Ihr Passwort ein, um neu zu starten.",
     generic: "Etwas ist schiefgegangen. Bitte erneut versuchen.",
   },
 };
@@ -193,6 +208,8 @@ const totpCopyFr: TOTPCopy = {
     successMessage:
       "Le deuxième facteur est actif. Les autres appareils ont été déconnectés ; reconnectez-vous pour continuer à utiliser sync.",
     cancelLabel: "Annuler",
+    recoveryCodeReplacedHint:
+      "L'activation du deuxième facteur a remplacé votre code de récupération. Le code reçu à l'inscription ou lors de la dernière régénération ne fonctionne plus. Sauvegardez celui-ci : il n'est affiché qu'une seule fois.",
   },
   disable: {
     currentPasswordLabel: "Mot de passe actuel",
@@ -227,6 +244,10 @@ const totpCopyFr: TOTPCopy = {
     rateLimited: "Trop d'essais. Réessayez plus tard.",
     networkFailed: "Erreur réseau. Réessayez.",
     unauthorized: "Session expirée. Reconnectez-vous.",
+    totpEnrollInvalidCode:
+      "Code incorrect. Si la configuration a aussi été lancée sur un autre appareil, seule la plus récente compte : terminez-la là-bas, ou annulez et recommencez ici.",
+    totpEnrollmentRestartRequired:
+      "Trop d'essais pour cette configuration, elle a été annulée. Entrez votre mot de passe pour recommencer.",
     generic: "Quelque chose a échoué. Réessayez.",
   },
 };
@@ -253,6 +274,8 @@ const totpCopyRu: TOTPCopy = {
     successMessage:
       "Двухфакторка включена. Остальные устройства были отключены; войдите заново, чтобы продолжить пользоваться синхронизацией.",
     cancelLabel: "Отмена",
+    recoveryCodeReplacedHint:
+      "Включение двухфакторки заменило код восстановления. Код, полученный при регистрации или последнем обновлении, больше не работает. Сохраните этот — он показывается только один раз.",
   },
   disable: {
     currentPasswordLabel: "Текущий пароль",
@@ -284,6 +307,10 @@ const totpCopyRu: TOTPCopy = {
     rateLimited: "Слишком много попыток. Повторите позже.",
     networkFailed: "Сетевая ошибка. Повторите попытку.",
     unauthorized: "Сессия истекла. Войдите заново.",
+    totpEnrollInvalidCode:
+      "Код неверный. Если настройку начали и на другом устройстве, действует только самая новая: завершите её там или отмените и начните заново здесь.",
+    totpEnrollmentRestartRequired:
+      "Слишком много попыток для этой настройки, она отменена. Введите пароль, чтобы начать заново.",
     generic: "Что-то пошло не так. Повторите попытку.",
   },
 };
@@ -310,6 +337,8 @@ const totpCopyEs: TOTPCopy = {
     successMessage:
       "Dos pasos activo. Otros dispositivos fueron desconectados; vuelve a iniciar sesión para seguir usando sync.",
     cancelLabel: "Cancelar",
+    recoveryCodeReplacedHint:
+      "Al activar la verificación en dos pasos se reemplazó tu código de recuperación. El código del registro o de la última regeneración ya no funciona. Guarda este: se muestra solo una vez.",
   },
   disable: {
     currentPasswordLabel: "Contraseña actual",
@@ -344,6 +373,10 @@ const totpCopyEs: TOTPCopy = {
     rateLimited: "Demasiados intentos. Inténtalo más tarde.",
     networkFailed: "Error de red. Inténtalo de nuevo.",
     unauthorized: "La sesión ha caducado. Vuelve a iniciar sesión.",
+    totpEnrollInvalidCode:
+      "Código incorrecto. Si también iniciaste la configuración en otro dispositivo, solo cuenta la más reciente: termínala allí o cancela y empieza de nuevo aquí.",
+    totpEnrollmentRestartRequired:
+      "Demasiados intentos para esta configuración; se canceló. Introduce tu contraseña para empezar de nuevo.",
     generic: "Algo salió mal. Inténtalo de nuevo.",
   },
 };
@@ -370,6 +403,8 @@ const totpCopyIt: TOTPCopy = {
     successMessage:
       "L'autenticazione a due fattori è attiva. Gli altri dispositivi sono stati disconnessi; accedi di nuovo per continuare a usare sync.",
     cancelLabel: "Annulla",
+    recoveryCodeReplacedHint:
+      "L'attivazione dell'autenticazione a due fattori ha sostituito il codice di recupero. Il codice della registrazione o dell'ultima rigenerazione non funziona più. Salva questo: viene mostrato una sola volta.",
   },
   disable: {
     currentPasswordLabel: "Password corrente",
@@ -399,6 +434,10 @@ const totpCopyIt: TOTPCopy = {
     rateLimited: "Troppi tentativi. Riprova più tardi.",
     networkFailed: "Errore di rete. Riprova.",
     unauthorized: "Sessione scaduta. Accedi di nuovo.",
+    totpEnrollInvalidCode:
+      "Codice non corretto. Se la configurazione è stata avviata anche su un altro dispositivo, vale solo la più recente: completala lì, oppure annulla e ricomincia qui.",
+    totpEnrollmentRestartRequired:
+      "Troppi tentativi per questa configurazione, che è stata annullata. Inserisci la password per ricominciare.",
     generic: "Qualcosa è andato storto. Riprova.",
   },
 };

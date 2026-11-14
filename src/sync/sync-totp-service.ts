@@ -47,6 +47,7 @@ export type VerifyTOTPEnrollmentErrorCode =
   | "totp_invalid_code"
   | "totp_replayed"
   | "totp_secret_failed"
+  | "totp_enrollment_restart_required"
   | "unauthorized"
   | "rate_limited"
   | "network_failed"
@@ -153,6 +154,13 @@ export async function startTOTPEnrollment(
  * active, revokes every other session of the account (the caller's session is
  * preserved), and from this point on `login` returns a TOTP challenge instead
  * of a session.
+ *
+ * A community server also rotates the account recovery code on success and
+ * returns the new one; it is the only working recovery code from then on, so
+ * the caller must show it once. `recoveryCode` is null when the backend issued
+ * none (managed, or a community server that predates rotation). A community
+ * 429 means the pending secret's verify budget is spent and the secret is
+ * gone, so it surfaces as `totp_enrollment_restart_required`.
  */
 export async function verifyTOTPEnrollment(
   secretStore: SyncSecretStore,
@@ -161,7 +169,7 @@ export async function verifyTOTPEnrollment(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
-  | { ok: true }
+  | { ok: true; recoveryCode: string | null }
   | { ok: false; errorCode: VerifyTOTPEnrollmentErrorCode }
 > {
   if (!/^\d{6}$/.test(input.code.trim())) {
@@ -188,7 +196,7 @@ export async function verifyTOTPEnrollment(
         errorCode: mapManagedVerifyEnrollmentError(result.errorCode),
       };
     }
-    return { ok: true };
+    return { ok: true, recoveryCode: null };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -209,7 +217,7 @@ export async function verifyTOTPEnrollment(
       errorCode: mapCommunityVerifyEnrollmentError(result.errorCode),
     };
   }
-  return { ok: true };
+  return { ok: true, recoveryCode: result.recoveryCode };
 }
 
 /**
@@ -401,13 +409,14 @@ function mapCommunityVerifyEnrollmentError(
   code: SyncAPIErrorCode,
 ): VerifyTOTPEnrollmentErrorCode {
   switch (code) {
+    case "rate_limited":
+      return "totp_enrollment_restart_required";
     case "totp_not_configured":
     case "totp_already_enabled":
     case "totp_invalid_code":
     case "totp_replayed":
     case "totp_secret_failed":
     case "unauthorized":
-    case "rate_limited":
     case "network_failed":
       return code;
     default:

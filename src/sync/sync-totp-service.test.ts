@@ -327,10 +327,82 @@ describe("sync-totp-service", () => {
         managedFactory,
       );
 
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: true, recoveryCode: null });
       expect(verifyFn).toHaveBeenCalledWith("managed-session-1", {
         code: " 123456 ",
       });
+    });
+
+    it("returns the recovery code the community backend rotated on enable", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const verifyFn = jest.fn().mockResolvedValue({
+        ok: true,
+        recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+      });
+      const apiFactory = jest
+        .fn()
+        .mockReturnValue(communityClientMock({ verifyTOTPEnrollment: verifyFn }));
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        recoveryCode: "3f9c2a7e1b6d48c0a5e9f3b27d1c6e84",
+      });
+      expect(verifyFn).toHaveBeenCalledWith("community-session-1", {
+        code: "123456",
+      });
+    });
+
+    it("maps a community 429 to totp_enrollment_restart_required because the pending secret is discarded", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          verifyTOTPEnrollment: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "rate_limited" }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "totp_enrollment_restart_required",
+      });
+    });
+
+    it("keeps a managed 429 as rate_limited", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          verifyTOTPEnrollment: jest
+            .fn()
+            .mockResolvedValue({ ok: false, errorCode: "rate_limited" }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "rate_limited" });
     });
 
     it("maps totp_invalid_code from the community backend", async () => {

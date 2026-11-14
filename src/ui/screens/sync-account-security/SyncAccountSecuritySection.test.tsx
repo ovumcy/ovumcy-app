@@ -44,6 +44,7 @@ function baseProps() {
     onRegenerate: noop,
 
     revealedRecoveryCode: "",
+    revealedRecoveryCodeFromTOTP: false,
     onAcknowledgeRecoveryCode: noop,
 
     totpCopy,
@@ -427,7 +428,7 @@ describe("SyncAccountSecuritySection", () => {
     expect(onDisableTOTP).toHaveBeenCalledTimes(1);
   });
 
-  it("maps totp_invalid_code to the localized banner copy", async () => {
+  it("maps an enrollment totp_invalid_code to copy that covers a setup replaced from another device", async () => {
     await render(
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
@@ -443,8 +444,60 @@ describe("SyncAccountSecuritySection", () => {
     );
 
     expect(
-      screen.getByText(totpCopy.errors.totpInvalidCode),
+      screen.getByText(totpCopy.errors.totpEnrollInvalidCode),
     ).toBeTruthy();
+  });
+
+  it("keeps the plain invalid-code copy on the disable form", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpMode="disable"
+          totpErrorCode="totp_invalid_code"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(totpCopy.errors.totpInvalidCode)).toBeTruthy();
+  });
+
+  it("explains a spent enrollment and leaves the start-setup button enabled", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          totpErrorCode="totp_enrollment_restart_required"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByText(totpCopy.errors.totpEnrollmentRestartRequired),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("account-security-totp-enroll-submit").props
+        .accessibilityState?.disabled,
+    ).toBeFalsy();
+  });
+
+  it("tells the user the previous recovery code was replaced when the code comes from TOTP enrollment", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          revealedRecoveryCode="3f9c2a7e1b6d48c0a5e9f3b27d1c6e84"
+          revealedRecoveryCodeFromTOTP
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-recovery-code-hint").props.children,
+    ).toBe(totpCopy.enroll.recoveryCodeReplacedHint);
+    expect(
+      screen.getByTestId("account-security-recovery-code-value").props.children,
+    ).toBe("3f9c2a7e1b6d48c0a5e9f3b27d1c6e84");
   });
 
   it("shows the enabled 2FA status banner", async () => {

@@ -18,6 +18,12 @@ After verification:
 - Two-factor is on for this account.
 - Every other session of this account is signed out — only the device that completed enrollment stays connected.
 - The next login on any device will ask for a 6-digit code in addition to the password.
+- On a self-hosted (community) server the account recovery code is **replaced**: the code from registration or your last regeneration stops working, and any pending password-reset token dies with it. The app shows the new code exactly once in the *Save this recovery code* dialog. It is held only in screen memory until you tap *I have saved it* or leave the screen — never written to storage, logs, the clipboard, or a URL. Ovumcy Cloud does not rotate the code on enrollment, so no dialog appears there.
+
+If verification fails:
+
+- *Code is incorrect* — besides a mistyped or expired code, this is also what you see when setup was started again on another device: only the newest pending secret counts. Finish setup on that device, or tap *Cancel* and start again here.
+- *Too many attempts for this setup* (self-hosted) — the server allows 10 codes per pending secret and then discards it. Waiting does not help; the app returns you to the password step to start setup again with a fresh secret.
 
 ## Logging In With Two-Factor
 
@@ -39,7 +45,7 @@ Disable revokes every session of this account. You will need to sign back in on 
 Treat your account-level recovery code as your **only** backup for a lost authenticator:
 
 1. On the login screen, tap *Account Security → Forgot password*.
-2. Enter your login/email and the recovery code that was shown once at registration (or after the last reset).
+2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, or (self-hosted) when you turned two-factor on.
 3. Set a new password.
 
 A successful recovery-code-driven reset does three things together:
