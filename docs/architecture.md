@@ -133,6 +133,10 @@ edit:
    previously auto-filled neighbours. It then writes each affected day with
    `storage.writeDayLogRecord`. A storage error is caught and returned as
    `{ ok: false }`; the UI shows the failed state rather than throwing.
+   Changing the last period start in Settings takes the same atomic path:
+   `saveCycleSettings` plans the start move
+   (`src/services/period-start-move-service.ts`) and commits the day-log
+   writes, deletes and the profile in one `commitDayLogChanges`.
 3. **Storage.** In the SQLite adapter, `writeDayLogRecord` is queued on a
    serialized operation queue and awaits the reset barrier. `upsertDayLogRecord`
    sanitizes the record again, derives an opaque row key (a SHA-256 over
