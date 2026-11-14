@@ -702,10 +702,14 @@ function buildCalendarPredictionMaps(
   // Same empty-maps treatment as today's pause: no predicted/pre_fertile/
   // fertility_*/ovulation/ovulation_tentative states. Logged facts (period
   // days, hasData, hasSex) are untouched -- resolveCalendarDayStateKey checks
-  // the day's own record before ever consulting these maps.
+  // the day's own record before ever consulting these maps. The overdue gate
+  // (projection.cycleDayLooksLong) empties them too, as web's grid returns
+  // empty maps under PredictionsSuppressed (calendar_days.go): every chained
+  // cycle would start from a period date more than a week in the past.
   if (
     profile.unpredictableCycle ||
     projection.isPregnancyPaused ||
+    projection.cycleDayLooksLong === true ||
     suppressPredictions
   ) {
     return {
@@ -750,10 +754,10 @@ function buildCalendarPredictionMaps(
 
   // Web parity (calendar_days.go appendPredictedCycles): subsequent cycles are
   // painted from stats.NextPeriodStart = anchor + cycleLength, stepping forward
-  // by cycleLength to the grid end. This is the NON-rolled next start (the same
-  // date the projection's nextPeriodDate names until the overdue gate withholds
-  // it), so the stale case still paints the immediate "missed" cycle's period AND fertile
-  // window, then every later predicted cycle — no special-casing of stale.
+  // by cycleLength to the grid end. This is the NON-rolled next start (the
+  // date the projection's nextPeriodDate names), so the stale case still paints
+  // the immediate "missed" cycle's period AND fertile window, then every later
+  // predicted cycle. Past the overdue gate nothing is chained (early return).
   const baselineNextPeriodDate = resolveCalendarBaselineNextPeriodDate(
     projection.cycleAnchorDate,
     projection.predictionCycleLength,
@@ -844,9 +848,10 @@ function applyCurrentCycleBBTSignal(
 /**
  * App analog of web's stats.NextPeriodStart for the calendar
  * (applyProjectedBaseline → anchor + predictionCycleLength). Deliberately NOT
- * projection.nextPeriodDate, which the overdue gate nulls: the calendar paints predicted cycles
- * forward from the first cycle after the logged anchor, so a stale (missed)
- * cycle still shows its predicted period and fertile window.
+ * projection.nextPeriodDate, which the overdue gate nulls: the calendar paints
+ * predicted cycles forward from the first cycle after the logged anchor, so a
+ * stale (missed) cycle still shows its predicted period and fertile window
+ * until the overdue gate empties every prediction map.
  */
 function resolveCalendarBaselineNextPeriodDate(
   cycleAnchorDate: string | null,
