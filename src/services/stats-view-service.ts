@@ -411,6 +411,14 @@ export function buildStatsViewData(
   // deliberate exception: it stays keyed on hasActivePregnancy so the plain
   // pause keeps its own pregnancyPausedHint (same split as the dashboard).
   const suppressPredictions = hasActivePregnancy || projection.isPregnancyPaused;
+  // Overdue gate (projection.cycleDayLooksLong, web PredictionsSuppressed):
+  // past it the personal forecasts, the one stats surface naming something
+  // still to come from the projection, are withheld (the current-phase label
+  // already reads "unknown" from the gated projection itself). It is kept
+  // apart from suppressPredictions because the current-cycle observations
+  // (BBT, mucus, LH, a confirmed ovulation) stay visible past the gate, and the
+  // raw cycle day stays as the dashboard shows it. Recorded history is untouched.
+  const overduePredictionsSuppressed = projection.cycleDayLooksLong;
   const reliability = buildStatsReliability(profile, history);
   const factorContext = buildStatsFactorContext(profile, history, records, now);
   const trendPoints = buildStatsTrendPoints(history, locale);
@@ -437,7 +445,9 @@ export function buildStatsViewData(
     ? buildStatsPhaseSymptomInsights(records, localizedSymptomRecords)
     : [];
   const personalForecasts =
-    premiumFeatures.advancedInsights && !suppressPredictions
+    premiumFeatures.advancedInsights &&
+    !suppressPredictions &&
+    !overduePredictionsSuppressed
       ? buildStatsPersonalForecasts(symptomPatterns, projection.currentCycleDay)
       : [];
   const premiumInsights = premiumFeatures.advancedInsights
