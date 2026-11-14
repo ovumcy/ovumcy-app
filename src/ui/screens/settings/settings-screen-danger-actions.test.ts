@@ -2,6 +2,7 @@ import { requestSensitiveActionChallenge } from "../../../security/sensitive-act
 import { buildSettingsViewData } from "../../../services/settings-view-service";
 import { createSettingsStorageMock } from "../../../test/create-settings-storage-mock";
 import { createSyncSecretStoreMock } from "../../../test/create-sync-secret-store-mock";
+import { createWipeScopeSecretStoresMock } from "../../../test/secure-store-inventory";
 import { runClearAllDataAction } from "./settings-screen-danger-actions";
 
 jest.mock("../../../security/sensitive-action-auth", () => ({
@@ -18,6 +19,7 @@ function createContext() {
   const context = {
     clearDataConfirmationValue: "CLEAR",
     reminderScheduler,
+    wipeScopeSecretStores: createWipeScopeSecretStoresMock(),
     resetClearDataMessages: jest.fn(),
     router: { replace: jest.fn() },
     setClearDataErrorMessage: jest.fn(),
