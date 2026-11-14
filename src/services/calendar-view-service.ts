@@ -705,13 +705,25 @@ function buildCalendarPredictionMaps(
   // the day's own record before ever consulting these maps. The overdue gate
   // (projection.cycleDayLooksLong) empties them too, as web's grid returns
   // empty maps under PredictionsSuppressed (calendar_days.go): every chained
-  // cycle would start from a period date more than a week in the past.
+  // cycle would start from a period date more than a week in the past. The
+  // one marker the gate keeps is a BBT-confirmed ovulation day: it is read
+  // from the owner's own temperatures, not chained from a projected date.
   if (
     profile.unpredictableCycle ||
     projection.isPregnancyPaused ||
-    projection.cycleDayLooksLong === true ||
     suppressPredictions
   ) {
+    return {
+      predictedPeriod,
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      tentativeOvulation,
+    };
+  }
+  if (projection.cycleDayLooksLong === true) {
+    appendConfirmedCurrentCycleOvulation(profile, projection, records, today, ovulation);
     return {
       predictedPeriod,
       preFertile,
@@ -735,10 +747,47 @@ function buildCalendarPredictionMaps(
   const predictedPeriodLength =
     projection.projectedPeriodLength ?? profile.periodLength;
 
+  // Web ProjectionChainSuppressed: from the day the running cycle passes the
+  // overdue length (projection.isPredictionStale) its next period is due or
+  // already missed, so only that one period is drawn — no fertile window, no
+  // ovulation day and no later cycle rolled forward from the missed start.
+  // Completed past cycles keep their own historical markers.
+  if (projection.isPredictionStale) {
+    if (projection.cycleAnchorDate) {
+      appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
+    }
+    const runningNextPeriodDate = resolveCalendarBaselineNextPeriodDate(
+      projection.cycleAnchorDate,
+      projection.predictionCycleLength,
+    );
+    if (runningNextPeriodDate) {
+      appendPredictedPeriod(predictedPeriod, runningNextPeriodDate, predictedPeriodLength);
+    }
+    if (profile.showHistoricalPhases) {
+      appendHistoricalCycles(
+        preFertile,
+        fertilityEdge,
+        fertilityPeak,
+        ovulation,
+        history,
+        predictedPeriodLength,
+        projection.lutealPhase,
+      );
+    }
+    appendConfirmedCurrentCycleOvulation(profile, projection, records, today, ovulation);
+    return {
+      predictedPeriod,
+      preFertile,
+      fertilityEdge,
+      fertilityPeak,
+      ovulation,
+      tentativeOvulation,
+    };
+  }
+
   if (projection.cycleAnchorDate) {
     // Web parity (calendar_days.go appendCurrentBaselinePeriod/PreFertile): the
-    // logged-anchor cycle is always painted from the ORIGINAL anchor, including
-    // when forward-roll has marked the prediction stale.
+    // logged-anchor cycle is always painted from the ORIGINAL anchor.
     appendPredictedPeriod(predictedPeriod, projection.cycleAnchorDate, predictedPeriodLength);
     appendPredictedWindow(
       preFertile,
@@ -755,9 +804,8 @@ function buildCalendarPredictionMaps(
   // Web parity (calendar_days.go appendPredictedCycles): subsequent cycles are
   // painted from stats.NextPeriodStart = anchor + cycleLength, stepping forward
   // by cycleLength to the grid end. This is the NON-rolled next start (the
-  // date the projection's nextPeriodDate names), so the stale case still paints
-  // the immediate "missed" cycle's period AND fertile window, then every later
-  // predicted cycle. Past the overdue gate nothing is chained (early return).
+  // date the projection's nextPeriodDate names). The stale band and the overdue
+  // gate returned above, so nothing here chains from a missed start.
   const baselineNextPeriodDate = resolveCalendarBaselineNextPeriodDate(
     projection.cycleAnchorDate,
     projection.predictionCycleLength,
@@ -846,12 +894,44 @@ function applyCurrentCycleBBTSignal(
 }
 
 /**
+ * App analog of web's ConfirmedCurrentCycleOvulation under a suppressed
+ * projection (calendar_days.go): the day before a sustained thermal shift in
+ * the running cycle's own temperatures, read up to today. It is an
+ * observation, so it survives the stale band and the overdue gate; no window
+ * or band comes with it.
+ */
+function appendConfirmedCurrentCycleOvulation(
+  profile: ProfileRecord,
+  projection: ReturnType<typeof buildCurrentCycleProjection>,
+  records: readonly DayLogRecord[],
+  today: Date,
+  ovulation: Set<string>,
+) {
+  if (!profile.trackBBT || !projection.cycleAnchorDate) {
+    return;
+  }
+  const todayValue = formatLocalDate(today);
+  if (projection.cycleAnchorDate > todayValue) {
+    return;
+  }
+  const recordsUpToToday = records.filter((record) => record.date <= todayValue);
+  const confirmed = inferBBTOvulationDate(
+    recordsUpToToday,
+    projection.cycleAnchorDate,
+    formatLocalDate(addDays(today, 1)),
+  );
+  if (confirmed) {
+    ovulation.add(confirmed);
+  }
+}
+
+/**
  * App analog of web's stats.NextPeriodStart for the calendar
  * (applyProjectedBaseline → anchor + predictionCycleLength). Deliberately NOT
  * projection.nextPeriodDate, which the overdue gate nulls: the calendar paints
  * predicted cycles forward from the first cycle after the logged anchor, so a
- * stale (missed) cycle still shows its predicted period and fertile window
- * until the overdue gate empties every prediction map.
+ * stale (missed) cycle still shows its predicted period, alone, until the
+ * overdue gate empties every prediction map.
  */
 function resolveCalendarBaselineNextPeriodDate(
   cycleAnchorDate: string | null,
