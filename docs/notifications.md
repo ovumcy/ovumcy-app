@@ -79,19 +79,27 @@ reminder until the next rebuild. See the clock assumption in [SECURITY.md](../SE
 ## 4. When the schedule is rebuilt
 
 `syncLocalReminderSchedule` (`src/services/local-reminder-sync-service.ts`) rebuilds the whole
-schedule: it cancels every notification the app scheduled, then schedules the current plans. There
-is no background job and no resync on app launch or on screen focus. A rebuild runs after:
+schedule: it cancels every notification the app scheduled, then schedules the current plans.
+Paths that do not hold the profile they changed go through
+`rebuildLocalReminderScheduleFromStorage`, which reads the stored profile and plans in its
+effective interface language. There is no background job and no resync on screen focus. A rebuild
+runs:
 
-- a day-log save on the Dashboard or Calendar screen (including autosave);
-- deleting a day entry, and starting a cycle manually, on either screen;
-- accepting a cycle return after postpartum on the Dashboard;
-- saving settings when the cycle values or the reminder values changed.
+- at every app launch, so a one-time reminder that already fired is replaced;
+- after a day-log save on the Dashboard or Calendar screen (including autosave);
+- after deleting a day entry, and starting a cycle manually, on either screen;
+- after accepting a cycle return after postpartum on the Dashboard;
+- after saving settings when the cycle values, the reminder values or the interface settings
+  changed (reminder text is localized, so a language change rebuilds it);
+- after toggling the kick-count reminder on the kick counter screen;
+- after starting a pregnancy, ending it, changing its due date, or deleting all pregnancy data;
+- after deleting all local data (the reset profile has every reminder off, so the schedule is
+  cleared);
+- after a JSON import is confirmed, including one that failed part-way.
 
-Each of these screens captures the current time once when it opens and reuses that value for every
-rebuild it triggers, so a screen left open across midnight plans from the day it opened on.
-
-Toggling the kick-count reminder on the kick counter screen only writes the profile; it takes
-effect at the next rebuild. Starting or ending a pregnancy does not trigger one either.
+A rebuild reads the clock when it runs; a screen left open across midnight plans from the current
+day, not the day it opened on. A rebuild that fails after one of these actions does not undo or
+fail the action itself; the next rebuild, at the latest the next launch, replaces the schedule.
 
 When no toggle is on, or the enabled kinds yield no plans, the schedule is cleared. The pregnancy
 state is read from storage only when the kick-count, upcoming-period, or fertile-window toggle is
@@ -100,9 +108,10 @@ on.
 ## 5. Permission flow
 
 The native scheduler (`src/services/platform-local-reminder-scheduler.native.ts`) checks the OS
-notification permission on every sync, including one with an empty plan list, and requests it when
-it is not yet granted. iOS provisional authorization counts as granted. There is no separate
-pre-prompt screen.
+notification permission only when at least one reminder will be scheduled, and requests it when it
+is not yet granted. A sync with an empty plan list only cancels the app's own reminders and never
+asks, so a user who never turned a reminder on is not prompted. iOS provisional authorization
+counts as granted. There is no separate pre-prompt screen.
 
 | Result | Meaning | Settings message |
 | --- | --- | --- |
@@ -113,7 +122,7 @@ pre-prompt screen.
 On denial the toggles and times stay saved in the profile. Granting permission in the OS settings
 takes effect at the next rebuild. Only notifications carrying one of the app's reminder kinds are
 cancelled; other notifications are left alone. On Android the reminders use the
-`ovumcy-reminders` channel.
+`ovumcy-reminders` channel: the scheduler creates it and sets it as `channelId` on every trigger.
 
 ## 6. Notification text and privacy
 

@@ -121,7 +121,9 @@ export function CalendarScreen({
         loadedState.profile,
         {
           locale: language,
-          now: effectiveNow,
+          // the injected instant only: without one the rebuild reads the
+          // clock, so a screen open past midnight never plans from yesterday
+          now,
         },
       );
     }
@@ -130,6 +132,7 @@ export function CalendarScreen({
     effectiveNow,
     language,
     monthValue,
+    now,
     premiumRead,
     reminderScheduler,
     selectedDate,

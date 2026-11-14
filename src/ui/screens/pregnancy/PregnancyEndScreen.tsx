@@ -13,6 +13,9 @@ import {
 } from "../../../models/pregnancy";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import { appStorage } from "../../../services/app-bootstrap-service";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
 import {
   deleteAllPostpartumData,
@@ -53,6 +56,7 @@ type PregnancyEndScreenProps = {
   // never gated (lapse posture mirrors pregnancy). Injectable so tests can
   // drive locked/unlocked directly.
   loadPostpartumUnlocked?: () => Promise<boolean>;
+  reminderScheduler?: LocalReminderScheduler;
 };
 
 function resolveInitialReason(
@@ -68,6 +72,7 @@ export function PregnancyEndScreen({
   storage = appStorage,
   now,
   loadPostpartumUnlocked = loadPregnancyModuleOwned,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
 }: PregnancyEndScreenProps) {
   const router = useRouter();
   const { language } = useAppPreferences();
@@ -260,6 +265,11 @@ export function PregnancyEndScreen({
       return;
     }
 
+    // Ending the record lifts the reminder suppression and stops kick counts.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
+
     // After a confirmed BIRTH only (never loss/other — domain rule B8), offer
     // postpartum tracking, but only when the premium capability is unlocked
     // (starting postpartum is a premium new-start). Locked, or a loss/other
@@ -448,6 +458,11 @@ export function PregnancyEndScreen({
       return;
     }
 
+    // A new due date moves the gestational week the kick reminder starts at.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
+
     // Success-free (no celebratory copy) -- the dashboard simply renders the
     // updated W+D, same direct navigation as startPregnancy/endPregnancy.
     router.replace("/(tabs)/dashboard");
@@ -488,6 +503,10 @@ export function PregnancyEndScreen({
       return;
     }
 
+    // Deleting an active record lifts the reminder suppression it applied.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
     router.back();
   }
 

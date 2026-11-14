@@ -162,4 +162,112 @@ describe("platform-local-reminder-scheduler.native", () => {
 
     expect(Notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
   });
+
+  it("never asks for notification permission when the plan is empty", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "daily-1", content: { data: { ovumcyReminderKind: "daily_log" } } },
+    ]);
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    // the clear still runs, it just needs no permission
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      "daily-1",
+    );
+    expect(Notifications.getPermissionsAsync).not.toHaveBeenCalled();
+    expect(Notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it("asks for permission once a reminder will be scheduled", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getPermissionsAsync.mockResolvedValueOnce({
+      granted: false,
+      ios: { status: 0 },
+    });
+
+    await expect(scheduler.sync([DAILY_PLAN])).resolves.toBe("scheduled");
+
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels its own schedules and reports permission_denied when permission is refused", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getPermissionsAsync.mockResolvedValueOnce({
+      granted: false,
+      ios: { status: 0 },
+    });
+    Notifications.requestPermissionsAsync.mockResolvedValueOnce({
+      granted: false,
+      ios: { status: 1 },
+    });
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "daily-1", content: { data: { ovumcyReminderKind: "daily_log" } } },
+      { identifier: "foreign-1", content: { data: {} } },
+    ]);
+
+    await expect(scheduler.sync([DAILY_PLAN])).resolves.toBe(
+      "permission_denied",
+    );
+
+    expect(Notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      "daily-1",
+    );
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("routes daily and one-time reminders to the ovumcy-reminders channel", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+    const at = new Date("2026-03-10T09:00:00.000Z");
+
+    await expect(
+      scheduler.sync([
+        DAILY_PLAN,
+        {
+          kind: "upcoming_period" as const,
+          title: "Ovumcy reminder",
+          body: "Open Ovumcy to check your cycle.",
+          trigger: { type: "once" as const, at },
+        },
+      ]),
+    ).resolves.toBe("scheduled");
+
+    const triggers = Notifications.scheduleNotificationAsync.mock.calls.map(
+      (call: unknown[]) => (call[0] as { trigger: unknown }).trigger,
+    );
+    expect(triggers).toEqual([
+      { type: "daily", channelId: "ovumcy-reminders", hour: 21, minute: 30 },
+      { type: "date", channelId: "ovumcy-reminders", date: at },
+    ]);
+  });
 });

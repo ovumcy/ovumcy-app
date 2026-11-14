@@ -10,6 +10,9 @@ import {
   deleteKickCountSession,
   finishKickCountSession,
 } from "../../../services/kick-counter-service";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { formatLocalDate } from "../../../services/profile-settings-policy";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -20,6 +23,7 @@ import { KickCounterFlowScreen } from "./KickCounterFlowScreen";
 type KickCounterScreenProps = {
   storage?: LocalAppStorage;
   now?: Date;
+  reminderScheduler?: LocalReminderScheduler;
 };
 
 type LoadStatus = "loading" | "ready";
@@ -35,6 +39,7 @@ const ELAPSED_TICK_MS = 1000;
 export function KickCounterScreen({
   storage = appStorage,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
 }: KickCounterScreenProps) {
   const { colors, language } = useAppPreferences();
   const [effectiveNow] = useState(() => now ?? new Date());
@@ -202,6 +207,11 @@ export function KickCounterScreen({
     };
     setProfile(nextProfile);
     await storage.writeProfileRecord(nextProfile);
+    // The toggle is a plan input: schedule or cancel the kick reminder now,
+    // not at some later unrelated save.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
   }
 
   if (loadStatus === "loading") {

@@ -7,6 +7,8 @@ import {
   previewImportBackupEnvelope,
   type ImportOutcome,
 } from "../../../services/import-service";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
 import { refreshSettingsStateAfterImport } from "../../../services/settings-screen-service";
 import {
   buildSettingsImportResultMessage,
@@ -32,6 +34,9 @@ type ImportActionContext = {
   setIsImporting: (value: boolean) => void;
   setPendingImportPreview: (value: PendingImportPreview | null) => void;
   setState: (value: LoadedSettingsState) => void;
+  // Injected instant for the reminder rebuild; undefined reads the clock.
+  reminderNow?: Date | undefined;
+  reminderScheduler: LocalReminderScheduler;
   storage: LocalAppStorage;
   syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
   viewData: SettingsViewData;
@@ -100,6 +105,8 @@ export async function runConfirmImportAction(
     setIsImporting,
     setPendingImportPreview,
     setState,
+    reminderNow,
+    reminderScheduler,
     storage,
     syncProfilePreferences,
     viewData,
@@ -131,6 +138,12 @@ export async function runConfirmImportAction(
       resolveSettingsImportErrorMessage("import_failed", viewData),
     );
   } finally {
+    // An import can add day logs, a pregnancy record and a profile with its
+    // own reminder settings — and a failed one may have written part of them
+    // — so the schedule is rebuilt from storage either way.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now: reminderNow,
+    });
     setIsImporting(false);
   }
 }

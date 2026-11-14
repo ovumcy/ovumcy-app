@@ -1,3 +1,4 @@
+import { resolveEffectiveLanguage } from "../i18n/runtime";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { formatLocalDate } from "./profile-settings-policy";
@@ -24,13 +25,17 @@ export type LocalReminderSyncResult =
 // channel, so this path reads no session, no billing snapshot, and no
 // secret store at all (web parity — reminders ship in ovumcy-web's free
 // owner flow).
+//
+// `now` is optional so a screen left open past midnight never plans from the
+// day it was mounted: without an injected instant the clock is read here, at
+// plan time. The plan service itself still takes "now" as a parameter.
 export async function syncLocalReminderSchedule(
   storage: LocalAppStorage,
   scheduler: LocalReminderScheduler,
   profile: ProfileRecord,
   options: {
     locale?: string | undefined;
-    now: Date;
+    now?: Date | undefined;
   },
 ): Promise<LocalReminderSyncResult> {
   const hasAnyReminderEnabled =
@@ -46,9 +51,35 @@ export async function syncLocalReminderSchedule(
     return "disabled";
   }
 
-  const { locale = "en", now } = options;
+  const { locale = "en", now = new Date() } = options;
   const plans = await loadLocalReminderPlans(storage, profile, now, locale);
   return syncLocalReminderPlans(scheduler, plans);
+}
+
+// Rebuild from what is stored now, for a path that changed a plan input
+// (profile, day logs, pregnancy record) without holding the profile it wrote:
+// kick-count toggle, pregnancy start/end/re-date/delete, local-data delete,
+// JSON import, app launch. Best effort: the caller's own write has already
+// succeeded, so a failed rebuild resolves to "failed" instead of surfacing as
+// that action's error; the next rebuild (at the latest the next launch)
+// replaces the schedule. The copy language is the stored profile's effective
+// interface language, the same value the app resolves at launch.
+export async function rebuildLocalReminderScheduleFromStorage(
+  storage: LocalAppStorage,
+  scheduler: LocalReminderScheduler,
+  options: {
+    now?: Date | undefined;
+  } = {},
+): Promise<LocalReminderSyncResult | "failed"> {
+  try {
+    const profile = await storage.readProfileRecord();
+    return await syncLocalReminderSchedule(storage, scheduler, profile, {
+      locale: resolveEffectiveLanguage(profile.languageOverride),
+      now: options.now,
+    });
+  } catch {
+    return "failed";
+  }
 }
 
 async function loadLocalReminderPlans(

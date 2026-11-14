@@ -32,6 +32,15 @@ function createNativeReminderScheduler(): LocalReminderScheduler {
       }
 
       const Notifications = loadExpoNotificationsModule();
+
+      // An empty plan only clears this app's schedules, which needs no
+      // permission: asking here would prompt a user who never turned a
+      // reminder on.
+      if (plans.length === 0) {
+        await cancelManagedReminderSchedules(Notifications);
+        return "scheduled" satisfies LocalReminderSchedulerSyncResult;
+      }
+
       const granted = await ensureNotificationPermission(Notifications);
       if (!granted) {
         await cancelManagedReminderSchedules(Notifications);
@@ -51,15 +60,19 @@ function createNativeReminderScheduler(): LocalReminderScheduler {
               ovumcyReminderKind: plan.kind,
             },
           },
+          // channelId routes the Android notification to the channel created
+          // above instead of the fallback one; iOS ignores it.
           trigger:
             plan.trigger.type === "daily"
               ? {
                   type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                  channelId: OVUMCY_REMINDER_CHANNEL_ID,
                   hour: plan.trigger.hour,
                   minute: plan.trigger.minute,
                 }
               : {
                   type: Notifications.SchedulableTriggerInputTypes.DATE,
+                  channelId: OVUMCY_REMINDER_CHANNEL_ID,
                   date: plan.trigger.at,
                 },
         });

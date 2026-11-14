@@ -351,8 +351,8 @@ follows from that:
 - **Local reminder scheduling assumes an approximately correct clock.**
   `buildLocalReminderPlans` (`src/services/local-reminder-plan-service.ts`) resolves
   "today" and the one-time `upcoming_period`/`fertile_window` trigger instants from a
-  caller-supplied `now`; the Dashboard and Calendar screens and the settings save path
-  all default it to `new Date()` when the schedule is (re)built. The native adapter
+  `now`; `syncLocalReminderSchedule` reads `new Date()` at the moment the schedule is
+  (re)built unless a test injects an instant, so no screen plans from a stale day. The native adapter
   (`platform-local-reminder-scheduler.native.ts`) hands the resolved plan to
   `expo-notifications` as either an absolute one-time `Date` trigger or an hour/minute
   daily-repeat trigger, and firing itself is then driven by the OS's own system clock,

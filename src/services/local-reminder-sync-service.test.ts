@@ -1,7 +1,11 @@
 import { createPregnancyRecord } from "../models/pregnancy";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
-import { syncLocalReminderSchedule } from "./local-reminder-sync-service";
+import { getReminderCopy } from "../i18n/reminder-copy";
+import {
+  rebuildLocalReminderScheduleFromStorage,
+  syncLocalReminderSchedule,
+} from "./local-reminder-sync-service";
 import { addDays, parseLocalDate } from "./profile-settings-policy";
 import type { LocalReminderScheduler } from "./local-reminder-scheduler-contract";
 
@@ -291,6 +295,84 @@ describe("local-reminder-sync-service", () => {
       ).resolves.toBe("disabled");
 
       expect(scheduler.sync).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe("planning instant", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("reads the clock at plan time when no instant is injected", async () => {
+      jest.useFakeTimers({ now: new Date(2026, 3, 6, 0, 30, 0, 0) });
+      const storage = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+      });
+
+      await syncLocalReminderSchedule(
+        storage,
+        createScheduler(),
+        { ...createDefaultProfileRecord(), upcomingPeriodReminderEnabled: true },
+        {},
+      );
+
+      // "today" is the day after midnight, not a day captured earlier
+      expect(storage.listDayLogRecordsInRange).toHaveBeenCalledWith(
+        "2024-04-06",
+        "2026-04-06",
+      );
+    });
+  });
+
+  describe("rebuildLocalReminderScheduleFromStorage", () => {
+    it("plans from the stored profile in its interface language", async () => {
+      const storage = createLocalAppStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          ...createDefaultProfileRecord(),
+          dailyLogReminderEnabled: true,
+          languageOverride: "de",
+          reminderTime: "08:05",
+        }),
+      });
+      const scheduler = createScheduler();
+
+      await expect(
+        rebuildLocalReminderScheduleFromStorage(storage, scheduler, {
+          now: new Date(2026, 3, 5, 10, 0, 0, 0),
+        }),
+      ).resolves.toBe("scheduled");
+
+      expect(scheduler.sync).toHaveBeenCalledWith([
+        expect.objectContaining({
+          kind: "daily_log",
+          title: getReminderCopy("de").notificationTitle,
+          body: getReminderCopy("de").dailyLogBody,
+          trigger: { type: "daily", hour: 8, minute: 5 },
+        }),
+      ]);
+    });
+
+    it("clears the schedule when the stored profile has every reminder off", async () => {
+      const storage = createLocalAppStorageMock();
+      const scheduler = createScheduler();
+
+      await expect(
+        rebuildLocalReminderScheduleFromStorage(storage, scheduler),
+      ).resolves.toBe("disabled");
+
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
+    });
+
+    it("resolves to failed instead of throwing when the rebuild fails", async () => {
+      const storage = createLocalAppStorageMock({
+        readProfileRecord: jest.fn().mockRejectedValue(new Error("locked")),
+      });
+      const scheduler = createScheduler();
+
+      await expect(
+        rebuildLocalReminderScheduleFromStorage(storage, scheduler),
+      ).resolves.toBe("failed");
+      expect(scheduler.sync).not.toHaveBeenCalled();
     });
   });
 });

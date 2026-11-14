@@ -43,6 +43,7 @@ function createContext() {
     setReminderStatusTone: jest.fn(),
     setState: jest.fn(),
     setTrackingStatusMessage: jest.fn(),
+    reminderNow: now as Date | undefined,
     reminderScheduler: { sync: jest.fn().mockResolvedValue("scheduled") },
     locale: "en",
     partnerShareSecretStore: noopPartnerShareSecretStore,
@@ -219,6 +220,56 @@ describe("runSavePendingSettingsAction: multi-section save sequencing", () => {
       { locale: "en", now },
     );
     expect(context.setState).toHaveBeenLastCalledWith(trackingState);
+  });
+
+  it("rebuilds reminders in the saved language when only the interface changed", async () => {
+    const readyState = await loadReadyState();
+    const context = createContext();
+    const interfaceState = {
+      ...readyState,
+      interfaceValues: { ...readyState.interfaceValues, languageOverride: "fr" as const },
+    };
+    jest
+      .spyOn(settingsScreenService, "saveInterfaceSettings")
+      .mockResolvedValue({ ok: true, state: interfaceState });
+    const reminderSyncSpy = jest
+      .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
+      .mockResolvedValue("scheduled");
+
+    const result = await runSavePendingSettingsAction(context, readyState, {
+      ...allClean,
+      isInterfaceDirty: true,
+    });
+
+    expect(result).toBe(true);
+    expect(reminderSyncSpy).toHaveBeenCalledTimes(1);
+    expect(reminderSyncSpy).toHaveBeenCalledWith(
+      context.storage,
+      context.reminderScheduler,
+      interfaceState.profile,
+      { locale: "fr", now },
+    );
+  });
+
+  it("passes no instant when none is injected, so the rebuild reads the clock", async () => {
+    const readyState = await loadReadyState();
+    const context = { ...createContext(), reminderNow: undefined };
+    jest
+      .spyOn(settingsScreenService, "saveCycleSettings")
+      .mockResolvedValue({ ok: true, state: readyState });
+    const reminderSyncSpy = jest
+      .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
+      .mockResolvedValue("scheduled");
+
+    await runSavePendingSettingsAction(context, readyState, {
+      ...allClean,
+      isCycleDirty: true,
+    });
+
+    expect(reminderSyncSpy.mock.calls[0]?.[3]).toEqual({
+      locale: "en",
+      now: undefined,
+    });
   });
 });
 

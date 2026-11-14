@@ -5,6 +5,8 @@ import {
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
 import {
   clearAllLocalSettingsData,
   isClearLocalDataConfirmationValid,
@@ -19,6 +21,7 @@ type DangerActionContext = {
   };
   setClearDataErrorMessage: (value: string) => void;
   setIsClearingData: (value: boolean) => void;
+  reminderScheduler: LocalReminderScheduler;
   storage: LocalAppStorage;
   syncProfilePreferences: (profile: InterfaceSettingsValues) => void;
   syncSecretStore: SyncSecretStore;
@@ -29,6 +32,7 @@ export async function runClearAllDataAction(context: DangerActionContext) {
   const {
     clearDataConfirmationValue,
     resetClearDataMessages,
+    reminderScheduler,
     router,
     setClearDataErrorMessage,
     setIsClearingData,
@@ -68,6 +72,10 @@ export async function runClearAllDataAction(context: DangerActionContext) {
     setIsClearingData(false);
     return;
   }
+
+  // Reminders planned from the wiped history must not keep firing: rebuild
+  // from the reset profile, which clears the schedule.
+  await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
 
   syncProfilePreferences({
     languageOverride: null,

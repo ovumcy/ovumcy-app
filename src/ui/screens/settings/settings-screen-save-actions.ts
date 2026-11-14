@@ -1,3 +1,4 @@
+import { resolveEffectiveLanguage } from "../../../i18n/runtime";
 import type { InterfaceSettingsValues } from "../../../models/profile";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import {
@@ -21,6 +22,9 @@ import type { SyncSecretStore } from "../../../security/sync-secret-store";
 
 type SaveSettingsActionContext = {
   effectiveNow: Date;
+  // Injected instant for the reminder rebuild; undefined reads the clock at
+  // plan time, so a screen open past midnight never plans from a stale day.
+  reminderNow?: Date | undefined;
   setCycleErrorMessage: (value: string) => void;
   setCycleStatusMessage: (value: string) => void;
   setInterfaceErrorMessage: (value: string) => void;
@@ -57,6 +61,7 @@ export async function runSavePendingSettingsAction(
   const {
     effectiveNow,
     locale,
+    reminderNow,
     reminderScheduler,
     setCycleErrorMessage,
     setCycleStatusMessage,
@@ -179,14 +184,18 @@ export async function runSavePendingSettingsAction(
     setInterfaceStatusMessage(viewData.interface.status.saved);
   }
 
-  if (isCycleDirty || isReminderDirty) {
+  // The interface language is a plan input: reminder copy is localized, so a
+  // language change rebuilds the schedule in the saved language.
+  if (isCycleDirty || isReminderDirty || isInterfaceDirty) {
     const reminderSyncResult = await syncLocalReminderSchedule(
       storage,
       reminderScheduler,
       nextState.profile,
       {
-        locale,
-        now: effectiveNow,
+        locale: isInterfaceDirty
+          ? resolveEffectiveLanguage(nextState.interfaceValues.languageOverride)
+          : locale,
+        now: reminderNow,
       },
     );
     if (isReminderDirty) {

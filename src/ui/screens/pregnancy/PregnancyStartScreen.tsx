@@ -5,6 +5,9 @@ import { ActivityIndicator, View } from "react-native";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
 import type { Chorionicity, EddBasis, FetusCount } from "../../../models/pregnancy";
 import { appStorage } from "../../../services/app-bootstrap-service";
+import type { LocalReminderScheduler } from "../../../services/local-reminder-scheduler-contract";
+import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
 import {
   buildPregnancyStartDefaults,
@@ -21,6 +24,7 @@ import { PregnancyStartFlowScreen } from "./PregnancyStartFlowScreen";
 type PregnancyStartScreenProps = {
   storage?: LocalAppStorage;
   now?: Date;
+  reminderScheduler?: LocalReminderScheduler;
 };
 
 type LoadStatus = "loading" | "locked" | "ready";
@@ -28,6 +32,7 @@ type LoadStatus = "loading" | "locked" | "ready";
 export function PregnancyStartScreen({
   storage = appStorage,
   now,
+  reminderScheduler = createPlatformLocalReminderScheduler(),
 }: PregnancyStartScreenProps) {
   const router = useRouter();
   const { colors, language } = useAppPreferences();
@@ -184,6 +189,10 @@ export function PregnancyStartScreen({
       return;
     }
 
+    // An active record suppresses the period and fertile-window reminders.
+    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+      now,
+    });
     router.replace("/(tabs)/dashboard");
   }
 

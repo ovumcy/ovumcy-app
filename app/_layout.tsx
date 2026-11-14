@@ -3,7 +3,10 @@ import type { ErrorBoundaryProps } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { appStorage } from "../src/services/app-bootstrap-service";
 import { cleanupStaleExportArtifacts } from "../src/services/export-artifact-cleanup";
+import { rebuildLocalReminderScheduleFromStorage } from "../src/services/local-reminder-sync-service";
+import { createPlatformLocalReminderScheduler } from "../src/services/platform-local-reminder-scheduler";
 import { useAppScreenProtection } from "../src/security/app-screen-protection";
 import { ConfirmDialogProvider } from "../src/ui/confirm/ConfirmDialogProvider";
 import {
@@ -24,6 +27,12 @@ export default function RootLayout() {
     // them out of the platform cache before the user can hand the device
     // to anyone.
     void cleanupStaleExportArtifacts();
+    // A one-time reminder that already fired is replaced only by a rebuild,
+    // so every launch rebuilds the schedule from stored data.
+    void rebuildLocalReminderScheduleFromStorage(
+      appStorage,
+      createPlatformLocalReminderScheduler(),
+    );
   }, []);
 
   return (
