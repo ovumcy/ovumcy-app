@@ -42,6 +42,7 @@ import {
 } from "./stats-insights-service";
 import { detectSustainedThermalShift } from "./observed-ovulation-service";
 import { buildStatsAdvancedFertility } from "./stats-advanced-fertility-service";
+import { buildStatsCompletedCycleList } from "./stats-completed-cycle-list-service";
 import { buildStatsExtendedReports } from "./stats-extended-reports-service";
 import { buildStatsPersonalForecasts } from "./stats-personal-forecasts-service";
 import { buildStatsPremiumPhaseInsights } from "./stats-premium-phase-insights-service";
@@ -97,6 +98,18 @@ export type StatsViewData = {
   // Medical-safety invariant holds regardless of whether insights are unlocked.
   predictionDisclaimer: string;
   predictionExplanation?: string;
+  // Free tier: recorded completed cycles, no comparison wording. Historical
+  // observations, so it is independent of prediction suppression.
+  completedCycleList?: {
+    title: string;
+    subtitle: string;
+    rows: {
+      key: string;
+      title: string;
+      cycleLengthLabel: string;
+      periodLengthLabel: string;
+    }[];
+  };
   extendedReports?: {
     title: string;
     subtitle: string;
@@ -477,6 +490,7 @@ export function buildStatsViewData(
   const extendedReports = premiumFeatures.extendedReports
     ? buildStatsExtendedReports(history)
     : null;
+  const completedCycleRows = buildStatsCompletedCycleList(history);
   // The BBT series and the derived coverline / probable-ovulation marker are
   // current-cycle fertility signals: while suppressPredictions holds (active
   // pregnancy, or the day-log pause), they are phantom math and stay hidden —
@@ -538,6 +552,26 @@ export function buildStatsViewData(
     ...(personalForecastsSection
       ? {
           personalForecasts: personalForecastsSection,
+        }
+      : {}),
+    ...(completedCycleRows.length > 0
+      ? {
+          completedCycleList: {
+            title: statsCopy.recentCycles,
+            subtitle: statsCopy.recentCyclesSubtitle,
+            rows: completedCycleRows.map((row) => ({
+              key: row.key,
+              title: statsCopy.extendedReports.rowTitle(
+                formatDisplayDate(row.startDate, locale),
+              ),
+              cycleLengthLabel: statsCopy.extendedReports.cycleLengthLabel(
+                row.cycleLength,
+              ),
+              periodLengthLabel: statsCopy.extendedReports.periodLengthLabel(
+                row.periodLength,
+              ),
+            })),
+          },
         }
       : {}),
     ...(extendedReports

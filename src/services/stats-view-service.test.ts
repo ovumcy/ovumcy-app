@@ -698,6 +698,83 @@ describe("buildStatsViewData", () => {
     );
   });
 
+  describe("free completed-cycle list", () => {
+    const starts = [
+      "2025-12-01",
+      "2025-12-29",
+      "2026-01-26",
+      "2026-02-23",
+      "2026-03-23",
+      "2026-04-20",
+      "2026-05-18",
+    ];
+    const noPremium = {
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: false,
+      reminders: false,
+    };
+    const build = (
+      periodStarts: string[],
+      features = noPremium,
+      options?: { suppressPredictions: boolean },
+    ) =>
+      buildStatsViewData(
+        createProfileRecord(),
+        periodStarts.map((date) => createPeriodRecord(date)),
+        createDefaultSymptomRecords(),
+        new Date(2026, 5, 20),
+        "en",
+        features,
+        options,
+      );
+
+    it("lists the latest four completed cycles newest first without premium or comparison wording", () => {
+      const viewData = build(starts);
+
+      expect(viewData.extendedReports).toBeUndefined();
+      expect(viewData.completedCycleList?.title).toBe("Recent cycles");
+      expect(viewData.completedCycleList?.rows.map((row) => row.key)).toEqual([
+        "2026-04-20",
+        "2026-03-23",
+        "2026-02-23",
+        "2026-01-26",
+      ]);
+      expect(viewData.completedCycleList?.rows[0]).toEqual(
+        expect.objectContaining({
+          cycleLengthLabel: "Cycle 28 d",
+          periodLengthLabel: expect.stringMatching(/^Period \d+ d$/),
+        }),
+      );
+      expect(JSON.stringify(viewData.completedCycleList)).not.toMatch(
+        /usual pattern|variable pattern/,
+      );
+    });
+
+    it("keeps comparison wording premium-only", () => {
+      const premium = build(starts, { ...noPremium, extendedReports: true });
+
+      expect(premium.extendedReports?.rows[0]?.comparisonLabel).toBeTruthy();
+      expect(premium.completedCycleList?.rows).toHaveLength(4);
+      expect(
+        Object.keys(premium.completedCycleList?.rows[0] ?? {}),
+      ).not.toContain("comparisonLabel");
+    });
+
+    it("is absent below two completed cycles", () => {
+      expect(build(starts.slice(0, 1)).completedCycleList).toBeUndefined();
+    });
+
+    it("stays visible while predictions are suppressed", () => {
+      const viewData = build(starts, noPremium, { suppressPredictions: true });
+
+      expect(viewData.predictionExplanation).toBe("");
+      expect(viewData.completedCycleList?.rows).toHaveLength(4);
+    });
+  });
+
   it("surfaces the short luteal phase warning in advanced insights when 3+ recent cycles show luteal <10 days", () => {
     const viewData = buildStatsViewData(
       createProfileRecord({ trackCervicalMucus: true }),

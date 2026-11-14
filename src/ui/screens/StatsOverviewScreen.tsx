@@ -16,6 +16,7 @@ import { PredictionDisclaimer } from "../components/PredictionDisclaimer";
 import { resolveBottomContentPadding } from "../layout/bottom-content-padding";
 import { useAppTheme, useThemedStyles } from "../theme/useThemedStyles";
 import { StatsOverviewEmptyState } from "./stats/StatsOverviewEmptyState";
+import { StatsOverviewCompletedCycleListSection } from "./stats/StatsOverviewCompletedCycleListSection";
 import { StatsOverviewExtendedReportsSection } from "./stats/StatsOverviewExtendedReportsSection";
 import { StatsOverviewPatternSections } from "./stats/StatsOverviewPatternSections";
 import { StatsOverviewPremiumSections } from "./stats/StatsOverviewPremiumSections";
@@ -118,6 +119,10 @@ export function StatsOverviewScreen({
               />
               <StatsOverviewPremiumSections
                 onPremiumCTAPress={onPremiumCTAPress}
+                styles={styles}
+                viewData={viewData}
+              />
+              <StatsOverviewCompletedCycleListSection
                 styles={styles}
                 viewData={viewData}
               />
