@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { createDefaultProfileRecord } from "../../../models/profile";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
@@ -420,6 +420,65 @@ describe("PregnancyStartScreen", () => {
     expect(await screen.findByTestId("pregnancy-start-basis-step")).toBeTruthy();
   });
 
+});
+
+describe("PregnancyStartScreen reminder rebuild", () => {
+  async function confirmStart(
+    storage: ReturnType<typeof createLocalAppStorageMock>,
+    scheduler: { sync: jest.Mock },
+  ) {
+    await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyStartScreen
+          now={nowForGaDays(171)}
+          reminderScheduler={scheduler}
+          storage={storage}
+        />
+      </AppPreferencesTestProvider>,
+    );
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
+  }
+
+  afterEach(() => {
+    mockReplace.mockReset();
+    mockUnlocked.mockReset();
+    mockUnlocked.mockResolvedValue(true);
+  });
+
+  it("rebuilds the reminder schedule once, after the pregnancy record is written", async () => {
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+    });
+
+    await confirmStart(storage, scheduler);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"));
+    expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
+    expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.invocationCallOrder[0],
+    ).toBeLessThan(scheduler.sync.mock.invocationCallOrder[0]!);
+  });
+
+  it("does not rebuild the schedule when the start fails", async () => {
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+      writePregnancyRecord: jest.fn().mockRejectedValue(new Error("busy")),
+    });
+
+    await confirmStart(storage, scheduler);
+
+    expect(await screen.findByTestId("pregnancy-start-error")).toBeTruthy();
+    expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
+    expect(scheduler.sync).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
 });
 
 describe("resolveStartError", () => {
