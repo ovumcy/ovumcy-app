@@ -79,6 +79,7 @@ describe("buildAccountDeletionViewModel", () => {
       hasConnectedSession: true,
       preferences,
       activeSubscription: createActiveSubscriptionFixture({ status: "active" }),
+      planStatus: "inactive",
       now,
     });
     expect(activeViewModel.requiresSubscriptionWarning).toBe(true);
@@ -91,6 +92,7 @@ describe("buildAccountDeletionViewModel", () => {
       activeSubscription: createActiveSubscriptionFixture({
         cancelAtPeriodEnd: true,
       }),
+      planStatus: "inactive",
       now,
     });
     expect(cancelingViewModel.requiresSubscriptionWarning).toBe(true);
@@ -114,6 +116,7 @@ describe("buildAccountDeletionViewModel", () => {
         hasConnectedSession: true,
         preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
         activeSubscription: createActiveSubscriptionFixture({ status: "trialing" }),
+        planStatus: "inactive",
         now,
       }).requiresSubscriptionWarning,
     ).toBe(false);
@@ -123,6 +126,7 @@ describe("buildAccountDeletionViewModel", () => {
         hasConnectedSession: true,
         preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
         activeSubscription: null,
+        planStatus: "inactive",
         now,
       }).requiresSubscriptionWarning,
     ).toBe(false);
@@ -132,6 +136,7 @@ describe("buildAccountDeletionViewModel", () => {
         hasConnectedSession: false,
         preferences: { ...createDefaultSyncPreferencesRecord(), mode: "self_hosted" },
         activeSubscription: null,
+        planStatus: "inactive",
         now,
       }).requiresSubscriptionWarning,
     ).toBe(false);
@@ -146,9 +151,78 @@ describe("buildAccountDeletionViewModel", () => {
           currentPeriodStartsAt: "2026-04-01T00:00:00.000Z",
           currentPeriodEndsAt: "2026-05-01T00:00:00.000Z",
         }),
+        planStatus: "inactive",
         now,
       }).requiresSubscriptionWarning,
     ).toBe(false);
+  });
+
+  describe("billing status", () => {
+    const now = new Date("2026-06-01T00:00:00.000Z");
+    const managed = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+    };
+
+    it("flags unknown billing (failed live fetch) on a connected managed account without claiming a subscription", () => {
+      const viewModel = buildAccountDeletionViewModel({
+        hasConnectedSession: true,
+        preferences: managed,
+        activeSubscription: null,
+        planStatus: "unknown",
+        now,
+      });
+      expect(viewModel.billingStatusUnknown).toBe(true);
+      expect(viewModel.requiresSubscriptionWarning).toBe(false);
+    });
+
+    it("shows no billing warning for a confirmed no-subscription account", () => {
+      const viewModel = buildAccountDeletionViewModel({
+        hasConnectedSession: true,
+        preferences: managed,
+        activeSubscription: null,
+        planStatus: "inactive",
+        now,
+      });
+      expect(viewModel.billingStatusUnknown).toBe(false);
+      expect(viewModel.requiresSubscriptionWarning).toBe(false);
+    });
+
+    it("keeps the active-subscription warning and never reports it as unknown", () => {
+      const viewModel = buildAccountDeletionViewModel({
+        hasConnectedSession: true,
+        preferences: managed,
+        activeSubscription: createActiveSubscriptionFixture({ status: "active" }),
+        planStatus: "active",
+        now,
+      });
+      expect(viewModel.requiresSubscriptionWarning).toBe(true);
+      expect(viewModel.billingStatusUnknown).toBe(false);
+    });
+
+    it("never flags unknown billing without a managed session (self-hosted or signed out)", () => {
+      expect(
+        buildAccountDeletionViewModel({
+          hasConnectedSession: true,
+          preferences: {
+            ...createDefaultSyncPreferencesRecord(),
+            mode: "self_hosted",
+          },
+          activeSubscription: null,
+          planStatus: "unknown",
+          now,
+        }).billingStatusUnknown,
+      ).toBe(false);
+      expect(
+        buildAccountDeletionViewModel({
+          hasConnectedSession: false,
+          preferences: managed,
+          activeSubscription: null,
+          planStatus: "unknown",
+          now,
+        }).billingStatusUnknown,
+      ).toBe(false);
+    });
   });
 
   it("mirrors the mode and connected-session flags through unchanged", () => {
@@ -157,6 +231,7 @@ describe("buildAccountDeletionViewModel", () => {
       hasConnectedSession: false,
       preferences: { ...createDefaultSyncPreferencesRecord(), mode: "self_hosted" },
       activeSubscription: null,
+      planStatus: "inactive",
       now,
     });
     expect(viewModel.mode).toBe("self_hosted");

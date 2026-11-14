@@ -78,8 +78,23 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       hasConnectedSession: state.hasSyncSession,
       preferences: state.savedSyncPreferences,
       activeSubscription: state.managedPremiumAccess.activeSubscription,
+      planStatus: state.managedPremiumAccess.planStatus,
       now: effectiveNow,
     });
+
+    if (
+      !deletionViewModel.requiresSubscriptionWarning &&
+      deletionViewModel.billingStatusUnknown
+    ) {
+      // Billing could not be confirmed: never treated as "no subscription".
+      const acknowledgedUnknownBilling = await openConfirmation(
+        `${viewData.account.deleteAccountBillingUnknownWarningTitle}\n\n${viewData.account.deleteAccountBillingUnknownWarningMessage}`,
+        viewData.account.deleteAccountSubscriptionWarningAccept,
+      );
+      if (!acknowledgedUnknownBilling) {
+        return;
+      }
+    }
 
     if (deletionViewModel.requiresSubscriptionWarning) {
       // Distinct dialog, distinct wording, distinct accept label: a dismissal
