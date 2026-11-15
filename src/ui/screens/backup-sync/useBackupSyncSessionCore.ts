@@ -30,6 +30,7 @@ import {
   type LoadedSettingsState,
 } from "../../../services/settings-view-service";
 import {
+  managedPartnerInviteTokenRemainingMs,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
@@ -135,6 +136,18 @@ export function useBackupSyncSessionCore({
     setPendingPartnerInviteToken(trimmedInviteToken);
     router.replace("/backup-sync");
   }, [router, searchParams.invite_token]);
+
+  // The state copy expires with the buffer, so a screen left open cannot
+  // redeem a token past its TTL.
+  useEffect(() => {
+    if (pendingPartnerInviteToken.length === 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setPendingPartnerInviteToken(readManagedPartnerInviteToken());
+    }, managedPartnerInviteTokenRemainingMs());
+    return () => clearTimeout(timer);
+  }, [pendingPartnerInviteToken]);
 
   const resetPartnerFeedback = useCallback(() => {
     setPartnerErrorMessage("");

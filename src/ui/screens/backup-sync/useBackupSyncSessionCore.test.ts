@@ -7,8 +7,10 @@ import * as offersService from "../../../services/offers-service";
 import * as settingsStateService from "../../../services/settings-state-service";
 import * as syncSetupService from "../../../sync/sync-setup-service";
 import {
+  MANAGED_PARTNER_INVITE_TOKEN_TTL_MS,
   clearManagedPartnerInviteToken,
   readManagedPartnerInviteToken,
+  stashManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
 import { createLoadedSettingsStateFixture } from "../../../test/create-backup-sync-session-core-mock";
 import { createSettingsStorageMock } from "../../../test/create-settings-storage-mock";
@@ -128,6 +130,36 @@ describe("useBackupSyncSessionCore", () => {
       });
 
       expect(mockReplace).not.toHaveBeenCalledWith("/backup-sync");
+      expect(readManagedPartnerInviteToken()).toBe("");
+      await unmount();
+    });
+  });
+
+  describe("pending invite token TTL", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("drops the screen's copy of the token when the buffer TTL runs out", async () => {
+      jest.useFakeTimers();
+      stashManagedPartnerInviteToken("buffered-token");
+      const storage = createSettingsStorageMock();
+      const syncSecretStore = createSyncSecretStoreMock();
+
+      const { result, unmount } = await renderHook(() =>
+        useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
+      );
+      expect(result.current.pendingPartnerInviteToken).toBe("buffered-token");
+
+      await act(async () => {
+        jest.advanceTimersByTime(MANAGED_PARTNER_INVITE_TOKEN_TTL_MS - 1);
+      });
+      expect(result.current.pendingPartnerInviteToken).toBe("buffered-token");
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(result.current.pendingPartnerInviteToken).toBe("");
       expect(readManagedPartnerInviteToken()).toBe("");
       await unmount();
     });
