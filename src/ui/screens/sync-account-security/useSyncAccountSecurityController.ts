@@ -387,6 +387,7 @@ export function useSyncAccountSecurityController({
     setTotpStatus("success");
     setTotpDisablePassword("");
     setTotpDisableCode("");
+    setRegenerateCodeDemanded(false);
     const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
     setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }

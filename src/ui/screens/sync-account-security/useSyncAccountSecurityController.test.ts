@@ -697,6 +697,65 @@ describe("useSyncAccountSecurityController", () => {
         );
       },
     );
+
+    it("hides the demanded code field again once two-factor is disabled", async () => {
+      jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
+      jest.spyOn(syncTOTPService, "disableTOTP").mockResolvedValue({ ok: true });
+      const result = await renderRegenerate(selfHostedPreferences(), null);
+
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+      expect(result.current.regenerateCodeVisible).toBe(true);
+
+      await act(async () => {
+        await result.current.handleDisableTOTP();
+      });
+      expect(result.current.regenerateCodeVisible).toBe(false);
+    });
+
+    it("never logs or persists the TOTP code sent with a regeneration", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest
+          .fn()
+          .mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({ ok: false, errorCode: "totp_replayed" });
+      const consoleSpies = (
+        ["log", "warn", "error", "info", "debug"] as const
+      ).map((method) =>
+        jest.spyOn(console, method).mockImplementation(() => {}),
+      );
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setRegeneratePassword("hunter2-hunter2");
+        result.current.setRegenerateCode("482913");
+      });
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+
+      const sinks = [
+        ...consoleSpies,
+        ...Object.values(storage).filter(jest.isMockFunction),
+        ...Object.values(syncSecretStore).filter(jest.isMockFunction),
+      ];
+      for (const sink of sinks) {
+        expect(JSON.stringify(sink.mock.calls)).not.toContain("482913");
+      }
+    });
   });
 
   describe("handleTOTPModeChange", () => {
