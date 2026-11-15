@@ -773,7 +773,7 @@ export function resolveDisplayCycleDay(
  * open the gate before the projected period. Both candidates are positive
  * here, so web's zero-never-wins guard reduces to a plain minimum.
  */
-function resolveOverdueCycleLength(
+export function resolveOverdueCycleLength(
   profile: ProfileRecord,
   history: StatsCycleHistorySummary,
   predictionCycleLength: number,
@@ -1013,6 +1013,21 @@ export function collectCycleStartDates(
     const start = resolveClusterBoundary(cluster, todayValue);
     return start ? [start] : [];
   });
+}
+
+// Whether startDate opens a cycle without the running-period rule (web
+// cycleStartIsSettled): a lone unflagged day dated today or yesterday opens a
+// provisional cycle that is withdrawn the day after when no second day
+// follows, so it is not settled. An explicit start mark or a two-day run is.
+export function isCycleStartSettled(
+  profile: ProfileRecord,
+  records: DayLogRecord[],
+  todayValue: string,
+  startDate: string,
+): boolean {
+  return buildObservedPeriodClusters(profile, records, todayValue).some(
+    (cluster) => resolveClusterBoundary(cluster, null) === startDate,
+  );
 }
 
 function countLoggedPeriodLength(

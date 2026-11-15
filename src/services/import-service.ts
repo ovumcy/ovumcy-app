@@ -32,6 +32,10 @@ import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
+import {
+  areCycleDayRemindersEqual,
+  normalizeCycleDayReminders,
+} from "./cycle-day-reminder-policy";
 import { createCustomSymptomRecord, normalizeSymptomLabelKey } from "./symptom-policy";
 import {
   clampCycleLength,
@@ -731,7 +735,17 @@ function profileFieldsEqual(left: ProfileRecord, right: ProfileRecord): boolean 
   const fields = Object.keys(
     createDefaultProfileRecord(),
   ) as (keyof ProfileRecord)[];
-  return fields.every((field) => Object.is(left[field], right[field]));
+  return fields.every((field) => {
+    // The rule list is a fresh array on every read, so it is compared by
+    // content; every other field is a primitive.
+    if (field === "cycleDayReminders") {
+      return areCycleDayRemindersEqual(
+        normalizeCycleDayReminders(left.cycleDayReminders),
+        normalizeCycleDayReminders(right.cycleDayReminders),
+      );
+    }
+    return Object.is(left[field], right[field]);
+  });
 }
 
 // Collapse an untrusted envelope profile to a valid ProfileRecord, mirroring
@@ -788,6 +802,12 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
     // Number(undefined) is NaN, so a backup predating the field lands on the
     // shared default the same way an out-of-range value does.
     reminderLeadDays: clampReminderLeadDays(Number(record.reminderLeadDays)),
+    // Untrusted rule list: bounded, invalid rules dropped, ids and labels
+    // re-validated, never copied through as received. A file cannot opt a label
+    // onto this device's lock screen: showLabel is re-chosen in Settings.
+    cycleDayReminders: normalizeCycleDayReminders(record.cycleDayReminders).map(
+      (rule) => ({ ...rule, showLabel: false }),
+    ),
     languageOverride: normalizeInterfaceLanguage(record.languageOverride),
     themeOverride: normalizeThemePreference(record.themeOverride),
     firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),

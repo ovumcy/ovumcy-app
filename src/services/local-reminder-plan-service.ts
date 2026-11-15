@@ -9,7 +9,14 @@ import { getReminderCopy } from "../i18n/reminder-copy";
 import {
   buildCurrentCycleProjection,
   buildCycleHistorySummary,
+  isCycleStartSettled,
+  resolveOverdueCycleLength,
 } from "./cycle-history-service";
+import type {
+  StatsCycleHistorySummary,
+  StatsCycleProjection,
+} from "../models/stats";
+import { normalizeCycleDayReminders } from "./cycle-day-reminder-policy";
 import { predictCycleWindow } from "./cycle-prediction-policy";
 import { calcGestationalAge } from "./pregnancy-timeline-service";
 import {
@@ -24,7 +31,8 @@ export type LocalReminderKind =
   | "daily_log"
   | "upcoming_period"
   | "fertile_window"
-  | "kick_count";
+  | "kick_count"
+  | "cycle_day";
 
 export type LocalReminderPlan =
   | {
@@ -223,6 +231,86 @@ export function buildLocalReminderPlans(
     }
   }
 
+  plans.push(
+    ...buildCycleDayReminderPlans(
+      profile,
+      history,
+      projection,
+      mutableRecords,
+      now,
+      copy,
+      resolvedTimeZone,
+    ),
+  );
+
+  return plans;
+}
+
+// One-time plans for the owner's cycle-day rules: the instant the running
+// cycle reaches day N, at the rule's hour. Mirrors web's cycle-day decision,
+// which counts the day from the logged cycle start (never a forward-rolled
+// anchor) and sends only ON day N: a day or hour already passed is missed, not
+// delivered late. A rule is withheld, as web withholds it, when the cycle has
+// already run past the owner's usual length (the count then cannot tell a late
+// period from an unlogged one) or when day N lies beyond that length. Every
+// rule is withheld while the start is unsettled (a lone bleeding day logged
+// today or yesterday is provisional): web holds only day 1-2, since it decides
+// on the day itself, but a schedule built ahead from a start withdrawn the day
+// after would fire on a day the cycle never reaches. The caller's suppression
+// returns (pause, active pregnancy, overdue gate, unpredictable mode) have
+// already run.
+// The body is generic unless THIS rule opted into showing its label; the
+// label never reaches anything else on the plan.
+function buildCycleDayReminderPlans(
+  profile: ProfileRecord,
+  history: StatsCycleHistorySummary,
+  projection: StatsCycleProjection,
+  records: DayLogRecord[],
+  now: Date,
+  copy: ReturnType<typeof getReminderCopy>,
+  timeZone: string,
+): LocalReminderPlan[] {
+  const rules = normalizeCycleDayReminders(profile.cycleDayReminders);
+  const anchorValue = projection.cycleAnchorDate;
+  if (rules.length === 0 || !anchorValue || projection.isPredictionStale) {
+    return [];
+  }
+  const anchor = parseLocalDate(anchorValue);
+  if (!anchor) {
+    return [];
+  }
+
+  const referenceLength = resolveOverdueCycleLength(
+    profile,
+    history,
+    projection.predictionCycleLength,
+  );
+  const todayValue = formatLocalDate(zonedCalendarDay(now, timeZone));
+  if (!isCycleStartSettled(profile, records, todayValue, anchorValue)) {
+    return [];
+  }
+  const plans: LocalReminderPlan[] = [];
+  for (const rule of rules) {
+    if (rule.cycleDay > referenceLength) {
+      continue;
+    }
+    const at = atZonedTime(
+      addDays(anchor, rule.cycleDay - 1),
+      rule.remindAtHour,
+      0,
+      timeZone,
+    );
+    if (at <= now) {
+      continue;
+    }
+    plans.push({
+      kind: "cycle_day",
+      title: copy.notificationTitle,
+      body: rule.showLabel && rule.label !== "" ? rule.label : copy.cycleDayBody,
+      timeZone,
+      trigger: { type: "once", at },
+    });
+  }
   return plans;
 }
 

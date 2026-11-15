@@ -20,6 +20,7 @@ const OVUMCY_REMINDER_KINDS: Record<LocalReminderKind, true> = {
   upcoming_period: true,
   fertile_window: true,
   kick_count: true,
+  cycle_day: true,
 };
 const OVUMCY_REMINDER_CHANNEL_ID = "ovumcy-reminders";
 type ExpoNotificationsModule = typeof import("expo-notifications");
@@ -38,12 +39,14 @@ function createNativeReminderScheduler(): LocalReminderScheduler {
       // reminder on.
       if (plans.length === 0) {
         await cancelManagedReminderSchedules(Notifications);
+        await dismissPresentedReminders(Notifications);
         return "scheduled" satisfies LocalReminderSchedulerSyncResult;
       }
 
       const granted = await ensureNotificationPermission(Notifications);
       if (!granted) {
         await cancelManagedReminderSchedules(Notifications);
+        await dismissPresentedReminders(Notifications);
         return "permission_denied" satisfies LocalReminderSchedulerSyncResult;
       }
 
@@ -136,6 +139,18 @@ async function cancelManagedReminderSchedules(
   for (const request of scheduled) {
     if (isOvumcyReminderKind(request.content.data?.ovumcyReminderKind)) {
       await Notifications.cancelScheduledNotificationAsync(request.identifier);
+    }
+  }
+}
+
+// A cleared schedule (every reminder off, a local wipe, account deletion) also
+// removes this app's reminders already shown in the notification shade, so an
+// opted-in cycle-day label does not outlive the data it came from.
+async function dismissPresentedReminders(Notifications: ExpoNotificationsModule) {
+  const presented = await Notifications.getPresentedNotificationsAsync();
+  for (const notification of presented) {
+    if (isOvumcyReminderKind(notification.request.content.data?.ovumcyReminderKind)) {
+      await Notifications.dismissNotificationAsync(notification.request.identifier);
     }
   }
 }

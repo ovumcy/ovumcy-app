@@ -360,6 +360,42 @@ describe("partner-shared-projection-service", () => {
     },
   );
 
+  it.each(["summary", "full"] as const)(
+    "never leaks cycle-day reminder rules or their labels into the %s projection",
+    (accessLevel) => {
+      const projection = buildPartnerSharedProjectionPayload({
+        accessLevel,
+        dayLogs: [
+          { ...createEmptyDayLogRecord("2026-04-01"), isPeriod: true, cycleStart: true },
+        ],
+        generatedAt: "2026-04-05T08:00:00.000Z",
+        generation: 1,
+        grantID: "grant-1",
+        ownerAccountID: "owner-1",
+        profile: {
+          ...createDefaultProfileRecord(),
+          lastPeriodStart: "2026-04-01",
+          cycleDayReminders: [
+            {
+              id: "cdr_secret",
+              cycleDay: 14,
+              remindAtHour: 9,
+              label: "Private label text",
+              showLabel: true,
+            },
+          ],
+        },
+        symptomRecords: createDefaultSymptomRecords(),
+      });
+
+      expect(projection.profile).not.toHaveProperty("cycleDayReminders");
+      const serialized = JSON.stringify(projection);
+      expect(serialized).not.toContain("cycleDayReminders");
+      expect(serialized).not.toContain("Private label text");
+      expect(serialized).not.toContain("cdr_secret");
+    },
+  );
+
   // The owner's personal crisis-support contact is owner-only private safety
   // data and must NEVER reach a partner projection at any access level. The
   // profile pick is explicit (both the runtime literal and the

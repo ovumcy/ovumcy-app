@@ -12,6 +12,7 @@ import type {
   LocalAppStorage,
   LocalBootstrapState,
 } from "../storage/local/storage-contract";
+import { normalizeCycleDayReminders } from "../services/cycle-day-reminder-policy";
 import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
 import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
@@ -241,7 +242,10 @@ export async function restoreSyncSnapshot(
 ): Promise<void> {
   await storage.clearAllLocalData();
   await storage.writeBootstrapState(snapshot.bootstrapState);
-  await storage.writeProfileRecord(snapshot.profile);
+  await storage.writeProfileRecord({
+    ...snapshot.profile,
+    cycleDayReminders: normalizeCycleDayReminders(snapshot.profile.cycleDayReminders),
+  });
   await storage.writeSyncPreferencesRecord(syncPreferences);
 
   for (const symptomRecord of snapshot.symptomRecords) {

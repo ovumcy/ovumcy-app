@@ -5,6 +5,7 @@ import { Platform, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type {
+  CycleDayReminder,
   InterfaceLanguage,
   PredictionMode,
   ThemePreference,
@@ -112,6 +113,7 @@ export type SettingsFlowScreenProps = {
   onExportPresetSelect: (value: "all" | "30" | "90" | "365") => void;
   onExportToDateChange: (value: string) => void;
   onExportToDatePress: () => void;
+  onCycleDayRemindersChange: (rules: CycleDayReminder[]) => void;
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
   onHideNotesChange: (value: boolean) => void;
@@ -209,6 +211,7 @@ export function SettingsFlowScreen({
   onExportPresetSelect,
   onExportToDateChange,
   onExportToDatePress,
+  onCycleDayRemindersChange,
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
   onHideNotesChange,
@@ -401,6 +404,7 @@ export function SettingsFlowScreen({
 
           {section === "reminders" ? (
             <SettingsRemindersSection
+              onCycleDayRemindersChange={onCycleDayRemindersChange}
               onDailyLogReminderChange={onDailyLogReminderChange}
               onFertileWindowReminderChange={onFertileWindowReminderChange}
               onReminderLeadDaysChange={onReminderLeadDaysChange}

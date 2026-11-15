@@ -42,6 +42,10 @@ import {
   normalizeAgeGroup,
   parseLocalDate,
 } from "./profile-settings-policy";
+import {
+  areCycleDayRemindersEqual,
+  normalizeCycleDayReminders,
+} from "./cycle-day-reminder-policy";
 import { resolvePDFExportAccessState } from "./pdf-export-access-policy";
 import { splitCustomSymptoms } from "./symptom-policy";
 import type { ImportOutcome } from "./import-service";
@@ -157,6 +161,23 @@ export type SettingsViewData = {
       hint: string;
       stateOn: string;
       stateOff: string;
+    };
+    cycleDay: {
+      title: string;
+      hint: string;
+      empty: string;
+      add: string;
+      limitReached: string;
+      ruleHeading: string;
+      dayLabel: string;
+      hourLabel: string;
+      labelLabel: string;
+      labelHint: string;
+      showLabel: string;
+      showLabelHint: string;
+      stateOn: string;
+      stateOff: string;
+      delete: string;
     };
     status: {
       saved: string;
@@ -678,6 +699,23 @@ export function buildSettingsViewData(
         stateOn: settingsCopy.reminders.statusOn,
         stateOff: settingsCopy.reminders.statusOff,
       },
+      cycleDay: {
+        title: settingsCopy.reminders.cycleDay.title,
+        hint: settingsCopy.reminders.cycleDay.hint,
+        empty: settingsCopy.reminders.cycleDay.empty,
+        add: settingsCopy.reminders.cycleDay.add,
+        limitReached: settingsCopy.reminders.cycleDay.limitReached,
+        ruleHeading: settingsCopy.reminders.cycleDay.ruleHeading,
+        dayLabel: settingsCopy.reminders.cycleDay.dayLabel,
+        hourLabel: settingsCopy.reminders.cycleDay.hourLabel,
+        labelLabel: settingsCopy.reminders.cycleDay.labelLabel,
+        labelHint: settingsCopy.reminders.cycleDay.labelHint,
+        showLabel: settingsCopy.reminders.cycleDay.showLabel,
+        showLabelHint: settingsCopy.reminders.cycleDay.showLabelHint,
+        stateOn: settingsCopy.reminders.statusOn,
+        stateOff: settingsCopy.reminders.statusOff,
+        delete: settingsCopy.reminders.cycleDay.delete,
+      },
       status: {
         saved: settingsCopy.reminders.saved,
         permissionDenied: settingsCopy.reminders.permissionDenied,
@@ -1029,6 +1067,7 @@ export function createLoadedSettingsState(
       reminderLeadDays: clampReminderLeadDays(
         profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
       ),
+      cycleDayReminders: normalizeCycleDayReminders(profile.cycleDayReminders),
     },
     trackingValues: {
       trackBBT: profile.trackBBT,
@@ -1090,6 +1129,7 @@ export function extractPersistedReminderValues(
     reminderLeadDays: clampReminderLeadDays(
       profile.reminderLeadDays ?? DEFAULT_REMINDER_LEAD_DAYS,
     ),
+    cycleDayReminders: normalizeCycleDayReminders(profile.cycleDayReminders),
   };
 }
 
@@ -1146,7 +1186,8 @@ export function areReminderSettingsEqual(
     left.upcomingPeriodReminderEnabled === right.upcomingPeriodReminderEnabled &&
     left.fertileWindowReminderEnabled === right.fertileWindowReminderEnabled &&
     left.reminderTime === right.reminderTime &&
-    left.reminderLeadDays === right.reminderLeadDays
+    left.reminderLeadDays === right.reminderLeadDays &&
+    areCycleDayRemindersEqual(left.cycleDayReminders, right.cycleDayReminders)
   );
 }
 

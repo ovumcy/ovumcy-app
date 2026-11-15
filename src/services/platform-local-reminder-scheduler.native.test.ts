@@ -3,6 +3,8 @@ type ExpoNotificationsMock = {
   requestPermissionsAsync: jest.Mock;
   getAllScheduledNotificationsAsync: jest.Mock;
   cancelScheduledNotificationAsync: jest.Mock;
+  getPresentedNotificationsAsync: jest.Mock;
+  dismissNotificationAsync: jest.Mock;
   scheduleNotificationAsync: jest.Mock;
   setNotificationChannelAsync: jest.Mock;
 };
@@ -141,6 +143,26 @@ describe("platform-local-reminder-scheduler.native", () => {
       "kick-1",
     );
     expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("dismisses its own already-shown reminders when the schedule is cleared", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getPresentedNotificationsAsync.mockResolvedValueOnce([
+      { request: { identifier: "shown-1", content: { data: { ovumcyReminderKind: "cycle_day" } } } },
+      { request: { identifier: "foreign-1", content: { data: {} } } },
+    ]);
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    expect(Notifications.dismissNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith("shown-1");
   });
 
   it("leaves notifications it did not schedule alone", async () => {

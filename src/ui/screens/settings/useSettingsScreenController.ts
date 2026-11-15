@@ -679,6 +679,9 @@ export function useSettingsScreenController({
           preset: value,
         });
       },
+      onCycleDayRemindersChange: (rules) => {
+        applyReminderUpdates({ cycleDayReminders: rules });
+      },
       onDailyLogReminderChange: (value) => {
         applyReminderUpdates({ dailyLogReminderEnabled: value });
       },

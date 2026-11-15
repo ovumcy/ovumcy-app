@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import {
   MAX_REMINDER_LEAD_DAYS,
   MIN_REMINDER_LEAD_DAYS,
+  type CycleDayReminder,
 } from "../../../models/profile";
 import type {
   LoadedSettingsState,
@@ -13,9 +14,11 @@ import { BinaryToggleCard } from "../../components/BinaryToggleCard";
 import { FeatureCard } from "../../components/FeatureCard";
 import { LabeledSliderField } from "../../components/LabeledSliderField";
 import { StatusBanner } from "../../components/StatusBanner";
+import { SettingsCycleDayReminders } from "./SettingsCycleDayReminders";
 import type { SettingsFlowStyles } from "./settings-flow-styles";
 
 type SettingsRemindersSectionProps = {
+  onCycleDayRemindersChange: (rules: CycleDayReminder[]) => void;
   onDailyLogReminderChange: (value: boolean) => void;
   onFertileWindowReminderChange: (value: boolean) => void;
   onReminderLeadDaysChange: (value: number) => void;
@@ -33,6 +36,7 @@ type SettingsRemindersSectionProps = {
 // device only — there is no server-side reminder channel to opt into, and no
 // plan to buy, so this section carries no premium affordance at all.
 export function SettingsRemindersSection({
+  onCycleDayRemindersChange,
   onDailyLogReminderChange,
   onFertileWindowReminderChange,
   onReminderLeadDaysChange,
@@ -126,6 +130,13 @@ export function SettingsRemindersSection({
         testID="settings-reminder-lead-days-slider"
         value={state.reminderValues.reminderLeadDays}
         valueSuffix={` ${viewData.common.daysShort}`}
+      />
+
+      <SettingsCycleDayReminders
+        onChange={onCycleDayRemindersChange}
+        rules={state.reminderValues.cycleDayReminders}
+        styles={styles}
+        view={reminderView.cycleDay}
       />
 
       {reminderStatusMessage ? (

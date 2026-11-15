@@ -842,6 +842,77 @@ describe("import-service profile restore (pristine-only)", () => {
     });
   });
 
+  it("restores valid cycle-day reminders and drops invalid, duplicate and surplus rules", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+    const valid = {
+      id: "cdr_valid",
+      cycleDay: 14,
+      remindAtHour: 7,
+      label: "  vitamins  ",
+      showLabel: true,
+    };
+    const surplus = Array.from({ length: 12 }, (_, index) => ({
+      id: `extra_${index}`,
+      cycleDay: 20,
+      remindAtHour: 9,
+      label: "",
+      showLabel: false,
+    }));
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        profile: backupProfile({
+          cycleDayReminders: [
+            valid,
+            { ...valid },
+            { id: "bad day", cycleDay: 14, remindAtHour: 9, label: "", showLabel: false },
+            { id: "day91", cycleDay: 91, remindAtHour: 9, label: "", showLabel: false },
+            { id: "hour24", cycleDay: 5, remindAtHour: 24, label: "", showLabel: false },
+            { id: "bidi", cycleDay: 5, remindAtHour: 9, label: "a‮b", showLabel: true },
+            { id: "long", cycleDay: 5, remindAtHour: 9, label: "x".repeat(65), showLabel: false },
+            ...surplus,
+          ],
+        } as never),
+      }),
+    );
+
+    expect(outcome.profileRestored).toBe(true);
+    const restored = getProfile().cycleDayReminders ?? [];
+    expect(restored).toHaveLength(10);
+    // The label is kept, but showing it on this device's lock screen is an
+    // opt-in a backup file cannot carry over.
+    expect(restored[0]).toEqual({ ...valid, label: "vitamins", showLabel: false });
+    expect(restored.some((rule) => rule.showLabel)).toBe(false);
+    expect(restored.map((rule) => rule.id)).not.toContain("bidi");
+    expect(restored.map((rule) => rule.id)).not.toContain("long");
+    expect(restored.map((rule) => rule.id)).not.toContain("day91");
+    expect(restored.map((rule) => rule.id)).not.toContain("hour24");
+    expect(restored.map((rule) => rule.id)).not.toContain("bad day");
+  });
+
+  it("does not overwrite a device that already holds cycle-day reminders", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+    const existing = {
+      id: "cdr_existing",
+      cycleDay: 3,
+      remindAtHour: 9,
+      label: "",
+      showLabel: false,
+    };
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      cycleDayReminders: [existing],
+    });
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: backupProfile() }),
+    );
+
+    expect(outcome.profileRestored).toBe(false);
+    expect(getProfile().cycleDayReminders).toEqual([existing]);
+  });
+
   it("drops a managed reminder-email preference an older backup still carries", async () => {
     // Transition tolerance: reminder emails were a managed-cloud delivery
     // channel and the profile flag went with them. A backup written before the

@@ -166,6 +166,7 @@ Reminders are scheduled and delivered by the phone's own notification system. No
 - **Daily log** — a nudge to record the day.
 - **Upcoming period** — shown the number of days ahead you choose in Settings (0–14, default 3).
 - **Fertile window** — one day before the estimated fertile window starts.
+- **Cycle day** — up to ten reminders on a chosen day of the running cycle and a chosen hour. The notification stays generic unless you switch on showing that reminder's label.
 
 Notification text is deliberately generic: it names no dates, phases, or health details, so nothing sensitive appears on a lock screen. The dates themselves are shown inside the app, with the same estimate-not-medical-advice framing as every other prediction surface.
 

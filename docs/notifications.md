@@ -20,6 +20,7 @@ involved, and local reminders are a Free-tier feature. For the privacy and trust
 - [6. Notification text and privacy](#6-notification-text-and-privacy)
 - [7. Prediction pause and pregnancy](#7-prediction-pause-and-pregnancy)
 - [8. Web channels the app does not have](#8-web-channels-the-app-does-not-have)
+- [9. Cycle-day reminders](#9-cycle-day-reminders)
 - [Related documentation](#related-documentation)
 
 ## 1. Reminder kinds
@@ -33,8 +34,9 @@ kind has its own toggle in the profile; a kind whose toggle is off produces no p
 | `upcoming_period` | One-time | Predicted period window start (the predicted period date when no window is available), minus the lead days, at the reminder time. |
 | `fertile_window` | One-time | Predicted fertile-window start minus a fixed 1 day, at the reminder time. |
 | `kick_count` | Repeating daily | Every day at the reminder time, only during an active pregnancy (see [section 7](#7-prediction-pause-and-pregnancy)). |
+| `cycle_day` | One-time, one per rule | The day the running cycle (counted from the logged cycle start) reaches the rule's cycle day, at the rule's own hour (see [section 9](#9-cycle-day-reminders)). |
 
-For the two one-time kinds the trigger instant is resolved as follows:
+For the two prediction-based one-time kinds the trigger instant is resolved as follows:
 
 1. The candidate day is the target date minus the lead. A candidate earlier than today becomes today.
 2. The candidate day is combined with the reminder time. If that instant is not after the current
@@ -106,7 +108,9 @@ fail the action itself; the next rebuild, at the latest the next launch, replace
 
 When no toggle is on, or the enabled kinds yield no plans, the schedule is cleared. The pregnancy
 state is read from storage only when the kick-count, upcoming-period, or fertile-window toggle is
-on.
+on, or at least one cycle-day rule exists. A cleared schedule also dismisses this app's reminders
+already shown in the notification shade, so a cycle-day label does not outlive a local wipe or
+account deletion.
 
 ## 5. Permission flow
 
@@ -144,6 +148,11 @@ or pregnancy wording reaches the lock screen. Notification payloads can be shown
 screen and recorded by the OS, so they must never reveal health context; this follows the
 transport invariant in [SECURITY.md](../SECURITY.md).
 
+The one exception is a cycle-day reminder whose owner opted in to showing its label: that rule's
+body is the label text instead of the generic body (`cycle_day` otherwise reads "You have a cycle
+day reminder."). The opt-in is per rule and off by default; the label never appears in the title,
+the notification data, an identifier, a log or a deep link.
+
 ## 7. Prediction pause and pregnancy
 
 - Unpredictable-cycle setting (facts-only mode): only the daily kinds are planned; the period and
@@ -176,8 +185,32 @@ The app has no outbound webhook, no `.ics` calendar feed, and no in-app dashboar
   estimate persistently.
 
 The webhook, feed, and banner differences are intentional and tracked in
-[web-parity-checklist.md](web-parity-checklist.md). Web's per-cycle-day reminders (a reminder on
-day N of every cycle) are not an intentional difference: they are not implemented in the app yet.
+[web-parity-checklist.md](web-parity-checklist.md).
+
+## 9. Cycle-day reminders
+
+Web's per-cycle-day reminders exist in the app as `cycleDayReminders` on the profile (encrypted
+payload, no schema change, carried by JSON export/import and the sync snapshot, never by a partner
+projection): up to 10 rules, each with a cycle day (1-90), an hour (0-23, default 9), a label (at
+most 64 characters, trimmed) and a `showLabel` flag (default off). They are edited in the Reminders
+settings section and saved with it; a save rebuilds the schedule. They are Free tier and never read
+billing state.
+
+A rule produces one one-time notification on the day the running cycle, counted from the logged
+cycle start, reaches its day, at its hour. As in web, there is no lead and no catch-up: a day or
+hour already passed is missed. A rule is withheld when predictions are paused after a positive
+pregnancy test, while a pregnancy record is active, past the overdue gate, once the cycle has run
+past the owner's usual length (web's "held" state), and for a day beyond that length.
+The app is stricter than web in three places. Unpredictable (facts-only) mode withholds cycle-day
+reminders too, since the stale-cycle check is not computed in that mode. While the cycle start is
+unsettled (a lone bleeding day logged today or yesterday is provisional) every rule is withheld,
+not only day 1-2: web decides on the day itself, but a schedule built ahead from a start that is
+withdrawn the day after would fire on a day the cycle never reaches. A JSON import keeps the rules
+and their labels but turns every `showLabel` off, so a backup file cannot put text on this
+device's lock screen; a sync snapshot (authenticated with the owner's own keys) keeps the flag.
+Labels containing control, format, separator or blank-glyph characters are refused. Web's one-per-cycle
+watermark and its neutral "held" notice have no local counterpart: the schedule is rebuilt whole,
+so a rule is scheduled at most once per rebuild, and no notice is sent.
 
 ## Related documentation
 
