@@ -236,6 +236,58 @@ describe("platform-local-reminder-scheduler.native", () => {
     expect(Notifications.dismissNotificationAsync).toHaveBeenNthCalledWith(2, "shown-2");
   });
 
+  it("runs overlapping syncs one after another, across scheduler instances", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const first = createPlatformLocalReminderScheduler();
+    const second = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    let releaseFirstRead: (value: unknown[]) => void = () => undefined;
+    Notifications.getAllScheduledNotificationsAsync.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseFirstRead = resolve;
+        }),
+    );
+
+    const firstSync = first.sync([DAILY_PLAN]);
+    const secondSync = second.sync([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(Notifications.getAllScheduledNotificationsAsync).toHaveBeenCalledTimes(1);
+
+    releaseFirstRead([]);
+    await expect(firstSync).resolves.toBe("scheduled");
+    await expect(secondSync).resolves.toBe("scheduled");
+
+    expect(Notifications.getAllScheduledNotificationsAsync).toHaveBeenCalledTimes(2);
+    const scheduleOrder = Notifications.scheduleNotificationAsync.mock.invocationCallOrder[0];
+    const secondReadOrder =
+      Notifications.getAllScheduledNotificationsAsync.mock.invocationCallOrder[1];
+    expect(scheduleOrder).toBeLessThan(secondReadOrder ?? 0);
+  });
+
+  it("runs the next sync after a failed one", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockRejectedValueOnce(
+      new Error("read failed"),
+    );
+
+    await expect(scheduler.sync([])).rejects.toThrow("read failed");
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+  });
+
   it("leaves notifications it did not schedule alone", async () => {
     const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
       "standalone",
