@@ -367,3 +367,122 @@ describe("runSavePendingSettingsAction: cycle save status", () => {
     expect(context.setCycleStatusMessage).toHaveBeenLastCalledWith(expected());
   });
 });
+
+describe("runSavePendingSettingsAction: rebuild after a partial save", () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  function stubSuccessfulCycleSave(readyState: LoadedSettingsState) {
+    const cycleState = { ...readyState, cycleValues: { ...readyState.cycleValues } };
+    jest
+      .spyOn(settingsScreenService, "saveCycleSettings")
+      .mockResolvedValue({ ok: true, state: cycleState });
+    jest
+      .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
+      .mockResolvedValue({ skipped: true, syncedCount: 0 });
+    return cycleState;
+  }
+
+  it.each([
+    [
+      "tracking",
+      { isTrackingDirty: true },
+      () =>
+        jest
+          .spyOn(settingsScreenService, "saveTrackingSettings")
+          .mockResolvedValue({ ok: false, errorCode: "generic" }),
+    ],
+    [
+      "reminder",
+      { isReminderDirty: true },
+      () =>
+        jest
+          .spyOn(settingsScreenService, "saveReminderSettings")
+          .mockResolvedValue({ ok: false, errorCode: "generic" }),
+    ],
+    [
+      "interface",
+      { isInterfaceDirty: true },
+      () =>
+        jest
+          .spyOn(settingsScreenService, "saveInterfaceSettings")
+          .mockResolvedValue({ ok: false, errorCode: "generic" }),
+    ],
+  ] as const)(
+    "rebuilds the schedule from storage when the %s save fails after a cycle save",
+    async (_section, dirty, failSection) => {
+      const readyState = await loadReadyState();
+      const context = createContext();
+      const cycleState = stubSuccessfulCycleSave(readyState);
+      failSection();
+      const syncSpy = jest.spyOn(localReminderSyncService, "syncLocalReminderSchedule");
+      const rebuildSpy = jest
+        .spyOn(localReminderSyncService, "rebuildLocalReminderScheduleFromStorage")
+        .mockResolvedValue("scheduled");
+
+      const result = await runSavePendingSettingsAction(context, readyState, {
+        ...allClean,
+        isCycleDirty: true,
+        ...dirty,
+      });
+
+      expect(result).toBe(false);
+      expect(rebuildSpy).toHaveBeenCalledTimes(1);
+      expect(rebuildSpy).toHaveBeenCalledWith(
+        context.storage,
+        context.reminderScheduler,
+        { now },
+      );
+      expect(syncSpy).not.toHaveBeenCalled();
+      expect(context.setState).toHaveBeenLastCalledWith(cycleState);
+    },
+  );
+
+  it("rebuilds the schedule when the interface save fails after a reminder save", async () => {
+    const readyState = await loadReadyState();
+    const context = createContext();
+    const reminderState = {
+      ...readyState,
+      reminderValues: { ...readyState.reminderValues },
+    };
+    jest
+      .spyOn(settingsScreenService, "saveReminderSettings")
+      .mockResolvedValue({ ok: true, state: reminderState });
+    jest
+      .spyOn(settingsScreenService, "saveInterfaceSettings")
+      .mockResolvedValue({ ok: false, errorCode: "generic" });
+    const rebuildSpy = jest
+      .spyOn(localReminderSyncService, "rebuildLocalReminderScheduleFromStorage")
+      .mockResolvedValue("scheduled");
+
+    const result = await runSavePendingSettingsAction(context, readyState, {
+      ...allClean,
+      isReminderDirty: true,
+      isInterfaceDirty: true,
+    });
+
+    expect(result).toBe(false);
+    expect(rebuildSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not rebuild when nothing that feeds the plan was stored", async () => {
+    const readyState = await loadReadyState();
+    const context = createContext();
+    jest
+      .spyOn(settingsScreenService, "saveTrackingSettings")
+      .mockResolvedValue({ ok: false, errorCode: "generic" });
+    const rebuildSpy = jest.spyOn(
+      localReminderSyncService,
+      "rebuildLocalReminderScheduleFromStorage",
+    );
+
+    const result = await runSavePendingSettingsAction(context, readyState, {
+      ...allClean,
+      isTrackingDirty: true,
+    });
+
+    expect(result).toBe(false);
+    expect(rebuildSpy).not.toHaveBeenCalled();
+  });
+});
