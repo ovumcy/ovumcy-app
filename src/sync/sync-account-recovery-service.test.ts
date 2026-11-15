@@ -963,9 +963,15 @@ describe("sync-account-recovery-service", () => {
       );
     });
 
-    it.each(["", "12345", "1234567", "12a456"])(
-      "refuses a malformed TOTP code %p before any network call",
-      async (code) => {
+    it.each([
+      ["", "totp_code_required"],
+      ["   ", "totp_code_required"],
+      ["12345", "totp_invalid_code"],
+      ["1234567", "totp_invalid_code"],
+      ["12a456", "totp_invalid_code"],
+    ] as const)(
+      "refuses a missing or malformed TOTP code %p before any network call",
+      async (code, errorCode) => {
         const secretStore = createSyncSecretStoreMock(connectedSecrets());
         const apiFactory = jest.fn();
 
@@ -977,7 +983,7 @@ describe("sync-account-recovery-service", () => {
           jest.fn(),
         );
 
-        expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
+        expect(result).toEqual({ ok: false, errorCode });
         expect(apiFactory).not.toHaveBeenCalled();
       },
     );

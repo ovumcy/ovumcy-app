@@ -20,6 +20,10 @@ import {
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
 
+export function isTOTPCodeFormat(code: string): boolean {
+  return /^\d{6}$/.test(code.trim());
+}
+
 // All TOTP service entry points collapse the wider API client error vocabulary
 // into a small, UI-friendly set of error codes that drive the enrollment,
 // disable, and challenge flows. Anything outside the known set becomes
@@ -173,7 +177,7 @@ export async function verifyTOTPEnrollment(
   | { ok: true; recoveryCode: string | null }
   | { ok: false; errorCode: VerifyTOTPEnrollmentErrorCode }
 > {
-  if (!/^\d{6}$/.test(input.code.trim())) {
+  if (!isTOTPCodeFormat(input.code)) {
     return { ok: false, errorCode: "totp_invalid_code" };
   }
 
@@ -237,7 +241,7 @@ export async function disableTOTP(
   if (input.currentPassword.length === 0) {
     return { ok: false, errorCode: "current_password_required" };
   }
-  if (!/^\d{6}$/.test(input.code.trim())) {
+  if (!isTOTPCodeFormat(input.code)) {
     return { ok: false, errorCode: "totp_invalid_code" };
   }
 
@@ -301,7 +305,7 @@ export async function completeTOTPChallenge(
   if (input.challengeID.length === 0) {
     return { ok: false, errorCode: "challenge_id_required" };
   }
-  if (!/^\d{6}$/.test(input.code.trim())) {
+  if (!isTOTPCodeFormat(input.code)) {
     return { ok: false, errorCode: "totp_invalid_code" };
   }
 

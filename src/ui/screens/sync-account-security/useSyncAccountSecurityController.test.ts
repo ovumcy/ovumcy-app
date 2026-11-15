@@ -672,9 +672,12 @@ describe("useSyncAccountSecurityController", () => {
       },
     );
 
-    it.each(["totp_invalid_code", "totp_replayed"] as const)(
+    it.each([
+      ["totp_invalid_code", "totp_code_required"],
+      ["totp_replayed", "totp_replayed"],
+    ] as const)(
       "reveals the code field after the server answers %s",
-      async (errorCode) => {
+      async (errorCode, shownErrorCode) => {
         const regenerate = jest
           .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
           .mockResolvedValueOnce({ ok: false, errorCode })
@@ -684,7 +687,7 @@ describe("useSyncAccountSecurityController", () => {
         await act(async () => {
           await result.current.handleRegenerate();
         });
-        expect(result.current.regenerateErrorCode).toBe(errorCode);
+        expect(result.current.regenerateErrorCode).toBe(shownErrorCode);
         expect(result.current.regenerateCodeVisible).toBe(true);
 
         await act(async () => {
@@ -697,6 +700,18 @@ describe("useSyncAccountSecurityController", () => {
         );
       },
     );
+
+    it("keeps the server's verdict on a code that was actually sent", async () => {
+      jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
+      const result = await renderRegenerate(selfHostedPreferences(), true);
+
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+      expect(result.current.regenerateErrorCode).toBe("totp_invalid_code");
+    });
 
     it("hides the demanded code field again once two-factor is disabled", async () => {
       jest

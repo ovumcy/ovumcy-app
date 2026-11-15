@@ -278,7 +278,12 @@ export function useSyncAccountSecurityController({
       ) {
         setRegenerateCodeDemanded(true);
       }
-      setRegenerateErrorCode(result.errorCode);
+      // No code was sent, so the server is asking for one, not judging one.
+      setRegenerateErrorCode(
+        result.errorCode === "totp_invalid_code" && !regenerateCodeVisible
+          ? "totp_code_required"
+          : result.errorCode,
+      );
       setRegenerateStatus("idle");
     }
   }

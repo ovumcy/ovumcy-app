@@ -730,6 +730,7 @@ describe("SyncAccountSecuritySection", () => {
   });
 
   it.each([
+    ["totp_code_required", () => copy.errors.totpCodeRequired],
     ["totp_invalid_code", () => totpCopy.errors.totpInvalidCode],
     ["totp_replayed", () => totpCopy.errors.totpReplayed],
     ["totp_not_configured", () => totpCopy.errors.totpNotConfigured],

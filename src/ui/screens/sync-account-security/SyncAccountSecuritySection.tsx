@@ -710,6 +710,8 @@ function resolveErrorMessage(
       return copy.errors.resetTokenRequired;
     case "unauthorized":
       return copy.errors.unauthorized;
+    case "totp_code_required":
+      return copy.errors.totpCodeRequired;
     default:
       return copy.errors.generic;
   }
