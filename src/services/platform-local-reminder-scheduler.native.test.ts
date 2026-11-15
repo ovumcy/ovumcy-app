@@ -416,3 +416,37 @@ describe("platform-local-reminder-scheduler.native", () => {
     ]);
   });
 });
+
+describe("platform-local-reminder-scheduler.native: Android channel", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.resetModules();
+    jest.unmock("expo-constants");
+  });
+
+  it("creates the reminders channel with private lock-screen visibility", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Platform } = require("react-native") as typeof import("react-native");
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "android", configurable: true });
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    try {
+      await expect(
+        createPlatformLocalReminderScheduler().sync([DAILY_PLAN]),
+      ).resolves.toBe("scheduled");
+    } finally {
+      Object.defineProperty(Platform, "OS", { value: originalOS, configurable: true });
+    }
+
+    expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith(
+      "ovumcy-reminders",
+      expect.objectContaining({ lockscreenVisibility: 2 }),
+    );
+  });
+});
