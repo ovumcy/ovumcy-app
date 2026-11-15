@@ -175,6 +175,40 @@ describe("local-reminder-sync-service", () => {
       expect(storage.readActivePregnancy).toHaveBeenCalledTimes(1);
       expect(syncedPlanKinds(scheduler)).toEqual(["daily_log"]);
     });
+
+    // A profile whose only reminders are cycle-day rules has every toggle off,
+    // so the pregnancy read must be triggered by the rules themselves.
+    it("reads the pregnancy state for cycle-day rules alone and suppresses them", async () => {
+      const rulesOnly = {
+        ...createDefaultProfileRecord(),
+        cycleDayReminders: [
+          { id: "cdr_a", cycleDay: 14, remindAtHour: 9, label: "", showLabel: false },
+        ],
+      };
+      const notPregnant = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+      });
+      const notPregnantScheduler = createScheduler();
+      await syncLocalReminderSchedule(notPregnant, notPregnantScheduler, rulesOnly, { now });
+      expect(syncedPlanKinds(notPregnantScheduler)).toEqual(["cycle_day"]);
+
+      const pregnant = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+        readActivePregnancy: jest.fn().mockResolvedValue(
+          createPregnancyRecord({
+            edd: "2026-10-08",
+            eddBasis: "lmp",
+            lmpDate: "2026-01-01",
+            startedAt: "2026-03-01",
+          }),
+        ),
+      });
+      const pregnantScheduler = createScheduler();
+      await syncLocalReminderSchedule(pregnant, pregnantScheduler, rulesOnly, { now });
+
+      expect(pregnant.readActivePregnancy).toHaveBeenCalledTimes(1);
+      expect(syncedPlanKinds(pregnantScheduler)).toEqual([]);
+    });
   });
 
   describe("kick-count reminder wiring(end-to-end through the sync service)", () => {

@@ -819,6 +819,7 @@ describe("settings services", () => {
       fertileWindowReminderEnabled: false,
       reminderTime: "21:30",
       reminderLeadDays: 5,
+      cycleDayReminders: [],
     });
 
     expect(result).toEqual({
@@ -861,6 +862,7 @@ describe("settings services", () => {
       fertileWindowReminderEnabled: false,
       reminderTime: "08:00",
       reminderLeadDays: 99,
+      cycleDayReminders: [],
     });
 
     expect(result.ok).toBe(true);

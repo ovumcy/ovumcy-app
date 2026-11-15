@@ -869,6 +869,65 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("settings-reminders-status-banner")).toBeTruthy();
   });
 
+  it("adds a cycle-day reminder whose hour field can be cleared and retyped, then saves it", async () => {
+    const storage = createSettingsStorageMock();
+    const reminderScheduler: LocalReminderScheduler = {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    };
+
+    await render(
+      <SettingsScreen
+        now={new Date(2026, 2, 17)}
+        reminderScheduler={reminderScheduler}
+        section="reminders"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-cycle-day-reminders-empty");
+    await fireEvent.press(screen.getByTestId("settings-cycle-day-reminders-add"));
+
+    const dayInput = screen.getByTestId("settings-cycle-day-rule-0-day");
+    await fireEvent(dayInput, "focus");
+    await fireEvent.changeText(dayInput, "");
+    await fireEvent.changeText(dayInput, "14");
+    await fireEvent(dayInput, "blur");
+
+    const hourInput = screen.getByTestId("settings-cycle-day-rule-0-hour");
+    await fireEvent(hourInput, "focus");
+    await fireEvent.changeText(hourInput, "");
+    expect(hourInput.props.value).toBe("");
+    await fireEvent.changeText(hourInput, "18");
+    await fireEvent(hourInput, "blur");
+    expect(screen.getByTestId("settings-cycle-day-rule-0-hour").props.value).toBe("18");
+
+    await fireEvent(hourInput, "focus");
+    await fireEvent.changeText(hourInput, "31");
+    await fireEvent(hourInput, "blur");
+    expect(screen.getByTestId("settings-cycle-day-rule-0-hour").props.value).toBe("18");
+
+    expect(screen.queryByTestId("settings-cycle-day-rule-0-show-label")).toBeNull();
+    await fireEvent.changeText(screen.getByTestId("settings-cycle-day-rule-0-label"), " pill ");
+    await fireEvent.press(screen.getByTestId("settings-cycle-day-rule-0-show-label"));
+
+    await fireEvent.press(screen.getByTestId("settings-save-all-button"));
+
+    await waitFor(() =>
+      expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cycleDayReminders: [
+            expect.objectContaining({
+              cycleDay: 14,
+              remindAtHour: 18,
+              label: "pill",
+              showLabel: true,
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
   it("updates the native export range through the date picker instead of free-text input", async () => {
     const storage = createSettingsStorageMock();
 

@@ -11,6 +11,15 @@ export const DEFAULT_REMINDER_LEAD_DAYS = 3;
 export const MIN_REMINDER_LEAD_DAYS = 0;
 export const MAX_REMINDER_LEAD_DAYS = 14;
 
+// Cycle-day reminder rule bounds mirror ovumcy-web's cycle-day reminders: day
+// 90 is the longest cycle length accepted anywhere, ten rules per owner, a
+// short owner-entered label, and 09:00 as the hour a new rule starts from.
+export const CYCLE_DAY_REMINDER_MIN_DAY = 1;
+export const CYCLE_DAY_REMINDER_MAX_DAY = 90;
+export const CYCLE_DAY_REMINDER_MAX_RULES = 10;
+export const CYCLE_DAY_REMINDER_LABEL_MAX_LENGTH = 64;
+export const DEFAULT_CYCLE_DAY_REMINDER_HOUR = 9;
+
 export const MIN_CYCLE_LENGTH = 15;
 export const MAX_CYCLE_LENGTH = 90;
 export const MIN_PERIOD_LENGTH = 1;
@@ -75,6 +84,17 @@ export const SUPPORTED_ONBOARDING_HELPER_NOTICE_KEYS = [
   "onboarding_day1_tip_notice_v1",
 ] as const;
 
+// One owner-defined reminder that fires on a fixed day of the running cycle.
+// `label` is owner-entered free text: it reaches the notification body only
+// when `showLabel` is true, and never any log, identifier or deep link.
+export type CycleDayReminder = {
+  id: string;
+  cycleDay: number;
+  remindAtHour: number;
+  label: string;
+  showLabel: boolean;
+};
+
 export type ProfileRecord = {
   lastPeriodStart: LocalDateISO | null;
   cycleLength: number;
@@ -102,6 +122,10 @@ export type ProfileRecord = {
   kickCountReminderEnabled?: boolean;
   reminderTime?: ReminderTime;
   reminderLeadDays?: number;
+  // Per-cycle-day reminder rules (web parity). Optional and additive: rides the
+  // encrypted profile payload with no schema change, and an absent field reads
+  // as no rules. Owner-only: partner projections never carry it.
+  cycleDayReminders?: CycleDayReminder[];
   // Personal crisis-support contact. Additive, optional, and
   // encrypted at rest natively like every other profile field (profile rides
   // the existing encrypted payload -- no storage-adapter/schema change). These
@@ -156,6 +180,7 @@ export type ReminderSettingsValues = {
   fertileWindowReminderEnabled: boolean;
   reminderTime: ReminderTime;
   reminderLeadDays: number;
+  cycleDayReminders: CycleDayReminder[];
 };
 
 export type InterfaceSettingsValues = Pick<
@@ -287,6 +312,11 @@ export function createDefaultProfileRecord(): ProfileRecord {
     kickCountReminderEnabled: false,
     reminderTime: DEFAULT_REMINDER_TIME,
     reminderLeadDays: DEFAULT_REMINDER_LEAD_DAYS,
+    // Materialized as an empty list (not absent) so the pristine-profile
+    // comparison enumerates it: a device that already holds rules is never
+    // treated as untouched by a JSON import. The comparison matches lists by
+    // content, since two empty lists are never the same reference.
+    cycleDayReminders: [],
     // Materialized to "" (not absent) so the field is enumerated by the profile
     // pristine-comparison (import-service.profileFieldsEqual) and thus protected
     // from being clobbered by a JSON import onto a device that already has a

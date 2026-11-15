@@ -1,6 +1,7 @@
 import { resolveEffectiveLanguage } from "../i18n/runtime";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { normalizeCycleDayReminders } from "./cycle-day-reminder-policy";
 import { formatLocalDate } from "./profile-settings-policy";
 import {
   buildLocalReminderPlans,
@@ -42,7 +43,8 @@ export async function syncLocalReminderSchedule(
     profile.dailyLogReminderEnabled === true ||
     profile.upcomingPeriodReminderEnabled === true ||
     profile.fertileWindowReminderEnabled === true ||
-    profile.kickCountReminderEnabled === true;
+    profile.kickCountReminderEnabled === true ||
+    hasCycleDayReminderRules(profile);
 
   // Every toggle off: clear the device schedule without touching day-log or
   // pregnancy storage at all.
@@ -82,6 +84,12 @@ export async function rebuildLocalReminderScheduleFromStorage(
   }
 }
 
+// Rules are re-validated here, not trusted from the stored payload: a profile
+// written by a sync snapshot or an older/foreign client may carry anything.
+function hasCycleDayReminderRules(profile: ProfileRecord): boolean {
+  return normalizeCycleDayReminders(profile.cycleDayReminders).length > 0;
+}
+
 async function loadLocalReminderPlans(
   storage: LocalAppStorage,
   profile: ProfileRecord,
@@ -96,13 +104,15 @@ async function loadLocalReminderPlans(
   // Pregnancy state gates two things: the kick-count plan (an active record at
   // gaWeeks >= 28) and prediction suppression for the period/fertile-window
   // plans (an ACTIVE record suppresses them even when the day-log pause is
-  // lifted or was never set). Reading it only when one of those three flags is
-  // on keeps a profile with none of them free of the extra storage call.
+  // lifted or was never set), which also covers cycle-day rules. Reading it
+  // only when one of those flags is on or a rule exists keeps a profile with
+  // none of them free of the extra storage call.
   // Kind-level gating stays in buildLocalReminderPlans.
   const needsPregnancyState =
     profile.kickCountReminderEnabled === true ||
     profile.upcomingPeriodReminderEnabled === true ||
-    profile.fertileWindowReminderEnabled === true;
+    profile.fertileWindowReminderEnabled === true ||
+    hasCycleDayReminderRules(profile);
   const activePregnancy = needsPregnancyState
     ? await storage.readActivePregnancy()
     : null;

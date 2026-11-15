@@ -147,6 +147,23 @@ const settingsCopyEn = {
     fertileWindowStateOff: "No fertile-window reminder is scheduled.",
     statusOn: "On",
     statusOff: "Off",
+    cycleDay: {
+      title: "Cycle day reminders",
+      hint: "Get a reminder on a chosen day of the running cycle, at a chosen hour. It is skipped when predictions are paused or the cycle is overdue.",
+      empty: "No cycle day reminders yet.",
+      add: "Add a cycle day reminder",
+      limitReached: "You can keep up to 10 cycle day reminders.",
+      ruleHeading: "Reminder",
+      dayLabel: "Cycle day (1–90)",
+      hourLabel: "Hour (0–23)",
+      labelLabel: "Label (optional)",
+      labelHint:
+        "A note for yourself. It stays in the app unless you turn on the option below.",
+      showLabel: "Show the label in the notification",
+      showLabelHint:
+        "Off by default. When on, the label appears on your lock screen and in the notification history kept by your device.",
+      delete: "Delete reminder",
+    },
     saved: "Reminder settings updated for this device.",
     permissionDenied:
       "Allow notifications in device settings to receive reminders on this device.",
@@ -699,6 +716,23 @@ const settingsCopyDe: SettingsCopy = {
       "Es ist keine Erinnerung vor dem fruchtbaren Fenster geplant.",
     statusOn: "An",
     statusOff: "Aus",
+    cycleDay: {
+      title: "Zyklustag-Erinnerungen",
+      hint: "Erhalten Sie eine Erinnerung an einem gewählten Tag des laufenden Zyklus zu einer gewählten Stunde. Sie entfällt, wenn Prognosen pausiert sind oder der Zyklus überfällig ist.",
+      empty: "Noch keine Zyklustag-Erinnerungen.",
+      add: "Zyklustag-Erinnerung hinzufügen",
+      limitReached: "Sie können bis zu 10 Zyklustag-Erinnerungen behalten.",
+      ruleHeading: "Erinnerung",
+      dayLabel: "Zyklustag (1–90)",
+      hourLabel: "Stunde (0–23)",
+      labelLabel: "Bezeichnung (optional)",
+      labelHint:
+        "Eine Notiz für Sie. Sie bleibt in der App, sofern Sie die Option unten nicht aktivieren.",
+      showLabel: "Bezeichnung in der Benachrichtigung anzeigen",
+      showLabelHint:
+        "Standardmäßig aus. Wenn aktiv, erscheint die Bezeichnung auf dem Sperrbildschirm und im Benachrichtigungsverlauf Ihres Geräts.",
+      delete: "Erinnerung löschen",
+    },
     saved: "Erinnerungseinstellungen wurden für dieses Gerät aktualisiert.",
     permissionDenied:
       "Erlauben Sie Benachrichtigungen in den Geräteeinstellungen, um Erinnerungen auf diesem Gerät zu erhalten.",
@@ -1296,6 +1330,23 @@ const settingsCopyFr: SettingsCopy = {
       "Aucun rappel avant la fenêtre fertile n’est planifié.",
     statusOn: "Activé",
     statusOff: "Désactivé",
+    cycleDay: {
+      title: "Rappels par jour de cycle",
+      hint: "Recevez un rappel un jour choisi du cycle en cours, à une heure choisie. Il est ignoré quand les prévisions sont en pause ou que le cycle est en retard.",
+      empty: "Aucun rappel par jour de cycle pour l’instant.",
+      add: "Ajouter un rappel par jour de cycle",
+      limitReached: "Vous pouvez conserver jusqu’à 10 rappels par jour de cycle.",
+      ruleHeading: "Rappel",
+      dayLabel: "Jour du cycle (1–90)",
+      hourLabel: "Heure (0–23)",
+      labelLabel: "Libellé (facultatif)",
+      labelHint:
+        "Une note pour vous. Elle reste dans l’application sauf si vous activez l’option ci-dessous.",
+      showLabel: "Afficher le libellé dans la notification",
+      showLabelHint:
+        "Désactivé par défaut. Activé, le libellé apparaît sur l’écran verrouillé et dans l’historique des notifications de votre appareil.",
+      delete: "Supprimer le rappel",
+    },
     saved: "Les réglages de rappel ont été mis à jour pour cet appareil.",
     permissionDenied:
       "Autorisez les notifications dans les réglages de l’appareil pour recevoir les rappels sur cet appareil.",
@@ -1896,6 +1947,23 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Напоминание перед фертильным окном не запланировано.",
       statusOn: "Вкл",
       statusOff: "Выкл",
+      cycleDay: {
+        title: "Напоминания по дню цикла",
+        hint: "Получайте напоминание в выбранный день текущего цикла в выбранный час. Оно пропускается, когда прогнозы приостановлены или цикл задерживается.",
+        empty: "Напоминаний по дню цикла пока нет.",
+        add: "Добавить напоминание по дню цикла",
+        limitReached: "Можно хранить до 10 напоминаний по дню цикла.",
+        ruleHeading: "Напоминание",
+        dayLabel: "День цикла (1–90)",
+        hourLabel: "Час (0–23)",
+        labelLabel: "Метка (необязательно)",
+        labelHint:
+          "Заметка для вас. Она остаётся в приложении, пока вы не включите опцию ниже.",
+        showLabel: "Показывать метку в уведомлении",
+        showLabelHint:
+          "По умолчанию выключено. Если включить, метка появится на экране блокировки и в истории уведомлений устройства.",
+        delete: "Удалить напоминание",
+      },
       saved: "Настройки напоминаний обновлены для этого устройства.",
       permissionDenied:
         "Разрешите уведомления в настройках устройства, чтобы получать напоминания на этом устройстве.",
@@ -2456,6 +2524,23 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "No hay recordatorio antes de la ventana fértil programado.",
       statusOn: "Activado",
       statusOff: "Desactivado",
+      cycleDay: {
+        title: "Recordatorios por día del ciclo",
+        hint: "Recibe un recordatorio en un día elegido del ciclo en curso, a una hora elegida. Se omite cuando las predicciones están en pausa o el ciclo se retrasa.",
+        empty: "Aún no hay recordatorios por día del ciclo.",
+        add: "Añadir un recordatorio por día del ciclo",
+        limitReached: "Puedes tener hasta 10 recordatorios por día del ciclo.",
+        ruleHeading: "Recordatorio",
+        dayLabel: "Día del ciclo (1–90)",
+        hourLabel: "Hora (0–23)",
+        labelLabel: "Etiqueta (opcional)",
+        labelHint:
+          "Una nota para ti. Se queda en la app salvo que actives la opción de abajo.",
+        showLabel: "Mostrar la etiqueta en la notificación",
+        showLabelHint:
+          "Desactivado por defecto. Si lo activas, la etiqueta aparece en la pantalla de bloqueo y en el historial de notificaciones del dispositivo.",
+        delete: "Eliminar recordatorio",
+      },
       saved: "Los ajustes de recordatorios se actualizaron para este dispositivo.",
       permissionDenied:
         "Permite las notificaciones en los ajustes del dispositivo para recibir recordatorios en este dispositivo.",
@@ -3026,6 +3111,23 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         "Nessun promemoria prima della finestra fertile programmato.",
       statusOn: "Attivo",
       statusOff: "Disattivato",
+      cycleDay: {
+        title: "Promemoria per giorno del ciclo",
+        hint: "Ricevi un promemoria in un giorno scelto del ciclo in corso, a un’ora scelta. Viene saltato quando le previsioni sono in pausa o il ciclo è in ritardo.",
+        empty: "Ancora nessun promemoria per giorno del ciclo.",
+        add: "Aggiungi un promemoria per giorno del ciclo",
+        limitReached: "Puoi tenere fino a 10 promemoria per giorno del ciclo.",
+        ruleHeading: "Promemoria",
+        dayLabel: "Giorno del ciclo (1–90)",
+        hourLabel: "Ora (0–23)",
+        labelLabel: "Etichetta (facoltativa)",
+        labelHint:
+          "Una nota per te. Resta nell’app a meno che tu non attivi l’opzione qui sotto.",
+        showLabel: "Mostra l’etichetta nella notifica",
+        showLabelHint:
+          "Disattivato per impostazione predefinita. Se attivo, l’etichetta compare nella schermata di blocco e nella cronologia delle notifiche del dispositivo.",
+        delete: "Elimina promemoria",
+      },
       saved: "Le impostazioni dei promemoria sono state aggiornate per questo dispositivo.",
       permissionDenied:
         "Consenti le notifiche nelle impostazioni del dispositivo per ricevere promemoria su questo dispositivo.",

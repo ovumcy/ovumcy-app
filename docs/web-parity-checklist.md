@@ -330,6 +330,12 @@ that owns the canonical web UX).
   - local device reminders (toggles, reminder time, lead-days control) are
     free-tier, mirroring web's free reminder settings (`reminder_lead_days`,
     web #123: 0–14, default 3, clamped never rejected)
+  - per-cycle-day reminders (web `cycle_day_reminders`: day 1-90, hour,
+    label up to 64 characters, at most 10 rules) are free-tier and edited in
+    the same section; the label reaches the local notification only behind a
+    per-rule opt-in (web `SendLabel`), default off. Divergence: unpredictable
+    mode also withholds them, and web's per-cycle send watermark and "held"
+    notice have no local counterpart (see `docs/notifications.md`)
   - carries no premium affordance at all: reminders are free on both products,
     so there is no locked state to show and every reminder control is usable
     whatever the billing snapshot says

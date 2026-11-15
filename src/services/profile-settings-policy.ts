@@ -24,6 +24,8 @@ import {
   normalizeWeekStartDay,
 } from "../models/profile";
 
+import { normalizeCycleDayReminders } from "./cycle-day-reminder-policy";
+
 export type CycleGuidanceState = {
   invalid: boolean;
   warning: boolean;
@@ -223,6 +225,7 @@ export function sanitizeReminderSettingsValues(
     fertileWindowReminderEnabled: values.fertileWindowReminderEnabled,
     reminderTime: normalizeReminderTime(values.reminderTime),
     reminderLeadDays: clampReminderLeadDays(values.reminderLeadDays),
+    cycleDayReminders: normalizeCycleDayReminders(values.cycleDayReminders),
   };
 }
 

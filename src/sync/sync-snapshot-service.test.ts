@@ -289,6 +289,32 @@ describe("sync-snapshot-service", () => {
     expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
   });
 
+  it("re-validates cycle-day reminder rules from a snapshot before storing them", async () => {
+    const source = createVolatileWebAppStorage();
+    const kept = { id: "cdr_kept", cycleDay: 14, remindAtHour: 7, label: "pill", showLabel: true };
+    const snapshot = decodeSyncSnapshot(
+      encodeSyncSnapshot(await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"))),
+    );
+    const tampered = {
+      ...snapshot,
+      profile: {
+        ...snapshot.profile,
+        cycleDayReminders: [
+          kept,
+          { id: "cdr_bad", cycleDay: 400, remindAtHour: 9, label: "", showLabel: false },
+          { id: "cdr_bidi", cycleDay: 3, remindAtHour: 9, label: "a‮b", showLabel: true },
+        ],
+      },
+    };
+    const target = createVolatileWebAppStorage();
+
+    await restoreSyncSnapshot(target, tampered as never, createDefaultSyncPreferencesRecord(), {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    });
+
+    expect((await target.readProfileRecord()).cycleDayReminders).toEqual([kept]);
+  });
+
   it("finishes a restore and rebuilds reminders when the stored-start re-read fails", async () => {
     const source = createVolatileWebAppStorage();
     await source.writeProfileRecord({
