@@ -8,6 +8,7 @@ import {
   saveTrackingSettings,
 } from "../../../services/settings-screen-service";
 import {
+  rebuildLocalReminderScheduleFromStorage,
   syncLocalReminderSchedule,
   type LocalReminderSyncResult,
 } from "../../../services/local-reminder-sync-service";
@@ -84,6 +85,20 @@ export async function runSavePendingSettingsAction(
   const { isCycleDirty, isReminderDirty, isInterfaceDirty, isTrackingDirty } =
     options;
   let nextState = readyState;
+  // A later section's failure returns before the schedule rebuild at the end,
+  // so a plan input an earlier section already stored (the cycle start, the
+  // reminder rules) would otherwise leave the device schedule built from the
+  // old values until the next rebuild elsewhere.
+  let planInputsStored = false;
+  const failAfterStoredPlanInputs = async () => {
+    setState(nextState);
+    if (planInputsStored) {
+      await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+        now: reminderNow,
+      });
+    }
+    return false;
+  };
 
   if (isCycleDirty) {
     setIsSavingCycle(true);
@@ -111,6 +126,7 @@ export async function runSavePendingSettingsAction(
     const startFromLoggedDays =
       cycleResult.state.cycleValues.lastPeriodStart !== nextState.cycleValues.lastPeriodStart;
     nextState = cycleResult.state;
+    planInputsStored = true;
     setCycleStatusMessage(
       startFromLoggedDays
         ? viewData.status.cycleSavedStartFromLoggedDays
@@ -135,8 +151,7 @@ export async function runSavePendingSettingsAction(
     setIsSavingTracking(false);
     if (!trackingResult.ok) {
       setTrackingStatusMessage(viewData.status.saveFailed);
-      setState(nextState);
-      return false;
+      return failAfterStoredPlanInputs();
     }
     nextState = trackingResult.state;
     setTrackingStatusMessage(viewData.status.trackingSaved);
@@ -165,10 +180,10 @@ export async function runSavePendingSettingsAction(
           : viewData.reminders.errors.saveFailed,
       );
       setReminderStatusTone("error");
-      setState(nextState);
-      return false;
+      return failAfterStoredPlanInputs();
     }
     nextState = reminderResult.state;
+    planInputsStored = true;
   }
 
   if (isInterfaceDirty) {
@@ -183,8 +198,7 @@ export async function runSavePendingSettingsAction(
     setIsSavingInterface(false);
     if (!interfaceResult.ok) {
       setInterfaceErrorMessage(viewData.status.saveFailed);
-      setState(nextState);
-      return false;
+      return failAfterStoredPlanInputs();
     }
     nextState = interfaceResult.state;
     syncProfilePreferences(interfaceResult.state.interfaceValues);
