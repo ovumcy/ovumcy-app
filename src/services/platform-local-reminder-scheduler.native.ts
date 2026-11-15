@@ -146,11 +146,25 @@ async function cancelManagedReminderSchedules(
 // A cleared schedule (every reminder off, a local wipe, account deletion) also
 // removes this app's reminders already shown in the notification shade, so an
 // opted-in cycle-day label does not outlive the data it came from.
+// Best effort: the schedules are already cancelled, so a shade that cannot be
+// read, or one entry that refuses to go, must neither turn the clear into an
+// error nor leave the remaining entries in place.
 async function dismissPresentedReminders(Notifications: ExpoNotificationsModule) {
-  const presented = await Notifications.getPresentedNotificationsAsync();
+  let presented: Awaited<
+    ReturnType<ExpoNotificationsModule["getPresentedNotificationsAsync"]>
+  >;
+  try {
+    presented = await Notifications.getPresentedNotificationsAsync();
+  } catch {
+    return;
+  }
   for (const notification of presented) {
     if (isOvumcyReminderKind(notification.request.content.data?.ovumcyReminderKind)) {
-      await Notifications.dismissNotificationAsync(notification.request.identifier);
+      try {
+        await Notifications.dismissNotificationAsync(notification.request.identifier);
+      } catch {
+        // keep dismissing the rest
+      }
     }
   }
 }
