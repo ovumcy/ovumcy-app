@@ -298,8 +298,8 @@ export async function resetSyncAccountPassword(
  * Rotates the account-level recovery code. Requires an authenticated session
  * and the current password as a re-confirmation step (defense against a
  * hijacked session silently rotating the code and locking the legitimate
- * owner out of the recovery surface). Sessions and pending reset tokens are
- * left untouched.
+ * owner out of the recovery surface). Sessions are left untouched; a
+ * community server also deletes pending reset tokens.
  *
  * `code` is the current TOTP code: a community server requires it once the
  * account has two-factor on, because a recovery-code reset clears TOTP. The
