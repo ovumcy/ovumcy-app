@@ -20,6 +20,7 @@ import {
   previewImportBackupEnvelope,
   restoreFromJSONBackup,
 } from "./import-service";
+import { formatLocalDate } from "./profile-settings-policy";
 import { createCustomSymptomRecord, filterKnownSymptomIDs } from "./symptom-policy";
 
 // A stateful in-memory storage so writes are observable through reads, letting
@@ -996,6 +997,35 @@ describe("import-service profile restore (pristine-only)", () => {
       languageOverride: null,
       reminderTime: "20:00",
     });
+  });
+
+  it("drops a backup cycle start that lies after today and keeps one up to today", async () => {
+    const future = createStatefulStorage();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowValue = formatLocalDate(tomorrow);
+
+    const futureOutcome = await importBackupEnvelope(
+      future.storage,
+      envelope({
+        profile: { ...backupProfile(), lastPeriodStart: tomorrowValue },
+      }),
+    );
+
+    expect(futureOutcome.profileRestored).toBe(true);
+    expect(future.getProfile().lastPeriodStart).toBeNull();
+    expect(future.getProfile().cycleLength).toBe(backupProfile().cycleLength);
+
+    const today = createStatefulStorage();
+    const todayValue = formatLocalDate(new Date());
+    await importBackupEnvelope(
+      today.storage,
+      envelope({
+        profile: { ...backupProfile(), lastPeriodStart: ` ${todayValue} ` },
+      }),
+    );
+
+    expect(today.getProfile().lastPeriodStart).toBe(todayValue);
   });
 
   it("does not report a restore when the backup profile is missing or not an object", async () => {
