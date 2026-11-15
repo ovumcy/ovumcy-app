@@ -86,10 +86,11 @@ describe("cycle-day reminder rule validation", () => {
     ["label of a Hangul filler", { label: "ㅤ" }],
     ["label of a blank braille pattern", { label: "⠀" }],
     ["label with a lone surrogate", { label: "a\ud800b" }],
-    ["label of a lone joiner", { label: "‍" }],
-    ["label opening with a joiner", { label: "‍ab" }],
-    ["label closing with a non-joiner", { label: "ab‌" }],
     ["label with a doubled joiner", { label: "a‍‍b" }],
+    ["label of variation selectors around a joiner", { label: "️‍️" }],
+    ["label of base-less combining marks", { label: "́‍́" }],
+    ["label of a lone variation selector", { label: "\u{e0100}" }],
+    ["label with a joiner next to an ideographic space", { label: "a　‍b" }],
     ["label with a joiner next to a space", { label: "a ‍b" }],
     ["label with a joiner next to a zero-width space", { label: "a​‍b" }],
     ["non-string label", { label: 7 }],
@@ -106,6 +107,34 @@ describe("cycle-day reminder rule validation", () => {
     ["a Persian word with a non-joiner", "می‌خواهم"],
   ])("keeps a label with %s", (_name, label) => {
     expect(normalizeCycleDayReminders([rule({ label })])).toEqual([rule({ label })]);
+  });
+
+  it("trims joiners at either end like spaces", () => {
+    expect(
+      normalizeCycleDayReminders([
+        rule({ id: "a", label: "‍ab‌ " }),
+        rule({ id: "b", label: "‍", showLabel: true }),
+      ]).map((entry) => [entry.label, entry.showLabel]),
+    ).toEqual([
+      ["ab", false],
+      ["", false],
+    ]);
+  });
+
+  it("keeps joiners typed between visible characters and drops misplaced ones while editing", () => {
+    const rules = [rule({ id: "p" })];
+    const patchLabel = (label: string) =>
+      patchCycleDayReminderRule(rules, "p", { label })[0]!.label;
+
+    expect(patchLabel("\u{1f469}‍⚕️")).toBe("\u{1f469}‍⚕️");
+    expect(patchLabel("می‌")).toBe("می‌");
+    expect(patchLabel("‍a‍‍b")).toBe("a‍b");
+    expect(patchLabel("a‍ b")).toBe("a b");
+    expect(patchLabel("a ‍b")).toBe("a b");
+    // a typed trailing joiner is trimmed when the rule is saved
+    expect(
+      normalizeCycleDayReminders([rule({ label: patchLabel("می‌") })])[0]!.label,
+    ).toBe("می");
   });
 
   it("trims the label and refuses showLabel without one", () => {

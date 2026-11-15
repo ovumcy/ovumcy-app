@@ -74,6 +74,51 @@ function isVisibleJoinNeighbor(code: number | undefined): boolean {
   );
 }
 
+// Variation selectors and combining marks render nothing without a base, so a
+// label made only of them (with or without joiners) would show a blank body.
+function hasVisibleBase(label: string): boolean {
+  return Array.from(label).some((char) => {
+    const code = char.codePointAt(0) as number;
+    return !(
+      isJoiner(code) ||
+      /\s/u.test(char) ||
+      (code >= 0x300 && code <= 0x36f) ||
+      (code >= 0x1ab0 && code <= 0x1aff) ||
+      (code >= 0x1dc0 && code <= 0x1dff) ||
+      (code >= 0x20d0 && code <= 0x20ff) ||
+      (code >= 0xfe00 && code <= 0xfe0f) ||
+      (code >= 0xfe20 && code <= 0xfe2f) ||
+      code === 0x1d159 ||
+      (code >= 0xe0100 && code <= 0xe01ef)
+    );
+  });
+}
+
+// Live editing keeps a joiner the user is typing (a trailing one is trimmed on
+// save) but never a doubled, leading or space-adjacent one, so what is typed
+// stays savable; every other refused code point is dropped.
+function keepTypedLabelCharacters(value: string): string[] {
+  const kept: string[] = [];
+  for (const char of value) {
+    const code = char.codePointAt(0) as number;
+    const previous = kept[kept.length - 1];
+    if (isJoiner(code)) {
+      if (previous !== undefined && isVisibleJoinNeighbor(previous.codePointAt(0))) {
+        kept.push(char);
+      }
+      continue;
+    }
+    if (isRefusedCodePoint(code)) {
+      continue;
+    }
+    if (/\s/u.test(char) && previous !== undefined && isJoiner(previous.codePointAt(0) as number)) {
+      kept.pop();
+    }
+    kept.push(char);
+  }
+  return kept;
+}
+
 function isRefusedCodePoint(code: number): boolean {
   return (
     code <= 0x1f ||
@@ -137,10 +182,12 @@ export function normalizeCycleDayReminder(value: unknown): CycleDayReminder | nu
   if (typeof rawLabel !== "string") {
     return null;
   }
-  const label = rawLabel.trim();
+  // A joiner at either end joins nothing, so it is trimmed like a space.
+  const label = rawLabel.replace(/^[\s‌‍]+|[\s‌‍]+$/gu, "");
   if (
     Array.from(label).length > CYCLE_DAY_REMINDER_LABEL_MAX_LENGTH ||
-    containsControlOrFormatCharacter(label)
+    containsControlOrFormatCharacter(label) ||
+    (label !== "" && !hasVisibleBase(label))
   ) {
     return null;
   }
@@ -211,8 +258,7 @@ export function patchCycleDayReminderRule(
       return rule;
     }
     const next = { ...rule, ...patch };
-    const label = Array.from(next.label)
-      .filter((char) => !containsControlOrFormatCharacter(char))
+    const label = keepTypedLabelCharacters(next.label)
       .slice(0, CYCLE_DAY_REMINDER_LABEL_MAX_LENGTH)
       .join("");
     return {
