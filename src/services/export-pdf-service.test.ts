@@ -1078,15 +1078,22 @@ describe("doctor PDF: recorded pregnancy tests", () => {
           pregnancyTest: "positive" as const,
         },
       ];
-      const report = buildReport({
+      const input = {
         now: new Date("2026-03-20T09:00:00.000Z"),
         dayLogs: rangeLogs,
+        profile: pdfProfile,
+        symptomRecords: [],
+      };
+
+      expect(buildReport({ ...input, cycleHistoryLogs: rangeLogs }).pregnancyPauseDate).toBe(
+        "2026-02-12",
+      );
+      const report = buildReport({
+        ...input,
         cycleHistoryLogs: [
           ...rangeLogs,
           { ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true, cycleStart: true },
         ],
-        profile: { ...pdfProfile, lastPeriodStart: "2026-03-10" },
-        symptomRecords: [],
       });
 
       expect(report.pregnancyPauseDate).toBeNull();
