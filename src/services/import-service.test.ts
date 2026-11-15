@@ -1001,14 +1001,15 @@ describe("import-service profile restore (pristine-only)", () => {
 
   it("drops a backup cycle start that lies after today and keeps one up to today", async () => {
     const future = createStatefulStorage();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowValue = formatLocalDate(tomorrow);
+    // two days ahead, so a run that crosses midnight still imports a future date
+    const ahead = new Date();
+    ahead.setDate(ahead.getDate() + 2);
+    const aheadValue = formatLocalDate(ahead);
 
     const futureOutcome = await importBackupEnvelope(
       future.storage,
       envelope({
-        profile: { ...backupProfile(), lastPeriodStart: tomorrowValue },
+        profile: { ...backupProfile(), lastPeriodStart: aheadValue },
       }),
     );
 
