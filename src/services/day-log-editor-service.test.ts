@@ -356,6 +356,32 @@ describe("day-log-editor-service", () => {
   });
 });
 
+describe("saveDayLogEditorRecord storage failures", () => {
+  it.each([
+    "readProfileRecord",
+    "listSymptomRecords",
+    "listDayLogRecordsInRange",
+    "commitDayLogChanges",
+  ])("reports failure instead of throwing when %s rejects", async (method) => {
+    const commitDayLogChanges = jest.fn().mockResolvedValue(undefined);
+    const storage = createStorageMock({
+      commitDayLogChanges,
+      [method]: jest.fn().mockRejectedValue(new Error("disk")),
+    });
+
+    await expect(
+      saveDayLogEditorRecord(
+        storage,
+        { ...createEmptyDayLogRecord("2026-03-17"), isPeriod: true },
+        FIXED_NOW,
+      ),
+    ).resolves.toEqual({ ok: false });
+    if (method !== "commitDayLogChanges") {
+      expect(commitDayLogChanges).not.toHaveBeenCalled();
+    }
+  });
+});
+
 describe("clearDayLogEditorRecord", () => {
   const cycleStartDay = (date: string): DayLogRecord => ({
     ...createEmptyDayLogRecord(date),
