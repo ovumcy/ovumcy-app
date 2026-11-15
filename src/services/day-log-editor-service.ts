@@ -170,40 +170,41 @@ export async function saveDayLogEditorRecord(
   record: DayLogRecord,
   now: Date,
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
-  const [profile, symptomRecords] = await Promise.all([
-    storage.readProfileRecord(),
-    storage.listSymptomRecords(),
-  ]);
-  const normalized = sanitizeDayLogRecord({
-    ...record,
-    symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
-  });
-  const relevantRecords = await loadAutoFillRelevantRecords(
-    storage,
-    profile,
-    normalized.date,
-  );
-  const recordsToWrite = new Map<string, DayLogRecord>([[normalized.date, normalized]]);
-
-  if (shouldAutoFillPeriodWindowFromSave(profile, relevantRecords, normalized)) {
-    appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile, now);
-  } else if (shouldClearAutoFilledNeighbors(profile, relevantRecords, normalized)) {
-    for (const dayToClear of collectAutoFilledPeriodDaysToClear(
-      relevantRecords,
-      normalized.date,
-      profile.periodLength,
-    )) {
-      recordsToWrite.set(
-        dayToClear.date,
-        sanitizeDayLogRecord({
-          ...dayToClear,
-          isPeriod: false,
-        }),
-      );
-    }
-  }
-
+  let normalized: DayLogRecord;
   try {
+    const [profile, symptomRecords] = await Promise.all([
+      storage.readProfileRecord(),
+      storage.listSymptomRecords(),
+    ]);
+    normalized = sanitizeDayLogRecord({
+      ...record,
+      symptomIDs: filterKnownSymptomIDs(symptomRecords, record.symptomIDs),
+    });
+    const relevantRecords = await loadAutoFillRelevantRecords(
+      storage,
+      profile,
+      normalized.date,
+    );
+    const recordsToWrite = new Map<string, DayLogRecord>([[normalized.date, normalized]]);
+
+    if (shouldAutoFillPeriodWindowFromSave(profile, relevantRecords, normalized)) {
+      appendAutoFilledPeriodDays(recordsToWrite, relevantRecords, normalized, profile, now);
+    } else if (shouldClearAutoFilledNeighbors(profile, relevantRecords, normalized)) {
+      for (const dayToClear of collectAutoFilledPeriodDaysToClear(
+        relevantRecords,
+        normalized.date,
+        profile.periodLength,
+      )) {
+        recordsToWrite.set(
+          dayToClear.date,
+          sanitizeDayLogRecord({
+            ...dayToClear,
+            isPeriod: false,
+          }),
+        );
+      }
+    }
+
     const nextProfile = await resolveStoredStartAfterSave(
       storage,
       profile,
