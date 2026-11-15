@@ -101,6 +101,7 @@ export async function saveCycleSettings(
     ...sanitizeCycleSettingsValues(cycleValues),
   });
 
+  let savedProfile = nextProfile;
   try {
     if (isPeriodStartMove(currentState.profile, nextProfile)) {
       // The start moves together with its day logs, in one commit: a failed
@@ -109,9 +110,9 @@ export async function saveCycleSettings(
         MIN_DAY_LOG_DATE,
         MAX_DAY_LOG_DATE,
       );
-      await storage.commitDayLogChanges(
-        planPeriodStartMove(currentState.profile, nextProfile, records, now),
-      );
+      const plan = planPeriodStartMove(currentState.profile, nextProfile, records, now);
+      await storage.commitDayLogChanges(plan);
+      savedProfile = plan.profile;
     } else {
       await storage.writeProfileRecord(nextProfile);
     }
@@ -125,7 +126,7 @@ export async function saveCycleSettings(
   return {
     ok: true,
     state: createLoadedSettingsState(
-      nextProfile,
+      savedProfile,
       currentState.savedSyncPreferences,
       currentState.hasStoredSyncSecrets,
       currentState.hasSyncSession,

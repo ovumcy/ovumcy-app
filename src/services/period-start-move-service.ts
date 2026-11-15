@@ -89,7 +89,7 @@ export function planPeriodStartMove(
   nextProfile: ProfileRecord,
   records: readonly DayLogRecord[],
   now: Date,
-): DayLogChangeSet {
+): DayLogChangeSet & { profile: ProfileRecord } {
   const newStart = nextProfile.lastPeriodStart;
   if (newStart === null) {
     return { writes: [], deletes: [], profile: nextProfile };
@@ -143,8 +143,33 @@ export function planPeriodStartMove(
   return {
     writes: [...writes.values()],
     deletes: [...deletes],
-    profile: nextProfile,
+    profile: repointToAnchorAfterMove(nextProfile, records, writes, deletes, todayValue),
   };
+}
+
+// A start moved earlier can leave a later period behind (rows the move may not
+// remove, e.g. days ticked after the old start with auto-fill off). That period,
+// not the typed date, is the cycle the projection reads, so the stored start
+// follows it instead of disagreeing with the anchor.
+function repointToAnchorAfterMove(
+  nextProfile: ProfileRecord,
+  records: readonly DayLogRecord[],
+  writes: ReadonlyMap<string, DayLogRecord>,
+  deletes: ReadonlySet<string>,
+  todayValue: string,
+): ProfileRecord {
+  const merged = [
+    ...records.filter((record) => !writes.has(record.date) && !deletes.has(record.date)),
+    ...writes.values(),
+  ];
+  const anchor = resolveLatestCycleStartAnchorBeforeOrOn(nextProfile, merged, todayValue);
+  const typedStart = nextProfile.lastPeriodStart;
+  /* istanbul ignore next -- unreachable: the new start is written as a period
+     start, so the anchor is never null and never earlier than it */
+  if (anchor === null || typedStart === null) {
+    return nextProfile;
+  }
+  return anchor > typedStart ? { ...nextProfile, lastPeriodStart: anchor } : nextProfile;
 }
 
 function collectOldFilledRun(

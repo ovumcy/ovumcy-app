@@ -154,9 +154,48 @@ describe("settings period start move", () => {
       [startDay("2026-06-10"), periodDay("2026-06-11"), periodDay("2026-06-12")],
     );
 
-    await moveStart(storage, "2026-06-04");
+    const result = await moveStart(storage, "2026-06-04");
 
     expect(await rowDates(storage)).toEqual(["2026-06-04", "2026-06-11", "2026-06-12"]);
+    // The ticked days stay the latest period, so the stored start follows the
+    // anchor instead of the typed date; the screen shows what was stored.
+    const profile = await storage.readProfileRecord();
+    expect(profile.lastPeriodStart).toBe("2026-06-11");
+    expect(repointStoredCycleStart(profile, await allRows(storage), TODAY)).toBe("2026-06-11");
+    expect(result.ok && result.state.cycleValues.lastPeriodStart).toBe("2026-06-11");
+    expect((await rowOn(storage, "2026-06-04"))?.cycleStart).toBe(true);
+  });
+
+  it("repoints to a later period the old run's kept data leaves behind", async () => {
+    const run = filledRun("2026-06-10", 5).map((record) =>
+      record.date === "2026-06-12" ? { ...record, notes: "kept" } : record,
+    );
+    const storage = await seed({ lastPeriodStart: "2026-06-10" }, run);
+
+    await moveStart(storage, "2026-06-01");
+
+    expect(await rowDates(storage)).toEqual([
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+      "2026-06-04",
+      "2026-06-05",
+      "2026-06-12",
+      "2026-06-13",
+      "2026-06-14",
+    ]);
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-12");
+  });
+
+  it("keeps the typed start when the earlier move leaves no later period", async () => {
+    const storage = await seed(
+      { lastPeriodStart: "2026-06-10", autoPeriodFill: false },
+      [startDay("2026-06-10"), periodDay("2026-06-11")],
+    );
+
+    await moveStart(storage, "2026-06-08");
+
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-08");
   });
 
   it("turning auto-fill off with the move still clears the old filled run and writes only the mark", async () => {
