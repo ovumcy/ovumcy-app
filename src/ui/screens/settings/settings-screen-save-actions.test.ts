@@ -454,7 +454,7 @@ describe("runSavePendingSettingsAction: rebuild after a partial save", () => {
       .mockResolvedValue({ ok: false, errorCode: "generic" });
     const rebuildSpy = jest
       .spyOn(localReminderSyncService, "rebuildLocalReminderScheduleFromStorage")
-      .mockResolvedValue("scheduled");
+      .mockResolvedValue("permission_denied");
 
     const result = await runSavePendingSettingsAction(context, readyState, {
       ...allClean,
@@ -464,6 +464,11 @@ describe("runSavePendingSettingsAction: rebuild after a partial save", () => {
 
     expect(result).toBe(false);
     expect(rebuildSpy).toHaveBeenCalledTimes(1);
+    // the stored reminders still report how delivery went
+    expect(context.setReminderStatusMessage).toHaveBeenLastCalledWith(
+      viewData.reminders.status.permissionDenied,
+    );
+    expect(context.setReminderStatusTone).toHaveBeenLastCalledWith("error");
   });
 
   it("does not rebuild when nothing that feeds the plan was stored", async () => {
