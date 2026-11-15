@@ -87,7 +87,7 @@ const dashboardCopyEn = {
     "Confirm marking a cycle start with a short gap.",
   futureCycleStartNotice: "Predictions will be recalculated when that day arrives.",
   spottingCycleStartNotice:
-    "Spotting doesn't count as day 1 of a cycle. To mark a cycle start, set the flow to Light or heavier.",
+    "This day is logged as spotting, so it cannot start a period. To mark a cycle start, set the flow to Light or heavier.",
   implantationWarning:
     "This early bleeding may not be the start of a new cycle — timing alone cannot tell. If you are trying to conceive, consider taking a test. If it comes with pain, dizziness, or heavy flow, seek medical advice promptly.",
 } as const;
@@ -183,7 +183,7 @@ const dashboardCopyDe: DashboardCopy = {
   futureCycleStartNotice:
     "Die Vorhersagen werden neu berechnet, wenn dieser Tag erreicht ist.",
   spottingCycleStartNotice:
-    "Schmierblutung zählt nicht als Tag 1 eines Zyklus. Um einen Zyklusbeginn zu markieren, wähle als Blutung „Leicht“ oder stärker.",
+    "Dieser Tag ist als Schmierblutung eingetragen und kann keine Periode beginnen. Um einen Zyklusbeginn zu markieren, wähle als Blutung „Leicht“ oder stärker.",
   implantationWarning:
     "Diese frühe Blutung ist möglicherweise nicht der Beginn eines neuen Zyklus — allein am Zeitpunkt lässt sich das nicht erkennen. Wenn Sie schwanger werden möchten, ziehen Sie einen Test in Betracht. Bei Schmerzen, Schwindel oder starker Blutung suchen Sie umgehend ärztlichen Rat.",
 };
@@ -277,7 +277,7 @@ const dashboardCopyFr: DashboardCopy = {
   futureCycleStartNotice:
     "Les prédictions seront recalculées lorsque ce jour arrivera.",
   spottingCycleStartNotice:
-    "Le spotting ne compte pas comme le jour 1 d'un cycle. Pour marquer un début de cycle, choisissez un flux « Léger » ou plus abondant.",
+    "Ce jour est noté comme spotting, il ne peut donc pas commencer des règles. Pour marquer un début de cycle, choisissez un flux « Léger » ou plus abondant.",
   implantationWarning:
     "Ce saignement précoce n'est peut-être pas le début d'un nouveau cycle — le calendrier seul ne permet pas de le savoir. Si vous essayez de concevoir, pensez à faire un test. S'il s'accompagne de douleurs, de vertiges ou d'un flux abondant, consultez rapidement un médecin.",
 };
@@ -372,7 +372,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Прогнозы будут пересчитаны, когда наступит этот день.",
     spottingCycleStartNotice:
-      "Мажущие выделения не считаются днём 1 цикла. Чтобы отметить начало цикла, выберите интенсивность «Слабая» или сильнее.",
+      "Этот день отмечен как мажущие выделения, поэтому не может начать менструацию. Чтобы отметить начало цикла, выберите интенсивность «Слабая» или сильнее.",
     implantationWarning:
       "Это раннее кровотечение может не быть началом нового цикла — по одним срокам определить нельзя. Если Вы планируете беременность, рекомендуем сделать тест. При боли, головокружении или обильном кровотечении обратитесь к врачу без промедления.",
   },
@@ -464,7 +464,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Las predicciones se recalcularán cuando llegue ese día.",
     spottingCycleStartNotice:
-      "El manchado no cuenta como el día 1 de un ciclo. Para marcar un inicio de ciclo, elige un flujo «Ligero» o más abundante.",
+      "Este día está registrado como manchado, así que no puede iniciar un período. Para marcar un inicio de ciclo, elige un flujo «Ligero» o más abundante.",
     implantationWarning:
       "Este sangrado temprano puede no ser el inicio de un nuevo ciclo — solo por las fechas no se puede saber. Si buscas embarazo, considera hacerte una prueba. Si va acompañado de dolor, mareo o sangrado abundante, busca atención médica cuanto antes.",
   },
@@ -557,7 +557,7 @@ const dashboardCopyCatalog: Record<InterfaceLanguage, DashboardCopy> = {
     futureCycleStartNotice:
       "Le previsioni saranno ricalcolate quando quel giorno arriverà.",
     spottingCycleStartNotice:
-      "Le perdite non contano come giorno 1 di un ciclo. Per segnare l'inizio di un ciclo, scegli un flusso «Leggero» o più abbondante.",
+      "Questo giorno è registrato come spotting, quindi non può iniziare un ciclo. Per segnare l'inizio di un ciclo, scegli un flusso «Leggero» o più abbondante.",
     implantationWarning:
       "Questo sanguinamento precoce potrebbe non essere l'inizio di un nuovo ciclo — dai soli tempi non si può stabilire. Se stai cercando una gravidanza, considera di fare un test. Se è accompagnato da dolore, vertigini o flusso abbondante, rivolgiti subito a un medico.",
   },
