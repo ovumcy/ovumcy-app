@@ -416,9 +416,14 @@ function findCompetingCycleStartDate(
 ): string | null {
   const [clusterStart, clusterEnd] = resolvePeriodClusterBounds(records, targetDateValue);
 
+  // A spotting or uncertain mark opens no cycle, so there is nothing to
+  // replace (ovumcy-web findCompetingCycleStart).
   for (const record of records) {
     if (
       record.cycleStart &&
+      record.isPeriod &&
+      !record.isUncertain &&
+      !isSpottingRecord(record) &&
       record.date !== targetDateValue &&
       record.date >= clusterStart &&
       record.date <= clusterEnd

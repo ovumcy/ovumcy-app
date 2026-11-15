@@ -2,6 +2,7 @@ import * as React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import { getBabyWeekCopy } from "../../i18n/baby-week-copy";
+import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { getPregnancyCopy } from "../../i18n/pregnancy-copy";
 import { getPostpartumCopy } from "../../i18n/postpartum-copy";
 import { createEmptyDayLogRecord } from "../../models/day-log";
@@ -832,6 +833,28 @@ describe("DashboardScreen", () => {
     );
     expect(
       await screen.findByText("Cycle start updated locally."),
+    ).toBeTruthy();
+  });
+
+  it("blocks a manual cycle start on a spotting day and says why", async () => {
+    const spottingToday = {
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+      flow: "spotting" as const,
+    };
+    const storage = createStorageMock({
+      readDayLogRecord: jest.fn().mockResolvedValue(spottingToday),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([spottingToday]),
+    });
+
+    await renderDashboard(storage);
+
+    const action = await screen.findByTestId("dashboard-manual-cycle-start-button");
+    expect(action.props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(
+      screen.getByText(getDashboardCopy("en").spottingCycleStartNotice),
     ).toBeTruthy();
   });
 
