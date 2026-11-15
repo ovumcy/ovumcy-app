@@ -5,6 +5,7 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import { repointStoredCycleStart } from "./cycle-history-service";
+import { planPeriodStartMove } from "./period-start-move-service";
 import { saveCycleSettings } from "./settings-screen-service";
 import { createLoadedSettingsState } from "./settings-view-service";
 
@@ -329,5 +330,32 @@ describe("settings period start move", () => {
 
     expect(await rowDates(storage)).toEqual(["2026-06-18", "2026-06-19", "2026-06-20"]);
     expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-18");
+  });
+
+  it("leaves an unmarked row at the old stored start untouched", async () => {
+    const storage = await seed(
+      { lastPeriodStart: "2026-06-10", autoPeriodFill: false },
+      [periodDay("2026-06-10", { notes: "kept" })],
+    );
+
+    await moveStart(storage, "2026-06-08");
+
+    expect(await rowDates(storage)).toEqual(["2026-06-08", "2026-06-10"]);
+    expect(await rowOn(storage, "2026-06-10")).toEqual(
+      expect.objectContaining({ isPeriod: true, cycleStart: false, notes: "kept" }),
+    );
+  });
+});
+
+describe("planPeriodStartMove", () => {
+  it("plans a profile-only change when the start is cleared", () => {
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2026-06-10" };
+    const nextProfile = { ...profile, lastPeriodStart: null };
+
+    expect(planPeriodStartMove(profile, nextProfile, filledRun("2026-06-10", 5), NOW)).toEqual({
+      writes: [],
+      deletes: [],
+      profile: nextProfile,
+    });
   });
 });
