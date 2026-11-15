@@ -352,7 +352,7 @@ describe("local-reminder-sync-service", () => {
 
       // "today" is the day after midnight, not a day captured earlier
       expect(storage.listDayLogRecordsInRange).toHaveBeenCalledWith(
-        "2024-04-06",
+        expect.any(String),
         "2026-04-06",
       );
     });

@@ -18,6 +18,7 @@ import {
   type StatsPhase,
 } from "../models/stats";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
@@ -56,7 +57,6 @@ import {
 } from "./stats-premium-insights-service";
 import {
   addDays,
-  atLocalDay,
   formatLocalDate,
   parseLocalDate,
 } from "./profile-settings-policy";
@@ -316,14 +316,9 @@ export async function loadStatsScreenState(
     reminders: false,
   },
 ): Promise<LoadedStatsState> {
-  const today = atLocalDay(now);
-  const rangeStart = formatLocalDate(
-    new Date(today.getFullYear() - 2, today.getMonth(), today.getDate()),
-  );
-  const rangeEnd = formatLocalDate(today);
   const [profile, records, symptomRecords, activePregnancy] = await Promise.all([
     storage.readProfileRecord(),
-    storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
+    listCycleHistoryRecords(storage, now),
     storage.listSymptomRecords(),
     storage.readActivePregnancy(),
   ]);
