@@ -216,7 +216,9 @@ and their labels but turns every `showLabel` off, so a backup file cannot put te
 device's lock screen; a sync snapshot (authenticated with the owner's own keys) keeps the flag.
 Labels containing control, format, separator or blank-glyph characters are refused, except a
 zero-width joiner or non-joiner between two visible characters (emoji sequences, Persian and
-Indic words); a leading, trailing, doubled or space-adjacent joiner is refused. Web's one-per-cycle
+Indic words); a joiner at either end is trimmed, a doubled or space-adjacent one is refused, and
+so is a label made only of joiners, variation selectors or combining marks (it would show blank).
+While editing, a misplaced joiner is dropped as it is typed. Web's one-per-cycle
 watermark and its neutral "held" notice have no local counterpart: the schedule is rebuilt whole,
 so a rule is scheduled at most once per rebuild, and no notice is sent.
 
