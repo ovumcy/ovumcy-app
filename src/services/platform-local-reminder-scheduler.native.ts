@@ -38,15 +38,13 @@ function createNativeReminderScheduler(): LocalReminderScheduler {
       // permission: asking here would prompt a user who never turned a
       // reminder on.
       if (plans.length === 0) {
-        await cancelManagedReminderSchedules(Notifications);
-        await dismissPresentedReminders(Notifications);
+        await clearManagedReminders(Notifications);
         return "scheduled" satisfies LocalReminderSchedulerSyncResult;
       }
 
       const granted = await ensureNotificationPermission(Notifications);
       if (!granted) {
-        await cancelManagedReminderSchedules(Notifications);
-        await dismissPresentedReminders(Notifications);
+        await clearManagedReminders(Notifications);
         return "permission_denied" satisfies LocalReminderSchedulerSyncResult;
       }
 
@@ -150,22 +148,29 @@ async function cancelManagedReminderSchedules(
 // read, or one entry that refuses to go, must neither turn the clear into an
 // error nor leave the remaining entries in place.
 async function dismissPresentedReminders(Notifications: ExpoNotificationsModule) {
-  let presented: Awaited<
-    ReturnType<ExpoNotificationsModule["getPresentedNotificationsAsync"]>
-  >;
   try {
-    presented = await Notifications.getPresentedNotificationsAsync();
-  } catch {
-    return;
-  }
-  for (const notification of presented) {
-    if (isOvumcyReminderKind(notification.request.content.data?.ovumcyReminderKind)) {
-      try {
-        await Notifications.dismissNotificationAsync(notification.request.identifier);
-      } catch {
-        // keep dismissing the rest
+    const presented = await Notifications.getPresentedNotificationsAsync();
+    for (const notification of presented) {
+      if (isOvumcyReminderKind(notification.request.content.data?.ovumcyReminderKind)) {
+        try {
+          await Notifications.dismissNotificationAsync(notification.request.identifier);
+        } catch {
+          // keep dismissing the rest
+        }
       }
     }
+  } catch {
+    // the shade cannot be read; the schedules are cancelled regardless
+  }
+}
+
+// The shade is cleared even when a cancel fails, so an opted-in label does not
+// stay shown; the cancel error still reaches the caller.
+async function clearManagedReminders(Notifications: ExpoNotificationsModule) {
+  try {
+    await cancelManagedReminderSchedules(Notifications);
+  } finally {
+    await dismissPresentedReminders(Notifications);
   }
 }
 
