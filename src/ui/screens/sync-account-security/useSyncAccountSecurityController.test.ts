@@ -624,14 +624,17 @@ describe("useSyncAccountSecurityController", () => {
       return result;
     }
 
-    it("sends the TOTP code and clears it on success when community 2FA is on", async () => {
+    it.each([
+      ["community", selfHostedPreferences()],
+      ["managed", managedPreferences()],
+    ] as const)("sends the TOTP code and clears it on success when %s 2FA is on", async (_label, preferences) => {
       const regenerate = jest
         .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
         .mockResolvedValue({
           ok: true,
           recoveryCode: "freshcode000freshcode000freshcod",
         });
-      const result = await renderRegenerate(selfHostedPreferences(), true);
+      const result = await renderRegenerate(preferences, true);
 
       expect(result.current.regenerateCodeVisible).toBe(true);
       await act(async () => {
@@ -649,7 +652,8 @@ describe("useSyncAccountSecurityController", () => {
     it.each([
       ["community 2FA is off", selfHostedPreferences(), false],
       ["community 2FA status is unknown", selfHostedPreferences(), null],
-      ["the account is managed", managedPreferences(), true],
+      ["managed 2FA is off", managedPreferences(), false],
+      ["managed 2FA status is unknown", managedPreferences(), null],
     ] as const)(
       "sends no TOTP code when %s",
       async (_label, preferences, twoFactorEnabled) => {
