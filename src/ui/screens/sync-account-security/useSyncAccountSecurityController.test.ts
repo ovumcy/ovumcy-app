@@ -735,11 +735,12 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.regenerateCodeVisible).toBe(false);
     });
 
-    it("never logs or persists the TOTP code sent with a regeneration", async () => {
+    it.each([
+      ["community", selfHostedPreferences()],
+      ["managed", managedPreferences()],
+    ] as const)("never logs or persists the TOTP code sent with a %s regeneration", async (_label, preferences) => {
       const storage = createLocalAppStorageMock({
-        readSyncPreferencesRecord: jest
-          .fn()
-          .mockResolvedValue(selfHostedPreferences()),
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(preferences),
       });
       const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
       jest
