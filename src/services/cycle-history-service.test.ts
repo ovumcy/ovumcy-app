@@ -248,6 +248,31 @@ describe("cycle-history-service", () => {
     expect(firstStale.currentPhase).toBe("unknown");
   });
 
+  it("keeps a period logged today as menstrual in the stale band", () => {
+    // Bleeding every day from the anchor (2026-02-01) to raw day 31 keeps the
+    // anchor, so the cycle is stale while today carries a logged period.
+    const profile = createProfileRecord({ lastPeriodStart: "2026-02-01" });
+    const records: DayLogRecord[] = Array.from({ length: 31 }, (_, index) => ({
+      ...createEmptyDayLogRecord(
+        `2026-${index < 28 ? "02" : "03"}-${String((index % 28) + 1).padStart(2, "0")}`,
+      ),
+      isPeriod: true,
+    }));
+    const now = new Date(2026, 2, 3, 10);
+    const projection = buildCurrentCycleProjection(
+      profile,
+      buildCycleHistorySummary(profile, records, now),
+      records,
+      now,
+    );
+
+    expect(projection.cycleAnchorDate).toBe("2026-02-01");
+    expect(projection.isPredictionStale).toBe(true);
+    expect(projection.rawCycleDay).toBe(31);
+    expect(projection.currentPhase).toBe("menstrual");
+    expect(projection.upcomingOvulationDate).toBeNull();
+  });
+
   it("withholds every projected date once the cycle runs more than a week past its length", () => {
     // Web DashboardCycleOverdue parity. Anchor 2026-02-01, len 28, today
     // 2026-03-08: raw cycle day 36 > 28 + 7. The running cycle's period is more
