@@ -126,6 +126,24 @@ describe("shared cycle history across surfaces", () => {
     expect(predicted).toContain("2026-09-21");
   });
 
+  it("paints a month older than the shared history from its own window", async () => {
+    const storage = await seed({}, [
+      period("2024-01-08"),
+      period("2024-01-09"),
+      period("2024-02-05"),
+      period("2024-02-06"),
+      period("2026-06-01"),
+      period("2026-06-02"),
+    ]);
+
+    const calendar = await loadCalendarScreenState(storage, NOW, "2024-01");
+    const periodDays = calendar.viewData.days
+      .filter((day) => day.stateKey === "period")
+      .map((day) => day.date);
+
+    expect(periodDays).toEqual(expect.arrayContaining(["2024-01-08", "2024-01-09"]));
+  });
+
   it("keeps the pregnancy pause on a calendar month paged past the grid window", async () => {
     const storage = await seed({ lastPeriodStart: "2026-06-01" }, [
       period("2026-06-01", { cycleStart: true }),
