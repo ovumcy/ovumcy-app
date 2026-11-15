@@ -276,6 +276,8 @@ function buildCycleDayReminderPlans(
     return [];
   }
   const anchor = parseLocalDate(anchorValue);
+  /* istanbul ignore next -- unreachable: the projection anchor is a formatted
+     local date */
   if (!anchor) {
     return [];
   }

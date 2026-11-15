@@ -928,6 +928,28 @@ describe("SettingsScreen", () => {
     );
   });
 
+  it("hides the add button at the rule limit and brings it back when a rule is deleted", async () => {
+    const storage = createSettingsStorageMock();
+
+    await render(
+      <SettingsScreen now={new Date(2026, 2, 17)} section="reminders" storage={storage} />,
+    );
+
+    await screen.findByTestId("settings-cycle-day-reminders-empty");
+    for (let count = 0; count < 10; count += 1) {
+      await fireEvent.press(screen.getByTestId("settings-cycle-day-reminders-add"));
+    }
+
+    expect(screen.getByTestId("settings-cycle-day-reminders-limit")).toBeTruthy();
+    expect(screen.queryByTestId("settings-cycle-day-reminders-add")).toBeNull();
+
+    await fireEvent.press(screen.getByTestId("settings-cycle-day-rule-9-delete"));
+
+    expect(screen.queryByTestId("settings-cycle-day-rule-9-delete")).toBeNull();
+    expect(screen.queryByTestId("settings-cycle-day-reminders-limit")).toBeNull();
+    expect(screen.getByTestId("settings-cycle-day-reminders-add")).toBeTruthy();
+  });
+
   it("updates the native export range through the date picker instead of free-text input", async () => {
     const storage = createSettingsStorageMock();
 
