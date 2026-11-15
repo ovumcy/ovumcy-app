@@ -10,6 +10,7 @@ function createViewData(
   return {
     buttonLabel: "Mark new cycle start",
     isActive: true,
+    isBlocked: false,
     prompts: [],
     notices: {},
     ...overrides,
@@ -57,6 +58,33 @@ describe("ManualCycleStartAction", () => {
     expect(
       screen.getByTestId("manual-cycle-start").props.accessibilityState,
     ).toEqual(expect.objectContaining({ disabled: true }));
+  });
+
+  it("disables a blocked action and announces why", async () => {
+    const onPress = jest.fn();
+
+    await render(
+      <AppPreferencesTestProvider>
+        <ManualCycleStartAction
+          onPress={onPress}
+          testID="manual-cycle-start"
+          viewData={createViewData({
+            isActive: false,
+            isBlocked: true,
+            notices: { spotting: "Spotting doesn't count as day 1." },
+          })}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const action = screen.getByTestId("manual-cycle-start");
+    expect(action.props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(screen.getByLabelText("Spotting doesn't count as day 1.")).toBeTruthy();
+
+    await fireEvent.press(action);
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it("groups the qualifying notices into one announcement under the button", async () => {

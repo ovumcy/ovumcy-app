@@ -6,6 +6,7 @@ import { resetDismissedCalendarPredictionNotice } from "./calendar-notice-servic
 import {
   buildCycleHistorySummary,
   inferUserLutealPhase,
+  isSpottingRecord,
   repointStoredCycleStart,
   resolveLatestCycleStartAnchorBeforeOrOn,
 } from "./cycle-history-service";
@@ -26,10 +27,12 @@ export type ManualCycleStartPrompt = {
 export type ManualCycleStartViewData = {
   buttonLabel: string;
   isActive: boolean;
+  isBlocked: boolean;
   prompts: ManualCycleStartPrompt[];
   notices: {
     future?: string;
     implantation?: string;
+    spotting?: string;
     suggestion?: string;
   };
 };
@@ -63,6 +66,18 @@ export function buildManualCycleStartViewData(
     return null;
   }
 
+  // Spotting never opens a cycle (resolveClusterBoundary): a mark on it would
+  // change nothing visible, so the action is shown blocked with the reason.
+  if (isSpottingRecord(record)) {
+    return {
+      buttonLabel: dashboardCopy.manualCycleStart,
+      isActive: record.cycleStart,
+      isBlocked: true,
+      prompts: [],
+      notices: { spotting: dashboardCopy.spottingCycleStartNotice },
+    };
+  }
+
   const mergedRecords = mergeDraftRecord(records, record);
   const policy = resolveManualCycleStartPolicy(profile, mergedRecords, record.date, now, locale);
   const prompts: ManualCycleStartPrompt[] = [];
@@ -92,6 +107,7 @@ export function buildManualCycleStartViewData(
   return {
     buttonLabel: dashboardCopy.manualCycleStart,
     isActive: record.cycleStart,
+    isBlocked: false,
     prompts,
     notices: {
       ...(isFutureManualCycleStartDate(record.date, now)
@@ -125,6 +141,15 @@ export async function applyManualCycleStart(
     return {
       ok: false,
       errorMessage: dashboardCopy.invalidCycleStartDate,
+    };
+  }
+
+  // Without this refusal the mark would overwrite profile.lastPeriodStart with
+  // a date the read side withdraws, dropping the previous stored start.
+  if (isSpottingRecord(record)) {
+    return {
+      ok: false,
+      errorMessage: dashboardCopy.spottingCycleStartNotice,
     };
   }
 

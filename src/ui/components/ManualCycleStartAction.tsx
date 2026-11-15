@@ -21,6 +21,7 @@ export function ManualCycleStartAction({
 }: ManualCycleStartActionProps) {
   const styles = useThemedStyles(createStyles);
   const notices = [
+    viewData.notices.spotting,
     viewData.notices.future,
     viewData.notices.suggestion,
     viewData.notices.implantation,
@@ -31,15 +32,15 @@ export function ManualCycleStartAction({
   return (
     <View style={styles.container}>
       <AppButton
-        disabled={disabled}
+        disabled={disabled || viewData.isBlocked === true}
         label={viewData.buttonLabel}
         onPress={onPress}
         variant={viewData.isActive ? "primary" : "secondary"}
         {...buttonProps}
       />
       {notices.length > 0 ? (
-        // The notices qualify the button above them (future date, suggested
-        // date, implantation caveat). Grouping them into one element keeps
+        // The notices qualify the button above them (spotting block, future
+        // date, suggested date, implantation caveat). Grouping them into one element keeps
         // that relationship in the reading order instead of scattering up to
         // three unattached sentences after the control.
         <View
