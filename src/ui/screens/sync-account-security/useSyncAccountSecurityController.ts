@@ -249,7 +249,6 @@ export function useSyncAccountSecurityController({
 
   const regenerateCodeVisible =
     preferences !== null &&
-    preferences.mode !== "managed" &&
     (twoFactorEnabled === true || regenerateCodeDemanded);
 
   async function handleRegenerate() {

@@ -360,7 +360,7 @@ export type ManagedCloudAPIClient = {
   >;
   regenerateRecoveryCode(
     sessionToken: string,
-    input: { currentPassword: string },
+    input: { currentPassword: string; code?: string },
   ): Promise<
     | { ok: true; result: ManagedCloudRegenerateRecoveryCodeResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
@@ -744,9 +744,10 @@ export function createManagedCloudAPIClient(
         {
           method: "POST",
           sessionToken,
-          body: {
-            current_password: input.currentPassword,
-          },
+          body:
+            input.code === undefined
+              ? { current_password: input.currentPassword }
+              : { current_password: input.currentPassword, code: input.code },
         },
         isRawManagedCloudRecoveryCodePayload,
       ).then((result) =>

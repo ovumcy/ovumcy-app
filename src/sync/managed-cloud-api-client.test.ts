@@ -1243,12 +1243,56 @@ describe("managed-cloud-api-client", () => {
     expect((call?.[1]?.headers as Headers).get("Authorization")).toBe(
       "Bearer session-1",
     );
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+      current_password: "very secure password 12345",
+    });
 
     expect(
       await client.regenerateRecoveryCode("session-1", {
         currentPassword: "wrong",
       }),
     ).toEqual({ ok: false, errorCode: "invalid_current_password" });
+  });
+
+  it("regenerate-recovery-code sends the TOTP code in the body and maps totp_replayed", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ recovery_code: "fresh1234fresh1234fresh1234fresh" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "totp_replayed" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await client.regenerateRecoveryCode("session-1", {
+      currentPassword: "very secure password 12345",
+      code: "123456",
+    });
+    const call = fetch.mock.calls[0];
+    expect(call?.[0]).toBe(
+      "https://managed.example/auth/recovery-code/regenerate",
+    );
+    expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+      current_password: "very secure password 12345",
+      code: "123456",
+    });
+
+    expect(
+      await client.regenerateRecoveryCode("session-1", {
+        currentPassword: "very secure password 12345",
+        code: "123456",
+      }),
+    ).toEqual({ ok: false, errorCode: "totp_replayed" });
   });
 
   it("maps a managed login response that defers to the TOTP challenge", async () => {
