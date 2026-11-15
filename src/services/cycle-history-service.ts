@@ -371,6 +371,33 @@ export function buildCurrentCycleProjection(
   );
   const rolledCycleDay = diffCalendarDays(rolledStart, today) + 1;
 
+  // Stale band (web CycleDataStale): the running cycle is past its overdue
+  // length, so the rolled window describes a cycle the owner has not started.
+  // Every ovulation date (current-window and upcoming) and the range are
+  // withheld, as web withholds fertility, and the phase reads "unknown" (a
+  // logged period day is still a fact). The rolled currentCycleDay stays as
+  // published; display surfaces read the raw day via `resolveDisplayCycleDay`.
+  if (isPredictionStale) {
+    return {
+      cycleAnchorDate,
+      currentCycleDay: rolledCycleDay,
+      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
+      isPredictionStale,
+      rawCycleDay,
+      cycleDayLooksLong,
+      isPregnancyPaused: false,
+      pregnancyTestDate: null,
+      lutealPhase,
+      projectedPeriodLength,
+      nextPeriodDate,
+      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
+      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
+      ovulationDate: null,
+      upcomingOvulationDate: null,
+      predictionCycleLength,
+    };
+  }
+
   const rolledStartValue = formatLocalDate(rolledStart);
   const rolledWindow = predictCycleWindow(
     rolledStartValue,
@@ -408,33 +435,6 @@ export function buildCurrentCycleProjection(
     nextPeriodWindow,
     lutealPhase,
   );
-
-  // Stale band (web CycleDataStale): the running cycle is past its overdue
-  // length, so the rolled window describes a cycle the owner has not started.
-  // Every ovulation date (current-window and upcoming) and the range are
-  // withheld, as web withholds fertility, and the phase reads "unknown" (a
-  // logged period day is still a fact). The rolled currentCycleDay stays as
-  // published; display surfaces read the raw day via `resolveDisplayCycleDay`.
-  if (isPredictionStale) {
-    return {
-      cycleAnchorDate,
-      currentCycleDay: rolledCycleDay,
-      currentPhase: isPeriodLoggedOnDate(records, todayValue) ? "menstrual" : "unknown",
-      isPredictionStale,
-      rawCycleDay,
-      cycleDayLooksLong,
-      isPregnancyPaused: false,
-      pregnancyTestDate: null,
-      lutealPhase,
-      projectedPeriodLength,
-      nextPeriodDate,
-      nextPeriodWindowStartDate: nextPeriodWindow?.startDate ?? null,
-      nextPeriodWindowEndDate: nextPeriodWindow?.endDate ?? null,
-      ovulationDate: null,
-      upcomingOvulationDate: null,
-      predictionCycleLength,
-    };
-  }
 
   return {
     cycleAnchorDate,
