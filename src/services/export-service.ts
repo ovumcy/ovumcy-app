@@ -19,6 +19,7 @@ import type { ScreeningResponse } from "../models/screening";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import type { ExportPDFBuildInput } from "./export-pdf-service";
 import {
   applyExportPreset,
@@ -230,6 +231,7 @@ export async function buildLocalExportArtifact(
       postpartumRecords,
       allScreeningResponses,
       activePregnancy,
+      cycleHistoryLogs,
     ] = await Promise.all([
       storage.readProfileRecord(),
       storage.listSymptomRecords(),
@@ -252,6 +254,9 @@ export async function buildLocalExportArtifact(
       needsActivePregnancy
         ? storage.readActivePregnancy()
         : Promise.resolve<PregnancyRecord | null>(null),
+      format === "pdf"
+        ? listCycleHistoryRecords(storage, now)
+        : Promise.resolve<DayLogRecord[]>([]),
     ]);
 
     // Screening responses are ranged by completion date like sessions (the
@@ -291,6 +296,7 @@ export async function buildLocalExportArtifact(
               profile,
               symptomRecords,
               dayLogs,
+              cycleHistoryLogs,
               now,
               dependencies.buildPDFContent ?? defaultBuildPDFContent,
               activePregnancy !== null,
@@ -410,6 +416,7 @@ async function buildPDFArtifact(
   profile: ProfileRecord,
   symptomRecords: SymptomRecord[],
   dayLogs: DayLogRecord[],
+  cycleHistoryLogs: DayLogRecord[],
   now: Date,
   buildPDFContent: (input: ExportPDFBuildInput) => Promise<Uint8Array>,
   suppressPredictions: boolean,
@@ -417,6 +424,7 @@ async function buildPDFArtifact(
   const content = await buildPDFContent({
     now,
     dayLogs,
+    cycleHistoryLogs,
     profile,
     symptomRecords,
     suppressPredictions,
