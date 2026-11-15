@@ -60,6 +60,7 @@ export type AccountSecurityCopy = {
     recoveryCodeRequired: string;
     resetTokenRequired: string;
     unauthorized: string;
+    totpCodeRequired: string;
     generic: string;
   };
 };
@@ -129,6 +130,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     recoveryCodeRequired: "Enter the recovery code.",
     resetTokenRequired: "Reset token is missing.",
     unauthorized: "Session expired. Sign in again.",
+    totpCodeRequired:
+      "Two-factor is on. Enter the current 6-digit code from your authenticator app.",
     generic: "Something went wrong. Try again.",
   },
 };
@@ -200,6 +203,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     recoveryCodeRequired: "Geben Sie den Wiederherstellungscode ein.",
     resetTokenRequired: "Zurücksetzungs-Token fehlt.",
     unauthorized: "Sitzung abgelaufen. Melden Sie sich erneut an.",
+    totpCodeRequired:
+      "Zwei-Faktor ist aktiv. Geben Sie den aktuellen 6-stelligen Code aus Ihrer Authenticator-App ein.",
     generic: "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
   },
 };
@@ -274,6 +279,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     recoveryCodeRequired: "Entrez le code de récupération.",
     resetTokenRequired: "Token de réinitialisation manquant.",
     unauthorized: "Session expirée. Reconnectez-vous.",
+    totpCodeRequired:
+      "La double authentification est activée. Saisissez le code à 6 chiffres actuel de votre application.",
     generic: "Quelque chose s'est mal passé. Réessayez.",
   },
 };
@@ -346,6 +353,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     recoveryCodeRequired: "Введите код восстановления.",
     resetTokenRequired: "Отсутствует токен сброса.",
     unauthorized: "Сессия истекла. Войдите снова.",
+    totpCodeRequired:
+      "Двухфакторка включена. Введите текущий шестизначный код из приложения-аутентификатора.",
     generic: "Что-то пошло не так. Попробуйте снова.",
   },
 };
@@ -420,6 +429,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     recoveryCodeRequired: "Introduce el código de recuperación.",
     resetTokenRequired: "Falta el token de restablecimiento.",
     unauthorized: "La sesión ha caducado. Vuelve a iniciar sesión.",
+    totpCodeRequired:
+      "El doble factor está activado. Introduce el código actual de 6 dígitos de tu app de autenticación.",
     generic: "Algo salió mal. Vuelve a intentarlo.",
   },
 };
@@ -490,6 +501,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     recoveryCodeRequired: "Inserisci il codice di recupero.",
     resetTokenRequired: "Token di reimpostazione mancante.",
     unauthorized: "Sessione scaduta. Accedi di nuovo.",
+    totpCodeRequired:
+      "L'autenticazione a due fattori è attiva. Inserisci il codice a 6 cifre attuale della tua app di autenticazione.",
     generic: "Qualcosa è andato storto. Riprova.",
   },
 };

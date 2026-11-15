@@ -19,6 +19,7 @@ import {
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
 import { isPasswordTooShort } from "./password-policy";
+import { isTOTPCodeFormat } from "./sync-totp-service";
 
 export type ChangeSyncPasswordErrorCode =
   | NormalizeSyncEndpointErrorCode
@@ -59,6 +60,7 @@ export type RegenerateSyncRecoveryCodeErrorCode =
   | "not_connected"
   | "current_password_required"
   | "invalid_current_password"
+  | "totp_code_required"
   | "totp_invalid_code"
   | "totp_replayed"
   | "totp_not_configured"
@@ -343,7 +345,10 @@ export async function regenerateSyncAccountRecoveryCode(
   }
 
   const code = input.code?.trim();
-  if (code !== undefined && !/^\d{6}$/.test(code)) {
+  if (code === "") {
+    return { ok: false, errorCode: "totp_code_required" };
+  }
+  if (code !== undefined && !isTOTPCodeFormat(code)) {
     return { ok: false, errorCode: "totp_invalid_code" };
   }
 
