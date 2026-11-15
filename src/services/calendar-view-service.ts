@@ -13,6 +13,7 @@ import {
   type WeekStartDay,
 } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
@@ -167,10 +168,15 @@ export async function loadCalendarScreenState(
   const rangeStart = formatLocalDate(addCalendarDays(gridStart, -70));
   const rangeEnd = formatLocalDate(addCalendarDays(gridEnd, 70));
 
-  const [profile, logs, selectedRecord, symptomRecords, activePregnancy] =
+  const [profile, logs, historyRecords, selectedRecord, symptomRecords, activePregnancy] =
     await Promise.all([
       storage.readProfileRecord(),
       storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
+      // Cycle readers take the shared history, not the grid window: a month
+      // paged far ahead would otherwise drop the positive test that pauses
+      // predictions. A month older than that history reaches back to its own
+      // window so its historical phases still paint.
+      listCycleHistoryRecords(storage, today, rangeStart),
       storage.readDayLogRecord(activeDate),
       storage.listSymptomRecords(),
       storage.readActivePregnancy(),
@@ -179,8 +185,8 @@ export async function loadCalendarScreenState(
     ...selectedRecord,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
   };
-  const history = buildCycleHistorySummary(profile, logs, today);
-  const projection = buildCurrentCycleProjection(profile, history, logs, today);
+  const history = buildCycleHistorySummary(profile, historyRecords, today);
+  const projection = buildCurrentCycleProjection(profile, history, historyRecords, today);
   const effectiveSelectedRecord = resolveCalendarVisibleRecord(
     profile,
     filteredSelectedRecord,
@@ -215,6 +221,7 @@ export async function loadCalendarScreenState(
     locale,
     {
       history,
+      historyRecords,
       projection,
       // an ACTIVE pregnancy record must suppress predictions even when
       // resolvePregnancyPause (cycle-history-service, untouched) has itself
@@ -274,6 +281,8 @@ export function buildCalendarViewData(
   locale = "en",
   options: {
     history?: ReturnType<typeof buildCycleHistorySummary>;
+    // The day logs history and projection are read from; defaults to records.
+    historyRecords?: DayLogRecord[];
     projection?: ReturnType<typeof buildCurrentCycleProjection>;
     // Additive: true when an active pregnancy record exists -- the record's
     // status alone, with no gestational-age condition, so a record whose GA
@@ -289,16 +298,17 @@ export function buildCalendarViewData(
 ): CalendarViewData {
   const calendarCopy = getCalendarCopy(locale);
   const dashboardCopy = getDashboardCopy(locale);
+  const historyRecords = options.historyRecords ?? records;
   const history =
-    options.history ?? buildCycleHistorySummary(profile, records, today);
+    options.history ?? buildCycleHistorySummary(profile, historyRecords, today);
   const projection =
     options.projection ??
-    buildCurrentCycleProjection(profile, history, records, today);
+    buildCurrentCycleProjection(profile, history, historyRecords, today);
   const predictionMaps = buildCalendarPredictionMaps(
     profile,
     history,
     projection,
-    records,
+    historyRecords,
     today,
     monthStart,
     options.suppressPredictions ?? false,

@@ -2,7 +2,7 @@ import { resolveEffectiveLanguage } from "../i18n/runtime";
 import type { ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { normalizeCycleDayReminders } from "./cycle-day-reminder-policy";
-import { formatLocalDate } from "./profile-settings-policy";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import {
   buildLocalReminderPlans,
   type LocalReminderPlan,
@@ -96,11 +96,7 @@ async function loadLocalReminderPlans(
   now: Date,
   locale: string,
 ) {
-  const rangeStart = formatLocalDate(
-    new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()),
-  );
-  const today = formatLocalDate(now);
-  const records = await storage.listDayLogRecordsInRange(rangeStart, today);
+  const records = await listCycleHistoryRecords(storage, now);
   // Pregnancy state gates two things: the kick-count plan (an active record at
   // gaWeeks >= 28) and prediction suppression for the period/fertile-window
   // plans (an ACTIVE record suppresses them even when the day-log pause is

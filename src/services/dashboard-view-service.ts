@@ -29,6 +29,7 @@ import {
   buildCurrentCycleProjection,
   collectCycleStartDates,
 } from "./cycle-history-service";
+import { listCycleHistoryRecords } from "./cycle-history-records";
 import { calcOvulationDay, predictCycleWindow } from "./cycle-prediction-policy";
 import { buildPredictionExplanation } from "./prediction-explanation-service";
 import { filterKnownSymptomIDs } from "./symptom-policy";
@@ -245,9 +246,6 @@ export async function loadDashboardScreenState(
   } = {},
 ): Promise<LoadedDashboardState> {
   const today = formatLocalDate(now);
-  const rangeStart = formatLocalDate(
-    new Date(now.getFullYear() - 2, now.getMonth(), now.getDate()),
-  );
   const [
     profile,
     todayEntry,
@@ -258,7 +256,7 @@ export async function loadDashboardScreenState(
   ] = await Promise.all([
     storage.readProfileRecord(),
     storage.readDayLogRecord(today),
-    storage.listDayLogRecordsInRange(rangeStart, today),
+    listCycleHistoryRecords(storage, now),
     storage.listSymptomRecords(),
     storage.readActivePregnancy(),
     storage.readActivePostpartum(),
