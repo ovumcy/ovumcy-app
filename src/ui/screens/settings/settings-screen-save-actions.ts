@@ -100,15 +100,23 @@ export async function runSavePendingSettingsAction(
       setCycleErrorMessage(
         cycleResult.errorCode === "invalid_last_period_start"
           ? viewData.status.invalidLastPeriodStart
-          : cycleResult.errorCode === "invalid_cycle_settings"
+          : cycleResult.errorCode === "spotting_last_period_start"
+            ? viewData.status.spottingLastPeriodStart
+            : cycleResult.errorCode === "invalid_cycle_settings"
             ? viewData.cycle.messages.errorIncompatible
             : viewData.status.saveFailed,
       );
       setState(nextState);
       return false;
     }
+    const startFromLoggedDays =
+      cycleResult.state.cycleValues.lastPeriodStart !== nextState.cycleValues.lastPeriodStart;
     nextState = cycleResult.state;
-    setCycleStatusMessage(viewData.status.cycleSaved);
+    setCycleStatusMessage(
+      startFromLoggedDays
+        ? viewData.status.cycleSavedStartFromLoggedDays
+        : viewData.status.cycleSaved,
+    );
     await syncManagedPartnerSharedProjections(
       storage,
       syncSecretStore,

@@ -198,6 +198,32 @@ describe("settings period start move", () => {
     expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-08");
   });
 
+  it("stores a later logged cycle start when the earlier date is history, not a correction", async () => {
+    const storage = await seed({ lastPeriodStart: "2026-06-01" }, [
+      ...filledRun("2026-06-01", 5),
+      startDay("2026-06-15"),
+    ]);
+
+    const result = await moveStart(storage, "2026-05-20");
+
+    expect(result.ok).toBe(true);
+    expect((await rowOn(storage, "2026-05-20"))?.cycleStart).toBe(true);
+    expect((await rowOn(storage, "2026-06-01"))?.cycleStart).toBe(true);
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-15");
+  });
+
+  it("refuses a start typed on a spotting day and writes nothing", async () => {
+    const records = [startDay("2026-06-10"), periodDay("2026-06-06", { flow: "spotting" })];
+    const storage = await seed({ lastPeriodStart: "2026-06-10", autoPeriodFill: false }, records);
+
+    const result = await moveStart(storage, "2026-06-06");
+
+    expect(result).toEqual({ ok: false, errorCode: "spotting_last_period_start" });
+    expect(await allRows(storage)).toEqual(expect.arrayContaining(records));
+    expect(await rowDates(storage)).toEqual(["2026-06-06", "2026-06-10"]);
+    expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-06-10");
+  });
+
   it("turning auto-fill off with the move still clears the old filled run and writes only the mark", async () => {
     const storage = await seed({ lastPeriodStart: "2026-06-10" }, filledRun("2026-06-10", 5));
 
