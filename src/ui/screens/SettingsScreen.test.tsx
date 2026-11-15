@@ -1606,6 +1606,13 @@ describe("SettingsScreen", () => {
       readProfileRecord: jest
         .fn()
         .mockResolvedValue(createDefaultProfileRecord()),
+      // Pristine means no stored day log as well as a default profile.
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: 0,
+        hasData: false,
+        dateFrom: null,
+        dateTo: null,
+      }),
     });
     const importFilePickerClient = createImportPickerMock(
       importEnvelopeJSON({
