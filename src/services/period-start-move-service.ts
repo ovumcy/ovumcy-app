@@ -54,6 +54,8 @@ function oldStartIsCorrected(
 ): boolean {
   const oldDate = parseLocalDate(oldStart);
   const newDate = parseLocalDate(newStart);
+  /* istanbul ignore next -- unreachable: both dates passed isValidCycleStartDate
+     or were stored through the same validated profile write */
   if (!oldDate || !newDate) {
     return false;
   }
@@ -151,6 +153,7 @@ function collectOldFilledRun(
   periodLength: number,
 ): string[] {
   const start = parseLocalDate(oldStart);
+  /* istanbul ignore next -- unreachable: oldStartIsCorrected already parsed it */
   if (!start) {
     return [];
   }
