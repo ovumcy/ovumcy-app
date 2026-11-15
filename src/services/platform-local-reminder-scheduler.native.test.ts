@@ -165,6 +165,53 @@ describe("platform-local-reminder-scheduler.native", () => {
     expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith("shown-1");
   });
 
+  it("still clears the schedule when the shade cannot be read", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "daily-1", content: { data: { ovumcyReminderKind: "daily_log" } } },
+    ]);
+    Notifications.getPresentedNotificationsAsync.mockRejectedValueOnce(
+      new Error("unsupported"),
+    );
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(
+      "daily-1",
+    );
+    expect(Notifications.dismissNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps dismissing its shown reminders after one refuses to go", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getPresentedNotificationsAsync.mockResolvedValueOnce([
+      { request: { identifier: "shown-1", content: { data: { ovumcyReminderKind: "cycle_day" } } } },
+      { request: { identifier: "shown-2", content: { data: { ovumcyReminderKind: "daily_log" } } } },
+    ]);
+    Notifications.dismissNotificationAsync.mockRejectedValueOnce(
+      new Error("gone"),
+    );
+
+    await expect(scheduler.sync([])).resolves.toBe("scheduled");
+
+    expect(Notifications.dismissNotificationAsync).toHaveBeenNthCalledWith(1, "shown-1");
+    expect(Notifications.dismissNotificationAsync).toHaveBeenNthCalledWith(2, "shown-2");
+  });
+
   it("leaves notifications it did not schedule alone", async () => {
     const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
       "standalone",
