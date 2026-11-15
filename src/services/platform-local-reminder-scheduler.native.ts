@@ -174,6 +174,20 @@ async function clearManagedReminders(Notifications: ExpoNotificationsModule) {
   }
 }
 
+// One queue for the whole module, not per instance: callers each create their
+// own scheduler, and two overlapping syncs would interleave cancel and
+// schedule passes on the same OS state -- the older plan can cancel the newer
+// one's schedules or land duplicates. Calls run in call order, so the last
+// caller's plan is what stays scheduled; a failed sync does not block the next.
+let syncQueue: Promise<unknown> = Promise.resolve();
+
 export function createPlatformLocalReminderScheduler(): LocalReminderScheduler {
-  return createNativeReminderScheduler();
+  const scheduler = createNativeReminderScheduler();
+  return {
+    sync(plans) {
+      const run = syncQueue.then(() => scheduler.sync(plans));
+      syncQueue = run.catch(() => undefined);
+      return run;
+    },
+  };
 }
