@@ -290,7 +290,10 @@ that owns the canonical web UX).
     stamp, so an old run is recognised by its content alone (a start row with
     nothing else, followed by bare period days, only while auto-fill is on);
     a row that holds any data is never removed, and an existing row in the
-    new run keeps its data and only gains the period day.
+    new run keeps its data and only gains the period day. When a start moved
+    earlier leaves a later period behind (days ticked after the old start, or
+    an old-run row holding data), the stored start becomes that later period's
+    start, so it matches the projection anchor.
     Pinned by `src/services/period-start-move-service.test.ts`.
 - Tracking section:
   - full-width toggle list
