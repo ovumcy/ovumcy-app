@@ -85,6 +85,7 @@ describe("export-pdf-service sample PDF", () => {
       {
         now: new Date(2026, 4, 24),
         dayLogs,
+        cycleHistoryLogs: dayLogs,
         profile,
         symptomRecords: createDefaultSymptomRecords(),
       },

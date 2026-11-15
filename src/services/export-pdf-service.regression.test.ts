@@ -113,6 +113,7 @@ function buildScenarioInput(locale: InterfaceLanguage) {
     // Fixed instant → deterministic "generated at" header and history window.
     now: new Date(2026, 4, 24),
     dayLogs,
+    cycleHistoryLogs: dayLogs,
     profile,
     symptomRecords: createDefaultSymptomRecords(),
   };

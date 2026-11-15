@@ -9,6 +9,7 @@ import type { ScreeningResponse } from "../models/screening";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import type { ExportPDFBuildInput } from "./export-pdf-service";
 import {
   buildLocalExportArtifact,
   buildExportCSVRows,
@@ -499,6 +500,45 @@ describe("export-service", () => {
     expect(buildPDFContent).toHaveBeenCalledWith(
       expect.objectContaining({ suppressPredictions: false }),
     );
+  });
+
+  it("feeds the PDF the shared cycle history beside the export range, so a later positive test still pauses it", async () => {
+    const stored = [
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-03-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-05-10"), pregnancyTest: "positive" as const },
+    ];
+    const storage = createStorageMock({
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockImplementation(async (from: string, to: string) =>
+          stored.filter((record) => record.date >= from && record.date <= to),
+        ),
+    });
+    const now = new Date(2026, 4, 20, 10);
+    const loaded = await loadLocalExportState(storage, now, {
+      preset: "custom",
+      fromDate: "2026-01-01",
+      toDate: "2026-03-31",
+    });
+    if (loaded.errorCode) {
+      throw new Error(`unexpected export error ${loaded.errorCode}`);
+    }
+
+    const buildPDFContent = jest.fn().mockResolvedValue(new Uint8Array([0x25]));
+    const result = await buildLocalExportArtifact(storage, loaded.state, "pdf", now, {
+      buildPDFContent,
+    });
+
+    expect(result.ok).toBe(true);
+    const input = buildPDFContent.mock.calls[0]?.[0] as ExportPDFBuildInput;
+    expect(input.dayLogs.map((record) => record.date)).toEqual([
+      "2026-01-01",
+      "2026-02-01",
+      "2026-03-01",
+    ]);
+    expect(input.cycleHistoryLogs.map((record) => record.date)).toContain("2026-05-10");
   });
 
   it("never reads the active-pregnancy record for CSV/JSON exports (PDF-only signal)", async () => {

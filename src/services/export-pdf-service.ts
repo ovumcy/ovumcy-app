@@ -86,6 +86,11 @@ const STAT_CARD_GAP = 10;
 export type ExportPDFBuildInput = {
   now: Date;
   dayLogs: readonly DayLogRecord[];
+  // The shared cycle history (listCycleHistoryRecords) the other prediction
+  // surfaces read. The current-cycle projection and the pregnancy pause come
+  // from it, so a positive test outside the export range still pauses the PDF;
+  // everything listed in the report stays within `dayLogs`.
+  cycleHistoryLogs: readonly DayLogRecord[];
   profile: ProfileRecord;
   symptomRecords: readonly SymptomRecord[];
   // Additive, mirrors the stats/calendar suppressPredictions pattern:
@@ -162,6 +167,7 @@ export async function buildExportPDFContent(
 export function buildExportPDFReport({
   now,
   dayLogs,
+  cycleHistoryLogs,
   profile,
   symptomRecords,
   suppressPredictions = false,
@@ -201,10 +207,13 @@ export function buildExportPDFReport({
   // projection that pauses dashboard, calendar, and stats. Computed before the
   // advanced-fertility section so its un-lifted pause can gate the
   // current-cycle signals below.
+  const sortedHistoryLogs = [...cycleHistoryLogs].sort((left, right) =>
+    left.date.localeCompare(right.date),
+  );
   const projection = buildCurrentCycleProjection(
     profile,
-    history,
-    [...sortedDayLogs],
+    buildCycleHistorySummary(profile, sortedHistoryLogs, now),
+    sortedHistoryLogs,
     now,
   );
 

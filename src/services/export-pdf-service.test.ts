@@ -7,8 +7,31 @@ import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import { createDefaultSymptomRecords } from "../models/symptom";
 import { getExportPDFCopy } from "../i18n/export-pdf-copy";
-import { buildExportPDFContent, buildExportPDFReport } from "./export-pdf-service";
+import {
+  buildExportPDFContent,
+  buildExportPDFReport,
+  type ExportPDFBuildInput,
+} from "./export-pdf-service";
 import { addDays, formatLocalDate, parseLocalDate } from "./profile-settings-policy";
+
+
+type TestBuildInput = Omit<ExportPDFBuildInput, "cycleHistoryLogs"> &
+  Partial<Pick<ExportPDFBuildInput, "cycleHistoryLogs">>;
+
+function withHistory(input: TestBuildInput): ExportPDFBuildInput {
+  return { ...input, cycleHistoryLogs: input.cycleHistoryLogs ?? input.dayLogs };
+}
+
+function buildReport(input: TestBuildInput) {
+  return buildExportPDFReport(withHistory(input));
+}
+
+function buildContent(
+  input: TestBuildInput,
+  fontBytesLoader?: Parameters<typeof buildExportPDFContent>[1],
+) {
+  return buildExportPDFContent(withHistory(input), fontBytesLoader);
+}
 
 // Shared font-byte loader for the PDF-render tests below: reads the real
 // embedded fonts once (matching the existing "renders a binary PDF document"
@@ -172,7 +195,7 @@ describe("export-pdf-service", () => {
       isDefault: false,
     } as const;
 
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-03-18T10:00:00.000Z"),
       profile: {
         lastPeriodStart: "2026-02-01",
@@ -277,7 +300,7 @@ describe("export-pdf-service", () => {
   });
 
   it("degrades gracefully to empty optional sections when there is no day-log history", () => {
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-03-18T10:00:00.000Z"),
       profile: {
         lastPeriodStart: null,
@@ -323,7 +346,7 @@ describe("export-pdf-service", () => {
       readFile(join(process.cwd(), "assets/fonts/DejaVuSansCondensed-Bold.ttf")),
     ]);
 
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-03-18T10:00:00.000Z"),
         profile: {
@@ -459,7 +482,7 @@ describe("export-pdf-service", () => {
 
   it("surfaces a confirmed thermal-shift and ovulation-confirmation signal, extended-report comparisons, and an observed-ovulation calendar marker from a multi-cycle history", () => {
     const pdfCopy = getExportPDFCopy("en");
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-05-15T10:00:00.000Z"),
       profile: RICH_HISTORY_PROFILE,
       symptomRecords: createDefaultSymptomRecords(),
@@ -522,7 +545,7 @@ describe("export-pdf-service", () => {
     // Simulates legacy or corrupted data (an option value from a removed
     // catalog entry) reaching the export layer: it must degrade to the raw
     // value rather than crash or silently drop the field.
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-08-05T10:00:00.000Z"),
       profile: {
         lastPeriodStart: "2026-07-29",
@@ -604,7 +627,7 @@ describe("export-pdf-service", () => {
     // history is not clamped to that minimum the way profile settings are,
     // so an unusually short completed cycle can still reach the calendar-
     // marker step here; it must degrade to "no markers" rather than throw.
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-01-20T10:00:00.000Z"),
       profile: {
         lastPeriodStart: "2026-01-11",
@@ -655,7 +678,7 @@ describe("export-pdf-service", () => {
   });
 
   it("renders the populated advanced-fertility, extended-report, and short-luteal sections, truncates a long note with a cycle-factor prefix, and skips a day log with an unparseable date", async () => {
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-05-15T10:00:00.000Z"),
         profile: RICH_HISTORY_PROFILE,
@@ -673,7 +696,7 @@ describe("export-pdf-service", () => {
   });
 
   it("renders the empty-state calendar and cycles sections on a single page when there is no day-log history", async () => {
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-05-15T10:00:00.000Z"),
         profile: {
@@ -704,7 +727,7 @@ describe("export-pdf-service", () => {
   });
 
   it("paginates a single cycle's table across multiple pages when it has more logged days than fit on one page", async () => {
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-10-20T10:00:00.000Z"),
         profile: {
@@ -767,7 +790,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     });
 
     function reportLanguage(languageOverride: "en" | null) {
-      return buildExportPDFReport({
+      return buildReport({
         now: new Date("2026-03-20T10:00:00.000Z"),
         profile: { ...PROFILE, languageOverride },
         symptomRecords: [],
@@ -801,7 +824,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   });
 
   it("omits the section data entirely when no test was ever recorded", () => {
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-03-20T10:00:00.000Z"),
       profile: PROFILE,
       symptomRecords: [],
@@ -813,7 +836,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   });
 
   it("lists recorded results in date order and skips days with no test", () => {
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-03-20T10:00:00.000Z"),
       profile: PROFILE,
       symptomRecords: [],
@@ -838,7 +861,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   });
 
   it("reports the pause date from the shared projection when a positive test pauses predictions", () => {
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-03-20T10:00:00.000Z"),
       profile: PROFILE,
       symptomRecords: [],
@@ -855,7 +878,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   });
 
   it("keeps the result on record but drops the pause once a later cycle start is logged", () => {
-    const report = buildExportPDFReport({
+    const report = buildReport({
       now: new Date("2026-04-20T10:00:00.000Z"),
       profile: { ...PROFILE, lastPeriodStart: "2026-04-05" },
       symptomRecords: [],
@@ -877,7 +900,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
 
   it("renders the section into the document without breaking pagination", async () => {
     const pdfCopy = getExportPDFCopy("en");
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-03-20T10:00:00.000Z"),
         profile: PROFILE,
@@ -905,7 +928,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   });
 
   it("renders the recorded results without a pause note once predictions resumed", async () => {
-    const content = await buildExportPDFContent(
+    const content = await buildContent(
       {
         now: new Date("2026-04-20T10:00:00.000Z"),
         profile: { ...PROFILE, lastPeriodStart: "2026-04-05" },
@@ -966,7 +989,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     const now = new Date("2026-02-15T09:00:00.000Z");
 
     it("prints the current-cycle LH-peak signal when suppressPredictions is absent (regression: plain PDF unchanged)", () => {
-      const report = buildExportPDFReport({
+      const report = buildReport({
         now,
         dayLogs,
         profile: pdfProfile,
@@ -981,7 +1004,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     });
 
     it("suppresses the current-cycle LH-peak signal when an active pregnancy record exists, leaving completed-cycle history untouched", () => {
-      const report = buildExportPDFReport({
+      const report = buildReport({
         now,
         dayLogs,
         profile: pdfProfile,
@@ -1002,7 +1025,7 @@ describe("doctor PDF: recorded pregnancy tests", () => {
     });
 
     it("suppresses the current-cycle LH-peak signal while the day-log pause is active (no pregnancy record)", () => {
-      const report = buildExportPDFReport({
+      const report = buildReport({
         now,
         dayLogs: [
           ...dayLogs,
@@ -1025,15 +1048,59 @@ describe("doctor PDF: recorded pregnancy tests", () => {
       expect(report.cycles[0]?.startDate).toBe("2026-01-01");
     });
 
+    it("pauses from the shared cycle history when the positive test lies outside the export range", () => {
+      const report = buildReport({
+        now,
+        dayLogs,
+        cycleHistoryLogs: [
+          ...dayLogs,
+          {
+            ...createEmptyDayLogRecord("2026-02-12"),
+            pregnancyTest: "positive" as const,
+          },
+        ],
+        profile: pdfProfile,
+        symptomRecords: [],
+      });
+
+      expect(report.pregnancyPauseDate).toBe("2026-02-12");
+      expect(report.advancedFertility).toEqual([]);
+      expect(report.pregnancyTests).toEqual([]);
+      expect(report.cycles).toHaveLength(1);
+      expect(report.cycles[0]?.startDate).toBe("2026-01-01");
+    });
+
+    it("lifts the pause once the shared history holds a later cycle start", () => {
+      const rangeLogs = [
+        ...dayLogs,
+        {
+          ...createEmptyDayLogRecord("2026-02-12"),
+          pregnancyTest: "positive" as const,
+        },
+      ];
+      const report = buildReport({
+        now: new Date("2026-03-20T09:00:00.000Z"),
+        dayLogs: rangeLogs,
+        cycleHistoryLogs: [
+          ...rangeLogs,
+          { ...createEmptyDayLogRecord("2026-03-10"), isPeriod: true, cycleStart: true },
+        ],
+        profile: { ...pdfProfile, lastPeriodStart: "2026-03-10" },
+        symptomRecords: [],
+      });
+
+      expect(report.pregnancyPauseDate).toBeNull();
+    });
+
     it("defaults suppressPredictions to false when omitted (additive-option regression guard)", () => {
-      const suppressedExplicitlyFalse = buildExportPDFReport({
+      const suppressedExplicitlyFalse = buildReport({
         now,
         dayLogs,
         profile: pdfProfile,
         symptomRecords: [],
         suppressPredictions: false,
       });
-      const omitted = buildExportPDFReport({
+      const omitted = buildReport({
         now,
         dayLogs,
         profile: pdfProfile,
