@@ -1424,6 +1424,11 @@ describe("sqlite-app-storage", () => {
     ).rejects.toThrow("simulated profile write failure");
     expect(transactionOpen).toBe(true);
 
+    // A plain write queued next runs outside the dangling transaction, so the
+    // recovery rollback never discards it.
+    await storage.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-03-05"), notes: "kept" });
+    expect(transactionOpen).toBe(false);
+
     failProfile = false;
     await storage.commitDayLogChanges({
       writes: [{ ...createEmptyDayLogRecord("2026-03-12"), isPeriod: true }],
@@ -1433,6 +1438,7 @@ describe("sqlite-app-storage", () => {
 
     expect(transactionOpen).toBe(false);
     expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
+    expect((await storage.readDayLogRecord("2026-03-05")).notes).toBe("kept");
 
     // A rollback that finds nothing open does not block the next commit.
     failProfile = true;

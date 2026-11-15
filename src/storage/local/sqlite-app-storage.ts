@@ -247,10 +247,31 @@ export function createSQLiteAppStorage(
   let localDataKeyPromise: Promise<string> | null = null;
   let resetBarrierPromise: Promise<void> | null = null;
   let storageOperationQueue = Promise.resolve();
-  let dayLogTransactionMayBeOpen = false;
+  let danglingTransactionDatabase: LocalAppDatabase | null = null;
+
+  // A failed ROLLBACK can leave the connection inside the previous
+  // transaction. It is cleared before ANY next operation: a plain write that
+  // ran first would join the open transaction and be discarded with it, and
+  // every later BEGIN would fail as nested.
+  async function clearDanglingTransaction(): Promise<void> {
+    const database = danglingTransactionDatabase;
+    if (!database) {
+      return;
+    }
+    danglingTransactionDatabase = null;
+    try {
+      await database.execAsync("ROLLBACK;");
+    } catch {
+      // Nothing was open after all; the operation reports any real failure.
+    }
+  }
 
   function enqueueStorageOperation<T>(task: () => Promise<T>): Promise<T> {
-    const result = storageOperationQueue.then(task, task);
+    const run = async () => {
+      await clearDanglingTransaction();
+      return task();
+    };
+    const result = storageOperationQueue.then(run, run);
     storageOperationQueue = result.then(
       () => undefined,
       () => undefined,
@@ -499,16 +520,6 @@ export function createSQLiteAppStorage(
   async function commitDayLogChangesInternal(change: DayLogChangeSet): Promise<void> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
-    if (dayLogTransactionMayBeOpen) {
-      // A failed ROLLBACK left the connection inside the previous transaction;
-      // clear it, or every BEGIN below fails with a nested-transaction error.
-      try {
-        await database.execAsync("ROLLBACK;");
-      } catch {
-        // Nothing was open after all; BEGIN reports any real failure.
-      }
-      dayLogTransactionMayBeOpen = false;
-    }
     await database.execAsync("BEGIN IMMEDIATE;");
     try {
       for (const record of change.writes) {
@@ -528,9 +539,9 @@ export function createSQLiteAppStorage(
       try {
         await database.execAsync("ROLLBACK;");
       } catch {
-        // The original failure is the one worth reporting; the next commit
-        // retries the rollback before it begins.
-        dayLogTransactionMayBeOpen = true;
+        // The original failure is the one worth reporting; the next queued
+        // operation retries the rollback before it runs.
+        danglingTransactionDatabase = database;
       }
       throw error;
     }
