@@ -108,7 +108,7 @@ describe("shared cycle history across surfaces", () => {
     expect(collectCycleStartDates(profile, history, TODAY)).toEqual(allStarts);
   });
 
-  it("paints a month paged ahead from the same cycles as the dashboard", async () => {
+  it("paints a month paged past the grid window from the shared history", async () => {
     const storage = await seed({}, [
       period("2026-04-06"),
       period("2026-04-07"),

@@ -13,7 +13,11 @@ import {
   type WeekStartDay,
 } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
-import { listCycleHistoryRecords } from "./cycle-history-records";
+import {
+  MIN_DAY_LOG_DATE,
+  cycleHistoryStart,
+  selectWholeClustersFrom,
+} from "./cycle-history-records";
 import {
   buildCycleHistorySummary,
   buildCurrentCycleProjection,
@@ -167,20 +171,32 @@ export async function loadCalendarScreenState(
   const gridEnd = endOfWeek(endOfMonth(monthStart));
   const rangeStart = formatLocalDate(addCalendarDays(gridStart, -70));
   const rangeEnd = formatLocalDate(addCalendarDays(gridEnd, 70));
+  const todayValue = formatLocalDate(today);
 
-  const [profile, logs, historyRecords, selectedRecord, symptomRecords, activePregnancy] =
+  const [profile, dayLogs, selectedRecord, symptomRecords, activePregnancy] =
     await Promise.all([
       storage.readProfileRecord(),
-      storage.listDayLogRecordsInRange(rangeStart, rangeEnd),
-      // Cycle readers take the shared history, not the grid window: a month
-      // paged far ahead would otherwise drop the positive test that pauses
-      // predictions. A month older than that history reaches back to its own
-      // window so its historical phases still paint.
-      listCycleHistoryRecords(storage, today, rangeStart),
+      // One read: SQLite decrypts every row on any range read.
+      storage.listDayLogRecordsInRange(
+        MIN_DAY_LOG_DATE,
+        rangeEnd > todayValue ? rangeEnd : todayValue,
+      ),
       storage.readDayLogRecord(activeDate),
       storage.listSymptomRecords(),
       storage.readActivePregnancy(),
     ]);
+  const logs = dayLogs.filter(
+    (record) => record.date >= rangeStart && record.date <= rangeEnd,
+  );
+  // Cycle readers take the shared history, not the grid window: a month paged
+  // far ahead would otherwise drop the positive test that pauses predictions.
+  // A month older than that history reaches back to its own window so its
+  // historical phases still paint.
+  const historyStart = cycleHistoryStart(today);
+  const historyRecords = selectWholeClustersFrom(
+    dayLogs.filter((record) => record.date <= todayValue),
+    rangeStart < historyStart ? rangeStart : historyStart,
+  );
   const filteredSelectedRecord: DayLogRecord = {
     ...selectedRecord,
     symptomIDs: filterKnownSymptomIDs(symptomRecords, selectedRecord.symptomIDs),
@@ -238,7 +254,7 @@ export async function loadCalendarScreenState(
     options.showLHTests === true
       ? buildCurrentCycleAdvancedFertilitySummary(
           history,
-          logs,
+          historyRecords,
           // A null anchor drops the current-cycle fertility signals (thermal
           // shift, LH peak, ovulation confirmation) while suppression holds —
           // the same lever the dashboard and stats equivalents pull. Both
