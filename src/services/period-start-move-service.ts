@@ -24,7 +24,7 @@ const MIN_CORRECTION_CYCLE_GAP_DAYS = 15;
 export function isPeriodStartMove(
   profile: ProfileRecord,
   nextProfile: ProfileRecord,
-): boolean {
+): nextProfile is ProfileRecord & { lastPeriodStart: string } {
   return (
     nextProfile.lastPeriodStart !== null &&
     nextProfile.lastPeriodStart !== profile.lastPeriodStart

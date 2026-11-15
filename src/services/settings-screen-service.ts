@@ -78,8 +78,8 @@ type RefreshExportStateResult =
       state: LoadedSettingsState;
     };
 
-function startOpensNoCycle(storedStart: string | null, typedStart: string | null): boolean {
-  return typedStart !== null && (storedStart === null || storedStart < typedStart);
+function startOpensNoCycle(storedStart: string | null, typedStart: string): boolean {
+  return storedStart === null || storedStart < typedStart;
 }
 
 export async function saveCycleSettings(
