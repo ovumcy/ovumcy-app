@@ -86,12 +86,26 @@ describe("cycle-day reminder rule validation", () => {
     ["label of a Hangul filler", { label: "ㅤ" }],
     ["label of a blank braille pattern", { label: "⠀" }],
     ["label with a lone surrogate", { label: "a\ud800b" }],
+    ["label of a lone joiner", { label: "‍" }],
+    ["label opening with a joiner", { label: "‍ab" }],
+    ["label closing with a non-joiner", { label: "ab‌" }],
+    ["label with a doubled joiner", { label: "a‍‍b" }],
+    ["label with a joiner next to a space", { label: "a ‍b" }],
+    ["label with a joiner next to a zero-width space", { label: "a​‍b" }],
     ["non-string label", { label: 7 }],
     ["id with a space", { id: "a b" }],
     ["empty id", { id: "" }],
     ["id of 65 characters", { id: "i".repeat(65) }],
   ])("drops a rule with %s", (_name, overrides) => {
     expect(normalizeCycleDayReminders([{ ...rule(), ...overrides }])).toEqual([]);
+  });
+
+  it.each([
+    ["an emoji ZWJ sequence", "\u{1f469}‍⚕️ check"],
+    ["an emoji sequence after a variation selector", "\u{1f3f3}️‍\u{1f308}"],
+    ["a Persian word with a non-joiner", "می‌خواهم"],
+  ])("keeps a label with %s", (_name, label) => {
+    expect(normalizeCycleDayReminders([rule({ label })])).toEqual([rule({ label })]);
   });
 
   it("trims the label and refuses showLabel without one", () => {

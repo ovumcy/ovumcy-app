@@ -214,7 +214,9 @@ not only day 1-2: web decides on the day itself, but a schedule built ahead from
 withdrawn the day after would fire on a day the cycle never reaches. A JSON import keeps the rules
 and their labels but turns every `showLabel` off, so a backup file cannot put text on this
 device's lock screen; a sync snapshot (authenticated with the owner's own keys) keeps the flag.
-Labels containing control, format, separator or blank-glyph characters are refused. Web's one-per-cycle
+Labels containing control, format, separator or blank-glyph characters are refused, except a
+zero-width joiner or non-joiner between two visible characters (emoji sequences, Persian and
+Indic words); a leading, trailing, doubled or space-adjacent joiner is refused. Web's one-per-cycle
 watermark and its neutral "held" notice have no local counterpart: the schedule is rebuilt whole,
 so a rule is scheduled at most once per rebuild, and no notice is sent.
 

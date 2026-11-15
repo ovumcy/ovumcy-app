@@ -42,37 +42,62 @@ export function createDefaultCycleDayReminder(
 // reorder, hide or blank what the owner reads back, so a label holding one is
 // refused whole. Explicit ranges rather than Unicode property escapes keep the
 // check identical on every JS engine the app runs on.
+//
+// The zero-width joiner and non-joiner are the one exception, and only between
+// two visible characters: emoji sequences and Persian or Indic words need them,
+// while a leading, trailing, doubled or space-adjacent joiner could still pad
+// or blank a label.
+const ZERO_WIDTH_NON_JOINER = 0x200c;
+const ZERO_WIDTH_JOINER = 0x200d;
+
 function containsControlOrFormatCharacter(value: string): boolean {
-  for (const char of value) {
-    // for...of yields whole code points, never an empty string.
-    const code = char.codePointAt(0) as number;
-    if (
-      code <= 0x1f ||
-      (code >= 0x7f && code <= 0x9f) ||
-      code === 0xad ||
-      code === 0x34f ||
-      code === 0x61c ||
-      code === 0x115f ||
-      code === 0x1160 ||
-      code === 0x17b4 ||
-      code === 0x17b5 ||
-      (code >= 0x180b && code <= 0x180f) ||
-      (code >= 0x200b && code <= 0x200f) ||
-      (code >= 0x2028 && code <= 0x202e) ||
-      (code >= 0x2060 && code <= 0x2064) ||
-      (code >= 0x2066 && code <= 0x206f) ||
-      code === 0x2800 ||
-      code === 0x3164 ||
-      (code >= 0xd800 && code <= 0xdfff) ||
-      code === 0xfeff ||
-      code === 0xffa0 ||
-      (code >= 0xfff9 && code <= 0xfffb) ||
-      (code >= 0xe0000 && code <= 0xe007f)
-    ) {
-      return true;
-    }
-  }
-  return false;
+  // Array.from splits by whole code points, never into an empty string.
+  const codes = Array.from(value, (char) => char.codePointAt(0) as number);
+  return codes.some((code, index) =>
+    isJoiner(code)
+      ? !isVisibleJoinNeighbor(codes[index - 1]) ||
+        !isVisibleJoinNeighbor(codes[index + 1])
+      : isRefusedCodePoint(code),
+  );
+}
+
+function isJoiner(code: number): boolean {
+  return code === ZERO_WIDTH_NON_JOINER || code === ZERO_WIDTH_JOINER;
+}
+
+function isVisibleJoinNeighbor(code: number | undefined): boolean {
+  return (
+    code !== undefined &&
+    !isJoiner(code) &&
+    !isRefusedCodePoint(code) &&
+    !/\s/u.test(String.fromCodePoint(code))
+  );
+}
+
+function isRefusedCodePoint(code: number): boolean {
+  return (
+    code <= 0x1f ||
+    (code >= 0x7f && code <= 0x9f) ||
+    code === 0xad ||
+    code === 0x34f ||
+    code === 0x61c ||
+    code === 0x115f ||
+    code === 0x1160 ||
+    code === 0x17b4 ||
+    code === 0x17b5 ||
+    (code >= 0x180b && code <= 0x180f) ||
+    (code >= 0x200b && code <= 0x200f) ||
+    (code >= 0x2028 && code <= 0x202e) ||
+    (code >= 0x2060 && code <= 0x2064) ||
+    (code >= 0x2066 && code <= 0x206f) ||
+    code === 0x2800 ||
+    code === 0x3164 ||
+    (code >= 0xd800 && code <= 0xdfff) ||
+    code === 0xfeff ||
+    code === 0xffa0 ||
+    (code >= 0xfff9 && code <= 0xfffb) ||
+    (code >= 0xe0000 && code <= 0xe007f)
+  );
 }
 
 function isIntegerInRange(value: unknown, min: number, max: number): value is number {
