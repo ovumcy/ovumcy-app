@@ -143,33 +143,38 @@ export function planPeriodStartMove(
   return {
     writes: [...writes.values()],
     deletes: [...deletes],
-    profile: repointToAnchorAfterMove(nextProfile, records, writes, deletes, todayValue),
+    profile: repointToAnchorAfterMove(
+      nextProfile,
+      mergeChanges(records, writes, deletes),
+      newStart,
+      todayValue,
+    ),
   };
 }
 
-// A start moved earlier can leave a later period behind (rows the move may not
-// remove, e.g. days ticked after the old start with auto-fill off). That period,
-// not the typed date, is the cycle the projection reads, so the stored start
-// follows it instead of disagreeing with the anchor.
+// The stored start ends where the rows put the anchor, as every other write path
+// leaves it: a start moved earlier can leave a later period behind (rows the move
+// may not remove, e.g. days ticked after the old start with auto-fill off), and a
+// typed date on a spotting row opens no cycle.
 function repointToAnchorAfterMove(
   nextProfile: ProfileRecord,
+  merged: DayLogRecord[],
+  newStart: string,
+  todayValue: string,
+): ProfileRecord {
+  const anchor = resolveLatestCycleStartAnchorBeforeOrOn(nextProfile, merged, todayValue);
+  return anchor === newStart ? nextProfile : { ...nextProfile, lastPeriodStart: anchor };
+}
+
+function mergeChanges(
   records: readonly DayLogRecord[],
   writes: ReadonlyMap<string, DayLogRecord>,
   deletes: ReadonlySet<string>,
-  todayValue: string,
-): ProfileRecord {
-  const merged = [
+): DayLogRecord[] {
+  return [
     ...records.filter((record) => !writes.has(record.date) && !deletes.has(record.date)),
     ...writes.values(),
   ];
-  const anchor = resolveLatestCycleStartAnchorBeforeOrOn(nextProfile, merged, todayValue);
-  const typedStart = nextProfile.lastPeriodStart;
-  /* istanbul ignore next -- unreachable: the new start is written as a period
-     start, so the anchor is never null and never earlier than it */
-  if (anchor === null || typedStart === null) {
-    return nextProfile;
-  }
-  return anchor > typedStart ? { ...nextProfile, lastPeriodStart: anchor } : nextProfile;
 }
 
 function collectOldFilledRun(
@@ -202,10 +207,7 @@ function releaseCompetingStarts(
   deletes: ReadonlySet<string>,
   newStart: string,
 ): void {
-  const merged = [
-    ...records.filter((record) => !writes.has(record.date) && !deletes.has(record.date)),
-    ...writes.values(),
-  ];
+  const merged = mergeChanges(records, writes, deletes);
   const [clusterStart, clusterEnd] = resolvePeriodClusterBounds(merged, newStart);
   for (const record of merged) {
     if (

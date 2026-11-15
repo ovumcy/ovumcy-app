@@ -46,6 +46,7 @@ const MAX_DAY_LOG_DATE = "9999-12-31";
 type SaveSettingsErrorCode =
   | "invalid_cycle_settings"
   | "invalid_last_period_start"
+  | "spotting_last_period_start"
   | "invalid_reminder_time"
   | "generic";
 type SaveSymptomErrorCode = SymptomValidationErrorCode | "generic";
@@ -76,6 +77,10 @@ type RefreshExportStateResult =
       errorCode: ExportSettingsErrorCode;
       state: LoadedSettingsState;
     };
+
+function startOpensNoCycle(storedStart: string | null, typedStart: string | null): boolean {
+  return typedStart !== null && (storedStart === null || storedStart < typedStart);
+}
 
 export async function saveCycleSettings(
   storage: LocalAppStorage,
@@ -111,6 +116,12 @@ export async function saveCycleSettings(
         MAX_DAY_LOG_DATE,
       );
       const plan = planPeriodStartMove(currentState.profile, nextProfile, records, now);
+      // The plan's stored start ends earlier than the typed date (or empty)
+      // only when the typed date opens no cycle: a spotting row stays spotting,
+      // and committing would release the old start for nothing.
+      if (startOpensNoCycle(plan.profile.lastPeriodStart, nextProfile.lastPeriodStart)) {
+        return { ok: false, errorCode: "spotting_last_period_start" };
+      }
       await storage.commitDayLogChanges(plan);
       savedProfile = plan.profile;
     } else {

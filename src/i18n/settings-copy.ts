@@ -531,9 +531,13 @@ const settingsCopyEn = {
   },
   status: {
     cycleSaved: "Cycle settings saved. Predictions were refreshed.",
+    cycleSavedStartFromLoggedDays:
+      "Cycle settings saved. The last period start was taken from your logged days, so it differs from the date you entered.",
     trackingSaved: "Tracking fields updated for dashboard and calendar.",
     invalidLastPeriodStart:
       "Please enter a valid last period start date that is not in the future.",
+    spottingLastPeriodStart:
+      "This day is logged as spotting, so it cannot start a period. Change the day in the calendar first.",
     saveFailed: "Unable to save your settings. Please try again.",
   },
   premiumLock: {
@@ -1123,10 +1127,14 @@ const settingsCopyDe: SettingsCopy = {
     ...settingsCopyEn.status,
     cycleSaved:
       "Zykluseinstellungen gespeichert. Vorhersagen wurden aktualisiert.",
+    cycleSavedStartFromLoggedDays:
+      "Zykluseinstellungen gespeichert. Der Beginn der letzten Periode wurde aus deinen eingetragenen Tagen übernommen und weicht daher vom eingegebenen Datum ab.",
     trackingSaved:
       "Tracking-Felder für Dashboard und Kalender aktualisiert.",
     invalidLastPeriodStart:
       "Bitte geben Sie ein gültiges Startdatum der letzten Periode ein, das nicht in der Zukunft liegt.",
+    spottingLastPeriodStart:
+      "Dieser Tag ist als Schmierblutung eingetragen und kann keine Periode beginnen. Ändere den Tag zuerst im Kalender.",
     saveFailed:
       "Ihre Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
   },
@@ -1719,10 +1727,14 @@ const settingsCopyFr: SettingsCopy = {
     ...settingsCopyEn.status,
     cycleSaved:
       "Réglages du cycle enregistrés. Les prédictions ont été mises à jour.",
+    cycleSavedStartFromLoggedDays:
+      "Réglages du cycle enregistrés. Le début des dernières règles a été repris de vos jours notés, il diffère donc de la date saisie.",
     trackingSaved:
       "Les champs de suivi ont été mis à jour pour le tableau de bord et le calendrier.",
     invalidLastPeriodStart:
       "Saisissez une date valide de début des dernières règles qui ne soit pas dans le futur.",
+    spottingLastPeriodStart:
+      "Ce jour est noté comme spotting, il ne peut donc pas commencer des règles. Modifiez d'abord ce jour dans le calendrier.",
     saveFailed:
       "Impossible d'enregistrer vos réglages. Réessayez.",
   },
@@ -2280,9 +2292,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     status: {
       cycleSaved: "Настройки цикла сохранены. Предсказания обновлены.",
+      cycleSavedStartFromLoggedDays:
+        "Настройки цикла сохранены. Начало последней менструации взято из отмеченных дней, поэтому оно отличается от введённой даты.",
       trackingSaved: "Поля трекинга обновлены для dashboard и календаря.",
       invalidLastPeriodStart:
         "Введите корректную дату начала последней менструации, не в будущем.",
+      spottingLastPeriodStart:
+        "Этот день отмечен как мажущие выделения, поэтому не может начать менструацию. Сначала измените день в календаре.",
       saveFailed: "Не удалось сохранить настройки. Попробуйте ещё раз.",
     },
     premiumLock: {
@@ -2846,9 +2862,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     status: {
       cycleSaved: "Ajustes del ciclo guardados. Las predicciones se actualizaron.",
+      cycleSavedStartFromLoggedDays:
+        "Ajustes del ciclo guardados. El inicio del último período se tomó de tus días registrados, por eso difiere de la fecha que introdujiste.",
       trackingSaved: "Los campos de seguimiento se actualizaron para el panel y el calendario.",
       invalidLastPeriodStart:
         "Introduce una fecha válida del último período que no esté en el futuro.",
+      spottingLastPeriodStart:
+        "Este día está registrado como manchado, así que no puede iniciar un período. Cambia primero el día en el calendario.",
       saveFailed: "No se pudieron guardar los ajustes. Inténtalo de nuevo.",
     },
     premiumLock: {
@@ -3414,9 +3434,13 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
     },
     status: {
       cycleSaved: "Impostazioni del ciclo salvate. Le previsioni sono state aggiornate.",
+      cycleSavedStartFromLoggedDays:
+        "Impostazioni del ciclo salvate. L'inizio dell'ultimo ciclo è stato preso dai giorni registrati, quindi è diverso dalla data inserita.",
       trackingSaved: "I campi di tracciamento sono stati aggiornati per il cruscotto e il calendario.",
       invalidLastPeriodStart:
         "Inserisci una data valida dell'ultimo ciclo che non sia nel futuro.",
+      spottingLastPeriodStart:
+        "Questo giorno è registrato come spotting, quindi non può iniziare un ciclo. Modifica prima il giorno nel calendario.",
       saveFailed: "Impossibile salvare le impostazioni. Riprova.",
     },
     premiumLock: {

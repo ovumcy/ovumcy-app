@@ -64,6 +64,7 @@ describe("runSavePendingSettingsAction: cycle save failures", () => {
       "invalid_last_period_start",
       () => viewData.status.invalidLastPeriodStart,
     ],
+    ["spotting_last_period_start", () => viewData.status.spottingLastPeriodStart],
     ["invalid_cycle_settings", () => viewData.cycle.messages.errorIncompatible],
     ["generic", () => viewData.status.saveFailed],
   ] as const)(
@@ -322,5 +323,47 @@ describe("runSavePendingSettingsAction: reminder delivery status mapping", () =>
       expectedMessage(),
     );
     expect(context.setReminderStatusTone).toHaveBeenLastCalledWith(expectedTone);
+  });
+});
+
+describe("runSavePendingSettingsAction: cycle save status", () => {
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    jest
+      .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
+      .mockResolvedValue({ skipped: true, syncedCount: 0 });
+    jest
+      .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
+      .mockResolvedValue("scheduled");
+  });
+
+  it.each([
+    ["the typed start", "2026-03-04", () => viewData.status.cycleSaved],
+    [
+      "a start taken from logged days",
+      "2026-03-11",
+      () => viewData.status.cycleSavedStartFromLoggedDays,
+    ],
+  ] as const)("reports %s", async (_label, storedStart, expected) => {
+    const readyState = await loadReadyState();
+    const typedState = {
+      ...readyState,
+      cycleValues: { ...readyState.cycleValues, lastPeriodStart: "2026-03-04" },
+    };
+    const savedState = {
+      ...typedState,
+      cycleValues: { ...typedState.cycleValues, lastPeriodStart: storedStart },
+    };
+    const context = createContext();
+    jest
+      .spyOn(settingsScreenService, "saveCycleSettings")
+      .mockResolvedValue({ ok: true, state: savedState });
+
+    await runSavePendingSettingsAction(context, typedState, {
+      ...allClean,
+      isCycleDirty: true,
+    });
+
+    expect(context.setCycleStatusMessage).toHaveBeenLastCalledWith(expected());
   });
 });

@@ -293,7 +293,9 @@ that owns the canonical web UX).
     new run keeps its data and only gains the period day. When a start moved
     earlier leaves a later period behind (days ticked after the old start, or
     an old-run row holding data), the stored start becomes that later period's
-    start, so it matches the projection anchor.
+    start, so it matches the projection anchor, and the status line says the
+    start was taken from the logged days. A date logged as spotting is refused
+    (spotting opens no cycle) and nothing is written.
     Pinned by `src/services/period-start-move-service.test.ts`.
 - Tracking section:
   - full-width toggle list
