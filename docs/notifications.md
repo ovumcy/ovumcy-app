@@ -156,7 +156,8 @@ the notification data, an identifier, a log or a deep link.
 On Android the `ovumcy-reminders` channel is created with private lock-screen visibility: a
 secure lock screen shows that a reminder arrived but not its text, so an opted-in label is read
 only after unlock. Android fixes this setting when the channel is first created; changing it
-later needs a new channel id.
+later needs a new channel id. iOS has no per-app equivalent: the system Show Previews setting
+(default "When Unlocked") decides whether the text appears on a locked screen.
 
 ## 7. Prediction pause and pregnancy
 
