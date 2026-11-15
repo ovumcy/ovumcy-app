@@ -153,6 +153,11 @@ body is the label text instead of the generic body (`cycle_day` otherwise reads 
 day reminder."). The opt-in is per rule and off by default; the label never appears in the title,
 the notification data, an identifier, a log or a deep link.
 
+On Android the `ovumcy-reminders` channel is created with private lock-screen visibility: a
+secure lock screen shows that a reminder arrived but not its text, so an opted-in label is read
+only after unlock. Android fixes this setting when the channel is first created; changing it
+later needs a new channel id.
+
 ## 7. Prediction pause and pregnancy
 
 - Unpredictable-cycle setting (facts-only mode): only the daily kinds are planned; the period and

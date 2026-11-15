@@ -103,6 +103,10 @@ async function ensureReminderChannel(Notifications: ExpoNotificationsModule) {
     name: "Ovumcy reminders",
     importance: Notifications.AndroidImportance.DEFAULT,
     sound: "default",
+    // A secure lock screen shows only that a reminder arrived, never its text,
+    // so an opted-in cycle-day label is read after unlock. Android fixes a
+    // channel's lock-screen visibility once the channel exists.
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
   });
 }
 
