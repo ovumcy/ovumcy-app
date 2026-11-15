@@ -90,12 +90,21 @@ export async function runSavePendingSettingsAction(
   // reminder rules) would otherwise leave the device schedule built from the
   // old values until the next rebuild elsewhere.
   let planInputsStored = false;
+  let reminderSettingsStored = false;
   const failAfterStoredPlanInputs = async () => {
     setState(nextState);
     if (planInputsStored) {
-      await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
-        now: reminderNow,
-      });
+      const rebuildResult = await rebuildLocalReminderScheduleFromStorage(
+        storage,
+        reminderScheduler,
+        { now: reminderNow },
+      );
+      if (reminderSettingsStored && rebuildResult !== "failed") {
+        setReminderStatusMessage(
+          resolveReminderStatusMessage(rebuildResult, viewData),
+        );
+        setReminderStatusTone(resolveReminderStatusTone(rebuildResult));
+      }
     }
     return false;
   };
@@ -184,6 +193,7 @@ export async function runSavePendingSettingsAction(
     }
     nextState = reminderResult.state;
     planInputsStored = true;
+    reminderSettingsStored = true;
   }
 
   if (isInterfaceDirty) {
