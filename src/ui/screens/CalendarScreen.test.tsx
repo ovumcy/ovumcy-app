@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react-native";
 import { Dimensions } from "react-native";
 
+import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../../models/day-log";
 import { createPregnancyRecord } from "../../models/pregnancy";
 import { createDefaultSymptomRecords } from "../../models/symptom";
@@ -1079,6 +1080,35 @@ describe("CalendarScreen", () => {
     expect(
       await screen.findByText("Cycle start updated locally."),
     ).toBeTruthy();
+  });
+
+  it("blocks a manual cycle start on a spotting day and says why", async () => {
+    const storage = createStorageMock();
+    storage.readDayLogRecord = jest.fn().mockImplementation(async (date: string) =>
+      date === "2026-03-14"
+        ? { ...createEmptyDayLogRecord(date), isPeriod: true, flow: "spotting" }
+        : createEmptyDayLogRecord(date),
+    );
+
+    await render(<CalendarScreen now={new Date(2026, 2, 17)} storage={storage} />);
+
+    await waitForCalendarReady();
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-03-14"));
+    await waitForSelectedDayPanel("Sat, Mar 14");
+    await waitFor(() =>
+      expect(screen.getByTestId("calendar-day-cycle-start-button")).toBeTruthy(),
+    );
+
+    const action = screen.getByTestId("calendar-day-cycle-start-button");
+    expect(action.props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    expect(
+      screen.getByText(getDashboardCopy("en").spottingCycleStartNotice),
+    ).toBeTruthy();
+
+    await fireEvent.press(action);
+    expect(storage.writeProfileRecord).not.toHaveBeenCalled();
   });
 
   it("cancels a manual cycle start when the owner declines the confirmation prompt", async () => {

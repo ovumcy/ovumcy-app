@@ -1540,7 +1540,7 @@ type PeriodClusterDay = {
   value: Date;
 };
 
-function isSpottingRecord(record: DayLogRecord): boolean {
+export function isSpottingRecord(record: DayLogRecord): boolean {
   return (
     record.flow === "spotting" ||
     (record.flow === "none" && record.symptomIDs.includes("spotting"))

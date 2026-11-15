@@ -258,7 +258,10 @@ a gap of 5 or more empty days. A cluster opens a cycle on its earliest
 A spotting day never opens a cycle, even when marked; an uncertain mark counts as
 no mark; a cluster matching none of the three opens no cycle and does not split
 the cycle around it. A day counts as spotting when its flow is spotting, or when
-the Spotting symptom is its only bleeding signal (no flow chosen).
+the Spotting symptom is its only bleeding signal (no flow chosen). The manual
+cycle-start action is shown disabled on a spotting day, with the reason, and
+refuses the mark: it would open no cycle and would replace the stored start
+with a date the read side withdraws.
 
 `profile.lastPeriodStart` joins the clusters as an explicit non-spotting day, as
 web's onboarding start does (it also marks the unmarked day onboarding seeds on

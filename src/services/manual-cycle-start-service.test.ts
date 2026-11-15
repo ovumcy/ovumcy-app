@@ -448,6 +448,99 @@ describe("manual-cycle-start-service", () => {
   });
 });
 
+describe("manual cycle start on a spotting day", () => {
+  const now = new Date(2026, 2, 17);
+  const spottingFlow = {
+    ...createEmptyDayLogRecord("2026-03-16"),
+    isPeriod: true,
+    flow: "spotting" as const,
+  };
+  const spottingSymptom = {
+    ...createEmptyDayLogRecord("2026-03-16"),
+    symptomIDs: ["spotting"],
+  };
+
+  it.each([
+    ["spotting flow", spottingFlow],
+    ["spotting symptom with no flow", spottingSymptom],
+  ])("shows the action blocked with the reason for a %s", (_label, record) => {
+    const viewData = buildManualCycleStartViewData(
+      createProfileRecord(),
+      [],
+      record,
+      now,
+    );
+
+    expect(viewData).toEqual({
+      buttonLabel: "Mark new cycle start",
+      isActive: false,
+      isBlocked: true,
+      prompts: [],
+      notices: {
+        spotting: getDashboardCopy("en").spottingCycleStartNotice,
+      },
+    });
+  });
+
+  it("localizes the spotting notice", () => {
+    const viewData = buildManualCycleStartViewData(
+      createProfileRecord(),
+      [],
+      spottingFlow,
+      now,
+      "ru",
+    );
+
+    expect(viewData?.notices.spotting).toBe(
+      getDashboardCopy("ru").spottingCycleStartNotice,
+    );
+    expect(viewData?.notices.spotting).not.toBe(
+      getDashboardCopy("en").spottingCycleStartNotice,
+    );
+  });
+
+  it("refuses the mark and leaves the stored start and competing marks untouched", async () => {
+    const storage = createLocalAppStorageMock();
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-15"),
+        isPeriod: true,
+        cycleStart: true,
+      },
+      spottingFlow,
+    ];
+
+    const result = await applyManualCycleStart(
+      storage,
+      createProfileRecord({ lastPeriodStart: "2026-03-15" }),
+      records,
+      spottingFlow,
+      now,
+      "en",
+      { markUncertain: true, replaceExisting: true },
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorMessage: getDashboardCopy("en").spottingCycleStartNotice,
+    });
+    expect(storage.commitDayLogChanges).not.toHaveBeenCalled();
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+  });
+
+  it("keeps the action open once the flow is light", () => {
+    const viewData = buildManualCycleStartViewData(
+      createProfileRecord(),
+      [],
+      { ...spottingFlow, flow: "light" },
+      now,
+    );
+
+    expect(viewData?.isBlocked).toBe(false);
+    expect(viewData?.notices.spotting).toBeUndefined();
+  });
+});
+
 describe("early-bleeding notice structure (medical safety)", () => {
   // The notice fires when a marked early bleed falls 6-12 days after the
   // ESTIMATED ovulation (previous start + [cycleLength - luteal]). That estimate
