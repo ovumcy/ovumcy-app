@@ -528,6 +528,31 @@ describe("manual cycle start on a spotting day", () => {
     expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["spotting", { flow: "spotting" as const }],
+    ["uncertain", { isUncertain: true }],
+  ])("asks no replace prompt for a %s mark that opens no cycle", (_label, overrides) => {
+    const records = [
+      {
+        ...createEmptyDayLogRecord("2026-03-15"),
+        isPeriod: true,
+        cycleStart: true,
+        ...overrides,
+      },
+    ];
+
+    const viewData = buildManualCycleStartViewData(
+      createProfileRecord({ lastPeriodStart: null }),
+      records,
+      { ...createEmptyDayLogRecord("2026-03-16"), isPeriod: true },
+      now,
+    );
+
+    expect(viewData?.prompts.map((prompt) => prompt.kind)).not.toContain(
+      "replace_existing",
+    );
+  });
+
   it("keeps the action open once the flow is light", () => {
     const viewData = buildManualCycleStartViewData(
       createProfileRecord(),
