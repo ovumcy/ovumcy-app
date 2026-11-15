@@ -8,6 +8,7 @@ import { getReminderCopy } from "../i18n/reminder-copy";
 import {
   addCycleDayReminderRule,
   areCycleDayRemindersEqual,
+  createCycleDayReminderID,
   normalizeCycleDayReminders,
   patchCycleDayReminderRule,
   removeCycleDayReminderRule,
@@ -258,5 +259,38 @@ describe("cycle-day reminders travel with the profile", () => {
   it("survives the JSON export profile projection", () => {
     const profile = { ...createDefaultProfileRecord(), cycleDayReminders: [rule()] };
     expect(withoutStoredCycleStartRepointState(profile).cycleDayReminders).toEqual([rule()]);
+  });
+});
+
+describe("cycle-day reminder ids", () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+
+  afterEach(() => {
+    if (original) {
+      Object.defineProperty(globalThis, "crypto", original);
+    }
+  });
+
+  function stubCrypto(value: unknown): void {
+    Object.defineProperty(globalThis, "crypto", { configurable: true, value });
+  }
+
+  it("uses a random UUID when the runtime has one", () => {
+    stubCrypto({ randomUUID: () => "11111111-2222-3333-4444-555555555555" });
+
+    expect(createCycleDayReminderID()).toBe("cdr_11111111-2222-3333-4444-555555555555");
+  });
+
+  it.each([
+    ["no crypto object", undefined],
+    ["crypto without randomUUID", {}],
+  ])("falls back to a time-and-counter id with %s", (_label, value) => {
+    stubCrypto(value);
+
+    const first = createCycleDayReminderID();
+    const second = createCycleDayReminderID();
+
+    expect(first).toMatch(/^cdr_[0-9a-z]+_[0-9a-z]+$/);
+    expect(second).not.toBe(first);
   });
 });

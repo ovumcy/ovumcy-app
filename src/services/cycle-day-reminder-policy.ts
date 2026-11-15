@@ -44,7 +44,8 @@ export function createDefaultCycleDayReminder(
 // check identical on every JS engine the app runs on.
 function containsControlOrFormatCharacter(value: string): boolean {
   for (const char of value) {
-    const code = char.codePointAt(0) ?? 0;
+    // for...of yields whole code points, never an empty string.
+    const code = char.codePointAt(0) as number;
     if (
       code <= 0x1f ||
       (code >= 0x7f && code <= 0x9f) ||
