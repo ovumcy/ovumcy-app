@@ -189,6 +189,30 @@ describe("platform-local-reminder-scheduler.native", () => {
     expect(Notifications.dismissNotificationAsync).not.toHaveBeenCalled();
   });
 
+  it("clears the shade even when cancelling a schedule fails", async () => {
+    const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
+      "standalone",
+    );
+    const scheduler = createPlatformLocalReminderScheduler();
+    const Notifications = jest.requireMock(
+      "expo-notifications",
+    ) as ExpoNotificationsMock;
+
+    Notifications.getAllScheduledNotificationsAsync.mockResolvedValueOnce([
+      { identifier: "daily-1", content: { data: { ovumcyReminderKind: "daily_log" } } },
+    ]);
+    Notifications.cancelScheduledNotificationAsync.mockRejectedValueOnce(
+      new Error("cancel failed"),
+    );
+    Notifications.getPresentedNotificationsAsync.mockResolvedValueOnce([
+      { request: { identifier: "shown-1", content: { data: { ovumcyReminderKind: "cycle_day" } } } },
+    ]);
+
+    await expect(scheduler.sync([])).rejects.toThrow("cancel failed");
+
+    expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith("shown-1");
+  });
+
   it("keeps dismissing its shown reminders after one refuses to go", async () => {
     const { createPlatformLocalReminderScheduler } = loadSchedulerModule(
       "standalone",
