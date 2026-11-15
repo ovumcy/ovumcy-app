@@ -259,7 +259,7 @@ async function resolveStoredStartAfterSave(
 export async function clearDayLogEditorRecord(
   storage: LocalAppStorage,
   date: DayLogRecord["date"],
-  now: Date = new Date(),
+  now: Date,
 ): Promise<{ ok: true; record: DayLogRecord } | { ok: false }> {
   try {
     const profile = await storage.readProfileRecord();

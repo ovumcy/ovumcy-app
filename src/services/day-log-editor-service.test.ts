@@ -374,7 +374,7 @@ describe("clearDayLogEditorRecord", () => {
         .mockResolvedValue([cycleStartDay("2026-02-10")]),
     });
 
-    const result = await clearDayLogEditorRecord(storage, "2026-03-10");
+    const result = await clearDayLogEditorRecord(storage, "2026-03-10", FIXED_NOW);
 
     expect(result).toEqual({
       ok: true,
@@ -391,7 +391,7 @@ describe("clearDayLogEditorRecord", () => {
     const writeProfileRecord = jest.fn().mockResolvedValue(undefined);
     const storage = createStorageMock({ writeProfileRecord });
 
-    const result = await clearDayLogEditorRecord(storage, "2026-03-10");
+    const result = await clearDayLogEditorRecord(storage, "2026-03-10", FIXED_NOW);
 
     expect(result.ok).toBe(true);
     expect(writeProfileRecord).toHaveBeenCalledWith(
@@ -407,7 +407,7 @@ describe("clearDayLogEditorRecord", () => {
       listDayLogRecordsInRange,
     });
 
-    const result = await clearDayLogEditorRecord(storage, "2026-03-11");
+    const result = await clearDayLogEditorRecord(storage, "2026-03-11", FIXED_NOW);
 
     expect(result.ok).toBe(true);
     expect(writeProfileRecord).not.toHaveBeenCalled();
@@ -422,7 +422,7 @@ describe("clearDayLogEditorRecord", () => {
     });
 
     await expect(
-      clearDayLogEditorRecord(storage, "2026-03-10"),
+      clearDayLogEditorRecord(storage, "2026-03-10", FIXED_NOW),
     ).resolves.toEqual({ ok: false });
     expect(writeProfileRecord).not.toHaveBeenCalled();
   });
