@@ -18,6 +18,26 @@ import {
   buildLocalDataAad,
   encryptLocalDataRecord,
 } from "../../security/local-data-crypto";
+import { createDefaultBootstrapState } from "./storage-contract";
+
+// Plaintext profile columns as the schema still carries them; reads never
+// consult them.
+const PLAINTEXT_PROFILE_COLUMNS = {
+  last_period_start: "2026-03-15",
+  cycle_length: 30,
+  period_length: 6,
+  auto_period_fill: 1,
+  irregular_cycle: 0,
+  unpredictable_cycle: 0,
+  age_group: "under_40",
+  usage_goal: "health",
+  track_bbt: 0,
+  temperature_unit: "c",
+  track_cervical_mucus: 0,
+  hide_sex_chip: 0,
+  language_override: null,
+  theme_override: null,
+};
 
 type FakeDatabaseState = {
   bootstrapRow: {
@@ -567,6 +587,34 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
         applySchemaStatement(source);
       }
 
+      const unauthenticatedDelete =
+        /DELETE FROM (\w+) WHERE encrypted_payload IS NULL/.exec(source)?.[1];
+      if (unauthenticatedDelete) {
+        const hasPayload = (row: { encrypted_payload?: string | null } | null) =>
+          Boolean(row?.encrypted_payload);
+        if (unauthenticatedDelete === "day_logs") {
+          databaseState.dayLogRows = databaseState.dayLogRows.filter(hasPayload);
+        } else if (unauthenticatedDelete === "symptoms") {
+          databaseState.symptomRows = databaseState.symptomRows.filter(hasPayload);
+        } else if (
+          unauthenticatedDelete === "bootstrap_state" &&
+          !hasPayload(databaseState.bootstrapRow)
+        ) {
+          databaseState.bootstrapRow = null;
+        } else if (
+          unauthenticatedDelete === "profile_settings" &&
+          !hasPayload(databaseState.profileRow)
+        ) {
+          databaseState.profileRow = null;
+        } else if (
+          unauthenticatedDelete === "sync_preferences" &&
+          !hasPayload(databaseState.syncPreferencesRow)
+        ) {
+          databaseState.syncPreferencesRow = null;
+        }
+        return { changes: 1 };
+      }
+
       if (source.includes("INSERT INTO bootstrap_state")) {
         databaseState.bootstrapRow = {
           has_completed_onboarding: Number(params[0]),
@@ -987,7 +1035,7 @@ describe("sqlite-app-storage", () => {
     expect(legacyStorageSource.clear).not.toHaveBeenCalled();
   });
 
-  it("migrates a v1 onboarding_profile row into the canonical profile table", async () => {
+  it("does not adopt a plaintext v1 onboarding_profile row into the profile", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
         clear: jest.fn().mockResolvedValue(undefined),
@@ -1014,16 +1062,9 @@ describe("sqlite-app-storage", () => {
         }),
     });
 
-    await expect(storage.readProfileRecord()).resolves.toEqual({
-      ...createDefaultProfileRecord(),
-      lastPeriodStart: "2026-03-09",
-      cycleLength: 29,
-      periodLength: 5,
-      irregularCycle: true,
-      // Legacy AgeGroup buckets persisted in v1 rows normalize to empty on read.
-      ageGroup: "",
-      usageGoal: "avoid_pregnancy",
-    });
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
   });
 
   it("seeds default rows when no legacy data exists", async () => {
@@ -1258,10 +1299,10 @@ describe("sqlite-app-storage", () => {
   });
 
   it("degrades an unknown persisted theme override to null on read", async () => {
-    // A legacy plaintext row (pre-encryption) or a forward-migrated profile can
-    // carry a theme value this build does not know. It must sanitize to null
-    // (→ the light default via the provider), never surface the raw value or
-    // crash the profile read.
+    // A forward-migrated profile can carry a theme value this build does not
+    // know. It must sanitize to null (→ the light default via the provider),
+    // never surface the raw value or crash the profile read.
+    const keyHex = "a".repeat(64);
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
         clear: jest.fn().mockResolvedValue(undefined),
@@ -1269,24 +1310,16 @@ describe("sqlite-app-storage", () => {
         readBootstrapState: jest.fn(),
         readProfileRecord: jest.fn(),
       },
+      localDataKeyStore: createFakeLocalDataKeyStore(keyHex),
       openDatabase: async () =>
         createFakeDatabase({
           profileRow: {
-            last_period_start: "2026-03-15",
-            cycle_length: 30,
-            period_length: 6,
-            auto_period_fill: 1,
-            irregular_cycle: 0,
-            unpredictable_cycle: 0,
-            age_group: "under_40",
-            usage_goal: "health",
-            track_bbt: 0,
-            temperature_unit: "c",
-            track_cervical_mucus: 0,
-            hide_sex_chip: 0,
-            language_override: null,
-            theme_override: "midnight",
-            encrypted_payload: null,
+            ...PLAINTEXT_PROFILE_COLUMNS,
+            encrypted_payload: encryptLocalDataRecord(
+              keyHex,
+              { ...createDefaultProfileRecord(), themeOverride: "midnight" },
+              buildLocalDataAad("profile_settings", "1"),
+            ),
           },
         }),
     });
@@ -1930,11 +1963,23 @@ describe("sqlite-app-storage", () => {
       ],
       syncPreferencesRow: {
         mode: "self_hosted",
-        endpoint_input: "192.168.1.20:8080",
-        normalized_endpoint: "http://192.168.1.20:8080",
-        device_label: "Pixel 7",
-        setup_status: "local_ready",
-        prepared_at: "2026-03-20T08:00:00.000Z",
+        endpoint_input: "",
+        normalized_endpoint: "",
+        device_label: "",
+        setup_status: "not_configured",
+        prepared_at: null,
+        encrypted_payload: encryptLocalDataRecord(
+          "a".repeat(64),
+          {
+            mode: "self_hosted",
+            endpointInput: "192.168.1.20:8080",
+            normalizedEndpoint: "http://192.168.1.20:8080",
+            deviceLabel: "Pixel 7",
+            setupStatus: "local_ready",
+            preparedAt: "2026-03-20T08:00:00.000Z",
+          },
+          buildLocalDataAad("sync_preferences", "1"),
+        ),
       },
     });
     const storage = createSQLiteAppStorage({
@@ -1944,6 +1989,7 @@ describe("sqlite-app-storage", () => {
         readBootstrapState: jest.fn(),
         readProfileRecord: jest.fn(),
       },
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
       openDatabase: async () => inspected.database,
     });
 
@@ -2068,59 +2114,6 @@ describe("sqlite-app-storage", () => {
     await expect(storage.readProfileRecord()).rejects.toThrow(
       "sqlite/readProfileRecord/select: boom",
     );
-  });
-
-  it("normalizes string bootstrap row values returned by sqlite", async () => {
-    const storage = createSQLiteAppStorage({
-      legacyStorageSource: {
-        clear: jest.fn().mockResolvedValue(undefined),
-        hasData: jest.fn().mockResolvedValue(false),
-        readBootstrapState: jest.fn(),
-        readProfileRecord: jest.fn(),
-      },
-      openDatabase: async () =>
-        createFakeDatabase({
-          userVersion: 9,
-          bootstrapRow: {
-            has_completed_onboarding: "1" as unknown as number,
-            profile_version: "2" as unknown as number,
-            incomplete_onboarding_step: "2" as unknown as number,
-          },
-          profileRow: {
-            last_period_start: null,
-            cycle_length: 28,
-            period_length: 5,
-            auto_period_fill: 1,
-            irregular_cycle: 0,
-            unpredictable_cycle: 0,
-            age_group: "",
-            usage_goal: "health",
-            track_bbt: 0,
-            temperature_unit: "c",
-            track_cervical_mucus: 0,
-            hide_sex_chip: 0,
-            language_override: null,
-            theme_override: null,
-            encrypted_payload: null,
-          },
-          syncPreferencesRow: {
-            mode: "managed",
-            endpoint_input: "",
-            normalized_endpoint: "https://sync.ovumcy.cloud",
-            device_label: "",
-            setup_status: "not_configured",
-            prepared_at: null,
-            last_remote_generation: null,
-            last_synced_at: null,
-          },
-        }),
-    });
-
-    await expect(storage.readBootstrapState()).resolves.toEqual({
-      hasCompletedOnboarding: true,
-      profileVersion: 2,
-      incompleteOnboardingStep: null,
-    });
   });
 
   it("hydrates sqlite without depending on PRAGMA user_version reads", async () => {
@@ -2475,21 +2468,17 @@ describe("sqlite-app-storage", () => {
         profile_version: 2,
       },
       profileRow: {
-        last_period_start: "2026-03-01",
-        cycle_length: 28,
-        period_length: 5,
-        auto_period_fill: 1,
-        irregular_cycle: 0,
-        unpredictable_cycle: 0,
-        age_group: "age_20_35",
-        usage_goal: "health",
-        track_bbt: 0,
-        temperature_unit: "c",
-        track_cervical_mucus: 0,
-        hide_sex_chip: 0,
-        language_override: null,
-        theme_override: null,
-        encrypted_payload: null,
+        ...PLAINTEXT_PROFILE_COLUMNS,
+        encrypted_payload: encryptLocalDataRecord(
+          "a".repeat(64),
+          {
+            ...createDefaultProfileRecord(),
+            lastPeriodStart: "2026-03-01",
+            cycleLength: 28,
+            periodLength: 5,
+          },
+          buildLocalDataAad("profile_settings", "1"),
+        ),
       },
     });
     const originalGetFirstAsync = inspected.database.getFirstAsync.bind(
@@ -2503,7 +2492,7 @@ describe("sqlite-app-storage", () => {
     });
     const storage = createSQLiteAppStorage({
       legacyStorageSource,
-      localDataKeyStore: createFakeLocalDataKeyStore(),
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
       openDatabase: async () => ({
         execAsync: inspected.database.execAsync,
         getAllAsync: inspected.database.getAllAsync,
@@ -2961,7 +2950,7 @@ describe("sqlite-app-storage", () => {
     });
   });
 
-  it("migrates a legacy plaintext symptom row into the encrypted catalog during hydration", async () => {
+  it("drops a symptom row without an encrypted payload instead of adopting its plaintext columns", async () => {
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
         clear: jest.fn().mockResolvedValue(undefined),
@@ -2987,24 +2976,35 @@ describe("sqlite-app-storage", () => {
         }),
     });
 
-    // No built-in catalog is seeded alongside it: ensureSeedRows only seeds
-    // defaults when the table is empty, and the migrated row already counts
-    // as one row by the time seeding runs.
-    await expect(storage.listSymptomRecords()).resolves.toEqual([
-      {
-        id: "legacy_glow",
-        slug: "legacy-glow",
-        label: "Legacy Glow",
-        icon: "✨",
-        color: "#123456",
-        isDefault: false,
-        isArchived: false,
-        sortOrder: 42,
-      },
-    ]);
+    // The unauthenticated row is deleted before seeding, so the table is
+    // empty and the built-in catalog is seeded in its place.
+    const symptoms = await storage.listSymptomRecords();
+    expect(symptoms.length).toBeGreaterThan(0);
+    expect(symptoms.every((symptom) => symptom.isDefault)).toBe(true);
+    expect(symptoms.map((symptom) => symptom.label)).not.toContain("Legacy Glow");
   });
 
-  it("migrates legacy plaintext day-log rows into the encrypted table during hydration, tolerating malformed stored JSON arrays", async () => {
+  it("drops day-log rows without an encrypted payload instead of re-encrypting their plaintext columns", async () => {
+    const plaintextDayLogRow = {
+      day: "2026-06-01",
+      is_period: 1,
+      cycle_start: 1,
+      is_uncertain: 0,
+      flow: "heavy",
+      mood: 3,
+      sex_activity: "none",
+      bbt: 0,
+      cervical_mucus: "none",
+      lh_test: "none",
+      pregnancy_test: "positive",
+      cycle_factor_keys: '["stress"]',
+      symptom_ids: "[]",
+      notes: "injected plaintext note",
+      encrypted_payload: null,
+    };
+    const inspected = createInspectableFakeDatabase({
+      dayLogRows: [plaintextDayLogRow],
+    });
     const storage = createSQLiteAppStorage({
       legacyStorageSource: {
         clear: jest.fn().mockResolvedValue(undefined),
@@ -3012,72 +3012,52 @@ describe("sqlite-app-storage", () => {
         readBootstrapState: jest.fn(),
         readProfileRecord: jest.fn(),
       },
-      openDatabase: async () =>
-        createFakeDatabase({
-          dayLogRows: [
-            {
-              day: "2026-06-01",
-              is_period: 1,
-              cycle_start: 0,
-              is_uncertain: 0,
-              flow: "medium",
-              mood: 3,
-              sex_activity: "none",
-              bbt: 0,
-              cervical_mucus: "none",
-              lh_test: "none",
-              pregnancy_test: "none",
-              // Valid JSON array: exercises the normal parse-and-filter path.
-              cycle_factor_keys: '["stress"]',
-              // Malformed (not valid JSON): must degrade to [] rather than throw.
-              symptom_ids: "not-json",
-              notes: "legacy plaintext note",
-              encrypted_payload: null,
-            },
-            {
-              day: "2026-06-02",
-              is_period: 0,
-              cycle_start: 0,
-              is_uncertain: 0,
-              flow: "none",
-              mood: 0,
-              sex_activity: "none",
-              bbt: 0,
-              cervical_mucus: "none",
-              lh_test: "none",
-              pregnancy_test: "none",
-              // Valid JSON but not an array: must also degrade to [].
-              cycle_factor_keys: "{}",
-              symptom_ids: "[]",
-              notes: "",
-              encrypted_payload: null,
-            },
-          ],
-        }),
+      openDatabase: async () => inspected.database,
     });
 
-    await expect(storage.readDayLogRecord("2026-06-01")).resolves.toEqual({
-      date: "2026-06-01",
-      isPeriod: true,
-      cycleStart: false,
-      isUncertain: false,
-      flow: "medium",
-      mood: 3,
-      sexActivity: "none",
-      bbt: 0,
-      cervicalMucus: "none",
-      lhTest: "none",
-      pregnancyTest: "none",
-      cycleFactorKeys: ["stress"],
-      symptomIDs: [],
-      notes: "legacy plaintext note",
-    });
-    await expect(storage.readDayLogRecord("2026-06-02")).resolves.toEqual(
-      expect.objectContaining({
-        cycleFactorKeys: [],
-        symptomIDs: [],
-      }),
+    await expect(storage.readDayLogRecord("2026-06-01")).resolves.toEqual(
+      createEmptyDayLogRecord("2026-06-01"),
     );
+    await expect(storage.listDayLogRecordsInRange("2026-01-01", "2026-12-31")).resolves.toEqual([]);
+    expect(inspected.state.dayLogRows).toEqual([]);
+  });
+
+  it("falls back to defaults for singleton rows whose payload was cleared or does not authenticate", async () => {
+    const keyHex = "a".repeat(64);
+    const inspected = createInspectableFakeDatabase({
+      // Payload cleared and the plaintext column edited to claim onboarding is done.
+      bootstrapRow: {
+        has_completed_onboarding: 1,
+        profile_version: 2,
+        incomplete_onboarding_step: null,
+        encrypted_payload: null,
+      },
+      // Well-formed-looking but truncated envelope.
+      profileRow: {
+        ...PLAINTEXT_PROFILE_COLUMNS,
+        cycle_length: 21,
+        encrypted_payload: '{"algorithm":"xchacha20poly1305"',
+      },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      localDataKeyStore: createFakeLocalDataKeyStore(keyHex),
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual(
+      createDefaultBootstrapState(),
+    );
+    await expect(storage.readProfileRecord()).resolves.toEqual(
+      createDefaultProfileRecord(),
+    );
+    expect(inspected.state.bootstrapRow?.encrypted_payload).toEqual(expect.any(String));
+    expect(inspected.state.profileRow?.encrypted_payload).toEqual(expect.any(String));
   });
 
   function createPregnancyStorage(overrides?: Partial<FakeDatabaseState>) {

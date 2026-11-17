@@ -36,6 +36,68 @@ export function encryptLocalDataRecord<T>(
   return JSON.stringify(encryptPayload(keyHex, payload, aad));
 }
 
+export type LocalDataKeyCheck = "authenticated" | "mismatch" | "malformed";
+
+const LOCAL_DATA_KEY_HEX_PATTERN = /^[0-9a-f]{64}$/i;
+const XCHACHA_NONCE_HEX_PATTERN = /^[0-9a-f]{48}$/i;
+// At least the 16-byte Poly1305 tag, whole bytes only.
+const XCHACHA_CIPHERTEXT_HEX_PATTERN = /^(?:[0-9a-f]{2}){16,}$/i;
+
+export function isWellFormedLocalDataKeyHex(keyHex: string): boolean {
+  return LOCAL_DATA_KEY_HEX_PATTERN.test(keyHex);
+}
+
+function parseWellFormedEnvelope(
+  rawValue: string,
+): EncryptedLocalDataEnvelope | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawValue);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) {
+    return null;
+  }
+  const { algorithm, nonceHex, ciphertextHex } = parsed as Record<string, unknown>;
+  if (
+    algorithm !== "xchacha20poly1305" ||
+    typeof nonceHex !== "string" ||
+    typeof ciphertextHex !== "string" ||
+    !XCHACHA_NONCE_HEX_PATTERN.test(nonceHex) ||
+    !XCHACHA_CIPHERTEXT_HEX_PATTERN.test(ciphertextHex)
+  ) {
+    return null;
+  }
+  return { algorithm, nonceHex, ciphertextHex };
+}
+
+/**
+ * Classifies whether `keyHex` authenticates one stored row. Only an AEAD
+ * failure on a well-formed key and a well-formed envelope is a key/data
+ * mismatch; an envelope that does not even parse is "malformed" and says
+ * nothing about the key. The plaintext is never parsed here.
+ */
+export function checkLocalDataKey(
+  keyHex: string,
+  rawValue: string,
+  aad: Uint8Array,
+): LocalDataKeyCheck {
+  if (!isWellFormedLocalDataKeyHex(keyHex)) {
+    return "mismatch";
+  }
+  const envelope = parseWellFormedEnvelope(rawValue);
+  if (!envelope) {
+    return "malformed";
+  }
+  try {
+    decryptPayload(keyHex, envelope, aad);
+    return "authenticated";
+  } catch {
+    return "mismatch";
+  }
+}
+
 export function decryptLocalDataRecord<T>(
   keyHex: string,
   rawValue: string,
