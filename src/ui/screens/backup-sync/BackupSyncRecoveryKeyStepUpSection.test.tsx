@@ -161,6 +161,7 @@ describe("BackupSyncRecoveryKeyStepUpSection", () => {
     ["invalid_current_password", copy.errors.invalidCurrentPassword],
     ["totp_invalid_code", copy.errors.totpInvalidCode],
     ["totp_replayed", copy.errors.totpReplayed],
+    ["rate_limited", copy.errors.rateLimited],
   ] as const)("shows the message for %s", async (errorCode, message) => {
     await renderSection({ codeRequired: true, errorCode });
 
