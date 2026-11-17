@@ -780,6 +780,8 @@ describe("SyncAccountSecuritySection", () => {
       ["invalid_current_password", () => totpCopy.errors.invalidCurrentPassword],
       ["totp_not_configured", () => totpCopy.errors.totpNotConfigured],
       ["totp_already_enabled", () => totpCopy.errors.totpAlreadyEnabled],
+      ["totp_enrollment_not_started", () => totpCopy.errors.totpEnrollmentNotStarted],
+      ["totp_already_disabled", () => totpCopy.errors.totpAlreadyDisabled],
       ["network_failed", () => totpCopy.errors.networkFailed],
     ] as const)("maps %s to its localized copy", async (errorCode, expected) => {
       await render(

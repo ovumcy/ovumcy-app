@@ -357,7 +357,10 @@ export function useSyncAccountSecurityController({
     });
     if (!result.ok) {
       setTotpErrorCode(result.errorCode);
-      if (result.errorCode === "totp_enrollment_restart_required") {
+      if (
+        result.errorCode === "totp_enrollment_restart_required" ||
+        result.errorCode === "totp_enrollment_not_started"
+      ) {
         setTotpStatus("idle");
         setTotpStage("idle");
         setTotpEnrollment(null);
@@ -411,6 +414,17 @@ export function useSyncAccountSecurityController({
     });
     if (!result.ok) {
       setTotpErrorCode(result.errorCode);
+      if (result.errorCode === "totp_already_disabled") {
+        setTotpMode("enable");
+        setTotpDisablePassword("");
+        setTotpDisableCode("");
+        setRegenerateCodeDemanded(false);
+        const status = await describeSyncAccountTwoFactor(
+          syncSecretStore,
+          preferences,
+        );
+        setTwoFactorEnabled(status ? status.twoFactorEnabled : false);
+      }
       setTotpStatus("idle");
       return;
     }

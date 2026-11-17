@@ -1347,6 +1347,41 @@ describe("useSyncAccountSecurityController", () => {
       ).toHaveBeenCalledTimes(1);
       expect(result.current.twoFactorEnabled).toBe(true);
     });
+
+    it("refreshes the 2FA state when the server says it is already off", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValueOnce({ twoFactorEnabled: true })
+        .mockResolvedValueOnce({ twoFactorEnabled: false });
+      jest
+        .spyOn(syncTOTPService, "disableTOTP")
+        .mockResolvedValue({ ok: false, errorCode: "totp_already_disabled" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.handleTOTPModeChange("disable");
+        result.current.setTotpDisablePassword("hunter2-hunter2");
+        result.current.setTotpDisableCode("123456");
+      });
+
+      await act(async () => {
+        await result.current.handleDisableTOTP();
+      });
+
+      expect(result.current.totpErrorCode).toBe("totp_already_disabled");
+      expect(result.current.twoFactorEnabled).toBe(false);
+      expect(result.current.totpMode).toBe("enable");
+      expect(result.current.totpDisablePassword).toBe("");
+      expect(result.current.totpDisableCode).toBe("");
+      expect(result.current.totpStatus).toBe("idle");
+    });
   });
 
   describe("handleCancelTOTPEnrollment", () => {

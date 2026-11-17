@@ -907,6 +907,33 @@ describe("sync-api-client", () => {
     expect(result).toEqual({ ok: false, errorCode: "totp_invalid_code" });
   });
 
+  it.each([
+    ["verifyTOTPEnrollment", "totp_enrollment_not_started"],
+    ["disableTOTP", "totp_not_enabled"],
+  ] as const)(
+    "keeps the 409 %s state key %s instead of collapsing it to generic",
+    async (method, errorKey) => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: errorKey }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+      const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+      const result =
+        method === "verifyTOTPEnrollment"
+          ? await client.verifyTOTPEnrollment("session-1", { code: "123456" })
+          : await client.disableTOTP("session-1", {
+              currentPassword: "very secure password",
+              code: "123456",
+            });
+
+      expect(result).toEqual({ ok: false, errorCode: errorKey });
+    },
+  );
+
   it("completes a TOTP challenge and returns a real session", async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce(
       new Response(
