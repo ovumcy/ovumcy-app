@@ -25,6 +25,8 @@ After verification:
 
 With two-factor on, *Regenerate recovery code* asks for a current 6-digit code next to your password, on Ovumcy Cloud and on a self-hosted (community) server alike. A recovery-code reset turns two-factor off, so the server will not hand out a new recovery code for the password alone. The app shows the code field whenever it knows two-factor is on, and also after the server refuses a regeneration for a missing or wrong code (for example when the two-factor status could not be loaded). A wrong code counts toward a per-account attempt limit (on a community server the same one as login and disable codes; on Ovumcy Cloud one shared with disable), and a code already used once is refused until the next one appears in your authenticator. The code travels in the request body only, is sent only when the field is shown, and is cleared from the screen after a successful regeneration.
 
+With or without two-factor, the server replaces the recovery code before it answers a regeneration. If that answer never reaches the app (a network drop or an unreadable reply), the app warns that the old code may no longer work and asks you to regenerate again; a refusal the server did answer, such as a wrong password, keeps its own message.
+
 If verification fails:
 
 - *Code is incorrect* — besides a mistyped or expired code, this is also what you see when setup was started again on another device: only the newest pending secret counts. Finish setup on that device, or tap *Cancel* and start again here.
