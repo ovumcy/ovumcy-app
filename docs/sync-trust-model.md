@@ -445,7 +445,7 @@ Pinning was deferred on 2026-07-20 for operational reasons: a leaf pin would hav
 
 ## Pending Partner Invite Buffer
 
-The `pendingManagedPartnerInviteToken` module-level state must clear on every session boundary that invalidates the prior owner context: explicit disconnect, mode-switch, and forced unauthorized-session clear. Clearing only on successful accept lets the token outlive disconnect and risks redeeming it under a different managed account on the same device.
+The `pendingManagedPartnerInviteToken` module-level state must clear on every session boundary that invalidates the prior owner context: explicit disconnect, mode-switch, and forced unauthorized-session clear. Clearing only on successful accept lets the token outlive disconnect and risks redeeming it under a different managed account on the same device. Independently of those boundaries the buffer expires on its own: a token stashed more than 15 minutes ago (`MANAGED_PARTNER_INVITE_TOKEN_TTL_MS`) reads as empty and is dropped, so an abandoned pairing attempt never leaves a redeemable token in memory.
 
 ## Export Artifact Cleanup
 
