@@ -98,7 +98,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
       ) : null}
       <View style={styles.actions}>
         <AppButton
-          disabled={isBusy || password.length === 0}
+          disabled={isBusy || password.length === 0 || !isSendableCode(code)}
           label={copy.confirmLabel}
           onPress={handleSubmit}
           testID="sync-recovery-key-stepup-confirm"
@@ -113,6 +113,13 @@ export function BackupSyncRecoveryKeyStepUpSection({
       </View>
     </FeatureCard>
   );
+}
+
+// An empty code is allowed: the field also shows when the 2FA status is
+// unknown, and an empty code is not sent.
+function isSendableCode(code: string): boolean {
+  const trimmed = code.trim();
+  return trimmed.length === 0 || /^\d{6}$/.test(trimmed);
 }
 
 function resolveErrorMessage(
