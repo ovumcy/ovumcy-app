@@ -3060,6 +3060,257 @@ describe("sqlite-app-storage", () => {
     expect(inspected.state.profileRow?.encrypted_payload).toEqual(expect.any(String));
   });
 
+  function createInertLegacySource() {
+    return {
+      clear: jest.fn().mockResolvedValue(undefined),
+      hasData: jest.fn().mockResolvedValue(false),
+      readBootstrapState: jest.fn(),
+      readProfileRecord: jest.fn(),
+    };
+  }
+
+  const TRUNCATED_ENVELOPE = '{"algorithm":"xchacha20poly1305"';
+
+  it("deletes bootstrap and sync-preference rows that do not authenticate at hydrate and reseeds them", async () => {
+    const inspected = createInspectableFakeDatabase({
+      bootstrapRow: {
+        has_completed_onboarding: 1,
+        profile_version: 2,
+        incomplete_onboarding_step: null,
+        encrypted_payload: TRUNCATED_ENVELOPE,
+      },
+      syncPreferencesRow: {
+        mode: "managed",
+        endpoint_input: "https://injected.example",
+        normalized_endpoint: "https://injected.example",
+        device_label: "injected",
+        setup_status: "ready",
+        prepared_at: null,
+        encrypted_payload: TRUNCATED_ENVELOPE,
+      },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.readBootstrapState()).resolves.toEqual(
+      createDefaultBootstrapState(),
+    );
+    const syncPreferences = await storage.readSyncPreferencesRecord();
+    expect(syncPreferences.normalizedEndpoint).not.toBe("https://injected.example");
+    expect(inspected.state.bootstrapRow?.encrypted_payload).not.toBe(TRUNCATED_ENVELOPE);
+    expect(inspected.state.syncPreferencesRow?.encrypted_payload).not.toBe(TRUNCATED_ENVELOPE);
+  });
+
+  it("falls back to defaults when a singleton row vanishes or loses its payload after hydrate", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => inspected.database,
+    });
+    const defaultSyncPreferences = await storage.readSyncPreferencesRecord();
+    const { state } = inspected;
+
+    state.bootstrapRow = null;
+    await expect(storage.readBootstrapState()).resolves.toEqual(
+      createDefaultBootstrapState(),
+    );
+
+    state.profileRow = { ...PLAINTEXT_PROFILE_COLUMNS, cycle_length: 21, encrypted_payload: null };
+    await expect(storage.readProfileRecord()).resolves.toEqual(createDefaultProfileRecord());
+    state.profileRow = null;
+    await expect(storage.readProfileRecord()).resolves.toEqual(createDefaultProfileRecord());
+
+    state.syncPreferencesRow = {
+      ...state.syncPreferencesRow!,
+      encrypted_payload: TRUNCATED_ENVELOPE,
+    };
+    await expect(storage.readSyncPreferencesRecord()).resolves.toEqual(defaultSyncPreferences);
+    state.syncPreferencesRow = null;
+    await expect(storage.readSyncPreferencesRecord()).resolves.toEqual(defaultSyncPreferences);
+  });
+
+  it("skips list rows that lose their payload after hydrate", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => inspected.database,
+    });
+    const seededSymptoms = await storage.listSymptomRecords();
+
+    inspected.state.dayLogRows.push({
+      day: "2026-06-01",
+      is_period: 1,
+      cycle_start: 1,
+      is_uncertain: 0,
+      flow: "heavy",
+      mood: 3,
+      sex_activity: "none",
+      bbt: 0,
+      cervical_mucus: "none",
+      lh_test: "none",
+      pregnancy_test: "positive",
+      cycle_factor_keys: "[]",
+      symptom_ids: "[]",
+      notes: "injected plaintext note",
+      encrypted_payload: null,
+    });
+    inspected.state.symptomRows.push({
+      id: "injected",
+      slug: "injected",
+      label: "Injected",
+      icon: "x",
+      color: "#000000",
+      is_default: 0,
+      is_archived: 0,
+      sort_order: 99,
+      encrypted_payload: null,
+    });
+
+    await expect(
+      storage.listDayLogRecordsInRange("2026-01-01", "2026-12-31"),
+    ).resolves.toEqual([]);
+    await expect(storage.listSymptomRecords()).resolves.toEqual(seededSymptoms);
+  });
+
+  it("re-keys an encrypted symptom row stored under its plain id to the opaque lookup key", async () => {
+    const localDataKey = "a".repeat(64);
+    const symptom = {
+      id: "legacy_glow",
+      slug: "legacy-glow",
+      label: "Legacy Glow",
+      icon: "✨",
+      color: "#123456",
+      isArchived: false,
+      sortOrder: 42,
+      isDefault: false,
+    };
+    const inspected = createInspectableFakeDatabase({
+      symptomRows: [
+        {
+          id: symptom.id,
+          slug: symptom.slug,
+          label: symptom.label,
+          icon: symptom.icon,
+          color: symptom.color,
+          is_default: 0,
+          is_archived: 0,
+          sort_order: 42,
+          encrypted_payload: encryptLocalDataRecord(
+            localDataKey,
+            symptom,
+            buildLocalDataAad("symptom", symptom.id),
+          ),
+        },
+      ],
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+      openDatabase: async () => inspected.database,
+    });
+
+    await expect(storage.listSymptomRecords()).resolves.toContainEqual(symptom);
+    expect(inspected.state.symptomRows.map((row) => row.id)).not.toContain(symptom.id);
+  });
+
+  it("fills ageGroup and usageGoal for a profile payload written before those fields existed", async () => {
+    const localDataKey = "a".repeat(64);
+    const { ageGroup: _ageGroup, usageGoal: _usageGoal, ...legacyProfile } = {
+      ...createDefaultProfileRecord(),
+      cycleLength: 31,
+    };
+    const inspected = createInspectableFakeDatabase({
+      profileRow: {
+        ...PLAINTEXT_PROFILE_COLUMNS,
+        encrypted_payload: encryptLocalDataRecord(
+          localDataKey,
+          legacyProfile,
+          buildLocalDataAad("profile_settings", "1"),
+        ),
+      },
+    });
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+      openDatabase: async () => inspected.database,
+    });
+
+    const profile = await storage.readProfileRecord();
+    expect(profile.cycleLength).toBe(31);
+    expect(profile.usageGoal).toBe("health");
+    expect(profile.ageGroup).toBe(createDefaultProfileRecord().ageGroup);
+  });
+
+  it("does not cache a failed local-data key read for the rest of the session", async () => {
+    const localDataKeyStore = createFakeLocalDataKeyStore("a".repeat(64));
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore,
+      openDatabase: async () => createFakeDatabase(),
+    });
+    localDataKeyStore.readLocalDataKey
+      .mockResolvedValueOnce("a".repeat(64))
+      .mockRejectedValueOnce(new Error("keystore busy"));
+
+    await expect(storage.readBootstrapState()).rejects.toThrow("keystore busy");
+    await expect(storage.readBootstrapState()).resolves.toEqual(
+      createDefaultBootstrapState(),
+    );
+  });
+
+  it("rolls back a transaction left open by a failed reset before the next operation", async () => {
+    const { database } = createInspectableFakeDatabase();
+    let transactionOpen = false;
+    let failReset = false;
+    const tracked: LocalAppDatabase = {
+      ...database,
+      execAsync: (source) => {
+        if (source === "BEGIN IMMEDIATE;") {
+          transactionOpen = true;
+        } else if (source === "ROLLBACK;") {
+          if (failReset) {
+            failReset = false;
+            return Promise.reject(new Error("simulated rollback failure"));
+          }
+          transactionOpen = false;
+        } else if (source === "COMMIT;") {
+          transactionOpen = false;
+        }
+        return database.execAsync(source);
+      },
+      getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getFirstAsync<T>(source, ...params),
+      getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+        database.getAllAsync<T>(source, ...params),
+      runAsync: (source: string, ...params: unknown[]) => {
+        if (failReset && source === "DELETE FROM day_logs;") {
+          throw new Error("simulated wipe failure");
+        }
+        return database.runAsync(source, ...params);
+      },
+    };
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: createInertLegacySource(),
+      localDataKeyStore: createFakeLocalDataKeyStore("a".repeat(64)),
+      openDatabase: async () => tracked,
+    });
+    await storage.readBootstrapState();
+
+    failReset = true;
+    await expect(storage.clearAllLocalData()).rejects.toThrow("simulated wipe failure");
+    expect(transactionOpen).toBe(true);
+
+    await expect(storage.readBootstrapState()).resolves.toEqual(
+      expect.any(Object),
+    );
+    expect(transactionOpen).toBe(false);
+  });
+
   function createPregnancyStorage(overrides?: Partial<FakeDatabaseState>) {
     const inspected = createInspectableFakeDatabase(overrides);
     const storage = createSQLiteAppStorage({
