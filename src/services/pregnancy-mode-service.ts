@@ -17,6 +17,8 @@ import {
 } from "../models/pregnancy";
 import type { LocalDateISO, ProfileRecord } from "../models/profile";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { listCycleHistoryRecords } from "./cycle-history-records";
+import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
 import {
   calcEddFromLmp,
   calcGestationalAge,
@@ -279,16 +281,35 @@ export type PregnancyStartDefaults = {
   defaultEdd: LocalDateISO | null;
 };
 
-// Wizard prefill: the canonical last-period-start seeds the LMP field, and its
-// Naegele EDD seeds the ultrasound/manual field so the user starts from a
-// sensible estimate rather than a blank form.
+// Wizard prefill: the current cycle anchor the prediction surfaces read (the
+// latest cycle start on or before today, from the stored start and the logged
+// rows alike) seeds the LMP field, and its Naegele EDD seeds the
+// ultrasound/manual field, so the user starts from a sensible estimate rather
+// than a blank form. `records` is the shared cycle history.
 export function buildPregnancyStartDefaults(
   profile: ProfileRecord,
+  records: DayLogRecord[],
+  now: Date,
 ): PregnancyStartDefaults {
-  const defaultLmp = profile.lastPeriodStart;
+  const defaultLmp = resolveLatestCycleStartAnchorBeforeOrOn(
+    profile,
+    records,
+    formatLocalDate(now),
+  );
   const defaultEdd =
     defaultLmp && parseLocalDate(defaultLmp) ? calcEddFromLmp(defaultLmp) : null;
-  return { defaultLmp: defaultLmp ?? null, defaultEdd };
+  return { defaultLmp, defaultEdd };
+}
+
+export async function loadPregnancyStartDefaults(
+  storage: LocalAppStorage,
+  now: Date,
+): Promise<PregnancyStartDefaults> {
+  const [profile, records] = await Promise.all([
+    storage.readProfileRecord(),
+    listCycleHistoryRecords(storage, now),
+  ]);
+  return buildPregnancyStartDefaults(profile, records, now);
 }
 
 export type PregnancyStartPreview = {

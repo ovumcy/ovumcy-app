@@ -10,8 +10,8 @@ import { rebuildLocalReminderScheduleFromStorage } from "../../../services/local
 import { createPlatformLocalReminderScheduler } from "../../../services/platform-local-reminder-scheduler";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
 import {
-  buildPregnancyStartDefaults,
   buildPregnancyStartPreview,
+  loadPregnancyStartDefaults,
   startPregnancy,
   type StartPregnancyErrorCode,
   type StartPregnancyInput,
@@ -56,8 +56,8 @@ export function PregnancyStartScreen({
     let isMounted = true;
 
     void (async () => {
-      const [profile, unlocked] = await Promise.all([
-        storage.readProfileRecord(),
+      const [defaults, unlocked] = await Promise.all([
+        loadPregnancyStartDefaults(storage, effectiveNow),
         loadPregnancyModuleOwned(),
       ]);
       if (!isMounted) {
@@ -69,7 +69,6 @@ export function PregnancyStartScreen({
         return;
       }
 
-      const defaults = buildPregnancyStartDefaults(profile);
       setLmpDate(defaults.defaultLmp ?? "");
       setEddInput(defaults.defaultEdd ?? "");
       setStatus("ready");
@@ -78,7 +77,7 @@ export function PregnancyStartScreen({
     return () => {
       isMounted = false;
     };
-  }, [storage]);
+  }, [effectiveNow, storage]);
 
   const currentInput = useMemo<StartPregnancyInput>(
     () => ({
