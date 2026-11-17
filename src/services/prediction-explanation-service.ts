@@ -17,7 +17,7 @@ export function buildPredictionExplanation(
     return dashboardCopy.factsOnlyHint;
   }
 
-  if (!profile.lastPeriodStart) {
+  if (!projection.cycleAnchorDate) {
     return "";
   }
 

@@ -576,20 +576,59 @@ describe("deleteAllPregnancyData", () => {
 });
 
 describe("buildPregnancyStartDefaults", () => {
-  it("prefills LMP and its Naegele EDD from the profile", () => {
+  const NOW = new Date(2026, 1, 20);
+  const periodStart = (date: string): DayLogRecord => ({
+    ...createEmptyDayLogRecord(date),
+    isPeriod: true,
+    cycleStart: true,
+  });
+
+  it("prefills LMP and its Naegele EDD from the stored start", () => {
     const profile = { ...createDefaultProfileRecord(), lastPeriodStart: LMP };
-    expect(buildPregnancyStartDefaults(profile)).toEqual({
+    expect(buildPregnancyStartDefaults(profile, [], NOW)).toEqual({
       defaultLmp: LMP,
       defaultEdd: EDD,
     });
   });
 
-  it("returns nulls when the profile has no last period start", () => {
+  it("returns nulls when neither the profile nor the rows hold a cycle start", () => {
     const profile = { ...createDefaultProfileRecord(), lastPeriodStart: null };
-    expect(buildPregnancyStartDefaults(profile)).toEqual({
+    expect(buildPregnancyStartDefaults(profile, [], NOW)).toEqual({
       defaultLmp: null,
       defaultEdd: null,
     });
+  });
+
+  it("prefills a logged start when the stored start is empty", () => {
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: null };
+    expect(buildPregnancyStartDefaults(profile, [periodStart(LMP)], NOW)).toEqual({
+      defaultLmp: LMP,
+      defaultEdd: EDD,
+    });
+  });
+
+  it("prefills a later logged start over an older stored start", () => {
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2025-12-04" };
+    expect(
+      buildPregnancyStartDefaults(profile, [periodStart("2025-12-04"), periodStart(LMP)], NOW)
+        .defaultLmp,
+    ).toBe(LMP);
+  });
+
+  it("never prefills a stored start dated after today", () => {
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: "2026-03-01" };
+    expect(buildPregnancyStartDefaults(profile, [periodStart(LMP)], NOW).defaultLmp).toBe(LMP);
+  });
+
+  it("keeps the last period before a positive test", () => {
+    const profile = { ...createDefaultProfileRecord(), lastPeriodStart: LMP };
+    const positive: DayLogRecord = {
+      ...createEmptyDayLogRecord("2026-02-10"),
+      pregnancyTest: "positive",
+    };
+    expect(
+      buildPregnancyStartDefaults(profile, [periodStart(LMP), positive], NOW).defaultLmp,
+    ).toBe(LMP);
   });
 });
 

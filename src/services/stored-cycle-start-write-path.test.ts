@@ -8,7 +8,7 @@ import {
   saveDayLogEditorRecord,
 } from "./day-log-editor-service";
 import { importBackupEnvelope } from "./import-service";
-import { buildPregnancyStartDefaults } from "./pregnancy-mode-service";
+import { loadPregnancyStartDefaults } from "./pregnancy-mode-service";
 import {
   STORED_CYCLE_START_REPOINT_VERSION,
   repointLegacyStoredCycleStart,
@@ -65,9 +65,8 @@ describe("stored cycle start write path", () => {
       NOW,
     );
 
-    const profile = await storage.readProfileRecord();
-    expect(profile.lastPeriodStart).toBe("2026-05-01");
-    expect(buildPregnancyStartDefaults(profile).defaultLmp).toBe("2026-05-01");
+    expect(await storedStart(storage)).toBe("2026-05-01");
+    expect((await loadPregnancyStartDefaults(storage, NOW)).defaultLmp).toBe("2026-05-01");
   });
 
   it.each([
