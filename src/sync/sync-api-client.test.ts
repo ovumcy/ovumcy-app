@@ -935,7 +935,7 @@ describe("sync-api-client", () => {
     },
   );
 
-  describe("putRecoveryKey step-up (APP-32)", () => {
+  describe("putRecoveryKey step-up", () => {
     const pkg: WrappedSyncKeyMetadata = {
       algorithm: "xchacha20poly1305",
       kdf: "bip39_seed_hkdf_sha256",
