@@ -51,6 +51,13 @@ export type SyncAccountSecurityTOTPStage =
 // UI-only: 2FA turned on but the rotated recovery code never reached the screen.
 export type TOTPRecoveryCodeLostErrorCode = "totp_recovery_code_lost";
 
+// UI-only: a sent regenerate got no readable answer. Both servers rotate the
+// code before answering, so the previous code may already be dead.
+export type RegenerateResponseLostErrorCode = "regenerate_response_lost";
+
+const REGENERATE_RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<RegenerateSyncRecoveryCodeErrorCode> =
+  new Set(["network_failed", "generic"]);
+
 const RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<VerifyTOTPEnrollmentErrorCode> =
   new Set(["network_failed", "generic", "totp_already_enabled"]);
 
@@ -121,8 +128,9 @@ export function useSyncAccountSecurityController({
   const [regenerateCodeDemanded, setRegenerateCodeDemanded] = useState(false);
   const [regenerateStatus, setRegenerateStatus] =
     useState<SyncAccountSecurityStatus>("idle");
-  const [regenerateErrorCode, setRegenerateErrorCode] =
-    useState<RegenerateSyncRecoveryCodeErrorCode | null>(null);
+  const [regenerateErrorCode, setRegenerateErrorCode] = useState<
+    RegenerateSyncRecoveryCodeErrorCode | RegenerateResponseLostErrorCode | null
+  >(null);
 
   // Shared reveal modal (used by reset-password and regenerate flows)
   const [revealedRecoveryCode, setRevealedRecoveryCode] = useState("");
@@ -298,7 +306,9 @@ export function useSyncAccountSecurityController({
       setRegenerateErrorCode(
         result.errorCode === "totp_invalid_code" && !regenerateCodeVisible
           ? "totp_code_required"
-          : result.errorCode,
+          : REGENERATE_RESPONSE_MAY_BE_LOST_CODES.has(result.errorCode)
+            ? "regenerate_response_lost"
+            : result.errorCode,
       );
       setRegenerateStatus("idle");
     }
