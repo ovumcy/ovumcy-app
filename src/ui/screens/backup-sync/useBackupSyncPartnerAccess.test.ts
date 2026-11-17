@@ -397,6 +397,24 @@ describe("useBackupSyncPartnerAccess", () => {
         expect(result.current.isPartnerBusy).toBe(false);
       },
     );
+
+    it("refuses a secret buffered for a different invite token", async () => {
+      clearManagedPartnerInviteToken();
+      stashManagedPartnerInviteToken("other-token", INVITE_SECRET_HEX);
+      const core = createBackupSyncSessionCoreMock({
+        pendingPartnerInviteToken: "invite-token",
+      });
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        await result.current.handleAcceptPartnerInvite();
+      });
+
+      expect(mockAcceptManagedPartnerInvite).not.toHaveBeenCalled();
+      expect(core.setPartnerErrorMessage).toHaveBeenCalledWith(
+        core.partnerCopy.errors.invalidPartnerInvite,
+      );
+    });
   });
 
   describe("handleAcceptPartnerInviteAsGuest", () => {
