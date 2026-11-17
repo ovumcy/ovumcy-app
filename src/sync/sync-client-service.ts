@@ -47,6 +47,7 @@ import {
   createSyncAPIClient,
   type SyncAPIClient,
   type SyncAPIErrorCode,
+  type SyncRecoveryKeyStepUp,
 } from "./sync-api-client";
 import {
   buildSyncSnapshot,
@@ -97,6 +98,14 @@ export type SyncRunErrorCode =
   | "stale_generation"
   | "invalid_payload"
   | "upload_over_backup_declined"
+  // The upload would replace the server's recovery-key package, which a
+  // community server allows only after the account password (and a current
+  // TOTP code when 2FA is on). The caller prompts and retries with the step-up.
+  | "recovery_key_step_up_required"
+  | "recovery_key_code_required"
+  | "invalid_current_password"
+  | "totp_invalid_code"
+  | "totp_replayed"
   | "network_failed"
   | "generic";
 
@@ -329,8 +338,11 @@ export async function connectSyncAccount(
     authResult.auth.sessionToken,
     capabilitiesResult.capabilities,
     secrets.wrappedKey,
+    { currentPassword: credentials.password },
   );
-  if (!syncedRecoveryKey.ok) {
+  // A refused step-up (2FA turned on meanwhile wants a code) does not fail
+  // the connect: the next upload prompts for it.
+  if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
     return {
       ok: false,
       errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
@@ -502,7 +514,9 @@ export async function finalizeSyncSessionAfterTOTP(
     capabilitiesResult.capabilities,
     secrets.wrappedKey,
   );
-  if (!syncedRecoveryKey.ok) {
+  // The challenge code is spent and no password is held here, so a package
+  // replacement waits for the next upload, which prompts for the step-up.
+  if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
     return {
       ok: false,
       errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
@@ -1131,6 +1145,8 @@ export async function runSyncUpload(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   uploadOverBackupGuard?: UploadOverBackupGuard,
+  // Held only for this call; never stored or logged.
+  recoveryKeyStepUp?: SyncRecoveryKeyStepUp,
 ): Promise<
   | {
       ok: true;
@@ -1197,9 +1213,15 @@ export async function runSyncUpload(
       prepared.secrets.authSessionToken,
       capabilitiesResult.capabilities,
       prepared.secrets.wrappedKey,
+      recoveryKeyStepUp,
     );
     if (!syncedRecoveryKey.ok) {
-      return { ok: false, errorCode: mapRunAPIError(syncedRecoveryKey.errorCode) };
+      return {
+        ok: false,
+        errorCode: isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)
+          ? syncedRecoveryKey.errorCode
+          : mapRunAPIError(syncedRecoveryKey.errorCode),
+      };
     }
   } else if (capabilitiesResult.errorCode === "unauthorized") {
     return { ok: false, errorCode: "unauthorized" };
@@ -1755,28 +1777,75 @@ function mapManagedRunAPIError(
   }
 }
 
+type RecoveryKeyStepUpErrorCode =
+  | "recovery_key_step_up_required"
+  | "recovery_key_code_required"
+  | "invalid_current_password"
+  | "totp_invalid_code"
+  | "totp_replayed";
+
+function isRecoveryKeyStepUpCode(
+  code: SyncAPIErrorCode | RecoveryKeyStepUpErrorCode,
+): code is RecoveryKeyStepUpErrorCode {
+  switch (code) {
+    case "recovery_key_step_up_required":
+    case "recovery_key_code_required":
+    case "invalid_current_password":
+    case "totp_invalid_code":
+    case "totp_replayed":
+      return true;
+    default:
+      return false;
+  }
+}
+
+// A community server re-verifies the account before it replaces a stored
+// package (the same package is a no-op). Without a step-up its refusal means
+// "ask for one", not "wrong"; with one it judges what was sent. Managed
+// sessions are exempt server-side, so they never see these answers.
 async function syncRecoveryKeyIfSupported(
   client: SyncAPIClient,
   sessionToken: string,
   capabilities: SyncCapabilityDocument,
   wrappedKey: SyncSecretsRecord["wrappedKey"],
+  stepUp?: SyncRecoveryKeyStepUp,
 ): Promise<
   | { ok: true }
-  | { ok: false; errorCode: SyncAPIErrorCode }
+  | { ok: false; errorCode: SyncAPIErrorCode | RecoveryKeyStepUpErrorCode }
 > {
   if (!capabilities.recoverySupported) {
     return { ok: true };
   }
 
-  const recoveryKeyResult = await client.putRecoveryKey(sessionToken, wrappedKey);
-  if (!recoveryKeyResult.ok) {
-    return {
-      ok: false,
-      errorCode: recoveryKeyResult.errorCode,
-    };
+  const recoveryKeyResult = await client.putRecoveryKey(
+    sessionToken,
+    wrappedKey,
+    stepUp,
+  );
+  if (recoveryKeyResult.ok) {
+    return { ok: true };
   }
 
-  return { ok: true };
+  const errorCode = recoveryKeyResult.errorCode;
+  const codeSent = (stepUp?.code?.trim() ?? "").length > 0;
+  switch (errorCode) {
+    case "invalid_current_password":
+      return {
+        ok: false,
+        errorCode: stepUp ? errorCode : "recovery_key_step_up_required",
+      };
+    case "totp_invalid_code":
+      return {
+        ok: false,
+        errorCode: !stepUp
+          ? "recovery_key_step_up_required"
+          : codeSent
+            ? errorCode
+            : "recovery_key_code_required",
+      };
+    default:
+      return { ok: false, errorCode };
+  }
 }
 
 function buildManagedCapabilitiesDocument(

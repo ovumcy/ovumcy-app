@@ -42,6 +42,11 @@ export type SyncAPIErrorCode =
   | "invalid_response"
   | "generic";
 
+export type SyncRecoveryKeyStepUp = {
+  currentPassword: string;
+  code?: string;
+};
+
 export type SyncAccountSessionView = {
   twoFactorEnabled: boolean;
 };
@@ -119,9 +124,12 @@ export type SyncAPIClient = {
     | { ok: true; blob: SyncBlobRecord }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  // A package that differs from the stored one needs the step-up on a
+  // community server; the same package is a no-op that needs none.
   putRecoveryKey(
     sessionToken: string,
     input: WrappedSyncKeyMetadata,
+    stepUp?: SyncRecoveryKeyStepUp,
   ): Promise<
     | { ok: true; recoveryKey: WrappedSyncKeyMetadata }
     | { ok: false; errorCode: SyncAPIErrorCode }
@@ -602,7 +610,8 @@ export function createSyncAPIClient(
       );
     },
 
-    async putRecoveryKey(sessionToken, input) {
+    async putRecoveryKey(sessionToken, input, stepUp) {
+      const code = stepUp?.code?.trim();
       return requestJSON<RawRecoveryKeyPackage>(
         fetchImpl,
         normalizedBaseURL,
@@ -617,6 +626,8 @@ export function createSyncAPIClient(
             wrap_nonce_hex: input.wrapNonceHex,
             wrapped_master_key_hex: input.wrappedMasterKeyHex,
             phrase_fingerprint_hex: input.phraseFingerprintHex,
+            ...(stepUp ? { current_password: stepUp.currentPassword } : {}),
+            ...(code ? { code } : {}),
           },
         },
         isRawRecoveryKeyPackage,

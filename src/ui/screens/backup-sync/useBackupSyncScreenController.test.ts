@@ -126,6 +126,9 @@ function createActionsFixture(
     isSyncingNow: false,
     handleSyncNow: jest.fn(),
     handleRestoreSync: jest.fn(),
+    recoveryKeyStepUpPrompt: null,
+    handleSubmitRecoveryKeyStepUp: jest.fn(),
+    handleCancelRecoveryKeyStepUp: jest.fn(),
     ...overrides,
   };
 }

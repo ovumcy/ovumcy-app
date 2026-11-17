@@ -11,7 +11,10 @@ import {
   createLoadedSettingsStateFixture,
 } from "../../../test/create-backup-sync-session-core-mock";
 import { openConfirmation } from "../../confirm/open-confirmation";
+import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
 import { useBackupSyncActions } from "./useBackupSyncActions";
+
+const mockDescribeTwoFactor = jest.mocked(describeSyncAccountTwoFactor);
 
 jest.mock("../../confirm/open-confirmation", () => ({
   openConfirmation: jest.fn(),
@@ -23,6 +26,10 @@ jest.mock("../../../security/sensitive-action-auth", () => ({
 }));
 
 jest.mock("../../../services/backup-sync-screen-service");
+
+jest.mock("../../../sync/sync-account-session-service", () => ({
+  describeSyncAccountTwoFactor: jest.fn(),
+}));
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockRequestSensitiveActionChallenge = jest.mocked(
@@ -386,6 +393,145 @@ describe("useBackupSyncActions", () => {
         core.viewData.account.status.restored,
       );
       expect(result.current.isRestoringSync).toBe(false);
+    });
+  });
+});
+
+describe("useBackupSyncActions recovery-key step-up", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    clearManagedPartnerInviteToken();
+  });
+
+  async function openPrompt(errorCode: string, twoFactorEnabled?: boolean) {
+    const core = createBackupSyncSessionCoreMock();
+    if (twoFactorEnabled !== undefined) {
+      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled });
+    }
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode,
+    } as never);
+    const { result } = await renderHook(() => useBackupSyncActions(core));
+    await act(async () => {
+      await result.current.handleSyncNow();
+    });
+    return { core, result };
+  }
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    "step_up_required opens the prompt (2FA %s -> codeRequired %s)",
+    async (twoFactorEnabled, codeRequired) => {
+      const { result, core } = await openPrompt(
+        "recovery_key_step_up_required",
+        twoFactorEnabled,
+      );
+
+      expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+        codeRequired,
+        errorCode: null,
+      });
+      expect(result.current.isSyncingNow).toBe(false);
+      expect(core.setErrorState).not.toHaveBeenCalled();
+    },
+  );
+
+  it("code_required forces the code field", async () => {
+    const { result } = await openPrompt("recovery_key_code_required");
+
+    expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+      codeRequired: true,
+      errorCode: null,
+    });
+  });
+
+  it("invalid_current_password keeps the code field as it was", async () => {
+    const { result, core } = await openPrompt(
+      "recovery_key_step_up_required",
+      true,
+    );
+
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "invalid_current_password",
+    } as never);
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({
+        currentPassword: "wrong",
+        code: "123456",
+      });
+    });
+    expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+      codeRequired: true,
+      errorCode: "invalid_current_password",
+    });
+
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "invalid_current_password",
+    } as never);
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({
+        currentPassword: "wrong",
+      });
+    });
+    expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+      codeRequired: false,
+      errorCode: "invalid_current_password",
+    });
+    expect(core.setErrorState).not.toHaveBeenCalled();
+  });
+
+  it("submit passes the step-up as the sixth upload argument and success clears the prompt", async () => {
+    const { result, core } = await openPrompt(
+      "recovery_key_step_up_required",
+      true,
+    );
+    const uploadedState = createLoadedSettingsStateFixture();
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: true,
+      state: uploadedState,
+    } as never);
+
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({
+        currentPassword: "pw",
+        code: "123456",
+      });
+    });
+
+    expect(mockUploadBackupSyncSnapshot.mock.calls[1]?.[5]).toEqual({
+      currentPassword: "pw",
+      code: "123456",
+    });
+    expect(result.current.recoveryKeyStepUpPrompt).toBeNull();
+    expect(core.setState).toHaveBeenCalledWith(uploadedState);
+  });
+
+  it("cancel clears the prompt", async () => {
+    const { result } = await openPrompt("recovery_key_code_required");
+
+    await act(() => {
+      result.current.handleCancelRecoveryKeyStepUp();
+    });
+
+    expect(result.current.recoveryKeyStepUpPrompt).toBeNull();
+  });
+
+  it("a declined overwrite does not open the prompt", async () => {
+    const declined = await openPrompt("upload_over_backup_declined");
+    expect(declined.result.current.recoveryKeyStepUpPrompt).toBeNull();
+  });
+
+  it("other errors do not open the prompt", async () => {
+    const other = await openPrompt("network_failed");
+    expect(other.result.current.recoveryKeyStepUpPrompt).toBeNull();
+    expect(other.core.setErrorState).toHaveBeenCalledWith({
+      code: "network_failed",
+      scope: "sync",
     });
   });
 });

@@ -388,6 +388,10 @@ export function useBackupSyncScreenController(
         void connection.handleSubmitTOTPChallenge();
       },
       onCancelTOTPChallenge: connection.handleCancelTOTPChallenge,
+      recoveryKeyStepUpPrompt: actions.recoveryKeyStepUpPrompt,
+      isSyncingNow: actions.isSyncingNow,
+      onSubmitRecoveryKeyStepUp: actions.handleSubmitRecoveryKeyStepUp,
+      onCancelRecoveryKeyStepUp: actions.handleCancelRecoveryKeyStepUp,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,
