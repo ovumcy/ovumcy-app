@@ -1215,6 +1215,9 @@ export async function runSyncUpload(
   const snapshot = await buildSyncSnapshot(storage, now);
   const payload = encodeSyncSnapshot(snapshot);
   const generation = nextRemoteGeneration(preferences, now);
+  if (!isValidSyncGeneration(generation)) {
+    return { ok: false, errorCode: "stale_generation" };
+  }
   const encryptedEnvelope = encryptSyncPayload(
     prepared.secrets.masterKeyHex,
     payload,
@@ -1359,13 +1362,9 @@ export async function runSyncRestore(
     }
   }
 
-  // The floor never moves down. A legacy blob's generation is unsealed, so it
-  // can only raise the floor, which at worst costs a later confirm.
   const nextPreferences = buildSyncedPreferences(
     preferences,
-    rollbackFloor === null
-      ? reportedGeneration
-      : Math.max(rollbackFloor, reportedGeneration),
+    nextRollbackFloor(rollbackFloor, opened.sealedGeneration, reportedGeneration),
     blobResult.blob.updatedAt,
     "connected",
   );
@@ -1716,10 +1715,28 @@ function buildSyncedPreferences(
 }
 
 function readRollbackFloor(preferences: SyncPreferencesRecord): number | null {
-  return typeof preferences.lastRemoteGeneration === "number" &&
-    Number.isFinite(preferences.lastRemoteGeneration)
+  return isValidSyncGeneration(preferences.lastRemoteGeneration)
     ? preferences.lastRemoteGeneration
     : null;
+}
+
+/**
+ * The floor never moves down, and only a sealed generation raises it. A
+ * legacy blob's generation is server-chosen: it never moves an existing
+ * floor, and on a device with none it is capped at the current time, so a
+ * forged value cannot push later uploads past what the server accepts.
+ */
+function nextRollbackFloor(
+  rollbackFloor: number | null,
+  sealedGeneration: number | null,
+  reportedGeneration: number,
+): number {
+  if (sealedGeneration !== null) {
+    return rollbackFloor === null
+      ? sealedGeneration
+      : Math.max(rollbackFloor, sealedGeneration);
+  }
+  return rollbackFloor ?? Math.min(reportedGeneration, Date.now());
 }
 
 function nextRemoteGeneration(

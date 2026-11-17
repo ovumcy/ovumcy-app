@@ -4920,5 +4920,49 @@ describe("snapshot AAD across devices", () => {
       });
       expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
     });
+
+    it("never raises the floor from an unsealed generation", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const floor = uploadedAt.getTime();
+      const blob = await legacyV2Blob(deviceA.record, Number.MAX_SAFE_INTEGER);
+
+      const { result } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: floor,
+        guard: confirmGuard(true),
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        preferences: expect.objectContaining({ lastRemoteGeneration: floor }),
+      });
+    });
+
+    it("caps an unsealed generation at the current time on a device with no floor", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const blob = await legacyV2Blob(deviceA.record, Number.MAX_SAFE_INTEGER);
+
+      const { result } = await restoreOnDevice(deviceA.record, blob);
+
+      expect(result.ok).toBe(true);
+      const floor = result.ok ? result.preferences.lastRemoteGeneration : null;
+      expect(floor).not.toBeNull();
+      expect(floor as number).toBeLessThanOrEqual(Date.now());
+    });
+
+    it("refuses to upload when the floor leaves no valid next generation", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const putBlob = jest.fn();
+
+      const result = await runSyncUpload(
+        createUploadStorage(),
+        createSyncSecretStoreMock({ ...deviceA.record, authSessionToken: "session-1" }),
+        { ...selfHostedPreferences, lastRemoteGeneration: Number.MAX_SAFE_INTEGER },
+        uploadedAt,
+        jest.fn().mockReturnValue(createAPIClientMock({ putBlob })),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "stale_generation" });
+      expect(putBlob).not.toHaveBeenCalled();
+    });
   });
 });
