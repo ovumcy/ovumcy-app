@@ -1135,5 +1135,29 @@ describe("doctor PDF: recorded pregnancy tests", () => {
         expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
       );
     });
+
+    it("prints a current-cycle LH peak after the row-derived anchor, with or without a stored start", () => {
+      const pdfCopy = getExportPDFCopy("en");
+      const rows = [
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-02-10"), lhTest: "peak" as const },
+      ];
+      for (const lastPeriodStart of ["2026-01-01", null]) {
+        const report = buildReport({
+          now,
+          dayLogs: rows,
+          profile: { ...pdfProfile, lastPeriodStart },
+          symptomRecords: [],
+        });
+
+        expect(report.advancedFertility).toContainEqual(
+          expect.objectContaining({
+            key: "lh-peak",
+            description: pdfCopy.advancedFertilityLHPeakDescription("2026-02-10"),
+          }),
+        );
+      }
+    });
   });
 });
