@@ -4965,6 +4965,21 @@ describe("snapshot AAD across devices", () => {
       expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
     });
 
+    it("asks before restoring when the stored floor is unreadable", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const blob = await legacyV2Blob(deviceA.record, 42);
+      const guard = confirmGuard(false);
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: 1.5,
+        guard,
+      });
+
+      expect(guard.confirmRestoreOlderBackup).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ ok: false, errorCode: "restore_older_backup_declined" });
+      expectLocalDataUntouched(storage);
+    });
+
     it("never raises the floor from an unsealed generation", async () => {
       const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
       const floor = uploadedAt.getTime();

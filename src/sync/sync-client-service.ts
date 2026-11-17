@@ -1356,7 +1356,12 @@ export async function runSyncRestore(
   }
 
   const rollbackFloor = readRollbackFloor(preferences);
+  // A stored floor that is present but not a valid generation cannot be
+  // compared, so it asks rather than reading as "no floor".
+  const floorUnreadable =
+    rollbackFloor === null && preferences.lastRemoteGeneration !== null;
   if (
+    floorUnreadable ||
     requiresRestoreOlderBackupConfirmation({
       rollbackFloor,
       sealedGeneration: opened.sealedGeneration,
