@@ -8,9 +8,18 @@ export function isPartnerInviteSecretHex(value: string): boolean {
   return INVITE_SECRET_HEX_PATTERN.test(value);
 }
 
+// The only link targets the app itself opens (the custom scheme and the
+// verified app-link host in app.json). The server mints the invite URL, so a
+// server-chosen host would let the page it serves read the fragment.
+const PARTNER_INVITE_LINK_BASES = [
+  "ovumcy://backup-sync",
+  "https://invite.ovumcy.cloud/backup-sync",
+];
+
 /**
- * Builds the link the owner shares. Any fragment the server put on its URL is
- * dropped: the fragment is client-controlled and carries only the secret.
+ * Builds the link the owner shares. Refuses a server URL outside the pinned
+ * link bases, and drops any fragment the server put on it: the fragment is
+ * client-controlled and carries only the secret.
  */
 export function buildShareablePartnerInviteURL(
   serverInviteURL: string,
@@ -22,6 +31,13 @@ export function buildShareablePartnerInviteURL(
   const hashIndex = serverInviteURL.indexOf("#");
   const base =
     hashIndex === -1 ? serverInviteURL : serverInviteURL.slice(0, hashIndex);
+  const queryIndex = base.indexOf("?");
+  if (
+    queryIndex === -1 ||
+    !PARTNER_INVITE_LINK_BASES.includes(base.slice(0, queryIndex))
+  ) {
+    throw new Error("invalid_partner_invite");
+  }
   return `${base}#${INVITE_SECRET_FRAGMENT_PARAM}=${inviteSecretHex}`;
 }
 
@@ -37,10 +53,7 @@ export function parsePartnerInviteSecretFromFragment(
     .split("&")
     .filter((part) => part.startsWith(`${INVITE_SECRET_FRAGMENT_PARAM}=`))
     .map((part) => part.slice(INVITE_SECRET_FRAGMENT_PARAM.length + 1));
-  if (values.length !== 1) {
-    return "";
-  }
-  const value = values[0] ?? "";
+  const value = values.length === 1 ? (values[0] as string) : "";
   return isPartnerInviteSecretHex(value) ? value : "";
 }
 

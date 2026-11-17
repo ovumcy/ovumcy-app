@@ -65,6 +65,24 @@ describe("partner-share-secret-store retired token-derived entry", () => {
     expect(backend.state.has(LEGACY_STORE_KEY)).toBe(false);
   });
 
+  it("still deletes the retired entry and reports failure when the current entry's delete throws", async () => {
+    const backend = createBackendMock();
+    backend.state.set(LEGACY_STORE_KEY, LEGACY_RECORD);
+    const deleteItem = backend.deleteItem.bind(backend);
+    backend.deleteItem = async (key: string) => {
+      if (key === STORE_KEY) {
+        throw new Error("keychain locked");
+      }
+      await deleteItem(key);
+    };
+    const store = createPartnerShareSecretStore(backend);
+
+    await expect(store.clearPartnerShareSecrets()).rejects.toThrow(
+      "keychain locked",
+    );
+    expect(backend.state.has(LEGACY_STORE_KEY)).toBe(false);
+  });
+
   it("is deleted by a clear together with the current entry", async () => {
     const backend = createBackendMock();
     const store = createPartnerShareSecretStore(backend);

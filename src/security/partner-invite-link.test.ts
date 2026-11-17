@@ -27,6 +27,19 @@ describe("buildShareablePartnerInviteURL", () => {
     ).toBe(`ovumcy://backup-sync?invite_token=tok#k=${SECRET}`);
   });
 
+  it.each([
+    "https://evil.example/backup-sync?invite_token=tok",
+    "https://invite.ovumcy.cloud.evil.example/backup-sync?invite_token=tok",
+    "https://invite.ovumcy.cloud/other?invite_token=tok",
+    "http://invite.ovumcy.cloud/backup-sync?invite_token=tok",
+    "https://invite.ovumcy.cloud/backup-sync",
+    "javascript:alert(1)//?invite_token=tok",
+  ])("refuses a server URL outside the pinned link bases: %s", (serverURL) => {
+    expect(() => buildShareablePartnerInviteURL(serverURL, SECRET)).toThrow(
+      "invalid_partner_invite",
+    );
+  });
+
   it("refuses a malformed secret", () => {
     expect(() =>
       buildShareablePartnerInviteURL("ovumcy://backup-sync?invite_token=tok", "abc"),
@@ -71,6 +84,12 @@ describe("parsePartnerInviteLink", () => {
       parsePartnerInviteLink(`ovumcy://backup-sync#invite_token=tok&k=${SECRET}`)
         .inviteToken,
     ).toBe("");
+  });
+
+  it("keeps a token whose percent-encoding is malformed as written", () => {
+    expect(parsePartnerInviteLink("ovumcy://backup-sync?invite_token=tok%E0%A4%A").inviteToken).toBe(
+      "tok%E0%A4%A",
+    );
   });
 
   it("returns empty values for a missing link", () => {
