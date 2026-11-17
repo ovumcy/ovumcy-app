@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { RecoveryKeyStepUpCopy } from "../../../i18n/recovery-key-stepup-copy";
@@ -34,14 +34,6 @@ export function BackupSyncRecoveryKeyStepUpSection({
   const styles = useThemedStyles(createStyles);
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-
-  useEffect(
-    () => () => {
-      setPassword("");
-      setCode("");
-    },
-    [],
-  );
 
   function clearFields() {
     setPassword("");
@@ -112,6 +104,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
           testID="sync-recovery-key-stepup-confirm"
         />
         <AppButton
+          disabled={isBusy}
           label={copy.cancelLabel}
           onPress={handleCancel}
           testID="sync-recovery-key-stepup-cancel"
@@ -133,6 +126,8 @@ function resolveErrorMessage(
       return copy.errors.totpInvalidCode;
     case "totp_replayed":
       return copy.errors.totpReplayed;
+    case "rate_limited":
+      return copy.errors.rateLimited;
     default:
       return "";
   }

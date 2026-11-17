@@ -3788,6 +3788,8 @@ describe("runSyncUpload additional branches", () => {
       ["invalid_current_password", { currentPassword: "pw" }, "invalid_current_password"],
       ["totp_invalid_code", { currentPassword: "pw", code: "123456" }, "totp_invalid_code"],
       ["totp_replayed", { currentPassword: "pw", code: "123456" }, "totp_replayed"],
+      ["rate_limited", { currentPassword: "pw" }, "recovery_key_step_up_rate_limited"],
+      ["rate_limited", undefined, "generic"],
     ] as const)(
       "maps a %s refusal (step-up %j) to %s and stops before the blob",
       async (apiErrorCode, stepUp, expected) => {

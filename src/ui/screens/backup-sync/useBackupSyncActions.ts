@@ -17,7 +17,12 @@ import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session
 // TOTP code when 2FA is on. `errorCode` judges the previous attempt.
 export type RecoveryKeyStepUpPrompt = {
   codeRequired: boolean;
-  errorCode: "invalid_current_password" | "totp_invalid_code" | "totp_replayed" | null;
+  errorCode:
+    | "invalid_current_password"
+    | "totp_invalid_code"
+    | "totp_replayed"
+    | "rate_limited"
+    | null;
 };
 
 /**
@@ -85,7 +90,11 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       {
         // Destructive gate: fresh install about to overwrite an existing
         // server backup. Dialog dismissal resolves false = do NOT upload.
+        // A step-up retry follows an overwrite the owner already confirmed.
         confirmUploadOverExistingBackup: () =>
+          stepUp
+            ? Promise.resolve(true)
+            :
           openConfirmation(
             viewData.account.uploadOverBackupPrompt,
             viewData.account.uploadOverBackupAccept,
@@ -155,7 +164,8 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
           syncReadyState.savedSyncPreferences,
         );
         return {
-          codeRequired: twoFactor?.twoFactorEnabled ?? false,
+          // Unknown status shows the field; an empty code is not sent.
+          codeRequired: twoFactor?.twoFactorEnabled ?? true,
           errorCode: null,
         };
       }
@@ -166,6 +176,8 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       case "totp_invalid_code":
       case "totp_replayed":
         return { codeRequired: true, errorCode };
+      case "recovery_key_step_up_rate_limited":
+        return { codeRequired: codeFieldShown, errorCode: "rate_limited" };
       default:
         return null;
     }
