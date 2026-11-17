@@ -66,41 +66,57 @@ async function canaryAuthenticatesKey(
   if (!isWellFormedLocalDataKeyHex(keyHex)) {
     return false;
   }
-  // bootstrap_state first (present once onboarding has touched the DB), then
-  // profile_settings; the first well-formed envelope decides. With none —
-  // fresh install, or every candidate unparseable — there is nothing to
-  // verify against and the key is kept.
-  const candidates: { table: string; sql: string }[] = [
+  // Any well-formed envelope that authenticates proves the key; only when at
+  // least one fails and none authenticates is it a mismatch. A single
+  // tampered or corrupt row therefore never wipes the rest — its own read
+  // falls back or fails closed. With no well-formed envelope at all (fresh
+  // install, or every candidate unparseable) the key is kept.
+  const candidates: { aadTable: string; sql: string; rowKey: (row: CanaryRow) => string }[] = [
     {
-      table: "bootstrap_state",
+      aadTable: "bootstrap_state",
       sql: "SELECT encrypted_payload FROM bootstrap_state WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+      rowKey: () => "1",
     },
     {
-      table: "profile_settings",
+      aadTable: "profile_settings",
       sql: "SELECT encrypted_payload FROM profile_settings WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+      rowKey: () => "1",
+    },
+    {
+      aadTable: "day_log",
+      sql: "SELECT day AS row_key, encrypted_payload FROM day_logs WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+      rowKey: (row) => String(row.row_key),
+    },
+    {
+      aadTable: "symptom",
+      sql: "SELECT id AS row_key, encrypted_payload FROM symptoms WHERE encrypted_payload IS NOT NULL AND encrypted_payload != '' LIMIT 1;",
+      rowKey: (row) => String(row.row_key),
     },
   ];
 
+  let sawMismatch = false;
   for (const candidate of candidates) {
-    const row = await database.getFirstAsync<{ encrypted_payload: string | null }>(
-      candidate.sql,
-    );
+    const row = await database.getFirstAsync<CanaryRow>(candidate.sql);
     if (!row?.encrypted_payload) {
       continue;
     }
     const check = checkLocalDataKey(
       keyHex,
       row.encrypted_payload,
-      buildLocalDataAad(candidate.table, "1"),
+      buildLocalDataAad(candidate.aadTable, candidate.rowKey(row)),
     );
-    if (check === "malformed") {
-      continue;
+    if (check === "authenticated") {
+      return true;
     }
-    return check === "authenticated";
+    if (check === "mismatch") {
+      sawMismatch = true;
+    }
   }
 
-  return true;
+  return !sawMismatch;
 }
+
+type CanaryRow = { encrypted_payload: string | null; row_key?: string };
 
 async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolean> {
   const [
@@ -183,7 +199,10 @@ const LOCAL_APP_TABLES = [
 
 // One transaction: a kill mid-wipe rolls back to the pre-wipe state instead
 // of leaving some tables emptied and others holding stale ciphertext.
-export async function wipeLocalAppTables(database: LocalAppDatabase): Promise<void> {
+export async function wipeLocalAppTables(
+  database: LocalAppDatabase,
+  onRollbackFailed?: () => void,
+): Promise<void> {
   await database.execAsync("BEGIN IMMEDIATE;");
   try {
     for (const table of LOCAL_APP_TABLES) {
@@ -194,7 +213,9 @@ export async function wipeLocalAppTables(database: LocalAppDatabase): Promise<vo
     try {
       await database.execAsync("ROLLBACK;");
     } catch {
-      // The DELETE failure is the one worth reporting.
+      // The DELETE failure is the one worth reporting; the caller learns the
+      // connection may still be inside the transaction.
+      onRollbackFailed?.();
     }
     throw error;
   }
