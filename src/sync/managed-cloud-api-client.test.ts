@@ -1372,6 +1372,37 @@ describe("managed-cloud-api-client", () => {
     );
   });
 
+  it.each([
+    ["verifyTOTPEnrollment", "totp_enrollment_not_started"],
+    ["disableTOTP", "totp_not_enabled"],
+  ] as const)(
+    "keeps the managed 409 %s state key %s instead of collapsing it to generic",
+    async (method, errorKey) => {
+      const fetch = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: errorKey }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const client = createManagedCloudAPIClient(
+        "https://managed.example/",
+        fetch as unknown as typeof globalThis.fetch,
+      );
+
+      const result =
+        method === "verifyTOTPEnrollment"
+          ? await client.verifyTOTPEnrollment("managed-session-1", {
+              code: "123456",
+            })
+          : await client.disableTOTP("managed-session-1", {
+              currentPassword: "very secure password",
+              code: "123456",
+            });
+
+      expect(result).toEqual({ ok: false, errorCode: errorKey });
+    },
+  );
+
   it("disables managed TOTP", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({ status: "totp_disabled" }), {

@@ -30,6 +30,8 @@ export type ManagedCloudAPIErrorCode =
   | "sync_purge_unavailable"
   | "origin_not_allowed"
   | "totp_not_configured"
+  | "totp_not_enabled"
+  | "totp_enrollment_not_started"
   | "totp_already_enabled"
   | "totp_invalid_code"
   | "totp_replayed"
@@ -1285,6 +1287,8 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "sync_purge_unavailable":
       case "origin_not_allowed":
       case "totp_not_configured":
+      case "totp_not_enabled":
+      case "totp_enrollment_not_started":
       case "totp_already_enabled":
       case "totp_invalid_code":
       case "totp_replayed":

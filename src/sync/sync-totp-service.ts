@@ -167,8 +167,8 @@ export async function startTOTPEnrollment(
  * none (managed, or a community server that predates rotation). A community
  * 429 may mean the pending secret's verify budget is spent and the secret is
  * gone (the general rate limit answers identically), so it surfaces as
- * `totp_enrollment_restart_required`. A community 409
- * `totp_enrollment_not_started` means no secret is pending (expired, or
+ * `totp_enrollment_restart_required`. A 409 `totp_enrollment_not_started`
+ * (community or managed) means no secret is pending (expired, or
  * replaced by a newer setup) — also a restart, not a server fault.
  */
 export async function verifyTOTPEnrollment(
@@ -234,7 +234,7 @@ export async function verifyTOTPEnrollment(
  * AND a current TOTP code so a temporarily-borrowed authenticator cannot
  * remove 2FA on its own. On success: every session of the account is revoked
  * (the user must log in fresh) and any pending TOTP challenges are deleted.
- * A community 409 `totp_not_enabled` surfaces as `totp_already_disabled`: the
+ * A 409 `totp_not_enabled` (community or managed) surfaces as `totp_already_disabled`: the
  * account state moved under this screen, so the caller refreshes it.
  */
 export async function disableTOTP(
@@ -402,6 +402,7 @@ function mapManagedVerifyEnrollmentError(
   code: ManagedCloudAPIErrorCode,
 ): VerifyTOTPEnrollmentErrorCode {
   switch (code) {
+    case "totp_enrollment_not_started":
     case "totp_not_configured":
     case "totp_already_enabled":
     case "totp_invalid_code":
@@ -440,6 +441,8 @@ function mapManagedDisableError(
   code: ManagedCloudAPIErrorCode,
 ): DisableTOTPErrorCode {
   switch (code) {
+    case "totp_not_enabled":
+      return "totp_already_disabled";
     case "invalid_current_password":
     case "totp_not_configured":
     case "totp_invalid_code":
