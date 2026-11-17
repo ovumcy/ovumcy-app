@@ -331,6 +331,20 @@ export function formatLocalDate(value: Date): LocalDateISO {
   return `${year}-${month}-${day}`;
 }
 
+// A restored cycle start after today is dropped, as Settings and onboarding
+// refuse it: once the date arrives it reads as a cycle start, and a later
+// start lifts a pregnancy pause logged before it.
+export function sanitizeRestoredLastPeriodStart(
+  value: unknown,
+  now: Date = new Date(),
+): string | null {
+  if (typeof value !== "string" || !parseLocalDate(value)) {
+    return null;
+  }
+  const normalized = value.trim();
+  return normalized <= formatLocalDate(now) ? normalized : null;
+}
+
 export function addDays(value: Date, days: number): Date {
   const next = new Date(value);
   next.setDate(next.getDate() + days);

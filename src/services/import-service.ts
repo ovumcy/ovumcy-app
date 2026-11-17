@@ -47,8 +47,8 @@ import {
   normalizeReminderTime,
   normalizeTemperatureUnit,
   normalizeUsageGoal,
-  formatLocalDate,
   parseLocalDate,
+  sanitizeRestoredLastPeriodStart,
 } from "./profile-settings-policy";
 
 // Free, offline, local-only JSON restore. Mirrors ovumcy-web's
@@ -764,15 +764,7 @@ function sanitizeImportedProfileRecord(candidate: unknown): ProfileRecord | null
 
   const record = candidate as Partial<ProfileRecord>;
   const defaults = createDefaultProfileRecord();
-  // A start after today is dropped, as Settings and onboarding refuse it: once
-  // the date arrives it reads as a cycle start, and a later start lifts a
-  // pregnancy pause logged before it.
-  const lastPeriodStart =
-    typeof record.lastPeriodStart === "string" &&
-    parseLocalDate(record.lastPeriodStart) &&
-    record.lastPeriodStart.trim() <= formatLocalDate(new Date())
-      ? record.lastPeriodStart.trim()
-      : null;
+  const lastPeriodStart = sanitizeRestoredLastPeriodStart(record.lastPeriodStart);
 
   return {
     lastPeriodStart,
