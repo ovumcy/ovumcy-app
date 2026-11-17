@@ -1,5 +1,6 @@
 import { stashManagedPartnerInviteToken } from "./managed-partner-invite-token-buffer";
 import {
+  fragmentCarriesPartnerInviteSecret,
   parsePartnerInviteSecretFromFragment,
   removePartnerInviteSecretFromFragment,
 } from "./partner-invite-link";
@@ -23,10 +24,7 @@ export function scrubManagedPartnerInviteTokenFromWebUrl(): void {
     const url = new URL(location.href);
     const rawToken = url.searchParams.get("invite_token");
     const nextFragment = removePartnerInviteSecretFromFragment(url.hash);
-    const carriesSecret = url.hash
-      .replace(/^#/, "")
-      .split("&")
-      .some((part) => part.startsWith("k="));
+    const carriesSecret = fragmentCarriesPartnerInviteSecret(url.hash);
     if (rawToken === null && !carriesSecret) {
       return;
     }

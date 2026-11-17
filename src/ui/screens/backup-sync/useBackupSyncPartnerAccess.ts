@@ -15,6 +15,7 @@ import {
 import {
   clearManagedPartnerInviteToken,
   readManagedPartnerInviteSecret,
+  readManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
@@ -53,9 +54,13 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
 
   // Read before any accept call: accepting consumes the single-use invite,
-  // so a link without its secret must fail before it is redeemed.
+  // so a link without its secret — or a secret buffered for another
+  // token — must fail before it is redeemed.
   function readPendingInviteSecretOrReport(): string {
-    const inviteSecretHex = readManagedPartnerInviteSecret();
+    const inviteSecretHex =
+      readManagedPartnerInviteToken() === pendingPartnerInviteToken
+        ? readManagedPartnerInviteSecret()
+        : "";
     if (inviteSecretHex.length === 0) {
       setPartnerErrorMessage(
         resolvePartnerErrorMessage("invalid_partner_invite", partnerCopy),

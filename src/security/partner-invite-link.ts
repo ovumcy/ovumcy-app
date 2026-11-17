@@ -44,6 +44,13 @@ export function parsePartnerInviteSecretFromFragment(
   return isPartnerInviteSecretHex(value) ? value : "";
 }
 
+export function fragmentCarriesPartnerInviteSecret(fragment: string): boolean {
+  return fragment
+    .replace(/^#/, "")
+    .split("&")
+    .some((part) => part.startsWith(`${INVITE_SECRET_FRAGMENT_PARAM}=`));
+}
+
 /**
  * Strips the `k` parameter from a fragment, keeping any other parameters.
  * Returns the fragment without the leading `#` ("" when nothing remains).
