@@ -1,4 +1,9 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
 import {
@@ -53,6 +58,18 @@ export type SyncAccountSecurityControllerOptions = {
   storage?: LocalAppStorage;
   syncSecretStore?: SyncSecretStore;
 };
+
+// A rate_limited error disables the form's submit, and only an edit or a new
+// attempt may lift it; other errors stay visible until the next submit.
+function clearRateLimitOnEdit<E extends string>(
+  setValue: (value: string) => void,
+  setError: Dispatch<SetStateAction<E | null>>,
+) {
+  return (value: string) => {
+    setValue(value);
+    setError((current) => (current === "rate_limited" ? null : current));
+  };
+}
 
 export function useSyncAccountSecurityController({
   storage = appStorage,
@@ -421,20 +438,32 @@ export function useSyncAccountSecurityController({
 
     // change password
     changeCurrentPassword,
-    setChangeCurrentPassword,
+    setChangeCurrentPassword: clearRateLimitOnEdit(
+      setChangeCurrentPassword,
+      setChangeErrorCode,
+    ),
     changeNewPassword,
-    setChangeNewPassword,
+    setChangeNewPassword: clearRateLimitOnEdit(
+      setChangeNewPassword,
+      setChangeErrorCode,
+    ),
     changeStatus,
     changeErrorCode,
     handleChangePassword,
 
     // forgot password
     forgotLogin,
-    setForgotLogin,
+    setForgotLogin: clearRateLimitOnEdit(setForgotLogin, setForgotErrorCode),
     forgotRecoveryCode,
-    setForgotRecoveryCode,
+    setForgotRecoveryCode: clearRateLimitOnEdit(
+      setForgotRecoveryCode,
+      setForgotErrorCode,
+    ),
     forgotNewPassword,
-    setForgotNewPassword,
+    setForgotNewPassword: clearRateLimitOnEdit(
+      setForgotNewPassword,
+      setForgotErrorCode,
+    ),
     forgotStage,
     forgotStatus,
     forgotErrorCode,
@@ -446,9 +475,15 @@ export function useSyncAccountSecurityController({
 
     // regenerate
     regeneratePassword,
-    setRegeneratePassword,
+    setRegeneratePassword: clearRateLimitOnEdit(
+      setRegeneratePassword,
+      setRegenerateErrorCode,
+    ),
     regenerateCode,
-    setRegenerateCode,
+    setRegenerateCode: clearRateLimitOnEdit(
+      setRegenerateCode,
+      setRegenerateErrorCode,
+    ),
     regenerateCodeVisible,
     regenerateStatus,
     regenerateErrorCode,
@@ -465,14 +500,23 @@ export function useSyncAccountSecurityController({
     handleTOTPModeChange,
     totpStage,
     totpEnrollPassword,
-    setTotpEnrollPassword,
+    setTotpEnrollPassword: clearRateLimitOnEdit(
+      setTotpEnrollPassword,
+      setTotpErrorCode,
+    ),
     totpEnrollment,
     totpVerifyCode,
-    setTotpVerifyCode,
+    setTotpVerifyCode: clearRateLimitOnEdit(setTotpVerifyCode, setTotpErrorCode),
     totpDisablePassword,
-    setTotpDisablePassword,
+    setTotpDisablePassword: clearRateLimitOnEdit(
+      setTotpDisablePassword,
+      setTotpErrorCode,
+    ),
     totpDisableCode,
-    setTotpDisableCode,
+    setTotpDisableCode: clearRateLimitOnEdit(
+      setTotpDisableCode,
+      setTotpErrorCode,
+    ),
     totpStatus,
     totpErrorCode,
     handleStartTOTPEnrollment,

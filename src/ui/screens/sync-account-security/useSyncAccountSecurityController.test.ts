@@ -334,6 +334,72 @@ describe("useSyncAccountSecurityController", () => {
 
       expect(result.current.forgotErrorCode).toBe("rate_limited");
     });
+
+    it("lifts rate_limited on the next edit of the regenerate form only", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      const regenerate = jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+      expect(result.current.regenerateErrorCode).toBe("rate_limited");
+
+      await act(async () => {
+        result.current.setRegeneratePassword("new-password");
+      });
+      expect(result.current.regeneratePassword).toBe("new-password");
+      expect(result.current.regenerateErrorCode).toBeNull();
+
+      regenerate.mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+      expect(result.current.regenerateErrorCode).toBe("invalid_current_password");
+      await act(async () => {
+        result.current.setRegeneratePassword("other-password");
+      });
+      expect(result.current.regenerateErrorCode).toBe("invalid_current_password");
+    });
+
+    it("lifts rate_limited on the next edit of the TOTP disable form", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncTOTPService, "disableTOTP")
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleDisableTOTP();
+      });
+      expect(result.current.totpErrorCode).toBe("rate_limited");
+
+      await act(async () => {
+        result.current.setTotpDisableCode("123456");
+      });
+      expect(result.current.totpDisableCode).toBe("123456");
+      expect(result.current.totpErrorCode).toBeNull();
+    });
   });
 
   // Sensitive-surface invariant: none of the mutating flows may reach a
