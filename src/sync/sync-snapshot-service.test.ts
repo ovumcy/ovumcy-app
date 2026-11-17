@@ -289,6 +289,24 @@ describe("sync-snapshot-service", () => {
     expect((await target.readProfileRecord()).lastPeriodStart).toBe("2026-03-01");
   });
 
+  it("drops a snapshot cycle start dated after today on restore", async () => {
+    const source = createVolatileWebAppStorage();
+    const built = await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"));
+    const snapshot = decodeSyncSnapshot(
+      encodeSyncSnapshot({
+        ...built,
+        profile: { ...built.profile, lastPeriodStart: "2999-01-01" },
+      }),
+    );
+
+    const target = createVolatileWebAppStorage();
+    await restoreSyncSnapshot(target, snapshot, createDefaultSyncPreferencesRecord(), {
+      sync: jest.fn().mockResolvedValue("scheduled"),
+    });
+
+    expect((await target.readProfileRecord()).lastPeriodStart).toBeNull();
+  });
+
   it("re-validates cycle-day reminder rules from a snapshot before storing them", async () => {
     const source = createVolatileWebAppStorage();
     const kept = { id: "cdr_kept", cycleDay: 14, remindAtHour: 7, label: "pill", showLabel: true };

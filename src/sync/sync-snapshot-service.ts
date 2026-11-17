@@ -16,6 +16,7 @@ import { normalizeCycleDayReminders } from "../services/cycle-day-reminder-polic
 import type { LocalReminderScheduler } from "../services/local-reminder-scheduler-contract";
 import { rebuildLocalReminderScheduleFromStorage } from "../services/local-reminder-sync-service";
 import { createPlatformLocalReminderScheduler } from "../services/platform-local-reminder-scheduler";
+import { sanitizeRestoredLastPeriodStart } from "../services/profile-settings-policy";
 import {
   repointLegacyStoredCycleStart,
   withoutStoredCycleStartRepointState,
@@ -244,6 +245,7 @@ export async function restoreSyncSnapshot(
   await storage.writeBootstrapState(snapshot.bootstrapState);
   await storage.writeProfileRecord({
     ...snapshot.profile,
+    lastPeriodStart: sanitizeRestoredLastPeriodStart(snapshot.profile.lastPeriodStart),
     cycleDayReminders: normalizeCycleDayReminders(snapshot.profile.cycleDayReminders),
   });
   await storage.writeSyncPreferencesRecord(syncPreferences);
