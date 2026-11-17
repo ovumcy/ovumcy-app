@@ -14,6 +14,7 @@ import {
   createDefaultSyncPreferencesRecord,
   type SyncSecretsRecord,
 } from "../sync/sync-contract";
+import * as syncClientService from "../sync/sync-client-service";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -1321,6 +1322,43 @@ describe("uploadBackupSyncSnapshot", () => {
 describe("restoreBackupSyncSnapshot", () => {
   afterEach(() => {
     global.fetch = originalFetch;
+  });
+
+  it("hands the older-backup guard to the sync restore and passes its decline through", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+    const state = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+    const guard = { confirmRestoreOlderBackup: jest.fn().mockResolvedValue(false) };
+    const restoreSpy = jest
+      .spyOn(syncClientService, "runSyncRestore")
+      .mockResolvedValue({ ok: false, errorCode: "restore_older_backup_declined" });
+
+    try {
+      const result = await restoreBackupSyncSnapshot(
+        storage,
+        secretStore,
+        state,
+        new Date(2026, 3, 5),
+        guard,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "restore_older_backup_declined" });
+      expect(restoreSpy).toHaveBeenCalledWith(
+        storage,
+        secretStore,
+        state.savedSyncPreferences,
+        undefined,
+        undefined,
+        undefined,
+        guard,
+      );
+    } finally {
+      restoreSpy.mockRestore();
+    }
   });
 
   it("returns sync_not_prepared without any network call when no local secrets are stored", async () => {
