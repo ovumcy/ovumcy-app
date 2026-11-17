@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { createEmptyDayLogRecord } from "../../../models/day-log";
 import { createDefaultProfileRecord } from "../../../models/profile";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
@@ -76,6 +77,41 @@ describe("PregnancyStartScreen", () => {
 
     const input = screen.getByTestId("pregnancy-start-date-input");
     expect(input.props.value).toBe("2026-01-01");
+  });
+
+  it("prefills a logged period start later than the stored start", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+      ]),
+    });
+    await renderStart(storage);
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+
+    expect(screen.getByTestId("pregnancy-start-date-input").props.value).toBe("2026-01-29");
+  });
+
+  it("opens a blank form when the cycle history cannot be read", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
+      listDayLogRecordsInRange: jest.fn().mockRejectedValue(new Error("read failed")),
+    });
+    await renderStart(storage);
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+
+    expect(screen.getByTestId("pregnancy-start-date-input").props.value).toBe("");
+  });
+
+  it("reads no cycle history while the module is locked", async () => {
+    mockUnlocked.mockResolvedValue(false);
+    const storage = createLocalAppStorageMock();
+    await renderStart(storage);
+
+    await waitFor(() => expect(mockUnlocked).toHaveBeenCalled());
+    expect(storage.listDayLogRecordsInRange).not.toHaveBeenCalled();
   });
 
   it("switches the date field to the EDD prefill when the ultrasound basis is chosen", async () => {

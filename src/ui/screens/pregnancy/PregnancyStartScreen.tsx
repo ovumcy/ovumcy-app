@@ -56,16 +56,22 @@ export function PregnancyStartScreen({
     let isMounted = true;
 
     void (async () => {
-      const [defaults, unlocked] = await Promise.all([
-        loadPregnancyStartDefaults(storage, effectiveNow),
-        loadPregnancyModuleOwned(),
-      ]);
+      const unlocked = await loadPregnancyModuleOwned();
       if (!isMounted) {
         return;
       }
 
       if (!unlocked) {
         setStatus("locked");
+        return;
+      }
+
+      // The prefill is a convenience: a failed read leaves a blank form.
+      const defaults = await loadPregnancyStartDefaults(storage, effectiveNow).catch(() => ({
+        defaultLmp: null,
+        defaultEdd: null,
+      }));
+      if (!isMounted) {
         return;
       }
 
