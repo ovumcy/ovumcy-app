@@ -11,6 +11,7 @@ export type RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: string;
     totpInvalidCode: string;
     totpReplayed: string;
+    rateLimited: string;
   };
 };
 
@@ -26,13 +27,14 @@ const en: RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: "Wrong password. Try again.",
     totpInvalidCode: "Wrong code. Try again.",
     totpReplayed: "That code was already used. Wait for the next one.",
+    rateLimited: "Too many attempts. Try again later.",
   },
 };
 
 const de: RecoveryKeyStepUpCopy = {
   title: "Mit Passwort bestätigen",
   explanation:
-    "Dieser Upload ersetzt den Wiederherstellungsschlüssel deines Kontos. Bestätige mit deinem Kontopasswort.",
+    "Dieser Upload ersetzt den Wiederherstellungsschlüssel Ihres Kontos. Bestätigen Sie mit Ihrem Kontopasswort.",
   passwordLabel: "Kontopasswort",
   codeLabel: "6-stelliger Code",
   confirmLabel: "Bestätigen",
@@ -40,7 +42,8 @@ const de: RecoveryKeyStepUpCopy = {
   errors: {
     invalidCurrentPassword: "Falsches Passwort. Versuche es erneut.",
     totpInvalidCode: "Falscher Code. Versuche es erneut.",
-    totpReplayed: "Dieser Code wurde bereits verwendet. Warte auf den nächsten.",
+    totpReplayed: "Dieser Code wurde bereits verwendet. Warten Sie auf den nächsten.",
+    rateLimited: "Zu viele Versuche. Versuchen Sie es später erneut.",
   },
 };
 
@@ -56,6 +59,7 @@ const fr: RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: "Mot de passe incorrect. Réessayez.",
     totpInvalidCode: "Code incorrect. Réessayez.",
     totpReplayed: "Ce code a déjà été utilisé. Attendez le suivant.",
+    rateLimited: "Trop de tentatives. Réessayez plus tard.",
   },
 };
 
@@ -71,6 +75,7 @@ const ru: RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: "Неверный пароль. Попробуйте ещё раз.",
     totpInvalidCode: "Неверный код. Попробуйте ещё раз.",
     totpReplayed: "Этот код уже использован. Дождитесь следующего.",
+    rateLimited: "Слишком много попыток. Попробуйте позже.",
   },
 };
 
@@ -86,6 +91,7 @@ const es: RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: "Contraseña incorrecta. Inténtalo de nuevo.",
     totpInvalidCode: "Código incorrecto. Inténtalo de nuevo.",
     totpReplayed: "Ese código ya se usó. Espera al siguiente.",
+    rateLimited: "Demasiados intentos. Inténtalo más tarde.",
   },
 };
 
@@ -101,6 +107,7 @@ const it: RecoveryKeyStepUpCopy = {
     invalidCurrentPassword: "Password errata. Riprova.",
     totpInvalidCode: "Codice errato. Riprova.",
     totpReplayed: "Quel codice è già stato usato. Attendi quello nuovo.",
+    rateLimited: "Troppi tentativi. Riprova più tardi.",
   },
 };
 

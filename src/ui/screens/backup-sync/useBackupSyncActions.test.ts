@@ -439,6 +439,46 @@ describe("useBackupSyncActions recovery-key step-up", () => {
     },
   );
 
+  it("shows the code field when the 2FA status cannot be read", async () => {
+    mockDescribeTwoFactor.mockResolvedValue(null);
+    const { result } = await openPrompt("recovery_key_step_up_required");
+
+    expect(result.current.recoveryKeyStepUpPrompt?.codeRequired).toBe(true);
+  });
+
+  it("keeps the prompt open with a wait message when the step-up is rate limited", async () => {
+    const { result } = await openPrompt("recovery_key_step_up_required", false);
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "recovery_key_step_up_rate_limited",
+    } as never);
+
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({ currentPassword: "pw" });
+    });
+
+    expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+      codeRequired: false,
+      errorCode: "rate_limited",
+    });
+  });
+
+  it("a step-up retry does not ask the overwrite confirm again", async () => {
+    const { result } = await openPrompt("recovery_key_step_up_required", false);
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "network_failed",
+    } as never);
+
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({ currentPassword: "pw" });
+    });
+
+    const guard = mockUploadBackupSyncSnapshot.mock.calls[1]?.[4];
+    await expect(guard?.confirmUploadOverExistingBackup()).resolves.toBe(true);
+    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+  });
+
   it("code_required forces the code field", async () => {
     const { result } = await openPrompt("recovery_key_code_required");
 

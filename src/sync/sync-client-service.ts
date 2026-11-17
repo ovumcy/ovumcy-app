@@ -106,6 +106,7 @@ export type SyncRunErrorCode =
   | "invalid_current_password"
   | "totp_invalid_code"
   | "totp_replayed"
+  | "recovery_key_step_up_rate_limited"
   | "network_failed"
   | "generic";
 
@@ -1782,7 +1783,8 @@ type RecoveryKeyStepUpErrorCode =
   | "recovery_key_code_required"
   | "invalid_current_password"
   | "totp_invalid_code"
-  | "totp_replayed";
+  | "totp_replayed"
+  | "recovery_key_step_up_rate_limited";
 
 function isRecoveryKeyStepUpCode(
   code: SyncAPIErrorCode | RecoveryKeyStepUpErrorCode,
@@ -1793,6 +1795,7 @@ function isRecoveryKeyStepUpCode(
     case "invalid_current_password":
     case "totp_invalid_code":
     case "totp_replayed":
+    case "recovery_key_step_up_rate_limited":
       return true;
     default:
       return false;
@@ -1842,6 +1845,12 @@ async function syncRecoveryKeyIfSupported(
           : codeSent
             ? errorCode
             : "recovery_key_code_required",
+      };
+    // The step-up bucket answers 429 after repeated wrong passwords.
+    case "rate_limited":
+      return {
+        ok: false,
+        errorCode: stepUp ? "recovery_key_step_up_rate_limited" : errorCode,
       };
     default:
       return { ok: false, errorCode };
