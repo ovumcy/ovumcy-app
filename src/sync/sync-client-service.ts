@@ -9,6 +9,7 @@ import {
   decryptSyncSnapshotPayload,
   encryptSyncPayload,
   isValidRecoveryPhrase,
+  isValidSyncGeneration,
 } from "../security/sync-crypto";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import {
@@ -98,6 +99,7 @@ export type SyncRunErrorCode =
   | "stale_generation"
   | "invalid_payload"
   | "upload_over_backup_declined"
+  | "restore_older_backup_declined"
   // The upload would replace the server's recovery-key package, which a
   // community server allows only after the account password (and a current
   // TOTP code when 2FA is on). The caller prompts and retries with the step-up.
@@ -138,6 +140,29 @@ export type UploadOverBackupGuard = {
   // Invoked only when the policy above fires. Resolving false (the safe
   // dismissal answer) aborts the upload with "upload_over_backup_declined".
   confirmUploadOverExistingBackup: () => Promise<boolean>;
+};
+
+/**
+ * Rollback guard policy for `runSyncRestore`: `lastRemoteGeneration` is the
+ * device's floor — the highest generation it has uploaded or restored. A blob
+ * whose sealed generation is below it, or a legacy blob that seals none, may
+ * be an older backup the server is replaying. A device without a floor has
+ * nothing to compare against.
+ */
+function requiresRestoreOlderBackupConfirmation(input: {
+  rollbackFloor: number | null;
+  sealedGeneration: number | null;
+}): boolean {
+  if (input.rollbackFloor === null) {
+    return false;
+  }
+  return input.sealedGeneration === null || input.sealedGeneration < input.rollbackFloor;
+}
+
+export type RestoreOlderBackupGuard = {
+  // Invoked only when the policy above fires. Resolving false (the safe
+  // dismissal answer) aborts the restore with "restore_older_backup_declined".
+  confirmRestoreOlderBackup: () => Promise<boolean>;
 };
 
 type SyncAPIClientFactory = (baseURL: string) => SyncAPIClient;
@@ -1200,14 +1225,14 @@ export async function runSyncUpload(
 
   const snapshot = await buildSyncSnapshot(storage, now);
   const payload = encodeSyncSnapshot(snapshot);
+  const generation = nextRemoteGeneration(preferences, now);
   const encryptedEnvelope = encryptSyncPayload(
     prepared.secrets.masterKeyHex,
     payload,
-    buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+    buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, generation),
   );
   const ciphertextBytes = encodeEncryptedEnvelope(encryptedEnvelope);
   const checksumSHA256 = bytesToHex(sha256(ciphertextBytes));
-  const generation = nextRemoteGeneration(preferences, now);
 
   const capabilitiesResult = await client.getCapabilities(prepared.secrets.authSessionToken);
   if (capabilitiesResult.ok) {
@@ -1252,9 +1277,10 @@ export async function runSyncUpload(
     return { ok: false, errorCode: mapRunAPIError(putBlobResult.errorCode) };
   }
 
+  // The floor is the generation this device sealed, never the server's echo.
   const nextPreferences = buildSyncedPreferences(
     preferences,
-    putBlobResult.blob.generation,
+    generation,
     putBlobResult.blob.updatedAt,
     "connected",
   );
@@ -1270,6 +1296,7 @@ export async function runSyncRestore(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   reminderScheduler?: LocalReminderScheduler,
+  restoreOlderBackupGuard?: RestoreOlderBackupGuard,
 ): Promise<
   | {
       ok: true;
@@ -1296,16 +1323,22 @@ export async function runSyncRestore(
     return { ok: false, errorCode: mapRunAPIError(blobResult.errorCode) };
   }
 
+  const reportedGeneration = blobResult.blob.generation;
+  if (!isValidSyncGeneration(reportedGeneration)) {
+    return { ok: false, errorCode: "invalid_blob" };
+  }
+
   let encryptedEnvelope: EncryptedSyncEnvelope;
-  let decryptedPayload: Uint8Array;
+  let opened: { payload: Uint8Array; sealedGeneration: number | null };
   try {
     encryptedEnvelope = decodeEncryptedEnvelope(
       toByteArray(blobResult.blob.ciphertextBase64),
     );
-    decryptedPayload = decryptSyncSnapshotPayload(
+    opened = decryptSyncSnapshotPayload(
       prepared.secrets.masterKeyHex,
       encryptedEnvelope,
       blobResult.blob.schemaVersion,
+      reportedGeneration,
       prepared.secrets.device.deviceID,
     );
   } catch {
@@ -1314,14 +1347,33 @@ export async function runSyncRestore(
 
   let snapshot;
   try {
-    snapshot = decodeSyncSnapshot(decryptedPayload);
+    snapshot = decodeSyncSnapshot(opened.payload);
   } catch {
     return { ok: false, errorCode: "invalid_payload" };
   }
 
+  const rollbackFloor = readRollbackFloor(preferences);
+  if (
+    requiresRestoreOlderBackupConfirmation({
+      rollbackFloor,
+      sealedGeneration: opened.sealedGeneration,
+    })
+  ) {
+    const confirmed = restoreOlderBackupGuard
+      ? await restoreOlderBackupGuard.confirmRestoreOlderBackup()
+      : false;
+    if (!confirmed) {
+      return { ok: false, errorCode: "restore_older_backup_declined" };
+    }
+  }
+
+  // The floor never moves down. A legacy blob's generation is unsealed, so it
+  // can only raise the floor, which at worst costs a later confirm.
   const nextPreferences = buildSyncedPreferences(
     preferences,
-    blobResult.blob.generation,
+    rollbackFloor === null
+      ? reportedGeneration
+      : Math.max(rollbackFloor, reportedGeneration),
     blobResult.blob.updatedAt,
     "connected",
   );
@@ -1671,19 +1723,20 @@ function buildSyncedPreferences(
   };
 }
 
+function readRollbackFloor(preferences: SyncPreferencesRecord): number | null {
+  return typeof preferences.lastRemoteGeneration === "number" &&
+    Number.isFinite(preferences.lastRemoteGeneration)
+    ? preferences.lastRemoteGeneration
+    : null;
+}
+
 function nextRemoteGeneration(
   preferences: SyncPreferencesRecord,
   now: Date,
 ): number {
   const nowGeneration = now.getTime();
-  if (
-    typeof preferences.lastRemoteGeneration === "number" &&
-    Number.isFinite(preferences.lastRemoteGeneration)
-  ) {
-    return Math.max(nowGeneration, preferences.lastRemoteGeneration + 1);
-  }
-
-  return nowGeneration;
+  const floor = readRollbackFloor(preferences);
+  return floor === null ? nowGeneration : Math.max(nowGeneration, floor + 1);
 }
 
 function encodeEncryptedEnvelope(envelope: EncryptedSyncEnvelope): Uint8Array {

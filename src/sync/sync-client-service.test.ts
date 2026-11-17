@@ -3,6 +3,7 @@ import { fromByteArray, toByteArray } from "base64-js";
 import { createEmptyDayLogRecord } from "../models/day-log";
 import {
   buildLegacySyncPayloadAad,
+  buildLegacyV2SyncPayloadAad,
   buildSyncPayloadAad,
   createRecoveredSyncSecretsRecord,
   createSyncSecretsRecord,
@@ -28,6 +29,7 @@ import {
   removeSyncDevice,
   requiresUploadOverBackupConfirmation,
   runSyncRestore,
+  type RestoreOlderBackupGuard,
   runSyncUpload,
   upgradeGuestPartnerAccount,
 } from "./sync-client-service";
@@ -319,7 +321,7 @@ describe("sync-client-service", () => {
         decryptSyncPayload(
           preparedSecrets.record.masterKeyHex,
           encryptedEnvelope,
-          buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+          buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, input.generation),
         ),
       );
 
@@ -976,7 +978,7 @@ describe("sync-client-service", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       snapshotPayload,
-      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, 456),
     );
     const ciphertextBytes = new TextEncoder().encode(
       JSON.stringify(encryptedEnvelope),
@@ -4229,7 +4231,7 @@ describe("runSyncRestore additional branches", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       garbagePayload,
-      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, 1),
     );
     const ciphertextBytes = new TextEncoder().encode(JSON.stringify(encryptedEnvelope));
     const apiClientFactory = jest.fn().mockReturnValue(
@@ -4602,7 +4604,7 @@ describe("disconnectSyncAccount and clearLocalSyncSession additional branches", 
 
 describe("snapshot AAD across devices", () => {
   type Secrets = ReturnType<typeof createSyncSecretsRecord>["record"];
-  type UploadedBlob = { schemaVersion: number; ciphertextBase64: string };
+  type UploadedBlob = { schemaVersion: number; generation: number; ciphertextBase64: string };
 
   const selfHostedPreferences = {
     ...createDefaultSyncPreferencesRecord(),
@@ -4614,6 +4616,7 @@ describe("snapshot AAD across devices", () => {
     preparedAt: "2026-03-20T08:00:00.000Z",
   };
   const dayLog = { ...createEmptyDayLogRecord("2026-03-10"), notes: "Cycle start" };
+  const uploadedAt = new Date("2026-03-20T08:10:00.000Z");
 
   function createUploadStorage() {
     return createLocalAppStorageMock({
@@ -4627,15 +4630,19 @@ describe("snapshot AAD across devices", () => {
     });
   }
 
-  async function uploadFromDevice(secrets: Secrets): Promise<UploadedBlob> {
+  async function uploadFromDevice(
+    secrets: Secrets,
+    echoedGeneration?: number,
+  ): Promise<{ blob: UploadedBlob; storage: ReturnType<typeof createUploadStorage> }> {
     const uploads: UploadedBlob[] = [];
+    const storage = createUploadStorage();
     const putBlob = jest.fn().mockImplementation(async (_token, input) => {
       uploads.push(input);
       return {
         ok: true,
         blob: {
           schemaVersion: input.schemaVersion,
-          generation: input.generation,
+          generation: echoedGeneration ?? input.generation,
           checksumSHA256: input.checksumSHA256,
           ciphertextBase64: input.ciphertextBase64,
           ciphertextSize: toByteArray(input.ciphertextBase64).byteLength,
@@ -4644,10 +4651,10 @@ describe("snapshot AAD across devices", () => {
       };
     });
     const result = await runSyncUpload(
-      createUploadStorage(),
+      storage,
       createSyncSecretStoreMock({ ...secrets, authSessionToken: "session-1" }),
       selfHostedPreferences,
-      new Date("2026-03-20T08:10:00.000Z"),
+      uploadedAt,
       jest.fn().mockReturnValue(
         createAPIClientMock({
           getCapabilities: jest
@@ -4659,22 +4666,28 @@ describe("snapshot AAD across devices", () => {
     );
     expect(result.ok).toBe(true);
     expect(uploads).toHaveLength(1);
-    return uploads[0] as UploadedBlob;
+    return { blob: uploads[0] as UploadedBlob, storage };
   }
 
-  async function restoreOnDevice(secrets: Secrets, blob: UploadedBlob) {
+  async function restoreOnDevice(
+    secrets: Secrets,
+    blob: { schemaVersion: number; generation: unknown; ciphertextBase64: string },
+    options: {
+      rollbackFloor?: number | null;
+      guard?: RestoreOlderBackupGuard;
+    } = {},
+  ) {
     const storage = createLocalAppStorageMock();
     const result = await runSyncRestore(
       storage,
       createSyncSecretStoreMock({ ...secrets, authSessionToken: "session-2" }),
-      selfHostedPreferences,
+      { ...selfHostedPreferences, lastRemoteGeneration: options.rollbackFloor ?? null },
       jest.fn().mockReturnValue(
         createAPIClientMock({
           getBlob: jest.fn().mockResolvedValue({
             ok: true,
             blob: {
               ...blob,
-              generation: 7,
               checksumSHA256: "aa",
               ciphertextSize: toByteArray(blob.ciphertextBase64).byteLength,
               updatedAt: "2026-03-20T08:12:00.000Z",
@@ -4682,8 +4695,15 @@ describe("snapshot AAD across devices", () => {
           }),
         }),
       ),
+      undefined,
+      undefined,
+      options.guard,
     );
     return { result, storage };
+  }
+
+  function confirmGuard(answer: boolean) {
+    return { confirmRestoreOlderBackup: jest.fn().mockResolvedValue(answer) };
   }
 
   function recoveredDevice(source: ReturnType<typeof createSyncSecretsRecord>) {
@@ -4695,7 +4715,11 @@ describe("snapshot AAD across devices", () => {
     );
   }
 
-  async function legacyBlob(secrets: Secrets, deviceID: string): Promise<UploadedBlob> {
+  async function sealedBlob(
+    secrets: Secrets,
+    aad: Uint8Array,
+    generation: number,
+  ): Promise<UploadedBlob> {
     const source = createLocalAppStorageMock();
     const payload = encodeSyncSnapshot({
       schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
@@ -4710,15 +4734,30 @@ describe("snapshot AAD across devices", () => {
       postpartumRecords: [],
       screeningResponses: [],
     });
-    const envelope = encryptSyncPayload(
-      secrets.masterKeyHex,
-      payload,
-      buildLegacySyncPayloadAad(deviceID),
-    );
+    const envelope = encryptSyncPayload(secrets.masterKeyHex, payload, aad);
     return {
       schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      generation,
       ciphertextBase64: fromByteArray(new TextEncoder().encode(JSON.stringify(envelope))),
     };
+  }
+
+  function legacyBlob(secrets: Secrets, deviceID: string): Promise<UploadedBlob> {
+    return sealedBlob(secrets, buildLegacySyncPayloadAad(deviceID), 7);
+  }
+
+  function legacyV2Blob(secrets: Secrets, generation: number): Promise<UploadedBlob> {
+    return sealedBlob(
+      secrets,
+      buildLegacyV2SyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+      generation,
+    );
+  }
+
+  function expectLocalDataUntouched(storage: ReturnType<typeof createLocalAppStorageMock>) {
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(storage.writeDayLogRecord).not.toHaveBeenCalled();
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   }
 
   it("restores on a recovered device a snapshot another device uploaded", async () => {
@@ -4726,7 +4765,7 @@ describe("snapshot AAD across devices", () => {
     const deviceB = recoveredDevice(deviceA);
     expect(deviceB.device.deviceID).not.toBe(deviceA.record.device.deviceID);
 
-    const blob = await uploadFromDevice(deviceA.record);
+    const { blob } = await uploadFromDevice(deviceA.record);
     const { result, storage } = await restoreOnDevice(deviceB, blob);
 
     expect(result.ok).toBe(true);
@@ -4756,7 +4795,7 @@ describe("snapshot AAD across devices", () => {
 
   it("refuses a blob whose reported schema version differs from the sealed one", async () => {
     const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
-    const blob = await uploadFromDevice(deviceA.record);
+    const { blob } = await uploadFromDevice(deviceA.record);
 
     const { result, storage } = await restoreOnDevice(deviceA.record, {
       ...blob,
@@ -4765,5 +4804,165 @@ describe("snapshot AAD across devices", () => {
 
     expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+  });
+
+  describe("rollback floor", () => {
+    it("seals the generation it sends", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+
+      expect(blob.generation).toBe(uploadedAt.getTime());
+      const envelope = JSON.parse(
+        new TextDecoder().decode(toByteArray(blob.ciphertextBase64)),
+      ) as EncryptedSyncEnvelope;
+      expect(() =>
+        decryptSyncPayload(
+          deviceA.record.masterKeyHex,
+          envelope,
+          buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, blob.generation),
+        ),
+      ).not.toThrow();
+    });
+
+    it("refuses a blob whose reported generation differs from the sealed one", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+
+      for (const reported of [blob.generation - 1, blob.generation + 1]) {
+        const guard = confirmGuard(true);
+        const { result, storage } = await restoreOnDevice(
+          deviceA.record,
+          { ...blob, generation: reported },
+          { rollbackFloor: blob.generation, guard },
+        );
+
+        expect(result).toEqual({ ok: false, errorCode: "invalid_payload" });
+        expect(guard.confirmRestoreOlderBackup).not.toHaveBeenCalled();
+        expectLocalDataUntouched(storage);
+      }
+    });
+
+    it.each([-1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1, "7", null])(
+      "refuses a reported generation of %p before decrypting",
+      async (generation) => {
+        const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+        const { blob } = await uploadFromDevice(deviceA.record);
+
+        const { result, storage } = await restoreOnDevice(deviceA.record, {
+          ...blob,
+          generation,
+        });
+
+        expect(result).toEqual({ ok: false, errorCode: "invalid_blob" });
+        expectLocalDataUntouched(storage);
+      },
+    );
+
+    it("stores the sent generation as the rollback floor, not the server echo", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob, storage } = await uploadFromDevice(deviceA.record, 5);
+
+      expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ lastRemoteGeneration: blob.generation }),
+      );
+      expect(blob.generation).not.toBe(5);
+    });
+
+    it("asks before restoring a blob older than the rollback floor and keeps local data when declined", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+      const guard = confirmGuard(false);
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: blob.generation + 1,
+        guard,
+      });
+
+      expect(guard.confirmRestoreOlderBackup).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ ok: false, errorCode: "restore_older_backup_declined" });
+      expectLocalDataUntouched(storage);
+    });
+
+    it("refuses an older blob when no confirm is wired", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: blob.generation + 1,
+      });
+
+      expect(result).toEqual({ ok: false, errorCode: "restore_older_backup_declined" });
+      expectLocalDataUntouched(storage);
+    });
+
+    it("restores an older blob once confirmed and keeps the floor", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+      const guard = confirmGuard(true);
+      const floor = blob.generation + 1;
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: floor,
+        guard,
+      });
+
+      expect(guard.confirmRestoreOlderBackup).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({
+        ok: true,
+        preferences: expect.objectContaining({ lastRemoteGeneration: floor }),
+      });
+      expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+    });
+
+    it("asks before restoring a legacy v2 blob on a device that has a floor", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const floor = uploadedAt.getTime();
+      const blob = await legacyV2Blob(deviceA.record, floor + 1_000);
+      const guard = confirmGuard(false);
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+        rollbackFloor: floor,
+        guard,
+      });
+
+      expect(guard.confirmRestoreOlderBackup).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ ok: false, errorCode: "restore_older_backup_declined" });
+      expectLocalDataUntouched(storage);
+    });
+
+    it("restores a fresher blob without asking and raises the floor", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+
+      for (const floor of [blob.generation - 1, blob.generation]) {
+        const guard = confirmGuard(false);
+        const { result, storage } = await restoreOnDevice(deviceA.record, blob, {
+          rollbackFloor: floor,
+          guard,
+        });
+
+        expect(guard.confirmRestoreOlderBackup).not.toHaveBeenCalled();
+        expect(result).toEqual({
+          ok: true,
+          preferences: expect.objectContaining({ lastRemoteGeneration: blob.generation }),
+        });
+        expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+      }
+    });
+
+    it("restores a legacy v2 blob without asking on a device with no floor", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const blob = await legacyV2Blob(deviceA.record, 42);
+      const guard = confirmGuard(false);
+
+      const { result, storage } = await restoreOnDevice(deviceA.record, blob, { guard });
+
+      expect(guard.confirmRestoreOlderBackup).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        ok: true,
+        preferences: expect.objectContaining({ lastRemoteGeneration: 42 }),
+      });
+      expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
+    });
   });
 });

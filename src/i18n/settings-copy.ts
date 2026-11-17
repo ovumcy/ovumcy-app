@@ -302,6 +302,9 @@ const settingsCopyEn = {
     restoreAccept: "Restore backup copy",
     restoreDeviceAuthPrompt:
       "Confirm with device security to restore encrypted data from the sync server.",
+    restoreOlderBackupPrompt:
+      "This backup may be older than the data this device last synced, or its age can't be checked. Restoring it may bring back older data and replace newer data on this device. Restore it anyway?",
+    restoreOlderBackupAccept: "Restore anyway",
     uploadOverBackupPrompt:
       "This account already has an encrypted backup copy on the server, but this device has never synced. Uploading now will replace that server copy with this device's data. Replace it?",
     uploadOverBackupAccept: "Replace server copy",
@@ -880,6 +883,9 @@ const settingsCopyDe: SettingsCopy = {
     restoreAccept: "Sicherung wiederherstellen",
     restoreDeviceAuthPrompt:
       "Bestätigen Sie mit Geräteschutz, um verschlüsselte Daten vom Sync-Server wiederherzustellen.",
+    restoreOlderBackupPrompt:
+      "Diese Sicherung ist möglicherweise älter als der Stand, den dieses Gerät zuletzt synchronisiert hat, oder ihr Alter lässt sich nicht prüfen. Die Wiederherstellung kann ältere Daten zurückbringen und neuere Daten auf diesem Gerät ersetzen. Trotzdem wiederherstellen?",
+    restoreOlderBackupAccept: "Trotzdem wiederherstellen",
     uploadOverBackupPrompt:
       "Für dieses Konto liegt bereits eine verschlüsselte Sicherungskopie auf dem Server, aber dieses Gerät hat noch nie synchronisiert. Beim Hochladen wird die Serverkopie durch die Daten dieses Geräts ersetzt. Ersetzen?",
     uploadOverBackupAccept: "Serverkopie ersetzen",
@@ -1496,6 +1502,9 @@ const settingsCopyFr: SettingsCopy = {
     restoreAccept: "Restaurer la sauvegarde",
     restoreDeviceAuthPrompt:
       "Confirmez avec la sécurité de l'appareil pour restaurer des données chiffrées depuis le serveur de sync.",
+    restoreOlderBackupPrompt:
+      "Cette sauvegarde est peut-être plus ancienne que les données synchronisées en dernier par cet appareil, ou son ancienneté ne peut pas être vérifiée. La restaurer peut ramener des données plus anciennes et remplacer des données plus récentes sur cet appareil. La restaurer quand même ?",
+    restoreOlderBackupAccept: "Restaurer quand même",
     uploadOverBackupPrompt:
       "Ce compte a déjà une copie de sauvegarde chiffrée sur le serveur, mais cet appareil n'a jamais synchronisé. Le téléversement remplacera cette copie serveur par les données de cet appareil. La remplacer ?",
     uploadOverBackupAccept: "Remplacer la copie serveur",
@@ -2107,6 +2116,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreAccept: "Восстановить копию",
       restoreDeviceAuthPrompt:
         "Подтвердите защитой устройства восстановление зашифрованных данных с sync-сервера.",
+      restoreOlderBackupPrompt:
+        "Эта копия может быть старше данных, которые это устройство синхронизировало последними, или её возраст нельзя проверить. Восстановление может вернуть старые данные и заменить более новые на этом устройстве. Всё равно восстановить?",
+      restoreOlderBackupAccept: "Всё равно восстановить",
       uploadOverBackupPrompt:
         "На сервере уже есть зашифрованная резервная копия этого аккаунта, а это устройство ещё ни разу не синхронизировалось. Загрузка заменит серверную копию данными этого устройства. Заменить?",
       uploadOverBackupAccept: "Заменить копию на сервере",
@@ -2684,6 +2696,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreAccept: "Restaurar instantánea",
       restoreDeviceAuthPrompt:
         "Confirma con la seguridad del dispositivo para restaurar datos cifrados desde el servidor de sync.",
+      restoreOlderBackupPrompt:
+        "Esta copia puede ser más antigua que los datos que este dispositivo sincronizó por última vez, o no se puede comprobar su antigüedad. Restaurarla puede traer de vuelta datos antiguos y sustituir datos más recientes de este dispositivo. ¿Restaurarla de todos modos?",
+      restoreOlderBackupAccept: "Restaurar de todos modos",
       uploadOverBackupPrompt:
         "Esta cuenta ya tiene una copia de respaldo cifrada en el servidor, pero este dispositivo nunca ha sincronizado. Subir ahora sustituirá esa copia del servidor por los datos de este dispositivo. ¿Sustituirla?",
       uploadOverBackupAccept: "Sustituir copia del servidor",
@@ -3271,6 +3286,9 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       restoreAccept: "Ripristina istantanea",
       restoreDeviceAuthPrompt:
         "Conferma con la sicurezza del dispositivo per ripristinare i dati cifrati dal server di sync.",
+      restoreOlderBackupPrompt:
+        "Questo backup potrebbe essere più vecchio dei dati sincronizzati per ultimi da questo dispositivo, oppure non è possibile verificarne l'età. Ripristinarlo può riportare dati più vecchi e sostituire dati più recenti su questo dispositivo. Ripristinarlo comunque?",
+      restoreOlderBackupAccept: "Ripristina comunque",
       uploadOverBackupPrompt:
         "Questo account ha già un backup cifrato sul server, ma questo dispositivo non ha mai sincronizzato. Caricando ora sostituirai quel backup del server con i dati di questo dispositivo. Sostituirlo?",
       uploadOverBackupAccept: "Sostituisci backup del server",

@@ -338,6 +338,13 @@ follows from that:
   key. Residual: a compromised invite host serving script on the no-app fallback
   page could read the fragment (`docs/sync-trust-model.md`, Partner-Share Invite
   Secret).
+- **Sync restore freshness is per-device.** The snapshot generation is sealed in
+  the AAD and each device keeps a floor of the highest generation it has uploaded
+  or restored, so a server cannot roll a device back below what that device has
+  itself seen without a second confirm. A device with no floor (fresh install,
+  just recovered or set up again) accepts any genuine blob, and a device that
+  never saw another device's later upload cannot tell it was withheld. Details:
+  `docs/sync-trust-model.md` (*Restore Freshness*).
 
 ### Device-clock trust
 
@@ -426,7 +433,12 @@ items) are intentionally excluded — they are reviewed by humans, not by
 
 | Claim | Enforced by |
 | --- | --- |
-| The snapshot AAD is `ovumcy-sync-v2\|<schemaVersion>` with no device id; a different schema version fails the open | `builds the snapshot AAD from the schema version with no device id`, `rejects sync payload decryption with a different schema version AAD` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| The snapshot AAD is `ovumcy-sync-v3\|<schemaVersion>\|<generation>` with no device id; a different schema version or generation fails the open | `builds the snapshot AAD from the schema version and generation with no device id`, `rejects sync payload decryption with a different schema version AAD`, `rejects sync payload decryption with a different generation AAD` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| Only a v3 open reports a sealed generation; a v2 `ovumcy-sync-v2\|<schemaVersion>` or v1 blob opens with none | `reports the sealed generation of a v3 blob`, `opens a v2 blob on a device with a different device id`, `falls back to the legacy AAD built from the local device id` in [src/security/sync-crypto.test.ts](src/security/sync-crypto.test.ts) |
+| A blob whose reported generation differs from the sealed one, or is not a non-negative safe integer, is refused without touching local data | `refuses a blob whose reported generation differs from the sealed one`, `refuses a reported generation of %p before decrypting` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| Upload stores the generation it sent as the rollback floor, never the server's echo | `stores the sent generation as the rollback floor, not the server echo` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
+| A restore below the floor, or of a v2/v1 blob on a device that has a floor, asks first; no answer or a decline leaves local data and the floor untouched; a confirmed one restores and keeps the floor | `asks before restoring a blob older than the rollback floor and keeps local data when declined`, `refuses an older blob when no confirm is wired`, `restores an older blob once confirmed and keeps the floor`, `asks before restoring a legacy v2 blob on a device that has a floor` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts); `cancels the restore quietly when the older-backup confirm is dismissed`, `restores after the older-backup confirm is accepted` in [src/ui/screens/backup-sync/useBackupSyncActions.test.ts](src/ui/screens/backup-sync/useBackupSyncActions.test.ts) |
+| A restore at or above the floor, or on a device with no floor, needs no extra confirm and the floor never moves down | `restores a fresher blob without asking and raises the floor`, `restores a legacy v2 blob without asking on a device with no floor` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
 | A recovered device with a fresh device id restores a snapshot another device uploaded | `restores on a recovered device a snapshot another device uploaded` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
 | A legacy `ovumcy-sync-v1\|<deviceID>` blob opens only on the device that wrote it | `restores a legacy device-bound blob on the device that wrote it`, `refuses a legacy device-bound blob written by another device` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |
 | A blob whose reported schema version differs from the sealed one is refused without touching local data | `refuses a blob whose reported schema version differs from the sealed one` in [src/sync/sync-client-service.test.ts](src/sync/sync-client-service.test.ts) |

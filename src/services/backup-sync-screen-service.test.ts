@@ -1307,7 +1307,10 @@ describe("uploadBackupSyncSnapshot", () => {
       throw new Error("expected a successful upload result");
     }
     expect(result.state.hasSyncSession).toBe(true);
-    expect(result.state.syncPreferences.lastRemoteGeneration).toBe(501);
+    // The floor is the generation the device sent, not the server's echo (501).
+    expect(result.state.syncPreferences.lastRemoteGeneration).toBe(
+      new Date("2026-04-05T08:10:00.000Z").getTime(),
+    );
     expect(result.state.syncPreferences.lastSyncedAt).toBe(
       "2026-04-05T08:10:00.000Z",
     );
@@ -1387,7 +1390,7 @@ describe("restoreBackupSyncSnapshot", () => {
     const encryptedEnvelope = encryptSyncPayload(
       preparedSecrets.record.masterKeyHex,
       snapshotPayload,
-      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION),
+      buildSyncPayloadAad(SYNC_SNAPSHOT_SCHEMA_VERSION, 456),
     );
     const ciphertextBytes = new TextEncoder().encode(
       JSON.stringify(encryptedEnvelope),
