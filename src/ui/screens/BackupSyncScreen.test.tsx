@@ -388,6 +388,65 @@ describe("BackupSyncScreen", () => {
     expect(screen.queryByTestId("settings-sync-register-button")).toBeNull();
   });
 
+  it("opens the recovery-key step-up when an upload asks for it", async () => {
+    const storage = createSettingsStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: 123,
+        lastSyncedAt: "2026-03-20T08:10:00.000Z",
+      }),
+    });
+    const syncSecretStore = createSyncSecretStoreMock();
+    await syncSecretStore.writeSyncSecrets({
+      ...createSyncSecretsRecord("Pixel 7", new Date("2026-03-19T08:15:00.000Z"))
+        .record,
+      authSessionToken: "session-1",
+    });
+    global.fetch = jest.fn().mockResolvedValue(
+      createJSONResponse({
+        mode: "self_hosted",
+        sync_enabled: true,
+        recovery_supported: true,
+        push_supported: false,
+        portal_supported: false,
+        advanced_cloud_insights: false,
+        max_devices: 5,
+        max_blob_bytes: 1024,
+      }),
+    ) as typeof fetch;
+    const uploadSpy = jest
+      .spyOn(backupSyncScreenService, "uploadBackupSyncSnapshot")
+      .mockResolvedValue({
+        ok: false,
+        errorCode: "recovery_key_step_up_required",
+      } as never);
+
+    try {
+      await render(
+        <BackupSyncScreen
+          now={new Date(2026, 2, 20)}
+          storage={storage}
+          syncSecretStore={syncSecretStore}
+        />,
+      );
+      await screen.findByTestId("settings-sync-section");
+
+      await fireEvent.press(screen.getByTestId("settings-sync-upload-button"));
+
+      expect(
+        await screen.findByTestId("sync-recovery-key-stepup-password"),
+      ).toBeTruthy();
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      uploadSpy.mockRestore();
+    }
+  });
+
   function createConnectedSelfHostedDeviceFixture() {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({

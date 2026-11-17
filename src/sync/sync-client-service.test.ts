@@ -3815,7 +3815,7 @@ describe("runSyncUpload additional branches", () => {
       },
     );
 
-    it("never forwards a step-up to a managed sync host and keeps its refusal generic", async () => {
+    async function managedUpload(recoverySupported: boolean, putResult: unknown) {
       const preparedSecrets = createSyncSecretsRecord(
         "Pixel 7",
         new Date("2026-03-20T08:00:00.000Z"),
@@ -3852,10 +3852,8 @@ describe("runSyncUpload additional branches", () => {
           }),
         }),
       );
-      const putRecoveryKey = jest
-        .fn()
-        .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
-      const putBlob = jest.fn();
+      const putRecoveryKey = jest.fn().mockResolvedValue(putResult);
+      const putBlob = jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" });
       const apiClientFactory = jest.fn().mockReturnValue(
         createAPIClientMock({
           getCapabilities: jest.fn().mockResolvedValue({
@@ -3863,7 +3861,7 @@ describe("runSyncUpload additional branches", () => {
             capabilities: {
               mode: "managed",
               syncEnabled: true,
-              recoverySupported: true,
+              recoverySupported,
               pushSupported: false,
               portalSupported: false,
               advancedCloudInsights: false,
@@ -3891,10 +3889,32 @@ describe("runSyncUpload additional branches", () => {
         undefined,
         { currentPassword: "step-up-password-1", code: "654321" },
       );
+      return { result, putRecoveryKey, putBlob };
+    }
+
+    it("never forwards a step-up to a managed sync host and keeps its refusal generic", async () => {
+      const { result, putRecoveryKey, putBlob } = await managedUpload(true, {
+        ok: false,
+        errorCode: "invalid_current_password",
+      });
 
       expect(result).toEqual({ ok: false, errorCode: "generic" });
       expect(putRecoveryKey).toHaveBeenCalledWith("session-1", expect.any(Object));
       expect(putBlob).not.toHaveBeenCalled();
+    });
+
+    it("goes on to the blob after a managed recovery-key replacement succeeds", async () => {
+      const { putRecoveryKey, putBlob } = await managedUpload(true, { ok: true });
+
+      expect(putRecoveryKey).toHaveBeenCalledWith("session-1", expect.any(Object));
+      expect(putBlob).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips the recovery key on a managed host without recovery support", async () => {
+      const { putRecoveryKey, putBlob } = await managedUpload(false, { ok: true });
+
+      expect(putRecoveryKey).not.toHaveBeenCalled();
+      expect(putBlob).toHaveBeenCalledTimes(1);
     });
 
     it("sends no step-up on a login connect and leaves a refused replacement to the upload", async () => {

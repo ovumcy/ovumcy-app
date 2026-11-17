@@ -587,6 +587,32 @@ describe("useBackupSyncActions recovery-key step-up", () => {
     expect(core.setErrorState).not.toHaveBeenCalled();
   });
 
+  it.each(["totp_invalid_code", "totp_replayed"])(
+    "%s forces the code field and keeps the prompt open",
+    async (errorCode) => {
+      const { result, core } = await openPrompt(
+        "recovery_key_step_up_required",
+        false,
+      );
+      mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+        ok: false,
+        errorCode,
+      } as never);
+
+      await act(async () => {
+        await result.current.handleSubmitRecoveryKeyStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(result.current.recoveryKeyStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode,
+      });
+      expect(core.setErrorState).not.toHaveBeenCalled();
+    },
+  );
+
   it("submit passes the step-up as the sixth upload argument and success clears the prompt", async () => {
     const { result, core } = await openPrompt(
       "recovery_key_step_up_required",
