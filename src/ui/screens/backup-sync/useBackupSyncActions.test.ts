@@ -394,6 +394,56 @@ describe("useBackupSyncActions", () => {
       );
       expect(result.current.isRestoringSync).toBe(false);
     });
+
+    function restoreThroughOlderBackupGuard(core: ReturnType<typeof createBackupSyncSessionCoreMock>) {
+      mockRestoreBackupSyncSnapshot.mockImplementation(
+        async (_storage, _secretStore, _state, _now, guard) => {
+          const confirmed = (await guard?.confirmRestoreOlderBackup()) ?? false;
+          return confirmed
+            ? { ok: true, state: core.state! }
+            : { ok: false, errorCode: "restore_older_backup_declined" };
+        },
+      );
+    }
+
+    it("cancels the restore quietly when the older-backup confirm is dismissed", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      restoreThroughOlderBackupGuard(core);
+      mockOpenConfirmation.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+      const { result } = await renderHook(() => useBackupSyncActions(core));
+
+      await act(async () => {
+        await result.current.handleRestoreSync();
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenLastCalledWith(
+        core.viewData.account.restoreOlderBackupPrompt,
+        core.viewData.account.restoreOlderBackupAccept,
+        core.viewData.common.cancelAction,
+      );
+      expect(core.setErrorState).not.toHaveBeenCalled();
+      expect(core.setState).not.toHaveBeenCalled();
+      expect(core.setAccountStatusMessage).not.toHaveBeenCalled();
+      expect(result.current.isRestoringSync).toBe(false);
+    });
+
+    it("restores after the older-backup confirm is accepted", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      restoreThroughOlderBackupGuard(core);
+      mockOpenConfirmation.mockResolvedValue(true);
+      const { result } = await renderHook(() => useBackupSyncActions(core));
+
+      await act(async () => {
+        await result.current.handleRestoreSync();
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
+      expect(core.setState).toHaveBeenCalledWith(core.state);
+      expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
+        core.viewData.account.status.restored,
+      );
+      expect(result.current.isRestoringSync).toBe(false);
+    });
   });
 });
 

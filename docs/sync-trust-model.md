@@ -252,11 +252,25 @@ A guest has no password and no recovery code by design, so a guest who loses the
 Every AEAD encrypt/decrypt boundary in the app — local SQLite payloads, sync snapshot blobs, partner-share projections, recovery-phrase wrap — must thread context-specific associated data (AAD) into the auth tag. This prevents ciphertext blobs from being swapped between rows, envelope formats, or grants without invalidating the tag. Sync snapshots are deliberately not bound to a device: every device of the account holds the same sync key, and a recovered device must open another device's upload.
 
 - Local data uses `buildLocalDataAad(tableName, rowKey)` — both encrypt and decrypt sites construct identical context.
-- Sync snapshots use `buildSyncPayloadAad(schemaVersion)` (`ovumcy-sync-v2|<schemaVersion>`, no device id, so any device holding the account key opens them). Restore falls back to the legacy device-bound AAD built from the local device id, which opens only blobs this device wrote before; the next upload writes v2.
+- Sync snapshots use `buildSyncPayloadAad(schemaVersion, generation)` (`ovumcy-sync-v3|<schemaVersion>|<generation>`, no device id, so any device holding the account key opens them; the generation is what makes restore freshness checkable — see *Restore Freshness* below). Restore falls back to the v2 AAD (`ovumcy-sync-v2|<schemaVersion>`) and then to the legacy device-bound v1 AAD built from the local device id, which opens only blobs this device wrote before; neither fallback carries a sealed generation, and the next upload writes v3.
 - Partner-share envelopes bind `(grantID, accessLevel, schemaVersion)` and additionally verify inner payload matches the envelope on those fields after decrypt.
 - Recovery-phrase wrap binds `(phraseFingerprintHex, mnemonicWordCount)`.
 
 The `payload-crypto.encryptPayload` / `decryptPayload` primitive requires AAD as a non-optional argument; passing `new Uint8Array(0)` is legal cryptographically but defeats the purpose, so helpers exist to force the choice at every call site.
+
+## Restore Freshness
+
+The server keeps one snapshot blob per account. Authenticating the blob proves the account key sealed it, not that it is the newest one: a server could serve an older genuine blob and roll a device's data back. Two mechanisms bound that.
+
+- **The generation is sealed.** An upload seals the snapshot under `ovumcy-sync-v3|<schemaVersion>|<generation>`, where `generation` is the number it sends with the blob (`ovumcy-sync-community` stores it verbatim and accepts only a strictly greater one). Restore opens the blob with the generation the server reports, so a server reporting any other number than the sealed one fails the auth tag; a generation that is not a non-negative safe integer is refused before decryption.
+- **Each device keeps a floor.** `lastRemoteGeneration` is the highest generation this device has itself uploaded or restored. An upload stores the generation it sent, never the server's echo; a restore stores the larger of the floor and the restored blob's generation, so the floor never moves down (a v2/v1 blob's generation is unsealed, so it can only raise the floor, which at worst costs a later confirm). A restore whose verified generation is below the floor, or whose envelope is a v2/v1 one (no sealed generation) on a device that already has a floor, stops at a second confirm saying the backup may be older than what this device last synced. Dismissing it cancels the restore with local data untouched; accepting it is the deliberate older restore — for example after a self-hosted operator restored their server from its own backup.
+
+Limits:
+
+- A device with no floor — a fresh install, or one just recovered or set up again, both of which reset it — has nothing to compare and accepts any genuine blob.
+- The floor only covers what this device has seen. A device that never saw a later upload from another device cannot tell that it exists, so the server can still hand it that device's older blob down to its own floor.
+- The floor lives in the local sync preferences row. An attacker who can write the app's database is outside this boundary.
+- A build older than the v3 envelope cannot open a v3 blob, so every device of an account needs a build with the v3 reader. Reverting to such a build leaves v3 blobs unreadable on it until some device uploads again.
 
 ## Local Data Key Lifecycle
 

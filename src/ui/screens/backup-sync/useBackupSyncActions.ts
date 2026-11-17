@@ -241,8 +241,22 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       syncSecretStore,
       state,
       effectiveNow,
+      {
+        // Rollback gate: the server's blob may be older than what this device
+        // last synced. Dialog dismissal resolves false = do NOT restore.
+        confirmRestoreOlderBackup: () =>
+          openConfirmation(
+            viewData.account.restoreOlderBackupPrompt,
+            viewData.account.restoreOlderBackupAccept,
+            viewData.common.cancelAction,
+          ),
+      },
     );
     if (!result.ok) {
+      if (result.errorCode === "restore_older_backup_declined") {
+        setIsRestoringSync(false);
+        return;
+      }
       if (result.errorCode === "unauthorized") {
         const clearedState = await clearUnauthorizedBackupSyncSession(
           storage,

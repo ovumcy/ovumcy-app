@@ -10,6 +10,7 @@ import {
   runSyncRestore,
   runSyncUpload,
   upgradeGuestPartnerAccount,
+  type RestoreOlderBackupGuard,
   type SyncConnectErrorCode,
   type SyncRecoverErrorCode,
   type SyncRunErrorCode,
@@ -553,6 +554,7 @@ export async function restoreBackupSyncSnapshot(
   secretStore: SyncSecretStore,
   currentState: LoadedSettingsState,
   now: Date,
+  restoreOlderBackupGuard?: RestoreOlderBackupGuard,
 ): Promise<
   | {
       ok: true;
@@ -567,6 +569,10 @@ export async function restoreBackupSyncSnapshot(
     storage,
     secretStore,
     currentState.savedSyncPreferences,
+    undefined,
+    undefined,
+    undefined,
+    restoreOlderBackupGuard,
   );
   if (!result.ok) {
     return result;

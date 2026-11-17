@@ -24,7 +24,8 @@ const XCHACHA_NONCE_BYTE_LENGTH = 24;
 const RECOVERY_WRAP_INFO = utf8ToBytes("ovumcy-sync-wrap");
 const RECOVERY_FINGERPRINT_INFO = utf8ToBytes("ovumcy-sync-fingerprint");
 const RECOVERY_WRAP_AAD_VERSION = "ovumcy-sync-wrap-v1";
-const SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v2";
+const SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v3";
+const LEGACY_V2_SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v2";
 const LEGACY_SYNC_PAYLOAD_AAD_VERSION = "ovumcy-sync-v1";
 
 export function createRecoveryPhrase(): string {
@@ -38,15 +39,35 @@ export function isValidRecoveryPhrase(value: string): boolean {
   return validateMnemonic(normalizeRecoveryPhrase(value), englishWordlist);
 }
 
+export function isValidSyncGeneration(generation: unknown): generation is number {
+  return Number.isSafeInteger(generation) && (generation as number) >= 0;
+}
+
 /**
  * Builds the AAD for a sync snapshot envelope. Upload and restore construct
- * the same string from the blob's schema version, so a device that recovered
- * the account key (and therefore holds a fresh device id) can still open a
- * snapshot another device uploaded. The account-wide sync key scopes the
- * blob; the schema version binds the envelope to its declared format.
+ * the same string from the blob's schema version and generation, so a device
+ * that recovered the account key (and therefore holds a fresh device id) can
+ * still open a snapshot another device uploaded. The account-wide sync key
+ * scopes the blob; the schema version binds the envelope to its declared
+ * format; the generation makes a server-reported generation trustworthy once
+ * the open succeeds, which is what restore's rollback floor compares.
  */
-export function buildSyncPayloadAad(schemaVersion: number): Uint8Array {
-  return utf8ToBytes(`${SYNC_PAYLOAD_AAD_VERSION}|${schemaVersion}`);
+export function buildSyncPayloadAad(
+  schemaVersion: number,
+  generation: number,
+): Uint8Array {
+  if (!isValidSyncGeneration(generation)) {
+    throw new Error("invalid_sync_generation");
+  }
+  return utf8ToBytes(`${SYNC_PAYLOAD_AAD_VERSION}|${schemaVersion}|${generation}`);
+}
+
+/**
+ * Builds the v2 snapshot AAD, which seals no generation. Only the restore
+ * fallback uses it; the next upload rewrites the blob under the current AAD.
+ */
+export function buildLegacyV2SyncPayloadAad(schemaVersion: number): Uint8Array {
+  return utf8ToBytes(`${LEGACY_V2_SYNC_PAYLOAD_AAD_VERSION}|${schemaVersion}`);
 }
 
 /**
@@ -189,26 +210,44 @@ export function decryptSyncPayload(
 /**
  * Opens a snapshot envelope under the current AAD first, then under the
  * legacy device-bound AAD built from the local device id. A legacy blob
- * written by another device fails both and throws.
+ * written by another device fails every AAD and throws. Only a v3 open
+ * reports a sealed generation; an invalid reported generation throws before
+ * any open is attempted.
  */
 export function decryptSyncSnapshotPayload(
   masterKeyHex: string,
   envelope: EncryptedSyncEnvelope,
   schemaVersion: number,
+  generation: number,
   localDeviceID: string,
-): Uint8Array {
+): { payload: Uint8Array; sealedGeneration: number | null } {
+  const currentAad = buildSyncPayloadAad(schemaVersion, generation);
   try {
-    return decryptSyncPayload(
-      masterKeyHex,
-      envelope,
-      buildSyncPayloadAad(schemaVersion),
-    );
+    return {
+      payload: decryptSyncPayload(masterKeyHex, envelope, currentAad),
+      sealedGeneration: generation,
+    };
   } catch {
-    return decryptSyncPayload(
-      masterKeyHex,
-      envelope,
-      buildLegacySyncPayloadAad(localDeviceID),
-    );
+    // Fall through to the legacy AADs, which seal no generation.
+  }
+  try {
+    return {
+      payload: decryptSyncPayload(
+        masterKeyHex,
+        envelope,
+        buildLegacyV2SyncPayloadAad(schemaVersion),
+      ),
+      sealedGeneration: null,
+    };
+  } catch {
+    return {
+      payload: decryptSyncPayload(
+        masterKeyHex,
+        envelope,
+        buildLegacySyncPayloadAad(localDeviceID),
+      ),
+      sealedGeneration: null,
+    };
   }
 }
 

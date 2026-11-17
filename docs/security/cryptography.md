@@ -19,7 +19,7 @@ All AEAD calls go through `encryptPayload` / `decryptPayload` in `src/security/p
 
 ## Shared Envelope Shape
 
-`EncryptedPayloadEnvelope` is `{ algorithm: "xchacha20poly1305", nonceHex, ciphertextHex }`: a 32-byte key, a fresh 24-byte nonce per encryption from `getRandomBytes`, and the 16-byte Poly1305 tag appended to the ciphertext. The envelope carries no version field. Format versioning is carried by the AAD label (`...-v1`, `ovumcy-sync-v2` for sync snapshots) and, for sync and partner-share, by the outer `schemaVersion`. A change to the format therefore fails authentication under the old label instead of being parsed ambiguously.
+`EncryptedPayloadEnvelope` is `{ algorithm: "xchacha20poly1305", nonceHex, ciphertextHex }`: a 32-byte key, a fresh 24-byte nonce per encryption from `getRandomBytes`, and the 16-byte Poly1305 tag appended to the ciphertext. The envelope carries no version field. Format versioning is carried by the AAD label (`...-v1`, `ovumcy-sync-v3` for sync snapshots) and, for sync and partner-share, by the outer `schemaVersion`. A change to the format therefore fails authentication under the old label instead of being parsed ambiguously.
 
 Keys are 32 random bytes held as 64-character lowercase hex strings.
 
@@ -50,8 +50,8 @@ Enforcement rows: [Local-data encryption at rest](../../SECURITY.md#local-data-e
 | Key source | Master key: 32 random bytes from `createSyncSecretsRecord`, or recovered from the wrapped key on a new device. |
 | Key storage | `SyncSecretsRecord` (master key, device secret, wrapped key, session tokens) as one JSON value in `expo-secure-store` under `ovumcy.sync-secrets`, `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`. On web preview, memory only. |
 | Nonce | Random 24 bytes per upload. |
-| AAD | `ovumcy-sync-v2\|<schemaVersion>`, built by `buildSyncPayloadAad` from the blob's `schemaVersion`; no device id, so a recovered device with a fresh id opens a snapshot another device uploaded. Restore (`decryptSyncSnapshotPayload`) falls back to the legacy `ovumcy-sync-v1\|<deviceID>` built from the local device id, which opens only blobs this device wrote earlier; the next upload rewrites them under v2. |
-| Envelope version | AAD label `ovumcy-sync-v2` (`ovumcy-sync-v1` read-only fallback); outer `schemaVersion` (currently 3; versions 1 and 2 are still read and upgraded, anything else is refused). |
+| AAD | `ovumcy-sync-v3\|<schemaVersion>\|<generation>`, built by `buildSyncPayloadAad` from the blob's `schemaVersion` and `generation`; no device id, so a recovered device with a fresh id opens a snapshot another device uploaded. The sealed generation is what restore's rollback floor compares (see [Restore Freshness](../sync-trust-model.md#restore-freshness)). Restore (`decryptSyncSnapshotPayload`) falls back to `ovumcy-sync-v2\|<schemaVersion>` and then to the legacy `ovumcy-sync-v1\|<deviceID>` built from the local device id, which opens only blobs this device wrote earlier; neither fallback seals a generation, and the next upload rewrites the blob under v3. |
+| Envelope version | AAD label `ovumcy-sync-v3` (`ovumcy-sync-v2` and `ovumcy-sync-v1` read-only fallbacks); outer `schemaVersion` (currently 3; versions 1 and 2 are still read and upgraded, anything else is refused). |
 | Rotation / rekey | Setting up sync again (`src/sync/sync-setup-service.ts`) generates a new master key, device identity and recovery phrase; the next upload encrypts under the new key. There is no re-encryption of an existing remote blob under a rotated key. |
 
 Enforcement: the test matrix has no row for the sync envelope; its behaviour is covered by [src/security/sync-crypto.test.ts](../../src/security/sync-crypto.test.ts) and [src/sync/sync-client-service.test.ts](../../src/sync/sync-client-service.test.ts). The generic AEAD properties are pinned under [Local-data encryption at rest](../../SECURITY.md#local-data-encryption-at-rest).

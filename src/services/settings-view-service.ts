@@ -284,6 +284,8 @@ export type SettingsViewData = {
     restorePrompt: string;
     restoreAccept: string;
     restoreDeviceAuthPrompt: string;
+    restoreOlderBackupPrompt: string;
+    restoreOlderBackupAccept: string;
     uploadOverBackupPrompt: string;
     uploadOverBackupAccept: string;
     withdrawalTitle: string;
@@ -843,6 +845,8 @@ export function buildSettingsViewData(
       restorePrompt: settingsCopy.account.restorePrompt,
       restoreAccept: settingsCopy.account.restoreAccept,
       restoreDeviceAuthPrompt: settingsCopy.account.restoreDeviceAuthPrompt,
+      restoreOlderBackupPrompt: settingsCopy.account.restoreOlderBackupPrompt,
+      restoreOlderBackupAccept: settingsCopy.account.restoreOlderBackupAccept,
       uploadOverBackupPrompt: settingsCopy.account.uploadOverBackupPrompt,
       uploadOverBackupAccept: settingsCopy.account.uploadOverBackupAccept,
       withdrawalTitle: settingsCopy.account.withdrawalTitle,
