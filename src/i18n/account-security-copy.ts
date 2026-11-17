@@ -61,6 +61,7 @@ export type AccountSecurityCopy = {
     resetTokenRequired: string;
     unauthorized: string;
     totpCodeRequired: string;
+    regenerateResponseLost: string;
     generic: string;
   };
 };
@@ -132,6 +133,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     unauthorized: "Session expired. Sign in again.",
     totpCodeRequired:
       "Two-factor is on. Enter the current 6-digit code from your authenticator app.",
+    regenerateResponseLost:
+      "The answer did not reach this device, so your recovery code may already have been replaced and the old one may no longer work. Use “Generate new recovery code” again.",
     generic: "Something went wrong. Try again.",
   },
 };
@@ -205,6 +208,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     unauthorized: "Sitzung abgelaufen. Melden Sie sich erneut an.",
     totpCodeRequired:
       "Zwei-Faktor ist aktiv. Geben Sie den aktuellen 6-stelligen Code aus Ihrer Authenticator-App ein.",
+    regenerateResponseLost:
+      "Die Antwort hat dieses Gerät nicht erreicht. Ihr Wiederherstellungscode wurde möglicherweise schon ersetzt, und der bisherige funktioniert dann nicht mehr. Tippen Sie erneut auf „Neuen Wiederherstellungscode erzeugen“.",
     generic: "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
   },
 };
@@ -281,6 +286,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     unauthorized: "Session expirée. Reconnectez-vous.",
     totpCodeRequired:
       "La double authentification est activée. Saisissez le code à 6 chiffres actuel de votre application.",
+    regenerateResponseLost:
+      "La réponse n'est pas parvenue à cet appareil : votre code de récupération a peut-être déjà été remplacé, et l'ancien ne fonctionne alors plus. Utilisez à nouveau « Générer un nouveau code de récupération ».",
     generic: "Quelque chose s'est mal passé. Réessayez.",
   },
 };
@@ -355,6 +362,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     unauthorized: "Сессия истекла. Войдите снова.",
     totpCodeRequired:
       "Двухфакторка включена. Введите текущий шестизначный код из приложения-аутентификатора.",
+    regenerateResponseLost:
+      "Ответ не дошёл до этого устройства: код восстановления, возможно, уже заменён, и прежний тогда больше не работает. Нажмите «Сгенерировать новый код восстановления» ещё раз.",
     generic: "Что-то пошло не так. Попробуйте снова.",
   },
 };
@@ -431,6 +440,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     unauthorized: "La sesión ha caducado. Vuelve a iniciar sesión.",
     totpCodeRequired:
       "El doble factor está activado. Introduce el código actual de 6 dígitos de tu app de autenticación.",
+    regenerateResponseLost:
+      "La respuesta no llegó a este dispositivo: es posible que tu código de recuperación ya se haya reemplazado y que el anterior ya no funcione. Usa de nuevo «Generar nuevo código de recuperación».",
     generic: "Algo salió mal. Vuelve a intentarlo.",
   },
 };
@@ -503,6 +514,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     unauthorized: "Sessione scaduta. Accedi di nuovo.",
     totpCodeRequired:
       "L'autenticazione a due fattori è attiva. Inserisci il codice a 6 cifre attuale della tua app di autenticazione.",
+    regenerateResponseLost:
+      "La risposta non è arrivata su questo dispositivo: il codice di recupero potrebbe essere già stato sostituito e quello precedente non funzionare più. Usa di nuovo «Genera nuovo codice di recupero».",
     generic: "Qualcosa è andato storto. Riprova.",
   },
 };

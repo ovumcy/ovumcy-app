@@ -755,6 +755,23 @@ describe("SyncAccountSecuritySection", () => {
     },
   );
 
+  it("warns on a regenerate with no readable answer that the old code may be dead", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          regenerateErrorCode="regenerate_response_lost"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(copy.errors.regenerateResponseLost)).toBeTruthy();
+    expect(
+      screen.getByTestId("account-security-regenerate-submit").props.accessibilityState
+        ?.disabled,
+    ).not.toBe(true);
+  });
+
   // resolveTOTPErrorMessage (enable/start stage): the remaining
   // StartTOTPEnrollmentErrorCode branches, plus the generic fallback.
   describe("remaining TOTP enroll-stage error mappings", () => {

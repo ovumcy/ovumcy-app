@@ -33,6 +33,7 @@ import type {
   SyncAccountSecurityStatus,
   SyncAccountSecurityTOTPMode,
   SyncAccountSecurityTOTPStage,
+  RegenerateResponseLostErrorCode,
   TOTPRecoveryCodeLostErrorCode,
 } from "./useSyncAccountSecurityController";
 
@@ -83,7 +84,10 @@ export type SyncAccountSecuritySectionProps = {
   onRegenerateCodeChange: (value: string) => void;
   regenerateCodeVisible: boolean;
   regenerateStatus: SyncAccountSecurityStatus;
-  regenerateErrorCode: RegenerateSyncRecoveryCodeErrorCode | null;
+  regenerateErrorCode:
+    | RegenerateSyncRecoveryCodeErrorCode
+    | RegenerateResponseLostErrorCode
+    | null;
   onRegenerate: () => void | Promise<void>;
 
   revealedRecoveryCode: string;
@@ -118,7 +122,9 @@ function ignoreRequestClose() {}
 // the submit affordance is briefly disabled in addition to showing the distinct
 // wait message. The controller clears a rate_limited error on the next input
 // edit or submit, which re-enables the button — no countdown is needed.
-function isRateLimited(code: AnyErrorCode | TOTPErrorCode | null): boolean {
+function isRateLimited(
+  code: AnyErrorCode | TOTPErrorCode | RegenerateResponseLostErrorCode | null,
+): boolean {
   return code === "rate_limited";
 }
 
@@ -662,9 +668,11 @@ function resolveTOTPErrorMessage(
 function resolveRegenerateErrorMessage(
   copy: AccountSecurityCopy,
   totpCopy: TOTPCopy,
-  code: RegenerateSyncRecoveryCodeErrorCode,
+  code: RegenerateSyncRecoveryCodeErrorCode | RegenerateResponseLostErrorCode,
 ): string {
   switch (code) {
+    case "regenerate_response_lost":
+      return copy.errors.regenerateResponseLost;
     case "totp_invalid_code":
     case "totp_replayed":
     case "totp_not_configured":

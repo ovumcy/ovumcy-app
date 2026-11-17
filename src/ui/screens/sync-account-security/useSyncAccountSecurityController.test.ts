@@ -412,6 +412,59 @@ describe("useSyncAccountSecurityController", () => {
     });
   });
 
+  describe("regenerate with no readable answer", () => {
+    it.each(["network_failed", "generic"] as const)(
+      "warns that the previous code may be replaced after %s",
+      async (errorCode) => {
+        const storage = createLocalAppStorageMock({
+          readSyncPreferencesRecord: jest.fn().mockResolvedValue(selfHostedPreferences()),
+        });
+        const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+        jest
+          .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+          .mockResolvedValue(null);
+        jest
+          .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+          .mockResolvedValue({ ok: false, errorCode });
+
+        const { result } = await renderHook(() =>
+          useSyncAccountSecurityController({ storage, syncSecretStore }),
+        );
+        await act(async () => {});
+        await act(async () => {
+          await result.current.handleRegenerate();
+        });
+
+        expect(result.current.regenerateErrorCode).toBe("regenerate_response_lost");
+        expect(result.current.regenerateStatus).toBe("idle");
+        expect(result.current.revealedRecoveryCode).toBe("");
+      },
+    );
+
+    it("keeps a refusal the server answered as its own error", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(null);
+      jest
+        .spyOn(syncAccountRecoveryService, "regenerateSyncAccountRecoveryCode")
+        .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(async () => {
+        await result.current.handleRegenerate();
+      });
+
+      expect(result.current.regenerateErrorCode).toBe("invalid_current_password");
+    });
+  });
+
   // Sensitive-surface invariant: none of the mutating flows may reach a
   // service call before the account record is loaded. `preferences` starts
   // `null` and only becomes non-null in the same synchronous block that
