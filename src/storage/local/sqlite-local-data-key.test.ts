@@ -34,6 +34,7 @@ const ALL_LOCAL_APP_TABLES = [
 type EncryptedRowSeed = {
   table: string;
   payload: string;
+  rowKey?: string;
 };
 
 // Minimal fake for the key-resolution path: it only needs to answer the
@@ -64,7 +65,9 @@ function createKeyResolutionFakeDatabase(seed?: {
       if (source.includes("encrypted_payload IS NOT NULL")) {
         const tableName = /FROM (\w+)/.exec(source)?.[1] ?? "";
         const row = encryptedRows.find((entry) => entry.table === tableName);
-        return row ? ({ encrypted_payload: row.payload } as T) : null;
+        return row
+          ? ({ encrypted_payload: row.payload, row_key: row.rowKey } as T)
+          : null;
       }
       return null;
     },
@@ -232,6 +235,56 @@ describe("sqlite-local-data-key", () => {
       await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(rightKey);
       expect(fake.deletedTables).toEqual([]);
       expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["day log", "day_logs", "day_log", "opaque-day-key"],
+      ["symptom", "symptoms", "symptom", "opaque-symptom-key"],
+    ])(
+      "keeps the key when both singletons fail but a %s row authenticates under its own row key",
+      async (_label, table, aadTable, rowKey) => {
+        const keyStore = createFakeLocalDataKeyStore(rightKey);
+        const foreignPayload = encryptLocalDataRecord("b".repeat(64), { x: 1 }, bootstrapAad);
+        const fake = createKeyResolutionFakeDatabase({
+          encryptedRows: [
+            { table: "bootstrap_state", payload: foreignPayload },
+            { table: "profile_settings", payload: foreignPayload },
+            {
+              table,
+              rowKey,
+              payload: encryptLocalDataRecord(
+                rightKey,
+                { ok: true },
+                buildLocalDataAad(aadTable, rowKey),
+              ),
+            },
+          ],
+        });
+
+        await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(rightKey);
+        expect(fake.deletedTables).toEqual([]);
+      },
+    );
+
+    it("resets when a list row authenticates only under a different row key", async () => {
+      const keyStore = createFakeLocalDataKeyStore(rightKey);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          {
+            table: "day_logs",
+            rowKey: "opaque-day-key",
+            payload: encryptLocalDataRecord(
+              rightKey,
+              { ok: true },
+              buildLocalDataAad("day_log", "another-day-key"),
+            ),
+          },
+        ],
+      });
+
+      await resolveLocalDataKey(fake.database, keyStore);
+
+      expect(fake.deletedTables).toHaveLength(ALL_LOCAL_APP_TABLES.length);
     });
 
     it("still resets when the bootstrap canary is unparseable and the profile canary fails authentication", async () => {

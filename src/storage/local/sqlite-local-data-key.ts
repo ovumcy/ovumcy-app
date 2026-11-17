@@ -67,9 +67,9 @@ async function canaryAuthenticatesKey(
     return false;
   }
   // Any well-formed envelope that authenticates proves the key; only when at
-  // least one fails and none authenticates is it a mismatch. A single
-  // tampered or corrupt row therefore never wipes the rest — its own read
-  // falls back or fails closed. With no well-formed envelope at all (fresh
+  // least one fails and none authenticates is it a mismatch, so a single
+  // tampered or corrupt canary row never wipes the rest. With no well-formed
+  // envelope at all (fresh
   // install, or every candidate unparseable) the key is kept.
   const candidates: { aadTable: string; sql: string; rowKey: (row: CanaryRow) => string }[] = [
     {
