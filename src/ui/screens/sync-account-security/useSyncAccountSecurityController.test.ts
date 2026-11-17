@@ -309,6 +309,11 @@ describe("useSyncAccountSecurityController", () => {
 
       expect(result.current.changeErrorCode).toBe("rate_limited");
       expect(result.current.changeStatus).toBe("idle");
+
+      await act(async () => {
+        result.current.setChangeNewPassword("another-password");
+      });
+      expect(result.current.changeErrorCode).toBeNull();
     });
 
     it("surfaces rate_limited from a reset request attempt", async () => {
@@ -333,6 +338,11 @@ describe("useSyncAccountSecurityController", () => {
       });
 
       expect(result.current.forgotErrorCode).toBe("rate_limited");
+
+      await act(async () => {
+        result.current.setForgotLogin("someone@example.com");
+      });
+      expect(result.current.forgotErrorCode).toBeNull();
     });
 
     it("lifts rate_limited on the next edit of the regenerate form only", async () => {
