@@ -642,7 +642,7 @@ test("visual verify calendar screen with positive pregnancy test", async ({
   });
 });
 
-test("F9: partner invite_token is scrubbed from the URL by the time the SPA bundle has executed", async ({
+test("F9: partner invite_token and invite secret are scrubbed from the URL by the time the SPA bundle has executed", async ({
   page,
 }) => {
   // On an SPA there is no point earlier than "JS bundle has run" at which
@@ -656,24 +656,31 @@ test("F9: partner invite_token is scrubbed from the URL by the time the SPA bund
   // subsequent paints, devtools snapshots, and browser autocomplete
   // cannot capture it.
   const token = "test-token-f9-padding-1234567890";
+  const inviteSecret = "ab".repeat(32);
 
-  await page.goto(`/backup-sync?invite_token=${token}`);
+  await page.goto(`/backup-sync?invite_token=${token}#k=${inviteSecret}`);
   await page.waitForFunction(
-    () => !window.location.search.includes("invite_token"),
+    () =>
+      !window.location.search.includes("invite_token") &&
+      !window.location.hash.includes("k="),
     undefined,
     { timeout: 30_000 },
   );
 
   expect(page.url()).not.toContain("invite_token");
   expect(page.url()).not.toContain(token);
+  expect(page.url()).not.toContain(inviteSecret);
 
   const locationSnapshot = await page.evaluate(() => ({
+    hash: window.location.hash,
     href: window.location.href,
     search: window.location.search,
   }));
   expect(locationSnapshot.href).not.toContain("invite_token");
   expect(locationSnapshot.href).not.toContain(token);
+  expect(locationSnapshot.href).not.toContain(inviteSecret);
   expect(locationSnapshot.search).not.toContain("invite_token");
+  expect(locationSnapshot.hash).toBe("");
 });
 
 test("web shell publishes the canonical favicon", async ({ page }) => {
