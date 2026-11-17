@@ -31,6 +31,8 @@ export type SyncAPIErrorCode =
   | "recovery_package_not_found"
   | "origin_not_allowed"
   | "totp_not_configured"
+  | "totp_not_enabled"
+  | "totp_enrollment_not_started"
   | "totp_already_enabled"
   | "totp_invalid_code"
   | "totp_replayed"
@@ -826,6 +828,8 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "recovery_package_not_found":
       case "origin_not_allowed":
       case "totp_not_configured":
+      case "totp_not_enabled":
+      case "totp_enrollment_not_started":
       case "totp_already_enabled":
       case "totp_invalid_code":
       case "totp_replayed":

@@ -384,6 +384,31 @@ describe("sync-totp-service", () => {
       });
     });
 
+    it("keeps a community 409 totp_enrollment_not_started as a restart, not a server fault", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          verifyTOTPEnrollment: jest.fn().mockResolvedValue({
+            ok: false,
+            errorCode: "totp_enrollment_not_started",
+          }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "totp_enrollment_not_started",
+      });
+    });
+
     it("keeps a managed 429 as rate_limited", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const managedFactory = jest.fn().mockReturnValue(
@@ -632,6 +657,33 @@ describe("sync-totp-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "not_connected" });
     });
+
+    it.each([
+      ["totp_not_enabled", "totp_already_disabled"],
+      ["totp_not_configured", "totp_not_configured"],
+    ] as const)(
+      "maps a community %s disable answer to %s",
+      async (apiCode, expected) => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const apiFactory = jest.fn().mockReturnValue(
+          communityClientMock({
+            disableTOTP: jest
+              .fn()
+              .mockResolvedValue({ ok: false, errorCode: apiCode }),
+          }),
+        );
+
+        const result = await disableTOTP(
+          secretStore,
+          selfHostedPreferences(),
+          { currentPassword: "very secure password", code: "123456" },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual({ ok: false, errorCode: expected });
+      },
+    );
 
     it("maps a managed backend failure to its allowlisted error code", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());

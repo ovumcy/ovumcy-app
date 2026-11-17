@@ -47,6 +47,8 @@ A login challenge lives for **5 minutes**. After **5 wrong codes** on the same c
 
 Disable revokes every session of this account. You will need to sign back in on every device, including this one.
 
+If two-factor was already turned off elsewhere, a self-hosted (community) server says so and the app reloads the account state and switches back to the *Enable* tab instead of reporting a server fault. Likewise, verifying a setup that is no longer pending (it expired, or a newer setup replaced it) asks you to start setup again. "Two-factor is not configured on this server" now means only that the server itself lacks its field-encryption key.
+
 ## Lost Authenticator App
 
 Treat your account-level recovery code as your **only** backup for a lost authenticator:

@@ -52,6 +52,7 @@ export type VerifyTOTPEnrollmentErrorCode =
   | "totp_replayed"
   | "totp_secret_failed"
   | "totp_enrollment_restart_required"
+  | "totp_enrollment_not_started"
   | "unauthorized"
   | "rate_limited"
   | "network_failed"
@@ -63,6 +64,7 @@ export type DisableTOTPErrorCode =
   | "current_password_required"
   | "invalid_current_password"
   | "totp_not_configured"
+  | "totp_already_disabled"
   | "totp_invalid_code"
   | "totp_replayed"
   | "totp_secret_failed"
@@ -165,7 +167,9 @@ export async function startTOTPEnrollment(
  * none (managed, or a community server that predates rotation). A community
  * 429 may mean the pending secret's verify budget is spent and the secret is
  * gone (the general rate limit answers identically), so it surfaces as
- * `totp_enrollment_restart_required`.
+ * `totp_enrollment_restart_required`. A community 409
+ * `totp_enrollment_not_started` means no secret is pending (expired, or
+ * replaced by a newer setup) — also a restart, not a server fault.
  */
 export async function verifyTOTPEnrollment(
   secretStore: SyncSecretStore,
@@ -230,6 +234,8 @@ export async function verifyTOTPEnrollment(
  * AND a current TOTP code so a temporarily-borrowed authenticator cannot
  * remove 2FA on its own. On success: every session of the account is revoked
  * (the user must log in fresh) and any pending TOTP challenges are deleted.
+ * A community 409 `totp_not_enabled` surfaces as `totp_already_disabled`: the
+ * account state moved under this screen, so the caller refreshes it.
  */
 export async function disableTOTP(
   secretStore: SyncSecretStore,
@@ -416,6 +422,7 @@ function mapCommunityVerifyEnrollmentError(
   switch (code) {
     case "rate_limited":
       return "totp_enrollment_restart_required";
+    case "totp_enrollment_not_started":
     case "totp_not_configured":
     case "totp_already_enabled":
     case "totp_invalid_code":
@@ -451,6 +458,8 @@ function mapCommunityDisableError(
   code: SyncAPIErrorCode,
 ): DisableTOTPErrorCode {
   switch (code) {
+    case "totp_not_enabled":
+      return "totp_already_disabled";
     case "invalid_current_password":
     case "totp_not_configured":
     case "totp_invalid_code":
