@@ -16,6 +16,7 @@ import {
   type UpgradeGuestPartnerAccountErrorCode,
   type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
+import type { SyncRecoveryKeyStepUp } from "../sync/sync-api-client";
 import type { SyncPreferencesRecord } from "../sync/sync-contract";
 import type {
   ManagedCloudAPIErrorCode,
@@ -506,6 +507,7 @@ export async function uploadBackupSyncSnapshot(
   // WHEN to ask stays in runSyncUpload's policy (fresh install over an
   // existing remote backup). Absent guard = fail closed (never overwrite).
   uploadOverBackupGuard?: UploadOverBackupGuard,
+  recoveryKeyStepUp?: SyncRecoveryKeyStepUp,
 ): Promise<
   | {
       ok: true;
@@ -524,6 +526,7 @@ export async function uploadBackupSyncSnapshot(
     undefined,
     undefined,
     uploadOverBackupGuard,
+    recoveryKeyStepUp,
   );
   if (!result.ok) {
     return result;

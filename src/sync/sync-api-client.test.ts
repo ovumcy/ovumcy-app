@@ -1,4 +1,5 @@
 import { createSyncAPIClient } from "./sync-api-client";
+import type { WrappedSyncKeyMetadata } from "./sync-contract";
 
 describe("sync-api-client", () => {
   it('sets redirect: "error" on every request so a 3xx cannot leak the bearer session token', async () => {
@@ -933,6 +934,73 @@ describe("sync-api-client", () => {
       expect(result).toEqual({ ok: false, errorCode: errorKey });
     },
   );
+
+  describe("putRecoveryKey step-up (APP-32)", () => {
+    const pkg: WrappedSyncKeyMetadata = {
+      algorithm: "xchacha20poly1305",
+      kdf: "bip39_seed_hkdf_sha256",
+      mnemonicWordCount: 12,
+      wrapNonceHex: "d".repeat(48),
+      wrappedMasterKeyHex: "e".repeat(96),
+      phraseFingerprintHex: "f".repeat(16),
+    };
+
+    async function sentBody(stepUp?: { currentPassword: string; code?: string }) {
+      const fetchMock = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "invalid_current_password" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const client = createSyncAPIClient(
+        "http://127.0.0.1:8080/",
+        fetchMock as jest.MockedFunction<typeof fetch>,
+      );
+      const result = await client.putRecoveryKey("session-1", pkg, stepUp);
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      return {
+        result,
+        url: fetchMock.mock.calls[0]?.[0] as string,
+        body: JSON.parse(init.body as string) as Record<string, unknown>,
+      };
+    }
+
+    it("sends no step-up fields when none is given", async () => {
+      const { body, result } = await sentBody();
+
+      expect(body).not.toHaveProperty("current_password");
+      expect(body).not.toHaveProperty("code");
+      expect(result).toEqual({ ok: false, errorCode: "invalid_current_password" });
+    });
+
+    it("sends the password and trimmed code in the body only", async () => {
+      const logSpies = (["log", "info", "warn", "error", "debug"] as const).map(
+        (level) => jest.spyOn(console, level).mockImplementation(() => {}),
+      );
+      try {
+        const { body, url } = await sentBody({
+          currentPassword: "pw-under-test",
+          code: " 123456 ",
+        });
+
+        expect(body).toMatchObject({ current_password: "pw-under-test", code: "123456" });
+        expect(url).not.toContain("pw-under-test");
+        expect(url).not.toContain("123456");
+        for (const spy of logSpies) {
+          expect(spy).not.toHaveBeenCalled();
+        }
+      } finally {
+        logSpies.forEach((spy) => spy.mockRestore());
+      }
+    });
+
+    it("omits an empty code", async () => {
+      const { body } = await sentBody({ currentPassword: "pw", code: "  " });
+
+      expect(body).toHaveProperty("current_password", "pw");
+      expect(body).not.toHaveProperty("code");
+    });
+  });
 
   it("completes a TOTP challenge and returns a real session", async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce(

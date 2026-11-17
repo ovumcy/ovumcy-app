@@ -53,6 +53,8 @@ In `self_hosted` mode:
 
 In this mode the self-hosted server operator can know the chosen login on that server, because that server is also the auth surface.
 
+Replacing the wrapped recovery-key package stored on a community server (for example after *Set up sync on this device* made a new phrase) re-authenticates the account: the request carries the current password, plus a current TOTP code when two-factor is on, in its body. Re-sending the package already stored needs neither. The app sends the password typed at connect when it has one; otherwise the next upload asks for the password (and code) in a prompt whose values live only in that prompt's screen state and the one request — never stored, logged, or put in a URL. A sign-in that went through a TOTP challenge connects without the replacement and leaves it to that prompt, since the challenge code is spent. Managed sessions are exempt server-side.
+
 ## Managed Cloud Flow
 
 In `managed` mode the trust boundary is intentionally split:

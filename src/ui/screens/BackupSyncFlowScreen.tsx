@@ -3,7 +3,9 @@ import { useRouter } from "expo-router";
 
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
 import { getDeviceCopy } from "../../i18n/device-copy";
+import { selectRecoveryKeyStepUpCopy } from "../../i18n/recovery-key-stepup-copy";
 import { selectTOTPCopy } from "../../i18n/totp-copy";
+import type { SyncRecoveryKeyStepUp } from "../../sync/sync-api-client";
 import type { SettingsViewData } from "../../services/settings-view-service";
 import type {
   BackupSyncDeviceListItemView,
@@ -18,7 +20,9 @@ import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
 import { SettingsSyncDevicesSection } from "./backup-sync/SettingsSyncDevicesSection";
+import { BackupSyncRecoveryKeyStepUpSection } from "./backup-sync/BackupSyncRecoveryKeyStepUpSection";
 import { BackupSyncTOTPChallengeSection } from "./backup-sync/BackupSyncTOTPChallengeSection";
+import type { RecoveryKeyStepUpPrompt } from "./backup-sync/useBackupSyncActions";
 import { GuestUpgradeSection } from "./backup-sync/GuestUpgradeSection";
 import type { SyncPreferencesRecord } from "../../sync/sync-contract";
 import type { PartnerCopy } from "../../i18n/partner-copy";
@@ -113,6 +117,12 @@ export type BackupSyncFlowScreenProps = {
   onTOTPChallengeCodeChange: (value: string) => void;
   onSubmitTOTPChallenge: () => void | Promise<void>;
   onCancelTOTPChallenge: () => void;
+  recoveryKeyStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  isSyncingNow: boolean;
+  onSubmitRecoveryKeyStepUp: (
+    stepUp: SyncRecoveryKeyStepUp,
+  ) => void | Promise<void>;
+  onCancelRecoveryKeyStepUp: () => void;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -199,6 +209,10 @@ export function BackupSyncFlowScreen({
   onTOTPChallengeCodeChange,
   onSubmitTOTPChallenge,
   onCancelTOTPChallenge,
+  recoveryKeyStepUpPrompt,
+  isSyncingNow,
+  onSubmitRecoveryKeyStepUp,
+  onCancelRecoveryKeyStepUp,
   viewData,
   backLabel,
   onBack,
@@ -253,6 +267,15 @@ export function BackupSyncFlowScreen({
           onCancel={onCancelTOTPChallenge}
           onCodeChange={onTOTPChallengeCodeChange}
           onSubmit={onSubmitTOTPChallenge}
+        />
+      ) : null}
+      {recoveryKeyStepUpPrompt ? (
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={selectRecoveryKeyStepUpCopy(language)}
+          isBusy={isSyncingNow}
+          onCancel={onCancelRecoveryKeyStepUp}
+          onSubmit={onSubmitRecoveryKeyStepUp}
+          prompt={recoveryKeyStepUpPrompt}
         />
       ) : null}
       <SettingsSyncSetupSection

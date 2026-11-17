@@ -32,6 +32,10 @@ If verification fails:
 - *Code is incorrect* — besides a mistyped or expired code, this is also what you see when setup was started again on another device: only the newest pending secret counts. Finish setup on that device, or tap *Cancel* and start again here.
 - *Too many attempts for this setup* (self-hosted) — the server allows 10 codes per pending secret and then discards it. Its general per-account rate limit answers the same way, and the app cannot tell the two apart, so it always returns you to the password step to start setup again with a fresh secret.
 
+## Replacing The Recovery-Key Backup On A Self-Hosted Server
+
+When an upload would replace the recovery-key package your self-hosted (community) server holds — typically the first upload after *Set up sync on this device* created a new phrase — the server asks for your password and, with two-factor on, a current 6-digit code. The app shows a prompt for them and retries the upload once you confirm. A wrong password or code, or a code already used, keeps the prompt open with that message. Both values travel in the request body only and are cleared from the screen afterwards.
+
 ## Logging In With Two-Factor
 
 When you sign in to a TOTP-enabled account, the password step still works the same way. As soon as the password is verified the app shows a dedicated *Enter your 6-digit code* screen instead of completing the login. Type the current code from your authenticator app and tap *Verify*.
