@@ -72,7 +72,7 @@ export const ALLOWLIST = [
     advisory: "GHSA-fc5q-39xc-vjpf",
     reviewBy: "2026-12-17",
     reason:
-      "ReDoS through repeated extglobs needs an attacker-chosen glob pattern. picomatch reaches the production tree only through the Expo/Metro build and config tooling (@expo/cli, @expo/config, @expo/metro and siblings), whose patterns come from the project's own configuration; it is not in the shipped app bundle and never matches user or network input. No patched release exists (all versions <= 4.0.7 are affected).",
+      "ReDoS through repeated extglobs needs an attacker-chosen glob pattern. picomatch reaches the production tree only through Node-side build tooling: the Expo/Metro build and config packages (@expo/cli, @expo/config, @expo/metro and siblings), react-native's codegen and CLI (via tinyglobby, which react-native-reanimated and react-native-worklets inherit through react-native), and the jest chain. Their patterns come from the project's own configuration; picomatch is not in the shipped app bundle and never matches user or network input. No patched release exists (all versions <= 4.0.7 are affected).",
   },
 ];
 
