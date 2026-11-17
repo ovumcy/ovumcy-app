@@ -3,11 +3,14 @@
 // replace them (see that file).
 const expoPreset = require("jest-expo/jest-preset");
 
-// Pin the zone to CI's (ubuntu runners are UTC) so a local run reads the same
-// as CI. It has to be set here, in the parent process: a test's process.env is
-// a copy and assigning TZ there never reaches Node's zone. The default locale
-// is pinned in jest.setup-env.js.
-process.env.TZ = "UTC";
+// Default the zone to CI's (ubuntu runners are UTC) so a local run reads the
+// same as CI; an explicit TZ still wins, for whole-suite zone runs. It has to be
+// set here, in the parent process: a test's process.env is a copy and assigning
+// TZ there never reaches Node's zone. The default locale is pinned in
+// jest.setup-env.js.
+if (!process.env.TZ) {
+  process.env.TZ = "UTC";
+}
 
 module.exports = {
   ...expoPreset,
