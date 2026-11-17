@@ -3721,7 +3721,7 @@ describe("runSyncUpload additional branches", () => {
     },
   );
 
-  describe("recovery-key step-up on upload (APP-32)", () => {
+  describe("recovery-key step-up on upload", () => {
     function selfHostedConnected() {
       return {
         ...createDefaultSyncPreferencesRecord(),
