@@ -954,8 +954,8 @@ describe("doctor PDF: recorded pregnancy tests", () => {
   // Closes the second of the last two violators of the amended
   // security-constitution Medical-safety bullet ("While a pregnancy record is
   // ACTIVE, prediction surfaces stay suppressed regardless of that pause").
-  // buildAdvancedFertilityItemsForPDF anchors on the LIVE profile.lastPeriodStart
-  // rather than a completed cycle, so it can print current-cycle fertility
+  // buildAdvancedFertilityItemsForPDF anchors on the shared projection's
+  // cycleAnchorDate rather than a completed cycle, so it can print current-cycle fertility
   // signals (thermal shift / ovulation confirmation / LH peak) derived from
   // BBT/mucus/LH data logged after a lifted day-log pause during an active
   // pregnancy -- phantom math the amended invariant forbids. Mirrors
@@ -1115,6 +1115,25 @@ describe("doctor PDF: recorded pregnancy tests", () => {
       });
 
       expect(omitted.advancedFertility).toEqual(suppressedExplicitlyFalse.advancedFertility);
+    });
+
+    it("anchors the current-cycle signals on the shared projection, not a stored start a later period left behind", () => {
+      const report = buildReport({
+        now,
+        dayLogs: [
+          { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+          { ...createEmptyDayLogRecord("2026-01-14"), lhTest: "peak" as const },
+          { ...createEmptyDayLogRecord("2026-02-01"), isPeriod: true, cycleStart: true },
+        ],
+        profile: { ...pdfProfile, lastPeriodStart: "2026-01-01" },
+        symptomRecords: [],
+      });
+
+      // The 2026-01-14 peak belongs to the completed cycle; read from the
+      // stored start it was printed as the current cycle's LH peak.
+      expect(report.advancedFertility).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ key: "lh-peak" })]),
+      );
     });
   });
 });

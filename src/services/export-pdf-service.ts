@@ -227,7 +227,9 @@ export function buildExportPDFReport({
     // (the caller's flag) OR the un-lifted day-log pause — the paused
     // projection deliberately keeps its anchor, so the flag alone would let
     // a paused owner's PDF keep printing current-cycle fertility signals.
-    suppressPredictions || projection.isPregnancyPaused,
+    suppressPredictions || projection.isPregnancyPaused
+      ? null
+      : projection.cycleAnchorDate,
   );
   const extendedReports = buildStatsExtendedReports(history);
   const extendedReportRows: ExportPDFExtendedReportRow[] = (
@@ -288,27 +290,18 @@ function buildAdvancedFertilityItemsForPDF(
   sortedDayLogs: readonly DayLogRecord[],
   profile: ProfileRecord,
   pdfCopy: ReturnType<typeof getExportPDFCopy>,
-  suppressPredictions: boolean,
+  currentCycleAnchorDate: string | null,
 ): ExportPDFAdvancedFertilityItem[] {
-  // Use the live current-cycle anchor (profile.lastPeriodStart) instead of the
-  // last completed cycle's start, so the stats match the cycle the app treats as
-  // current rather than the one before it.
-  //
-  // While suppression holds (an active pregnancy record OR the un-lifted
-  // day-log pause), a null anchor drops ONLY the current-cycle-anchored
-  // signals (thermal shift, ovulation confirmation, LH peak) -- mirrors
-  // stats-view-service's `suppressPredictions ? null :
-  // projection.cycleAnchorDate` exactly, so the doctor PDF stops printing
-  // phantom fertility signals derived from BBT/mucus/LH data. This function
-  // never surfaces the completed-cycle facts (observed luteal, signal
-  // coverage) in the first place, so suppression here correctly degrades to
-  // the section's existing "no advanced fertility signals" empty copy --
-  // the same neutral presentation a facts_only/no-current-cycle owner
-  // already gets, no new copy needed.
+  // The anchor is the shared projection's cycleAnchorDate, as on Stats: the
+  // stored profile start can trail a later logged period, which would print
+  // the previous cycle's signals as current. A null anchor (suppression) drops
+  // only the current-cycle signals (thermal shift, ovulation confirmation, LH
+  // peak); this section never shows completed-cycle facts, so it falls back
+  // to its existing empty copy.
   const summary = buildStatsAdvancedFertility(
     history,
     sortedDayLogs,
-    suppressPredictions ? null : (profile.lastPeriodStart ?? null),
+    currentCycleAnchorDate,
   );
   if (!summary) {
     return [];
