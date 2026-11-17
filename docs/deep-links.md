@@ -47,6 +47,15 @@ and the route/`window.location` readers). The `ovumcy` scheme itself is declared
 once in `app.json` (`expo.scheme`) and is what makes the OS route
 `ovumcy://backup-sync?...` into the app.
 
+The link the owner shares is that URL plus a fragment the app appends:
+`…?invite_token=<token>#k=<invite secret>`. The secret is generated on the owner
+device and is the root of the partner-share key, so the managed cloud — which
+minted the token — cannot derive the key (`docs/sync-trust-model.md`,
+Partner-Share Invite Secret). Expo Router drops the fragment of custom-scheme
+links, so the partner side reads it from the raw link that opened the app as
+well as from the route; on web the boot-time scrub stashes and strips it with the
+token.
+
 Token capture is already hardened on both surfaces:
 
 - **Web:** `src/security/web-invite-token-scrub-bootstrap.ts` is the first import
@@ -101,7 +110,10 @@ hardening is a separate, still-open piece.
 
 The blast radius is tightly bounded by the real invite flow. An intercepted
 `invite_token` is **not** a decryption key and **not** a bearer credential — it is
-a one-time redemption coupon that is only meaningful to the managed cloud.
+a one-time redemption coupon that is only meaningful to the managed cloud. The
+whole link also carries the invite secret in its fragment; an interceptor who
+holds both can redeem in the partner's place exactly as before, and the owner
+sees and can revoke that grant.
 
 An attacker who captures the token **cannot**:
 

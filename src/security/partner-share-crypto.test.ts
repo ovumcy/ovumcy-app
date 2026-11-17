@@ -11,42 +11,76 @@ import {
   encryptPartnerSharedProjection,
 } from "./partner-share-crypto";
 
+const INVITE_SECRET_HEX = "11".repeat(32);
+
 describe("derivePartnerShareKeyHex", () => {
   it("rejects tokens shorter than the entropy floor", () => {
-    expect(() => derivePartnerShareKeyHex("")).toThrow("invalid_partner_invite");
-    expect(() => derivePartnerShareKeyHex("ab")).toThrow("invalid_partner_invite");
-    // 21 chars — one below the 22-char floor.
-    expect(() => derivePartnerShareKeyHex("a".repeat(21))).toThrow(
-      "invalid_partner_invite",
-    );
+    for (const token of ["", "ab", "a".repeat(21)]) {
+      expect(() => derivePartnerShareKeyHex(token, INVITE_SECRET_HEX)).toThrow(
+        "invalid_partner_invite",
+      );
+    }
   });
 
   it("rejects tokens that only become non-empty after trim and still fall under the floor", () => {
-    expect(() => derivePartnerShareKeyHex("   ")).toThrow("invalid_partner_invite");
-    expect(() => derivePartnerShareKeyHex(`   ${"a".repeat(21)}   `)).toThrow(
-      "invalid_partner_invite",
+    for (const token of ["   ", `   ${"a".repeat(21)}   `]) {
+      expect(() => derivePartnerShareKeyHex(token, INVITE_SECRET_HEX)).toThrow(
+        "invalid_partner_invite",
+      );
+    }
+  });
+
+  it("refuses to derive without a well-formed invite secret", () => {
+    const token = "a".repeat(22);
+    for (const secret of [
+      "",
+      "11".repeat(31),
+      "11".repeat(33),
+      "AB".repeat(32),
+      `${"11".repeat(31)}zz`,
+      ` ${"11".repeat(32)}`,
+    ]) {
+      expect(() => derivePartnerShareKeyHex(token, secret)).toThrow(
+        "invalid_partner_invite",
+      );
+    }
+  });
+
+  it("matches the documented key schedule (HKDF-SHA256 over the invite secret, token-bound info)", () => {
+    expect(derivePartnerShareKeyHex("a".repeat(22), INVITE_SECRET_HEX)).toBe(
+      "cf22bc2ded2168f72f2525a250a4f7a18dad71d837f4a4684c70e4042267ab19",
     );
   });
 
-  it("derives a deterministic 32-byte hex key for tokens at or above the floor", () => {
+  it("derives a deterministic 32-byte hex key", () => {
     const token = "a".repeat(22);
-    const first = derivePartnerShareKeyHex(token);
-    const second = derivePartnerShareKeyHex(token);
+    const first = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
+    const second = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
 
     expect(first).toBe(second);
     expect(first).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("produces distinct keys for distinct tokens", () => {
-    const first = derivePartnerShareKeyHex("a".repeat(22));
-    const second = derivePartnerShareKeyHex(`${"a".repeat(21)}b`);
+  it("produces distinct keys for distinct tokens under the same secret", () => {
+    const first = derivePartnerShareKeyHex("a".repeat(22), INVITE_SECRET_HEX);
+    const second = derivePartnerShareKeyHex(
+      `${"a".repeat(21)}b`,
+      INVITE_SECRET_HEX,
+    );
 
     expect(first).not.toBe(second);
+  });
+
+  it("the token alone does not determine the key: a different secret yields a different key", () => {
+    const token = "a".repeat(22);
+    expect(derivePartnerShareKeyHex(token, INVITE_SECRET_HEX)).not.toBe(
+      derivePartnerShareKeyHex(token, "22".repeat(32)),
+    );
   });
 });
 
 describe("deriveGrantSubkeyHex", () => {
-  const inviteKeyHex = derivePartnerShareKeyHex("a".repeat(22));
+  const inviteKeyHex = derivePartnerShareKeyHex("a".repeat(22), INVITE_SECRET_HEX);
   const baseContext = {
     grantID: "grant-1",
     ownerAccountID: "owner-1",
@@ -123,7 +157,7 @@ describe("deriveGrantSubkeyHex", () => {
 });
 
 describe("encryptPartnerSharedProjection / decryptPartnerSharedProjection", () => {
-  const keyHex = derivePartnerShareKeyHex("a".repeat(22));
+  const keyHex = derivePartnerShareKeyHex("a".repeat(22), INVITE_SECRET_HEX);
 
   function buildPayload(
     overrides: Partial<PartnerSharedProjectionPayload> = {},

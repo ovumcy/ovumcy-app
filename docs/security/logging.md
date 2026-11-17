@@ -28,7 +28,7 @@ Never log, or place in an error message, route parameter, notification payload, 
 
 - the local-data key, sync master key, device secret, recovery phrase, wrapped-key material, or any partner-share key (`K_invite`, `K_grant`);
 - bearer, session or refresh tokens, entitlement tokens, and TOTP secrets, provisioning URIs and codes;
-- partner invite tokens (the managed invite token is held only briefly in memory and scrubbed from route state after capture);
+- partner invite tokens and invite secrets (the `#k=` fragment of an invite link): both are held only briefly in memory, under one TTL, and scrubbed from route state and the web address bar after capture;
 - any decrypted record: day logs, symptoms, notes, pregnancy, postpartum or screening content, weight and blood-pressure values, or screening outcomes and answers;
 - ciphertext blobs, nonces and AAD strings beyond their length or a fixed label.
 

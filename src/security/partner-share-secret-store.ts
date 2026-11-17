@@ -44,7 +44,11 @@ export type PartnerShareSecretsRecord = {
   partnerLastSeenGenerationByGrantID: Record<string, number>;
 };
 
-const PARTNER_SHARE_SECRET_STORE_KEY = "ovumcy.partner-share-secrets";
+const PARTNER_SHARE_SECRET_STORE_KEY = "ovumcy.partner-share-secrets-v2";
+// Keys stored under the previous entry were derived from the server-minted
+// invite token alone, so the managed cloud could derive them too. The entry
+// is never read; it is deleted on first access and on every clear.
+const LEGACY_PARTNER_SHARE_SECRET_STORE_KEY = "ovumcy.partner-share-secrets";
 
 export interface PartnerShareSecretStoreBackend {
   deleteItem(key: string): Promise<void>;
@@ -91,18 +95,41 @@ export function createPartnerShareSecretStore(
   // only — the original caller still sees their error via the returned
   // promise.
   let mutateChain: Promise<unknown> = Promise.resolve();
+  let legacyEntryDeleted = false;
+
+  // Best-effort: a failed delete is retried on the next access, and the
+  // legacy entry is never read either way.
+  async function deleteLegacyEntryOnce(): Promise<void> {
+    if (legacyEntryDeleted) {
+      return;
+    }
+    try {
+      await backend.deleteItem(LEGACY_PARTNER_SHARE_SECRET_STORE_KEY);
+      legacyEntryDeleted = true;
+    } catch {
+      // Retried on the next access.
+    }
+  }
 
   // Queued on the mutate chain so a read-update-write turn already in flight
   // cannot write the record back after the delete.
   async function clearPartnerShareSecrets(): Promise<void> {
-    const next = mutateChain.then(() =>
-      backend.deleteItem(PARTNER_SHARE_SECRET_STORE_KEY),
-    );
+    const next = mutateChain.then(async () => {
+      const results = await Promise.allSettled([
+        backend.deleteItem(PARTNER_SHARE_SECRET_STORE_KEY),
+        backend.deleteItem(LEGACY_PARTNER_SHARE_SECRET_STORE_KEY),
+      ]);
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure) {
+        throw failure.reason;
+      }
+    });
     mutateChain = next.catch(() => undefined);
     await next;
   }
 
   async function readPartnerShareSecrets(): Promise<PartnerShareSecretsRecord> {
+    await deleteLegacyEntryOnce();
     const rawValue = await backend.getItem(PARTNER_SHARE_SECRET_STORE_KEY);
     if (!rawValue) {
       return createEmptyPartnerShareSecretsRecord();

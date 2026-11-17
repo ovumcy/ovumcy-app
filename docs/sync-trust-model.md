@@ -194,7 +194,7 @@ Partner sharing is an Ovumcy Cloud feature. The trust model for the partner shar
 
 - the owner builds a partner projection from canonical local profile, day-log, and symptom records, applying the chosen access level (summary or full) before encryption;
 - the projection is encrypted on the owner device and uploaded to managed as an opaque ciphertext blob tied to a specific grant;
-- the partner device decrypts the projection only after the grant is accepted; managed never holds the plaintext share;
+- the partner device decrypts the projection only after the grant is accepted; managed never holds the plaintext share, nor enough material to derive the share key (see Partner-Share Invite Secret below);
 - the partner experience stays read-only and free — the partner is a guest of the owner's subscription, not a separate billing subject;
 - community sync may keep history continuity for the owner, but it must not become a transport or authority path for partner shared access;
 - sharing requires the owner to hold the cloud/sync tier, because projections physically live on the managed cloud — an owner with only a local premium unlock cannot share. That is an honest line, not a bug;
@@ -262,13 +262,33 @@ The `payload-crypto.encryptPayload` / `decryptPayload` primitive requires AAD as
 
 When SecureStore returns a key that no longer authenticates the on-disk ciphertext (a manually restored or copied SQLite file — e.g. `adb pull`/`adb push`, a device-to-device file copy, or a stale emulator/CI snapshot — landing next to a freshly generated SecureStore key, or key truncation during migration), `resolveLocalDataKey` must canary-decrypt a singleton row before trusting the key. On auth-tag failure it wipes and reseeds with a fresh key, never returning the mismatched key to callers. This is the deterministic-reset behavior promised by the broader security invariants — the alternative (propagating the wrong key) bricks the app on every read.
 
-## Partner-Share Token Floor
+## Partner-Share Invite Secret
 
-The managed cloud mints the partner-share invite token, and the owner derives the symmetric share key from it via HKDF. Without a client-side entropy floor, a compromised server could hand the owner a weak token (`"ab"`), derive the same key, and decrypt the supposedly opaque ciphertext. The client therefore enforces a minimum length (≥ 22 chars after trim) in `derivePartnerShareKeyHex` before accepting the token.
+The managed cloud mints the invite token and stores it to redeem the invite, and it knows every grant context field below. A share key derived from the token alone is therefore derivable by the server — anyone holding the managed database could decrypt every partner projection. The share key is instead rooted in a client-only invite secret `S`:
+
+- the owner device generates `S` (32 bytes from the platform CSPRNG) when the invite is issued and appends it to the server's invite URL as the fragment `#k=<64 lowercase hex>`; the shared link is `…/backup-sync?invite_token=<T>#k=<S>`;
+- a URL fragment is never part of an HTTP request, so `S` never reaches the managed cloud or the invite host through a request, and the client never sends it in any API call — accept posts only `invite_token`;
+- the partner device reads `S` from the link fragment alongside the token, holds both in the pending-invite buffer under one TTL and one clear, and scrubs both from route state (and, on web, from the address bar and history entry);
+- a link without a well-formed `k` (missing, not 64 hex chars) is refused as `invalid_partner_invite`; there is no fallback to a token-only key, so a stripped fragment cannot silently downgrade the share to a server-derivable key.
+
+```
+K_invite = HKDF-SHA256(
+  IKM   = S,
+  salt  = "ovumcy-partner-share-v2",
+  info  = "ovumcy-partner-share-v2|<invite_token>",
+  L     = 32 bytes,
+)
+```
+
+Binding the token into `info` ties `S` to its invite. The token still has to meet the client-side length floor (≥ 22 chars after trim) because it remains the redemption credential, but confidentiality no longer rests on its entropy.
+
+Residual trust: `S` is exactly as exposed as the link itself — clipboard, the messenger the owner pastes it into, OS share-sheet recents, a screenshot. And when the partner opens the link without the app installed, the invite host serves the fallback page; that page is static and reads nothing, but a compromised host that served script instead could read `location.hash`. Closing that would need `S` on a channel separate from the link, which v1 does not do.
+
+No key from the previous token-only derivation survives: the partner-share secret store moved to a new SecureStore entry (`ovumcy.partner-share-secrets-v2`), and the retired entry is never read — it is deleted on the store's first access and by every clear. Pairs keyed before the change (pre-release builds only) lose their keys and re-invite.
 
 ## Partner-Share Key Rotation
 
-The invite-derived key `K_invite = HKDF(invite_token, info="ovumcy-partner-share-v1")` is *not* the key that actually encrypts uploaded projections. Both owner and partner rotate to a per-grant subkey immediately after accept:
+The invite-derived key `K_invite` (see Partner-Share Invite Secret above) is *not* the key that actually encrypts uploaded projections. Both owner and partner rotate to a per-grant subkey immediately after accept:
 
 ```
 K_grant = HKDF-SHA256(
@@ -447,7 +467,7 @@ Pinning was deferred on 2026-07-20 for operational reasons: a leaf pin would hav
 
 ## Pending Partner Invite Buffer
 
-The `pendingManagedPartnerInviteToken` module-level state must clear on every session boundary that invalidates the prior owner context: explicit disconnect, mode-switch, and forced unauthorized-session clear. Clearing only on successful accept lets the token outlive disconnect and risks redeeming it under a different managed account on the same device. Independently of those boundaries the buffer expires on its own: a token stashed more than 15 minutes ago (`MANAGED_PARTNER_INVITE_TOKEN_TTL_MS`) reads as empty and is dropped, so an abandoned pairing attempt never leaves a redeemable token in memory.
+The `pendingManagedPartnerInviteToken` module-level state — and the invite secret held beside it, which shares its TTL and every clear — must clear on every session boundary that invalidates the prior owner context: explicit disconnect, mode-switch, and forced unauthorized-session clear. Clearing only on successful accept lets the token outlive disconnect and risks redeeming it under a different managed account on the same device. Independently of those boundaries the buffer expires on its own: a token stashed more than 15 minutes ago (`MANAGED_PARTNER_INVITE_TOKEN_TTL_MS`) reads as empty and is dropped, so an abandoned pairing attempt never leaves a redeemable token in memory.
 
 ## Export Artifact Cleanup
 

@@ -1,10 +1,78 @@
 import {
   MANAGED_PARTNER_INVITE_TOKEN_TTL_MS,
+  attachManagedPartnerInviteSecret,
   clearManagedPartnerInviteToken,
   managedPartnerInviteTokenRemainingMs,
+  readManagedPartnerInviteSecret,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
 } from "./managed-partner-invite-token-buffer";
+
+const SECRET = "11".repeat(32);
+
+describe("managed-partner-invite-token-buffer invite secret", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 2, 30, 12));
+    clearManagedPartnerInviteToken();
+  });
+
+  afterEach(() => {
+    clearManagedPartnerInviteToken();
+    jest.useRealTimers();
+  });
+
+  it("holds the secret with its token and drops both together at the TTL", () => {
+    stashManagedPartnerInviteToken("invite-token", SECRET);
+    expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+
+    jest.advanceTimersByTime(MANAGED_PARTNER_INVITE_TOKEN_TTL_MS);
+
+    expect(readManagedPartnerInviteSecret()).toBe("");
+    expect(readManagedPartnerInviteToken()).toBe("");
+  });
+
+  it("clears the secret together with the token", () => {
+    stashManagedPartnerInviteToken("invite-token", SECRET);
+    clearManagedPartnerInviteToken();
+
+    expect(readManagedPartnerInviteSecret()).toBe("");
+  });
+
+  it("keeps the secret when the same token is re-stashed without one", () => {
+    stashManagedPartnerInviteToken("invite-token", SECRET);
+    stashManagedPartnerInviteToken("invite-token");
+
+    expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+  });
+
+  it("drops the secret when a different token is stashed", () => {
+    stashManagedPartnerInviteToken("first", SECRET);
+    stashManagedPartnerInviteToken("second");
+
+    expect(readManagedPartnerInviteSecret()).toBe("");
+  });
+
+  it("does not carry an expired invite's secret over to a re-stash of its token", () => {
+    stashManagedPartnerInviteToken("invite-token", SECRET);
+    jest.advanceTimersByTime(MANAGED_PARTNER_INVITE_TOKEN_TTL_MS);
+    stashManagedPartnerInviteToken("invite-token");
+
+    expect(readManagedPartnerInviteSecret()).toBe("");
+  });
+
+  it("attaches a secret only to the invite buffered under the same token", () => {
+    attachManagedPartnerInviteSecret("invite-token", SECRET);
+    expect(readManagedPartnerInviteSecret()).toBe("");
+
+    stashManagedPartnerInviteToken("invite-token");
+    attachManagedPartnerInviteSecret("other-token", SECRET);
+    expect(readManagedPartnerInviteSecret()).toBe("");
+
+    attachManagedPartnerInviteSecret("invite-token", SECRET);
+    expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+  });
+});
 
 describe("managed-partner-invite-token-buffer", () => {
   beforeEach(() => {

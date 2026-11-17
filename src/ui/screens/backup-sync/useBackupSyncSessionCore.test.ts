@@ -9,6 +9,7 @@ import * as syncSetupService from "../../../sync/sync-setup-service";
 import {
   MANAGED_PARTNER_INVITE_TOKEN_TTL_MS,
   clearManagedPartnerInviteToken,
+  readManagedPartnerInviteSecret,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
@@ -28,8 +29,15 @@ const mockRouter = {
   push: jest.fn(),
   replace: mockReplace,
 };
-let mockSearchParams: { invite_token?: string | string[] } = {};
+let mockSearchParams: { invite_token?: string | string[]; "#"?: string } = {};
+let mockLinkingURL: string | null = null;
 const mockNavigationDispatch = jest.fn();
+
+jest.mock("expo-linking", () => {
+  return {
+    useLinkingURL: () => mockLinkingURL,
+  };
+});
 
 jest.mock("expo-router", () => {
   return {
@@ -64,6 +72,7 @@ describe("useBackupSyncSessionCore", () => {
     mockReplace.mockReset();
     mockNavigationDispatch.mockReset();
     mockSearchParams = {};
+    mockLinkingURL = null;
   });
 
   afterEach(async () => {
@@ -131,6 +140,71 @@ describe("useBackupSyncSessionCore", () => {
 
       expect(mockReplace).not.toHaveBeenCalledWith("/backup-sync");
       expect(readManagedPartnerInviteToken()).toBe("");
+      await unmount();
+    });
+  });
+
+  describe("invite secret capture", () => {
+    const TOKEN = "invite-token-1-fixture-padding";
+    const SECRET = "11".repeat(32);
+
+    async function renderAndSettle() {
+      const storage = createSettingsStorageMock();
+      const syncSecretStore = createSyncSecretStoreMock();
+      const rendered = await renderHook(() =>
+        useBackupSyncSessionCore({ storage, syncSecretStore, now: FIXED_NOW }),
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      return rendered;
+    }
+
+    it("buffers the secret expo-router exposes from an https link fragment", async () => {
+      mockSearchParams = { invite_token: TOKEN, "#": `k=${SECRET}` };
+
+      const { unmount } = await renderAndSettle();
+
+      expect(readManagedPartnerInviteToken()).toBe(TOKEN);
+      expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+      expect(mockReplace).toHaveBeenCalledWith("/backup-sync");
+      await unmount();
+    });
+
+    it("reads the secret from the raw link when the route drops a custom-scheme fragment", async () => {
+      mockSearchParams = { invite_token: TOKEN };
+      mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
+
+      const { unmount } = await renderAndSettle();
+
+      expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+      await unmount();
+    });
+
+    it("attaches the secret when the raw link arrives after the route capture", async () => {
+      mockSearchParams = { invite_token: TOKEN };
+
+      const { rerender, unmount } = await renderAndSettle();
+      expect(readManagedPartnerInviteSecret()).toBe("");
+
+      mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
+      await rerender({});
+
+      expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+      await unmount();
+    });
+
+    it("never pairs a raw link's secret with a different buffered invite", async () => {
+      mockSearchParams = { invite_token: TOKEN };
+      mockLinkingURL = `ovumcy://backup-sync?invite_token=other-token-fixture-padding#k=${SECRET}`;
+
+      const { unmount } = await renderAndSettle();
+
+      expect(readManagedPartnerInviteToken()).toBe(TOKEN);
+      expect(readManagedPartnerInviteSecret()).toBe("");
       await unmount();
     });
   });

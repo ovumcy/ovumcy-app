@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react-native";
 import {
   clearManagedPartnerInviteToken,
   readManagedPartnerInviteToken,
+  stashManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
 import * as managedPartnerAccessService from "../../../services/managed-partner-access-service";
@@ -69,11 +70,15 @@ function createGrant(
   };
 }
 
+const INVITE_SECRET_HEX = "11".repeat(32);
+const SHAREABLE_INVITE_LINK = `https://invite.ovumcy.cloud/i/abc123#k=${INVITE_SECRET_HEX}`;
+
 describe("useBackupSyncPartnerAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearManagedPartnerInviteToken();
-    mockStoreIssuedManagedPartnerInviteKey.mockResolvedValue(undefined);
+    stashManagedPartnerInviteToken("invite-token", INVITE_SECRET_HEX);
+    mockStoreIssuedManagedPartnerInviteKey.mockResolvedValue(SHAREABLE_INVITE_LINK);
     mockStoreAcceptedManagedPartnerGrantKey.mockResolvedValue(undefined);
     mockClearManagedPartnerGrantKey.mockResolvedValue(undefined);
   });
@@ -214,9 +219,7 @@ describe("useBackupSyncPartnerAccess", () => {
         await result.current.handleIssuePartnerInvite();
       });
 
-      expect(result.current.partnerInviteLink).toBe(
-        "https://invite.ovumcy.cloud/i/abc123",
-      );
+      expect(result.current.partnerInviteLink).toBe(SHAREABLE_INVITE_LINK);
       expect(core.setPartnerStatusMessage).toHaveBeenCalledWith(
         core.partnerCopy.statusInviteIssued,
       );
@@ -309,7 +312,7 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerCopy.errors.generic,
       );
       expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
-      expect(readManagedPartnerInviteToken()).toBe("");
+      expect(readManagedPartnerInviteToken()).toBe("invite-token");
     });
 
     it("clears the pending invite, navigates back, and refreshes partner access on success", async () => {
@@ -347,6 +350,7 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerShareSecretStore,
         grant,
         "invite-token",
+        INVITE_SECRET_HEX,
         core.effectiveNow,
       );
       expect(core.setPartnerStatusMessage).toHaveBeenCalledWith(
@@ -360,6 +364,39 @@ describe("useBackupSyncPartnerAccess", () => {
       // state itself — only the guest path does.
       expect(core.setState).not.toHaveBeenCalled();
     });
+  });
+
+  describe("invite secret guard", () => {
+    it.each([
+      ["handleAcceptPartnerInvite", () => mockAcceptManagedPartnerInvite],
+      [
+        "handleAcceptPartnerInviteAsGuest",
+        () => mockAcceptBackupSyncPartnerInviteAsGuest,
+      ],
+    ] as const)(
+      "%s refuses a link without its invite secret before redeeming the invite",
+      async (handlerName, serverCall) => {
+        clearManagedPartnerInviteToken();
+        stashManagedPartnerInviteToken("invite-token");
+        const core = createBackupSyncSessionCoreMock({
+          pendingPartnerInviteToken: "invite-token",
+        });
+        const { result } = await renderHook(() =>
+          useBackupSyncPartnerAccess(core),
+        );
+
+        await act(async () => {
+          await result.current[handlerName]();
+        });
+
+        expect(serverCall()).not.toHaveBeenCalled();
+        expect(mockStoreAcceptedManagedPartnerGrantKey).not.toHaveBeenCalled();
+        expect(core.setPartnerErrorMessage).toHaveBeenCalledWith(
+          core.partnerCopy.errors.invalidPartnerInvite,
+        );
+        expect(result.current.isPartnerBusy).toBe(false);
+      },
+    );
   });
 
   describe("handleAcceptPartnerInviteAsGuest", () => {
@@ -454,6 +491,7 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerShareSecretStore,
         grant,
         "invite-token",
+        INVITE_SECRET_HEX,
         core.effectiveNow,
       );
       // Unlike the logged-in accept path, the guest path DOES adopt the
@@ -487,7 +525,7 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(mockAcceptBackupSyncPartnerInviteAsGuest).not.toHaveBeenCalled();
       // The single-use token must survive this choice so "Accept as guest"
       // still works afterward.
-      expect(readManagedPartnerInviteToken()).toBe("");
+      expect(readManagedPartnerInviteToken()).toBe("invite-token");
     });
   });
 

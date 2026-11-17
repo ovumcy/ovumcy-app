@@ -28,7 +28,8 @@ const mockRouter = {
   back: mockBack,
   replace: mockReplace,
 };
-let mockSearchParams: { invite_token?: string | string[] } = {};
+let mockSearchParams: { invite_token?: string | string[]; "#"?: string } = {};
+const MOCK_INVITE_FRAGMENT = `k=${"11".repeat(32)}`;
 let preventRemoveCallback:
   | ((options: { data: { action: { type: string } } }) => void)
   | null = null;
@@ -934,8 +935,10 @@ describe("BackupSyncScreen", () => {
     await fireEvent.press(screen.getByTestId("settings-partner-issue-button"));
 
     await screen.findByTestId("settings-partner-invite-link-card");
-    expect(screen.getByTestId("settings-partner-invite-link").props.children).toBe(
-      "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
+    // The shared link is the server's URL plus a client-generated secret in
+    // the fragment; the server's response never carries that secret.
+    expect(screen.getByTestId("settings-partner-invite-link").props.children).toMatch(
+      /^ovumcy:\/\/backup-sync\?invite_token=invite-token-1-fixture-padding#k=[0-9a-f]{64}$/,
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
     // The pending-invite row groups its label and access level into one
@@ -964,7 +967,7 @@ describe("BackupSyncScreen", () => {
   });
 
   it("accepts a managed partner invite from the route token and clears the pending card", async () => {
-    mockSearchParams = { invite_token: "invite-token-1-fixture-padding" };
+    mockSearchParams = { invite_token: "invite-token-1-fixture-padding", "#": MOCK_INVITE_FRAGMENT };
 
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
@@ -1144,7 +1147,7 @@ describe("BackupSyncScreen", () => {
   });
 
   it("shows an explicit guest-vs-sign-in choice when a pending invite arrives with no managed session, and never auto-redeems on render", async () => {
-    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding", "#": MOCK_INVITE_FRAGMENT };
 
     const storage = createSettingsStorageMock();
     // A brand-new device: no local sync secrets and no managed session at
@@ -1177,7 +1180,7 @@ describe("BackupSyncScreen", () => {
   });
 
   it("accepts a partner invite as a guest with one tap and shows the shared grant", async () => {
-    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding", "#": MOCK_INVITE_FRAGMENT };
 
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
@@ -1316,7 +1319,7 @@ describe("BackupSyncScreen", () => {
   });
 
   it("choosing sign in instead of guest accept leaves the pending invite token untouched", async () => {
-    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+    mockSearchParams = { invite_token: "invite-token-guest-fixture-padding", "#": MOCK_INVITE_FRAGMENT };
 
     const storage = createSettingsStorageMock();
     const syncSecretStore = createSyncSecretStoreMock();
@@ -1358,7 +1361,7 @@ describe("BackupSyncScreen", () => {
     }
 
     it("reaches the accept card directly on a brand-new device with a buffered invite token, without the onboarding wizard", async () => {
-      mockSearchParams = { invite_token: "invite-token-guest-fixture-padding" };
+      mockSearchParams = { invite_token: "invite-token-guest-fixture-padding", "#": MOCK_INVITE_FRAGMENT };
 
       const storage = createUnonboardedStorage();
       const syncSecretStore = createSyncSecretStoreMock();

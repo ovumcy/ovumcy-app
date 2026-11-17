@@ -12,7 +12,10 @@ import {
   storeAcceptedManagedPartnerGrantKey,
   storeIssuedManagedPartnerInviteKey,
 } from "../../../services/managed-partner-share-service";
-import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
+import {
+  clearManagedPartnerInviteToken,
+  readManagedPartnerInviteSecret,
+} from "../../../security/managed-partner-invite-token-buffer";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 import type { ManagedCloudPartnerAccessLevel } from "../../../sync/managed-cloud-api-client";
@@ -49,6 +52,18 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
   const [partnerInviteLink, setPartnerInviteLink] = useState("");
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
 
+  // Read before any accept call: accepting consumes the single-use invite,
+  // so a link without its secret must fail before it is redeemed.
+  function readPendingInviteSecretOrReport(): string {
+    const inviteSecretHex = readManagedPartnerInviteSecret();
+    if (inviteSecretHex.length === 0) {
+      setPartnerErrorMessage(
+        resolvePartnerErrorMessage("invalid_partner_invite", partnerCopy),
+      );
+    }
+    return inviteSecretHex;
+  }
+
   async function handleIssuePartnerInvite() {
     if (!state) {
       return;
@@ -71,8 +86,9 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       return;
     }
 
+    let shareableInviteURL: string;
     try {
-      await storeIssuedManagedPartnerInviteKey(
+      shareableInviteURL = await storeIssuedManagedPartnerInviteKey(
         partnerShareSecretStore,
         result.value,
       );
@@ -82,7 +98,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       return;
     }
 
-    setPartnerInviteLink(result.value.inviteURL);
+    setPartnerInviteLink(shareableInviteURL);
     setPartnerStatusMessage(partnerCopy.statusInviteIssued);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
@@ -94,6 +110,10 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
 
     resetPartnerFeedback();
+    const inviteSecretHex = readPendingInviteSecretOrReport();
+    if (!inviteSecretHex) {
+      return;
+    }
     setIsPartnerBusy(true);
 
     const result = await acceptManagedPartnerInvite(
@@ -112,6 +132,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
         partnerShareSecretStore,
         result.value.grant,
         pendingPartnerInviteToken,
+        inviteSecretHex,
         effectiveNow,
       );
     } catch {
@@ -144,6 +165,10 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
 
     resetPartnerFeedback();
+    const inviteSecretHex = readPendingInviteSecretOrReport();
+    if (!inviteSecretHex) {
+      return;
+    }
     setIsPartnerBusy(true);
 
     const result = await acceptBackupSyncPartnerInviteAsGuest(
@@ -164,6 +189,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
         partnerShareSecretStore,
         result.grant,
         pendingPartnerInviteToken,
+        inviteSecretHex,
         effectiveNow,
       );
     } catch {

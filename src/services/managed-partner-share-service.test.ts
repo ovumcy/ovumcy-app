@@ -7,6 +7,7 @@ import {
   deriveGrantSubkeyHex,
   encryptPartnerSharedProjection,
 } from "../security/partner-share-crypto";
+import { parsePartnerInviteLink } from "../security/partner-invite-link";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   clearManagedPartnerGrantKey,
@@ -28,6 +29,7 @@ import {
 } from "../models/partner-share";
 
 const INVITE_TOKEN = "invite-token-1-fixture-padding";
+const INVITE_SECRET_HEX = "11".repeat(32);
 const NOW = new Date("2026-04-05T08:00:00.000Z");
 
 function createPartnerShareSecretStoreMock() {
@@ -154,10 +156,13 @@ describe("managed-partner-share-service", () => {
     it("rotates pending invite keys into per-grant subkeys and clears K_invite", async () => {
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
 
-      await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
-        invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      const shareableLink = await storeIssuedManagedPartnerInviteKey(
+        partnerShareSecretStore,
+        {
+          invite: buildInviteFixture(),
+          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        },
+      );
 
       const overview: ManagedCloudPartnerAccessOverview = {
         owned: {
@@ -177,7 +182,10 @@ describe("managed-partner-share-service", () => {
       expect(reconciled.pendingInviteKeysByInviteID["invite-1"]).toBeUndefined();
 
       // K_grant != K_invite — rotation actually happened.
-      const inviteKeyHex = derivePartnerShareKeyHex(INVITE_TOKEN);
+      const inviteKeyHex = derivePartnerShareKeyHex(
+        INVITE_TOKEN,
+        parsePartnerInviteLink(shareableLink).inviteSecretHex,
+      );
       const expectedGrantKey = deriveGrantSubkeyHex(inviteKeyHex, {
         grantID: "grant-1",
         ownerAccountID: "owner-1",
@@ -251,7 +259,7 @@ describe("managed-partner-share-service", () => {
       // is the only thing that blocks it.
       await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
         record.pendingInviteKeysByInviteID["invite-1"] =
-          derivePartnerShareKeyHex(INVITE_TOKEN);
+          derivePartnerShareKeyHex(INVITE_TOKEN, INVITE_SECRET_HEX);
       });
 
       const reconciled = await reconcileManagedPartnerShareKeys(
@@ -313,19 +321,22 @@ describe("managed-partner-share-service", () => {
       const partnerStore = createPartnerShareSecretStoreMock();
       const ownerStore = createPartnerShareSecretStoreMock();
 
-      // Partner accept flow.
-      await storeAcceptedManagedPartnerGrantKey(
-        partnerStore,
-        buildGrantFixture(),
-        INVITE_TOKEN,
-        NOW,
-      );
-
-      // Owner side: invite issued, then reconciled against the same grant.
-      await storeIssuedManagedPartnerInviteKey(ownerStore, {
+      // Owner side: invite issued; the shared link carries token + secret.
+      const shareableLink = await storeIssuedManagedPartnerInviteKey(ownerStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
       });
+
+      // Partner accept flow, from the link alone.
+      const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(shareableLink);
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerStore,
+        buildGrantFixture(),
+        inviteToken,
+        inviteSecretHex,
+        NOW,
+      );
+
       await reconcileManagedPartnerShareKeys(
         ownerStore,
         {
@@ -342,6 +353,59 @@ describe("managed-partner-share-service", () => {
       );
     });
 
+    it("server-known material alone does not reproduce the owner's K_grant", async () => {
+      const ownerStore = createPartnerShareSecretStoreMock();
+      const serverStore = createPartnerShareSecretStoreMock();
+
+      await storeIssuedManagedPartnerInviteKey(ownerStore, {
+        invite: buildInviteFixture(),
+        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+      });
+      await reconcileManagedPartnerShareKeys(
+        ownerStore,
+        {
+          owned: { invites: [], grants: [buildGrantFixture()] },
+          sharedWithMe: [],
+        },
+        NOW,
+      );
+
+      // The server holds the token and every grant context field; without
+      // the link fragment it can only guess a secret.
+      await storeAcceptedManagedPartnerGrantKey(
+        serverStore,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+
+      const ownerSecrets = await ownerStore.readPartnerShareSecrets();
+      const serverSecrets = await serverStore.readPartnerShareSecrets();
+      expect(ownerSecrets.grantKeysByGrantID["grant-1"]?.keyHex).toMatch(
+        /^[0-9a-f]{64}$/,
+      );
+      expect(serverSecrets.grantKeysByGrantID["grant-1"]?.keyHex).not.toBe(
+        ownerSecrets.grantKeysByGrantID["grant-1"]?.keyHex,
+      );
+    });
+
+    it("refuses an accept without the link's invite secret and stores nothing", async () => {
+      const partnerStore = createPartnerShareSecretStoreMock();
+      await expect(
+        storeAcceptedManagedPartnerGrantKey(
+          partnerStore,
+          buildGrantFixture(),
+          INVITE_TOKEN,
+          "",
+          NOW,
+        ),
+      ).rejects.toThrow("invalid_partner_invite");
+
+      const secrets = await partnerStore.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID).toEqual({});
+    });
+
     it("refuses a grant without sourceInviteID", async () => {
       const partnerStore = createPartnerShareSecretStoreMock();
       await expect(
@@ -349,6 +413,7 @@ describe("managed-partner-share-service", () => {
           partnerStore,
           buildGrantFixture({ sourceInviteID: null }),
           INVITE_TOKEN,
+          INVITE_SECRET_HEX,
           NOW,
         ),
       ).rejects.toThrow("invalid_partner_grant_context");
@@ -365,6 +430,7 @@ describe("managed-partner-share-service", () => {
         partnerShareSecretStore,
         buildGrantFixture(),
         INVITE_TOKEN,
+        INVITE_SECRET_HEX,
         NOW,
       );
       // Pretend an upload happened and incremented the counter.
@@ -524,13 +590,14 @@ describe("managed-partner-share-service", () => {
         partnerShareSecretStore,
         buildGrantFixture(),
         INVITE_TOKEN,
+        INVITE_SECRET_HEX,
         NOW,
       );
 
       // Server returns ciphertext that was (maliciously) encrypted with the
       // raw invite-derived key — i.e. the attacker still has K_invite but the
       // partner has rotated to K_grant. Decryption MUST fail.
-      const wrongKey = derivePartnerShareKeyHex(INVITE_TOKEN);
+      const wrongKey = derivePartnerShareKeyHex(INVITE_TOKEN, INVITE_SECRET_HEX);
       const envelope = encryptPartnerSharedProjection(
         wrongKey,
         buildProjectionPayload(),
@@ -572,6 +639,7 @@ describe("managed-partner-share-service", () => {
         partnerShareSecretStore,
         buildGrantFixture(),
         INVITE_TOKEN,
+        INVITE_SECRET_HEX,
         NOW,
       );
 
@@ -622,6 +690,7 @@ describe("managed-partner-share-service", () => {
         partnerShareSecretStore,
         buildGrantFixture(),
         INVITE_TOKEN,
+        INVITE_SECRET_HEX,
         NOW,
       );
       const secrets = await partnerShareSecretStore.readPartnerShareSecrets();

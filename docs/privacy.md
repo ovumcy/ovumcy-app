@@ -34,7 +34,7 @@ All entries use `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`.
 
 - Local-data encryption key (`src/security/platform-local-data-key-store.native.ts`).
 - Sync secrets (`ovumcy.sync-secrets`): device identity and label, sync master key, wrapped-key metadata, self-hosted and managed session tokens, managed refresh token and expiries.
-- Partner-share keys (`ovumcy.partner-share-secrets`): per-grant keys, pending invite keys, anti-replay and generation counters.
+- Partner-share keys (`ovumcy.partner-share-secrets-v2`): per-grant keys, pending invite keys, anti-replay and generation counters. The retired `ovumcy.partner-share-secrets` entry is deleted on first access.
 - Signed entitlement token store (`ovumcy.entitlement-token`).
 - Sync certificate pins (`ovumcy.sync-cert-pins`): a store with a SecureStore backend, but no flow writes a pin today; the wipe paths delete the entry regardless.
 

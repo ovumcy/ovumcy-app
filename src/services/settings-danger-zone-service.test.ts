@@ -101,7 +101,11 @@ describe("settings-danger-zone-service", () => {
     ).resolves.toEqual({ ok: false, errorCode: "generic" });
 
     expect(backend.keys()).toEqual(
-      ["ovumcy.local-data-key", "ovumcy.partner-share-secrets"].sort(),
+      [
+        "ovumcy.local-data-key",
+        "ovumcy.partner-share-secrets",
+        "ovumcy.partner-share-secrets-v2",
+      ].sort(),
     );
   });
 
