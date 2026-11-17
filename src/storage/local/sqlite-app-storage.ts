@@ -324,13 +324,12 @@ export function createSQLiteAppStorage(
 
   async function getLocalDataKey(database: LocalAppDatabase) {
     if (!localDataKeyPromise) {
-      const pending = resolveLocalDataKey(database, localDataKeyStore);
-      localDataKeyPromise = pending;
       // A transient read error must not stay cached for the whole session.
-      pending.catch(() => {
-        if (localDataKeyPromise === pending) {
-          localDataKeyPromise = null;
-        }
+      // Storage operations are serialized, so the promise that rejects is
+      // always the one still cached.
+      localDataKeyPromise = resolveLocalDataKey(database, localDataKeyStore);
+      localDataKeyPromise.catch(() => {
+        localDataKeyPromise = null;
       });
     }
 
@@ -1279,11 +1278,8 @@ async function dropUnauthenticatedLocalDataRows(
       ),
   );
 
-  for (const row of dayLogRows) {
-    const record = mapDayLogRow(row, localDataKey);
-    if (!record) {
-      continue;
-    }
+  for (const row of dayLogRows.filter(hasEncryptedPayload)) {
+    const record = decryptDayLogPayload(localDataKey, row.day, row.encrypted_payload);
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "day_log",
@@ -1303,11 +1299,8 @@ async function dropUnauthenticatedLocalDataRows(
       ),
   );
 
-  for (const row of symptomRows) {
-    const record = mapSymptomRow(row, localDataKey);
-    if (!record) {
-      continue;
-    }
+  for (const row of symptomRows.filter(hasEncryptedPayload)) {
+    const record = decryptSymptomPayload(localDataKey, row.id, row.encrypted_payload);
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "symptom",
@@ -2155,11 +2148,19 @@ function mapDayLogRow(
     return null;
   }
 
+  return decryptDayLogPayload(localDataKey, row.day, row.encrypted_payload);
+}
+
+function decryptDayLogPayload(
+  localDataKey: string,
+  storedKey: string,
+  encryptedPayload: string,
+): DayLogRecord {
   return sanitizeDayLogRecord(
     decryptLocalDataRecord<DayLogRecord>(
       localDataKey,
-      row.encrypted_payload,
-      buildLocalDataAad("day_log", row.day),
+      encryptedPayload,
+      buildLocalDataAad("day_log", storedKey),
     ),
   );
 }
@@ -2172,11 +2173,25 @@ function mapSymptomRow(
     return null;
   }
 
+  return decryptSymptomPayload(localDataKey, row.id, row.encrypted_payload);
+}
+
+function decryptSymptomPayload(
+  localDataKey: string,
+  storedKey: string,
+  encryptedPayload: string,
+): SymptomRecord {
   return decryptLocalDataRecord<SymptomRecord>(
     localDataKey,
-    row.encrypted_payload,
-    buildLocalDataAad("symptom", row.id),
+    encryptedPayload,
+    buildLocalDataAad("symptom", storedKey),
   );
+}
+
+function hasEncryptedPayload<T extends { encrypted_payload: string | null }>(
+  row: T,
+): row is T & { encrypted_payload: string } {
+  return Boolean(row.encrypted_payload);
 }
 
 function isPresent<T>(value: T | null): value is T {
