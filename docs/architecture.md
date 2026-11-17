@@ -204,16 +204,19 @@ Schema changes are additive: a new column or table is added as another
 idempotent step and its version constant is bumped. Three steps do touch
 existing data: the legacy `onboarding_profile` table is folded into
 `profile_settings` once and then dropped, `bootstrap_state.profile_version` is
-updated on every hydrate, and plaintext rows are re-encrypted in place (see
-Hydration).
+updated on every hydrate, and rows without an encrypted payload are deleted rather
+than adopted (see Hydration).
 
 ### Hydration
 
 `createSQLiteAppStorage` lazily hydrates the database on first use, in this
 order: open the database and wrap it in a serialized queue; `ensureLocalAppSchema`;
 resolve the local-data key (below); import legacy AsyncStorage data if SQLite
-has no bootstrap or profile row; encrypt any rows still stored as plaintext
-(`migratePlaintextLocalDataRows`); seed the singleton rows. One retry is made
+has no bootstrap or profile row; delete every row whose encrypted payload is
+empty, and every singleton whose payload does not open, without reading their
+plaintext columns (`dropUnauthenticatedLocalDataRows` — plaintext columns were
+only ever written by pre-release builds, and a writer with database-file access
+could otherwise clear a payload and inject a record); seed the singleton rows. One retry is made
 when the native open fails with an invalid-handle error. All operations run
 through a queue, and `clearAllLocalData` raises a reset barrier so that no read
 or write interleaves with the wipe.
@@ -228,10 +231,12 @@ release predates SQLite.
 ### Key mismatch reset
 
 `resolveLocalDataKey` (`sqlite-local-data-key.ts`) reads the key from secure
-storage and canary-decrypts the first non-empty payload in `bootstrap_state`,
-then `profile_settings`. If decryption fails (for example the database was
-restored without the key, or the key was regenerated), it wipes every local
-table with `wipeLocalAppTables`, generates and stores a new key, and continues.
+storage and canary-decrypts the first well-formed payload in `bootstrap_state`,
+then `profile_settings`. If authentication fails (for example the database was
+restored without the key, or the key was regenerated), or the stored key is not
+a 32-byte hex key, it wipes every local table with `wipeLocalAppTables` in one
+transaction, then generates and stores a new key, and continues. An unparseable
+canary envelope is skipped and a SQLite read error propagates; neither wipes.
 If there is no stored key but encrypted rows exist, it wipes them before
 creating a key. The wipe covers all tables, not only the two canary tables. The
 result is a fresh, usable install rather than a crash or partially readable

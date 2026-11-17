@@ -79,7 +79,6 @@ import {
   createDefaultManagedBillingCacheRecord,
   normalizeManagedBillingCacheRecord,
   persistBootstrapIncompleteOnboardingStep,
-  resolveBootstrapIncompleteOnboardingStep,
 } from "./storage-contract";
 import {
   collectErrorMessages,
@@ -348,9 +347,10 @@ export function createSQLiteAppStorage(
         ),
     );
 
-    return row
-      ? mapBootstrapStateRow(row, localDataKey)
-      : createDefaultBootstrapState();
+    return (
+      (row && mapBootstrapStateRow(row, localDataKey)) ??
+      createDefaultBootstrapState()
+    );
   }
 
   async function writeBootstrapStateInternal(
@@ -410,9 +410,10 @@ export function createSQLiteAppStorage(
         ),
     );
 
-    return row
-      ? mapProfileSettingsRow(row, localDataKey)
-      : createDefaultProfileRecord();
+    return (
+      (row && mapProfileSettingsRow(row, localDataKey)) ??
+      createDefaultProfileRecord()
+    );
   }
 
   async function writeProfileRecordInternal(record: ProfileRecord): Promise<void> {
@@ -441,9 +442,10 @@ export function createSQLiteAppStorage(
        WHERE id = 1;`,
     );
 
-    return row
-      ? mapSyncPreferencesRow(row, localDataKey)
-      : createDefaultSyncPreferencesRecord();
+    return (
+      (row && mapSyncPreferencesRow(row, localDataKey)) ??
+      createDefaultSyncPreferencesRecord()
+    );
   }
 
   async function writeSyncPreferencesRecordInternal(
@@ -498,7 +500,9 @@ export function createSQLiteAppStorage(
       lookupKey,
     );
 
-    return row ? mapDayLogRow(row, localDataKey) : createEmptyDayLogRecord(date);
+    return (
+      (row && mapDayLogRow(row, localDataKey)) ?? createEmptyDayLogRecord(date)
+    );
   }
 
   async function writeDayLogRecordInternal(record: DayLogRecord): Promise<void> {
@@ -575,6 +579,7 @@ export function createSQLiteAppStorage(
 
     return rows
       .map((row) => mapDayLogRow(row, localDataKey))
+      .filter(isPresent)
       .filter((record) => record.date >= from && record.date <= to)
       .sort((left, right) => left.date.localeCompare(right.date));
   }
@@ -608,6 +613,7 @@ export function createSQLiteAppStorage(
     return mapDayLogSummaryRecords(
       rows
         .map((row) => mapDayLogRow(row, localDataKey))
+        .filter(isPresent)
         .filter((record) => {
           if (from && record.date < from) {
             return false;
@@ -638,9 +644,12 @@ export function createSQLiteAppStorage(
        ORDER BY id ASC;`,
     );
 
-    return rows.length > 0
-      ? rows
-          .map((row) => mapSymptomRow(row, localDataKey))
+    const records = rows
+      .map((row) => mapSymptomRow(row, localDataKey))
+      .filter(isPresent);
+
+    return records.length > 0
+      ? records
           .sort((left, right) => {
             if (left.sortOrder !== right.sortOrder) {
               return left.sortOrder - right.sortOrder;
@@ -1109,8 +1118,8 @@ async function hydrateLocalAppDatabase(
   await withStorageOperationLabel("sqlite/hydrate/legacyMigration", () =>
     maybeMigrateLegacyLocalAppData(database, legacyStorageSource, localDataKey),
   );
-  await withStorageOperationLabel("sqlite/hydrate/plaintextMigration", () =>
-    migratePlaintextLocalDataRows(database, localDataKey),
+  await withStorageOperationLabel("sqlite/hydrate/unauthenticatedRows", () =>
+    dropUnauthenticatedLocalDataRows(database, localDataKey),
   );
   await withStorageOperationLabel("sqlite/hydrate/seedRows", () =>
     ensureSeedRows(database, localDataKey),
@@ -1180,118 +1189,92 @@ async function maybeMigrateLegacyLocalAppData(
   await legacyStorageSource.clear();
 }
 
-async function migratePlaintextLocalDataRows(
+// Plaintext columns predate at-rest encryption and were only ever written by
+// pre-release builds. A row without a payload is unauthenticated — a writer
+// with database-file access can clear the payload and edit the columns — so
+// it is deleted, never re-encrypted as if it were authentic. A singleton whose
+// payload does not authenticate is deleted too; ensureSeedRows reseeds the
+// singletons with defaults right after.
+const PAYLOAD_BEARING_TABLES = [
+  "bootstrap_state",
+  "profile_settings",
+  "sync_preferences",
+  "day_logs",
+  "symptoms",
+] as const;
+
+async function dropUnauthenticatedLocalDataRows(
   database: LocalAppDatabase,
   localDataKey: string,
 ): Promise<void> {
-  const profileRow = await withStorageOperationLabel(
-    "sqlite/plaintextMigration/profile/select",
-    () =>
-      database.getFirstAsync<ProfileSettingsRow>(
-        `SELECT
-          last_period_start,
-          cycle_length,
-          period_length,
-          auto_period_fill,
-          irregular_cycle,
-          unpredictable_cycle,
-          age_group,
-          usage_goal,
-          track_bbt,
-          temperature_unit,
-          track_cervical_mucus,
-          hide_sex_chip,
-          language_override,
-          theme_override,
-          encrypted_payload
-         FROM profile_settings
-         WHERE id = 1;`,
-      ),
-  );
-
-  if (profileRow && !profileRow.encrypted_payload) {
-    await upsertProfileRecord(
-      database,
-      mapLegacyProfileSettingsRow(profileRow),
-      localDataKey,
+  for (const table of PAYLOAD_BEARING_TABLES) {
+    await withStorageOperationLabel(
+      `sqlite/unauthenticatedRows/${table}/delete`,
+      () =>
+        database.runAsync(
+          `DELETE FROM ${table} WHERE encrypted_payload IS NULL OR encrypted_payload = '';`,
+        ),
     );
   }
 
   const bootstrapRow = await withStorageOperationLabel(
-    "sqlite/plaintextMigration/bootstrap/select",
+    "sqlite/unauthenticatedRows/bootstrap/select",
     () =>
-      database.getFirstAsync<BootstrapStateRow>(
-        `SELECT
-          has_completed_onboarding,
-          profile_version,
-          incomplete_onboarding_step,
-          encrypted_payload
-         FROM bootstrap_state
-         WHERE id = 1;`,
+      database.getFirstAsync<Pick<BootstrapStateRow, "encrypted_payload">>(
+        "SELECT encrypted_payload FROM bootstrap_state WHERE id = 1;",
       ),
   );
-
   if (bootstrapRow) {
-    const bootstrapState = bootstrapRow.encrypted_payload
-      ? mapBootstrapStateRow(bootstrapRow, localDataKey)
-      : mapLegacyBootstrapStateRow(bootstrapRow);
-    await upsertBootstrapState(database, bootstrapState, localDataKey);
+    const bootstrapState = mapBootstrapStateRow(bootstrapRow, localDataKey);
+    if (bootstrapState) {
+      await upsertBootstrapState(database, bootstrapState, localDataKey);
+    } else {
+      await database.runAsync("DELETE FROM bootstrap_state WHERE id = 1;");
+    }
+  }
+
+  const profileRow = await withStorageOperationLabel(
+    "sqlite/unauthenticatedRows/profile/select",
+    () =>
+      database.getFirstAsync<Pick<ProfileSettingsRow, "encrypted_payload">>(
+        "SELECT encrypted_payload FROM profile_settings WHERE id = 1;",
+      ),
+  );
+  if (profileRow && !mapProfileSettingsRow(profileRow, localDataKey)) {
+    await database.runAsync("DELETE FROM profile_settings WHERE id = 1;");
   }
 
   const syncPreferencesRow = await withStorageOperationLabel(
-    "sqlite/plaintextMigration/syncPreferences/select",
+    "sqlite/unauthenticatedRows/syncPreferences/select",
     () =>
-      database.getFirstAsync<SyncPreferencesRow>(
-        `SELECT
-          mode,
-          endpoint_input,
-          normalized_endpoint,
-          device_label,
-          setup_status,
-          prepared_at,
-          last_remote_generation,
-          last_synced_at,
-          encrypted_payload
-         FROM sync_preferences
-         WHERE id = 1;`,
+      database.getFirstAsync<Pick<SyncPreferencesRow, "encrypted_payload">>(
+        "SELECT encrypted_payload FROM sync_preferences WHERE id = 1;",
       ),
   );
-
   if (syncPreferencesRow) {
-    const syncPreferences = syncPreferencesRow.encrypted_payload
-      ? mapSyncPreferencesRow(syncPreferencesRow, localDataKey)
-      : mapLegacySyncPreferencesRow(syncPreferencesRow);
-    await upsertSyncPreferencesRecord(database, syncPreferences, localDataKey);
+    const syncPreferences = mapSyncPreferencesRow(syncPreferencesRow, localDataKey);
+    if (syncPreferences) {
+      await upsertSyncPreferencesRecord(database, syncPreferences, localDataKey);
+    } else {
+      await database.runAsync("DELETE FROM sync_preferences WHERE id = 1;");
+    }
   }
 
+  // Encrypted list rows stored under a plain date/id key are re-keyed to the
+  // opaque lookup key; their AAD still binds the stored key.
   const dayLogRows = await withStorageOperationLabel(
-    "sqlite/plaintextMigration/dayLogs/select",
+    "sqlite/unauthenticatedRows/dayLogs/select",
     () =>
-      database.getAllAsync<DayLogRow>(
-        `SELECT
-          day,
-          is_period,
-          cycle_start,
-          is_uncertain,
-          flow,
-          mood,
-          sex_activity,
-          bbt,
-          cervical_mucus,
-          lh_test,
-          cycle_factor_keys,
-          symptom_ids,
-          notes,
-          encrypted_payload
-         FROM day_logs
-         ORDER BY day ASC;`,
+      database.getAllAsync<Pick<DayLogRow, "day" | "encrypted_payload">>(
+        "SELECT day, encrypted_payload FROM day_logs ORDER BY day ASC;",
       ),
   );
 
   for (const row of dayLogRows) {
-    const record = row.encrypted_payload
-      ? mapDayLogRow(row, localDataKey)
-      : mapLegacyDayLogRow(row);
+    const record = mapDayLogRow(row, localDataKey);
+    if (!record) {
+      continue;
+    }
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "day_log",
@@ -1304,28 +1287,18 @@ async function migratePlaintextLocalDataRows(
   }
 
   const symptomRows = await withStorageOperationLabel(
-    "sqlite/plaintextMigration/symptoms/select",
+    "sqlite/unauthenticatedRows/symptoms/select",
     () =>
-      database.getAllAsync<SymptomRow>(
-        `SELECT
-          id,
-          slug,
-          label,
-          icon,
-          color,
-          is_default,
-          is_archived,
-          sort_order,
-          encrypted_payload
-         FROM symptoms
-         ORDER BY sort_order ASC, id ASC;`,
+      database.getAllAsync<Pick<SymptomRow, "id" | "encrypted_payload">>(
+        "SELECT id, encrypted_payload FROM symptoms ORDER BY id ASC;",
       ),
   );
 
   for (const row of symptomRows) {
-    const record = row.encrypted_payload
-      ? mapSymptomRow(row, localDataKey)
-      : mapLegacySymptomRow(row);
+    const record = mapSymptomRow(row, localDataKey);
+    if (!record) {
+      continue;
+    }
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "symptom",
@@ -2086,218 +2059,119 @@ function mapManagedBillingCacheRow(
   );
 }
 
-function mapBootstrapStateRow(
-  row: BootstrapStateRow,
+// A singleton row with no payload, an unparseable envelope or a failing
+// auth tag carries no authentic record: callers fall back to the defaults.
+// Plaintext columns are never read back, so a writer with database-file
+// access cannot inject a record by clearing the payload.
+function decryptSingletonRecord<T>(
   localDataKey: string,
-): LocalBootstrapState {
-  if (row.encrypted_payload) {
-    return decryptLocalDataRecord<LocalBootstrapState>(
-      localDataKey,
-      row.encrypted_payload,
-      buildLocalDataAad("bootstrap_state", "1"),
-    );
+  encryptedPayload: string | null,
+  tableName: string,
+): T | null {
+  if (!encryptedPayload) {
+    return null;
   }
-
-  return mapLegacyBootstrapStateRow(row);
+  try {
+    return decryptLocalDataRecord<T>(
+      localDataKey,
+      encryptedPayload,
+      buildLocalDataAad(tableName, "1"),
+    );
+  } catch {
+    return null;
+  }
 }
 
-function mapLegacyBootstrapStateRow(row: BootstrapStateRow): LocalBootstrapState {
-  const normalizedHasCompleted = Number(row.has_completed_onboarding);
-  const normalizedProfileVersion = Number(row.profile_version);
-  const normalizedIncompleteStep =
-    row.incomplete_onboarding_step === null
-      ? null
-      : Number(row.incomplete_onboarding_step);
-  const hasCompletedOnboarding = normalizedHasCompleted === 1;
-
-  return {
-    hasCompletedOnboarding,
-    profileVersion:
-      Number.isFinite(normalizedProfileVersion) && normalizedProfileVersion > 0
-        ? normalizedProfileVersion
-        : createDefaultBootstrapState().profileVersion,
-    incompleteOnboardingStep: resolveBootstrapIncompleteOnboardingStep(
-      Number.isFinite(normalizedIncompleteStep)
-        ? normalizedIncompleteStep
-        : null,
-      hasCompletedOnboarding,
-    ),
-  };
+function mapBootstrapStateRow(
+  row: Pick<BootstrapStateRow, "encrypted_payload">,
+  localDataKey: string,
+): LocalBootstrapState | null {
+  return decryptSingletonRecord<LocalBootstrapState>(
+    localDataKey,
+    row.encrypted_payload,
+    "bootstrap_state",
+  );
 }
 
 function mapProfileSettingsRow(
-  row: ProfileSettingsRow,
+  row: Pick<ProfileSettingsRow, "encrypted_payload">,
   localDataKey: string,
-): ProfileRecord {
-  if (row.encrypted_payload) {
-    const record = decryptLocalDataRecord<ProfileRecord>(
-      localDataKey,
-      row.encrypted_payload,
-      buildLocalDataAad("profile_settings", "1"),
-    );
-
-    return {
-      ...createDefaultProfileRecord(),
-      ...record,
-      temperatureUnit: normalizeTemperatureUnit(record.temperatureUnit),
-      languageOverride: normalizeInterfaceLanguage(record.languageOverride),
-        themeOverride: normalizeThemePreference(record.themeOverride),
-        firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
-        dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
-          record.dismissedCalendarPredictionNoticeKey,
-        ) ?? null,
-        dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
-          record.dismissedOnboardingHelperNoticeKey,
-        ) ?? null,
-        ageGroup: normalizeAgeGroup(record.ageGroup ?? ""),
-        usageGoal: record.usageGoal ?? "health",
-      };
+): ProfileRecord | null {
+  const record = decryptSingletonRecord<ProfileRecord>(
+    localDataKey,
+    row.encrypted_payload,
+    "profile_settings",
+  );
+  if (!record) {
+    return null;
   }
 
-  return mapLegacyProfileSettingsRow(row);
-}
-
-function mapLegacyProfileSettingsRow(row: ProfileSettingsRow): ProfileRecord {
-  const defaults = createDefaultProfileRecord();
-
   return {
-    ...defaults,
-    lastPeriodStart: row.last_period_start,
-    cycleLength: row.cycle_length,
-    periodLength: row.period_length,
-    autoPeriodFill: row.auto_period_fill === 1,
-    irregularCycle: row.irregular_cycle === 1,
-    unpredictableCycle: row.unpredictable_cycle === 1,
-    ageGroup: normalizeAgeGroup(row.age_group),
-    usageGoal: row.usage_goal as ProfileRecord["usageGoal"],
-    trackBBT: row.track_bbt === 1,
-    temperatureUnit: normalizeTemperatureUnit(row.temperature_unit),
-    trackCervicalMucus: row.track_cervical_mucus === 1,
-    hideSexChip: row.hide_sex_chip === 1,
-    languageOverride: normalizeInterfaceLanguage(row.language_override),
-    themeOverride: normalizeThemePreference(row.theme_override),
-    dismissedCalendarPredictionNoticeKey:
-      defaults.dismissedCalendarPredictionNoticeKey ?? null,
-    dismissedOnboardingHelperNoticeKey:
-      defaults.dismissedOnboardingHelperNoticeKey ?? null,
+    ...createDefaultProfileRecord(),
+    ...record,
+    temperatureUnit: normalizeTemperatureUnit(record.temperatureUnit),
+    languageOverride: normalizeInterfaceLanguage(record.languageOverride),
+    themeOverride: normalizeThemePreference(record.themeOverride),
+    firstDayOfWeek: normalizeWeekStartDay(record.firstDayOfWeek),
+    dismissedCalendarPredictionNoticeKey: normalizeCalendarPredictionNoticeKey(
+      record.dismissedCalendarPredictionNoticeKey,
+    ) ?? null,
+    dismissedOnboardingHelperNoticeKey: normalizeOnboardingHelperNoticeKey(
+      record.dismissedOnboardingHelperNoticeKey,
+    ) ?? null,
+    ageGroup: normalizeAgeGroup(record.ageGroup ?? ""),
+    usageGoal: record.usageGoal ?? "health",
   };
 }
 
 function mapSyncPreferencesRow(
-  row: SyncPreferencesRow,
+  row: Pick<SyncPreferencesRow, "encrypted_payload">,
   localDataKey: string,
-): SyncPreferencesRecord {
-  if (row.encrypted_payload) {
-    return mapNormalizedSyncPreferencesRecord(
-      decryptLocalDataRecord<SyncPreferencesRecord>(
-        localDataKey,
-        row.encrypted_payload,
-        buildLocalDataAad("sync_preferences", "1"),
-      ),
-    );
+): SyncPreferencesRecord | null {
+  const record = decryptSingletonRecord<SyncPreferencesRecord>(
+    localDataKey,
+    row.encrypted_payload,
+    "sync_preferences",
+  );
+
+  return record ? mapNormalizedSyncPreferencesRecord(record) : null;
+}
+
+// A list row without a payload is unauthenticated and is skipped.
+function mapDayLogRow(
+  row: Pick<DayLogRow, "day" | "encrypted_payload">,
+  localDataKey: string,
+): DayLogRecord | null {
+  if (!row.encrypted_payload) {
+    return null;
   }
 
-  return mapLegacySyncPreferencesRow(row);
-}
-
-function mapLegacySyncPreferencesRow(
-  row: SyncPreferencesRow,
-): SyncPreferencesRecord {
-  const defaults = createDefaultSyncPreferencesRecord();
-
-  return mapNormalizedSyncPreferencesRecord({
-    ...defaults,
-    mode: normalizeSyncMode(row.mode),
-    endpointInput: row.endpoint_input,
-    normalizedEndpoint:
-      typeof row.normalized_endpoint === "string" &&
-      row.normalized_endpoint.trim().length > 0
-        ? row.normalized_endpoint
-        : defaults.normalizedEndpoint,
-    deviceLabel: row.device_label,
-    setupStatus: normalizeSyncSetupStatus(row.setup_status),
-    preparedAt: row.prepared_at,
-    lastRemoteGeneration:
-      typeof row.last_remote_generation === "number" &&
-      Number.isFinite(row.last_remote_generation)
-        ? row.last_remote_generation
-        : null,
-    lastSyncedAt: row.last_synced_at,
-  });
-}
-
-function mapDayLogRow(row: DayLogRow, localDataKey: string): DayLogRecord {
-  if (row.encrypted_payload) {
-    return sanitizeDayLogRecord(
-      decryptLocalDataRecord<DayLogRecord>(
-        localDataKey,
-        row.encrypted_payload,
-        buildLocalDataAad("day_log", row.day),
-      ),
-    );
-  }
-
-  return mapLegacyDayLogRow(row);
-}
-
-function mapLegacyDayLogRow(row: DayLogRow): DayLogRecord {
-  const cycleFactorKeys = safeParseStringArray(row.cycle_factor_keys);
-  const symptomIDs = safeParseStringArray(row.symptom_ids);
-
-  return sanitizeDayLogRecord({
-    date: row.day,
-    isPeriod: row.is_period === 1,
-    cycleStart: row.cycle_start === 1,
-    isUncertain: row.is_uncertain === 1,
-    flow: row.flow as DayLogRecord["flow"],
-    mood: row.mood,
-    sexActivity: row.sex_activity as DayLogRecord["sexActivity"],
-    bbt: row.bbt,
-    cervicalMucus: row.cervical_mucus as DayLogRecord["cervicalMucus"],
-    lhTest: row.lh_test as DayLogRecord["lhTest"],
-    pregnancyTest: (row.pregnancy_test ?? "none") as DayLogRecord["pregnancyTest"],
-    cycleFactorKeys: cycleFactorKeys as DayLogRecord["cycleFactorKeys"],
-    symptomIDs: symptomIDs as DayLogRecord["symptomIDs"],
-    notes: row.notes,
-  });
-}
-
-function mapSymptomRow(row: SymptomRow, localDataKey: string): SymptomRecord {
-  if (row.encrypted_payload) {
-    return decryptLocalDataRecord<SymptomRecord>(
+  return sanitizeDayLogRecord(
+    decryptLocalDataRecord<DayLogRecord>(
       localDataKey,
       row.encrypted_payload,
-      buildLocalDataAad("symptom", row.id),
-    );
-  }
-
-  return mapLegacySymptomRow(row);
+      buildLocalDataAad("day_log", row.day),
+    ),
+  );
 }
 
-function mapLegacySymptomRow(row: SymptomRow): SymptomRecord {
-  return {
-    id: row.id,
-    slug: row.slug,
-    label: row.label,
-    icon: row.icon,
-    color: row.color,
-    isDefault: row.is_default === 1,
-    isArchived: row.is_archived === 1,
-    sortOrder: row.sort_order,
-  };
+function mapSymptomRow(
+  row: Pick<SymptomRow, "id" | "encrypted_payload">,
+  localDataKey: string,
+): SymptomRecord | null {
+  if (!row.encrypted_payload) {
+    return null;
+  }
+
+  return decryptLocalDataRecord<SymptomRecord>(
+    localDataKey,
+    row.encrypted_payload,
+    buildLocalDataAad("symptom", row.id),
+  );
 }
 
-function safeParseStringArray(raw: string): string[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((value): value is string => typeof value === "string");
-  } catch {
-    return [];
-  }
+function isPresent<T>(value: T | null): value is T {
+  return value !== null;
 }
 
 function mapNormalizedSyncPreferencesRecord(

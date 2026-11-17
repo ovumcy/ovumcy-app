@@ -1,11 +1,13 @@
 // Encrypted-local-data key resolution: canary-decrypt a singleton row against the
-// SecureStore key, and on auth-tag failure wipe and reseed deterministically rather
-// than propagating a key/data mismatch (security invariant, see SECURITY.md).
+// SecureStore key, and on an authentication failure wipe and reseed
+// deterministically rather than propagating a key/data mismatch (security
+// invariant, see SECURITY.md).
 
 import {
   buildLocalDataAad,
+  checkLocalDataKey,
   createLocalDataKeyHex,
-  decryptLocalDataRecord,
+  isWellFormedLocalDataKeyHex,
 } from "../../security/local-data-crypto";
 import type { LocalDataKeyStore } from "../../security/local-data-key-store";
 import {
@@ -24,16 +26,20 @@ export async function resolveLocalDataKey(
     // Android Auto Backup restore (DB restored but key regenerated)
     // or after a buggy key rotation. A key that no longer authenticates the
     // rows resets the local database deterministically instead of crashing
-    // (see the local-data encryption section of SECURITY.md), so a canary
-    // decrypt on a singleton row runs first and an auth-tag failure falls
-    // through to wipe-and-reseed.
-    const canDecrypt = await withStorageOperationLabel(
+    // (see the local-data encryption section of SECURITY.md). Only an AEAD
+    // failure on a well-formed envelope, or a stored key that cannot be a key,
+    // counts: a SQLite read error propagates and an unparseable envelope is
+    // skipped, so neither wipes anything.
+    const keyMatches = await withStorageOperationLabel(
       "sqlite/localDataKey/canaryDecrypt",
-      () => canDecryptCanaryRow(database, existingKey),
+      () => canaryAuthenticatesKey(database, existingKey),
     );
-    if (canDecrypt) {
+    if (keyMatches) {
       return existingKey;
     }
+    // The replacement key is written only after the wipe commits: a kill
+    // before the commit rolls the wipe back and the next boot re-detects the
+    // mismatch with the old key still in place.
     await wipeLocalAppTables(database);
     const replacementKey = createLocalDataKeyHex();
     await localDataKeyStore.writeLocalDataKey(replacementKey);
@@ -53,13 +59,17 @@ export async function resolveLocalDataKey(
   return keyHex;
 }
 
-async function canDecryptCanaryRow(
+async function canaryAuthenticatesKey(
   database: LocalAppDatabase,
   keyHex: string,
 ): Promise<boolean> {
-  // Try bootstrap_state first (always present once onboarding has touched
-  // the DB), then profile_settings. If neither has encrypted content,
-  // there's nothing to verify against → assume key is valid (fresh install).
+  if (!isWellFormedLocalDataKeyHex(keyHex)) {
+    return false;
+  }
+  // bootstrap_state first (present once onboarding has touched the DB), then
+  // profile_settings; the first well-formed envelope decides. With none —
+  // fresh install, or every candidate unparseable — there is nothing to
+  // verify against and the key is kept.
   const candidates: { table: string; sql: string }[] = [
     {
       table: "bootstrap_state",
@@ -78,16 +88,15 @@ async function canDecryptCanaryRow(
     if (!row?.encrypted_payload) {
       continue;
     }
-    try {
-      decryptLocalDataRecord(
-        keyHex,
-        row.encrypted_payload,
-        buildLocalDataAad(candidate.table, "1"),
-      );
-      return true;
-    } catch {
-      return false;
+    const check = checkLocalDataKey(
+      keyHex,
+      row.encrypted_payload,
+      buildLocalDataAad(candidate.table, "1"),
+    );
+    if (check === "malformed") {
+      continue;
     }
+    return check === "authenticated";
   }
 
   return true;
@@ -158,16 +167,35 @@ async function hasEncryptedLocalData(database: LocalAppDatabase): Promise<boolea
   );
 }
 
+const LOCAL_APP_TABLES = [
+  "day_logs",
+  "symptoms",
+  "profile_settings",
+  "bootstrap_state",
+  "sync_preferences",
+  "managed_billing_cache",
+  "pregnancy_records",
+  "kick_sessions",
+  "contraction_sessions",
+  "postpartum_records",
+  "screening_responses",
+] as const;
+
+// One transaction: a kill mid-wipe rolls back to the pre-wipe state instead
+// of leaving some tables emptied and others holding stale ciphertext.
 export async function wipeLocalAppTables(database: LocalAppDatabase): Promise<void> {
-  await database.runAsync("DELETE FROM day_logs;");
-  await database.runAsync("DELETE FROM symptoms;");
-  await database.runAsync("DELETE FROM profile_settings;");
-  await database.runAsync("DELETE FROM bootstrap_state;");
-  await database.runAsync("DELETE FROM sync_preferences;");
-  await database.runAsync("DELETE FROM managed_billing_cache;");
-  await database.runAsync("DELETE FROM pregnancy_records;");
-  await database.runAsync("DELETE FROM kick_sessions;");
-  await database.runAsync("DELETE FROM contraction_sessions;");
-  await database.runAsync("DELETE FROM postpartum_records;");
-  await database.runAsync("DELETE FROM screening_responses;");
+  await database.execAsync("BEGIN IMMEDIATE;");
+  try {
+    for (const table of LOCAL_APP_TABLES) {
+      await database.runAsync(`DELETE FROM ${table};`);
+    }
+    await database.execAsync("COMMIT;");
+  } catch (error) {
+    try {
+      await database.execAsync("ROLLBACK;");
+    } catch {
+      // The DELETE failure is the one worth reporting.
+    }
+    throw error;
+  }
 }

@@ -41,15 +41,22 @@ type EncryptedRowSeed = {
 // hasEncryptedLocalData) and record which tables get a DELETE.
 function createKeyResolutionFakeDatabase(seed?: {
   encryptedRows?: EncryptedRowSeed[];
+  failReadsWith?: Error;
+  failDeleteOf?: string;
 }) {
   const encryptedRows = [...(seed?.encryptedRows ?? [])];
   const deletedTables: string[] = [];
+  const statements: string[] = [];
 
   const database: LocalAppDatabase = {
-    async execAsync() {
+    async execAsync(source: string) {
+      statements.push(source);
       return undefined;
     },
     async getFirstAsync<T>(source: string): Promise<T | null> {
+      if (seed?.failReadsWith) {
+        throw seed.failReadsWith;
+      }
       if (source.includes("encrypted_payload IS NOT NULL")) {
         const tableName = /FROM (\w+)/.exec(source)?.[1] ?? "";
         const row = encryptedRows.find((entry) => entry.table === tableName);
@@ -61,7 +68,11 @@ function createKeyResolutionFakeDatabase(seed?: {
       return [];
     },
     async runAsync(source: string) {
+      statements.push(source);
       const tableName = /DELETE FROM (\w+);/.exec(source)?.[1];
+      if (tableName && tableName === seed?.failDeleteOf) {
+        throw new Error("disk I/O error");
+      }
       if (tableName) {
         deletedTables.push(tableName);
         for (let index = encryptedRows.length - 1; index >= 0; index -= 1) {
@@ -74,7 +85,7 @@ function createKeyResolutionFakeDatabase(seed?: {
     },
   };
 
-  return { database, deletedTables, encryptedRows };
+  return { database, deletedTables, encryptedRows, statements };
 }
 
 function createFakeLocalDataKeyStore(
@@ -179,5 +190,131 @@ describe("sqlite-local-data-key", () => {
     expect(emptyKeyStore.writeLocalDataKey).toHaveBeenCalledTimes(1);
     expect(typeof resolvedKey).toBe("string");
     expect(resolvedKey).toHaveLength(64);
+  });
+  describe("canary narrowing", () => {
+    const rightKey = "a".repeat(64);
+    const bootstrapAad = buildLocalDataAad("bootstrap_state", "1");
+    const profileAad = buildLocalDataAad("profile_settings", "1");
+
+    it("keeps the key and wipes nothing when the bootstrap canary is unparseable but the profile canary authenticates", async () => {
+      const keyStore = createFakeLocalDataKeyStore(rightKey);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          { table: "bootstrap_state", payload: "{truncated" },
+          {
+            table: "profile_settings",
+            payload: encryptLocalDataRecord(rightKey, { cycleLength: 28 }, profileAad),
+          },
+          { table: "day_logs", payload: "day-log-ciphertext" },
+        ],
+      });
+
+      await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(rightKey);
+      expect(fake.deletedTables).toEqual([]);
+      expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+    });
+
+    it("still resets when the bootstrap canary is unparseable and the profile canary fails authentication", async () => {
+      const keyStore = createFakeLocalDataKeyStore("b".repeat(64));
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          { table: "bootstrap_state", payload: "{truncated" },
+          {
+            table: "profile_settings",
+            payload: encryptLocalDataRecord(rightKey, { cycleLength: 28 }, profileAad),
+          },
+        ],
+      });
+
+      const resolvedKey = await resolveLocalDataKey(fake.database, keyStore);
+
+      expect(fake.deletedTables).toHaveLength(ALL_LOCAL_APP_TABLES.length);
+      expect(resolvedKey).not.toBe("b".repeat(64));
+      expect(keyStore.writeLocalDataKey).toHaveBeenCalledWith(resolvedKey);
+    });
+
+    it("keeps the key when every canary envelope is unparseable (nothing to verify against)", async () => {
+      const keyStore = createFakeLocalDataKeyStore(rightKey);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          { table: "bootstrap_state", payload: "not json" },
+          { table: "profile_settings", payload: JSON.stringify({ algorithm: "x" }) },
+        ],
+      });
+
+      await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(rightKey);
+      expect(fake.deletedTables).toEqual([]);
+      expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+    });
+
+    it("propagates a SQLite read error from the canary probe without wiping or replacing the key", async () => {
+      const keyStore = createFakeLocalDataKeyStore(rightKey);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          {
+            table: "bootstrap_state",
+            payload: encryptLocalDataRecord(rightKey, { ok: true }, bootstrapAad),
+          },
+        ],
+        failReadsWith: new Error("database is locked"),
+      });
+
+      await expect(resolveLocalDataKey(fake.database, keyStore)).rejects.toThrow(
+        /canaryDecrypt: database is locked/,
+      );
+      expect(fake.deletedTables).toEqual([]);
+      expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+    });
+
+    it("resets when the stored key cannot be a 32-byte hex key", async () => {
+      const keyStore = createFakeLocalDataKeyStore("corrupted");
+      const fake = createKeyResolutionFakeDatabase();
+
+      const resolvedKey = await resolveLocalDataKey(fake.database, keyStore);
+
+      expect(fake.deletedTables).toHaveLength(ALL_LOCAL_APP_TABLES.length);
+      expect(resolvedKey).toMatch(/^[0-9a-f]{64}$/);
+    });
+  });
+
+  describe("atomic wipe", () => {
+    it("runs every DELETE inside one BEGIN IMMEDIATE ... COMMIT", async () => {
+      const fake = createKeyResolutionFakeDatabase();
+
+      await wipeLocalAppTables(fake.database);
+
+      expect(fake.statements[0]).toBe("BEGIN IMMEDIATE;");
+      expect(fake.statements.at(-1)).toBe("COMMIT;");
+      expect(fake.statements.slice(1, -1)).toHaveLength(ALL_LOCAL_APP_TABLES.length);
+      expect(
+        fake.statements.slice(1, -1).every((statement) => statement.startsWith("DELETE FROM")),
+      ).toBe(true);
+    });
+
+    it("rolls back and keeps the old key when a DELETE fails mid-wipe", async () => {
+      const oldKey = "b".repeat(64);
+      const keyStore = createFakeLocalDataKeyStore(oldKey);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          {
+            table: "bootstrap_state",
+            payload: encryptLocalDataRecord(
+              "a".repeat(64),
+              { ok: true },
+              buildLocalDataAad("bootstrap_state", "1"),
+            ),
+          },
+        ],
+        failDeleteOf: "pregnancy_records",
+      });
+
+      await expect(resolveLocalDataKey(fake.database, keyStore)).rejects.toThrow(
+        "disk I/O error",
+      );
+      expect(fake.statements.at(-1)).toBe("ROLLBACK;");
+      expect(fake.statements).not.toContain("COMMIT;");
+      expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+      expect(await keyStore.readLocalDataKey()).toBe(oldKey);
+    });
   });
 });
