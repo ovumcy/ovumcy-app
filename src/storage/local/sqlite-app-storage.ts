@@ -324,7 +324,14 @@ export function createSQLiteAppStorage(
 
   async function getLocalDataKey(database: LocalAppDatabase) {
     if (!localDataKeyPromise) {
-      localDataKeyPromise = resolveLocalDataKey(database, localDataKeyStore);
+      const pending = resolveLocalDataKey(database, localDataKeyStore);
+      localDataKeyPromise = pending;
+      // A transient read error must not stay cached for the whole session.
+      pending.catch(() => {
+        if (localDataKeyPromise === pending) {
+          localDataKeyPromise = null;
+        }
+      });
     }
 
     return localDataKeyPromise;
@@ -369,7 +376,9 @@ export function createSQLiteAppStorage(
     try {
       const database = await getOrCreateHydratedDatabase();
       localDataKeyPromise = null;
-      await wipeLocalAppTables(database);
+      await wipeLocalAppTables(database, () => {
+        danglingTransactionDatabase = database;
+      });
       await legacyStorageSource.clear();
       await localDataKeyStore.clearLocalDataKey();
       await ensureSeedRows(database, await getLocalDataKey(database));

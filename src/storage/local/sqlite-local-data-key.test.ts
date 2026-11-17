@@ -43,6 +43,7 @@ function createKeyResolutionFakeDatabase(seed?: {
   encryptedRows?: EncryptedRowSeed[];
   failReadsWith?: Error;
   failDeleteOf?: string;
+  failRollback?: boolean;
 }) {
   const encryptedRows = [...(seed?.encryptedRows ?? [])];
   const deletedTables: string[] = [];
@@ -51,6 +52,9 @@ function createKeyResolutionFakeDatabase(seed?: {
   const database: LocalAppDatabase = {
     async execAsync(source: string) {
       statements.push(source);
+      if (source === "ROLLBACK;" && seed?.failRollback) {
+        throw new Error("cannot rollback");
+      }
       return undefined;
     },
     async getFirstAsync<T>(source: string): Promise<T | null> {
@@ -214,6 +218,22 @@ describe("sqlite-local-data-key", () => {
       expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
     });
 
+    it("keeps the key and wipes nothing when one canary row was tampered but another authenticates", async () => {
+      const keyStore = createFakeLocalDataKeyStore(rightKey);
+      const profilePayload = encryptLocalDataRecord(rightKey, { cycleLength: 28 }, profileAad);
+      const fake = createKeyResolutionFakeDatabase({
+        encryptedRows: [
+          // Profile ciphertext copied into the bootstrap row: well-formed, wrong AAD.
+          { table: "bootstrap_state", payload: profilePayload },
+          { table: "profile_settings", payload: profilePayload },
+        ],
+      });
+
+      await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(rightKey);
+      expect(fake.deletedTables).toEqual([]);
+      expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
+    });
+
     it("still resets when the bootstrap canary is unparseable and the profile canary fails authentication", async () => {
       const keyStore = createFakeLocalDataKeyStore("b".repeat(64));
       const fake = createKeyResolutionFakeDatabase({
@@ -315,6 +335,19 @@ describe("sqlite-local-data-key", () => {
       expect(fake.statements).not.toContain("COMMIT;");
       expect(keyStore.writeLocalDataKey).not.toHaveBeenCalled();
       expect(await keyStore.readLocalDataKey()).toBe(oldKey);
+    });
+
+    it("reports a failed ROLLBACK to the caller and still rethrows the DELETE failure", async () => {
+      const fake = createKeyResolutionFakeDatabase({
+        failDeleteOf: "symptoms",
+        failRollback: true,
+      });
+      const onRollbackFailed = jest.fn();
+
+      await expect(
+        wipeLocalAppTables(fake.database, onRollbackFailed),
+      ).rejects.toThrow("disk I/O error");
+      expect(onRollbackFailed).toHaveBeenCalledTimes(1);
     });
   });
 });
