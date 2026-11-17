@@ -339,10 +339,12 @@ export async function connectSyncAccount(
     authResult.auth.sessionToken,
     capabilitiesResult.capabilities,
     secrets.wrappedKey,
-    { currentPassword: credentials.password },
+    // Only a fresh account gets the password: on login the stored package may
+    // guard an existing backup, so its replacement waits for the upload, which
+    // asks before overwriting that backup and then prompts for the step-up.
+    mode === "register" ? { currentPassword: credentials.password } : undefined,
   );
-  // A refused step-up (2FA turned on meanwhile wants a code) does not fail
-  // the connect: the next upload prompts for it.
+  // A step-up refusal does not fail the connect: the next upload prompts.
   if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
     return {
       ok: false,
@@ -1209,19 +1211,31 @@ export async function runSyncUpload(
 
   const capabilitiesResult = await client.getCapabilities(prepared.secrets.authSessionToken);
   if (capabilitiesResult.ok) {
-    const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
-      client,
-      prepared.secrets.authSessionToken,
-      capabilitiesResult.capabilities,
-      prepared.secrets.wrappedKey,
-      recoveryKeyStepUp,
-    );
+    // The step-up is a community-server check; a managed sync host is not the
+    // auth host and never receives the password or code.
+    const syncedRecoveryKey =
+      preferences.mode === "self_hosted"
+        ? await syncRecoveryKeyIfSupported(
+            client,
+            prepared.secrets.authSessionToken,
+            capabilitiesResult.capabilities,
+            prepared.secrets.wrappedKey,
+            recoveryKeyStepUp,
+          )
+        : await putRecoveryKeyWithoutStepUp(
+            client,
+            prepared.secrets.authSessionToken,
+            capabilitiesResult.capabilities,
+            prepared.secrets.wrappedKey,
+          );
     if (!syncedRecoveryKey.ok) {
+      const errorCode = syncedRecoveryKey.errorCode;
       return {
         ok: false,
-        errorCode: isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)
-          ? syncedRecoveryKey.errorCode
-          : mapRunAPIError(syncedRecoveryKey.errorCode),
+        errorCode:
+          preferences.mode === "self_hosted" && isRecoveryKeyStepUpCode(errorCode)
+            ? errorCode
+            : mapRunAPIError(errorCode as SyncAPIErrorCode),
       };
     }
   } else if (capabilitiesResult.errorCode === "unauthorized") {
@@ -1838,6 +1852,7 @@ async function syncRecoveryKeyIfSupported(
         errorCode: stepUp ? errorCode : "recovery_key_step_up_required",
       };
     case "totp_invalid_code":
+    case "totp_replayed":
       return {
         ok: false,
         errorCode: !stepUp
@@ -1855,6 +1870,19 @@ async function syncRecoveryKeyIfSupported(
     default:
       return { ok: false, errorCode };
   }
+}
+
+async function putRecoveryKeyWithoutStepUp(
+  client: SyncAPIClient,
+  sessionToken: string,
+  capabilities: SyncCapabilityDocument,
+  wrappedKey: SyncSecretsRecord["wrappedKey"],
+): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }> {
+  if (!capabilities.recoverySupported) {
+    return { ok: true };
+  }
+  const result = await client.putRecoveryKey(sessionToken, wrappedKey);
+  return result.ok ? { ok: true } : { ok: false, errorCode: result.errorCode };
 }
 
 function buildManagedCapabilitiesDocument(

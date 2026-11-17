@@ -50,22 +50,33 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
 
   const [isRestoringSync, setIsRestoringSync] = useState(false);
   const [isSyncingNow, setIsSyncingNow] = useState(false);
-  const [recoveryKeyStepUpPrompt, setRecoveryKeyStepUpPrompt] =
-    useState<RecoveryKeyStepUpPrompt | null>(null);
+  const [pendingStepUp, setPendingStepUp] = useState<{
+    prompt: RecoveryKeyStepUpPrompt;
+    // The loaded session the prompt was opened for. A reload, disconnect or
+    // another account replaces `state` and so retires the prompt.
+    forState: NonNullable<typeof state>;
+    // Whether that same attempt already passed the upload-over-backup confirm.
+    overwriteConfirmed: boolean;
+  } | null>(null);
+  const recoveryKeyStepUpPrompt =
+    pendingStepUp && pendingStepUp.forState === state ? pendingStepUp.prompt : null;
 
   async function handleSyncNow() {
-    setRecoveryKeyStepUpPrompt(null);
+    setPendingStepUp(null);
     await runUpload();
   }
 
   // The password and code live only in the prompt's own field state and this
   // call's arguments; they are never stored, logged or put in route params.
   async function handleSubmitRecoveryKeyStepUp(stepUp: SyncRecoveryKeyStepUp) {
+    if (!recoveryKeyStepUpPrompt) {
+      return;
+    }
     await runUpload(stepUp);
   }
 
   function handleCancelRecoveryKeyStepUp() {
-    setRecoveryKeyStepUpPrompt(null);
+    setPendingStepUp(null);
   }
 
   async function runUpload(stepUp?: SyncRecoveryKeyStepUp) {
@@ -82,6 +93,13 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       return;
     }
 
+    // A step-up retry skips the confirm only when it continues the attempt
+    // that passed it, on the same loaded session.
+    let overwriteConfirmed =
+      stepUp !== undefined &&
+      pendingStepUp !== null &&
+      pendingStepUp.forState === syncReadyState &&
+      pendingStepUp.overwriteConfirmed;
     const result = await uploadBackupSyncSnapshot(
       storage,
       syncSecretStore,
@@ -90,16 +108,17 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       {
         // Destructive gate: fresh install about to overwrite an existing
         // server backup. Dialog dismissal resolves false = do NOT upload.
-        // A step-up retry follows an overwrite the owner already confirmed.
-        confirmUploadOverExistingBackup: () =>
-          stepUp
-            ? Promise.resolve(true)
-            :
-          openConfirmation(
+        confirmUploadOverExistingBackup: async () => {
+          if (overwriteConfirmed) {
+            return true;
+          }
+          overwriteConfirmed = await openConfirmation(
             viewData.account.uploadOverBackupPrompt,
             viewData.account.uploadOverBackupAccept,
             viewData.common.cancelAction,
-          ),
+          );
+          return overwriteConfirmed;
+        },
       },
       stepUp,
     );
@@ -107,7 +126,7 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       if (result.errorCode === "upload_over_backup_declined") {
         // Owner declined the overwrite — not an error, just stop quietly like
         // every other declined confirmation.
-        setRecoveryKeyStepUpPrompt(null);
+        setPendingStepUp(null);
         setIsSyncingNow(false);
         return;
       }
@@ -117,11 +136,11 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
         syncReadyState,
       );
       if (prompt) {
-        setRecoveryKeyStepUpPrompt(prompt);
+        setPendingStepUp({ prompt, forState: syncReadyState, overwriteConfirmed });
         setIsSyncingNow(false);
         return;
       }
-      setRecoveryKeyStepUpPrompt(null);
+      setPendingStepUp(null);
       if (result.errorCode === "unauthorized") {
         const clearedState = await clearUnauthorizedBackupSyncSession(
           storage,
@@ -141,7 +160,7 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       return;
     }
 
-    setRecoveryKeyStepUpPrompt(null);
+    setPendingStepUp(null);
     setErrorState(null);
     setState(result.state);
     await reloadPartnerAccess(result.state);

@@ -62,6 +62,27 @@ describe("BackupSyncRecoveryKeyStepUpSection", () => {
     expect(confirmDisabled()).toBe(false);
   });
 
+  it("disables confirm on a partial code but allows an empty one", async () => {
+    await renderSection({ codeRequired: true, errorCode: null });
+    await fireEvent.changeText(
+      screen.getByTestId("sync-recovery-key-stepup-password"),
+      "pw",
+    );
+    expect(confirmDisabled()).toBe(false);
+
+    await fireEvent.changeText(
+      screen.getByTestId("sync-recovery-key-stepup-code"),
+      "12345",
+    );
+    expect(confirmDisabled()).toBe(true);
+
+    await fireEvent.changeText(
+      screen.getByTestId("sync-recovery-key-stepup-code"),
+      "123456",
+    );
+    expect(confirmDisabled()).toBe(false);
+  });
+
   it("keeps confirm disabled while a sync is running", async () => {
     await renderSection(
       { codeRequired: false, errorCode: null },

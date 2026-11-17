@@ -3803,6 +3803,170 @@ describe("runSyncUpload additional branches", () => {
       },
     );
 
+    it.each([
+      ["totp_replayed", undefined, "recovery_key_step_up_required"],
+      ["totp_replayed", { currentPassword: "pw" }, "recovery_key_code_required"],
+    ] as const)(
+      "maps a %s refusal (step-up %j) to %s",
+      async (apiErrorCode, stepUp, expected) => {
+        const { result } = await upload({ ok: false, errorCode: apiErrorCode }, stepUp);
+
+        expect(result).toEqual({ ok: false, errorCode: expected });
+      },
+    );
+
+    it("never forwards a step-up to a managed sync host and keeps its refusal generic", async () => {
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock({
+        ...preparedSecrets.record,
+        authSessionToken: "stale-sync-session",
+        managedAuthSessionToken: "managed-session-1",
+      });
+      const managedClientFactory = jest.fn().mockReturnValue(
+        createManagedClientMock({
+          getSession: jest.fn().mockResolvedValue({
+            ok: true,
+            session: {
+              accountID: "managed-account-1",
+              email: "alice@example.com",
+              sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+              entitlement: {
+                syncAllowed: true,
+                source: "manual",
+                updatedAt: "2026-03-20T08:05:00.000Z",
+                effectiveAt: "2026-03-20T08:05:00.000Z",
+                explanation: "plan active",
+              },
+            },
+          }),
+          createSyncSession: jest.fn().mockResolvedValue({
+            ok: true,
+            auth: {
+              accountID: "managed-account-1",
+              sessionToken: "session-1",
+              sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            },
+          }),
+        }),
+      );
+      const putRecoveryKey = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
+      const putBlob = jest.fn();
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          getCapabilities: jest.fn().mockResolvedValue({
+            ok: true,
+            capabilities: {
+              mode: "managed",
+              syncEnabled: true,
+              recoverySupported: true,
+              pushSupported: false,
+              portalSupported: false,
+              advancedCloudInsights: false,
+              maxDevices: 5,
+              maxBlobBytes: 1024,
+            },
+          }),
+          putRecoveryKey,
+          putBlob,
+        }),
+      );
+
+      const result = await runSyncUpload(
+        createLocalAppStorageMock(),
+        secretStore,
+        {
+          ...selfHostedConnected(),
+          mode: "managed" as const,
+          endpointInput: "",
+          normalizedEndpoint: "https://sync.ovumcy.cloud",
+        },
+        new Date("2026-03-20T08:10:00.000Z"),
+        apiClientFactory,
+        managedClientFactory,
+        undefined,
+        { currentPassword: "step-up-password-1", code: "654321" },
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "generic" });
+      expect(putRecoveryKey).toHaveBeenCalledWith("session-1", expect.any(Object));
+      expect(putBlob).not.toHaveBeenCalled();
+    });
+
+    it("sends no step-up on a login connect and leaves a refused replacement to the upload", async () => {
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock(preparedSecrets.record);
+      const putRecoveryKey = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
+      const apiClientFactory = jest.fn().mockReturnValue(
+        createAPIClientMock({
+          login: jest.fn().mockResolvedValue({
+            ok: true,
+            auth: {
+              accountID: "account-1",
+              sessionToken: "session-1",
+              sessionExpiresAt: "2026-03-21T08:00:00.000Z",
+            },
+          }),
+          getCapabilities: jest.fn().mockResolvedValue({
+            ok: true,
+            capabilities: {
+              mode: "self_hosted",
+              syncEnabled: true,
+              recoverySupported: true,
+              pushSupported: false,
+              portalSupported: false,
+              advancedCloudInsights: false,
+              maxDevices: 5,
+              maxBlobBytes: 1024,
+            },
+          }),
+          attachDevice: jest.fn().mockResolvedValue({
+            ok: true,
+            device: {
+              deviceID: preparedSecrets.record.device.deviceID,
+              deviceLabel: preparedSecrets.record.device.deviceLabel,
+              createdAt: preparedSecrets.record.device.createdAt,
+              lastSeenAt: preparedSecrets.record.device.createdAt,
+            },
+          }),
+          putRecoveryKey,
+        }),
+      );
+
+      const result = await connectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        {
+          ...createDefaultSyncPreferencesRecord(),
+          mode: "self_hosted" as const,
+          endpointInput: "192.168.1.20:8080",
+          deviceLabel: "Pixel 7",
+          setupStatus: "local_ready" as const,
+          preparedAt: "2026-03-20T08:00:00.000Z",
+        },
+        { login: "alice@example.com", password: "correct horse battery staple" },
+        "login",
+        new Date("2026-03-20T08:05:00.000Z"),
+        apiClientFactory,
+      );
+
+      expect(result).toEqual(expect.objectContaining({ ok: true }));
+      expect(putRecoveryKey).toHaveBeenCalledWith(
+        "session-1",
+        preparedSecrets.record.wrappedKey,
+        undefined,
+      );
+    });
+
     it("passes the step-up to the package PUT and keeps it out of stored secrets", async () => {
       const stepUp = { currentPassword: "step-up-password-1", code: "654321" };
       const { putRecoveryKey, secretStore } = await upload(

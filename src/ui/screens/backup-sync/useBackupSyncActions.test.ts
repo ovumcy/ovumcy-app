@@ -463,8 +463,21 @@ describe("useBackupSyncActions recovery-key step-up", () => {
     });
   });
 
-  it("a step-up retry does not ask the overwrite confirm again", async () => {
-    const { result } = await openPrompt("recovery_key_step_up_required", false);
+  it("a step-up retry does not ask the overwrite confirm the same attempt passed", async () => {
+    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockUploadBackupSyncSnapshot.mockImplementationOnce(
+      async (_storage, _secrets, _state, _now, guard) => {
+        await guard?.confirmUploadOverExistingBackup();
+        return { ok: false, errorCode: "recovery_key_step_up_required" } as never;
+      },
+    );
+    const core = createBackupSyncSessionCoreMock();
+    const { result } = await renderHook(() => useBackupSyncActions(core));
+    await act(async () => {
+      await result.current.handleSyncNow();
+    });
+    expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
     mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
       ok: false,
       errorCode: "network_failed",
@@ -476,7 +489,56 @@ describe("useBackupSyncActions recovery-key step-up", () => {
 
     const guard = mockUploadBackupSyncSnapshot.mock.calls[1]?.[4];
     await expect(guard?.confirmUploadOverExistingBackup()).resolves.toBe(true);
-    expect(mockOpenConfirmation).not.toHaveBeenCalled();
+    expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+  });
+
+  it("a step-up retry still asks the overwrite confirm the opening attempt never passed", async () => {
+    const { result } = await openPrompt("recovery_key_step_up_required", false);
+    mockOpenConfirmation.mockResolvedValue(false);
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "network_failed",
+    } as never);
+
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({ currentPassword: "pw" });
+    });
+
+    const guard = mockUploadBackupSyncSnapshot.mock.calls[1]?.[4];
+    await expect(guard?.confirmUploadOverExistingBackup()).resolves.toBe(false);
+    expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+  });
+
+  it("retires the prompt once the loaded session changes, and its submit uploads nothing", async () => {
+    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
+    mockUploadBackupSyncSnapshot.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "recovery_key_step_up_required",
+    } as never);
+    const firstCore = createBackupSyncSessionCoreMock();
+    const { result, rerender } = await renderHook(
+      (core: ReturnType<typeof createBackupSyncSessionCoreMock>) =>
+        useBackupSyncActions(core),
+      { initialProps: firstCore },
+    );
+    await act(async () => {
+      await result.current.handleSyncNow();
+    });
+    expect(result.current.recoveryKeyStepUpPrompt).not.toBeNull();
+
+    const nextState = createLoadedSettingsStateFixture();
+    await rerender(
+      createBackupSyncSessionCoreMock({
+        state: nextState,
+        saveSyncDraftIfNeeded: jest.fn().mockResolvedValue(nextState),
+      }),
+    );
+    expect(result.current.recoveryKeyStepUpPrompt).toBeNull();
+
+    await act(async () => {
+      await result.current.handleSubmitRecoveryKeyStepUp({ currentPassword: "pw" });
+    });
+    expect(mockUploadBackupSyncSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it("code_required forces the code field", async () => {
