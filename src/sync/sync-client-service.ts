@@ -334,22 +334,24 @@ export async function connectSyncAccount(
     };
   }
 
-  const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
-    client,
-    authResult.auth.sessionToken,
-    capabilitiesResult.capabilities,
-    secrets.wrappedKey,
-    // Only a fresh account gets the password: on login the stored package may
-    // guard an existing backup, so its replacement waits for the upload, which
-    // asks before overwriting that backup and then prompts for the step-up.
-    mode === "register" ? { currentPassword: credentials.password } : undefined,
-  );
-  // A step-up refusal does not fail the connect: the next upload prompts.
-  if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
-    return {
-      ok: false,
-      errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
-    };
+  // Only a fresh account stores its package here. On login the stored package
+  // may guard an existing backup, so the upload replaces it after the
+  // overwrite confirm and the step-up prompt.
+  if (mode === "register") {
+    const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
+      client,
+      authResult.auth.sessionToken,
+      capabilitiesResult.capabilities,
+      secrets.wrappedKey,
+      { currentPassword: credentials.password },
+    );
+    // A step-up refusal does not fail the connect: the next upload prompts.
+    if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
+      return {
+        ok: false,
+        errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
+      };
+    }
   }
 
   await secretStore.writeSyncSecrets({
@@ -511,21 +513,8 @@ export async function finalizeSyncSessionAfterTOTP(
     };
   }
 
-  const syncedRecoveryKey = await syncRecoveryKeyIfSupported(
-    client,
-    input.sessionToken,
-    capabilitiesResult.capabilities,
-    secrets.wrappedKey,
-  );
-  // The challenge code is spent and no password is held here, so a package
-  // replacement waits for the next upload, which prompts for the step-up.
-  if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
-    return {
-      ok: false,
-      errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
-    };
-  }
-
+  // A TOTP challenge only follows a login, so the package is left to the
+  // upload, as on a login connect.
   await secretStore.writeSyncSecrets({
     ...secrets,
     authSessionToken: input.sessionToken,
@@ -1238,8 +1227,11 @@ export async function runSyncUpload(
             : mapRunAPIError(errorCode as SyncAPIErrorCode),
       };
     }
-  } else if (capabilitiesResult.errorCode === "unauthorized") {
-    return { ok: false, errorCode: "unauthorized" };
+  } else {
+    // Fail closed: without the capabilities the recovery-key package cannot be
+    // kept in step with the blob, so a new-key blob could land under the old
+    // package.
+    return { ok: false, errorCode: mapRunAPIError(capabilitiesResult.errorCode) };
   }
 
   const putBlobResult = await client.putBlob(prepared.secrets.authSessionToken, {
