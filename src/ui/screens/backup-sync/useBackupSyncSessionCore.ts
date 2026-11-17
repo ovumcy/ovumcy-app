@@ -1,3 +1,4 @@
+import { useLinkingURL } from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "expo-router/react-navigation";
@@ -30,10 +31,15 @@ import {
   type LoadedSettingsState,
 } from "../../../services/settings-view-service";
 import {
+  attachManagedPartnerInviteSecret,
   managedPartnerInviteTokenRemainingMs,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
+import {
+  parsePartnerInviteLink,
+  parsePartnerInviteSecretFromFragment,
+} from "../../../security/partner-invite-link";
 import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
@@ -55,7 +61,7 @@ import { resolvePartnerErrorMessage } from "./backup-sync-partner-errors";
 // query key ever repeats) as an array — both the token-capture effect below
 // and the onboarding-bypass check in the focus-load effect need the same
 // single trimmed value.
-function resolveRouteInviteToken(
+function resolveSingleRouteParam(
   rawInviteToken: string | string[] | undefined,
 ): string {
   const value = Array.isArray(rawInviteToken)
@@ -99,7 +105,13 @@ export function useBackupSyncSessionCore({
   const { colors, language, syncProfilePreferences } = useAppPreferences();
   const navigation = useNavigation();
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ invite_token?: string | string[] }>();
+  const searchParams = useLocalSearchParams<{
+    invite_token?: string | string[];
+    "#"?: string | string[];
+  }>();
+  // expo-router drops the fragment of custom-scheme links, so the invite
+  // secret is also read from the raw link that opened the app.
+  const linkingURL = useLinkingURL();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<LoadedSettingsState | null>(null);
@@ -126,16 +138,28 @@ export function useBackupSyncSessionCore({
   const viewData = buildSettingsViewData(effectiveNow, language);
   const isSyncDirty = buildBackupSyncDirtyState(state);
 
+  const routeInviteToken = searchParams.invite_token;
+  const routeFragment = searchParams["#"];
   useEffect(() => {
-    const trimmedInviteToken = resolveRouteInviteToken(searchParams.invite_token);
+    const trimmedInviteToken = resolveSingleRouteParam(routeInviteToken);
     if (trimmedInviteToken.length === 0) {
       return;
     }
 
-    stashManagedPartnerInviteToken(trimmedInviteToken);
+    stashManagedPartnerInviteToken(
+      trimmedInviteToken,
+      parsePartnerInviteSecretFromFragment(resolveSingleRouteParam(routeFragment)),
+    );
     setPendingPartnerInviteToken(trimmedInviteToken);
     router.replace("/backup-sync");
-  }, [router, searchParams.invite_token]);
+  }, [router, routeInviteToken, routeFragment]);
+
+  // The raw link and the route params can update in either order; the
+  // secret attaches only to the invite already buffered under its token.
+  useEffect(() => {
+    const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(linkingURL);
+    attachManagedPartnerInviteSecret(inviteToken, inviteSecretHex);
+  }, [linkingURL, pendingPartnerInviteToken]);
 
   // The state copy expires with the buffer, so a screen left open cannot
   // redeem a token past its TTL.
@@ -240,7 +264,7 @@ export function useBackupSyncSessionCore({
           //   is the live guest session `persistGuestPartnerSession` created.
           const hasPendingInviteToken =
             readManagedPartnerInviteToken().length > 0 ||
-            resolveRouteInviteToken(searchParams.invite_token).length > 0;
+            resolveSingleRouteParam(searchParams.invite_token).length > 0;
 
           let hasExistingSyncSession = false;
           if (!hasPendingInviteToken) {

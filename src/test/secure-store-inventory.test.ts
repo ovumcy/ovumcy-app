@@ -41,13 +41,25 @@ describe("listSecureStoreKeys", () => {
     ).toThrow("does not import a ./<store> factory");
   });
 
-  it("rejects a store module that does not declare exactly one key", () => {
+  it("rejects a store module that declares no key", () => {
     expect(() =>
       listSecureStoreKeys(
         [{ relativePath: "security/platform-foo-store.native.ts", source: FACTORY }],
-        () => 'const A = "ovumcy.a"; const B = "ovumcy.b";',
+        () => "const A = 1;",
       ),
-    ).toThrow("foo-store.ts declares 2 ovumcy.* keys");
+    ).toThrow("foo-store.ts declares no ovumcy.* key");
+  });
+
+  it("inventories every key a store module declares, a retired one included", () => {
+    expect(
+      listSecureStoreKeys(
+        [{ relativePath: "security/platform-foo-store.native.ts", source: FACTORY }],
+        () => 'const A = "ovumcy.a-v2"; const B = "ovumcy.a";',
+      ),
+    ).toEqual([
+      { key: "ovumcy.a", storeModule: "foo-store" },
+      { key: "ovumcy.a-v2", storeModule: "foo-store" },
+    ]);
   });
 });
 

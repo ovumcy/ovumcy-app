@@ -80,12 +80,14 @@ export function listSecureStoreKeys(
     const keys = [...storeSource.matchAll(OVUMCY_KEY_LITERAL)].map(
       (match) => match[1] as string,
     );
-    if (keys.length !== 1) {
-      throw new Error(
-        `${storeModule}.ts declares ${keys.length} ovumcy.* keys; expected exactly one`,
-      );
+    // A module may also name a retired key it still deletes; every declared
+    // key is inventoried so the wipe must cover it too.
+    if (keys.length === 0) {
+      throw new Error(`${storeModule}.ts declares no ovumcy.* key`);
     }
-    entries.push({ key: keys[0] as string, storeModule });
+    for (const key of keys) {
+      entries.push({ key, storeModule });
+    }
   }
 
   return entries.sort((left, right) => left.key.localeCompare(right.key));

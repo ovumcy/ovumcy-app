@@ -23,7 +23,60 @@ function createBackendMock(): PartnerShareSecretStoreBackend & {
   };
 }
 
-const STORE_KEY = "ovumcy.partner-share-secrets";
+const STORE_KEY = "ovumcy.partner-share-secrets-v2";
+const LEGACY_STORE_KEY = "ovumcy.partner-share-secrets";
+const LEGACY_RECORD = JSON.stringify({
+  grantKeysByGrantID: {
+    grant_1: { keyHex: "aa".repeat(32), rotatedAtISO: "", sourceInviteID: "invite_1" },
+  },
+  pendingInviteKeysByInviteID: { invite_2: "bb".repeat(32) },
+});
+
+describe("partner-share-secret-store retired token-derived entry", () => {
+  it("never reads keys from the retired entry and deletes it on first access", async () => {
+    const backend = createBackendMock();
+    backend.state.set(LEGACY_STORE_KEY, LEGACY_RECORD);
+    const store = createPartnerShareSecretStore(backend);
+
+    await expect(store.readPartnerShareSecrets()).resolves.toEqual(
+      createEmptyPartnerShareSecretsRecord(),
+    );
+    expect(backend.state.has(LEGACY_STORE_KEY)).toBe(false);
+  });
+
+  it("retries the delete on the next access after a failure", async () => {
+    const backend = createBackendMock();
+    backend.state.set(LEGACY_STORE_KEY, LEGACY_RECORD);
+    const deleteItem = backend.deleteItem.bind(backend);
+    let failNext = true;
+    backend.deleteItem = async (key: string) => {
+      if (failNext) {
+        failNext = false;
+        throw new Error("keychain locked");
+      }
+      await deleteItem(key);
+    };
+    const store = createPartnerShareSecretStore(backend);
+
+    await store.readPartnerShareSecrets();
+    expect(backend.state.has(LEGACY_STORE_KEY)).toBe(true);
+
+    await store.readPartnerShareSecrets();
+    expect(backend.state.has(LEGACY_STORE_KEY)).toBe(false);
+  });
+
+  it("is deleted by a clear together with the current entry", async () => {
+    const backend = createBackendMock();
+    const store = createPartnerShareSecretStore(backend);
+    await store.writePartnerShareSecrets(createEmptyPartnerShareSecretsRecord());
+    backend.state.set(LEGACY_STORE_KEY, LEGACY_RECORD);
+
+    await store.clearPartnerShareSecrets();
+
+    expect(backend.state.has(STORE_KEY)).toBe(false);
+    expect(backend.state.has(LEGACY_STORE_KEY)).toBe(false);
+  });
+});
 
 describe("partner-share-secret-store", () => {
   describe("readPartnerShareSecrets", () => {

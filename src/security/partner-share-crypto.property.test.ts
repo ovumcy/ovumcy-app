@@ -20,14 +20,29 @@ const tokenArb = fc.uint8Array({ minLength: 16, maxLength: 48 }).map(bytesToHex)
 const idArb = fc.uint8Array({ minLength: 1, maxLength: 20 }).map(bytesToHex);
 const accessLevelArb = fc.constantFrom("summary" as const, "full" as const);
 const generationArb = fc.integer({ min: INITIAL_GENERATION, max: 1_000_000 });
+const secretArb = fc.uint8Array({ minLength: 32, maxLength: 32 }).map(bytesToHex);
+const INVITE_SECRET_HEX = "11".repeat(32);
 
 describe("partner-share-crypto key derivation (property)", () => {
   it("derivePartnerShareKeyHex is deterministic and 64 lowercase hex chars", () => {
     fc.assert(
-      fc.property(tokenArb, (token) => {
-        const k = derivePartnerShareKeyHex(token);
+      fc.property(tokenArb, secretArb, (token, secret) => {
+        const k = derivePartnerShareKeyHex(token, secret);
         expect(k).toMatch(/^[0-9a-f]{64}$/);
-        expect(derivePartnerShareKeyHex(token)).toBe(k);
+        expect(derivePartnerShareKeyHex(token, secret)).toBe(k);
+      }),
+    );
+  });
+
+  // Everything the managed cloud knows (the token) is held fixed; only the
+  // client-only invite secret varies, and the key must vary with it.
+  it("derivePartnerShareKeyHex changes whenever the invite secret changes", () => {
+    fc.assert(
+      fc.property(tokenArb, secretArb, secretArb, (token, secret, otherSecret) => {
+        fc.pre(secret !== otherSecret);
+        expect(derivePartnerShareKeyHex(token, secret)).not.toBe(
+          derivePartnerShareKeyHex(token, otherSecret),
+        );
       }),
     );
   });
@@ -40,7 +55,7 @@ describe("partner-share-crypto key derivation (property)", () => {
         idArb,
         idArb,
         (token, grantID, ownerAccountID, sourceInviteID) => {
-          const k = derivePartnerShareKeyHex(token);
+          const k = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
           const a = deriveGrantSubkeyHex(k, {
             grantID,
             ownerAccountID,
@@ -72,7 +87,7 @@ describe("partner-share-crypto key derivation (property)", () => {
           fc.pre(
             alt !== grantID && alt !== ownerAccountID && alt !== sourceInviteID,
           );
-          const k = derivePartnerShareKeyHex(token);
+          const k = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
           const base = deriveGrantSubkeyHex(k, {
             grantID,
             ownerAccountID,
@@ -147,7 +162,7 @@ describe("partner-share projection encryption (property)", () => {
         accessLevelArb,
         generationArb,
         (token, grantID, ownerAccountID, accessLevel, generation) => {
-          const keyHex = derivePartnerShareKeyHex(token);
+          const keyHex = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
           const payload = buildPayload({
             accessLevel,
             generation,
@@ -172,8 +187,8 @@ describe("partner-share projection encryption (property)", () => {
         idArb,
         accessLevelArb,
         (token, otherToken, grantID, ownerAccountID, accessLevel) => {
-          const keyHex = derivePartnerShareKeyHex(token);
-          const otherKeyHex = derivePartnerShareKeyHex(otherToken);
+          const keyHex = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
+          const otherKeyHex = derivePartnerShareKeyHex(otherToken, INVITE_SECRET_HEX);
           fc.pre(keyHex !== otherKeyHex);
           const envelope = encryptPartnerSharedProjection(
             keyHex,
@@ -210,7 +225,7 @@ describe("partner-share projection encryption (property)", () => {
         accessLevelArb,
         (token, grantID, otherGrantID, ownerAccountID, accessLevel) => {
           fc.pre(grantID !== otherGrantID);
-          const keyHex = derivePartnerShareKeyHex(token);
+          const keyHex = derivePartnerShareKeyHex(token, INVITE_SECRET_HEX);
           const envelope = encryptPartnerSharedProjection(
             keyHex,
             buildPayload({

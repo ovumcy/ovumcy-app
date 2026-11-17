@@ -10,12 +10,14 @@ import {
   type PartnerSharedProjectionPayload,
 } from "../models/partner-share";
 import {
+  createRandomSecretHex,
   decryptPayload,
   encryptPayload,
   type EncryptedPayloadEnvelope,
 } from "./payload-crypto";
+import { isPartnerInviteSecretHex } from "./partner-invite-link";
 
-const PARTNER_SHARE_INFO = utf8ToBytes("ovumcy-partner-share-v1");
+const PARTNER_SHARE_INVITE_LABEL = "ovumcy-partner-share-v2";
 const PARTNER_SHARE_AAD_VERSION = "ovumcy-partner-share-v1";
 
 // Salt and info prefix for the per-grant rotation step (F4). The salt is a
@@ -24,12 +26,10 @@ const PARTNER_SHARE_AAD_VERSION = "ovumcy-partner-share-v1";
 // encodes the per-grant context that must match between owner and partner.
 const PARTNER_SHARE_GRANT_SALT = utf8ToBytes("ovumcy-partner-share-grant-v1");
 
-// Minimum length floor on the invite token. Even though the managed cloud
-// is the party that mints the token, a compromised server could otherwise
-// hand the owner a weak token (e.g. "ab"), derive the same partner-share
-// key, and decrypt the supposedly opaque ciphertext. 22 chars ≈ 128 bits
-// of base64 entropy; matches the random-token output the cloud is expected
-// to emit. Stricter than the previous "non-empty after trim" check.
+// Minimum length floor on the invite token. Confidentiality rests on the
+// client-only invite secret, but the token is still the redemption
+// credential bound into the key; 22 chars ≈ 128 bits of base64 entropy,
+// matching the random-token output the cloud is expected to emit.
 const PARTNER_SHARE_MIN_TOKEN_LENGTH = 22;
 
 // HKDF over a 32-byte key emits 32-byte hex (64 chars). `deriveGrantSubkeyHex`
@@ -38,18 +38,35 @@ const PARTNER_SHARE_MIN_TOKEN_LENGTH = 22;
 // than silently producing a different K_grant.
 const PARTNER_SHARE_KEY_HEX_PATTERN = /^[0-9a-f]{64}$/;
 
-export function derivePartnerShareKeyHex(inviteToken: string): string {
+// 32 bytes from the platform CSPRNG, generated on the owner device per invite.
+export function createPartnerInviteSecretHex(): string {
+  return createRandomSecretHex(32);
+}
+
+/**
+ * K_invite. Rooted in the client-only invite secret, never in server-known
+ * material alone: the managed cloud holds the token and every grant context
+ * field, so a token-only key would be derivable server-side. The token is
+ * bound into `info` so a secret cannot be replayed onto another invite.
+ */
+export function derivePartnerShareKeyHex(
+  inviteToken: string,
+  inviteSecretHex: string,
+): string {
   const normalizedToken = inviteToken.trim();
   if (normalizedToken.length < PARTNER_SHARE_MIN_TOKEN_LENGTH) {
+    throw new Error("invalid_partner_invite");
+  }
+  if (!isPartnerInviteSecretHex(inviteSecretHex)) {
     throw new Error("invalid_partner_invite");
   }
 
   return bytesToHex(
     hkdf(
       sha256,
-      utf8ToBytes(normalizedToken),
-      undefined,
-      PARTNER_SHARE_INFO,
+      hexToBytes(inviteSecretHex),
+      utf8ToBytes(PARTNER_SHARE_INVITE_LABEL),
+      utf8ToBytes(`${PARTNER_SHARE_INVITE_LABEL}|${normalizedToken}`),
       32,
     ),
   );

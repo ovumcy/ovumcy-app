@@ -4,11 +4,13 @@ import type {
   PartnerShareSecretsRecord,
 } from "../security/partner-share-secret-store";
 import {
+  createPartnerInviteSecretHex,
   decryptPartnerSharedProjection,
   deriveGrantSubkeyHex,
   derivePartnerShareKeyHex,
   encryptPartnerSharedProjection,
 } from "../security/partner-share-crypto";
+import { buildShareablePartnerInviteURL } from "../security/partner-invite-link";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import {
   createManagedCloudAPIClient,
@@ -43,23 +45,35 @@ export type ManagedPartnerGrantKeyContext = Pick<
   "id" | "ownerAccountID" | "sourceInviteID"
 >;
 
+/**
+ * Owner-side handler for a freshly issued invite. Generates the client-only
+ * invite secret, stores K_invite under the invite ID, and returns the link to
+ * share: the server's invite URL with the secret in its fragment. The secret
+ * itself is not persisted, so the link can be shown only once.
+ */
 export async function storeIssuedManagedPartnerInviteKey(
   partnerShareSecretStore: PartnerShareSecretStore,
   result: ManagedCloudPartnerInviteIssueResult,
-): Promise<void> {
+): Promise<string> {
   const inviteToken = parseInviteTokenFromURL(result.inviteURL);
-  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken);
+  const inviteSecretHex = createPartnerInviteSecretHex();
+  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken, inviteSecretHex);
+  const shareableInviteURL = buildShareablePartnerInviteURL(
+    result.inviteURL,
+    inviteSecretHex,
+  );
   await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
     record.pendingInviteKeysByInviteID[result.invite.id] = inviteKeyHex;
   });
+  return shareableInviteURL;
 }
 
 /**
- * Partner-side handler for the accept flow. Derives K_invite from the raw
- * invite token, then immediately rotates to K_grant via `deriveGrantSubkeyHex`
- * — K_invite is never persisted on the partner device. A transient observer
- * of the invite token therefore cannot decrypt any partner-share blob the
- * owner uploads after accept.
+ * Partner-side handler for the accept flow. Derives K_invite from the invite
+ * token and the link's invite secret, then immediately rotates to K_grant via
+ * `deriveGrantSubkeyHex` — K_invite is never persisted on the partner device.
+ * A transient observer of the invite link therefore cannot decrypt any
+ * partner-share blob the owner uploads after accept.
  *
  * Throws `invalid_partner_grant_context` if the server returned a grant
  * without `sourceInviteID`, which would happen only with a broken managed
@@ -70,6 +84,7 @@ export async function storeAcceptedManagedPartnerGrantKey(
   partnerShareSecretStore: PartnerShareSecretStore,
   grant: ManagedPartnerGrantKeyContext,
   inviteToken: string,
+  inviteSecretHex: string,
   now: Date,
 ): Promise<void> {
   const sourceInviteID = grant.sourceInviteID?.trim() ?? "";
@@ -80,7 +95,7 @@ export async function storeAcceptedManagedPartnerGrantKey(
   // Derive both keys outside the mutate critical section to keep the
   // section short and to surface any derivation error before we touch
   // the store at all.
-  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken);
+  const inviteKeyHex = derivePartnerShareKeyHex(inviteToken, inviteSecretHex);
   const grantKeyHex = deriveGrantSubkeyHex(inviteKeyHex, {
     grantID: grant.id,
     ownerAccountID: grant.ownerAccountID,
