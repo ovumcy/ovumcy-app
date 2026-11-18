@@ -133,8 +133,11 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       !isGuestPartnerAccount(preferences)
     ) {
       // Asked up front: a bodiless try would spend the shared step-up budget.
+      setIsDeletingAccount(true);
+      const codeRequired = await isCodeFieldNeeded(state);
+      setIsDeletingAccount(false);
       setPendingStepUp({
-        prompt: { codeRequired: await isCodeFieldNeeded(state), errorCode: null },
+        prompt: { codeRequired, errorCode: null },
         forState: state,
       });
       return;
@@ -212,10 +215,6 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     setIsDeletingAccount(true);
     try {
       await deleteAndSettle(forState, stepUp);
-    } catch {
-      setPendingStepUp(null);
-      setErrorState({ code: "generic", scope: "delete_account" });
-      setIsDeletingAccount(false);
     } finally {
       deletionInFlightRef.current = false;
     }
@@ -225,13 +224,18 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     forState: NonNullable<typeof state>,
     stepUp: SyncRecoveryKeyStepUp | undefined,
   ) {
-    const result = await deleteOvumcyAccount(
-      storage,
-      syncSecretStore,
-      { certPinStore, entitlementTokenStore, partnerShareSecretStore },
-      forState.savedSyncPreferences,
-      stepUp,
-    );
+    let result: Awaited<ReturnType<typeof deleteOvumcyAccount>>;
+    try {
+      result = await deleteOvumcyAccount(
+        storage,
+        syncSecretStore,
+        { certPinStore, entitlementTokenStore, partnerShareSecretStore },
+        forState.savedSyncPreferences,
+        stepUp,
+      );
+    } catch {
+      result = { ok: false, errorCode: "generic" };
+    }
     if (!result.ok) {
       const prompt = await resolveStepUpPrompt(result.errorCode, stepUp, forState);
       setPendingStepUp(prompt ? { prompt, forState } : null);
