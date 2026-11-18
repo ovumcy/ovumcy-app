@@ -276,6 +276,27 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
     });
 
+    it("keeps the still-pending invite buffered when the owner's grant cap is reached", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        pendingPartnerInviteToken: "invite-token",
+      });
+      mockAcceptManagedPartnerInvite.mockResolvedValue({
+        ok: false,
+        errorCode: "partner_grant_limit_reached",
+      });
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        await result.current.handleAcceptPartnerInvite();
+      });
+
+      expect(core.setPartnerErrorMessage).toHaveBeenCalledWith(
+        core.partnerCopy.errors.partnerGrantLimitReached,
+      );
+      expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
+      expect(readManagedPartnerInviteToken()).toBe("invite-token");
+    });
+
     it("surfaces the generic error when persisting the grant key throws", async () => {
       const core = createBackupSyncSessionCoreMock({
         pendingPartnerInviteToken: "invite-token",

@@ -272,16 +272,7 @@ export async function uploadManagedPartnerProjection(
     ciphertextSize: encryptedProjection.ciphertextSize,
   });
 
-  if (result.ok) {
-    return { ok: true, value: result.projection };
-  }
-  return result.retryAfterSeconds === undefined
-    ? { ok: false, errorCode: result.errorCode }
-    : {
-        ok: false,
-        errorCode: result.errorCode,
-        retryAfterSeconds: result.retryAfterSeconds,
-      };
+  return result.ok ? { ok: true, value: result.projection } : result;
 }
 
 export async function loadManagedPartnerProjection(

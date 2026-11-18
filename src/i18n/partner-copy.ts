@@ -94,7 +94,7 @@ const partnerCopyEn = {
     partnerInviteLimitReached:
       "You have reached the limit of pending invites. Revoke one before creating another.",
     partnerGrantLimitReached:
-      "The person who invited you already shares with the maximum number of partners. The invite is still valid: ask them to remove a partner, then try again.",
+      "The person who invited you already shares with the maximum number of partners. Ask them to remove a partner and send you a new invite.",
     rateLimited: "Too many attempts. Please wait a moment before trying again.",
     generic: "Unable to update partner access right now. Please try again.",
   },
@@ -233,7 +233,7 @@ const partnerCopyDe = {
     partnerInviteLimitReached:
       "Sie haben das Limit für ausstehende Einladungen erreicht. Widerrufen Sie eine, bevor Sie eine neue erstellen.",
     partnerGrantLimitReached:
-      "Die einladende Person teilt bereits mit der maximalen Anzahl an Partnern. Die Einladung bleibt gültig: Bitten Sie darum, einen Partner zu entfernen, und versuchen Sie es dann erneut.",
+      "Die einladende Person teilt bereits mit der maximalen Anzahl an Partnern. Bitten Sie darum, einen Partner zu entfernen und Ihnen eine neue Einladung zu senden.",
     rateLimited: "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
     generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
   },
@@ -377,7 +377,7 @@ const partnerCopyFr = {
     partnerInviteLimitReached:
       "Vous avez atteint la limite d'invitations en attente. Retirez-en une avant d'en créer une autre.",
     partnerGrantLimitReached:
-      "La personne qui vous a invité partage déjà avec le nombre maximal de partenaires. L'invitation reste valide : demandez-lui de retirer un partenaire, puis réessayez.",
+      "La personne qui vous a invité partage déjà avec le nombre maximal de partenaires. Demandez-lui de retirer un partenaire et de vous envoyer une nouvelle invitation.",
     rateLimited: "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
     generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessayez.",
   },
@@ -520,7 +520,7 @@ const partnerCopyRu = {
     partnerInviteLimitReached:
       "Достигнут лимит ожидающих приглашений. Отзовите одно, прежде чем создавать новое.",
     partnerGrantLimitReached:
-      "Пригласивший вас человек уже делится данными с максимальным числом партнёров. Приглашение по-прежнему действует: попросите отключить одного из партнёров и попробуйте снова.",
+      "Пригласивший вас человек уже делится данными с максимальным числом партнёров. Попросите отключить одного из партнёров и прислать вам новое приглашение.",
     rateLimited: "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
     generic: "Сейчас не удалось обновить доступ партнёра. Попробуй ещё раз.",
   },
@@ -659,7 +659,7 @@ const partnerCopyEs = {
     partnerInviteLimitReached:
       "Alcanzaste el límite de invitaciones pendientes. Revoca una antes de crear otra.",
     partnerGrantLimitReached:
-      "La persona que te invitó ya comparte con el número máximo de parejas. La invitación sigue siendo válida: pídele que quite a una pareja y vuelve a intentarlo.",
+      "La persona que te invitó ya comparte con el número máximo de parejas. Pídele que quite a una pareja y te envíe una nueva invitación.",
     rateLimited: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
     generic: "No se pudo actualizar el acceso de pareja ahora mismo. Inténtalo otra vez.",
   },
@@ -800,7 +800,7 @@ const partnerCopyIt = {
     partnerInviteLimitReached:
       "Hai raggiunto il limite di inviti in sospeso. Revocane uno prima di crearne un altro.",
     partnerGrantLimitReached:
-      "La persona che ti ha invitato condivide già con il numero massimo di partner. L'invito resta valido: chiedile di rimuovere un partner, poi riprova.",
+      "La persona che ti ha invitato condivide già con il numero massimo di partner. Chiedile di rimuovere un partner e di inviarti un nuovo invito.",
     rateLimited: "Troppi tentativi. Attendi un momento prima di riprovare.",
     generic: "Impossibile aggiornare l'accesso partner in questo momento. Riprova.",
   },
