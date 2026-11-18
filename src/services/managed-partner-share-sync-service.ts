@@ -11,6 +11,7 @@ import {
 import {
   backOffManagedPartnerProjectionPush,
   isManagedPartnerProjectionPushBackedOff,
+  resetManagedPartnerProjectionPushBackoff,
 } from "./managed-partner-projection-backoff";
 import { buildPartnerSharedProjectionPayload } from "./partner-shared-projection-service";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
@@ -24,12 +25,14 @@ export async function syncManagedPartnerSharedProjections(
   skipped: boolean;
   syncedCount: number;
 }> {
-  if (isManagedPartnerProjectionPushBackedOff()) {
-    return { skipped: true, syncedCount: 0 };
-  }
-
   const syncState = await loadSyncSetupState(storage, syncSecretStore);
   if (!syncState.hasAuthSession || syncState.preferences.mode !== "managed") {
+    // The rate limit is per account: a back-off armed by a previous session
+    // must not hold the next account's pushes.
+    resetManagedPartnerProjectionPushBackoff();
+    return { skipped: true, syncedCount: 0 };
+  }
+  if (isManagedPartnerProjectionPushBackedOff()) {
     return { skipped: true, syncedCount: 0 };
   }
 

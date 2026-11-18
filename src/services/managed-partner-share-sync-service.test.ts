@@ -125,7 +125,8 @@ describe("syncManagedPartnerSharedProjections", () => {
       expect(uploadSpy).toHaveBeenCalledTimes(1);
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
 
-      setupSpy.mockClear();
+      const accessSpy = jest.mocked(managedPartnerAccessService.loadManagedPartnerAccess);
+      accessSpy.mockClear();
       await expect(
         syncManagedPartnerSharedProjections(
           storage,
@@ -134,8 +135,38 @@ describe("syncManagedPartnerSharedProjections", () => {
           FIXED_NOW,
         ),
       ).resolves.toEqual({ skipped: true, syncedCount: 0 });
-      expect(setupSpy).not.toHaveBeenCalled();
+      expect(setupSpy).toHaveBeenCalled();
+      expect(accessSpy).not.toHaveBeenCalled();
       expect(uploadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("drops the back-off once there is no managed session, so the next account is not held", async () => {
+      const setupSpy = armTwoGrantPush();
+      jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 900 });
+      const storage = createLocalAppStorageMock();
+      const syncSecretStore = createSyncSecretStoreMock();
+      await syncManagedPartnerSharedProjections(
+        storage,
+        syncSecretStore,
+        {} as PartnerShareSecretStore,
+        FIXED_NOW,
+      );
+      expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
+
+      setupSpy.mockResolvedValueOnce({
+        hasAuthSession: false,
+        preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
+      await syncManagedPartnerSharedProjections(
+        storage,
+        syncSecretStore,
+        {} as PartnerShareSecretStore,
+        FIXED_NOW,
+      );
+
+      expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
     });
 
     it("does not back off on other upload failures", async () => {

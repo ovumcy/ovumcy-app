@@ -1122,18 +1122,11 @@ export function createManagedCloudAPIClient(
           },
         },
         isRawManagedCloudPartnerProjection,
-      ).then((result) => {
-        if (result.ok) {
-          return { ok: true, projection: mapPartnerProjection(result.payload) };
-        }
-        return result.retryAfterSeconds === undefined
-          ? { ok: false, errorCode: result.errorCode }
-          : {
-              ok: false,
-              errorCode: result.errorCode,
-              retryAfterSeconds: result.retryAfterSeconds,
-            };
-      });
+      ).then((result) =>
+        result.ok
+          ? { ok: true, projection: mapPartnerProjection(result.payload) }
+          : result,
+      );
     },
   };
 }
