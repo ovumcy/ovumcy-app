@@ -22,6 +22,8 @@ export type ManagedCloudAPIErrorCode =
   | "partner_access_unavailable"
   | "partner_invite_expired"
   | "partner_invite_not_found"
+  | "partner_invite_limit_reached"
+  | "partner_grant_limit_reached"
   | "entitlements_unavailable"
   | "entitlements_not_configured"
   | "unauthorized"
@@ -460,7 +462,12 @@ export type ManagedCloudAPIClient = {
     },
   ): Promise<
     | { ok: true; projection: ManagedCloudPartnerProjection }
-    | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+    | {
+        ok: false;
+        errorCode: ManagedCloudAPIErrorCode;
+        // Seconds from a parseable `Retry-After` on a 429; absent otherwise.
+        retryAfterSeconds?: number;
+      }
   >;
 };
 
@@ -1115,11 +1122,18 @@ export function createManagedCloudAPIClient(
           },
         },
         isRawManagedCloudPartnerProjection,
-      ).then((result) =>
-        result.ok
-          ? { ok: true, projection: mapPartnerProjection(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
-      );
+      ).then((result) => {
+        if (result.ok) {
+          return { ok: true, projection: mapPartnerProjection(result.payload) };
+        }
+        return result.retryAfterSeconds === undefined
+          ? { ok: false, errorCode: result.errorCode }
+          : {
+              ok: false,
+              errorCode: result.errorCode,
+              retryAfterSeconds: result.retryAfterSeconds,
+            };
+      });
     },
   };
 }
@@ -1185,13 +1199,18 @@ async function requestJSON<T>(
   guard: (value: unknown) => value is T,
 ): Promise<
   | { ok: true; payload: T }
-  | { ok: false; errorCode: ManagedCloudAPIErrorCode }
+  | { ok: false; errorCode: ManagedCloudAPIErrorCode; retryAfterSeconds?: number }
 > {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
   if (!response.ok) {
+    const retryAfterSeconds =
+      response.status === 429
+        ? parseRetryAfterSeconds(response.headers.get("Retry-After"))
+        : null;
     return {
       ok: false,
       errorCode: await readErrorCode(response),
+      ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
     };
   }
 
@@ -1277,6 +1296,8 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_access_unavailable":
       case "partner_invite_expired":
       case "partner_invite_not_found":
+      case "partner_invite_limit_reached":
+      case "partner_grant_limit_reached":
       case "invalid_partner_projection":
       case "partner_projection_not_found":
       case "entitlements_unavailable":
@@ -1308,6 +1329,16 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
 // transport failure so offline-grace readers keep the bounded cache.
 function unrecognizedErrorCode(status: number): ManagedCloudAPIErrorCode {
   return status >= 500 ? "network_failed" : "generic";
+}
+
+// Delta-seconds only; an HTTP-date or junk value yields null and the caller
+// falls back to its own default back-off.
+function parseRetryAfterSeconds(value: string | null): number | null {
+  const trimmed = value?.trim() ?? "";
+  if (!/^\d{1,9}$/.test(trimmed)) {
+    return null;
+  }
+  return Number(trimmed);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

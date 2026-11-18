@@ -14,6 +14,9 @@ describe("resolvePartnerErrorMessage", () => {
     ["partner_invite_expired", copy.errors.partnerInviteExpired],
     ["partner_access_unavailable", copy.errors.partnerAccessUnavailable],
     ["partner_access_not_found", copy.errors.partnerAccessNotFound],
+    ["partner_invite_limit_reached", copy.errors.partnerInviteLimitReached],
+    ["partner_grant_limit_reached", copy.errors.partnerGrantLimitReached],
+    ["rate_limited", copy.errors.rateLimited],
     ["network_failed", copy.errors.networkFailed],
   ])("maps %s to its dedicated copy", (errorCode, expected) => {
     expect(resolvePartnerErrorMessage(errorCode, copy)).toBe(expected);

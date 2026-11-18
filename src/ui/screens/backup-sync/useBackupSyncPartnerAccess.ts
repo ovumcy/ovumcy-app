@@ -299,6 +299,9 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       setPartnerErrorMessage(partnerCopy.errors.generic);
     }
 
+    // The server revoked every pending invite with the grant, so a link still
+    // on screen no longer works.
+    setPartnerInviteLink("");
     setPartnerStatusMessage(partnerCopy.statusGrantRevoked);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
