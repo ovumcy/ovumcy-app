@@ -27,6 +27,8 @@ With two-factor on, *Regenerate recovery code* asks for a current 6-digit code n
 
 With or without two-factor, the server replaces the recovery code before it answers a regeneration. If that answer never reaches the app (a network drop or an unreadable reply), the app warns that the old code may no longer work and asks you to regenerate again; a refusal the server did answer, such as a wrong password, keeps its own message.
 
+Deleting an Ovumcy Cloud account asks for your account password after the device check and the confirmations, and — with two-factor on — a current 6-digit code; the server erases nothing until both are right. The code field shows whenever two-factor is on or its status could not be loaded; an empty code is not sent. A wrong password or code, a code already used, or too many attempts keep the form open with their own message, and nothing on the device is touched. Codes count toward the same per-account attempt limit as disable and regenerate. The password and code travel in the request body only and are cleared from the form on every submit. A guest partner session has no password, so it deletes without the form.
+
 If verification fails:
 
 - *Code is incorrect* — besides a mistyped or expired code, this is also what you see when setup was started again on another device: only the newest pending secret counts. Finish setup on that device, or tap *Cancel* and start again here.

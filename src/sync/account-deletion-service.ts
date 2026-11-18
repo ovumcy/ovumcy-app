@@ -19,6 +19,7 @@ import {
   createSyncAPIClient,
   type SyncAPIClient,
   type SyncAPIErrorCode,
+  type SyncRecoveryKeyStepUp,
 } from "./sync-api-client";
 import {
   normalizeSyncEndpoint,
@@ -157,6 +158,9 @@ export async function deleteOvumcyAccount(
   secretStore: SyncSecretStore,
   wipeScopeSecretStores: WipeScopeSecretStores,
   preferences: SyncPreferencesRecord,
+  // Managed only: the password (+ TOTP code) Ovumcy Cloud re-confirms before
+  // erasing. Omitted for a guest-partner session, which has no password.
+  managedStepUp?: SyncRecoveryKeyStepUp,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
@@ -170,6 +174,7 @@ export async function deleteOvumcyAccount(
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await managedClient.deleteAccount(
       secrets.managedAuthSessionToken,
+      managedStepUp,
     );
     if (!result.ok) {
       return { ok: false, errorCode: result.errorCode };

@@ -270,15 +270,56 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
+      { currentPassword: "very secure password 12345", code: "123456" },
       jest.fn(),
       managedClientFactory,
     );
 
     expect(result).toEqual({ ok: true });
-    expect(deleteAccount).toHaveBeenCalledWith("managed-session-1");
+    expect(deleteAccount).toHaveBeenCalledWith("managed-session-1", {
+      currentPassword: "very secure password 12345",
+      code: "123456",
+    });
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
     expect(readManagedPartnerInviteToken()).toBe("");
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+  });
+
+  it("aborts before any local teardown when Ovumcy Cloud rejects the password", async () => {
+    const storage = createLocalAppStorageMock();
+    const preparedSecrets = createSyncSecretsRecord(
+      "Pixel 7",
+      new Date("2026-03-20T08:00:00.000Z"),
+    );
+    const secretStore = createSyncSecretStoreMock({
+      ...preparedSecrets.record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      setupStatus: "connected" as const,
+    };
+    const deleteAccount = jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "invalid_current_password" });
+    const managedClientFactory = jest.fn().mockReturnValue(
+      createManagedClientMock({ deleteAccount }),
+    );
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      secretStore,
+      createWipeScopeSecretStoresMock(),
+      preferences,
+      { currentPassword: "wrong password value" },
+      jest.fn(),
+      managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "invalid_current_password" });
+    await expect(secretStore.readSyncSecrets()).resolves.not.toBeNull();
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
   });
 
   it("calls DELETE /account on the self-hosted backend using the normalized endpoint", async () => {
@@ -308,6 +349,7 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
+      { currentPassword: "managed only, never sent here" },
       apiClientFactory,
     );
 
@@ -333,6 +375,7 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
+      undefined,
       apiClientFactory,
       managedClientFactory,
     );
@@ -370,6 +413,7 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
+      undefined,
       jest.fn(),
       managedClientFactory,
     );
@@ -411,6 +455,7 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
+      undefined,
       apiClientFactory,
     );
 
@@ -475,12 +520,13 @@ describe("deleteOvumcyAccount", () => {
       syncSecretStore,
       wipeScopeSecretStores,
       preferences,
+      undefined,
       jest.fn(),
       jest.fn().mockReturnValue(createManagedClientMock({ deleteAccount })),
     );
 
     expect(result).toEqual({ ok: true });
-    expect(deleteAccount).toHaveBeenCalledWith("managed-session-1");
+    expect(deleteAccount).toHaveBeenCalledWith("managed-session-1", undefined);
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     expect(backend.keys()).toEqual(storageOwnedKeys);
   });
@@ -539,6 +585,7 @@ describe("deleteOvumcyAccount", () => {
         createSyncSecretStoreMock(null),
         createWipeScopeSecretStoresMock(),
         localPreferences,
+        undefined,
         jest.fn(),
         jest.fn(),
         scheduler,
@@ -568,6 +615,7 @@ describe("deleteOvumcyAccount", () => {
           },
         },
         localPreferences,
+        undefined,
         jest.fn(),
         jest.fn(),
         scheduler,
@@ -592,6 +640,7 @@ describe("deleteOvumcyAccount", () => {
         createSyncSecretStoreMock(null),
         createWipeScopeSecretStoresMock(),
         localPreferences,
+        undefined,
         jest.fn(),
         jest.fn(),
         scheduler,
@@ -621,6 +670,7 @@ describe("deleteOvumcyAccount", () => {
           mode: "managed" as const,
           setupStatus: "connected" as const,
         },
+        undefined,
         jest.fn(),
         jest.fn().mockReturnValue(
           createManagedClientMock({

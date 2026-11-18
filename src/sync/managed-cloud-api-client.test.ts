@@ -1652,7 +1652,78 @@ describe("managed-cloud-api-client", () => {
       "Bearer managed-session-1",
     );
     expect((call?.[1] as RequestInit).redirect).toBe("error");
+    // A guest-partner deletion sends no body at all.
+    expect((call?.[1] as RequestInit).body).toBeUndefined();
+    expect((call?.[1]?.headers as Headers).get("Content-Type")).toBeNull();
   });
+
+  it("sends the step-up password, and the code only when given, in the DELETE /account body", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.deleteAccount("managed-session-1", {
+        currentPassword: "very secure password 12345",
+      }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      client.deleteAccount("managed-session-1", {
+        currentPassword: "very secure password 12345",
+        code: "123456",
+      }),
+    ).resolves.toEqual({ ok: true });
+
+    const [passwordOnly, withCode] = fetch.mock.calls;
+    expect(passwordOnly?.[0]).toBe("https://managed.example/account");
+    expect(passwordOnly?.[1]?.method).toBe("DELETE");
+    expect((passwordOnly?.[1]?.headers as Headers).get("Content-Type")).toBe(
+      "application/json",
+    );
+    expect(JSON.parse(String(passwordOnly?.[1]?.body))).toEqual({
+      current_password: "very secure password 12345",
+    });
+    expect(JSON.parse(String(withCode?.[1]?.body))).toEqual({
+      current_password: "very secure password 12345",
+      code: "123456",
+    });
+  });
+
+  it.each([
+    [401, "invalid_current_password", "invalid_current_password"],
+    [401, "totp_invalid_code", "totp_invalid_code"],
+    [401, "totp_replayed", "totp_replayed"],
+    [429, "rate_limited", "rate_limited"],
+    [503, "totp_not_configured", "totp_not_configured"],
+    [500, "totp_secret_failed", "totp_secret_failed"],
+    [400, "invalid_json", "generic"],
+  ])(
+    "maps a %i %s on the step-up deleteAccount to %s",
+    async (status, error, expected) => {
+      const fetch = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error }), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const client = createManagedCloudAPIClient(
+        "https://managed.example/",
+        fetch as unknown as typeof globalThis.fetch,
+      );
+
+      await expect(
+        client.deleteAccount("managed-session-1", {
+          currentPassword: "very secure password 12345",
+          code: "123456",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: expected });
+    },
+  );
 
   it("maps deleteAccount error keys, including unauthorized and network failure", async () => {
     const fetch = jest

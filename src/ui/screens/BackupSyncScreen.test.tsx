@@ -2534,9 +2534,16 @@ describe("BackupSyncScreen", () => {
     await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
+    await confirmDeletionWithPassword("very secure password 12345");
     await waitFor(() =>
       expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
     );
+    const deleteCall = jest
+      .mocked(global.fetch)
+      .mock.calls.find(([, init]) => init?.method === "DELETE");
+    expect(JSON.parse(String(deleteCall?.[1]?.body))).toEqual({
+      current_password: "very secure password 12345",
+    });
     expect(mockReplace).toHaveBeenCalledWith(
       expect.stringContaining("/onboarding?reset="),
     );
@@ -2575,6 +2582,7 @@ describe("BackupSyncScreen", () => {
 
     await screen.findByTestId("settings-sync-section");
     await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
+    await confirmDeletionWithPassword("very secure password 12345");
 
     await waitFor(() =>
       expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
@@ -3170,6 +3178,15 @@ function createManagedBillingFetchMock(options: {
 // fixture with the DELETE /account endpoint the "Delete account" flow calls
 // once both confirms are accepted, so account-deletion tests can exercise
 // the real ManagedCloudAPIClient instead of injecting a factory mock.
+async function confirmDeletionWithPassword(password: string) {
+  await fireEvent.changeText(
+    await screen.findByTestId("sync-delete-account-stepup-password"),
+    password,
+  );
+  expect(screen.queryByTestId("sync-delete-account-stepup-code")).toBeNull();
+  await fireEvent.press(screen.getByTestId("sync-delete-account-stepup-confirm"));
+}
+
 function createManagedDeletionFetchMock(options: {
   billing: Record<string, unknown>;
 }): typeof fetch {

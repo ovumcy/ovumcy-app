@@ -18,6 +18,8 @@ export type BackupSyncRecoveryKeyStepUpSectionProps = {
   onCancel: () => void;
   onSubmit: (stepUp: SyncRecoveryKeyStepUp) => void | Promise<void>;
   prompt: RecoveryKeyStepUpPrompt;
+  // Also renders the account-deletion step-up; each use keeps its own testIDs.
+  testIDPrefix?: string;
 };
 
 /**
@@ -30,6 +32,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
   onCancel,
   onSubmit,
   prompt,
+  testIDPrefix = "sync-recovery-key-stepup",
 }: BackupSyncRecoveryKeyStepUpSectionProps) {
   const styles = useThemedStyles(createStyles);
   const [password, setPassword] = useState("");
@@ -67,7 +70,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
         onChangeText={setPassword}
         secureTextEntry
         style={styles.input}
-        testID="sync-recovery-key-stepup-password"
+        testID={`${testIDPrefix}-password`}
         textContentType="password"
         value={password}
       />
@@ -83,7 +86,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
             maxLength={6}
             onChangeText={setCode}
             style={styles.input}
-            testID="sync-recovery-key-stepup-code"
+            testID={`${testIDPrefix}-code`}
             textContentType="oneTimeCode"
             value={code}
           />
@@ -92,7 +95,7 @@ export function BackupSyncRecoveryKeyStepUpSection({
       {errorMessage ? (
         <StatusBanner
           message={errorMessage}
-          testID="sync-recovery-key-stepup-error"
+          testID={`${testIDPrefix}-error`}
           tone="error"
         />
       ) : null}
@@ -101,13 +104,13 @@ export function BackupSyncRecoveryKeyStepUpSection({
           disabled={isBusy || password.length === 0 || !isSendableCode(code)}
           label={copy.confirmLabel}
           onPress={handleSubmit}
-          testID="sync-recovery-key-stepup-confirm"
+          testID={`${testIDPrefix}-confirm`}
         />
         <AppButton
           disabled={isBusy}
           label={copy.cancelLabel}
           onPress={handleCancel}
-          testID="sync-recovery-key-stepup-cancel"
+          testID={`${testIDPrefix}-cancel`}
           variant="secondary"
         />
       </View>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 
+import { selectAccountDeletionStepUpCopy } from "../../i18n/account-deletion-stepup-copy";
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
 import { getDeviceCopy } from "../../i18n/device-copy";
 import { selectRecoveryKeyStepUpCopy } from "../../i18n/recovery-key-stepup-copy";
@@ -123,6 +124,12 @@ export type BackupSyncFlowScreenProps = {
     stepUp: SyncRecoveryKeyStepUp,
   ) => void | Promise<void>;
   onCancelRecoveryKeyStepUp: () => void;
+  accountDeletionStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  isDeletingAccount: boolean;
+  onSubmitAccountDeletionStepUp: (
+    stepUp: SyncRecoveryKeyStepUp,
+  ) => void | Promise<void>;
+  onCancelAccountDeletionStepUp: () => void;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -213,6 +220,10 @@ export function BackupSyncFlowScreen({
   isSyncingNow,
   onSubmitRecoveryKeyStepUp,
   onCancelRecoveryKeyStepUp,
+  accountDeletionStepUpPrompt,
+  isDeletingAccount,
+  onSubmitAccountDeletionStepUp,
+  onCancelAccountDeletionStepUp,
   viewData,
   backLabel,
   onBack,
@@ -276,6 +287,16 @@ export function BackupSyncFlowScreen({
           onCancel={onCancelRecoveryKeyStepUp}
           onSubmit={onSubmitRecoveryKeyStepUp}
           prompt={recoveryKeyStepUpPrompt}
+        />
+      ) : null}
+      {accountDeletionStepUpPrompt ? (
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={selectAccountDeletionStepUpCopy(language)}
+          isBusy={isDeletingAccount}
+          onCancel={onCancelAccountDeletionStepUp}
+          onSubmit={onSubmitAccountDeletionStepUp}
+          prompt={accountDeletionStepUpPrompt}
+          testIDPrefix="sync-delete-account-stepup"
         />
       ) : null}
       <SettingsSyncSetupSection
