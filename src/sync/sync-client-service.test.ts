@@ -1240,6 +1240,66 @@ describe("sync-client-service", () => {
       expect(logout).toHaveBeenCalledTimes(1);
     });
 
+    it("logs out with the stored token when the renewal cannot reach the server, and clears locally after two failed logouts", async () => {
+      const secretStore = createManagedSecretStore("2026-11-18T11:00:00.000Z");
+      const refreshSession = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "network_failed" });
+      const logout = jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "network_failed" });
+
+      const result = await disconnectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        managedPreferences,
+        jest.fn(),
+        jest.fn().mockReturnValue(
+          createManagedClientMock({ refreshSession, logout }),
+        ),
+        now,
+      );
+
+      expect(logout).toHaveBeenCalledTimes(2);
+      expect(logout).toHaveBeenCalledWith("managed-session-old");
+      expect(result.preferences.setupStatus).toBe("local_ready");
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({
+          managedAuthSessionToken: null,
+          managedRefreshToken: null,
+        }),
+      );
+    });
+
+    it("leaves managed credentials alone when disconnecting a self-hosted sync", async () => {
+      const secretStore = createManagedSecretStore("2026-11-18T11:00:00.000Z");
+      const managedLogout = jest.fn();
+
+      await disconnectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        {
+          ...managedPreferences,
+          mode: "self_hosted" as const,
+          endpointInput: "192.168.1.20:8080",
+          normalizedEndpoint: "http://192.168.1.20:8080",
+        },
+        jest.fn().mockReturnValue(createAPIClientMock({ logout: jest.fn() })),
+        jest.fn().mockReturnValue(
+          createManagedClientMock({ logout: managedLogout }),
+        ),
+        now,
+      );
+
+      expect(managedLogout).not.toHaveBeenCalled();
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({
+          managedAuthSessionToken: "managed-session-old",
+          managedRefreshToken: "refresh-old",
+        }),
+      );
+    });
+
     it("skips the logout when the refresh chain is already dead and still clears local state", async () => {
       const secretStore = createManagedSecretStore("2026-11-18T11:00:00.000Z");
       const refreshSession = jest
