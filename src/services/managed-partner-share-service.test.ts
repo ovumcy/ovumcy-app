@@ -676,6 +676,36 @@ describe("managed-partner-share-service", () => {
         errorCode: "share_key_unavailable",
       });
     });
+
+    it("forwards a rate-limited upload with the server's Retry-After", async () => {
+      const syncSecretStore = await setupConnectedSyncSecrets();
+      const partnerShareSecretStore = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      global.fetch = jest.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "12" },
+          }),
+      ) as typeof fetch;
+
+      await expect(
+        uploadManagedPartnerProjection(syncSecretStore, "managed", {
+          projection: buildProjectionPayload(),
+          partnerShareSecretStore,
+        }),
+      ).resolves.toEqual({
+        ok: false,
+        errorCode: "rate_limited",
+        retryAfterSeconds: 12,
+      });
+    });
   });
 
   describe("partner-side anti-replay (F5)", () => {
