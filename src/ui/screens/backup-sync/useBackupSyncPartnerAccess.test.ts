@@ -694,6 +694,9 @@ describe("useBackupSyncPartnerAccess", () => {
         value: createGrant({ revokedAt: "2026-03-20T08:00:00.000Z" }),
       });
       const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+      await act(async () => {
+        result.current.setPartnerInviteLink("https://invite.example/pending");
+      });
 
       await act(async () => {
         await result.current.handleRevokePartnerGrant("grant-1");
@@ -703,6 +706,8 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerShareSecretStore,
         "grant-1",
       );
+      // The grant revoke also revoked the owner's pending invites server-side.
+      expect(result.current.partnerInviteLink).toBe("");
       expect(core.setPartnerStatusMessage).toHaveBeenCalledWith(
         core.partnerCopy.statusGrantRevoked,
       );

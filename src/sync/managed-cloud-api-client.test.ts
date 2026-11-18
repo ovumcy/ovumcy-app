@@ -591,6 +591,90 @@ describe("managed-cloud-api-client", () => {
     });
   });
 
+  it("maps the per-owner partner caps on issue, accept and guest accept", async () => {
+    const conflict = (error: string) =>
+      new Response(JSON.stringify({ error }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(conflict("partner_invite_limit_reached"))
+      .mockResolvedValueOnce(conflict("partner_grant_limit_reached"))
+      .mockResolvedValueOnce(conflict("partner_grant_limit_reached"));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.issuePartnerInvite("managed-session-1", { accessLevel: "summary" }),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_invite_limit_reached" });
+    await expect(
+      client.acceptPartnerInvite("managed-session-1", "invite-token-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_grant_limit_reached" });
+    await expect(
+      client.acceptPartnerInviteAsGuest("invite-token-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_grant_limit_reached" });
+  });
+
+  it.each([
+    ["42", { retryAfterSeconds: 42 }],
+    [" 7 ", { retryAfterSeconds: 7 }],
+    ["Wed, 21 Oct 2026 07:28:00 GMT", {}],
+    ["-5", {}],
+    [null, {}],
+  ])(
+    "surfaces Retry-After %p on a rate-limited projection upload",
+    async (retryAfter, expectedExtra) => {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (retryAfter !== null) {
+        headers["Retry-After"] = retryAfter;
+      }
+      const fetch = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "rate_limited" }), {
+          status: 429,
+          headers,
+        }),
+      );
+      const client = createManagedCloudAPIClient(
+        "http://127.0.0.1:8090",
+        fetch as unknown as typeof global.fetch,
+      );
+
+      await expect(
+        client.upsertPartnerProjection("managed-session-1", "grant-1", {
+          schemaVersion: 1,
+          checksumSHA256: "deadbeef",
+          ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+          ciphertextSize: 15,
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "rate_limited", ...expectedExtra });
+    },
+  );
+
+  it("ignores Retry-After on a non-429 failure", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "partner_access_not_found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json", "Retry-After": "30" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 15,
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_access_not_found" });
+  });
+
   it("accepts a partner invite as a guest with no Authorization header and maps the session + grant + invite", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(

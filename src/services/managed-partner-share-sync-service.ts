@@ -8,6 +8,10 @@ import {
   reserveNextManagedPartnerProjectionGeneration,
   uploadManagedPartnerProjection,
 } from "./managed-partner-share-service";
+import {
+  backOffManagedPartnerProjectionPush,
+  isManagedPartnerProjectionPushBackedOff,
+} from "./managed-partner-projection-backoff";
 import { buildPartnerSharedProjectionPayload } from "./partner-shared-projection-service";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 
@@ -20,6 +24,10 @@ export async function syncManagedPartnerSharedProjections(
   skipped: boolean;
   syncedCount: number;
 }> {
+  if (isManagedPartnerProjectionPushBackedOff()) {
+    return { skipped: true, syncedCount: 0 };
+  }
+
   const syncState = await loadSyncSetupState(storage, syncSecretStore);
   if (!syncState.hasAuthSession || syncState.preferences.mode !== "managed") {
     return { skipped: true, syncedCount: 0 };
@@ -112,6 +120,10 @@ export async function syncManagedPartnerSharedProjections(
     );
     if (uploadResult.ok) {
       syncedCount += 1;
+    } else if (uploadResult.errorCode === "rate_limited") {
+      // The limit is per account, so the remaining grants would 429 too.
+      backOffManagedPartnerProjectionPush(uploadResult.retryAfterSeconds);
+      break;
     }
   }
 

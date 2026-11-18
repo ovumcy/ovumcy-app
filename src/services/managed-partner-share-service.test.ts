@@ -463,6 +463,25 @@ describe("managed-partner-share-service", () => {
       const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
       expect(secrets.consumedInviteIDs["invite-1"]?.grantID).toBe("grant-1");
     });
+
+    it("drops every pending invite key, since the server revokes them with the grant", async () => {
+      const partnerShareSecretStore = createPartnerShareSecretStoreMock();
+      await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
+        invite: buildInviteFixture(),
+        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+      });
+      expect(
+        Object.keys(
+          (await partnerShareSecretStore.readPartnerShareSecrets())
+            .pendingInviteKeysByInviteID,
+        ),
+      ).toEqual(["invite-1"]);
+
+      await clearManagedPartnerGrantKey(partnerShareSecretStore, "grant-1");
+
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.pendingInviteKeysByInviteID).toEqual({});
+    });
   });
 
   describe("reserveNextManagedPartnerProjectionGeneration", () => {

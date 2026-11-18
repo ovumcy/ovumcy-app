@@ -51,7 +51,8 @@ const partnerCopyEn = {
   statusInviteIssued: "Partner invite link created.",
   statusInviteAccepted: "Partner invite accepted on this device.",
   statusInviteRevoked: "Pending partner invite revoked.",
-  statusGrantRevoked: "Partner access revoked.",
+  statusGrantRevoked:
+    "Partner access revoked. Pending invite links were revoked too.",
   sharedViewTitle: "Shared cycle view",
   sharedViewSubtitle:
     "This read-only view is available only through Ovumcy Cloud partner sharing.",
@@ -90,6 +91,11 @@ const partnerCopyEn = {
       "Partner access is not available for this Ovumcy Cloud account right now.",
     partnerAccessNotFound: "This partner access record could not be found.",
     networkFailed: "Unable to reach Ovumcy Cloud right now.",
+    partnerInviteLimitReached:
+      "You have reached the limit of pending invites. Revoke one before creating another.",
+    partnerGrantLimitReached:
+      "The person who invited you already shares with the maximum number of partners. The invite is still valid: ask them to remove a partner, then try again.",
+    rateLimited: "Too many attempts. Please wait a moment before trying again.",
     generic: "Unable to update partner access right now. Please try again.",
   },
   premiumEyebrowLabel: "Premium",
@@ -184,7 +190,8 @@ const partnerCopyDe = {
   statusInviteIssued: "Partner-Einladungslink erstellt.",
   statusInviteAccepted: "Partnereinladung auf diesem Gerät angenommen.",
   statusInviteRevoked: "Ausstehende Partnereinladung widerrufen.",
-  statusGrantRevoked: "Partnerzugriff widerrufen.",
+  statusGrantRevoked:
+    "Partnerzugriff widerrufen. Ausstehende Einladungslinks wurden ebenfalls widerrufen.",
   sharedViewTitle: "Geteilte Zyklusansicht",
   sharedViewSubtitle:
     "Diese schreibgeschützte Ansicht ist nur über den Partnerzugriff in Ovumcy Cloud verfügbar.",
@@ -223,6 +230,11 @@ const partnerCopyDe = {
       "Partnerzugriff ist für dieses Ovumcy-Cloud-Konto gerade nicht verfügbar.",
     partnerAccessNotFound: "Dieser Partnerzugriff wurde nicht gefunden.",
     networkFailed: "Ovumcy Cloud ist gerade nicht erreichbar.",
+    partnerInviteLimitReached:
+      "Sie haben das Limit für ausstehende Einladungen erreicht. Widerrufen Sie eine, bevor Sie eine neue erstellen.",
+    partnerGrantLimitReached:
+      "Die einladende Person teilt bereits mit der maximalen Anzahl an Partnern. Die Einladung bleibt gültig: Bitten Sie darum, einen Partner zu entfernen, und versuchen Sie es dann erneut.",
+    rateLimited: "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
     generic: "Partnerzugriff konnte gerade nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
   },
   premiumEyebrowLabel: "Premium",
@@ -322,7 +334,8 @@ const partnerCopyFr = {
   statusInviteIssued: "Lien d’invitation partenaire créé.",
   statusInviteAccepted: "Invitation partenaire acceptée sur cet appareil.",
   statusInviteRevoked: "Invitation partenaire en attente retirée.",
-  statusGrantRevoked: "Accès partenaire retiré.",
+  statusGrantRevoked:
+    "Accès partenaire retiré. Les liens d'invitation en attente ont aussi été retirés.",
   sharedViewTitle: "Vue de cycle partagée",
   sharedViewSubtitle:
     "Cette vue en lecture seule est disponible uniquement via le partage partenaire Ovumcy Cloud.",
@@ -361,6 +374,11 @@ const partnerCopyFr = {
       "L’accès partenaire n’est pas disponible pour ce compte Ovumcy Cloud pour le moment.",
     partnerAccessNotFound: "Cet accès partenaire est introuvable.",
     networkFailed: "Impossible de joindre Ovumcy Cloud pour le moment.",
+    partnerInviteLimitReached:
+      "Vous avez atteint la limite d'invitations en attente. Retirez-en une avant d'en créer une autre.",
+    partnerGrantLimitReached:
+      "La personne qui vous a invité partage déjà avec le nombre maximal de partenaires. L'invitation reste valide : demandez-lui de retirer un partenaire, puis réessayez.",
+    rateLimited: "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
     generic: "Impossible de mettre à jour l’accès partenaire pour le moment. Réessayez.",
   },
   premiumEyebrowLabel: "Premium",
@@ -459,7 +477,8 @@ const partnerCopyRu = {
   statusInviteIssued: "Ссылка-приглашение для партнёра создана.",
   statusInviteAccepted: "Приглашение партнёра принято на этом устройстве.",
   statusInviteRevoked: "Ожидающее приглашение партнёра отозвано.",
-  statusGrantRevoked: "Доступ партнёра отозван.",
+  statusGrantRevoked:
+    "Доступ партнёра отозван. Ожидающие ссылки-приглашения тоже отозваны.",
   sharedViewTitle: "Общий просмотр цикла",
   sharedViewSubtitle:
     "Этот просмотр только для чтения доступен только через партнёрский доступ Ovumcy Cloud.",
@@ -498,6 +517,11 @@ const partnerCopyRu = {
       "Доступ партнёра сейчас недоступен для этого аккаунта Ovumcy Cloud.",
     partnerAccessNotFound: "Эта запись доступа партнёра не найдена.",
     networkFailed: "Сейчас не удаётся связаться с Ovumcy Cloud.",
+    partnerInviteLimitReached:
+      "Достигнут лимит ожидающих приглашений. Отзовите одно, прежде чем создавать новое.",
+    partnerGrantLimitReached:
+      "Пригласивший вас человек уже делится данными с максимальным числом партнёров. Приглашение по-прежнему действует: попросите отключить одного из партнёров и попробуйте снова.",
+    rateLimited: "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
     generic: "Сейчас не удалось обновить доступ партнёра. Попробуй ещё раз.",
   },
   premiumEyebrowLabel: "Премиум",
@@ -592,7 +616,8 @@ const partnerCopyEs = {
   statusInviteIssued: "Se creó el enlace de invitación de pareja.",
   statusInviteAccepted: "La invitación de pareja se aceptó en este dispositivo.",
   statusInviteRevoked: "Se revocó la invitación de pareja pendiente.",
-  statusGrantRevoked: "Se revocó el acceso de pareja.",
+  statusGrantRevoked:
+    "Se revocó el acceso de pareja. También se revocaron los enlaces de invitación pendientes.",
   sharedViewTitle: "Vista compartida del ciclo",
   sharedViewSubtitle:
     "Esta vista de solo lectura solo está disponible mediante el acceso de pareja de Ovumcy Cloud.",
@@ -631,6 +656,11 @@ const partnerCopyEs = {
       "El acceso de pareja no está disponible para esta cuenta de Ovumcy Cloud ahora mismo.",
     partnerAccessNotFound: "No se encontró este acceso de pareja.",
     networkFailed: "No se puede contactar con Ovumcy Cloud ahora mismo.",
+    partnerInviteLimitReached:
+      "Alcanzaste el límite de invitaciones pendientes. Revoca una antes de crear otra.",
+    partnerGrantLimitReached:
+      "La persona que te invitó ya comparte con el número máximo de parejas. La invitación sigue siendo válida: pídele que quite a una pareja y vuelve a intentarlo.",
+    rateLimited: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
     generic: "No se pudo actualizar el acceso de pareja ahora mismo. Inténtalo otra vez.",
   },
   premiumEyebrowLabel: "Premium",
@@ -727,7 +757,8 @@ const partnerCopyIt = {
   statusInviteIssued: "Link di invito partner creato.",
   statusInviteAccepted: "Invito partner accettato su questo dispositivo.",
   statusInviteRevoked: "Invito partner in sospeso revocato.",
-  statusGrantRevoked: "Accesso partner revocato.",
+  statusGrantRevoked:
+    "Accesso partner revocato. Anche i link di invito in sospeso sono stati revocati.",
   sharedViewTitle: "Vista condivisa del ciclo",
   sharedViewSubtitle:
     "Questa vista di sola lettura è disponibile solo tramite la condivisione partner di Ovumcy Cloud.",
@@ -766,6 +797,11 @@ const partnerCopyIt = {
       "L'accesso partner non è al momento disponibile per questo account Ovumcy Cloud.",
     partnerAccessNotFound: "Impossibile trovare questo record di accesso partner.",
     networkFailed: "Impossibile raggiungere Ovumcy Cloud in questo momento.",
+    partnerInviteLimitReached:
+      "Hai raggiunto il limite di inviti in sospeso. Revocane uno prima di crearne un altro.",
+    partnerGrantLimitReached:
+      "La persona che ti ha invitato condivide già con il numero massimo di partner. L'invito resta valido: chiedile di rimuovere un partner, poi riprova.",
+    rateLimited: "Troppi tentativi. Attendi un momento prima di riprovare.",
     generic: "Impossibile aggiornare l'accesso partner in questo momento. Riprova.",
   },
   premiumEyebrowLabel: "Premium",

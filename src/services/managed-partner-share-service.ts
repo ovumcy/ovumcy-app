@@ -32,6 +32,7 @@ export type ManagedPartnerShareResult<T> =
         | "not_connected"
         | "share_key_unavailable"
         | "invalid_partner_projection";
+      retryAfterSeconds?: number;
     };
 
 /**
@@ -192,6 +193,10 @@ export async function reconcileManagedPartnerShareKeys(
  * `consumedInviteIDs[sourceInviteID]` is preserved on purpose — re-issuing
  * the same invite token would otherwise become possible if the marker were
  * cleared.
+ *
+ * Managed cloud revokes every pending invite of the owner in the same
+ * transaction as a grant revoke (MNG-29), so the pending invite keys are
+ * dropped here too: no invite they could rotate into a grant is left.
  */
 export async function clearManagedPartnerGrantKey(
   partnerShareSecretStore: PartnerShareSecretStore,
@@ -204,6 +209,7 @@ export async function clearManagedPartnerGrantKey(
   await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
     delete record.grantKeysByGrantID[trimmed];
     delete record.ownerGenerationByGrantID[trimmed];
+    record.pendingInviteKeysByInviteID = {};
   });
 }
 
@@ -266,9 +272,16 @@ export async function uploadManagedPartnerProjection(
     ciphertextSize: encryptedProjection.ciphertextSize,
   });
 
-  return result.ok
-    ? { ok: true, value: result.projection }
-    : { ok: false, errorCode: result.errorCode };
+  if (result.ok) {
+    return { ok: true, value: result.projection };
+  }
+  return result.retryAfterSeconds === undefined
+    ? { ok: false, errorCode: result.errorCode }
+    : {
+        ok: false,
+        errorCode: result.errorCode,
+        retryAfterSeconds: result.retryAfterSeconds,
+      };
 }
 
 export async function loadManagedPartnerProjection(

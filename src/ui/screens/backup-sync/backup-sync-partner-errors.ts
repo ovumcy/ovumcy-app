@@ -17,6 +17,12 @@ export function resolvePartnerErrorMessage(
       return copy.errors.partnerAccessUnavailable;
     case "partner_access_not_found":
       return copy.errors.partnerAccessNotFound;
+    case "partner_invite_limit_reached":
+      return copy.errors.partnerInviteLimitReached;
+    case "partner_grant_limit_reached":
+      return copy.errors.partnerGrantLimitReached;
+    case "rate_limited":
+      return copy.errors.rateLimited;
     case "network_failed":
       return copy.errors.networkFailed;
     default:
