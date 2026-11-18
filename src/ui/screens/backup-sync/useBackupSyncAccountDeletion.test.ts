@@ -459,6 +459,41 @@ describe("useBackupSyncAccountDeletion", () => {
       },
     );
 
+    it("shows the code field when the two-factor status lookup throws", async () => {
+      mockDescribeTwoFactor.mockRejectedValue(new Error("keychain locked"));
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: null,
+      });
+      expect(result.current.isDeletingAccount).toBe(false);
+    });
+
+    it("a rate-limited guest deletion shows the delete failure, not the card", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "rate_limited",
+      });
+      const core = createGuestPartnerCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "rate_limited",
+        scope: "delete_account",
+      });
+    });
+
     it("dismissing the device-auth gate never opens the password card", async () => {
       mockRequestSensitiveActionChallenge.mockResolvedValue({
         ok: false,
