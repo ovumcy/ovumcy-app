@@ -327,9 +327,11 @@ export type ManagedCloudAPIClient = {
   // deleteAccount permanently erases the managed account and all its data
   // (DELETE /account). It does NOT cancel the external app-store subscription
   // — the caller is responsible for surfacing that limitation to the owner
-  // before calling this.
+  // before calling this. A password account must pass `stepUp` (with `code`
+  // once TOTP is on); a guest-partner account passes none and sends no body.
   deleteAccount(
     sessionToken: string,
+    stepUp?: { currentPassword: string; code?: string },
   ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   issuePartnerInvite(
     sessionToken: string,
@@ -668,10 +670,16 @@ export function createManagedCloudAPIClient(
       });
     },
 
-    async deleteAccount(sessionToken) {
+    async deleteAccount(sessionToken, stepUp) {
       return requestNoPayload(fetchImpl, normalizedBaseURL, "/account", {
         method: "DELETE",
         sessionToken,
+        body:
+          stepUp === undefined
+            ? undefined
+            : stepUp.code === undefined
+              ? { current_password: stepUp.currentPassword }
+              : { current_password: stepUp.currentPassword, code: stepUp.code },
       });
     },
 
@@ -1166,6 +1174,7 @@ async function requestNoPayload(
   path: string,
   options: {
     method: "DELETE";
+    body?: unknown;
     sessionToken?: string;
   },
 ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }> {

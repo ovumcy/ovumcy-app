@@ -168,8 +168,11 @@ function createAccountDeletionFixture(
   overrides: Partial<ReturnType<typeof useBackupSyncAccountDeletion>> = {},
 ): ReturnType<typeof useBackupSyncAccountDeletion> {
   return {
+    accountDeletionStepUpPrompt: null,
     isDeletingAccount: false,
     handleDeleteAccount: jest.fn(),
+    handleSubmitAccountDeletionStepUp: jest.fn(),
+    handleCancelAccountDeletionStepUp: jest.fn(),
     ...overrides,
   };
 }

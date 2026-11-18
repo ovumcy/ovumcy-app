@@ -7,9 +7,19 @@ import {
 } from "../../../security/managed-partner-invite-token-buffer";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import * as accountDeletionService from "../../../sync/account-deletion-service";
-import { createBackupSyncSessionCoreMock } from "../../../test/create-backup-sync-session-core-mock";
+import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
+import type { SyncRecoveryKeyStepUp } from "../../../sync/sync-api-client";
+import { createDefaultSyncPreferencesRecord } from "../../../sync/sync-contract";
+import {
+  createBackupSyncSessionCoreMock,
+  createLoadedSettingsStateFixture,
+} from "../../../test/create-backup-sync-session-core-mock";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useBackupSyncAccountDeletion } from "./useBackupSyncAccountDeletion";
+
+jest.mock("../../../sync/sync-account-session-service", () => ({
+  describeSyncAccountTwoFactor: jest.fn(),
+}));
 
 jest.mock("../../confirm/open-confirmation", () => ({
   openConfirmation: jest.fn(),
@@ -37,11 +47,35 @@ const mockBuildAccountDeletionViewModel = jest.mocked(
 const mockDeleteOvumcyAccount = jest.mocked(
   accountDeletionService.deleteOvumcyAccount,
 );
+const mockDescribeTwoFactor = jest.mocked(describeSyncAccountTwoFactor);
+
+const PASSWORD = "very secure password 12345";
+
+async function submitStepUp(
+  result: { current: ReturnType<typeof useBackupSyncAccountDeletion> },
+  stepUp: SyncRecoveryKeyStepUp = { currentPassword: PASSWORD },
+) {
+  await act(async () => {
+    await result.current.handleSubmitAccountDeletionStepUp(stepUp);
+  });
+}
+
+function createGuestPartnerCore() {
+  return createBackupSyncSessionCoreMock({
+    state: createLoadedSettingsStateFixture({
+      savedSyncPreferences: {
+        ...createDefaultSyncPreferencesRecord(),
+        guestSessionExpiresAt: "2026-12-01T00:00:00.000Z",
+      },
+    }),
+  });
+}
 
 describe("useBackupSyncAccountDeletion", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearManagedPartnerInviteToken();
+    mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: false });
     mockBuildAccountDeletionViewModel.mockReturnValue({
       mode: "managed",
       hasConnectedSession: true,
@@ -181,6 +215,7 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(mockOpenConfirmation).toHaveBeenCalledTimes(2);
       expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
@@ -197,6 +232,7 @@ describe("useBackupSyncAccountDeletion", () => {
           partnerShareSecretStore: core.partnerShareSecretStore,
         },
         core.state!.savedSyncPreferences,
+        { currentPassword: PASSWORD },
       );
     });
 
@@ -244,6 +280,7 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(mockBuildAccountDeletionViewModel).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -298,6 +335,7 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
       expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
@@ -316,11 +354,13 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(core.setErrorState).toHaveBeenCalledWith({
         code: "generic",
         scope: "delete_account",
       });
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
       expect(result.current.isDeletingAccount).toBe(false);
       expect(core.router.replace).not.toHaveBeenCalled();
       expect(core.syncProfilePreferences).not.toHaveBeenCalled();
@@ -346,6 +386,7 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(core.setErrorState).toHaveBeenCalledWith({
         code: "sync_purge_unavailable",
@@ -369,6 +410,7 @@ describe("useBackupSyncAccountDeletion", () => {
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
+      await submitStepUp(result);
 
       expect(readManagedPartnerInviteToken()).toBe("");
       expect(core.setPendingPartnerInviteToken).toHaveBeenCalledWith("");
@@ -382,6 +424,218 @@ describe("useBackupSyncAccountDeletion", () => {
       );
 
       jest.spyOn(Date, "now").mockRestore();
+    });
+  });
+
+  describe("managed step-up", () => {
+    beforeEach(() => {
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+    });
+
+    it.each([
+      [{ twoFactorEnabled: false }, false],
+      [{ twoFactorEnabled: true }, true],
+      // Unknown status shows the field; an empty code is not sent.
+      [null, true],
+    ] as const)(
+      "asks for the password after the confirms (2FA %j -> code field %s) and deletes nothing yet",
+      async (twoFactor, codeRequired) => {
+        mockDescribeTwoFactor.mockResolvedValue(twoFactor);
+        const core = createBackupSyncSessionCoreMock();
+        const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+        await act(async () => {
+          await result.current.handleDeleteAccount();
+        });
+
+        expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1);
+        expect(mockOpenConfirmation).toHaveBeenCalledTimes(1);
+        expect(result.current.accountDeletionStepUpPrompt).toEqual({
+          codeRequired,
+          errorCode: null,
+        });
+        expect(mockDeleteOvumcyAccount).not.toHaveBeenCalled();
+      },
+    );
+
+    it("dismissing the device-auth gate never opens the password card", async () => {
+      mockRequestSensitiveActionChallenge.mockResolvedValue({
+        ok: false,
+        reason: "cancelled",
+      });
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(mockDescribeTwoFactor).not.toHaveBeenCalled();
+    });
+
+    it("sends the trimmed code with the password, and drops an empty code", async () => {
+      mockDescribeTwoFactor.mockResolvedValue(null);
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "totp_invalid_code",
+      });
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result, { currentPassword: PASSWORD, code: " 123456 " });
+      await submitStepUp(result, { currentPassword: PASSWORD, code: "  " });
+
+      expect(mockDeleteOvumcyAccount.mock.calls[0]?.[4]).toEqual({
+        currentPassword: PASSWORD,
+        code: "123456",
+      });
+      expect(mockDeleteOvumcyAccount.mock.calls[1]?.[4]).toEqual({
+        currentPassword: PASSWORD,
+      });
+    });
+
+    it.each([
+      ["invalid_current_password", false, "invalid_current_password"],
+      ["totp_invalid_code", true, "totp_invalid_code"],
+      ["totp_replayed", true, "totp_replayed"],
+      ["rate_limited", false, "rate_limited"],
+    ] as const)(
+      "keeps the card open on %s with its own message and touches nothing else",
+      async (errorCode, codeRequired, shown) => {
+        mockDeleteOvumcyAccount.mockResolvedValue({ ok: false, errorCode });
+        const core = createBackupSyncSessionCoreMock();
+        const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+        await act(async () => {
+          await result.current.handleDeleteAccount();
+        });
+        await submitStepUp(result);
+
+        expect(result.current.accountDeletionStepUpPrompt).toEqual({
+          codeRequired,
+          errorCode: shown,
+        });
+        expect(core.setErrorState).not.toHaveBeenCalledWith(
+          expect.objectContaining({ scope: "delete_account" }),
+        );
+        expect(result.current.isDeletingAccount).toBe(false);
+        expect(core.router.replace).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["totp_not_configured", "totp_secret_failed"] as const)(
+      "closes the card and shows the delete failure on %s",
+      async (errorCode) => {
+        mockDeleteOvumcyAccount.mockResolvedValue({ ok: false, errorCode });
+        const core = createBackupSyncSessionCoreMock();
+        const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+        await act(async () => {
+          await result.current.handleDeleteAccount();
+        });
+        await submitStepUp(result);
+
+        expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+        expect(core.setErrorState).toHaveBeenCalledWith({
+          code: errorCode,
+          scope: "delete_account",
+        });
+      },
+    );
+
+    it("cancel closes the card without deleting", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await act(() => {
+        result.current.handleCancelAccountDeletionStepUp();
+      });
+      await submitStepUp(result);
+
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(mockDeleteOvumcyAccount).not.toHaveBeenCalled();
+    });
+
+    it("a guest-partner session deletes with no step-up and no card", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+      const core = createGuestPartnerCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockDescribeTwoFactor).not.toHaveBeenCalled();
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(mockDeleteOvumcyAccount.mock.calls[0]?.[4]).toBeUndefined();
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+    });
+
+    it("opens the card when the server says a guest session's account has a password", async () => {
+      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      mockDeleteOvumcyAccount.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "invalid_current_password",
+      });
+      const core = createGuestPartnerCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: null,
+      });
+      expect(core.setErrorState).not.toHaveBeenCalledWith(
+        expect.objectContaining({ scope: "delete_account" }),
+      );
+    });
+
+    it("never logs or persists the password or code sent with a deletion", async () => {
+      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "totp_replayed",
+      });
+      const consoleSpies = (
+        ["log", "warn", "error", "info", "debug"] as const
+      ).map((method) => jest.spyOn(console, method).mockImplementation(() => {}));
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result, {
+        currentPassword: "hunter2-hunter2",
+        code: "482913",
+      });
+
+      const sinks = [
+        ...consoleSpies,
+        ...Object.values(core).filter(jest.isMockFunction),
+        ...Object.values(core.storage).filter(jest.isMockFunction),
+        ...Object.values(core.syncSecretStore).filter(jest.isMockFunction),
+        ...Object.values(core.router).filter(jest.isMockFunction),
+      ];
+      for (const sink of sinks) {
+        const calls = JSON.stringify(sink.mock.calls);
+        expect(calls).not.toContain("482913");
+        expect(calls).not.toContain("hunter2-hunter2");
+      }
+      for (const spy of consoleSpies) {
+        spy.mockRestore();
+      }
     });
   });
 });
