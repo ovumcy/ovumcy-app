@@ -345,6 +345,8 @@ Both the access token and the refresh token are bearer secrets and live in secur
 
 Failure handling is deliberately asymmetric. A rejected refresh means the chain is dead and the credentials are cleared, because the server has already revoked the family and retrying is pointless. A network failure returns the existing token untouched: being offline must never look like being signed out. A guest-partner session goes through this same refresher with no special case — see Guest Partner Access above for why the short access session matters more there than anywhere else, and for what a guest that received no refresh material stores instead.
 
+Disconnect (`disconnectSyncAccount`) also goes through it. The managed logout revokes the session's whole refresh family, but only under a live bearer — an expired access session answers 401 and leaves the family able to mint sessions until its own expiry — so the device renews first, logs out with the result, and retries once when the logout reports a server or transport failure (a 500 there means the logout rolled back). A dead chain skips the call. Either way every managed credential, the refresh token included, is cleared from secure storage.
+
 ## Outbound Fetch Posture
 
 `sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token because HTTP preserves method + headers on those status codes.

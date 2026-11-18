@@ -23,6 +23,7 @@ import {
 import {
   applyManagedAuthResultToSecrets,
   clearManagedSessionFromSecrets,
+  ensureFreshManagedSession,
 } from "./managed-session-refresh-service";
 import { isPasswordTooShort } from "./password-policy";
 import type {
@@ -1528,6 +1529,7 @@ export async function disconnectSyncAccount(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  now: Date = new Date(),
 ): Promise<{ ok: true; preferences: SyncPreferencesRecord }> {
   const secrets = await secretStore.readSyncSecrets();
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -1540,8 +1542,21 @@ export async function disconnectSyncAccount(
     await client.logout(secrets.authSessionToken);
   }
   if (secrets?.managedAuthSessionToken && preferences.mode === "managed") {
-    const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    await managedClient.logout(secrets.managedAuthSessionToken);
+    // Logout revokes the refresh family only under a live bearer: an expired
+    // access session answers 401 and leaves the family able to mint sessions.
+    const fresh = await ensureFreshManagedSession(
+      secretStore,
+      now,
+      managedClientFactory,
+    );
+    if (fresh.ok) {
+      const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
+      const result = await managedClient.logout(fresh.sessionToken);
+      // A 5xx means the logout rolled back and the family is still live.
+      if (!result.ok && result.errorCode === "network_failed") {
+        await managedClient.logout(fresh.sessionToken);
+      }
+    }
   }
 
   const nextPreferences = await clearLocalSyncSession(
@@ -1562,8 +1577,12 @@ export async function clearLocalSyncSession(
   const nextManagedAuthSessionToken =
     preferences.mode === "managed" ? null : secrets?.managedAuthSessionToken ?? null;
   if (secrets) {
+    const base =
+      preferences.mode === "managed"
+        ? clearManagedSessionFromSecrets(secrets)
+        : secrets;
     await secretStore.writeSyncSecrets({
-      ...secrets,
+      ...base,
       authSessionToken: null,
       managedAuthSessionToken: nextManagedAuthSessionToken,
     });

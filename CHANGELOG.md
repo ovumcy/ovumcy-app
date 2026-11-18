@@ -130,6 +130,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Disconnecting the managed cloud ends this device's refresh family: an
+  expired access session is renewed first so the logout is accepted, a
+  rolled-back logout is retried once, and every managed credential, the
+  refresh token included, is wiped from secure storage.
 - Neutralized CSV formula injection in exports: notes, custom symptom labels, and
   cycle factors beginning with `=`, `+`, `-`, or `@` are prefixed so spreadsheet
   software cannot execute them, with RFC 4180 quoting preserved.
