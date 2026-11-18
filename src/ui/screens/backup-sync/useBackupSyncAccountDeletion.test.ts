@@ -548,6 +548,48 @@ describe("useBackupSyncAccountDeletion", () => {
       },
     );
 
+    it("sends one deletion for two submits in the same frame", async () => {
+      let settle: (value: { ok: true }) => void = () => {};
+      mockDeleteOvumcyAccount.mockReturnValue(
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+      );
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await act(async () => {
+        const submit = result.current.handleSubmitAccountDeletionStepUp;
+        const first = submit({ currentPassword: PASSWORD });
+        const second = submit({ currentPassword: PASSWORD });
+        settle({ ok: true });
+        await Promise.all([first, second]);
+      });
+
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears the busy flag and reports a failure when the deletion throws", async () => {
+      mockDeleteOvumcyAccount.mockRejectedValue(new Error("keychain locked"));
+      const core = createBackupSyncSessionCoreMock();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result);
+
+      expect(result.current.isDeletingAccount).toBe(false);
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "generic",
+        scope: "delete_account",
+      });
+    });
+
     it("cancel closes the card without deleting", async () => {
       const core = createBackupSyncSessionCoreMock();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));

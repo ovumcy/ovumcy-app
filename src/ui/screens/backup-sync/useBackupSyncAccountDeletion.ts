@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   buildAccountDeletionViewModel,
@@ -47,6 +47,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
   } = core;
 
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const deletionInFlightRef = useRef(false);
   const [pendingStepUp, setPendingStepUp] = useState<{
     prompt: RecoveryKeyStepUpPrompt;
     // A reload, disconnect or another account replaces `state` and so
@@ -164,11 +165,15 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
   // Unknown two-factor status shows the field; an empty code is not sent.
   async function isCodeFieldNeeded(forState: NonNullable<typeof state>) {
-    const twoFactor = await describeSyncAccountTwoFactor(
-      syncSecretStore,
-      forState.savedSyncPreferences,
-    );
-    return twoFactor?.twoFactorEnabled ?? true;
+    try {
+      const twoFactor = await describeSyncAccountTwoFactor(
+        syncSecretStore,
+        forState.savedSyncPreferences,
+      );
+      return twoFactor?.twoFactorEnabled ?? true;
+    } catch {
+      return true;
+    }
   }
 
   async function resolveStepUpPrompt(
@@ -199,7 +204,27 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     forState: NonNullable<typeof state>,
     stepUp: SyncRecoveryKeyStepUp | undefined,
   ) {
+    // A second tap before the busy flag renders would replay the same code.
+    if (deletionInFlightRef.current) {
+      return;
+    }
+    deletionInFlightRef.current = true;
     setIsDeletingAccount(true);
+    try {
+      await deleteAndSettle(forState, stepUp);
+    } catch {
+      setPendingStepUp(null);
+      setErrorState({ code: "generic", scope: "delete_account" });
+      setIsDeletingAccount(false);
+    } finally {
+      deletionInFlightRef.current = false;
+    }
+  }
+
+  async function deleteAndSettle(
+    forState: NonNullable<typeof state>,
+    stepUp: SyncRecoveryKeyStepUp | undefined,
+  ) {
     const result = await deleteOvumcyAccount(
       storage,
       syncSecretStore,
