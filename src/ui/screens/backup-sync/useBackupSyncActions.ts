@@ -22,6 +22,9 @@ export type RecoveryKeyStepUpPrompt = {
     | "totp_invalid_code"
     | "totp_replayed"
     | "rate_limited"
+    // Managed recovery-phrase rotation only.
+    | "rotation_unconfirmed"
+    | "generic"
     | null;
 };
 

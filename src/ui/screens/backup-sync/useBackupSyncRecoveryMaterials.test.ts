@@ -1,6 +1,9 @@
 import { act, renderHook } from "@testing-library/react-native";
 
+import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
+import * as managedRecoveryRotationService from "../../../sync/managed-recovery-rotation-service";
+import * as syncAccountSessionService from "../../../sync/sync-account-session-service";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
 import * as recoveryPhraseDeliveryService from "../../../services/recovery-phrase-delivery-service";
 import {
@@ -21,6 +24,23 @@ jest.mock("../../../security/sensitive-action-auth", () => ({
 
 jest.mock("../../../services/backup-sync-screen-service");
 jest.mock("../../../services/recovery-phrase-delivery-service");
+jest.mock("../../../sync/managed-recovery-rotation-service");
+jest.mock("../../../sync/sync-account-session-service");
+
+const mockRotateManagedRecoveryPhrase = jest.mocked(
+  managedRecoveryRotationService.rotateManagedRecoveryPhrase,
+);
+const mockDescribeSyncAccountTwoFactor = jest.mocked(
+  syncAccountSessionService.describeSyncAccountTwoFactor,
+);
+const rotationCopy = selectManagedRecoveryRotationCopy("en");
+
+function createConnectedManagedState() {
+  return createLoadedSettingsStateFixture({
+    hasStoredSyncSecrets: true,
+    hasSyncSession: true,
+  });
+}
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockRequestSensitiveActionChallenge = jest.mocked(
@@ -84,7 +104,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
 
     it("does not prepare when the regenerate confirm is dismissed (existing secrets)", async () => {
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(false);
       const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
@@ -104,7 +127,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
 
     it("surfaces deviceAuthUnavailable with local scope when the regenerate challenge is unavailable", async () => {
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({
@@ -129,7 +155,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
 
     it("surfaces deviceAuthFailed with local scope when the regenerate challenge fails", async () => {
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({
@@ -151,7 +180,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
 
     it("stays silent when the regenerate device-auth challenge is cancelled", async () => {
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({
@@ -177,7 +209,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
     // never receives a phrase through this code path.
     it("never sets a recovery phrase when the service refuses with guest_recovery_phrase_blocked (guest gate stays enforced)", async () => {
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
@@ -229,7 +264,10 @@ describe("useBackupSyncRecoveryMaterials", () => {
         hasStoredSyncSecrets: true,
       });
       const core = createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({ hasStoredSyncSecrets: true }),
+        state: createLoadedSettingsStateFixture({
+          hasStoredSyncSecrets: true,
+          hasSyncSession: false,
+        }),
       });
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
@@ -255,6 +293,178 @@ describe("useBackupSyncRecoveryMaterials", () => {
         core.viewData.account.status.regenerated,
       );
       expect(result.current.isPreparingSync).toBe(false);
+    });
+  });
+
+  describe("managed recovery-phrase rotation", () => {
+    async function openRotationCard(twoFactorEnabled: boolean | null) {
+      const core = createBackupSyncSessionCoreMock({
+        state: createConnectedManagedState(),
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockDescribeSyncAccountTwoFactor.mockResolvedValue(
+        twoFactorEnabled === null
+          ? null
+          : ({ twoFactorEnabled } as Awaited<
+              ReturnType<typeof syncAccountSessionService.describeSyncAccountTwoFactor>
+            >),
+      );
+      const hook = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+      await act(async () => {
+        await hook.result.current.handlePrepareSyncSetup();
+      });
+      return { core, result: hook.result };
+    }
+
+    it("rotates instead of regenerating: rotation confirm, device-auth, then the step-up card", async () => {
+      const { core, result } = await openRotationCard(true);
+
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        rotationCopy.confirmPrompt,
+        rotationCopy.confirmAccept,
+      );
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
+        rotationCopy.deviceAuthPrompt,
+      );
+      expect(mockPrepareBackupSyncSetup).not.toHaveBeenCalled();
+      expect(mockRotateManagedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: null,
+      });
+    });
+
+    it("hides the code field only when two-factor is known to be off", async () => {
+      const { result } = await openRotationCard(false);
+      expect(result.current.managedRecoveryRotationStepUpPrompt?.codeRequired).toBe(false);
+    });
+
+    it("opens no card when the rotation confirm is dismissed", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        state: createConnectedManagedState(),
+      });
+      mockOpenConfirmation.mockResolvedValue(false);
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+
+      expect(mockRequestSensitiveActionChallenge).not.toHaveBeenCalled();
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
+    it("opens no card when device auth fails", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        state: createConnectedManagedState(),
+      });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({
+        ok: false,
+        reason: "failed",
+      });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "deviceAuthFailed",
+        scope: "local",
+      });
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
+    it("reveals the new phrase only after the rotation is confirmed", async () => {
+      const { core, result } = await openRotationCard(true);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({
+        ok: true,
+        recoveryPhrase: "new phrase words",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+          code: "123456",
+        });
+      });
+
+      expect(mockRotateManagedRecoveryPhrase).toHaveBeenCalledWith(
+        core.syncSecretStore,
+        { currentPassword: "pw", code: "123456" },
+        core.effectiveNow,
+      );
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("new phrase words");
+      expect(core.setAccountStatusMessage).toHaveBeenCalledWith(rotationCopy.rotatedStatus);
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+      expect(result.current.isPreparingSync).toBe(false);
+    });
+
+    it.each(["rotation_unconfirmed", "invalid_current_password", "rate_limited", "generic"] as const)(
+      "keeps the card open and shows no phrase on %s",
+      async (errorCode) => {
+        const { core, result } = await openRotationCard(true);
+        mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode });
+
+        await act(async () => {
+          await result.current.handleSubmitManagedRecoveryRotationStepUp({
+            currentPassword: "pw",
+            code: "123456",
+          });
+        });
+
+        expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+        expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
+          codeRequired: true,
+          errorCode,
+        });
+      },
+    );
+
+    it("closes the card and reports not-connected when the session is gone", async () => {
+      const { core, result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({
+        ok: false,
+        errorCode: "unauthorized",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "unauthorized",
+        scope: "local",
+      });
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
+    it("sends one request for a double submit", async () => {
+      const { result } = await openRotationCard(false);
+      let resolveRotation: (value: { ok: true; recoveryPhrase: string }) => void = () => {};
+      mockRotateManagedRecoveryPhrase.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRotation = resolve;
+        }),
+      );
+
+      await act(async () => {
+        const first = result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+        const second = result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+        resolveRotation({ ok: true, recoveryPhrase: "p" });
+        await Promise.all([first, second]);
+      });
+
+      expect(mockRotateManagedRecoveryPhrase).toHaveBeenCalledTimes(1);
     });
   });
 

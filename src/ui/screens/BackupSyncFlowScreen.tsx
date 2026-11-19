@@ -4,7 +4,10 @@ import { useRouter } from "expo-router";
 import { selectAccountDeletionStepUpCopy } from "../../i18n/account-deletion-stepup-copy";
 import { selectAccountSecurityCopy } from "../../i18n/account-security-copy";
 import { getDeviceCopy } from "../../i18n/device-copy";
-import { selectRecoveryKeyStepUpCopy } from "../../i18n/recovery-key-stepup-copy";
+import {
+  selectRecoveryKeyStepUpCopy,
+  type RecoveryKeyStepUpCopy,
+} from "../../i18n/recovery-key-stepup-copy";
 import { selectTOTPCopy } from "../../i18n/totp-copy";
 import type { SyncRecoveryKeyStepUp } from "../../sync/sync-api-client";
 import type { SettingsViewData } from "../../services/settings-view-service";
@@ -131,6 +134,12 @@ export type BackupSyncFlowScreenProps = {
     stepUp: SyncRecoveryKeyStepUp,
   ) => void | Promise<void>;
   onCancelAccountDeletionStepUp: () => void;
+  managedRecoveryRotationStepUpCopy: RecoveryKeyStepUpCopy;
+  managedRecoveryRotationStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  onSubmitManagedRecoveryRotationStepUp: (
+    stepUp: SyncRecoveryKeyStepUp,
+  ) => void | Promise<void>;
+  onCancelManagedRecoveryRotationStepUp: () => void;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -226,6 +235,10 @@ export function BackupSyncFlowScreen({
   isDeletingAccount,
   onSubmitAccountDeletionStepUp,
   onCancelAccountDeletionStepUp,
+  managedRecoveryRotationStepUpCopy,
+  managedRecoveryRotationStepUpPrompt,
+  onSubmitManagedRecoveryRotationStepUp,
+  onCancelManagedRecoveryRotationStepUp,
   viewData,
   backLabel,
   onBack,
@@ -299,6 +312,16 @@ export function BackupSyncFlowScreen({
           onSubmit={onSubmitAccountDeletionStepUp}
           prompt={accountDeletionStepUpPrompt}
           testIDPrefix="sync-delete-account-stepup"
+        />
+      ) : null}
+      {managedRecoveryRotationStepUpPrompt ? (
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={managedRecoveryRotationStepUpCopy}
+          isBusy={isPreparing}
+          onCancel={onCancelManagedRecoveryRotationStepUp}
+          onSubmit={onSubmitManagedRecoveryRotationStepUp}
+          prompt={managedRecoveryRotationStepUpPrompt}
+          testIDPrefix="sync-recovery-rotation-stepup"
         />
       ) : null}
       <SettingsSyncSetupSection

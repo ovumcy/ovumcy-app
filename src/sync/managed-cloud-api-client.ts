@@ -2,6 +2,7 @@ import type {
   SyncAuthResult,
   SyncTOTPChallengeHandoff,
   SyncTOTPEnrollmentStart,
+  WrappedSyncKeyMetadata,
 } from "./sync-contract";
 
 export type ManagedCloudAPIErrorCode =
@@ -31,6 +32,8 @@ export type ManagedCloudAPIErrorCode =
   | "sync_not_allowed"
   | "sync_bridge_unavailable"
   | "sync_purge_unavailable"
+  | "sync_account_not_found"
+  | "invalid_recovery_package"
   | "origin_not_allowed"
   | "totp_not_configured"
   | "totp_not_enabled"
@@ -375,6 +378,17 @@ export type ManagedCloudAPIClient = {
     | { ok: true; result: ManagedCloudRegenerateRecoveryCodeResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
+  // PUT /account/recovery-key: the package wraps the SAME master key under a
+  // new phrase. `sync_bridge_unavailable` (502), `network_failed` and
+  // `invalid_response` mean the replacement may already be applied.
+  replaceRecoveryKey(
+    sessionToken: string,
+    input: {
+      currentPassword: string;
+      code?: string;
+      recoveryKeyPackage: WrappedSyncKeyMetadata;
+    },
+  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   startTOTPEnrollment(
     sessionToken: string,
     input: { currentPassword: string },
@@ -783,6 +797,45 @@ export function createManagedCloudAPIClient(
             }
           : { ok: false, errorCode: result.errorCode },
       );
+    },
+
+    async replaceRecoveryKey(sessionToken, input) {
+      const recoveryKeyPackage = {
+        algorithm: input.recoveryKeyPackage.algorithm,
+        kdf: input.recoveryKeyPackage.kdf,
+        mnemonic_word_count: input.recoveryKeyPackage.mnemonicWordCount,
+        wrap_nonce_hex: input.recoveryKeyPackage.wrapNonceHex,
+        wrapped_master_key_hex: input.recoveryKeyPackage.wrappedMasterKeyHex,
+        phrase_fingerprint_hex: input.recoveryKeyPackage.phraseFingerprintHex,
+      };
+      return requestJSON<RawManagedCloudStatusPayload>(
+        fetchImpl,
+        normalizedBaseURL,
+        "/account/recovery-key",
+        {
+          method: "PUT",
+          sessionToken,
+          body:
+            input.code === undefined
+              ? {
+                  current_password: input.currentPassword,
+                  recovery_key_package: recoveryKeyPackage,
+                }
+              : {
+                  current_password: input.currentPassword,
+                  code: input.code,
+                  recovery_key_package: recoveryKeyPackage,
+                },
+        },
+        isRawManagedCloudStatusPayload,
+      ).then((result) => {
+        if (!result.ok) {
+          return { ok: false, errorCode: result.errorCode };
+        }
+        return result.payload.status === "recovery_key_replaced"
+          ? { ok: true }
+          : { ok: false, errorCode: "invalid_response" };
+      });
     },
 
     async startTOTPEnrollment(sessionToken, input) {
@@ -1318,6 +1371,8 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "sync_not_allowed":
       case "sync_bridge_unavailable":
       case "sync_purge_unavailable":
+      case "sync_account_not_found":
+      case "invalid_recovery_package":
       case "origin_not_allowed":
       case "totp_not_configured":
       case "totp_not_enabled":

@@ -38,6 +38,10 @@ If verification fails:
 
 When an upload would replace the recovery-key package your self-hosted (community) server holds — typically the first upload after *Set up sync on this device* created a new phrase — the server asks for your password and, with two-factor on, a current 6-digit code. The app shows a prompt for them and retries the upload once you confirm. A wrong password or code, or a code already used, keeps the prompt open with that message. Both values travel in the request body only and are cleared from the screen afterwards.
 
+## Changing The Recovery Phrase On Ovumcy Cloud
+
+On a connected Ovumcy Cloud account, *Change recovery phrase* asks you to confirm, checks the device lock, and then asks for your account password and, with two-factor on, a current 6-digit code. The new phrase appears only after Ovumcy Cloud confirms the change; until then the current phrase stays active. If the change cannot be confirmed (for example the sync service is briefly unavailable), the prompt stays open and asks you to try again with a new code — the app resends the same new phrase, never a second one. A wrong password or code, a code already used, or too many attempts keep the prompt open with that message. The password and code travel in the request body only and are cleared from the screen afterwards.
+
 ## Logging In With Two-Factor
 
 When you sign in to a TOTP-enabled account, the password step still works the same way. As soon as the password is verified the app shows a dedicated *Enter your 6-digit code* screen instead of completing the login. Type the current code from your authenticator app and tap *Verify*.

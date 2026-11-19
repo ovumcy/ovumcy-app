@@ -1,11 +1,13 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
+import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { selectRecoveryKeyStepUpCopy } from "../../../i18n/recovery-key-stepup-copy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { BackupSyncRecoveryKeyStepUpSection } from "./BackupSyncRecoveryKeyStepUpSection";
 import type { RecoveryKeyStepUpPrompt } from "./useBackupSyncActions";
 
 const copy = selectRecoveryKeyStepUpCopy("en");
+const rotationCopy = selectManagedRecoveryRotationCopy("en").stepUp;
 
 async function renderSection(
   prompt: RecoveryKeyStepUpPrompt,
@@ -166,5 +168,26 @@ describe("BackupSyncRecoveryKeyStepUpSection", () => {
     await renderSection({ codeRequired: true, errorCode });
 
     expect(screen.getByText(message)).toBeTruthy();
+  });
+
+  it.each([
+    ["rotation_unconfirmed", rotationCopy.errors.rotationUnconfirmed],
+    ["generic", rotationCopy.errors.rotationFailed],
+  ] as const)("shows the rotation message for %s", async (errorCode, message) => {
+    await render(
+      <AppPreferencesTestProvider>
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={rotationCopy}
+          isBusy={false}
+          onCancel={jest.fn()}
+          onSubmit={jest.fn()}
+          prompt={{ codeRequired: true, errorCode }}
+          testIDPrefix="sync-recovery-rotation-stepup"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(message!)).toBeTruthy();
+    expect(screen.getByTestId("sync-recovery-rotation-stepup-error")).toBeTruthy();
   });
 });

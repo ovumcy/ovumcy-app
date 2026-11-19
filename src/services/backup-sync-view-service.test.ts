@@ -22,6 +22,7 @@ import {
   resolveBackupSyncErrorPresentation,
   resolveGuestSessionExpiryNudgeDays,
   revertBackupSyncDraftState,
+  shouldRotateManagedRecoveryPhrase,
 } from "./backup-sync-view-service";
 
 describe("backup sync view service", () => {
@@ -280,6 +281,60 @@ describe("backup sync view service", () => {
       },
     });
     expect(ownerPresentation.shouldShowPrepareAction).toBe(true);
+  });
+
+  it("rotates the phrase only for a connected, non-guest managed account", () => {
+    const managed = { ...createDefaultSyncPreferencesRecord(), mode: "managed" as const };
+    const selfHosted = { ...managed, mode: "self_hosted" as const };
+    const guest = { ...managed, guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" };
+    const connected = { hasStoredSyncSecrets: true, hasSyncSession: true };
+
+    expect(shouldRotateManagedRecoveryPhrase({ ...connected, preferences: managed })).toBe(true);
+    expect(shouldRotateManagedRecoveryPhrase({ ...connected, preferences: selfHosted })).toBe(false);
+    expect(shouldRotateManagedRecoveryPhrase({ ...connected, preferences: guest })).toBe(false);
+    expect(
+      shouldRotateManagedRecoveryPhrase({
+        hasStoredSyncSecrets: true,
+        hasSyncSession: false,
+        preferences: managed,
+      }),
+    ).toBe(false);
+  });
+
+  it("labels the recovery action with the rotation label when one is given", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    const input = {
+      hasStoredSyncSecrets: true,
+      hasSyncSession: true,
+      isAuthenticating: false,
+      isPreparing: false,
+      isRecovering: false,
+      isRestoring: false,
+      isSyncing: false,
+      locale: "en",
+      managedPlanStatus: "active" as const,
+      notSetLabel: "Not set",
+      preferences: createDefaultSyncPreferencesRecord(),
+      syncCapabilities: null,
+      viewData: viewData.account,
+    };
+
+    expect(
+      buildBackupSyncSetupPresentation({
+        ...input,
+        managedRecoveryRotationLabel: "Change recovery phrase",
+      }).actionLabel,
+    ).toBe("Change recovery phrase");
+    expect(buildBackupSyncSetupPresentation(input).actionLabel).toBe(
+      viewData.account.regenerateLabel,
+    );
+  });
+
+  it("explains a managed_recovery_key_overwrite upload refusal", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    expect(
+      resolveBackupSyncErrorMessage("managed_recovery_key_overwrite", viewData.account),
+    ).toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
   });
 
   it("shows the self-hosted account-step hint before a sync session exists", () => {

@@ -26,6 +26,9 @@ export type SyncAPIErrorCode =
   | "device_not_found"
   | "invalid_blob"
   | "invalid_recovery_package"
+  // Managed sync host: a different package for a managed account is refused;
+  // only Ovumcy Cloud's PUT /account/recovery-key rotates it.
+  | "managed_recovery_key_overwrite"
   | "stale_generation"
   | "blob_not_found"
   | "recovery_package_not_found"
@@ -834,6 +837,7 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "device_not_found":
       case "invalid_blob":
       case "invalid_recovery_package":
+      case "managed_recovery_key_overwrite":
       case "stale_generation":
       case "blob_not_found":
       case "recovery_package_not_found":

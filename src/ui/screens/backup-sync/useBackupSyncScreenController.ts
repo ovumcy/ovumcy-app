@@ -4,6 +4,7 @@ import { getSubscriptionCopy } from "../../../i18n/subscription-copy";
 import {
   buildBackupSyncSetupPresentation,
   resolveBackupSyncErrorPresentation,
+  shouldRotateManagedRecoveryPhrase,
 } from "../../../services/backup-sync-view-service";
 import {
   resolveVisibleBillingOffers,
@@ -170,6 +171,13 @@ export function useBackupSyncScreenController(
     isSyncing: actions.isSyncingNow || deletion.isDeletingAccount,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
+    managedRecoveryRotationLabel: shouldRotateManagedRecoveryPhrase({
+      hasStoredSyncSecrets: state.hasStoredSyncSecrets,
+      hasSyncSession: state.hasSyncSession,
+      preferences: state.savedSyncPreferences,
+    })
+      ? recovery.managedRecoveryRotationCopy.actionLabel
+      : null,
     notSetLabel: viewData.common.notSet,
     preferences: state.syncPreferences,
     subscriptionCountdownMessage,
@@ -398,6 +406,12 @@ export function useBackupSyncScreenController(
       isDeletingAccount: deletion.isDeletingAccount,
       onSubmitAccountDeletionStepUp: deletion.handleSubmitAccountDeletionStepUp,
       onCancelAccountDeletionStepUp: deletion.handleCancelAccountDeletionStepUp,
+      managedRecoveryRotationStepUpCopy: recovery.managedRecoveryRotationCopy.stepUp,
+      managedRecoveryRotationStepUpPrompt: recovery.managedRecoveryRotationStepUpPrompt,
+      onSubmitManagedRecoveryRotationStepUp:
+        recovery.handleSubmitManagedRecoveryRotationStepUp,
+      onCancelManagedRecoveryRotationStepUp:
+        recovery.handleCancelManagedRecoveryRotationStepUp,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,

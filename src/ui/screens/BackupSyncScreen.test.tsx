@@ -5,7 +5,12 @@ import { Platform } from "react-native";
 import { getDeviceCopy } from "../../i18n/device-copy";
 import { getPartnerCopy } from "../../i18n/partner-copy";
 import { getSettingsCopy } from "../../i18n/settings-copy";
-import { createSyncSecretsRecord } from "../../security/sync-crypto";
+import { selectManagedRecoveryRotationCopy } from "../../i18n/managed-recovery-rotation-copy";
+import {
+  createSyncSecretsRecord,
+  unwrapMasterKeyWithRecoveryPhrase,
+} from "../../security/sync-crypto";
+import { clearPendingManagedRecoveryRotation } from "../../sync/managed-recovery-rotation-service";
 import { clearManagedPartnerInviteToken } from "../../security/managed-partner-invite-token-buffer";
 import { requestSensitiveActionChallenge } from "../../security/sensitive-action-auth";
 import * as backupSyncScreenService from "../../services/backup-sync-screen-service";
@@ -3044,16 +3049,25 @@ describe("BackupSyncScreen", () => {
       expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
     });
 
-    it("still lets a non-guest complete the local-step regenerate flow and reveal a fresh phrase (owner path pinned unchanged)", async () => {
-      const settingsCopy = getSettingsCopy("en");
+    it("lets a connected non-guest managed owner change the phrase through Ovumcy Cloud, revealed only after the 200 (owner path)", async () => {
+      clearPendingManagedRecoveryRotation();
+      const rotationCopy = selectManagedRecoveryRotationCopy("en");
       const ownerStorage = createSettingsStorageMock({
         readSyncPreferencesRecord: jest
           .fn()
           .mockResolvedValue(createConnectedManagedPreferences()),
       });
+      const prepared = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
       const ownerSecretStore = createSyncSecretStoreMock();
-      await ownerSecretStore.writeSyncSecrets(createConnectedManagedSecrets());
-      global.fetch = createManagedBillingFetchMock({
+      await ownerSecretStore.writeSyncSecrets({
+        ...createConnectedManagedSecrets(),
+        masterKeyHex: prepared.record.masterKeyHex,
+        wrappedKey: prepared.record.wrappedKey,
+      });
+      const billingFetch = createManagedBillingFetchMock({
         billing: {
           has_active_plan: true,
           premium_features: {
@@ -3066,6 +3080,14 @@ describe("BackupSyncScreen", () => {
           },
         },
       });
+      const rotationBodies: unknown[] = [];
+      global.fetch = jest.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/account/recovery-key")) {
+          rotationBodies.push(JSON.parse(String(init?.body)));
+          return createJSONResponse({ status: "recovery_key_replaced" });
+        }
+        return billingFetch(input, init);
+      }) as typeof fetch;
       mockOpenConfirmation.mockResolvedValue(true);
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
 
@@ -3078,21 +3100,26 @@ describe("BackupSyncScreen", () => {
       );
       await screen.findByTestId("settings-sync-section");
 
-      const prepareButton = screen.getByTestId("settings-sync-prepare-button");
-      expect(prepareButton).toBeTruthy();
-      await fireEvent.press(prepareButton);
+      await fireEvent.press(screen.getByTestId("settings-sync-prepare-button"));
 
       await waitFor(() =>
         expect(mockOpenConfirmation).toHaveBeenCalledWith(
-          settingsCopy.account.regeneratePrompt,
-          settingsCopy.account.regenerateAccept,
+          rotationCopy.confirmPrompt,
+          rotationCopy.confirmAccept,
         ),
       );
       await waitFor(() =>
         expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
-          settingsCopy.account.regenerateDeviceAuthPrompt,
+          rotationCopy.deviceAuthPrompt,
         ),
       );
+      const password = await screen.findByTestId("sync-recovery-rotation-stepup-password");
+      expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
+      expect(rotationBodies).toHaveLength(0);
+
+      await fireEvent.changeText(password, "owner password 12345");
+      await fireEvent.press(screen.getByTestId("sync-recovery-rotation-stepup-confirm"));
+
       await waitFor(() =>
         expect(screen.getByTestId("settings-sync-recovery-phrase").props.children)
           .toEqual(expect.any(String)),
@@ -3100,6 +3127,13 @@ describe("BackupSyncScreen", () => {
       const phrase = screen.getByTestId("settings-sync-recovery-phrase")
         .props.children as string;
       expect(phrase.split(" ")).toHaveLength(12);
+      expect(rotationBodies).toEqual([
+        expect.objectContaining({ current_password: "owner password 12345" }),
+      ]);
+      const stored = await ownerSecretStore.readSyncSecrets();
+      expect(unwrapMasterKeyWithRecoveryPhrase(phrase, stored!.wrappedKey)).toBe(
+        prepared.record.masterKeyHex,
+      );
     });
   });
 });

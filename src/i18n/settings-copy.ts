@@ -386,6 +386,8 @@ const settingsCopyEn = {
         "This account has reached its device limit. On a device that is still connected, open Backup & sync and remove a device you no longer use to free a slot.",
       syncNotPrepared: "Prepare encrypted sync on this device first.",
       notConnected: "Connect this device to a sync server first.",
+      recoveryKeyChangedElsewhere:
+        "Your account's recovery phrase was changed, and this device still holds the old one. If you changed it here, finish the change; otherwise disconnect and sign back in with the new phrase.",
       blobNotFound: "No encrypted backup copy exists on this server yet.",
       invalidPayload:
         "The encrypted backup copy from the server could not be read.",
@@ -977,6 +979,8 @@ const settingsCopyDe: SettingsCopy = {
         "Bereiten Sie zuerst den verschlüsselten Sync auf diesem Gerät vor.",
       notConnected:
         "Verbinden Sie dieses Gerät zuerst mit einem Sync-Server.",
+      recoveryKeyChangedElsewhere:
+        "Die Wiederherstellungsphrase Ihres Kontos wurde geändert, dieses Gerät hat noch die alte. Haben Sie sie hier geändert, schließen Sie die Änderung ab; sonst trennen Sie die Verbindung und melden Sie sich mit der neuen Phrase wieder an.",
       blobNotFound:
         "Auf diesem Server gibt es noch keine verschlüsselte Sicherungskopie.",
       invalidPayload:
@@ -1599,6 +1603,8 @@ const settingsCopyFr: SettingsCopy = {
         "Préparez d'abord le sync chiffré sur cet appareil.",
       notConnected:
         "Connectez d'abord cet appareil à un serveur de sync.",
+      recoveryKeyChangedElsewhere:
+        "La phrase de récupération de votre compte a été changée et cet appareil conserve l'ancienne. Si vous l'avez changée ici, terminez le changement ; sinon déconnectez-vous et reconnectez-vous avec la nouvelle phrase.",
       blobNotFound:
         "Aucune copie de sauvegarde chiffrée n'existe encore sur ce serveur.",
       invalidPayload:
@@ -2203,6 +2209,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Для этого аккаунта уже достигнут лимит устройств. На устройстве, которое ещё подключено, откройте «Резервная копия и sync» и удалите неиспользуемое устройство, чтобы освободить слот.",
         syncNotPrepared: "Сначала подготовьте зашифрованный sync на этом устройстве.",
         notConnected: "Сначала подключите это устройство к sync-серверу.",
+        recoveryKeyChangedElsewhere:
+          "Фраза восстановления аккаунта была изменена, а на этом устройстве осталась старая. Если вы меняли её здесь, завершите смену; иначе отключитесь и войдите снова с новой фразой.",
         blobNotFound:
           "На этом сервере ещё нет зашифрованной резервной копии.",
         invalidPayload:
@@ -2789,6 +2797,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Primero prepara el sync cifrado en este dispositivo.",
         notConnected:
           "Primero conecta este dispositivo a un servidor de sync.",
+        recoveryKeyChangedElsewhere:
+          "La frase de recuperación de tu cuenta cambió y este dispositivo aún tiene la anterior. Si la cambiaste aquí, termina el cambio; si no, desconéctate y vuelve a entrar con la frase nueva.",
         blobNotFound:
           "Todavía no existe una copia de respaldo cifrada en este servidor.",
         invalidPayload:
@@ -3379,6 +3389,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Prepara prima il sync cifrato su questo dispositivo.",
         notConnected:
           "Collega prima questo dispositivo a un server di sync.",
+        recoveryKeyChangedElsewhere:
+          "La frase di recupero del tuo account è stata cambiata e questo dispositivo ha ancora quella vecchia. Se l'hai cambiata qui, completa la modifica; altrimenti disconnettiti e accedi di nuovo con la nuova frase.",
         blobNotFound:
           "Non esiste ancora un backup cifrato su questo server.",
         invalidPayload:
