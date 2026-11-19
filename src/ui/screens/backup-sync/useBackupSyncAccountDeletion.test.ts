@@ -233,6 +233,10 @@ describe("useBackupSyncAccountDeletion", () => {
         },
         core.state!.savedSyncPreferences,
         { currentPassword: PASSWORD },
+        undefined,
+        undefined,
+        undefined,
+        { expectsServerSession: true },
       );
     });
 
@@ -817,5 +821,42 @@ describe("useBackupSyncAccountDeletion", () => {
       expect(result.current.accountDeletionStepUpPrompt).not.toBeNull();
       expect(mockFinishLocalAccountDeletion).not.toHaveBeenCalled();
     });
+
+    it("a reloaded or switched state takes the full server flow again", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      const { result, rerender } = await renderHook(
+        (props: { core: typeof core }) => useBackupSyncAccountDeletion(props.core),
+        { initialProps: { core } },
+      );
+
+      await failAfterServerDelete(result);
+      await rerender({ core: createBackupSyncSessionCoreMock() });
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).not.toBeNull();
+      expect(mockFinishLocalAccountDeletion).not.toHaveBeenCalled();
+    });
+  });
+
+  it("tells the deletion a connected session was loaded, so a vanished one aborts", async () => {
+    const core = createBackupSyncSessionCoreMock();
+    mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+    const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+    await act(async () => {
+      await result.current.handleDeleteAccount();
+    });
+    await submitStepUp(result);
+
+    expect(mockDeleteOvumcyAccount.mock.calls[0]?.[8]).toEqual({
+      expectsServerSession: core.state?.hasSyncSession,
+    });
+    expect(core.state?.hasSyncSession).toBe(true);
   });
 });

@@ -50,9 +50,10 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const deletionInFlightRef = useRef(false);
-  // Set once the server has erased the account but the local teardown failed:
-  // the retry skips the dead-token DELETE and the password card.
-  const serverDeletedRef = useRef(false);
+  // The loaded state whose server account is erased but whose local teardown
+  // failed: its retry skips the dead-token DELETE and the password card. Any
+  // other state (a reload, another account) takes the full server-first flow.
+  const serverDeletedForStateRef = useRef<typeof state>(null);
   const [pendingStepUp, setPendingStepUp] = useState<{
     prompt: RecoveryKeyStepUpPrompt;
     // A reload, disconnect or another account replaces `state` and so
@@ -133,7 +134,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
     const preferences = state.savedSyncPreferences;
     if (
-      !serverDeletedRef.current &&
+      serverDeletedForStateRef.current !== state &&
       preferences.mode === "managed" &&
       state.hasSyncSession &&
       !isGuestPartnerAccount(preferences)
@@ -237,7 +238,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     };
     let result: DeleteOvumcyAccountResult;
     try {
-      result = serverDeletedRef.current
+      result = serverDeletedForStateRef.current === forState
         ? await finishLocalAccountDeletion(
             storage,
             syncSecretStore,
@@ -249,12 +250,16 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
             wipeScopeSecretStores,
             forState.savedSyncPreferences,
             stepUp,
+            undefined,
+            undefined,
+            undefined,
+            { expectsServerSession: forState.hasSyncSession },
           );
     } catch {
       result = { ok: false, errorCode: "generic" };
     }
     if (!result.ok && result.serverDeleted) {
-      serverDeletedRef.current = true;
+      serverDeletedForStateRef.current = forState;
     }
     if (!result.ok) {
       const prompt = await resolveStepUpPrompt(result.errorCode, stepUp, forState);
@@ -269,7 +274,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       return;
     }
 
-    serverDeletedRef.current = false;
+    serverDeletedForStateRef.current = null;
     setPendingStepUp(null);
 
     // Same buffers this screen already clears on disconnect; deletion just
