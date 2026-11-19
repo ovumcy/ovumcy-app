@@ -1633,6 +1633,96 @@ describe("managed-cloud-api-client", () => {
     ).resolves.toEqual({ ok: false, errorCode: "entitlements_not_configured" });
   });
 
+  it("logs out with the refresh token in the body, and the bearer only when held", async () => {
+    const fetch = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(200, { status: "revoked" }))
+      .mockResolvedValueOnce(jsonResponse(200, { status: "revoked" }))
+      .mockResolvedValueOnce(jsonResponse(200, { status: "revoked" }));
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.logout({ sessionToken: "managed-session-1", refreshToken: "refresh-1" }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      client.logout({ sessionToken: null, refreshToken: "refresh-1" }),
+    ).resolves.toEqual({ ok: true });
+    await expect(
+      client.logout({ sessionToken: "managed-session-1", refreshToken: null }),
+    ).resolves.toEqual({ ok: true });
+
+    const [both, refreshOnly, bearerOnly] = fetch.mock.calls.map(
+      (call) => call[1] as RequestInit & { headers: Headers },
+    );
+    expect(fetch.mock.calls[0]?.[0]).toBe("https://managed.example/auth/session");
+    expect(both?.method).toBe("DELETE");
+    expect(both?.redirect).toBe("error");
+    expect(both?.headers.get("Authorization")).toBe("Bearer managed-session-1");
+    expect(both?.headers.get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(String(both?.body))).toEqual({ refresh_token: "refresh-1" });
+    expect(refreshOnly?.headers.get("Authorization")).toBeNull();
+    expect(JSON.parse(String(refreshOnly?.body))).toEqual({
+      refresh_token: "refresh-1",
+    });
+    expect(bearerOnly?.body).toBeUndefined();
+    expect(bearerOnly?.headers.get("Content-Type")).toBeNull();
+  });
+
+  it.each([
+    [401, "unauthorized", "unauthorized"],
+    [429, "rate_limited", "rate_limited"],
+    [400, "invalid_json", "generic"],
+    [500, "internal_error", "network_failed"],
+  ])("maps a %i %s logout to %s", async (status, error, expected) => {
+    const fetch = jest.fn().mockResolvedValueOnce(jsonResponse(status, { error }));
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.logout({ sessionToken: null, refreshToken: "refresh-1" }),
+    ).resolves.toEqual({ ok: false, errorCode: expected });
+  });
+
+  it("never logs the refresh token or puts it in a logout failure", async () => {
+    const consoleSpies = (["log", "info", "warn", "error", "debug"] as const).map(
+      (method) => jest.spyOn(console, method).mockImplementation(() => undefined),
+    );
+    try {
+      const fetch = jest
+        .fn()
+        .mockRejectedValueOnce(new Error("socket closed refresh-secret-1"))
+        .mockResolvedValueOnce(jsonResponse(500, { error: "refresh-secret-1" }))
+        .mockResolvedValueOnce(jsonResponse(400, { error: "invalid_json" }));
+      const client = createManagedCloudAPIClient(
+        "https://managed.example/",
+        fetch as unknown as typeof globalThis.fetch,
+      );
+
+      const results = [];
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        results.push(
+          await client.logout({ sessionToken: null, refreshToken: "refresh-secret-1" }),
+        );
+      }
+
+      expect(results).toEqual([
+        { ok: false, errorCode: "network_failed" },
+        { ok: false, errorCode: "network_failed" },
+        { ok: false, errorCode: "generic" },
+      ]);
+      for (const spy of consoleSpies) {
+        expect(JSON.stringify(spy.mock.calls)).not.toContain("refresh-secret-1");
+      }
+    } finally {
+      consoleSpies.forEach((spy) => spy.mockRestore());
+    }
+  });
+
   it("deletes the managed account with a DELETE /account bearer request and tolerates an empty body", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(null, { status: 204 }),
@@ -1911,3 +2001,10 @@ describe("managed-cloud-api-client", () => {
     });
   });
 });
+
+function jsonResponse(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
