@@ -822,7 +822,7 @@ describe("deleteOvumcyAccount managed session renewal", () => {
       jest.fn(),
       managedClientFactory,
       { sync: jest.fn().mockResolvedValue("scheduled") },
-      NOW,
+      { now: NOW, expectsServerSession: true },
     );
 
     expect(result).toEqual({ ok: true });
@@ -854,12 +854,67 @@ describe("deleteOvumcyAccount managed session renewal", () => {
         .fn()
         .mockReturnValue(createManagedClientMock({ deleteAccount, refreshSession })),
       scheduler,
-      NOW,
+      { now: NOW, expectsServerSession: true },
     );
 
     expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
     expect(deleteAccount).not.toHaveBeenCalled();
     expect(storage.clearAllLocalData).not.toHaveBeenCalled();
     expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("a retry after the dead refresh chain cleared the session still wipes nothing", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createExpiringSecretStore();
+    const refreshSession = jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "unauthorized" });
+    const deleteAccount = jest.fn();
+    const managedClientFactory = jest
+      .fn()
+      .mockReturnValue(createManagedClientMock({ deleteAccount, refreshSession }));
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const attempt = () =>
+      deleteOvumcyAccount(
+        storage,
+        secretStore,
+        createWipeScopeSecretStoresMock(),
+        managedPreferences,
+        { currentPassword: "very secure password 12345" },
+        jest.fn(),
+        managedClientFactory,
+        scheduler,
+        { now: NOW, expectsServerSession: true },
+      );
+
+    await attempt();
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ managedAuthSessionToken: null }),
+    );
+    const retry = await attempt();
+
+    expect(retry).toEqual({ ok: false, errorCode: "unauthorized" });
+    expect(deleteAccount).not.toHaveBeenCalled();
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("without a loaded session it keeps the local-only path", async () => {
+    const storage = createLocalAppStorageMock();
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createSyncSecretStoreMock(null),
+      createWipeScopeSecretStoresMock(),
+      managedPreferences,
+      undefined,
+      jest.fn(),
+      jest.fn(),
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+      { expectsServerSession: false },
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
   });
 });

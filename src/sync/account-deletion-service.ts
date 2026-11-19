@@ -181,14 +181,31 @@ export async function deleteOvumcyAccount(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
-  now: Date = new Date(),
+  options: {
+    now?: Date;
+    /**
+     * The caller loaded a connected session. A session that has since gone
+     * (a dead refresh chain clears it) then aborts as `unauthorized` instead
+     * of taking the local-only path with the server account still alive.
+     */
+    expectsServerSession?: boolean;
+  } = {},
 ): Promise<DeleteOvumcyAccountResult> {
   const secrets = await secretStore.readSyncSecrets();
+  const activeSessionToken =
+    preferences.mode === "managed"
+      ? secrets?.managedAuthSessionToken
+      : preferences.mode === "self_hosted"
+        ? secrets?.authSessionToken
+        : null;
+  if (options.expectsServerSession && !activeSessionToken) {
+    return { ok: false, errorCode: "unauthorized" };
+  }
 
   if (preferences.mode === "managed" && secrets?.managedAuthSessionToken) {
     const session = await ensureFreshManagedSession(
       secretStore,
-      now,
+      options.now,
       managedClientFactory,
     );
     if (!session.ok) {
@@ -218,9 +235,7 @@ export async function deleteOvumcyAccount(
   }
   // No session for the active mode (or genuinely local-only): nothing to
   // call on the server, proceed straight to the local teardown below.
-  const hadServerAccount =
-    (preferences.mode === "managed" && Boolean(secrets?.managedAuthSessionToken)) ||
-    (preferences.mode === "self_hosted" && Boolean(secrets?.authSessionToken));
+  const hadServerAccount = Boolean(activeSessionToken);
 
   const local = await finishLocalAccountDeletion(
     storage,
