@@ -23,7 +23,6 @@ import {
 import {
   applyManagedAuthResultToSecrets,
   clearManagedSessionFromSecrets,
-  ensureFreshManagedSession,
 } from "./managed-session-refresh-service";
 import { isPasswordTooShort } from "./password-policy";
 import type {
@@ -1529,7 +1528,7 @@ export async function disconnectSyncAccount(
   preferences: SyncPreferencesRecord,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
-  now: Date = new Date(),
+  remoteTimeoutMs: number = DISCONNECT_REMOTE_TIMEOUT_MS,
 ): Promise<{ ok: true; preferences: SyncPreferencesRecord }> {
   const secrets = await secretStore.readSyncSecrets();
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -1537,27 +1536,28 @@ export async function disconnectSyncAccount(
     preferences.endpointInput,
   );
 
+  const revocations: Promise<unknown>[] = [];
   if (secrets?.authSessionToken && normalizedEndpoint.ok) {
     const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
-    await client.logout(secrets.authSessionToken);
+    revocations.push(client.logout(secrets.authSessionToken));
   }
-  if (secrets?.managedAuthSessionToken && preferences.mode === "managed") {
-    // Logout revokes the refresh family only under a live bearer: an expired
-    // access session answers 401 and leaves the family able to mint sessions.
-    const fresh = await ensureFreshManagedSession(
-      secretStore,
-      now,
-      managedClientFactory,
+  const managedCredentials = {
+    sessionToken: secrets?.managedAuthSessionToken || null,
+    refreshToken: secrets?.managedRefreshToken || null,
+  };
+  if (
+    preferences.mode === "managed" &&
+    (managedCredentials.sessionToken || managedCredentials.refreshToken)
+  ) {
+    revocations.push(
+      revokeManagedSession(
+        managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL),
+        managedCredentials,
+      ),
     );
-    if (fresh.ok) {
-      const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-      const result = await managedClient.logout(fresh.sessionToken);
-      // A 5xx means the logout rolled back and the family is still live.
-      if (!result.ok && result.errorCode === "network_failed") {
-        await managedClient.logout(fresh.sessionToken);
-      }
-    }
   }
+  // The local wipe below must not wait on a slow or hanging server.
+  await settleWithin(Promise.all(revocations), remoteTimeoutMs);
 
   const nextPreferences = await clearLocalSyncSession(
     storage,
@@ -1566,6 +1566,33 @@ export async function disconnectSyncAccount(
   );
 
   return { ok: true, preferences: nextPreferences };
+}
+
+const DISCONNECT_REMOTE_TIMEOUT_MS = 10_000;
+
+async function revokeManagedSession(
+  managedClient: ManagedCloudAPIClient,
+  credentials: { sessionToken: string | null; refreshToken: string | null },
+): Promise<void> {
+  const result = await managedClient.logout(credentials);
+  // A 5xx means the logout rolled back and the family is still live.
+  if (!result.ok && result.errorCode === "network_failed") {
+    await managedClient.logout(credentials);
+  }
+}
+
+async function settleWithin(work: Promise<unknown>, timeoutMs: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      work.catch(() => undefined),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function clearLocalSyncSession(

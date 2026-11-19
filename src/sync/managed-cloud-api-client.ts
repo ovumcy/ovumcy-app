@@ -321,9 +321,12 @@ export type ManagedCloudAPIClient = {
     | { ok: true; auth: ManagedCloudAuthResult }
     | { ok: false; errorCode: ManagedCloudAPIErrorCode }
   >;
-  logout(
-    sessionToken: string,
-  ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
+  // DELETE /auth/session revokes the refresh family under either credential:
+  // a live bearer or the refresh token in the body. Send every one held.
+  logout(credentials: {
+    sessionToken: string | null;
+    refreshToken: string | null;
+  }): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }>;
   // deleteAccount permanently erases the managed account and all its data
   // (DELETE /account). It does NOT cancel the external app-store subscription
   // — the caller is responsible for surfacing that limitation to the owner
@@ -663,10 +666,11 @@ export function createManagedCloudAPIClient(
       return requestAuthResult(fetchImpl, normalizedBaseURL, "/auth/login", input);
     },
 
-    async logout(sessionToken) {
+    async logout({ sessionToken, refreshToken }) {
       return requestNoPayload(fetchImpl, normalizedBaseURL, "/auth/session", {
         method: "DELETE",
-        sessionToken,
+        ...(sessionToken ? { sessionToken } : {}),
+        ...(refreshToken ? { body: { refresh_token: refreshToken } } : {}),
       });
     },
 
