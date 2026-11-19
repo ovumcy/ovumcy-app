@@ -226,22 +226,26 @@ export function useBackupSyncSessionCore({
         partnerResult.value,
         effectiveNow,
       );
+      const reshareRequiredGrantIDs = new Set(
+        listManagedPartnerGrantsNeedingReshare(partnerResult.value, partnerShareSecrets),
+      );
       if (partnerResult.value.owned.grants.length > 0) {
-        await syncManagedPartnerSharedProjections(
+        // The push re-lists grants and may meet a re-share this listing missed.
+        const pushResult = await syncManagedPartnerSharedProjections(
           storage,
           syncSecretStore,
           partnerShareSecretStore,
           effectiveNow,
         );
+        for (const grantID of pushResult?.reshareRequiredGrantIDs ?? []) {
+          reshareRequiredGrantIDs.add(grantID);
+        }
       }
 
       return {
         errorMessage: "",
         overview: partnerResult.value,
-        reshareRequiredGrantIDs: listManagedPartnerGrantsNeedingReshare(
-          partnerResult.value,
-          partnerShareSecrets,
-        ),
+        reshareRequiredGrantIDs: [...reshareRequiredGrantIDs],
         showOwnerControls: premiumFeatures.partnerAccess,
       };
     },

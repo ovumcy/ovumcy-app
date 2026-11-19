@@ -197,7 +197,7 @@ describe("runSavePendingSettingsAction: multi-section save sequencing", () => {
       .mockResolvedValue({ ok: true, state: trackingState });
     const partnerSyncSpy = jest
       .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
-      .mockResolvedValue({ skipped: true, syncedCount: 0 });
+      .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
     const reminderSyncSpy = jest
       .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
       .mockResolvedValue("scheduled");
@@ -331,7 +331,7 @@ describe("runSavePendingSettingsAction: cycle save status", () => {
     jest.restoreAllMocks();
     jest
       .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
-      .mockResolvedValue({ skipped: true, syncedCount: 0 });
+      .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
     jest
       .spyOn(localReminderSyncService, "syncLocalReminderSchedule")
       .mockResolvedValue("scheduled");
@@ -380,7 +380,7 @@ describe("runSavePendingSettingsAction: rebuild after a partial save", () => {
       .mockResolvedValue({ ok: true, state: cycleState });
     jest
       .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
-      .mockResolvedValue({ skipped: true, syncedCount: 0 });
+      .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
     return cycleState;
   }
 
