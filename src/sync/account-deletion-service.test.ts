@@ -917,4 +917,27 @@ describe("deleteOvumcyAccount managed session renewal", () => {
     expect(result).toEqual({ ok: true });
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
   });
+
+  it("a self-hosted device holding only a stray managed token is not blocked by the guard", async () => {
+    const storage = createLocalAppStorageMock();
+    const managedClientFactory = jest.fn();
+    const apiClientFactory = jest.fn();
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createExpiringSecretStore(),
+      createWipeScopeSecretStoresMock(),
+      { ...managedPreferences, mode: "self_hosted" as const },
+      undefined,
+      apiClientFactory,
+      managedClientFactory,
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+      { now: NOW, expectsServerSession: true },
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(apiClientFactory).not.toHaveBeenCalled();
+    expect(managedClientFactory).not.toHaveBeenCalled();
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+  });
 });
