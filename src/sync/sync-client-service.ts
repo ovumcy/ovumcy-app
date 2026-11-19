@@ -1542,9 +1542,6 @@ export async function disconnectSyncAccount(
     ),
     remoteTimeoutMs,
   );
-  if (preferences.mode === "managed") {
-    endManagedSessionRefresh();
-  }
 
   const nextPreferences = await clearLocalSyncSession(
     storage,
@@ -1625,6 +1622,9 @@ export async function clearLocalSyncSession(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
 ): Promise<SyncPreferencesRecord> {
+  if (preferences.mode === "managed") {
+    endManagedSessionRefresh();
+  }
   const secrets = await secretStore.readSyncSecrets();
   const nextManagedAuthSessionToken =
     preferences.mode === "managed" ? null : secrets?.managedAuthSessionToken ?? null;
