@@ -66,15 +66,7 @@ function isRealISODate(text) {
  * advisory does not reach this product, not merely that it is inconvenient;
  * `reviewBy` is the date the judgement has to be made again.
  */
-export const ALLOWLIST = [
-  {
-    package: "picomatch",
-    advisory: "GHSA-fc5q-39xc-vjpf",
-    reason:
-      "No patched release exists (every version <= 4.0.7 is affected). picomatch is reached only through build and test tooling (Metro, @expo/metro-config, @parcel/watcher, Jest, micromatch, anymatch, tinyglobby); no module in src/ or app/ imports a glob matcher, so nothing in the device or web bundle compiles a pattern. The ReDoS needs an attacker-chosen extglob, and the tooling compiles only patterns from repository config and the developer's own paths, never input from an app user.",
-    reviewBy: "2026-12-17",
-  },
-];
+export const ALLOWLIST = [];
 
 /**
  * Reads and parses an `npm audit --omit=dev --json` report from disk.
