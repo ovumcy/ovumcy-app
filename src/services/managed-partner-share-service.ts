@@ -244,6 +244,8 @@ export async function uploadManagedPartnerProjection(
   input: {
     projection: PartnerSharedProjectionPayload;
     partnerShareSecretStore: PartnerShareSecretStore;
+    // `sourceInviteID` of the grant as the current listing shows it.
+    listedSourceInviteID: string | null;
   },
 ): Promise<ManagedPartnerShareResult<ManagedCloudPartnerProjection>> {
   const sessionToken = await readManagedSessionToken(syncSecretStore, syncMode);
@@ -251,16 +253,28 @@ export async function uploadManagedPartnerProjection(
     return { ok: false, errorCode: "not_connected" };
   }
 
-  const shareKey = await readGrantShareKey(
+  // A legacy grant has no key context the server can bind; only a revoke
+  // plus a fresh invite repairs it, so nothing is encrypted or sent.
+  const listedSourceInviteID = input.listedSourceInviteID?.trim() ?? "";
+  if (listedSourceInviteID.length === 0) {
+    return { ok: false, errorCode: "partner_grant_rekeyed" };
+  }
+
+  // Key and key context come from one read of one record, so the id sent is
+  // the one the ciphertext's K_grant was derived under.
+  const grantKey = await readGrantKeyRecord(
     input.partnerShareSecretStore,
     input.projection.grantID,
   );
-  if (!shareKey) {
+  if (!grantKey) {
     return { ok: false, errorCode: "share_key_unavailable" };
+  }
+  if (grantKey.sourceInviteID !== listedSourceInviteID) {
+    return { ok: false, errorCode: "partner_grant_rekeyed" };
   }
 
   const encryptedProjection = encryptPartnerSharedProjection(
-    shareKey,
+    grantKey.keyHex,
     input.projection,
   );
   const result = await createManagedCloudAPIClient(
@@ -270,9 +284,21 @@ export async function uploadManagedPartnerProjection(
     checksumSHA256: encryptedProjection.checksumSHA256,
     ciphertextBase64: encryptedProjection.ciphertextBase64,
     ciphertextSize: encryptedProjection.ciphertextSize,
+    sourceInviteID: grantKey.sourceInviteID,
   });
 
   return result.ok ? { ok: true, value: result.projection } : result;
+}
+
+/**
+ * True when a listed grant can never carry a projection from this app: it
+ * predates `source_invite_id`, so the server refuses every key context
+ * (`409 partner_grant_rekeyed`). The owner must revoke it and invite again.
+ */
+export function isManagedPartnerGrantReshareRequired(
+  grant: Pick<ManagedCloudPartnerAccessGrant, "sourceInviteID" | "revokedAt">,
+): boolean {
+  return grant.revokedAt === null && (grant.sourceInviteID?.trim() ?? "") === "";
 }
 
 export async function loadManagedPartnerProjection(
@@ -286,7 +312,8 @@ export async function loadManagedPartnerProjection(
     return { ok: false, errorCode: "not_connected" };
   }
 
-  const shareKey = await readGrantShareKey(partnerShareSecretStore, grant.id);
+  const shareKey = (await readGrantKeyRecord(partnerShareSecretStore, grant.id))
+    ?.keyHex;
   if (!shareKey) {
     return { ok: false, errorCode: "share_key_unavailable" };
   }
@@ -344,14 +371,18 @@ async function readManagedSessionToken(
   return secrets?.managedAuthSessionToken?.trim() || null;
 }
 
-async function readGrantShareKey(
+async function readGrantKeyRecord(
   partnerShareSecretStore: PartnerShareSecretStore,
   grantID: string,
-): Promise<string | null> {
+): Promise<{ keyHex: string; sourceInviteID: string } | null> {
   const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
   const record: PartnerShareGrantKeyRecord | undefined =
     secrets.grantKeysByGrantID[grantID];
-  return record?.keyHex.trim() || null;
+  const keyHex = record?.keyHex.trim() || "";
+  if (!record || keyHex.length === 0) {
+    return null;
+  }
+  return { keyHex, sourceInviteID: record.sourceInviteID.trim() };
 }
 
 function parseInviteTokenFromURL(inviteURL: string): string {

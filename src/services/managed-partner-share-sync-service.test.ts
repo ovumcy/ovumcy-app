@@ -49,7 +49,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         {} as PartnerShareSecretStore,
         FIXED_NOW,
       ),
-    ).resolves.toEqual({ skipped: true, syncedCount: 0 });
+    ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
 
     expect(premiumSpy).toHaveBeenCalledWith(
       storage,
@@ -67,7 +67,12 @@ describe("syncManagedPartnerSharedProjections", () => {
       resetManagedPartnerProjectionPushBackoff();
     });
 
-    function armTwoGrantPush() {
+    function armTwoGrantPush(
+      grants: { id: string; sourceInviteID: string | null }[] = [
+        { id: "grant-1", sourceInviteID: "invite-1" },
+        { id: "grant-2", sourceInviteID: "invite-2" },
+      ],
+    ) {
       const setupSpy = jest
         .spyOn(syncSetupService, "loadSyncSetupState")
         .mockResolvedValue({
@@ -84,12 +89,18 @@ describe("syncManagedPartnerSharedProjections", () => {
           partnerAccess: true,
           reminders: false,
         });
-      const grant = (id: string) =>
-        ({ id, accessLevel: "summary", ownerAccountID: "owner-1", revokedAt: null }) as never;
+      const grant = ({ id, sourceInviteID }: { id: string; sourceInviteID: string | null }) =>
+        ({
+          id,
+          accessLevel: "summary",
+          ownerAccountID: "owner-1",
+          revokedAt: null,
+          sourceInviteID,
+        }) as never;
       jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
         ok: true,
         value: {
-          owned: { invites: [], grants: [grant("grant-1"), grant("grant-2")] },
+          owned: { invites: [], grants: grants.map(grant) },
           sharedWithMe: [],
         },
       });
@@ -121,7 +132,7 @@ describe("syncManagedPartnerSharedProjections", () => {
           partnerShareSecretStore,
           FIXED_NOW,
         ),
-      ).resolves.toEqual({ skipped: false, syncedCount: 0 });
+      ).resolves.toEqual({ skipped: false, syncedCount: 0, reshareRequiredGrantIDs: [] });
       expect(uploadSpy).toHaveBeenCalledTimes(1);
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
 
@@ -134,7 +145,7 @@ describe("syncManagedPartnerSharedProjections", () => {
           partnerShareSecretStore,
           FIXED_NOW,
         ),
-      ).resolves.toEqual({ skipped: true, syncedCount: 0 });
+      ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
       expect(setupSpy).toHaveBeenCalled();
       expect(accessSpy).not.toHaveBeenCalled();
       expect(uploadSpy).toHaveBeenCalledTimes(1);
@@ -182,6 +193,61 @@ describe("syncManagedPartnerSharedProjections", () => {
         FIXED_NOW,
       );
 
+      expect(uploadSpy).toHaveBeenCalledTimes(2);
+      expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
+    });
+
+    it("skips a legacy grant before reserving a generation and reports it for a re-share", async () => {
+      armTwoGrantPush([
+        { id: "grant-legacy", sourceInviteID: null },
+        { id: "grant-2", sourceInviteID: "invite-2" },
+      ]);
+      const reserveSpy = jest.mocked(
+        managedPartnerShareService.reserveNextManagedPartnerProjectionGeneration,
+      );
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: true, value: {} as never });
+
+      await expect(
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        ),
+      ).resolves.toEqual({
+        skipped: false,
+        syncedCount: 1,
+        reshareRequiredGrantIDs: ["grant-legacy"],
+      });
+      expect(reserveSpy).toHaveBeenCalledTimes(1);
+      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2");
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+      expect(uploadSpy.mock.calls[0]?.[2]).toMatchObject({
+        listedSourceInviteID: "invite-2",
+      });
+    });
+
+    it("reports a re-keyed grant and keeps pushing the others", async () => {
+      armTwoGrantPush();
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValueOnce({ ok: false, errorCode: "partner_grant_rekeyed" })
+        .mockResolvedValueOnce({ ok: true, value: {} as never });
+
+      await expect(
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        ),
+      ).resolves.toEqual({
+        skipped: false,
+        syncedCount: 1,
+        reshareRequiredGrantIDs: ["grant-1"],
+      });
       expect(uploadSpy).toHaveBeenCalledTimes(2);
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
     });

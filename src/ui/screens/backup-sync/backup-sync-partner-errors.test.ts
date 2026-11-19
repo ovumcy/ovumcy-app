@@ -16,6 +16,7 @@ describe("resolvePartnerErrorMessage", () => {
     ["partner_access_not_found", copy.errors.partnerAccessNotFound],
     ["partner_invite_limit_reached", copy.errors.partnerInviteLimitReached],
     ["partner_grant_limit_reached", copy.errors.partnerGrantLimitReached],
+    ["partner_grant_rekeyed", copy.grantReshareRequiredHint],
     ["rate_limited", copy.errors.rateLimited],
     ["network_failed", copy.errors.networkFailed],
   ])("maps %s to its dedicated copy", (errorCode, expected) => {

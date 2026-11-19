@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import type { PartnerCopy } from "../../../i18n/partner-copy";
 import { formatBackupSyncLastSeen } from "../../../services/backup-sync-view-service";
+import { isManagedPartnerGrantReshareRequired } from "../../../services/managed-partner-share-service";
 import type {
   ManagedCloudPartnerAccessGrant,
   ManagedCloudPartnerAccessLevel,
@@ -339,6 +340,14 @@ function PartnerGrantList({
                 {copy.lastSeenLabel}:{" "}
                 {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
               </Text>
+              {isManagedPartnerGrantReshareRequired(grant) ? (
+                <Text
+                  style={styles.helperText}
+                  testID={`settings-partner-grant-reshare-${grant.id}`}
+                >
+                  {copy.grantReshareRequiredHint}
+                </Text>
+              ) : null}
             </View>
             <AppButton
               label={copy.openSharedViewLabel}
@@ -452,6 +461,7 @@ function buildPartnerGrantAccessibilityLabel(
     accessLevelLabel,
     accessLevelHint,
     `${copy.lastSeenLabel}: ${formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}`,
+    isManagedPartnerGrantReshareRequired(grant) ? copy.grantReshareRequiredHint : "",
   ]
     .filter((value) => value.trim().length > 0)
     .join(". ");

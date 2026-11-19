@@ -11,6 +11,7 @@ import { parsePartnerInviteLink } from "../security/partner-invite-link";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
   clearManagedPartnerGrantKey,
+  isManagedPartnerGrantReshareRequired,
   loadManagedPartnerProjection,
   reconcileManagedPartnerShareKeys,
   reserveNextManagedPartnerProjectionGeneration,
@@ -579,11 +580,15 @@ describe("managed-partner-share-service", () => {
         uploadManagedPartnerProjection(syncSecretStore, "managed", {
           projection,
           partnerShareSecretStore,
+          listedSourceInviteID: "invite-1",
         }),
       ).resolves.toEqual({
         ok: true,
         value: expect.objectContaining({ grantID: "grant-1" }),
       });
+      expect(
+        (uploadedProjectionBody as Record<string, unknown> | null)?.source_invite_id,
+      ).toBe("invite-1");
 
       await expect(
         loadManagedPartnerProjection(
@@ -670,6 +675,7 @@ describe("managed-partner-share-service", () => {
         uploadManagedPartnerProjection(syncSecretStore, "managed", {
           projection: buildProjectionPayload(),
           partnerShareSecretStore,
+          listedSourceInviteID: "invite-1",
         }),
       ).resolves.toEqual({
         ok: false,
@@ -699,12 +705,98 @@ describe("managed-partner-share-service", () => {
         uploadManagedPartnerProjection(syncSecretStore, "managed", {
           projection: buildProjectionPayload(),
           partnerShareSecretStore,
+          listedSourceInviteID: "invite-1",
         }),
       ).resolves.toEqual({
         ok: false,
         errorCode: "rate_limited",
         retryAfterSeconds: 12,
       });
+    });
+  });
+
+  describe("projection key context (MNG-29 source_invite_id)", () => {
+    async function setupOwnerWithGrantKey() {
+      const syncSecretStore = await setupConnectedSyncSecrets();
+      const partnerShareSecretStore = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      return { syncSecretStore, partnerShareSecretStore };
+    }
+
+    it.each([null, "", "   "])(
+      "refuses a legacy grant listed with source invite %p without touching the network",
+      async (listedSourceInviteID) => {
+        const { syncSecretStore, partnerShareSecretStore } =
+          await setupOwnerWithGrantKey();
+        const fetchMock = jest.fn();
+        global.fetch = fetchMock as unknown as typeof fetch;
+
+        await expect(
+          uploadManagedPartnerProjection(syncSecretStore, "managed", {
+            projection: buildProjectionPayload(),
+            partnerShareSecretStore,
+            listedSourceInviteID,
+          }),
+        ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+        expect(fetchMock).not.toHaveBeenCalled();
+      },
+    );
+
+    it("refuses when the listed key context no longer matches the stored key's", async () => {
+      const { syncSecretStore, partnerShareSecretStore } =
+        await setupOwnerWithGrantKey();
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await expect(
+        uploadManagedPartnerProjection(syncSecretStore, "managed", {
+          projection: buildProjectionPayload(),
+          partnerShareSecretStore,
+          listedSourceInviteID: "invite-2",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("forwards the server's 409 partner_grant_rekeyed", async () => {
+      const { syncSecretStore, partnerShareSecretStore } =
+        await setupOwnerWithGrantKey();
+      global.fetch = jest.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "partner_grant_rekeyed" }), {
+            status: 409,
+            headers: { "Content-Type": "application/json" },
+          }),
+      ) as typeof fetch;
+
+      await expect(
+        uploadManagedPartnerProjection(syncSecretStore, "managed", {
+          projection: buildProjectionPayload(),
+          partnerShareSecretStore,
+          listedSourceInviteID: "invite-1",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+    });
+
+    it("flags only live grants without a source invite as needing a re-share", () => {
+      expect(isManagedPartnerGrantReshareRequired(buildGrantFixture())).toBe(false);
+      expect(
+        isManagedPartnerGrantReshareRequired(buildGrantFixture({ sourceInviteID: null })),
+      ).toBe(true);
+      expect(
+        isManagedPartnerGrantReshareRequired(buildGrantFixture({ sourceInviteID: " " })),
+      ).toBe(true);
+      expect(
+        isManagedPartnerGrantReshareRequired(
+          buildGrantFixture({ sourceInviteID: null, revokedAt: "2026-04-06T08:00:00.000Z" }),
+        ),
+      ).toBe(false);
     });
   });
 
