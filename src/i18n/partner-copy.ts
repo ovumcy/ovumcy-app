@@ -28,6 +28,8 @@ const partnerCopyEn = {
   activePartnersTitle: "Active partner access",
   activePartnersEmpty: "No active partner access yet.",
   activePartnerLabel: "Partner access",
+  grantReshareRequiredHint:
+    "This partner access no longer receives updates from this device. Revoke access and send a new invite to keep sharing.",
   sharedWithMeTitle: "Access shared with this account",
   sharedWithMeHint:
     "This Ovumcy Cloud account already has partner access. The granted access level stays visible here even after the invite banner is gone.",
@@ -167,6 +169,8 @@ const partnerCopyDe = {
   activePartnersTitle: "Aktive Partnerzugriffe",
   activePartnersEmpty: "Noch kein aktiver Partnerzugriff.",
   activePartnerLabel: "Partnerzugriff",
+  grantReshareRequiredHint:
+    "Dieser Partnerzugriff erhält von diesem Gerät keine Aktualisierungen mehr. Widerrufen Sie den Zugriff und senden Sie eine neue Einladung, um weiter zu teilen.",
   sharedWithMeTitle: "Mit diesem Konto geteilter Zugriff",
   sharedWithMeHint:
     "Dieses Ovumcy-Cloud-Konto hat bereits Partnerzugriff. Das gewährte Zugriffslevel bleibt hier sichtbar, auch nachdem das Einladungsbanner verschwunden ist.",
@@ -311,6 +315,8 @@ const partnerCopyFr = {
   activePartnersTitle: "Accès partenaires actifs",
   activePartnersEmpty: "Aucun accès partenaire actif pour le moment.",
   activePartnerLabel: "Accès partenaire",
+  grantReshareRequiredHint:
+    "Cet accès partenaire ne reçoit plus de mises à jour depuis cet appareil. Retirez l’accès et envoyez une nouvelle invitation pour continuer le partage.",
   sharedWithMeTitle: "Accès partagé avec ce compte",
   sharedWithMeHint:
     "Ce compte Ovumcy Cloud dispose déjà d’un accès partenaire. Le niveau accordé reste visible ici même après la disparition de la bannière d’invitation.",
@@ -454,6 +460,8 @@ const partnerCopyRu = {
   activePartnersTitle: "Активный доступ партнёров",
   activePartnersEmpty: "Пока нет активного доступа партнёров.",
   activePartnerLabel: "Доступ партнёра",
+  grantReshareRequiredHint:
+    "Этот доступ партнёра больше не получает обновления с этого устройства. Отзовите доступ и отправьте новое приглашение, чтобы продолжить делиться данными.",
   sharedWithMeTitle: "Доступ, выданный этому аккаунту",
   sharedWithMeHint:
     "У этого аккаунта Ovumcy Cloud уже есть партнёрский доступ. Выданный уровень доступа остаётся видимым здесь даже после исчезновения баннера приглашения.",
@@ -593,6 +601,8 @@ const partnerCopyEs = {
   activePartnersTitle: "Accesos de pareja activos",
   activePartnersEmpty: "Todavía no hay acceso de pareja activo.",
   activePartnerLabel: "Acceso de pareja",
+  grantReshareRequiredHint:
+    "Este acceso de pareja ya no recibe actualizaciones desde este dispositivo. Revoca el acceso y envía una nueva invitación para seguir compartiendo.",
   sharedWithMeTitle: "Acceso compartido con esta cuenta",
   sharedWithMeHint:
     "Esta cuenta de Ovumcy Cloud ya tiene acceso de pareja. El nivel concedido sigue visible aquí incluso después de que desaparezca el banner de invitación.",
@@ -734,6 +744,8 @@ const partnerCopyIt = {
   activePartnersTitle: "Accessi partner attivi",
   activePartnersEmpty: "Ancora nessun accesso partner attivo.",
   activePartnerLabel: "Accesso partner",
+  grantReshareRequiredHint:
+    "Questo accesso partner non riceve più aggiornamenti da questo dispositivo. Revoca l’accesso e invia un nuovo invito per continuare a condividere.",
   sharedWithMeTitle: "Accesso condiviso con questo account",
   sharedWithMeHint:
     "Questo account Ovumcy Cloud ha già un accesso partner. Il livello di accesso concesso resta visibile qui anche dopo la scomparsa del banner di invito.",

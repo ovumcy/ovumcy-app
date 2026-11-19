@@ -4,6 +4,7 @@ import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { loadManagedPremiumFeatures } from "./managed-premium-features-service";
 import { loadManagedPartnerAccess } from "./managed-partner-access-service";
 import {
+  isManagedPartnerGrantReshareRequired,
   reconcileManagedPartnerShareKeys,
   reserveNextManagedPartnerProjectionGeneration,
   uploadManagedPartnerProjection,
@@ -24,16 +25,19 @@ export async function syncManagedPartnerSharedProjections(
 ): Promise<{
   skipped: boolean;
   syncedCount: number;
+  // Grants whose key context the server will not accept: legacy grants and
+  // grants re-keyed since this device derived its key.
+  reshareRequiredGrantIDs: string[];
 }> {
   const syncState = await loadSyncSetupState(storage, syncSecretStore);
   if (!syncState.hasAuthSession || syncState.preferences.mode !== "managed") {
     // The rate limit is per account: a back-off armed by a previous session
     // must not hold the next account's pushes.
     resetManagedPartnerProjectionPushBackoff();
-    return { skipped: true, syncedCount: 0 };
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
   if (isManagedPartnerProjectionPushBackedOff()) {
-    return { skipped: true, syncedCount: 0 };
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
   const premiumFeatures = await loadManagedPremiumFeatures(
@@ -45,7 +49,7 @@ export async function syncManagedPartnerSharedProjections(
     { liveOnly: true },
   );
   if (!premiumFeatures.partnerAccess) {
-    return { skipped: true, syncedCount: 0 };
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
   const partnerAccessResult = await loadManagedPartnerAccess(
@@ -53,7 +57,7 @@ export async function syncManagedPartnerSharedProjections(
     syncState.preferences.mode,
   );
   if (!partnerAccessResult.ok) {
-    return { skipped: true, syncedCount: 0 };
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
   await reconcileManagedPartnerShareKeys(
@@ -65,7 +69,7 @@ export async function syncManagedPartnerSharedProjections(
     (grant) => grant.revokedAt === null,
   );
   if (grants.length === 0) {
-    return { skipped: true, syncedCount: 0 };
+    return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
   const [profile, symptomRecords, summary, activePregnancy] = await Promise.all([
@@ -80,7 +84,12 @@ export async function syncManagedPartnerSharedProjections(
       : [];
 
   let syncedCount = 0;
+  const reshareRequiredGrantIDs: string[] = [];
   for (const grant of grants) {
+    if (isManagedPartnerGrantReshareRequired(grant)) {
+      reshareRequiredGrantIDs.push(grant.id);
+      continue;
+    }
     // Reserve the next monotonic generation BEFORE building the payload so
     // the value lives inside the AEAD-protected ciphertext (partner-side F5
     // anti-replay check rejects regressions below the last-seen marker). The
@@ -119,10 +128,13 @@ export async function syncManagedPartnerSharedProjections(
       {
         projection,
         partnerShareSecretStore,
+        listedSourceInviteID: grant.sourceInviteID,
       },
     );
     if (uploadResult.ok) {
       syncedCount += 1;
+    } else if (uploadResult.errorCode === "partner_grant_rekeyed") {
+      reshareRequiredGrantIDs.push(grant.id);
     } else if (uploadResult.errorCode === "rate_limited") {
       // The limit is per account, so the remaining grants would 429 too.
       backOffManagedPartnerProjectionPush(uploadResult.retryAfterSeconds);
@@ -133,5 +145,6 @@ export async function syncManagedPartnerSharedProjections(
   return {
     skipped: false,
     syncedCount,
+    reshareRequiredGrantIDs,
   };
 }

@@ -24,6 +24,7 @@ export type ManagedCloudAPIErrorCode =
   | "partner_invite_not_found"
   | "partner_invite_limit_reached"
   | "partner_grant_limit_reached"
+  | "partner_grant_rekeyed"
   | "entitlements_unavailable"
   | "entitlements_not_configured"
   | "unauthorized"
@@ -464,6 +465,9 @@ export type ManagedCloudAPIClient = {
       checksumSHA256: string;
       ciphertextBase64: string;
       ciphertextSize: number;
+      // The invite the ciphertext's K_grant was derived under, taken from the
+      // key record at encryption time — never re-read from a fresh listing.
+      sourceInviteID: string;
     },
   ): Promise<
     | { ok: true; projection: ManagedCloudPartnerProjection }
@@ -1131,6 +1135,7 @@ export function createManagedCloudAPIClient(
             checksum_sha256: input.checksumSHA256,
             ciphertext_base64: input.ciphertextBase64,
             ciphertext_size: input.ciphertextSize,
+            source_invite_id: input.sourceInviteID,
           },
         },
         isRawManagedCloudPartnerProjection,
@@ -1304,6 +1309,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_invite_not_found":
       case "partner_invite_limit_reached":
       case "partner_grant_limit_reached":
+      case "partner_grant_rekeyed":
       case "invalid_partner_projection":
       case "partner_projection_not_found":
       case "entitlements_unavailable":

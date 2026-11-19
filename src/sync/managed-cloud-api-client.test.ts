@@ -571,6 +571,7 @@ describe("managed-cloud-api-client", () => {
         checksumSHA256: "deadbeef",
         ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
         ciphertextSize: 15,
+        sourceInviteID: "invite-1",
       }),
     ).resolves.toEqual({
       ok: true,
@@ -648,10 +649,45 @@ describe("managed-cloud-api-client", () => {
           checksumSHA256: "deadbeef",
           ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
           ciphertextSize: 15,
+          sourceInviteID: "invite-1",
         }),
       ).resolves.toEqual({ ok: false, errorCode: "rate_limited", ...expectedExtra });
     },
   );
+
+  it("sends the encryption-time source_invite_id and maps 409 partner_grant_rekeyed", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "partner_grant_rekeyed" }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 15,
+        sourceInviteID: "invite-7",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+
+    const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://127.0.0.1:8090/account/partner/grants/grant-1/projection");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toEqual({
+      schema_version: 1,
+      checksum_sha256: "deadbeef",
+      ciphertext_base64: "c29tZS1jaXBoZXJ0ZXh0",
+      ciphertext_size: 15,
+      source_invite_id: "invite-7",
+    });
+  });
 
   it("ignores Retry-After on a non-429 failure", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
@@ -671,6 +707,7 @@ describe("managed-cloud-api-client", () => {
         checksumSHA256: "deadbeef",
         ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
         ciphertextSize: 15,
+        sourceInviteID: "invite-1",
       }),
     ).resolves.toEqual({ ok: false, errorCode: "partner_access_not_found" });
   });

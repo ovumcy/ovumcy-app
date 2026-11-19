@@ -21,6 +21,8 @@ export function resolvePartnerErrorMessage(
       return copy.errors.partnerInviteLimitReached;
     case "partner_grant_limit_reached":
       return copy.errors.partnerGrantLimitReached;
+    case "partner_grant_rekeyed":
+      return copy.grantReshareRequiredHint;
     case "rate_limited":
       return copy.errors.rateLimited;
     case "network_failed":

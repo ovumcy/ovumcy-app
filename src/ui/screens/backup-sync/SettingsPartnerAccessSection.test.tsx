@@ -179,4 +179,32 @@ describe("SettingsPartnerAccessSection", () => {
     expect(screen.getByTestId("settings-partner-error-banner")).toBeTruthy();
     expect(screen.getByText(copy.errors.networkFailed)).toBeTruthy();
   });
+
+  it("prompts a re-share only on an owned grant listed without a source invite", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          hasManagedSession
+          showOwnerControls
+          overview={{
+            owned: {
+              invites: [],
+              grants: [
+                createGrant({ id: "grant-legacy", sourceInviteID: null }),
+                createGrant({ id: "grant-2", sourceInviteID: "invite-2" }),
+              ],
+            },
+            sharedWithMe: [],
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("settings-partner-grant-reshare-grant-legacy")).toBeTruthy();
+    expect(screen.queryByTestId("settings-partner-grant-reshare-grant-2")).toBeNull();
+    expect(
+      screen.getByTestId("settings-partner-grant-info-grant-legacy").props.accessibilityLabel,
+    ).toContain(copy.grantReshareRequiredHint);
+  });
 });
