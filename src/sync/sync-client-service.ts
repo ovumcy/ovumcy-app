@@ -111,6 +111,9 @@ export type SyncRunErrorCode =
   | "totp_invalid_code"
   | "totp_replayed"
   | "recovery_key_step_up_rate_limited"
+  // The managed account's recovery phrase was rotated (on another device, or
+  // by an unconfirmed rotation here) and this device holds the old package.
+  | "managed_recovery_key_overwrite"
   | "network_failed"
   | "generic";
 
@@ -1909,6 +1912,7 @@ function mapRunAPIError(errorCode: SyncAPIErrorCode): SyncRunErrorCode {
     case "stale_generation":
     case "blob_not_found":
     case "network_failed":
+    case "managed_recovery_key_overwrite":
       return errorCode;
     default:
       return "generic";

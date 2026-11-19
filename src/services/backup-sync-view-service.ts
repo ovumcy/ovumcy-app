@@ -102,6 +102,23 @@ export function isGuestPartnerAccount(
   );
 }
 
+// A connected managed account keeps its master key and rotates only the phrase
+// that wraps it (PUT /account/recovery-key): a fresh local key would leave the
+// backup under a key no stored package opens, and the managed sync host
+// refuses a different package anyway (`managed_recovery_key_overwrite`).
+export function shouldRotateManagedRecoveryPhrase(input: {
+  hasStoredSyncSecrets: boolean;
+  hasSyncSession: boolean;
+  preferences: SyncPreferencesRecord;
+}): boolean {
+  return (
+    input.hasStoredSyncSecrets &&
+    input.hasSyncSession &&
+    input.preferences.mode === "managed" &&
+    !isGuestPartnerAccount(input.preferences)
+  );
+}
+
 const GUEST_SESSION_EXPIRY_NUDGE_THRESHOLD_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -173,12 +190,16 @@ export function buildBackupSyncSetupPresentation({
   isSyncing,
   locale,
   managedPlanStatus,
+  managedRecoveryRotationLabel = null,
   notSetLabel,
   preferences,
   subscriptionCountdownMessage = "",
   syncCapabilities,
   viewData,
 }: {
+  // Set when the recovery action rotates the managed phrase instead of
+  // regenerating local keys (`shouldRotateManagedRecoveryPhrase`).
+  managedRecoveryRotationLabel?: string | null;
   hasStoredSyncSecrets: boolean;
   hasSyncSession: boolean;
   isAuthenticating: boolean;
@@ -258,9 +279,9 @@ export function buildBackupSyncSetupPresentation({
     accountActionButtonsDisabled: accountActionsDisabled || !hasStoredSyncSecrets,
     accountActionsDisabled,
     accountStepTitle: renumberStepTitle(viewData.accountStepTitle, 2),
-    actionLabel: hasStoredSyncSecrets
-      ? viewData.regenerateLabel
-      : viewData.prepareLabel,
+    actionLabel:
+      managedRecoveryRotationLabel ??
+      (hasStoredSyncSecrets ? viewData.regenerateLabel : viewData.prepareLabel),
     canShowSyncActions,
     endpointSummary,
     hasManagedPlan,
@@ -388,6 +409,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.notConnected;
     case "blob_not_found":
       return viewData.errors.blobNotFound;
+    case "managed_recovery_key_overwrite":
+      return viewData.errors.recoveryKeyChangedElsewhere;
     case "invalid_payload":
       return viewData.errors.invalidPayload;
     case "network_failed":

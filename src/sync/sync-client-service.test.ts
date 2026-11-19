@@ -4184,6 +4184,16 @@ describe("runSyncUpload additional branches", () => {
       expect(putBlob).not.toHaveBeenCalled();
     });
 
+    it("stops before the blob when the managed host refuses a rotated-away package", async () => {
+      const { result, putBlob } = await managedUpload(true, {
+        ok: false,
+        errorCode: "managed_recovery_key_overwrite",
+      });
+
+      expect(result).toEqual({ ok: false, errorCode: "managed_recovery_key_overwrite" });
+      expect(putBlob).not.toHaveBeenCalled();
+    });
+
     it("goes on to the blob after a managed recovery-key replacement succeeds", async () => {
       const { putRecoveryKey, putBlob } = await managedUpload(true, { ok: true });
 

@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
+import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import {
   createBackupSyncSessionCoreMock,
@@ -89,7 +90,11 @@ function createRecoveryMaterialsFixture(
   return {
     isPreparingSync: false,
     isExportingRecoveryPhrase: false,
+    managedRecoveryRotationCopy: selectManagedRecoveryRotationCopy("en"),
+    managedRecoveryRotationStepUpPrompt: null,
     handlePrepareSyncSetup: jest.fn(),
+    handleSubmitManagedRecoveryRotationStepUp: jest.fn(),
+    handleCancelManagedRecoveryRotationStepUp: jest.fn(),
     handleAcknowledgeRecoveryCode: jest.fn(),
     handleExportRecoveryPhrase: jest.fn(),
     ...overrides,

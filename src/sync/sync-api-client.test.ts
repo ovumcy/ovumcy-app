@@ -965,6 +965,24 @@ describe("sync-api-client", () => {
       };
     }
 
+    it("maps a managed host's 403 managed_recovery_key_overwrite", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: "managed_recovery_key_overwrite" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      const client = createSyncAPIClient(
+        "http://127.0.0.1:8080/",
+        fetchMock as jest.MockedFunction<typeof fetch>,
+      );
+
+      await expect(client.putRecoveryKey("session-1", pkg)).resolves.toEqual({
+        ok: false,
+        errorCode: "managed_recovery_key_overwrite",
+      });
+    });
+
     it("sends no step-up fields when none is given", async () => {
       const { body, result } = await sentBody();
 

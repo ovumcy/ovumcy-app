@@ -12,6 +12,9 @@ export type RecoveryKeyStepUpCopy = {
     totpInvalidCode: string;
     totpReplayed: string;
     rateLimited: string;
+    // Managed recovery-phrase rotation only.
+    rotationUnconfirmed?: string;
+    rotationFailed?: string;
   };
 };
 

@@ -350,6 +350,7 @@ export type SettingsViewData = {
       tooManyDevices: string;
       syncNotPrepared: string;
       notConnected: string;
+      recoveryKeyChangedElsewhere: string;
       blobNotFound: string;
       invalidPayload: string;
       networkFailed: string;
@@ -922,6 +923,8 @@ export function buildSettingsViewData(
         tooManyDevices: settingsCopy.account.errors.tooManyDevices,
         syncNotPrepared: settingsCopy.account.errors.syncNotPrepared,
         notConnected: settingsCopy.account.errors.notConnected,
+        recoveryKeyChangedElsewhere:
+          settingsCopy.account.errors.recoveryKeyChangedElsewhere,
         blobNotFound: settingsCopy.account.errors.blobNotFound,
         invalidPayload: settingsCopy.account.errors.invalidPayload,
         networkFailed: settingsCopy.account.errors.networkFailed,
