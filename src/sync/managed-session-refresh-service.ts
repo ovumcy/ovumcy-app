@@ -47,6 +47,20 @@ export type EnsureFreshManagedSessionResult =
 // session, so a single module-level slot is the whole coordination needed.
 let inFlightRefresh: Promise<EnsureFreshManagedSessionResult> | null = null;
 
+// Advanced when the managed session ends on this device: a refresh begun under
+// an earlier epoch must not write its tokens back over the wipe.
+let sessionEpoch = 0;
+
+/** Waits out a refresh already in flight, so the caller reads its tokens. */
+export async function settleInFlightManagedRefresh(): Promise<void> {
+  await inFlightRefresh?.catch(() => undefined);
+}
+
+/** Keeps any refresh still in flight from reviving the session that ended. */
+export function endManagedSessionRefresh(): void {
+  sessionEpoch += 1;
+}
+
 /**
  * ensureFreshManagedSession returns a managed access token that is safe to use
  * right now, renewing it first when it is about to expire.
@@ -145,8 +159,13 @@ async function exchangeRefreshToken(
   tokens: { refreshToken: string; currentSessionToken: string },
   managedClientFactory: ManagedCloudAPIClientFactory,
 ): Promise<EnsureFreshManagedSessionResult> {
+  const epoch = sessionEpoch;
   const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
   const result = await client.refreshSession(tokens.refreshToken);
+
+  if (epoch !== sessionEpoch) {
+    return { ok: false, errorCode: "session_expired" };
+  }
 
   if (result.ok) {
     await secretStore.writeSyncSecrets(

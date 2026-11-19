@@ -23,6 +23,8 @@ import {
 import {
   applyManagedAuthResultToSecrets,
   clearManagedSessionFromSecrets,
+  endManagedSessionRefresh,
+  settleInFlightManagedRefresh,
 } from "./managed-session-refresh-service";
 import { isPasswordTooShort } from "./password-policy";
 import type {
@@ -1530,6 +1532,43 @@ export async function disconnectSyncAccount(
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   remoteTimeoutMs: number = DISCONNECT_REMOTE_TIMEOUT_MS,
 ): Promise<{ ok: true; preferences: SyncPreferencesRecord }> {
+  // The local wipe below must not wait on a slow or hanging server.
+  await settleWithin(
+    revokeRemoteSessions(
+      secretStore,
+      preferences,
+      apiClientFactory,
+      managedClientFactory,
+    ),
+    remoteTimeoutMs,
+  );
+  if (preferences.mode === "managed") {
+    endManagedSessionRefresh();
+  }
+
+  const nextPreferences = await clearLocalSyncSession(
+    storage,
+    secretStore,
+    preferences,
+  );
+
+  return { ok: true, preferences: nextPreferences };
+}
+
+const DISCONNECT_REMOTE_TIMEOUT_MS = 10_000;
+
+async function revokeRemoteSessions(
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  apiClientFactory: SyncAPIClientFactory,
+  managedClientFactory: ManagedCloudAPIClientFactory,
+): Promise<void> {
+  const managed = preferences.mode === "managed";
+  if (managed) {
+    // A renewal in flight rotates the refresh token: revoke what it wrote,
+    // not the token it spent.
+    await settleInFlightManagedRefresh();
+  }
   const secrets = await secretStore.readSyncSecrets();
   const normalizedEndpoint = normalizeSyncEndpoint(
     preferences.mode,
@@ -1545,10 +1584,7 @@ export async function disconnectSyncAccount(
     sessionToken: secrets?.managedAuthSessionToken || null,
     refreshToken: secrets?.managedRefreshToken || null,
   };
-  if (
-    preferences.mode === "managed" &&
-    (managedCredentials.sessionToken || managedCredentials.refreshToken)
-  ) {
+  if (managed && (managedCredentials.sessionToken || managedCredentials.refreshToken)) {
     revocations.push(
       revokeManagedSession(
         managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL),
@@ -1556,19 +1592,8 @@ export async function disconnectSyncAccount(
       ),
     );
   }
-  // The local wipe below must not wait on a slow or hanging server.
-  await settleWithin(Promise.all(revocations), remoteTimeoutMs);
-
-  const nextPreferences = await clearLocalSyncSession(
-    storage,
-    secretStore,
-    preferences,
-  );
-
-  return { ok: true, preferences: nextPreferences };
+  await Promise.all(revocations);
 }
-
-const DISCONNECT_REMOTE_TIMEOUT_MS = 10_000;
 
 async function revokeManagedSession(
   managedClient: ManagedCloudAPIClient,
