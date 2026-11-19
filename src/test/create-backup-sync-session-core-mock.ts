@@ -131,6 +131,7 @@ export function createBackupSyncSessionCoreMock(
     pendingPartnerInviteToken: "",
     setPendingPartnerInviteToken: jest.fn(),
     partnerOverview: null,
+    partnerReshareRequiredGrantIDs: [],
     setPartnerOverview: jest.fn(),
     partnerStatusMessage: "",
     setPartnerStatusMessage: jest.fn(),

@@ -12,6 +12,7 @@ import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock
 import {
   clearManagedPartnerGrantKey,
   isManagedPartnerGrantReshareRequired,
+  listManagedPartnerGrantsNeedingReshare,
   loadManagedPartnerProjection,
   reconcileManagedPartnerShareKeys,
   reserveNextManagedPartnerProjectionGeneration,
@@ -782,6 +783,36 @@ describe("managed-partner-share-service", () => {
           listedSourceInviteID: "invite-1",
         }),
       ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+    });
+
+    it("flags a live grant whose local key was derived under another invite", () => {
+      const overview: ManagedCloudPartnerAccessOverview = {
+        owned: {
+          invites: [],
+          grants: [
+            buildGrantFixture({ id: "grant-1", sourceInviteID: "invite-1" }),
+            buildGrantFixture({ id: "grant-2", sourceInviteID: "invite-2" }),
+            buildGrantFixture({ id: "grant-3", sourceInviteID: "invite-3" }),
+            buildGrantFixture({ id: "grant-4", sourceInviteID: null }),
+          ],
+        },
+        sharedWithMe: [],
+      };
+      const grantKey = (sourceInviteID: string) => ({
+        keyHex: "ab".repeat(32),
+        rotatedAtISO: NOW.toISOString(),
+        sourceInviteID,
+      });
+
+      expect(
+        listManagedPartnerGrantsNeedingReshare(overview, {
+          grantKeysByGrantID: {
+            "grant-1": grantKey("invite-1"),
+            "grant-2": grantKey("invite-old"),
+            "grant-3": grantKey(""),
+          },
+        }),
+      ).toEqual(["grant-2", "grant-3", "grant-4"]);
     });
 
     it("flags only live grants without a source invite as needing a re-share", () => {

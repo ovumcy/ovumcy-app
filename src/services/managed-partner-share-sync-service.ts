@@ -60,7 +60,7 @@ export async function syncManagedPartnerSharedProjections(
     return { skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] };
   }
 
-  await reconcileManagedPartnerShareKeys(
+  const partnerShareSecrets = await reconcileManagedPartnerShareKeys(
     partnerShareSecretStore,
     partnerAccessResult.value,
     now,
@@ -86,7 +86,12 @@ export async function syncManagedPartnerSharedProjections(
   let syncedCount = 0;
   const reshareRequiredGrantIDs: string[] = [];
   for (const grant of grants) {
-    if (isManagedPartnerGrantReshareRequired(grant)) {
+    if (
+      isManagedPartnerGrantReshareRequired(
+        grant,
+        partnerShareSecrets.grantKeysByGrantID[grant.id],
+      )
+    ) {
       reshareRequiredGrantIDs.push(grant.id);
       continue;
     }

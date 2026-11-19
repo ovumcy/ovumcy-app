@@ -72,6 +72,7 @@ describe("syncManagedPartnerSharedProjections", () => {
         { id: "grant-1", sourceInviteID: "invite-1" },
         { id: "grant-2", sourceInviteID: "invite-2" },
       ],
+      grantKeys: Record<string, { sourceInviteID: string }> = {},
     ) {
       const setupSpy = jest
         .spyOn(syncSetupService, "loadSyncSetupState")
@@ -106,7 +107,7 @@ describe("syncManagedPartnerSharedProjections", () => {
       });
       jest
         .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
-        .mockResolvedValue({} as never);
+        .mockResolvedValue({ grantKeysByGrantID: grantKeys } as never);
       jest
         .spyOn(managedPartnerShareService, "reserveNextManagedPartnerProjectionGeneration")
         .mockResolvedValue(1);
@@ -227,6 +228,35 @@ describe("syncManagedPartnerSharedProjections", () => {
       expect(uploadSpy.mock.calls[0]?.[2]).toMatchObject({
         listedSourceInviteID: "invite-2",
       });
+    });
+
+    it("skips a grant whose local key was derived under another invite, before reserving", async () => {
+      armTwoGrantPush(undefined, {
+        "grant-1": { sourceInviteID: "invite-old" },
+        "grant-2": { sourceInviteID: "invite-2" },
+      });
+      const reserveSpy = jest.mocked(
+        managedPartnerShareService.reserveNextManagedPartnerProjectionGeneration,
+      );
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: true, value: {} as never });
+
+      await expect(
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        ),
+      ).resolves.toEqual({
+        skipped: false,
+        syncedCount: 1,
+        reshareRequiredGrantIDs: ["grant-1"],
+      });
+      expect(reserveSpy).toHaveBeenCalledTimes(1);
+      expect(reserveSpy).toHaveBeenCalledWith(expect.anything(), "grant-2");
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
     });
 
     it("reports a re-keyed grant and keeps pushing the others", async () => {

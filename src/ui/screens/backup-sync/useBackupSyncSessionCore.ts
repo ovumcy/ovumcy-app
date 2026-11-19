@@ -13,6 +13,7 @@ import {
 } from "../../../services/backup-sync-view-service";
 import { loadManagedPartnerAccess } from "../../../services/managed-partner-access-service";
 import {
+  listManagedPartnerGrantsNeedingReshare,
   reconcileManagedPartnerShareKeys,
 } from "../../../services/managed-partner-share-service";
 import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
@@ -125,6 +126,9 @@ export function useBackupSyncSessionCore({
   const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [partnerOverview, setPartnerOverview] =
     useState<ManagedCloudPartnerAccessOverview | null>(null);
+  const [partnerReshareRequiredGrantIDs, setPartnerReshareRequiredGrantIDs] = useState<
+    string[]
+  >([]);
   const [partnerStatusMessage, setPartnerStatusMessage] = useState("");
   const [partnerErrorMessage, setPartnerErrorMessage] = useState("");
   const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState(() =>
@@ -187,6 +191,7 @@ export function useBackupSyncSessionCore({
         return {
           errorMessage: "",
           overview: null as ManagedCloudPartnerAccessOverview | null,
+          reshareRequiredGrantIDs: [] as string[],
           showOwnerControls: false,
         };
       }
@@ -211,11 +216,12 @@ export function useBackupSyncSessionCore({
             partnerCopy,
           ),
           overview: null as ManagedCloudPartnerAccessOverview | null,
+          reshareRequiredGrantIDs: [] as string[],
           showOwnerControls: premiumFeatures.partnerAccess,
         };
       }
 
-      await reconcileManagedPartnerShareKeys(
+      const partnerShareSecrets = await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
         partnerResult.value,
         effectiveNow,
@@ -232,6 +238,10 @@ export function useBackupSyncSessionCore({
       return {
         errorMessage: "",
         overview: partnerResult.value,
+        reshareRequiredGrantIDs: listManagedPartnerGrantsNeedingReshare(
+          partnerResult.value,
+          partnerShareSecrets,
+        ),
         showOwnerControls: premiumFeatures.partnerAccess,
       };
     },
@@ -304,6 +314,7 @@ export function useBackupSyncSessionCore({
         }
         setShowPartnerOwnerControls(partnerState.showOwnerControls);
         setPartnerOverview(partnerState.overview);
+        setPartnerReshareRequiredGrantIDs(partnerState.reshareRequiredGrantIDs);
         setPartnerErrorMessage(partnerState.errorMessage);
         setDismissedOfferIDs(dismissedIDs);
         setIsLoading(false);
@@ -350,6 +361,7 @@ export function useBackupSyncSessionCore({
     const partnerState = await loadPartnerState(nextState);
     setShowPartnerOwnerControls(partnerState.showOwnerControls);
     setPartnerOverview(partnerState.overview);
+    setPartnerReshareRequiredGrantIDs(partnerState.reshareRequiredGrantIDs);
     setPartnerErrorMessage(partnerState.errorMessage);
   }
 
@@ -423,6 +435,7 @@ export function useBackupSyncSessionCore({
     setPendingPartnerInviteToken,
     partnerOverview,
     setPartnerOverview,
+    partnerReshareRequiredGrantIDs,
     partnerStatusMessage,
     setPartnerStatusMessage,
     partnerErrorMessage,

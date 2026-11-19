@@ -291,14 +291,38 @@ export async function uploadManagedPartnerProjection(
 }
 
 /**
- * True when a listed grant can never carry a projection from this app: it
- * predates `source_invite_id`, so the server refuses every key context
- * (`409 partner_grant_rekeyed`). The owner must revoke it and invite again.
+ * True when no projection from this device can land on a live grant, so the
+ * owner must revoke it and invite again: the grant predates
+ * `source_invite_id` (the server refuses every key context), or this
+ * device's K_grant was derived under another invite than the one listed
+ * (re-shared since). A grant with no key here is not flagged — it may be
+ * keyed on another owner device.
  */
 export function isManagedPartnerGrantReshareRequired(
   grant: Pick<ManagedCloudPartnerAccessGrant, "sourceInviteID" | "revokedAt">,
+  grantKey?: Pick<PartnerShareGrantKeyRecord, "sourceInviteID">,
 ): boolean {
-  return grant.revokedAt === null && (grant.sourceInviteID?.trim() ?? "") === "";
+  if (grant.revokedAt !== null) {
+    return false;
+  }
+  const listedSourceInviteID = grant.sourceInviteID?.trim() ?? "";
+  if (listedSourceInviteID.length === 0) {
+    return true;
+  }
+  return (
+    grantKey !== undefined && grantKey.sourceInviteID.trim() !== listedSourceInviteID
+  );
+}
+
+export function listManagedPartnerGrantsNeedingReshare(
+  overview: ManagedCloudPartnerAccessOverview,
+  secrets: Pick<PartnerShareSecretsRecord, "grantKeysByGrantID">,
+): string[] {
+  return overview.owned.grants
+    .filter((grant) =>
+      isManagedPartnerGrantReshareRequired(grant, secrets.grantKeysByGrantID[grant.id]),
+    )
+    .map((grant) => grant.id);
 }
 
 export async function loadManagedPartnerProjection(
