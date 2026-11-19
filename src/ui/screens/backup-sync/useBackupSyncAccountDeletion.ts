@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import {
   buildAccountDeletionViewModel,
   deleteOvumcyAccount,
+  finishLocalAccountDeletion,
+  type DeleteOvumcyAccountResult,
 } from "../../../sync/account-deletion-service";
 import { isGuestPartnerAccount } from "../../../services/backup-sync-view-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
@@ -48,6 +50,9 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const deletionInFlightRef = useRef(false);
+  // Set once the server has erased the account but the local teardown failed:
+  // the retry skips the dead-token DELETE and the password card.
+  const serverDeletedRef = useRef(false);
   const [pendingStepUp, setPendingStepUp] = useState<{
     prompt: RecoveryKeyStepUpPrompt;
     // A reload, disconnect or another account replaces `state` and so
@@ -128,6 +133,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
     const preferences = state.savedSyncPreferences;
     if (
+      !serverDeletedRef.current &&
       preferences.mode === "managed" &&
       state.hasSyncSession &&
       !isGuestPartnerAccount(preferences)
@@ -224,17 +230,31 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     forState: NonNullable<typeof state>,
     stepUp: SyncRecoveryKeyStepUp | undefined,
   ) {
-    let result: Awaited<ReturnType<typeof deleteOvumcyAccount>>;
+    const wipeScopeSecretStores = {
+      certPinStore,
+      entitlementTokenStore,
+      partnerShareSecretStore,
+    };
+    let result: DeleteOvumcyAccountResult;
     try {
-      result = await deleteOvumcyAccount(
-        storage,
-        syncSecretStore,
-        { certPinStore, entitlementTokenStore, partnerShareSecretStore },
-        forState.savedSyncPreferences,
-        stepUp,
-      );
+      result = serverDeletedRef.current
+        ? await finishLocalAccountDeletion(
+            storage,
+            syncSecretStore,
+            wipeScopeSecretStores,
+          )
+        : await deleteOvumcyAccount(
+            storage,
+            syncSecretStore,
+            wipeScopeSecretStores,
+            forState.savedSyncPreferences,
+            stepUp,
+          );
     } catch {
       result = { ok: false, errorCode: "generic" };
+    }
+    if (!result.ok && result.serverDeleted) {
+      serverDeletedRef.current = true;
     }
     if (!result.ok) {
       const prompt = await resolveStepUpPrompt(result.errorCode, stepUp, forState);
@@ -249,6 +269,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       return;
     }
 
+    serverDeletedRef.current = false;
     setPendingStepUp(null);
 
     // Same buffers this screen already clears on disconnect; deletion just

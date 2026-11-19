@@ -715,4 +715,107 @@ describe("useBackupSyncAccountDeletion", () => {
       }
     });
   });
+
+  describe("retry after the server already erased the account", () => {
+    const mockFinishLocalAccountDeletion = jest.mocked(
+      accountDeletionService.finishLocalAccountDeletion,
+    );
+
+    async function failAfterServerDelete(
+      result: { current: ReturnType<typeof useBackupSyncAccountDeletion> },
+    ) {
+      mockDeleteOvumcyAccount.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "generic",
+        serverDeleted: true,
+      });
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result);
+    }
+
+    it("re-runs the gates, then only the local part: no DELETE, no password card", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockFinishLocalAccountDeletion.mockResolvedValue({ ok: true });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await failAfterServerDelete(result);
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "generic",
+        scope: "delete_account",
+      });
+      expect(core.router.replace).not.toHaveBeenCalled();
+      mockRequestSensitiveActionChallenge.mockClear();
+      mockOpenConfirmation.mockClear();
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1);
+      expect(mockOpenConfirmation).toHaveBeenCalled();
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(mockFinishLocalAccountDeletion).toHaveBeenCalledTimes(1);
+      expect(core.router.replace).toHaveBeenCalledTimes(1);
+    });
+
+    it("a dismissed device-auth gate still blocks the local-only retry", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await failAfterServerDelete(result);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({
+        ok: false,
+        reason: "cancelled",
+      });
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockFinishLocalAccountDeletion).not.toHaveBeenCalled();
+    });
+
+    it("a dismissed confirm still blocks the local-only retry", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await failAfterServerDelete(result);
+      mockOpenConfirmation.mockResolvedValue(false);
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockFinishLocalAccountDeletion).not.toHaveBeenCalled();
+    });
+
+    it("keeps the full server flow when a failure did not erase the server account", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockDeleteOvumcyAccount.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "network_failed",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result);
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).not.toBeNull();
+      expect(mockFinishLocalAccountDeletion).not.toHaveBeenCalled();
+    });
+  });
 });

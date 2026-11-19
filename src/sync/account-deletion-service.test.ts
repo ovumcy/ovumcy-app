@@ -11,11 +11,13 @@ import {
 import {
   buildAccountDeletionViewModel,
   deleteOvumcyAccount,
+  finishLocalAccountDeletion,
 } from "./account-deletion-service";
 import type {
   ManagedCloudActiveSubscription,
   ManagedCloudAPIClient,
 } from "./managed-cloud-api-client";
+import { resetManagedSessionRefreshStateForTests } from "./managed-session-refresh-service";
 import type { SyncAPIClient } from "./sync-api-client";
 import { createDefaultSyncPreferencesRecord } from "./sync-contract";
 
@@ -686,5 +688,178 @@ describe("deleteOvumcyAccount", () => {
       expect(storage.clearAllLocalData).not.toHaveBeenCalled();
       expect(scheduler.sync).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("deleteOvumcyAccount after the server already erased the account", () => {
+  const managedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    setupStatus: "connected" as const,
+  };
+
+  function createManagedSecretStore() {
+    return createSyncSecretStoreMock({
+      ...createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"))
+        .record,
+      managedAuthSessionToken: "managed-session-1",
+    });
+  }
+
+  it("reports serverDeleted when the server delete succeeded but the local wipe threw", async () => {
+    const storage = createLocalAppStorageMock({
+      clearAllLocalData: jest.fn().mockRejectedValue(new Error("disk full")),
+    });
+    const deleteAccount = jest.fn().mockResolvedValue({ ok: true });
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createManagedSecretStore(),
+      createWipeScopeSecretStoresMock(),
+      managedPreferences,
+      { currentPassword: "very secure password 12345" },
+      jest.fn(),
+      jest.fn().mockReturnValue(createManagedClientMock({ deleteAccount })),
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+    );
+
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ ok: false, errorCode: "generic", serverDeleted: true });
+  });
+
+  it("reports serverDeleted when the server delete succeeded but a secret clear threw", async () => {
+    const storage = createLocalAppStorageMock();
+    const deleteAccount = jest.fn().mockResolvedValue({ ok: true });
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createManagedSecretStore(),
+      {
+        ...createWipeScopeSecretStoresMock(),
+        entitlementTokenStore: {
+          clearEntitlementToken: jest
+            .fn()
+            .mockRejectedValue(new Error("keychain locked")),
+        },
+      },
+      managedPreferences,
+      { currentPassword: "very secure password 12345" },
+      jest.fn(),
+      jest.fn().mockReturnValue(createManagedClientMock({ deleteAccount })),
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "generic", serverDeleted: true });
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+  });
+
+  it("finishLocalAccountDeletion retries only the local part, with no network call", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createManagedSecretStore();
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+
+    const result = await finishLocalAccountDeletion(
+      storage,
+      secretStore,
+      createWipeScopeSecretStoresMock(),
+      scheduler,
+    );
+
+    expect(result).toEqual({ ok: true });
+    await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+    expect(scheduler.sync).toHaveBeenCalledWith([]);
+  });
+});
+
+describe("deleteOvumcyAccount managed session renewal", () => {
+  const NOW = new Date("2026-07-21T12:00:00.000Z");
+  const managedPreferences = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    setupStatus: "connected" as const,
+  };
+
+  beforeEach(() => {
+    resetManagedSessionRefreshStateForTests();
+  });
+
+  function createExpiringSecretStore() {
+    return createSyncSecretStoreMock({
+      ...createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"))
+        .record,
+      managedAuthSessionToken: "expired-session",
+      managedAuthSessionExpiresAt: "2026-07-21T11:00:00.000Z",
+      managedRefreshToken: "refresh-1",
+      managedRefreshTokenExpiresAt: "2026-10-19T12:00:00.000Z",
+    });
+  }
+
+  it("renews an expired access session before DELETE /account and deletes with the fresh token", async () => {
+    const storage = createLocalAppStorageMock();
+    const refreshSession = jest.fn().mockResolvedValue({
+      ok: true,
+      auth: {
+        accountID: "acct-1",
+        email: "owner@example.com",
+        sessionToken: "fresh-session",
+        sessionExpiresAt: "2026-07-22T12:00:00.000Z",
+        refreshToken: "refresh-2",
+        refreshTokenExpiresAt: "2026-10-19T12:00:00.000Z",
+      },
+    });
+    const deleteAccount = jest.fn().mockResolvedValue({ ok: true });
+    const managedClientFactory = jest
+      .fn()
+      .mockReturnValue(createManagedClientMock({ deleteAccount, refreshSession }));
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createExpiringSecretStore(),
+      createWipeScopeSecretStoresMock(),
+      managedPreferences,
+      { currentPassword: "very secure password 12345" },
+      jest.fn(),
+      managedClientFactory,
+      { sync: jest.fn().mockResolvedValue("scheduled") },
+      NOW,
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(refreshSession).toHaveBeenCalledWith("refresh-1");
+    expect(deleteAccount).toHaveBeenCalledWith("fresh-session", {
+      currentPassword: "very secure password 12345",
+    });
+    expect(
+      refreshSession.mock.invocationCallOrder[0],
+    ).toBeLessThan(deleteAccount.mock.invocationCallOrder[0]!);
+  });
+
+  it("aborts with unauthorized and wipes nothing when the refresh chain is dead", async () => {
+    const storage = createLocalAppStorageMock();
+    const refreshSession = jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "unauthorized" });
+    const deleteAccount = jest.fn();
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+
+    const result = await deleteOvumcyAccount(
+      storage,
+      createExpiringSecretStore(),
+      createWipeScopeSecretStoresMock(),
+      managedPreferences,
+      { currentPassword: "very secure password 12345" },
+      jest.fn(),
+      jest
+        .fn()
+        .mockReturnValue(createManagedClientMock({ deleteAccount, refreshSession })),
+      scheduler,
+      NOW,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "unauthorized" });
+    expect(deleteAccount).not.toHaveBeenCalled();
+    expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+    expect(scheduler.sync).not.toHaveBeenCalled();
   });
 });
