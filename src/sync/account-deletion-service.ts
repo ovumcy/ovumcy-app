@@ -198,7 +198,13 @@ export async function deleteOvumcyAccount(
       : preferences.mode === "self_hosted"
         ? secrets?.authSessionToken
         : null;
-  if (options.expectsServerSession && !activeSessionToken) {
+  // Managed only: the managed token is what a dead refresh chain clears, and a
+  // self-hosted device may legitimately keep a stray managed token.
+  if (
+    options.expectsServerSession &&
+    preferences.mode === "managed" &&
+    !activeSessionToken
+  ) {
     return { ok: false, errorCode: "unauthorized" };
   }
 
