@@ -41,7 +41,10 @@ import {
   SYNC_SNAPSHOT_SCHEMA_VERSION,
 } from "./sync-snapshot-service";
 import type { ManagedCloudAPIClient } from "./managed-cloud-api-client";
-import { resetManagedSessionRefreshStateForTests } from "./managed-session-refresh-service";
+import {
+  ensureFreshManagedSession,
+  resetManagedSessionRefreshStateForTests,
+} from "./managed-session-refresh-service";
 
 describe("sync-client-service", () => {
   it("registers a prepared managed device through ovumcy-managed without touching the sync endpoint", async () => {
@@ -1323,6 +1326,88 @@ describe("sync-client-service", () => {
       );
 
       await expectManagedCredentialsWiped(secretStore);
+    });
+
+    async function startRenewalInFlight(secretStore: SyncSecretStore) {
+      type RefreshOutcome = Awaited<
+        ReturnType<ManagedCloudAPIClient["refreshSession"]>
+      >;
+      let finishRefresh: (value: RefreshOutcome) => void = () => undefined;
+      const refreshSession = jest.fn(
+        (_refreshToken: string) =>
+          new Promise<RefreshOutcome>((resolve) => {
+            finishRefresh = resolve;
+          }),
+      );
+      const renewal = ensureFreshManagedSession(
+        secretStore,
+        new Date("2026-11-18T12:00:00.000Z"),
+        jest.fn().mockReturnValue(createManagedClientMock({ refreshSession })),
+      );
+      const renewed = {
+        ok: true,
+        auth: {
+          sessionToken: "managed-session-new",
+          sessionExpiresAt: "2026-11-19T12:00:00.000Z",
+          refreshToken: "refresh-new",
+          refreshTokenExpiresAt: "2026-12-18T12:00:00.000Z",
+        },
+      };
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(refreshSession).toHaveBeenCalledWith("refresh-old");
+      return {
+        renewal,
+        finish: () => finishRefresh(renewed as unknown as RefreshOutcome),
+      };
+    }
+
+    it("waits for a renewal in flight and revokes the tokens it wrote", async () => {
+      const secretStore = createManagedSecretStore();
+      const { renewal, finish } = await startRenewalInFlight(secretStore);
+      const logout = jest.fn().mockResolvedValue({ ok: true });
+
+      const disconnect = disconnectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        managedPreferences,
+        jest.fn(),
+        jest.fn().mockReturnValue(createManagedClientMock({ logout })),
+      );
+      await Promise.resolve();
+      expect(logout).not.toHaveBeenCalled();
+      finish();
+      await disconnect;
+      await renewal;
+
+      expect(logout).toHaveBeenCalledTimes(1);
+      expect(logout).toHaveBeenCalledWith({
+        sessionToken: "managed-session-new",
+        refreshToken: "refresh-new",
+      });
+      await expectManagedCredentialsWiped(secretStore);
+    });
+
+    it("keeps a renewal that outlives the timeout from writing its tokens back", async () => {
+      const secretStore = createManagedSecretStore();
+      const { renewal, finish } = await startRenewalInFlight(secretStore);
+      const logout = jest.fn();
+
+      await disconnectSyncAccount(
+        createLocalAppStorageMock(),
+        secretStore,
+        managedPreferences,
+        jest.fn(),
+        jest.fn().mockReturnValue(createManagedClientMock({ logout })),
+        5,
+      );
+      finish();
+
+      await expect(renewal).resolves.toEqual({
+        ok: false,
+        errorCode: "session_expired",
+      });
+      await expectManagedCredentialsWiped(secretStore);
+      expect(logout).not.toHaveBeenCalled();
     });
 
     it("never logs the refresh token or returns it from a failing disconnect", async () => {
