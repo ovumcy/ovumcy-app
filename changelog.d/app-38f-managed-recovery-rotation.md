@@ -1,0 +1,3 @@
+### Security
+
+- **Change your Ovumcy Cloud recovery phrase without breaking your backup.** On a connected Ovumcy Cloud account, *Change recovery phrase* now asks for your account password (and a current code with two-factor on) and replaces the phrase on the server while keeping the same encryption key, so your backup and other devices keep working. The new phrase appears only after Ovumcy Cloud confirms the change; if the confirmation is lost, the current phrase stays active and a retry resends the same new phrase. A device still holding a phrase that was changed elsewhere stops its upload and explains how to continue. The password, code and phrase are never logged or stored outside the encrypted key package.
