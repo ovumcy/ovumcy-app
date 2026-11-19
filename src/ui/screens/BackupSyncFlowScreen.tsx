@@ -99,6 +99,7 @@ export type BackupSyncFlowScreenProps = {
   partnerInviteLink: string;
   partnerLocale?: string | undefined;
   partnerOverview: ManagedCloudPartnerAccessOverview | null;
+  partnerReshareRequiredGrantIDs: string[];
   pendingPartnerInviteToken: string;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
@@ -203,6 +204,7 @@ export function BackupSyncFlowScreen({
   partnerInviteLink,
   partnerLocale,
   partnerOverview,
+  partnerReshareRequiredGrantIDs,
   pendingPartnerInviteToken,
   preferences,
   recoveryPhraseValue,
@@ -400,6 +402,7 @@ export function BackupSyncFlowScreen({
           onRevokeInvite={onPartnerRevokeInvite}
           overview={partnerOverview}
           pendingInviteToken={pendingPartnerInviteToken}
+          reshareRequiredGrantIDs={partnerReshareRequiredGrantIDs}
           showOwnerControls={showPartnerOwnerControls}
           statusMessage={partnerStatusMessage}
         />

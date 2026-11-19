@@ -180,7 +180,7 @@ describe("SettingsPartnerAccessSection", () => {
     expect(screen.getByText(copy.errors.networkFailed)).toBeTruthy();
   });
 
-  it("prompts a re-share only on an owned grant listed without a source invite", async () => {
+  it("prompts a re-share on a legacy grant and on a grant flagged by the key-context check", async () => {
     await render(
       <AppPreferencesTestProvider>
         <SettingsPartnerAccessSection
@@ -193,15 +193,18 @@ describe("SettingsPartnerAccessSection", () => {
               grants: [
                 createGrant({ id: "grant-legacy", sourceInviteID: null }),
                 createGrant({ id: "grant-2", sourceInviteID: "invite-2" }),
+                createGrant({ id: "grant-3", sourceInviteID: "invite-3" }),
               ],
             },
             sharedWithMe: [],
           }}
+          reshareRequiredGrantIDs={["grant-3"]}
         />
       </AppPreferencesTestProvider>,
     );
 
     expect(screen.getByTestId("settings-partner-grant-reshare-grant-legacy")).toBeTruthy();
+    expect(screen.getByTestId("settings-partner-grant-reshare-grant-3")).toBeTruthy();
     expect(screen.queryByTestId("settings-partner-grant-reshare-grant-2")).toBeNull();
     expect(
       screen.getByTestId("settings-partner-grant-info-grant-legacy").props.accessibilityLabel,

@@ -36,6 +36,9 @@ type SettingsPartnerAccessSectionProps = {
   onRevokeInvite: (inviteID: string) => void | Promise<void>;
   overview: ManagedCloudPartnerAccessOverview | null;
   pendingInviteToken: string;
+  // Owned grants this device can no longer push to (key context mismatch);
+  // a grant listed without a source invite is flagged regardless.
+  reshareRequiredGrantIDs?: readonly string[];
   showOwnerControls: boolean;
   statusMessage: string;
 };
@@ -58,6 +61,7 @@ export function SettingsPartnerAccessSection({
   onRevokeInvite,
   overview,
   pendingInviteToken,
+  reshareRequiredGrantIDs = [],
   showOwnerControls,
   statusMessage,
 }: SettingsPartnerAccessSectionProps) {
@@ -211,6 +215,10 @@ export function SettingsPartnerAccessSection({
             <PartnerGrantList
               copy={copy}
               grants={activeOwnedGrants}
+              isReshareRequired={(grant) =>
+                isManagedPartnerGrantReshareRequired(grant) ||
+                reshareRequiredGrantIDs.includes(grant.id)
+              }
               locale={locale}
               onOpenGrant={onOpenGrant}
               onRevokeGrant={onRevokeGrant}
@@ -291,6 +299,7 @@ function PartnerInviteList({
 function PartnerGrantList({
   copy,
   grants,
+  isReshareRequired,
   locale,
   onOpenGrant,
   onRevokeGrant,
@@ -298,6 +307,7 @@ function PartnerGrantList({
 }: {
   copy: PartnerCopy;
   grants: ManagedCloudPartnerAccessGrant[];
+  isReshareRequired: (grant: ManagedCloudPartnerAccessGrant) => boolean;
   locale?: string | undefined;
   onOpenGrant: (grantID: string) => void | Promise<void>;
   onRevokeGrant: (grantID: string) => void | Promise<void>;
@@ -320,6 +330,7 @@ function PartnerGrantList({
                 grant,
                 copy,
                 locale,
+                isReshareRequired(grant),
               )}
               accessible
               style={styles.itemInfo}
@@ -340,7 +351,7 @@ function PartnerGrantList({
                 {copy.lastSeenLabel}:{" "}
                 {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
               </Text>
-              {isManagedPartnerGrantReshareRequired(grant) ? (
+              {isReshareRequired(grant) ? (
                 <Text
                   style={styles.helperText}
                   testID={`settings-partner-grant-reshare-${grant.id}`}
@@ -450,6 +461,7 @@ function buildPartnerGrantAccessibilityLabel(
   grant: ManagedCloudPartnerAccessGrant,
   copy: PartnerCopy,
   locale: string | undefined,
+  reshareRequired: boolean,
 ): string {
   const accessLevelLabel =
     grant.accessLevel === "full" ? copy.accessLevelFull : copy.accessLevelSummary;
@@ -461,7 +473,7 @@ function buildPartnerGrantAccessibilityLabel(
     accessLevelLabel,
     accessLevelHint,
     `${copy.lastSeenLabel}: ${formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}`,
-    isManagedPartnerGrantReshareRequired(grant) ? copy.grantReshareRequiredHint : "",
+    reshareRequired ? copy.grantReshareRequiredHint : "",
   ]
     .filter((value) => value.trim().length > 0)
     .join(". ");
