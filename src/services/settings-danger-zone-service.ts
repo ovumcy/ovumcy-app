@@ -13,9 +13,10 @@ export function isClearLocalDataConfirmationValid(value: string): boolean {
 }
 
 // Resets local storage (which also rotates the local-data key), then deletes
-// every wipe-scope SecureStore entry. `ok: true` only when the storage reset
-// and every secret clear succeeded; a failing clear still lets the others run
-// (see `clearWipeScopeSecrets`) and the result is `generic`.
+// every wipe-scope SecureStore entry — also when the reset threw, so a failed
+// reset never leaves sync or partner secrets behind. `ok: true` only when the
+// reset and every secret clear succeeded; a failing clear still lets the
+// others run (see `clearWipeScopeSecrets`).
 export async function clearAllLocalSettingsData(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
@@ -29,15 +30,22 @@ export async function clearAllLocalSettingsData(
       errorCode: "generic";
     }
 > {
+  let storageCleared = true;
   try {
     await storage.clearAllLocalData();
-    await clearWipeScopeSecrets(secretStore, wipeScopeSecretStores);
-    clearManagedPartnerInviteToken();
-    return { ok: true };
   } catch {
-    return {
-      ok: false,
-      errorCode: "generic",
-    };
+    storageCleared = false;
   }
+
+  let secretsCleared = true;
+  try {
+    await clearWipeScopeSecrets(secretStore, wipeScopeSecretStores);
+  } catch {
+    secretsCleared = false;
+  }
+  clearManagedPartnerInviteToken();
+
+  return storageCleared && secretsCleared
+    ? { ok: true }
+    : { ok: false, errorCode: "generic" };
 }

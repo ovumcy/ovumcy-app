@@ -126,4 +126,25 @@ describe("settings-danger-zone-service", () => {
       errorCode: "generic",
     });
   });
+
+  it("still clears every wipe-scope secret and the invite buffer when the storage reset throws", async () => {
+    const inventory = listSecureStoreKeysFromSource();
+    const backend = createInMemorySecureStoreBackend(
+      inventory.map((entry) => entry.key),
+    );
+    const { syncSecretStore, wipeScopeSecretStores } =
+      createSecretStoresOverBackend(backend);
+    const storage = createLocalAppStorageMock({
+      clearAllLocalData: jest.fn().mockRejectedValue(new Error("boom")),
+    });
+    stashManagedPartnerInviteToken("invite-token");
+
+    await expect(
+      clearAllLocalSettingsData(storage, syncSecretStore, wipeScopeSecretStores),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+
+    // The throwing mock never deletes the local-data key the real reset owns.
+    expect(backend.keys()).toEqual(["ovumcy.local-data-key"]);
+    expect(readManagedPartnerInviteToken()).toBe("");
+  });
 });

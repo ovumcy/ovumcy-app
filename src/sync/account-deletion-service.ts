@@ -25,6 +25,7 @@ import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
+import { ensureFreshManagedSession } from "./managed-session-refresh-service";
 import {
   MANAGED_CLOUD_AUTH_BASE_URL,
   type SyncMode,
@@ -119,12 +120,28 @@ export type DeleteOvumcyAccountErrorCode =
   | SyncAPIErrorCode
   | "generic";
 
+export type DeleteOvumcyAccountResult =
+  | { ok: true }
+  | {
+      ok: false;
+      errorCode: DeleteOvumcyAccountErrorCode;
+      /**
+       * True when the server already erased the account and only the local
+       * teardown failed. A retry must then call `finishLocalAccountDeletion`:
+       * the session token is dead, so a second DELETE would read
+       * `unauthorized` and abort before the wipe.
+       */
+      serverDeleted?: true;
+    };
+
 /**
  * deleteOvumcyAccount runs the full destructive deletion in a strict order:
  *
  *   1. network:  call DELETE /account on the CONNECTED backend only
  *                (managed session in managed mode, community session in
  *                self-hosted mode). No session / local-only mode -> skip.
+ *                A managed session is renewed first when it is about to
+ *                expire; a dead refresh chain reads `unauthorized`.
  *                A failing call ABORTS here — nothing local is touched.
  *   2. secrets:  delete every wipe-scope SecureStore entry via
  *                `clearWipeScopeSecrets` — sync secrets in full, partner-share
@@ -164,16 +181,22 @@ export async function deleteOvumcyAccount(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
-): Promise<
-  | { ok: true }
-  | { ok: false; errorCode: DeleteOvumcyAccountErrorCode }
-> {
+  now: Date = new Date(),
+): Promise<DeleteOvumcyAccountResult> {
   const secrets = await secretStore.readSyncSecrets();
 
   if (preferences.mode === "managed" && secrets?.managedAuthSessionToken) {
+    const session = await ensureFreshManagedSession(
+      secretStore,
+      now,
+      managedClientFactory,
+    );
+    if (!session.ok) {
+      return { ok: false, errorCode: "unauthorized" };
+    }
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await managedClient.deleteAccount(
-      secrets.managedAuthSessionToken,
+      session.sessionToken,
       managedStepUp,
     );
     if (!result.ok) {
@@ -195,7 +218,30 @@ export async function deleteOvumcyAccount(
   }
   // No session for the active mode (or genuinely local-only): nothing to
   // call on the server, proceed straight to the local teardown below.
+  const hadServerAccount =
+    (preferences.mode === "managed" && Boolean(secrets?.managedAuthSessionToken)) ||
+    (preferences.mode === "self_hosted" && Boolean(secrets?.authSessionToken));
 
+  const local = await finishLocalAccountDeletion(
+    storage,
+    secretStore,
+    wipeScopeSecretStores,
+    reminderScheduler,
+  );
+  return !local.ok && hadServerAccount ? { ...local, serverDeleted: true } : local;
+}
+
+/**
+ * finishLocalAccountDeletion is steps 2-4 of `deleteOvumcyAccount` alone. Call
+ * it directly only to retry after a result with `serverDeleted`; any other
+ * caller would wipe local data with the server account still alive.
+ */
+export async function finishLocalAccountDeletion(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  wipeScopeSecretStores: WipeScopeSecretStores,
+  reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
+): Promise<{ ok: true } | { ok: false; errorCode: "generic" }> {
   // Session boundary: same buffer cleared on disconnect and mode-switch
   // must not survive account deletion either. Secrets first, then the local
   // database, which is wiped even when a secret clear failed.
