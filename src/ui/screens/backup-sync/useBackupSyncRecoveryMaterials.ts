@@ -39,6 +39,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
   } = core;
 
   const [isPreparingSync, setIsPreparingSync] = useState(false);
+  const [isRotatingRecoveryPhrase, setIsRotatingRecoveryPhrase] = useState(false);
   const [isExportingRecoveryPhrase, setIsExportingRecoveryPhrase] = useState(false);
   const rotationInFlightRef = useRef(false);
   const [pendingRotationStepUp, setPendingRotationStepUp] = useState<{
@@ -156,7 +157,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     const forState = pendingRotationStepUp.forState;
     const codeFieldShown = managedRecoveryRotationStepUpPrompt.codeRequired;
     resetFeedbackMessages();
-    setIsPreparingSync(true);
+    setIsRotatingRecoveryPhrase(true);
     try {
       let result: Awaited<ReturnType<typeof rotateManagedRecoveryPhrase>>;
       try {
@@ -196,7 +197,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
       }
     } finally {
       rotationInFlightRef.current = false;
-      setIsPreparingSync(false);
+      setIsRotatingRecoveryPhrase(false);
     }
   }
 
@@ -250,6 +251,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
 
   return {
     isPreparingSync,
+    isRotatingRecoveryPhrase,
     isExportingRecoveryPhrase,
     managedRecoveryRotationCopy: rotationCopy,
     managedRecoveryRotationStepUpPrompt,
