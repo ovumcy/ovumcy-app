@@ -11,6 +11,7 @@ import type {
 import {
   clearPendingManagedRecoveryRotation,
   rotateManagedRecoveryPhrase,
+  takeUnrevealedManagedRecoveryPhrase,
 } from "./managed-recovery-rotation-service";
 import type { SyncSecretsRecord, WrappedSyncKeyMetadata } from "./sync-contract";
 
@@ -124,7 +125,6 @@ describe("rotateManagedRecoveryPhrase", () => {
     ["totp_replayed", "totp_replayed"],
     ["rate_limited", "rate_limited"],
     ["unauthorized", "unauthorized"],
-    ["invalid_recovery_package", "generic"],
     ["totp_not_configured", "generic"],
   ] as const)(
     "keeps the old package on %s and retries with the same package",
@@ -158,6 +158,46 @@ describe("rotateManagedRecoveryPhrase", () => {
       );
     },
   );
+
+  it("drops a package the server refused as invalid and builds a fresh one", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory, replaceRecoveryKey } = createClient([
+      { ok: false, errorCode: "invalid_recovery_package" },
+      { ok: true },
+    ]);
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+
+    expect(sentPackage(replaceRecoveryKey, 1)?.phraseFingerprintHex).not.toBe(
+      sentPackage(replaceRecoveryKey, 0)?.phraseFingerprintHex,
+    );
+  });
+
+  it("stashes a confirmed phrase until the screen takes it, and a session end clears it", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { factory } = createClient([{ ok: true }, { ok: true }]);
+
+    const result = await rotateManagedRecoveryPhrase(
+      store,
+      { currentPassword: PASSWORD },
+      NOW,
+      factory,
+    );
+    expect(result.ok).toBe(true);
+    expect(takeUnrevealedManagedRecoveryPhrase()).toBe(
+      result.ok ? result.recoveryPhrase : "",
+    );
+    expect(takeUnrevealedManagedRecoveryPhrase()).toBeNull();
+
+    await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
+    clearPendingManagedRecoveryRotation();
+    expect(takeUnrevealedManagedRecoveryPhrase()).toBeNull();
+  });
 
   it("starts a fresh package after a confirmed rotation", async () => {
     const { secrets } = createConnectedSecrets();

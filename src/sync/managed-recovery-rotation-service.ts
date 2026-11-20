@@ -41,13 +41,25 @@ type PendingRotation = {
 
 // Process memory only, never persisted: it outlives a cancelled card or a left
 // screen so a retry after an unconfirmed answer resends the SAME package, and
-// dies with the process. Cleared only by a confirmed rotation.
+// dies with the process. Cleared by a confirmed rotation, a definitive package
+// refusal, and every session end or wipe.
 let pendingRotation: PendingRotation | null = null;
+
+// A confirmed phrase the screen has not shown yet (it unmounted or reloaded
+// while the request was in flight); the old phrase is already dead.
+let unrevealedPhrase: string | null = null;
 
 const MASTER_KEY_TAG_INFO = "ovumcy-managed-rotation-tag|";
 
 export function clearPendingManagedRecoveryRotation(): void {
   pendingRotation = null;
+  unrevealedPhrase = null;
+}
+
+export function takeUnrevealedManagedRecoveryPhrase(): string | null {
+  const phrase = unrevealedPhrase;
+  unrevealedPhrase = null;
+  return phrase;
 }
 
 /**
@@ -109,6 +121,11 @@ export async function rotateManagedRecoveryPhrase(
     result = await client.replaceRecoveryKey(session.sessionToken, input);
   }
   if (!result.ok) {
+    // The server refused this package's format, so it was not applied and a
+    // resend could only be refused again.
+    if (result.errorCode === "invalid_recovery_package") {
+      pendingRotation = null;
+    }
     return { ok: false, errorCode: mapRotationError(result.errorCode) };
   }
 
@@ -126,6 +143,7 @@ export async function rotateManagedRecoveryPhrase(
   }
 
   pendingRotation = null;
+  unrevealedPhrase = pending.recoveryPhrase;
   return { ok: true, recoveryPhrase: pending.recoveryPhrase };
 }
 

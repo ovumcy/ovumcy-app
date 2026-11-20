@@ -314,7 +314,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       await act(async () => {
         await hook.result.current.handlePrepareSyncSetup();
       });
-      return { core, result: hook.result };
+      return { core, result: hook.result, unmount: hook.unmount };
     }
 
     it("rotates instead of regenerating: rotation confirm, device-auth, then the step-up card", async () => {
@@ -442,6 +442,30 @@ describe("useBackupSyncRecoveryMaterials", () => {
         scope: "local",
       });
       expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
+    it("never consumes the stashed phrase, so the next load can show it after an unmount", async () => {
+      const { result, unmount } = await openRotationCard(false);
+      let resolveRotation: (value: { ok: true; recoveryPhrase: string }) => void = () => {};
+      mockRotateManagedRecoveryPhrase.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRotation = resolve;
+        }),
+      );
+
+      let pending: Promise<void> = Promise.resolve();
+      await act(async () => {
+        pending = result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+      await unmount();
+      resolveRotation({ ok: true, recoveryPhrase: "late phrase" });
+      await pending;
+
+      expect(
+        managedRecoveryRotationService.takeUnrevealedManagedRecoveryPhrase,
+      ).not.toHaveBeenCalled();
     });
 
     it("sends one request for a double submit", async () => {
