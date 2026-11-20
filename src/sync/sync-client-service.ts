@@ -1384,6 +1384,7 @@ export async function runSyncRestore(
     snapshot,
     nextPreferences,
     reminderScheduler,
+    preferences,
   );
 
   return { ok: true, preferences: nextPreferences };
