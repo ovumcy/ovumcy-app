@@ -36,7 +36,9 @@ follows from that:
   invalidating its authentication tag. A row whose encrypted payload is empty
   is never adopted from its plaintext columns: it is deleted at boot and read
   as absent, and a singleton whose payload does not open falls back to its
-  defaults, so clearing a payload cannot inject a record.
+  defaults, and a day-log or symptom row whose payload does not open is
+  deleted at boot without failing startup or Clear data, so clearing or
+  corrupting a payload cannot inject a record or lock the app.
 - **Key/data mismatch resets deterministically and atomically.** At boot the
   stored key is checked against canary rows (the two singletons, then one day
   log and one symptom). The reset needs a well-formed envelope that fails
@@ -428,7 +430,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Only an AEAD failure on a well-formed envelope, or a stored key that cannot be a key, counts as a key/data mismatch; an unparseable envelope never does | `reports a mismatch only for an AEAD failure on a well-formed envelope`, `reports a stored key that cannot be a 32-byte hex key as a mismatch`, `classifies %s as malformed, never as a mismatch` in [src/security/local-data-crypto.test.ts](src/security/local-data-crypto.test.ts) |
 | An unparseable canary, a single tampered canary row, or a SQLite read error never wipes the database; an authentication failure with nothing authenticating still resets it | `keeps the key and wipes nothing when the bootstrap canary is unparseable but the profile canary authenticates`, `keeps the key and wipes nothing when one canary row was tampered but another authenticates`, `keeps the key when every canary envelope is unparseable (nothing to verify against)`, `propagates a SQLite read error from the canary probe without wiping or replacing the key`, `still resets when the bootstrap canary is unparseable and the profile canary fails authentication` in [src/storage/local/sqlite-local-data-key.test.ts](src/storage/local/sqlite-local-data-key.test.ts) |
 | The mismatch wipe is one transaction; a failure mid-wipe rolls back and keeps the old key | `runs every DELETE inside one BEGIN IMMEDIATE ... COMMIT`, `rolls back and keeps the old key when a DELETE fails mid-wipe` in [src/storage/local/sqlite-local-data-key.test.ts](src/storage/local/sqlite-local-data-key.test.ts) |
-| A row with an empty encrypted payload is never adopted from its plaintext columns; a singleton whose payload does not open reads as its defaults | `drops day-log rows without an encrypted payload instead of re-encrypting their plaintext columns`, `drops a symptom row without an encrypted payload instead of adopting its plaintext columns`, `does not adopt a plaintext v1 onboarding_profile row into the profile`, `falls back to defaults for singleton rows whose payload was cleared or does not authenticate` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
+| A row with an empty encrypted payload is never adopted from its plaintext columns; a singleton whose payload does not open reads as its defaults; a day-log or symptom row whose payload does not open is deleted at hydrate and never blocks startup or Clear data | `is dropped at hydrate while the good rows survive`, `does not make Clear data throw`, `drops day-log rows without an encrypted payload instead of re-encrypting their plaintext columns`, `drops a symptom row without an encrypted payload instead of adopting its plaintext columns`, `does not adopt a plaintext v1 onboarding_profile row into the profile`, `falls back to defaults for singleton rows whose payload was cleared or does not authenticate` in [src/storage/local/sqlite-app-storage.test.ts](src/storage/local/sqlite-app-storage.test.ts) |
 
 ### Sync snapshot AAD
 
