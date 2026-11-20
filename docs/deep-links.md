@@ -33,7 +33,8 @@ Accepted Residual Risks).
 The invite URL is **minted by the managed cloud**, not assembled by the app. The
 managed service builds it from a configured base URL and appends the raw token as
 an `invite_token` query parameter. The base URL is a managed-side setting whose
-default is the custom scheme:
+historical default is the custom scheme, which the owner device now refuses to
+share (the production value is the verified https base):
 
 ```
 PARTNER_INVITE_BASE_URL  default = "ovumcy://backup-sync"
@@ -51,8 +52,12 @@ The link the owner shares is that URL plus a fragment the app appends:
 `…?invite_token=<token>#k=<invite secret>`. The secret is generated on the owner
 device and is the root of the partner-share key, so the managed cloud — which
 minted the token — cannot derive the key (`docs/sync-trust-model.md`,
-Partner-Share Invite Secret). Expo Router drops the fragment of custom-scheme
-links, so the partner side reads it from the raw link that opened the app as
+Partner-Share Invite Secret). The secret is appended only when the minted URL
+sits on the verified base `https://invite.ovumcy.cloud/backup-sync`; a
+custom-scheme URL (any installed app can claim a custom scheme) is refused with
+`invalid_partner_invite` and never gets the secret. The custom scheme remains an
+accepted inbound route: the partner side parses `ovumcy://` links as before. Expo Router drops the
+fragment of custom-scheme links, so the partner side reads it from the raw link that opened the app as
 well as from the route; on web the boot-time scrub stashes and strips it with the
 token.
 
@@ -537,6 +542,7 @@ breaks until the final flip.
 - The chosen `<INVITE_HOST>` is identical across managed config, both well-known
   files, `app.json` Android `host`, and iOS `associatedDomains`.
 
-Rollback: revert `PARTNER_INVITE_BASE_URL` to `ovumcy://backup-sync`. Because the
-custom scheme is retained in `app.json`, invites immediately mint working
-custom-scheme links again; no app release is needed to roll back.
+Rollback: the custom-scheme base is no longer a usable rollback value, because
+the owner device refuses to append the invite secret to a custom-scheme URL
+(sharing fails closed). Roll back by fixing the verified host or its well-known
+files; the custom scheme stays in `app.json` only as an inbound route.

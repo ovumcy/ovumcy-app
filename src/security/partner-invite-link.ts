@@ -8,17 +8,16 @@ export function isPartnerInviteSecretHex(value: string): boolean {
   return INVITE_SECRET_HEX_PATTERN.test(value);
 }
 
-// The only link targets the app itself opens (the custom scheme and the
-// verified app-link host in app.json). The server mints the invite URL, so a
-// server-chosen host would let the page it serves read the fragment.
-const PARTNER_INVITE_LINK_BASES = [
-  "ovumcy://backup-sync",
-  "https://invite.ovumcy.cloud/backup-sync",
-];
+// The only base that may carry the secret outward: the verified app-link host
+// in app.json. A custom scheme has no domain verification, so any installed app
+// can claim it and read the fragment; the server mints the invite URL, so a
+// server-chosen host would also let the page it serves read the fragment.
+// Inbound parsing (`parsePartnerInviteLink`) stays scheme-agnostic.
+const PARTNER_INVITE_LINK_BASES = ["https://invite.ovumcy.cloud/backup-sync"];
 
 /**
  * Builds the link the owner shares. Refuses a server URL outside the pinned
- * link bases, and drops any fragment the server put on it: the fragment is
+ * link base (including the custom scheme), and drops any fragment the server put on it: the fragment is
  * client-controlled and carries only the secret.
  */
 export function buildShareablePartnerInviteURL(

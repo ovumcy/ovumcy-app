@@ -21,10 +21,19 @@ describe("buildShareablePartnerInviteURL", () => {
   it("replaces any fragment the server put on its URL", () => {
     expect(
       buildShareablePartnerInviteURL(
-        "ovumcy://backup-sync?invite_token=tok#k=server-chosen",
+        "https://invite.ovumcy.cloud/backup-sync?invite_token=tok#k=server-chosen",
         SECRET,
       ),
-    ).toBe(`ovumcy://backup-sync?invite_token=tok#k=${SECRET}`);
+    ).toBe(`https://invite.ovumcy.cloud/backup-sync?invite_token=tok#k=${SECRET}`);
+  });
+
+  it.each([
+    "ovumcy://backup-sync?invite_token=tok",
+    "ovumcy://backup-sync?invite_token=tok#k=server-chosen",
+  ])("refuses the custom scheme for the outbound link: %s", (serverURL) => {
+    expect(() => buildShareablePartnerInviteURL(serverURL, SECRET)).toThrow(
+      "invalid_partner_invite",
+    );
   });
 
   it.each([
@@ -42,7 +51,10 @@ describe("buildShareablePartnerInviteURL", () => {
 
   it("refuses a malformed secret", () => {
     expect(() =>
-      buildShareablePartnerInviteURL("ovumcy://backup-sync?invite_token=tok", "abc"),
+      buildShareablePartnerInviteURL(
+        "https://invite.ovumcy.cloud/backup-sync?invite_token=tok",
+        "abc",
+      ),
     ).toThrow("invalid_partner_invite");
   });
 });
