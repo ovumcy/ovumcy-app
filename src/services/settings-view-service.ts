@@ -363,6 +363,7 @@ export type SettingsViewData = {
       restoreFailed: string;
       deleteAccountFailed: string;
       deleteAccountCleanupUnavailable: string;
+      deleteAccountServerErased: string;
     };
   };
   symptoms: {
@@ -939,6 +940,8 @@ export function buildSettingsViewData(
         deleteAccountFailed: settingsCopy.account.errors.deleteAccountFailed,
         deleteAccountCleanupUnavailable:
           settingsCopy.account.errors.deleteAccountCleanupUnavailable,
+        deleteAccountServerErased:
+          settingsCopy.account.errors.deleteAccountServerErased,
       },
     },
     symptoms: {
