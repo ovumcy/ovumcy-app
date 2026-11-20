@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useEffect, useState } from "react";
+import { type PropsWithChildren, type ReactNode, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -45,6 +45,8 @@ type SettingsSyncSetupSectionProps = {
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
+  accountDeletionStepUp?: ReactNode;
+  recoveryRotationStepUp?: ReactNode;
   onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
   onDismissOffer?: ((offerID: string) => void | Promise<void>) | undefined;
@@ -84,6 +86,8 @@ export function SettingsSyncSetupSection({
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
+  accountDeletionStepUp,
+  recoveryRotationStepUp,
   onDeleteAccount,
   onDeviceLabelChange,
   onDismissOffer,
@@ -312,6 +316,7 @@ export function SettingsSyncSetupSection({
               variant="secondary"
             />
           ) : null}
+          {recoveryRotationStepUp}
         </View>
 
         <View style={styles.stepCard} testID="settings-sync-account-step">
@@ -632,6 +637,7 @@ export function SettingsSyncSetupSection({
               />
             </View>
           ) : null}
+          {accountDeletionStepUp}
         </View>
 
         <View style={styles.recapRow} testID="settings-sync-status-recap">
