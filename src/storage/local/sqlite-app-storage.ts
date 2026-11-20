@@ -1202,7 +1202,9 @@ async function maybeMigrateLegacyLocalAppData(
 // with database-file access can clear the payload and edit the columns — so
 // it is deleted, never re-encrypted as if it were authentic. A singleton whose
 // payload does not authenticate is deleted too; ensureSeedRows reseeds the
-// singletons with defaults right after.
+// singletons with defaults right after. A day-log or symptom row that does not
+// authenticate is deleted as well and hydrate continues; a decryption failure
+// is the only error absorbed, so a database read error still propagates.
 const PAYLOAD_BEARING_TABLES = [
   "bootstrap_state",
   "profile_settings",
@@ -1279,7 +1281,13 @@ async function dropUnauthenticatedLocalDataRows(
   );
 
   for (const row of dayLogRows.filter(hasEncryptedPayload)) {
-    const record = decryptDayLogPayload(localDataKey, row.day, row.encrypted_payload);
+    const record = tryDecrypt(() =>
+      decryptDayLogPayload(localDataKey, row.day, row.encrypted_payload),
+    );
+    if (!record) {
+      await database.runAsync("DELETE FROM day_logs WHERE day = ?;", row.day);
+      continue;
+    }
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "day_log",
@@ -1300,7 +1308,13 @@ async function dropUnauthenticatedLocalDataRows(
   );
 
   for (const row of symptomRows.filter(hasEncryptedPayload)) {
-    const record = decryptSymptomPayload(localDataKey, row.id, row.encrypted_payload);
+    const record = tryDecrypt(() =>
+      decryptSymptomPayload(localDataKey, row.id, row.encrypted_payload),
+    );
+    if (!record) {
+      await database.runAsync("DELETE FROM symptoms WHERE id = ?;", row.id);
+      continue;
+    }
     const nextLookupKey = buildOpaqueLookupKey(
       localDataKey,
       "symptom",
@@ -2186,6 +2200,14 @@ function decryptSymptomPayload(
     encryptedPayload,
     buildLocalDataAad("symptom", storedKey),
   );
+}
+
+function tryDecrypt<T>(decrypt: () => T): T | null {
+  try {
+    return decrypt();
+  } catch {
+    return null;
+  }
 }
 
 function hasEncryptedPayload<T extends { encrypted_payload: string | null }>(

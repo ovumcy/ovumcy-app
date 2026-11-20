@@ -3177,6 +3177,78 @@ describe("sqlite-app-storage", () => {
     await expect(storage.listSymptomRecords()).resolves.toEqual(seededSymptoms);
   });
 
+  describe("a multi-row record that does not authenticate", () => {
+    const keyHex = "a".repeat(64);
+
+    async function seedWithBadRows() {
+      const inspected = createInspectableFakeDatabase();
+      const first = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(keyHex),
+        openDatabase: async () => inspected.database,
+      });
+      await first.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-04-01"), notes: "good" });
+      await first.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-04-02"), notes: "bad" });
+      await first.writeSymptomRecord({
+        id: "good_symptom",
+        slug: "good-symptom",
+        label: "Good",
+        icon: "x",
+        color: "#123456",
+        isArchived: false,
+        sortOrder: 90,
+        isDefault: false,
+      });
+      const [goodDay, badDay] = inspected.state.dayLogRows;
+      // A ciphertext spliced from another row fails its AAD binding.
+      badDay!.encrypted_payload = goodDay!.encrypted_payload ?? null;
+      const goodDayKey = goodDay!.day;
+      const seededSymptomCount = inspected.state.symptomRows.length;
+      inspected.state.symptomRows.push({
+        id: "bad_symptom",
+        slug: "bad",
+        label: "Bad",
+        icon: "x",
+        color: "#000000",
+        is_default: 0,
+        is_archived: 0,
+        sort_order: 91,
+        encrypted_payload: TRUNCATED_ENVELOPE,
+      });
+      const remount = () =>
+        createSQLiteAppStorage({
+          legacyStorageSource: createInertLegacySource(),
+          localDataKeyStore: createFakeLocalDataKeyStore(keyHex),
+          openDatabase: async () => inspected.database,
+        });
+      return { inspected, remount, goodDayKey, seededSymptomCount };
+    }
+
+    it("is dropped at hydrate while the good rows survive", async () => {
+      const { inspected, remount, goodDayKey, seededSymptomCount } = await seedWithBadRows();
+      const storage = remount();
+
+      await expect(
+        storage.listDayLogRecordsInRange("2026-01-01", "2026-12-31"),
+      ).resolves.toEqual([expect.objectContaining({ date: "2026-04-01", notes: "good" })]);
+      const symptoms = await storage.listSymptomRecords();
+      expect(symptoms.map((s) => s.id)).toContain("good_symptom");
+      expect(symptoms).toHaveLength(seededSymptomCount);
+      expect(inspected.state.dayLogRows.map((r) => r.day)).toHaveLength(1);
+      expect(inspected.state.dayLogRows[0]?.day).toBe(goodDayKey);
+      expect(inspected.state.symptomRows.some((r) => r.encrypted_payload === TRUNCATED_ENVELOPE)).toBe(false);
+    });
+
+    it("does not make Clear data throw", async () => {
+      const { inspected, remount } = await seedWithBadRows();
+      const storage = remount();
+
+      await expect(storage.clearAllLocalData()).resolves.toBeUndefined();
+      expect(inspected.state.dayLogRows).toEqual([]);
+      expect(inspected.state.symptomRows.some((r) => r.encrypted_payload === TRUNCATED_ENVELOPE)).toBe(false);
+    });
+  });
+
   it("re-keys an encrypted symptom row stored under its plain id to the opaque lookup key", async () => {
     const localDataKey = "a".repeat(64);
     const symptom = {
