@@ -266,7 +266,9 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       setPendingStepUp(prompt ? { prompt, forState } : null);
       if (!prompt) {
         setErrorState({
-          code: result.errorCode,
+          code: result.serverDeleted
+            ? "server_erased_local_incomplete"
+            : result.errorCode,
           scope: "delete_account",
         });
       }

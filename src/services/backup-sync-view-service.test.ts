@@ -790,6 +790,26 @@ describe("backup sync view service", () => {
       );
     });
 
+    it("shows the server-erased copy, not the generic failure, when only the local wipe is incomplete", () => {
+      for (const locale of ["en", "de", "fr", "ru", "es", "it"] as const) {
+        const viewData = buildSettingsViewData(new Date(2026, 2, 22), locale);
+
+        const presentation = resolveBackupSyncErrorPresentation(
+          "server_erased_local_incomplete",
+          "delete_account",
+          viewData.account,
+        );
+
+        expect(presentation.deleteAccountMessage).toBe(
+          viewData.account.errors.deleteAccountServerErased,
+        );
+        expect(presentation.deleteAccountMessage).not.toBe(
+          viewData.account.errors.deleteAccountFailed,
+        );
+        expect(presentation.deleteAccountMessage.length).toBeGreaterThan(0);
+      }
+    });
+
     it("falls back to the generic delete-account failure message for any other code", () => {
       const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
 

@@ -409,6 +409,8 @@ const settingsCopyEn = {
         "Unable to delete your account right now. Nothing was changed. Please try again.",
       deleteAccountCleanupUnavailable:
         "Deletion was stopped safely. The server cannot currently confirm that your synced data would be removed too. Your account and data are unchanged. Please try again later.",
+      deleteAccountServerErased:
+        "Your Ovumcy Cloud account has been erased, but the data on this device could not be fully cleared. Try again to finish clearing this device.",
     },
   },
   symptoms: {
@@ -1005,6 +1007,8 @@ const settingsCopyDe: SettingsCopy = {
         "Ihr Konto konnte gerade nicht gelöscht werden. Es wurde nichts geändert. Bitte versuchen Sie es erneut.",
       deleteAccountCleanupUnavailable:
         "Die Löschung wurde sicher gestoppt. Der Server kann gerade nicht bestätigen, dass auch Ihre synchronisierten Daten entfernt würden. Konto und Daten sind unverändert. Bitte versuchen Sie es später erneut.",
+      deleteAccountServerErased:
+        "Ihr Ovumcy-Cloud-Konto wurde gelöscht, aber die Daten auf diesem Gerät konnten nicht vollständig entfernt werden. Versuchen Sie es erneut, um dieses Gerät fertig zu leeren.",
     },
   },
   symptoms: {
@@ -1629,6 +1633,8 @@ const settingsCopyFr: SettingsCopy = {
         "Impossible de supprimer votre compte pour le moment. Rien n'a été modifié. Veuillez réessayer.",
       deleteAccountCleanupUnavailable:
         "La suppression a été interrompue par sécurité. Le serveur ne peut pas confirmer pour le moment que vos données synchronisées seraient aussi supprimées. Votre compte et vos données restent intacts. Réessayez plus tard.",
+      deleteAccountServerErased:
+        "Votre compte Ovumcy Cloud a été supprimé, mais les données de cet appareil n'ont pas pu être entièrement effacées. Réessayez pour terminer l'effacement de cet appareil.",
     },
   },
   symptoms: {
@@ -2234,6 +2240,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Сейчас не удалось удалить аккаунт. Ничего не изменилось. Попробуйте ещё раз.",
         deleteAccountCleanupUnavailable:
           "Удаление безопасно остановлено. Сервер сейчас не может подтвердить, что синхронизированные данные тоже будут удалены. Аккаунт и данные не изменились. Попробуйте позже.",
+        deleteAccountServerErased:
+          "Аккаунт Ovumcy Cloud удалён, но данные на этом устройстве очищены не полностью. Повторите попытку, чтобы завершить очистку этого устройства.",
       },
     },
     symptoms: {
@@ -2823,6 +2831,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "No se pudo eliminar tu cuenta ahora. No se cambió nada. Inténtalo de nuevo.",
         deleteAccountCleanupUnavailable:
           "La eliminación se detuvo de forma segura. El servidor no puede confirmar ahora mismo que tus datos sincronizados también se eliminarían. Tu cuenta y tus datos siguen intactos. Inténtalo de nuevo más tarde.",
+        deleteAccountServerErased:
+          "Tu cuenta de Ovumcy Cloud se ha eliminado, pero los datos de este dispositivo no se borraron por completo. Inténtalo de nuevo para terminar de borrar este dispositivo.",
       },
     },
     symptoms: {
@@ -3415,6 +3425,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Impossibile eliminare il tuo account in questo momento. Nulla è stato modificato. Riprova.",
         deleteAccountCleanupUnavailable:
           "L'eliminazione è stata interrotta per sicurezza. Il server non può confermare in questo momento che anche i tuoi dati sincronizzati verrebbero rimossi. Il tuo account e i tuoi dati restano intatti. Riprova più tardi.",
+        deleteAccountServerErased:
+          "Il tuo account Ovumcy Cloud è stato eliminato, ma i dati su questo dispositivo non sono stati cancellati del tutto. Riprova per finire di cancellare questo dispositivo.",
       },
     },
     symptoms: {

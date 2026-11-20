@@ -748,7 +748,7 @@ describe("useBackupSyncAccountDeletion", () => {
 
       await failAfterServerDelete(result);
       expect(core.setErrorState).toHaveBeenCalledWith({
-        code: "generic",
+        code: "server_erased_local_incomplete",
         scope: "delete_account",
       });
       expect(core.router.replace).not.toHaveBeenCalled();

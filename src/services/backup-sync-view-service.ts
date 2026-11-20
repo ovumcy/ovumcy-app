@@ -429,6 +429,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.syncFailed;
     case "sync_purge_unavailable":
       return viewData.errors.deleteAccountCleanupUnavailable;
+    case "server_erased_local_incomplete":
+      return viewData.errors.deleteAccountServerErased;
     default:
       return viewData.errors.saveFailed;
   }
@@ -481,7 +483,8 @@ export function resolveBackupSyncErrorPresentation(
         errorCode === "not_connected" ||
         errorCode === "unauthorized" ||
         errorCode === "network_failed" ||
-        errorCode === "sync_purge_unavailable"
+        errorCode === "sync_purge_unavailable" ||
+        errorCode === "server_erased_local_incomplete"
           ? message
           : viewData.errors.deleteAccountFailed,
     };
