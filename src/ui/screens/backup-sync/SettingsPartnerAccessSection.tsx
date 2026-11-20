@@ -429,6 +429,14 @@ function PartnerSharedGrantList({
                 {copy.lastSeenLabel}:{" "}
                 {formatBackupSyncLastSeen(grant.lastSeenAt, locale, copy.lastSeenNever)}
               </Text>
+              {isManagedPartnerGrantReshareRequired(grant) ? (
+                <Text
+                  style={styles.helperText}
+                  testID={`settings-partner-shared-grant-legacy-${grant.id}`}
+                >
+                  {copy.sharedGrantLegacyHint}
+                </Text>
+              ) : null}
             </View>
             <AppButton
               label={copy.openSharedViewLabel}

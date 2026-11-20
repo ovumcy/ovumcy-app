@@ -210,4 +210,32 @@ describe("SettingsPartnerAccessSection", () => {
       screen.getByTestId("settings-partner-grant-info-grant-legacy").props.accessibilityLabel,
     ).toContain(copy.grantReshareRequiredHint);
   });
+
+  it("tells the partner to ask for a new invite on a shared grant with no source invite, and only then", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          hasManagedSession
+          overview={{
+            owned: { invites: [], grants: [] },
+            sharedWithMe: [
+              createGrant({ id: "grant-legacy", sourceInviteID: null }),
+              createGrant({ id: "grant-ok", sourceInviteID: "invite-2" }),
+              createGrant({
+                id: "grant-revoked",
+                sourceInviteID: null,
+                revokedAt: "2026-03-09T00:00:00.000Z",
+              }),
+            ],
+          }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("settings-partner-shared-grant-legacy-grant-legacy")).toBeTruthy();
+    expect(screen.getByText(copy.sharedGrantLegacyHint)).toBeTruthy();
+    expect(screen.queryByTestId("settings-partner-shared-grant-legacy-grant-ok")).toBeNull();
+    expect(screen.queryByTestId("settings-partner-shared-grant-legacy-grant-revoked")).toBeNull();
+  });
 });
