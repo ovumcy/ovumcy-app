@@ -1720,6 +1720,21 @@ describe("preview and apply agree on a file repeating a date", () => {
     expect(applySide.dayLogs.get("2026-03-10")?.notes).toBe("kept");
   });
 
+  it("rejects a record whose date is not a string", async () => {
+    const side = createStatefulStorage();
+    const outcome = await importBackupEnvelope(
+      side.storage,
+      envelope({
+        dayLogs: [
+          { ...dayLog("2026-03-20", { mood: 2 }), date: 20260320 },
+        ] as unknown as DayLogRecord[],
+      }),
+    );
+
+    expect(outcome).toMatchObject({ dayLogsAdded: 0, dayLogsRejected: 1 });
+    expect(side.dayLogs.size).toBe(0);
+  });
+
   it("treats a whitespace-padded date as the day it names", async () => {
     const make = () => {
       const side = createStatefulStorage();
