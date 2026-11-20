@@ -1,4 +1,5 @@
 import type { InterfaceLanguage } from "../models/profile";
+import { selectTOTPCopy } from "./totp-copy";
 import {
   selectRecoveryKeyStepUpCopy,
   type RecoveryKeyStepUpCopy,
@@ -18,6 +19,7 @@ type RotationStrings = Omit<ManagedRecoveryRotationCopy, "stepUp"> & {
   stepUpExplanation: string;
   rotationUnconfirmed: string;
   rotationFailed: string;
+  inProgress: string;
 };
 
 const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
@@ -28,6 +30,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Change phrase",
     deviceAuthPrompt: "Confirm it's you to change the recovery phrase",
     rotatedStatus: "Your new recovery phrase is active. Write it down now.",
+    inProgress: "Changing the recovery phrase...",
     stepUpTitle: "Confirm the new recovery phrase",
     stepUpExplanation:
       "Ovumcy Cloud asks for your account password before it replaces the recovery phrase. With two-factor on, also enter the current code.",
@@ -43,6 +46,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Phrase ändern",
     deviceAuthPrompt: "Bestätigen Sie, dass Sie es sind, um die Wiederherstellungsphrase zu ändern",
     rotatedStatus: "Ihre neue Wiederherstellungsphrase ist aktiv. Notieren Sie sie jetzt.",
+    inProgress: "Wiederherstellungsphrase wird geändert...",
     stepUpTitle: "Neue Wiederherstellungsphrase bestätigen",
     stepUpExplanation:
       "Ovumcy Cloud fragt nach Ihrem Kontopasswort, bevor die Wiederherstellungsphrase ersetzt wird. Ist die Zwei-Faktor-Anmeldung aktiv, geben Sie auch den aktuellen Code ein.",
@@ -58,6 +62,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Changer la phrase",
     deviceAuthPrompt: "Confirmez votre identité pour changer la phrase de récupération",
     rotatedStatus: "Votre nouvelle phrase de récupération est active. Notez-la maintenant.",
+    inProgress: "Changement de la phrase de récupération...",
     stepUpTitle: "Confirmer la nouvelle phrase de récupération",
     stepUpExplanation:
       "Ovumcy Cloud demande le mot de passe du compte avant de remplacer la phrase de récupération. Si la double authentification est activée, saisissez aussi le code actuel.",
@@ -73,6 +78,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Сменить фразу",
     deviceAuthPrompt: "Подтвердите, что это вы, чтобы сменить фразу восстановления",
     rotatedStatus: "Новая фраза восстановления активна. Запишите её сейчас.",
+    inProgress: "Меняем фразу восстановления...",
     stepUpTitle: "Подтвердите новую фразу восстановления",
     stepUpExplanation:
       "Перед заменой фразы восстановления Ovumcy Cloud запрашивает пароль аккаунта. Если включена двухфакторная защита, введите и текущий код.",
@@ -88,6 +94,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Cambiar frase",
     deviceAuthPrompt: "Confirma que eres tú para cambiar la frase de recuperación",
     rotatedStatus: "Tu nueva frase de recuperación está activa. Anótala ahora.",
+    inProgress: "Cambiando la frase de recuperación...",
     stepUpTitle: "Confirma la nueva frase de recuperación",
     stepUpExplanation:
       "Ovumcy Cloud pide la contraseña de la cuenta antes de sustituir la frase de recuperación. Si tienes la verificación en dos pasos activada, introduce también el código actual.",
@@ -103,6 +110,7 @@ const STRINGS: Record<InterfaceLanguage, RotationStrings> = {
     confirmAccept: "Cambia frase",
     deviceAuthPrompt: "Conferma la tua identità per cambiare la frase di recupero",
     rotatedStatus: "La nuova frase di recupero è attiva. Annotala ora.",
+    inProgress: "Cambio della frase di recupero...",
     stepUpTitle: "Conferma la nuova frase di recupero",
     stepUpExplanation:
       "Ovumcy Cloud chiede la password dell'account prima di sostituire la frase di recupero. Con la verifica in due passaggi attiva, inserisci anche il codice attuale.",
@@ -129,10 +137,12 @@ export function selectManagedRecoveryRotationCopy(
       title: strings.stepUpTitle,
       explanation: strings.stepUpExplanation,
       confirmLabel: strings.confirmAccept,
+      inProgressLabel: strings.inProgress,
       errors: {
         ...base.errors,
         rotationUnconfirmed: strings.rotationUnconfirmed,
         rotationFailed: strings.rotationFailed,
+        totpNotConfigured: selectTOTPCopy(language).errors.totpNotConfigured,
       },
     },
   };

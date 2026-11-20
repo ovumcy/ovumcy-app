@@ -27,6 +27,7 @@ export type ManagedRecoveryRotationErrorCode =
   | "totp_invalid_code"
   | "totp_replayed"
   | "rate_limited"
+  | "totp_not_configured"
   // The server may already hold the new package (502, no answer, unreadable
   // answer, or a local write that failed after a 200). The old phrase stays
   // active here; a retry resends the same package with a fresh code.
@@ -174,6 +175,7 @@ function mapRotationError(
     case "totp_invalid_code":
     case "totp_replayed":
     case "rate_limited":
+    case "totp_not_configured":
     case "unauthorized":
       return errorCode;
     case "sync_bridge_unavailable":
