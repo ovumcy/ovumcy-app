@@ -1720,6 +1720,65 @@ describe("preview and apply agree on a file repeating a date", () => {
     expect(applySide.dayLogs.get("2026-03-10")?.notes).toBe("kept");
   });
 
+  it("treats a whitespace-padded date as the day it names", async () => {
+    const make = () => {
+      const side = createStatefulStorage();
+      side.dayLogs.set("2026-03-10", dayLog("2026-03-10", { notes: "kept" }));
+      return side;
+    };
+    const file = envelope({
+      dayLogs: [
+        dayLog("2026-03-10 ", { notes: "padded duplicate" }),
+        dayLog("  2026-03-11\n", { mood: 3 }),
+        dayLog("2026-03-11", { mood: 1 }),
+      ],
+    });
+
+    const preview = await previewImportBackupEnvelope(make().storage, file);
+    const applySide = make();
+    const applied = await importBackupEnvelope(applySide.storage, file);
+
+    expect(preview).toEqual(applied);
+    expect(applied).toMatchObject({
+      dayLogsAdded: 1,
+      dayLogsSkipped: 1,
+      dayLogsRejected: 1,
+    });
+    expect([...applySide.dayLogs.keys()].sort()).toEqual([
+      "2026-03-10",
+      "2026-03-11",
+    ]);
+    expect(applySide.dayLogs.get("2026-03-10")?.notes).toBe("kept");
+    expect(applySide.dayLogs.get("2026-03-11")?.mood).toBe(3);
+  });
+
+  it("remaps a custom symptom whose file id is padded differently from its day reference", async () => {
+    const side = createStatefulStorage();
+    const outcome = await importBackupEnvelope(
+      side.storage,
+      envelope({
+        symptoms: [
+          {
+            id: " custom-1 ",
+            slug: "jaw pain",
+            label: "Jaw pain",
+            icon: "🔥",
+            color: "#E8799F",
+            isArchived: false,
+            sortOrder: 900,
+            isDefault: false,
+          },
+        ],
+        dayLogs: [dayLog("2026-03-12", { symptomIDs: ["custom-1"] })],
+      }),
+    );
+
+    expect(outcome).toMatchObject({ dayLogsAdded: 1, symptomsAdded: 1 });
+    expect(side.dayLogs.get("2026-03-12")?.symptomIDs).not.toContain(
+      "custom-1",
+    );
+  });
+
   it("returns identical counts from preview and apply over mixed files", async () => {
     const symptom = (id: string, label: string) => ({
       id,
