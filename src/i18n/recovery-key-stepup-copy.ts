@@ -7,6 +7,8 @@ export type RecoveryKeyStepUpCopy = {
   codeLabel: string;
   confirmLabel: string;
   cancelLabel: string;
+  // Managed recovery-phrase rotation only: shown while the change is in flight.
+  inProgressLabel?: string;
   errors: {
     invalidCurrentPassword: string;
     totpInvalidCode: string;
@@ -15,6 +17,7 @@ export type RecoveryKeyStepUpCopy = {
     // Managed recovery-phrase rotation only.
     rotationUnconfirmed?: string;
     rotationFailed?: string;
+    totpNotConfigured?: string;
   };
 };
 

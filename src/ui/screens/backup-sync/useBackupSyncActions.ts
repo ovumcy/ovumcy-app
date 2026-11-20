@@ -23,6 +23,7 @@ export type RecoveryKeyStepUpPrompt = {
     | "totp_replayed"
     | "rate_limited"
     // Managed recovery-phrase rotation only.
+    | "totp_not_configured"
     | "rotation_unconfirmed"
     | "generic"
     | null;

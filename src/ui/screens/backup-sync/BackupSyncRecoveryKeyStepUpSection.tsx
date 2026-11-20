@@ -138,6 +138,8 @@ function resolveErrorMessage(
       return copy.errors.totpReplayed;
     case "rate_limited":
       return copy.errors.rateLimited;
+    case "totp_not_configured":
+      return copy.errors.totpNotConfigured ?? "";
     case "rotation_unconfirmed":
       return copy.errors.rotationUnconfirmed ?? "";
     case "generic":
