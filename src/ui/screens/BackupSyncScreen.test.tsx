@@ -1,5 +1,5 @@
 import React from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { Platform } from "react-native";
 
 import { getDeviceCopy } from "../../i18n/device-copy";
@@ -2539,6 +2539,13 @@ describe("BackupSyncScreen", () => {
     await fireEvent.press(screen.getByTestId("settings-sync-delete-account-button"));
 
     await waitFor(() => expect(mockOpenConfirmation).toHaveBeenCalledTimes(2));
+    const deletionStep = screen.getByTestId("settings-sync-actions-step");
+    expect(
+      await within(deletionStep).findByTestId("sync-delete-account-stepup-password"),
+    ).toBeTruthy();
+    expect(
+      within(deletionStep).getByTestId("settings-sync-delete-account-button"),
+    ).toBeTruthy();
     await confirmDeletionWithPassword("very secure password 12345");
     await waitFor(() =>
       expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1),
@@ -3114,6 +3121,13 @@ describe("BackupSyncScreen", () => {
         ),
       );
       const password = await screen.findByTestId("sync-recovery-rotation-stepup-password");
+      const localStep = screen.getByTestId("settings-sync-local-step");
+      expect(
+        within(localStep).getByTestId("sync-recovery-rotation-stepup-password"),
+      ).toBeTruthy();
+      expect(
+        within(localStep).getByTestId("settings-sync-prepare-button"),
+      ).toBeTruthy();
       expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
       expect(rotationBodies).toHaveLength(0);
 

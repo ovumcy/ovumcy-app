@@ -304,27 +304,31 @@ export function BackupSyncFlowScreen({
           prompt={recoveryKeyStepUpPrompt}
         />
       ) : null}
-      {accountDeletionStepUpPrompt ? (
-        <BackupSyncRecoveryKeyStepUpSection
-          copy={selectAccountDeletionStepUpCopy(language)}
-          isBusy={isDeletingAccount}
-          onCancel={onCancelAccountDeletionStepUp}
-          onSubmit={onSubmitAccountDeletionStepUp}
-          prompt={accountDeletionStepUpPrompt}
-          testIDPrefix="sync-delete-account-stepup"
-        />
-      ) : null}
-      {managedRecoveryRotationStepUpPrompt ? (
-        <BackupSyncRecoveryKeyStepUpSection
-          copy={managedRecoveryRotationStepUpCopy}
-          isBusy={isPreparing}
-          onCancel={onCancelManagedRecoveryRotationStepUp}
-          onSubmit={onSubmitManagedRecoveryRotationStepUp}
-          prompt={managedRecoveryRotationStepUpPrompt}
-          testIDPrefix="sync-recovery-rotation-stepup"
-        />
-      ) : null}
       <SettingsSyncSetupSection
+        accountDeletionStepUp={
+          accountDeletionStepUpPrompt ? (
+            <BackupSyncRecoveryKeyStepUpSection
+              copy={selectAccountDeletionStepUpCopy(language)}
+              isBusy={isDeletingAccount}
+              onCancel={onCancelAccountDeletionStepUp}
+              onSubmit={onSubmitAccountDeletionStepUp}
+              prompt={accountDeletionStepUpPrompt}
+              testIDPrefix="sync-delete-account-stepup"
+            />
+          ) : null
+        }
+        recoveryRotationStepUp={
+          managedRecoveryRotationStepUpPrompt ? (
+            <BackupSyncRecoveryKeyStepUpSection
+              copy={managedRecoveryRotationStepUpCopy}
+              isBusy={isPreparing}
+              onCancel={onCancelManagedRecoveryRotationStepUp}
+              onSubmit={onSubmitManagedRecoveryRotationStepUp}
+              prompt={managedRecoveryRotationStepUpPrompt}
+              testIDPrefix="sync-recovery-rotation-stepup"
+            />
+          ) : null
+        }
         authLoginValue={authLoginValue}
         authPasswordValue={authPasswordValue}
         billingOffers={billingOffers}
