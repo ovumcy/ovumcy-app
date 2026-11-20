@@ -241,7 +241,7 @@ describe("managed-partner-share-service", () => {
         partnerShareSecretStore,
         {
           invite: buildInviteFixture(),
-          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+          inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
         },
         "full",
       );
@@ -295,7 +295,7 @@ describe("managed-partner-share-service", () => {
 
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
 
       const reconciled = await reconcileManagedPartnerShareKeys(
@@ -322,7 +322,7 @@ describe("managed-partner-share-service", () => {
 
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
 
       // First reconcile: invite-1 → grant-1. Pending K_invite is consumed.
@@ -370,7 +370,7 @@ describe("managed-partner-share-service", () => {
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
       const overview: ManagedCloudPartnerAccessOverview = {
         owned: { invites: [], grants: [buildGrantFixture()] },
@@ -406,7 +406,7 @@ describe("managed-partner-share-service", () => {
       // Owner side: invite issued; the shared link carries token + secret.
       const shareableLink = await storeIssuedManagedPartnerInviteKey(ownerStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
 
       // Partner accept flow, from the link alone.
@@ -441,7 +441,7 @@ describe("managed-partner-share-service", () => {
 
       await storeIssuedManagedPartnerInviteKey(ownerStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
       await reconcileManagedPartnerShareKeys(
         ownerStore,
@@ -532,7 +532,7 @@ describe("managed-partner-share-service", () => {
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
       await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
@@ -550,7 +550,7 @@ describe("managed-partner-share-service", () => {
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
       expect(
         Object.keys(
@@ -607,7 +607,7 @@ describe("managed-partner-share-service", () => {
       // Owner side: issue + reconcile rotates K_invite → K_grant.
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
-        inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
       }, "summary");
       await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
