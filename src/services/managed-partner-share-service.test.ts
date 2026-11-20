@@ -163,7 +163,7 @@ describe("managed-partner-share-service", () => {
         store,
         {
           invite: buildInviteFixture({ accessLevel: "full" }),
-          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+          inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
         },
         "summary",
       );
@@ -180,7 +180,7 @@ describe("managed-partner-share-service", () => {
         store,
         {
           invite: buildInviteFixture(),
-          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+          inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
         },
         "summary",
       );
