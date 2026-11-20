@@ -94,7 +94,7 @@ const partnerCopyEn = {
     partnerAccessNotFound: "This partner access record could not be found.",
     networkFailed: "Unable to reach Ovumcy Cloud right now.",
     partnerInviteLimitReached:
-      "You have reached the limit of pending invites. Revoke one before creating another.",
+      "You have reached the invite limit: too many pending invites, or too many created in the last 24 hours. Revoke a pending invite, or try again later.",
     partnerGrantLimitReached:
       "The person who invited you already shares with the maximum number of partners. Ask them to remove a partner and send you a new invite.",
     rateLimited: "Too many attempts. Please wait a moment before trying again.",
@@ -235,7 +235,7 @@ const partnerCopyDe = {
     partnerAccessNotFound: "Dieser Partnerzugriff wurde nicht gefunden.",
     networkFailed: "Ovumcy Cloud ist gerade nicht erreichbar.",
     partnerInviteLimitReached:
-      "Sie haben das Limit für ausstehende Einladungen erreicht. Widerrufen Sie eine, bevor Sie eine neue erstellen.",
+      "Sie haben das Einladungslimit erreicht: zu viele ausstehende Einladungen oder zu viele in den letzten 24 Stunden erstellt. Widerrufen Sie eine ausstehende Einladung oder versuchen Sie es später erneut.",
     partnerGrantLimitReached:
       "Die einladende Person teilt bereits mit der maximalen Anzahl an Partnern. Bitten Sie darum, einen Partner zu entfernen und Ihnen eine neue Einladung zu senden.",
     rateLimited: "Zu viele Versuche. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
@@ -381,7 +381,7 @@ const partnerCopyFr = {
     partnerAccessNotFound: "Cet accès partenaire est introuvable.",
     networkFailed: "Impossible de joindre Ovumcy Cloud pour le moment.",
     partnerInviteLimitReached:
-      "Vous avez atteint la limite d'invitations en attente. Retirez-en une avant d'en créer une autre.",
+      "Vous avez atteint la limite d'invitations : trop d'invitations en attente, ou trop créées au cours des dernières 24 heures. Retirez une invitation en attente, ou réessayez plus tard.",
     partnerGrantLimitReached:
       "La personne qui vous a invité partage déjà avec le nombre maximal de partenaires. Demandez-lui de retirer un partenaire et de vous envoyer une nouvelle invitation.",
     rateLimited: "Trop de tentatives. Veuillez patienter un instant avant de réessayer.",
@@ -526,7 +526,7 @@ const partnerCopyRu = {
     partnerAccessNotFound: "Эта запись доступа партнёра не найдена.",
     networkFailed: "Сейчас не удаётся связаться с Ovumcy Cloud.",
     partnerInviteLimitReached:
-      "Достигнут лимит ожидающих приглашений. Отзовите одно, прежде чем создавать новое.",
+      "Достигнут лимит приглашений: слишком много ожидающих или слишком много созданных за последние 24 часа. Отзовите ожидающее приглашение или повторите попытку позже.",
     partnerGrantLimitReached:
       "Пригласивший вас человек уже делится данными с максимальным числом партнёров. Попросите отключить одного из партнёров и прислать вам новое приглашение.",
     rateLimited: "Слишком много попыток. Пожалуйста, подождите немного, прежде чем повторить.",
@@ -667,7 +667,7 @@ const partnerCopyEs = {
     partnerAccessNotFound: "No se encontró este acceso de pareja.",
     networkFailed: "No se puede contactar con Ovumcy Cloud ahora mismo.",
     partnerInviteLimitReached:
-      "Alcanzaste el límite de invitaciones pendientes. Revoca una antes de crear otra.",
+      "Alcanzaste el límite de invitaciones: demasiadas pendientes o demasiadas creadas en las últimas 24 horas. Revoca una invitación pendiente o vuelve a intentarlo más tarde.",
     partnerGrantLimitReached:
       "La persona que te invitó ya comparte con el número máximo de parejas. Pídele que quite a una pareja y te envíe una nueva invitación.",
     rateLimited: "Demasiados intentos. Espera un momento antes de volver a intentarlo.",
@@ -810,7 +810,7 @@ const partnerCopyIt = {
     partnerAccessNotFound: "Impossibile trovare questo record di accesso partner.",
     networkFailed: "Impossibile raggiungere Ovumcy Cloud in questo momento.",
     partnerInviteLimitReached:
-      "Hai raggiunto il limite di inviti in sospeso. Revocane uno prima di crearne un altro.",
+      "Hai raggiunto il limite di inviti: troppi inviti in sospeso o troppi creati nelle ultime 24 ore. Revoca un invito in sospeso o riprova più tardi.",
     partnerGrantLimitReached:
       "La persona che ti ha invitato condivide già con il numero massimo di partner. Chiedile di rimuovere un partner e di inviarti un nuovo invito.",
     rateLimited: "Troppi tentativi. Attendi un momento prima di riprovare.",

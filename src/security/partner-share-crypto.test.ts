@@ -189,6 +189,13 @@ describe("encryptPartnerSharedProjection / decryptPartnerSharedProjection", () =
     };
   }
 
+  it("emits checksumSHA256 as exactly 64 lowercase hex characters, the form the projection PUT requires", () => {
+    for (const generation of [1, 2, 3, 42, 1000]) {
+      const envelope = encryptPartnerSharedProjection(keyHex, buildPayload({ generation }));
+      expect(envelope.checksumSHA256).toMatch(/^[0-9a-f]{64}$/);
+    }
+  });
+
   it("preserves the generation counter across an encrypt/decrypt round-trip", () => {
     const payload = buildPayload({ generation: 7 });
     const envelope = encryptPartnerSharedProjection(keyHex, payload);
