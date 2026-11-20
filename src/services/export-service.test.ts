@@ -759,6 +759,43 @@ describe("CSV formula injection neutralization (sanitizeCSVTextCell)", () => {
     // so RFC4180 quoting must wrap it: "'=SUM(1,2)"
     expect(csv).toContain('"\'=SUM(1,2)"');
   });
+
+  function notesCSV(notes: string): string {
+    const rows = buildExportCSVRows(
+      [{ ...createEmptyDayLogRecord("2026-03-01"), notes }],
+      [],
+      "c",
+    );
+    return serializeExportCSV(["Date", "Notes"], rows, {
+      preset: "all",
+      fromDate: "2026-03-01",
+      toDate: "2026-03-01",
+    });
+  }
+
+  it.each([
+    ["comma", "a,b", '"a,b"'],
+    ["semicolon", "a;b", '"a;b"'],
+    ["quote", 'a"b', '"a""b"'],
+    ["carriage return", "a\rb", '"a\rb"'],
+    ["line feed", "a\nb", '"a\nb"'],
+  ])("(e) quotes a note containing a %s", (_name, note, cell) => {
+    expect(notesCSV(note)).toContain(`,${cell},`);
+  });
+
+  it("(f) quotes and neutralizes injection payloads", () => {
+    expect(notesCSV('a\r=HYPERLINK("http://x")')).toContain(
+      '"a\r=HYPERLINK(""http://x"")"',
+    );
+    expect(notesCSV(";=1+1")).toContain(',";=1+1",');
+    expect(notesCSV(" =cmd")).toContain(",' =cmd,");
+    expect(notesCSV(" \t=cmd")).toContain(",' \t=cmd,");
+    expect(notesCSV("\r=cmd")).toContain(",\"'\r=cmd\",");
+  });
+
+  it("(g) leaves ordinary text unquoted", () => {
+    expect(notesCSV("Feeling good today")).toContain(",Feeling good today,");
+  });
 });
 
 function createStorageMock(extra: Partial<LocalAppStorage> = {}) {

@@ -705,7 +705,9 @@ function escapeCSVField(raw: string): string {
   const normalized = String(raw ?? "");
   if (
     normalized.includes(",") ||
+    normalized.includes(";") ||
     normalized.includes('"') ||
+    normalized.includes("\r") ||
     normalized.includes("\n")
   ) {
     return `"${normalized.replace(/"/g, '""')}"`;
