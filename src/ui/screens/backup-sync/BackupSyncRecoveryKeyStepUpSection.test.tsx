@@ -179,9 +179,43 @@ describe("BackupSyncRecoveryKeyStepUpSection", () => {
     expect(screen.queryByTestId("sync-recovery-key-stepup-error")).toBeNull();
   });
 
+  it.each([true, false])("shows the rotation in-progress line only while busy (%s)", async (isBusy) => {
+    await render(
+      <AppPreferencesTestProvider>
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={rotationCopy}
+          isBusy={isBusy}
+          onCancel={jest.fn()}
+          onSubmit={jest.fn()}
+          prompt={{ codeRequired: false, errorCode: null }}
+          testIDPrefix="sync-recovery-rotation-stepup"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByText(rotationCopy.inProgressLabel!) !== null).toBe(isBusy);
+  });
+
+  it("shows no in-progress line for copy without one", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <BackupSyncRecoveryKeyStepUpSection
+          copy={copy}
+          isBusy
+          onCancel={jest.fn()}
+          onSubmit={jest.fn()}
+          prompt={{ codeRequired: false, errorCode: null }}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("sync-recovery-key-stepup-in-progress")).toBeNull();
+  });
+
   it.each([
     ["rotation_unconfirmed", rotationCopy.errors.rotationUnconfirmed],
     ["generic", rotationCopy.errors.rotationFailed],
+    ["totp_not_configured", rotationCopy.errors.totpNotConfigured],
   ] as const)("shows the rotation message for %s", async (errorCode, message) => {
     await render(
       <AppPreferencesTestProvider>

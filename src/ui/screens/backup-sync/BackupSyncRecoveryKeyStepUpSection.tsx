@@ -99,6 +99,15 @@ export function BackupSyncRecoveryKeyStepUpSection({
           tone="error"
         />
       ) : null}
+      {isBusy && copy.inProgressLabel ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={styles.helperText}
+          testID={`${testIDPrefix}-in-progress`}
+        >
+          {copy.inProgressLabel}
+        </Text>
+      ) : null}
       <View style={styles.actions}>
         <AppButton
           disabled={isBusy || password.length === 0 || !isSendableCode(code)}

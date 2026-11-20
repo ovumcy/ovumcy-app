@@ -413,7 +413,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
         codeRequired: false,
         errorCode: "generic",
       });
-      expect(result.current.isPreparingSync).toBe(false);
+      expect(result.current.isRotatingRecoveryPhrase).toBe(false);
     });
 
     it("closes the card and reports not_connected without a managed session", async () => {
@@ -495,10 +495,43 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("new phrase words");
       expect(core.setAccountStatusMessage).toHaveBeenCalledWith(rotationCopy.rotatedStatus);
       expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
-      expect(result.current.isPreparingSync).toBe(false);
+      expect(result.current.isRotatingRecoveryPhrase).toBe(false);
     });
 
-    it.each(["rotation_unconfirmed", "invalid_current_password", "rate_limited", "generic"] as const)(
+    it("flags the rotation in flight without the key-preparation state", async () => {
+      const { result } = await openRotationCard(false);
+      let settle: (value: { ok: false; errorCode: "generic" }) => void = () => undefined;
+      mockRotateManagedRecoveryPhrase.mockReturnValue(
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+      );
+
+      let submitted: Promise<void> = Promise.resolve();
+      await act(async () => {
+        submitted = result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(result.current.isRotatingRecoveryPhrase).toBe(true);
+      expect(result.current.isPreparingSync).toBe(false);
+
+      await act(async () => {
+        settle({ ok: false, errorCode: "generic" });
+        await submitted;
+      });
+
+      expect(result.current.isRotatingRecoveryPhrase).toBe(false);
+    });
+
+    it.each([
+      "rotation_unconfirmed",
+      "invalid_current_password",
+      "rate_limited",
+      "totp_not_configured",
+      "generic",
+    ] as const)(
       "keeps the card open and shows no phrase on %s",
       async (errorCode) => {
         const { core, result } = await openRotationCard(true);

@@ -125,7 +125,8 @@ describe("rotateManagedRecoveryPhrase", () => {
     ["totp_replayed", "totp_replayed"],
     ["rate_limited", "rate_limited"],
     ["unauthorized", "unauthorized"],
-    ["totp_not_configured", "generic"],
+    ["totp_not_configured", "totp_not_configured"],
+    ["sync_account_not_found", "generic"],
   ] as const)(
     "keeps the old package on %s and retries with the same package",
     async (serverError, expected) => {
@@ -450,9 +451,16 @@ describe("rotateManagedRecoveryPhrase", () => {
         .map((args) => JSON.stringify(args))
         .join("\n");
       const failureText = JSON.stringify(failures);
-      for (const secret of [PASSWORD, CODE, phrase, ...phrase.split(" ").slice(0, 3)]) {
+      for (const secret of [PASSWORD, CODE, phrase]) {
         expect(logged).not.toContain(secret);
         expect(failureText).not.toContain(secret);
+      }
+      // Whole-word match: a mnemonic word such as "error" is a substring of
+      // the `errorCode` key without being a leak.
+      for (const word of phrase.split(" ").slice(0, 3)) {
+        const asWord = new RegExp(`\\b${word}\\b`);
+        expect(logged).not.toMatch(asWord);
+        expect(failureText).not.toMatch(asWord);
       }
       const storedText = JSON.stringify(await store.readSyncSecrets());
       expect(storedText).not.toContain(PASSWORD);
