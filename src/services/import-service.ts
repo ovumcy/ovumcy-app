@@ -913,7 +913,5 @@ function remapImportedSymptomIDs(
   // Non-string entries are deliberately NOT special-cased here: the sanitize
   // path this feeds already decides what a malformed element means, and a
   // guard here would only be a second, untested opinion about it.
-  return rawValue.map((value) =>
-    typeof value === "string" ? (idMap.get(value.trim()) ?? value) : value,
-  );
+  return rawValue.map((value) => idMap.get(value.trim()) ?? value);
 }
