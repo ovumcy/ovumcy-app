@@ -173,6 +173,7 @@ describe("BackupSyncRecoveryKeyStepUpSection", () => {
   it.each([
     ["rotation_unconfirmed", rotationCopy.errors.rotationUnconfirmed],
     ["generic", rotationCopy.errors.rotationFailed],
+    ["totp_not_configured", rotationCopy.errors.totpNotConfigured],
   ] as const)("shows no banner for %s when the copy has no rotation messages", async (errorCode, _message) => {
     await renderSection({ codeRequired: true, errorCode });
 
