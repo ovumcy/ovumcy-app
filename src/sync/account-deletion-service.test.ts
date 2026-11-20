@@ -770,6 +770,19 @@ describe("deleteOvumcyAccount after the server already erased the account", () =
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     expect(scheduler.sync).toHaveBeenCalledWith([]);
   });
+
+  it("finishLocalAccountDeletion falls back to the platform reminder scheduler", async () => {
+    const storage = createLocalAppStorageMock();
+
+    await expect(
+      finishLocalAccountDeletion(
+        storage,
+        createManagedSecretStore(),
+        createWipeScopeSecretStoresMock(),
+      ),
+    ).resolves.toEqual({ ok: true });
+    expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("deleteOvumcyAccount managed session renewal", () => {
