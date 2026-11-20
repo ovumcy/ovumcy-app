@@ -295,16 +295,18 @@ export function BackupSyncFlowScreen({
           onSubmit={onSubmitTOTPChallenge}
         />
       ) : null}
-      {recoveryKeyStepUpPrompt ? (
-        <BackupSyncRecoveryKeyStepUpSection
-          copy={selectRecoveryKeyStepUpCopy(language)}
-          isBusy={isSyncingNow}
-          onCancel={onCancelRecoveryKeyStepUp}
-          onSubmit={onSubmitRecoveryKeyStepUp}
-          prompt={recoveryKeyStepUpPrompt}
-        />
-      ) : null}
       <SettingsSyncSetupSection
+        uploadStepUp={
+          recoveryKeyStepUpPrompt ? (
+            <BackupSyncRecoveryKeyStepUpSection
+              copy={selectRecoveryKeyStepUpCopy(language)}
+              isBusy={isSyncingNow}
+              onCancel={onCancelRecoveryKeyStepUp}
+              onSubmit={onSubmitRecoveryKeyStepUp}
+              prompt={recoveryKeyStepUpPrompt}
+            />
+          ) : null
+        }
         accountDeletionStepUp={
           accountDeletionStepUpPrompt ? (
             <BackupSyncRecoveryKeyStepUpSection

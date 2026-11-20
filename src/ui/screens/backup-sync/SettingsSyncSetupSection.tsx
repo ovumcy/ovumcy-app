@@ -46,6 +46,7 @@ type SettingsSyncSetupSectionProps = {
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
   accountDeletionStepUp?: ReactNode;
+  uploadStepUp?: ReactNode;
   recoveryRotationStepUp?: ReactNode;
   onDeleteAccount: () => void | Promise<void>;
   onDeviceLabelChange: (value: string) => void;
@@ -87,6 +88,7 @@ export function SettingsSyncSetupSection({
   onAuthPasswordChange,
   onDisconnect,
   accountDeletionStepUp,
+  uploadStepUp,
   recoveryRotationStepUp,
   onDeleteAccount,
   onDeviceLabelChange,
@@ -637,6 +639,7 @@ export function SettingsSyncSetupSection({
               />
             </View>
           ) : null}
+          {uploadStepUp}
           {accountDeletionStepUp}
         </View>
 

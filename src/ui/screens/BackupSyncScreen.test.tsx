@@ -447,6 +447,11 @@ describe("BackupSyncScreen", () => {
       expect(
         await screen.findByTestId("sync-recovery-key-stepup-password"),
       ).toBeTruthy();
+      const actionsStep = screen.getByTestId("settings-sync-actions-step");
+      expect(
+        within(actionsStep).getByTestId("sync-recovery-key-stepup-password"),
+      ).toBeTruthy();
+      expect(within(actionsStep).getByTestId("settings-sync-upload-button")).toBeTruthy();
       expect(uploadSpy).toHaveBeenCalledTimes(1);
     } finally {
       uploadSpy.mockRestore();
