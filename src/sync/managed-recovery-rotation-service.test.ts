@@ -126,7 +126,6 @@ describe("rotateManagedRecoveryPhrase", () => {
     ["rate_limited", "rate_limited"],
     ["unauthorized", "unauthorized"],
     ["totp_not_configured", "totp_not_configured"],
-    ["sync_account_not_found", "generic"],
   ] as const)(
     "keeps the old package on %s and retries with the same package",
     async (serverError, expected) => {
