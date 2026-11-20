@@ -909,9 +909,10 @@ function remapImportedSymptomIDs(
     return undefined;
   }
 
-  // Elements are passed through as-is when the map has nothing for them.
-  // Non-string entries are deliberately NOT special-cased here: the sanitize
-  // path this feeds already decides what a malformed element means, and a
-  // guard here would only be a second, untested opinion about it.
-  return rawValue.map((value) => idMap.get(value.trim()) ?? value);
+  // The file is untrusted: a non-string element (number, null, object) is
+  // dropped on its own, the day's other ids and fields still import. Strings
+  // are passed through as-is when the map has nothing for them.
+  return rawValue
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => idMap.get(value.trim()) ?? value);
 }
