@@ -317,7 +317,9 @@ async function walkBackupEnvelope(
   const seenDayLogDates = new Set<string>();
   for (const rawRecord of envelope.dayLogs ?? []) {
     const record = rawRecord as Partial<DayLogRecord> | null;
-    const date = typeof record?.date === "string" ? record.date : "";
+    // Trimmed once, before the seen-set, the duplicate read and the write, so
+    // a padded date addresses the same day as its canonical form.
+    const date = typeof record?.date === "string" ? record.date.trim() : "";
     if (!parseLocalDate(date)) {
       // Unparseable / missing date: can't place it, so it's rejected.
       outcome.dayLogsRejected += 1;
@@ -851,7 +853,7 @@ async function importCustomSymptoms(
       continue;
     }
     const label = typeof record?.label === "string" ? record.label : "";
-    const originalID = typeof record?.id === "string" ? record.id : "";
+    const originalID = typeof record?.id === "string" ? record.id.trim() : "";
 
     // createCustomSymptomRecord validates label/icon/color and rejects
     // duplicates against `existing`, so an invalid or already-present symptom
@@ -911,5 +913,7 @@ function remapImportedSymptomIDs(
   // Non-string entries are deliberately NOT special-cased here: the sanitize
   // path this feeds already decides what a malformed element means, and a
   // guard here would only be a second, untested opinion about it.
-  return rawValue.map((value) => idMap.get(value) ?? value);
+  return rawValue.map((value) =>
+    typeof value === "string" ? (idMap.get(value.trim()) ?? value) : value,
+  );
 }
