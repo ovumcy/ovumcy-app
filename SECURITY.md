@@ -127,7 +127,8 @@ follows from that:
   cannot leave a health-data backup behind.
 - **CSV formula-injection neutralization.** Free-text that begins with a
   spreadsheet formula trigger (`=`, `+`, `-`, `@`) is prefixed so exported CSVs
-  cannot execute on open, with RFC 4180 quoting preserved.
+  cannot execute on open, and any cell containing a comma, semicolon, quote, CR
+  or LF is RFC 4180 quoted so no delimiter or bare CR starts a new cell.
 - **Cleartext HTTP blocked by default (Android).** The Android network security
   config (`android/app/src/main/res/xml/network_security_config.xml`) is generated
   at prebuild by the committed `plugins/withAndroidNetworkSecurityConfig.js` —
@@ -505,6 +506,8 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | A note beginning with a formula prefix is neutralized | `(a) neutralizes a note starting with an injection formula prefix` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
 | A custom symptom label starting with `+` and a cycle factor starting with `@` are neutralized | `(b) neutralizes a custom symptom label starting with + and a cycle factor starting with @` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
 | Normal text without a dangerous prefix is left untouched | `(c) does not modify normal text without a dangerous prefix` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
+| A cell containing a comma, semicolon, quote, CR or LF is quoted, and injection payloads using `;` or a bare CR stay inside one quoted cell | `(e) quotes a note containing a %s` and `(f) quotes and neutralizes injection payloads` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
+| Ordinary text stays unquoted | `(g) leaves ordinary text unquoted` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
 | A neutralized value that also contains a comma is RFC 4180 quoted | `(d) wraps an apostrophe-prefixed value in RFC4180 quotes when it also contains a comma` in [src/services/export-service.test.ts](src/services/export-service.test.ts) |
 
 ### Symptom label/icon validation

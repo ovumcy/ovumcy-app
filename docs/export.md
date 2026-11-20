@@ -117,6 +117,7 @@ Cell semantics:
 - The 15 symptom columns are filled from the day's symptoms by label. `Mood swings` counts as `Mood`. Every other symptom, built-in or custom, is listed by name in `Other`, sorted alphabetically and joined with `; `. Web has a sixteenth built-in column, `Swelling`, that the app does not.
 - `Cycle factors` is a `; `-joined list of the stored lowercase keys, for example `sleep_disruption`. Web writes display labels.
 - Formula injection: `Cycle factors`, `Other` and `Notes` are the cells built from free text. A value that starts, after leading spaces, with `=`, `+`, `-`, `@`, a tab, CR or LF gets a leading `'`.
+- Quoting: every cell containing a comma, semicolon, double quote, CR or LF is wrapped in double quotes with inner quotes doubled, so a semicolon-delimited spreadsheet locale or a bare CR cannot split a cell. A multi-value cell (`Cycle factors`, `Other`) joins its items with `; ` and is therefore always quoted.
 
 Collections that do not fit one row per day are JSON-only: pregnancies, contraction sessions, postpartum records and screening responses. Settings, the symptom catalog and the crisis contact are JSON-only too. The CSV carries no version marker.
 
