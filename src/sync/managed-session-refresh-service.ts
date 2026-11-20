@@ -98,7 +98,6 @@ export async function ensureFreshManagedSession(
   const refreshToken = secrets.managedRefreshToken;
   inFlightRefresh = exchangeRefreshToken(
     secretStore,
-    secrets,
     { refreshToken, currentSessionToken: sessionToken },
     managedClientFactory,
   ).finally(() => {
@@ -152,7 +151,6 @@ export function resetManagedSessionRefreshStateForTests(): void {
 
 async function exchangeRefreshToken(
   secretStore: SyncSecretStore,
-  secrets: SyncSecretsRecord,
   // The caller has already established that a session token exists, so it is
   // handed over rather than re-derived here — re-reading it from the record
   // would need a defensive fallback for a case that cannot happen.
@@ -168,8 +166,14 @@ async function exchangeRefreshToken(
   }
 
   if (result.ok) {
+    // The record is re-read after the await: anything else that changed it in
+    // the meantime (a recovery package, a sync session) must survive.
+    const fresh = await readRecordStillOnSession(secretStore, tokens.currentSessionToken);
+    if (!fresh) {
+      return { ok: false, errorCode: "session_expired" };
+    }
     await secretStore.writeSyncSecrets(
-      applyManagedAuthResultToSecrets(secrets, result.auth),
+      applyManagedAuthResultToSecrets(fresh, result.auth),
     );
     return {
       ok: true,
@@ -181,7 +185,10 @@ async function exchangeRefreshToken(
   if (result.errorCode === "unauthorized") {
     // The server has already revoked this token's whole family; keeping the
     // credentials would only produce repeated failures.
-    await secretStore.writeSyncSecrets(clearManagedSessionFromSecrets(secrets));
+    const fresh = await readRecordStillOnSession(secretStore, tokens.currentSessionToken);
+    if (fresh) {
+      await secretStore.writeSyncSecrets(clearManagedSessionFromSecrets(fresh));
+    }
     return { ok: false, errorCode: "session_expired" };
   }
 
@@ -192,6 +199,16 @@ async function exchangeRefreshToken(
     sessionToken: tokens.currentSessionToken,
     refreshed: false,
   };
+}
+
+// The stored record, only while it still holds the managed session the refresh
+// started from. A cleared or replaced session is not this refresh's to write.
+async function readRecordStillOnSession(
+  secretStore: SyncSecretStore,
+  sessionToken: string,
+): Promise<SyncSecretsRecord | null> {
+  const fresh = await secretStore.readSyncSecrets();
+  return fresh?.managedAuthSessionToken === sessionToken ? fresh : null;
 }
 
 function isDueForRefresh(expiresAt: string | null, now: Date): boolean {

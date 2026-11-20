@@ -3,6 +3,7 @@ import type { ManagedCloudAPIClient } from "./managed-cloud-api-client";
 import {
   applyManagedAuthResultToSecrets,
   clearManagedSessionFromSecrets,
+  endManagedSessionRefresh,
   ensureFreshManagedSession,
   resetManagedSessionRefreshStateForTests,
 } from "./managed-session-refresh-service";
@@ -296,6 +297,165 @@ describe("ensureFreshManagedSession", () => {
 
     expect(result).toEqual({ ok: true, sessionToken: "access-1", refreshed: false });
     expect(refreshSession).not.toHaveBeenCalled();
+  });
+});
+
+describe("a refresh in flight while the stored record changes", () => {
+  beforeEach(() => {
+    resetManagedSessionRefreshStateForTests();
+  });
+
+  const DUE = "2026-07-21T12:01:00.000Z";
+  type Store = ReturnType<typeof createSyncSecretStoreMock>;
+
+  // Starts the refresh, lets `mutate` change the store while the exchange is
+  // pending, then lets the exchange answer with `answer`.
+  async function refreshWhile(
+    mutate: (secretStore: Store) => Promise<void>,
+    answer: { ok: true } | { ok: false; errorCode: string },
+    callers = 1,
+  ) {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedAuthSessionExpiresAt: DUE, authSessionToken: "sync-1" }),
+    );
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const okResult = okRefresh("access-2", "refresh-2");
+    const refreshSession = jest.fn(async () => {
+      await gate;
+      return answer.ok ? okResult() : answer;
+    });
+    const factory = createRefreshingClient(refreshSession as never);
+    const pending = Array.from({ length: callers }, () =>
+      ensureFreshManagedSession(secretStore, NOW, factory),
+    );
+    await new Promise((resolve) => setImmediate(resolve));
+    await mutate(secretStore);
+    release();
+    const results = await Promise.all(pending);
+    return { secretStore, refreshSession, results };
+  }
+
+  async function update(store: Store, patch: Partial<SyncSecretsRecord>) {
+    const current = await store.readSyncSecrets();
+    await store.writeSyncSecrets({ ...current!, ...patch });
+  }
+
+  it("keeps a replaced recovery package and lands the new tokens", async () => {
+    const replaced = {
+      algorithm: "xchacha20poly1305" as const,
+      kdf: "bip39_seed_hkdf_sha256" as const,
+      mnemonicWordCount: 12 as const,
+      wrapNonceHex: "11",
+      wrappedMasterKeyHex: "22",
+      phraseFingerprintHex: "33",
+    };
+    const { secretStore, results } = await refreshWhile(
+      (store) => update(store, { wrappedKey: replaced }),
+      { ok: true },
+    );
+
+    expect(results[0]).toEqual({ ok: true, sessionToken: "access-2", refreshed: true });
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.wrappedKey).toEqual(replaced);
+    expect(stored?.managedAuthSessionToken).toBe("access-2");
+    expect(stored?.managedRefreshToken).toBe("refresh-2");
+  });
+
+  it("leaves a cleared sync session cleared", async () => {
+    const { secretStore } = await refreshWhile(
+      (store) => update(store, { authSessionToken: null }),
+      { ok: true },
+    );
+
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.authSessionToken).toBeNull();
+    expect(stored?.managedAuthSessionToken).toBe("access-2");
+  });
+
+  it("writes nothing when the managed session was cleared meanwhile", async () => {
+    const cleared = async (store: Store) => {
+      const current = await store.readSyncSecrets();
+      await store.writeSyncSecrets(clearManagedSessionFromSecrets(current!));
+    };
+    const ok = await refreshWhile(cleared, { ok: true });
+    expect(ok.results[0]).toEqual({ ok: false, errorCode: "session_expired" });
+    expect((await ok.secretStore.readSyncSecrets())?.managedAuthSessionToken).toBeNull();
+
+    resetManagedSessionRefreshStateForTests();
+    const rejected = await refreshWhile(cleared, { ok: false, errorCode: "unauthorized" });
+    expect(rejected.results[0]).toEqual({ ok: false, errorCode: "session_expired" });
+    expect((await rejected.secretStore.readSyncSecrets())?.managedAuthSessionToken).toBeNull();
+  });
+
+  it("writes nothing when the managed session was replaced meanwhile", async () => {
+    const { secretStore, results } = await refreshWhile(
+      (store) =>
+        update(store, {
+          managedAuthSessionToken: "access-other",
+          managedRefreshToken: "refresh-other",
+        }),
+      { ok: true },
+    );
+
+    expect(results[0]).toEqual({ ok: false, errorCode: "session_expired" });
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBe("access-other");
+    expect(stored?.managedRefreshToken).toBe("refresh-other");
+  });
+
+  it("does not wipe a replaced session when the old token is rejected", async () => {
+    const { secretStore } = await refreshWhile(
+      (store) => update(store, { managedAuthSessionToken: "access-other" }),
+      { ok: false, errorCode: "unauthorized" },
+    );
+
+    expect((await secretStore.readSyncSecrets())?.managedAuthSessionToken).toBe("access-other");
+  });
+
+  it("still keeps the token on a network failure and clears on rejection", async () => {
+    const net = await refreshWhile(async () => undefined, {
+      ok: false,
+      errorCode: "network_failed",
+    });
+    expect(net.results[0]).toEqual({ ok: true, sessionToken: "access-1", refreshed: false });
+    expect((await net.secretStore.readSyncSecrets())?.managedRefreshToken).toBe("refresh-1");
+
+    resetManagedSessionRefreshStateForTests();
+    const dead = await refreshWhile(async () => undefined, {
+      ok: false,
+      errorCode: "unauthorized",
+    });
+    expect(dead.results[0]).toEqual({ ok: false, errorCode: "session_expired" });
+    expect((await dead.secretStore.readSyncSecrets())?.managedAuthSessionToken).toBeNull();
+  });
+
+  it("ends both overlapping callers when a disconnect lands mid-refresh", async () => {
+    const { secretStore, refreshSession, results } = await refreshWhile(
+      async (store) => {
+        const current = await store.readSyncSecrets();
+        await store.writeSyncSecrets({
+          ...clearManagedSessionFromSecrets(current!),
+          authSessionToken: null,
+        });
+        endManagedSessionRefresh();
+      },
+      { ok: true },
+      2,
+    );
+
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(results).toEqual([
+      { ok: false, errorCode: "session_expired" },
+      { ok: false, errorCode: "session_expired" },
+    ]);
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBeNull();
+    expect(stored?.managedRefreshToken).toBeNull();
+    expect(stored?.authSessionToken).toBeNull();
   });
 });
 
