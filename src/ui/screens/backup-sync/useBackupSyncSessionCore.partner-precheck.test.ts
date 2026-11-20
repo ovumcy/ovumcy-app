@@ -3,6 +3,8 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 
 import * as managedPartnerAccessService from "../../../services/managed-partner-access-service";
 import * as managedPremiumFeaturesService from "../../../services/managed-premium-features-service";
+import * as managedPartnerShareService from "../../../services/managed-partner-share-service";
+import * as managedPartnerShareSyncService from "../../../services/managed-partner-share-sync-service";
 import * as settingsStateService from "../../../services/settings-state-service";
 import { createLoadedSettingsStateFixture } from "../../../test/create-backup-sync-session-core-mock";
 import { createSettingsStorageMock } from "../../../test/create-settings-storage-mock";
@@ -73,6 +75,73 @@ describe("useBackupSyncSessionCore partner-access pre-check", () => {
       undefined,
       undefined,
       { liveOnly: true },
+    );
+    await unmount();
+  });
+
+  it("flags grants for re-share from the listing, the local keys and the push loop", async () => {
+    const loaded = createLoadedSettingsStateFixture();
+    jest.spyOn(settingsStateService, "loadSettingsScreenState").mockResolvedValue({
+      ...loaded,
+      hasSyncSession: true,
+      syncPreferences: { ...loaded.syncPreferences, mode: "managed" },
+    });
+    jest.spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures").mockResolvedValue({
+      advancedFertility: false,
+      advancedInsights: false,
+      doctorPDF: false,
+      extendedReports: false,
+      partnerAccess: true,
+      reminders: false,
+    });
+    const grant = (id: string, sourceInviteID: string | null) =>
+      ({ id, ownerAccountID: "owner-1", revokedAt: null, sourceInviteID }) as never;
+    jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+      ok: true,
+      value: {
+        owned: {
+          invites: [],
+          grants: [
+            grant("grant-legacy", null),
+            grant("grant-stale", "invite-2"),
+            grant("grant-raced", "invite-3"),
+          ],
+        },
+        sharedWithMe: [],
+      },
+    });
+    const reconcileSpy = jest
+      .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+      .mockResolvedValue({
+        grantKeysByGrantID: {
+          "grant-stale": { keyHex: "ab", rotatedAtISO: "", sourceInviteID: "invite-old" },
+          "grant-raced": { keyHex: "ab", rotatedAtISO: "", sourceInviteID: "invite-3" },
+        },
+      } as never);
+    const pushSpy = jest
+      .spyOn(managedPartnerShareSyncService, "syncManagedPartnerSharedProjections")
+      .mockResolvedValue({
+        skipped: false,
+        syncedCount: 0,
+        reshareRequiredGrantIDs: ["grant-legacy", "grant-raced"],
+      });
+
+    // Stable identities: the load callback depends on every store.
+    const storage = createSettingsStorageMock();
+    const syncSecretStore = createSyncSecretStoreMock();
+    const partnerShareSecretStore = {} as never;
+    const { result, unmount } = await renderHook(() =>
+      useBackupSyncSessionCore({ storage, syncSecretStore, partnerShareSecretStore, now: FIXED_NOW }),
+    );
+
+    await waitFor(() => expect(reconcileSpy).toHaveBeenCalled());
+    await waitFor(() => expect(pushSpy).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(result.current.partnerReshareRequiredGrantIDs).toEqual([
+        "grant-legacy",
+        "grant-stale",
+        "grant-raced",
+      ]),
     );
     await unmount();
   });

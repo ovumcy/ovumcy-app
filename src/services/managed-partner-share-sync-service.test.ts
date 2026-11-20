@@ -259,6 +259,39 @@ describe("syncManagedPartnerSharedProjections", () => {
       expect(uploadSpy).toHaveBeenCalledTimes(1);
     });
 
+    it.each([
+      ["the partner-access listing fails", { ok: false, errorCode: "generic" }],
+      [
+        "no owned grant is live",
+        {
+          ok: true,
+          value: {
+            owned: {
+              invites: [],
+              grants: [{ id: "grant-1", revokedAt: "2026-03-01T00:00:00.000Z" }],
+            },
+            sharedWithMe: [],
+          },
+        },
+      ],
+    ])("skips without a push when %s", async (_label, accessResult) => {
+      armTwoGrantPush();
+      jest
+        .mocked(managedPartnerAccessService.loadManagedPartnerAccess)
+        .mockResolvedValueOnce(accessResult as never);
+      const uploadSpy = jest.spyOn(managedPartnerShareService, "uploadManagedPartnerProjection");
+
+      await expect(
+        syncManagedPartnerSharedProjections(
+          createLocalAppStorageMock(),
+          createSyncSecretStoreMock(),
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        ),
+      ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
+      expect(uploadSpy).not.toHaveBeenCalled();
+    });
+
     it("reports a re-keyed grant and keeps pushing the others", async () => {
       armTwoGrantPush();
       const uploadSpy = jest
