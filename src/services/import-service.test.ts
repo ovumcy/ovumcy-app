@@ -609,6 +609,26 @@ describe("import-service custom symptom id remap", () => {
     expect(storedDayLog?.symptomIDs).toEqual([]);
   });
 
+  it("drops non-string symptom ids on their own and keeps preview and apply in agreement", async () => {
+    const malformed = {
+      ...dayLog("2026-03-12", { isPeriod: true }),
+      symptomIDs: [5, null, { id: "x" }, "  cramps  ", "cramps"],
+    } as unknown as DayLogRecord;
+    const file = envelope({ dayLogs: [malformed] });
+
+    const preview = await previewImportBackupEnvelope(
+      createStatefulStorage().storage,
+      file,
+    );
+    const { storage, dayLogs } = createStatefulStorage();
+    const outcome = await importBackupEnvelope(storage, file);
+
+    expect(outcome.dayLogsAdded).toBe(1);
+    expect(outcome.dayLogsRejected).toBe(0);
+    expect(outcome).toEqual(preview);
+    expect(dayLogs.get("2026-03-12")?.symptomIDs).toEqual(["cramps"]);
+  });
+
   // Ids the map has nothing to say about pass through untouched: a built-in
   // id is a stable constant every install shares, so it already resolves.
   // Only the file's own custom ids are rewritten.
