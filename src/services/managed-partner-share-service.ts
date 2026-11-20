@@ -21,7 +21,23 @@ import {
   type ManagedCloudPartnerProjection,
 } from "../sync/managed-cloud-api-client";
 import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contract";
-import type { PartnerSharedProjectionPayload } from "../models/partner-share";
+import type {
+  PartnerShareAccessLevel,
+  PartnerSharedProjectionPayload,
+} from "../models/partner-share";
+
+/**
+ * The level a projection is built at: the stricter of the level the owner
+ * pinned on this device and the one the server lists. A record without a
+ * pin (written before pinning existed) builds as `summary`, so a server can
+ * never widen what the owner chose.
+ */
+export function resolveManagedPartnerProjectionAccessLevel(
+  pinned: PartnerShareAccessLevel | undefined,
+  listed: PartnerShareAccessLevel,
+): PartnerShareAccessLevel {
+  return pinned === "full" && listed === "full" ? "full" : "summary";
+}
 
 export type ManagedPartnerShareResult<T> =
   | { ok: true; value: T }
@@ -55,6 +71,8 @@ export type ManagedPartnerGrantKeyContext = Pick<
 export async function storeIssuedManagedPartnerInviteKey(
   partnerShareSecretStore: PartnerShareSecretStore,
   result: ManagedCloudPartnerInviteIssueResult,
+  // The level the owner chose, not the one the server echoes back.
+  accessLevel: PartnerShareAccessLevel,
 ): Promise<string> {
   const inviteToken = parseInviteTokenFromURL(result.inviteURL);
   const inviteSecretHex = createPartnerInviteSecretHex();
@@ -65,6 +83,7 @@ export async function storeIssuedManagedPartnerInviteKey(
   );
   await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
     record.pendingInviteKeysByInviteID[result.invite.id] = inviteKeyHex;
+    record.pendingInviteAccessLevelsByInviteID[result.invite.id] = accessLevel;
   });
   return shareableInviteURL;
 }
@@ -160,16 +179,19 @@ export async function reconcileManagedPartnerShareKeys(
         ownerAccountID: grant.ownerAccountID,
         sourceInviteID: inviteID,
       });
+      const pinnedLevel = record.pendingInviteAccessLevelsByInviteID[inviteID];
       record.grantKeysByGrantID[grant.id] = {
         keyHex: grantKeyHex,
         rotatedAtISO: nowISO,
         sourceInviteID: inviteID,
+        ...(pinnedLevel ? { accessLevel: pinnedLevel } : {}),
       };
       record.consumedInviteIDs[inviteID] = {
         grantID: grant.id,
         consumedAtISO: nowISO,
       };
       delete record.pendingInviteKeysByInviteID[inviteID];
+      delete record.pendingInviteAccessLevelsByInviteID[inviteID];
     }
 
     // Drop pending invite keys whose invite is no longer active server-side
@@ -179,6 +201,7 @@ export async function reconcileManagedPartnerShareKeys(
         continue;
       }
       delete record.pendingInviteKeysByInviteID[inviteID];
+      delete record.pendingInviteAccessLevelsByInviteID[inviteID];
     }
 
     return record;
@@ -210,6 +233,7 @@ export async function clearManagedPartnerGrantKey(
     delete record.grantKeysByGrantID[trimmed];
     delete record.ownerGenerationByGrantID[trimmed];
     record.pendingInviteKeysByInviteID = {};
+    record.pendingInviteAccessLevelsByInviteID = {};
   });
 }
 

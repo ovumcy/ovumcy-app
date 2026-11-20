@@ -7,6 +7,7 @@ import {
   isManagedPartnerGrantReshareRequired,
   reconcileManagedPartnerShareKeys,
   reserveNextManagedPartnerProjectionGeneration,
+  resolveManagedPartnerProjectionAccessLevel,
   uploadManagedPartnerProjection,
 } from "./managed-partner-share-service";
 import {
@@ -107,7 +108,10 @@ export async function syncManagedPartnerSharedProjections(
     );
     const projection = buildPartnerSharedProjectionPayload(
       {
-        accessLevel: grant.accessLevel,
+        accessLevel: resolveManagedPartnerProjectionAccessLevel(
+          partnerShareSecrets.grantKeysByGrantID[grant.id]?.accessLevel,
+          grant.accessLevel,
+        ),
         dayLogs,
         generatedAt: now.toISOString(),
         generation,

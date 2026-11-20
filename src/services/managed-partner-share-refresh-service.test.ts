@@ -60,6 +60,7 @@ describe("managed-partner-share-refresh-service", () => {
       pendingInviteKeysByInviteID: {
         "invite-1": "derived-key-1",
       },
+      pendingInviteAccessLevelsByInviteID: {},
       consumedInviteIDs: {},
       ownerGenerationByGrantID: {},
       partnerLastSeenGenerationByGrantID: {},
@@ -105,6 +106,7 @@ describe("managed-partner-share-refresh-service", () => {
         },
       },
       pendingInviteKeysByInviteID: {},
+      pendingInviteAccessLevelsByInviteID: {},
       consumedInviteIDs: {},
       ownerGenerationByGrantID: {},
       partnerLastSeenGenerationByGrantID: {},

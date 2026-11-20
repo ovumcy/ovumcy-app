@@ -96,6 +96,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       shareableInviteURL = await storeIssuedManagedPartnerInviteKey(
         partnerShareSecretStore,
         result.value,
+        partnerInviteAccessLevel,
       );
     } catch {
       setPartnerErrorMessage(partnerCopy.errors.generic);
