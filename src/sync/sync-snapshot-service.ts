@@ -240,15 +240,22 @@ export async function restoreSyncSnapshot(
   snapshot: SyncSnapshotV3,
   syncPreferences: SyncPreferencesRecord,
   reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
+  retainedPreferences: SyncPreferencesRecord | null = null,
 ): Promise<void> {
   await storage.clearAllLocalData();
+  // The wipe resets the sync preferences, and with them the rollback floor.
+  // The floor the device held before the restore is put back first, so a
+  // write that fails partway leaves the floor where it was; the restored
+  // preferences (the raised floor) are written only after the data is in.
+  if (retainedPreferences !== null) {
+    await storage.writeSyncPreferencesRecord(retainedPreferences);
+  }
   await storage.writeBootstrapState(snapshot.bootstrapState);
   await storage.writeProfileRecord({
     ...snapshot.profile,
     lastPeriodStart: sanitizeRestoredLastPeriodStart(snapshot.profile.lastPeriodStart),
     cycleDayReminders: normalizeCycleDayReminders(snapshot.profile.cycleDayReminders),
   });
-  await storage.writeSyncPreferencesRecord(syncPreferences);
 
   for (const symptomRecord of snapshot.symptomRecords) {
     await storage.writeSymptomRecord(symptomRecord);
@@ -321,6 +328,9 @@ export async function restoreSyncSnapshot(
       // Skip an invalid screening response; keep restoring.
     }
   }
+
+  // Every data write has landed: only now does the floor rise.
+  await storage.writeSyncPreferencesRecord(syncPreferences);
 
   // The snapshot may come from an older client, which reads the stored cycle
   // start under the earlier withdrawal rule; re-read it before anything

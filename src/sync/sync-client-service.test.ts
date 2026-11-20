@@ -5187,6 +5187,51 @@ describe("snapshot AAD across devices", () => {
       expectLocalDataUntouched(storage);
     });
 
+    it("keeps the floor where it was when the restored data write fails, and raises it only after the data is in", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+      const floor = blob.generation - 1;
+      const storage = createLocalAppStorageMock();
+      jest.mocked(storage.writeProfileRecord).mockRejectedValueOnce(new Error("disk full"));
+      const run = (target: typeof storage) =>
+        runSyncRestore(
+          target,
+          createSyncSecretStoreMock({ ...deviceA.record, authSessionToken: "session-2" }),
+          { ...selfHostedPreferences, lastRemoteGeneration: floor },
+          jest.fn().mockReturnValue(
+            createAPIClientMock({
+              getBlob: jest.fn().mockResolvedValue({
+                ok: true,
+                blob: {
+                  ...blob,
+                  checksumSHA256: "aa",
+                  ciphertextSize: toByteArray(blob.ciphertextBase64).byteLength,
+                  updatedAt: "2026-03-20T08:12:00.000Z",
+                },
+              }),
+            }),
+          ),
+        );
+
+      await expect(run(storage)).rejects.toThrow("disk full");
+      const written = jest.mocked(storage.writeSyncPreferencesRecord).mock.calls.map(
+        ([record]) => record.lastRemoteGeneration,
+      );
+      expect(written).toEqual([floor]);
+
+      const ok = createLocalAppStorageMock();
+      await expect(run(ok)).resolves.toMatchObject({ ok: true });
+      const okWritten = jest.mocked(ok.writeSyncPreferencesRecord).mock.calls.map(
+        ([record]) => record.lastRemoteGeneration,
+      );
+      expect(okWritten).toEqual([floor, blob.generation]);
+      expect(
+        jest.mocked(ok.writeSyncPreferencesRecord).mock.invocationCallOrder.at(-1),
+      ).toBeGreaterThan(
+        jest.mocked(ok.writeProfileRecord).mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
     it("refuses an older blob when no confirm is wired", async () => {
       const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
       const { blob } = await uploadFromDevice(deviceA.record);
