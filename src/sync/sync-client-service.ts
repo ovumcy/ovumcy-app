@@ -26,6 +26,7 @@ import {
   endManagedSessionRefresh,
   settleInFlightManagedRefresh,
 } from "./managed-session-refresh-service";
+import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooShort } from "./password-policy";
 import type {
   EncryptedSyncEnvelope,
@@ -1628,6 +1629,7 @@ export async function clearLocalSyncSession(
   if (preferences.mode === "managed") {
     endManagedSessionRefresh();
   }
+  clearPendingManagedRecoveryRotation();
   const secrets = await secretStore.readSyncSecrets();
   const nextManagedAuthSessionToken =
     preferences.mode === "managed" ? null : secrets?.managedAuthSessionToken ?? null;

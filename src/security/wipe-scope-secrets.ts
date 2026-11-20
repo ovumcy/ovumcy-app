@@ -2,6 +2,7 @@ import type { CertPinStore } from "./cert-pin-store";
 import type { EntitlementTokenStore } from "./entitlement-token-store";
 import type { PartnerShareSecretStore } from "./partner-share-secret-store";
 import type { SyncSecretStore } from "./sync-secret-store";
+import { clearPendingManagedRecoveryRotation } from "../sync/managed-recovery-rotation-service";
 
 // WipeScopeSecretStores names every SecureStore-backed store, besides the
 // sync secrets, whose entry belongs to the scope of a destructive local reset
@@ -30,6 +31,7 @@ export async function clearWipeScopeSecrets(
   syncSecretStore: Pick<SyncSecretStore, "clearSyncSecrets">,
   stores: WipeScopeSecretStores,
 ): Promise<void> {
+  clearPendingManagedRecoveryRotation();
   const clears: (() => Promise<void>)[] = [
     () => syncSecretStore.clearSyncSecrets(),
     () => stores.partnerShareSecretStore.clearPartnerShareSecrets(),

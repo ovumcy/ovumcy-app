@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { prepareBackupSyncSetup } from "../../../services/backup-sync-screen-service";
@@ -49,7 +49,10 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     pendingRotationStepUp && pendingRotationStepUp.forState === state
       ? pendingRotationStepUp.prompt
       : null;
-  const rotationCopy = selectManagedRecoveryRotationCopy(language);
+  const rotationCopy = useMemo(
+    () => selectManagedRecoveryRotationCopy(language),
+    [language],
+  );
 
   async function handlePrepareSyncSetup() {
     if (!state) {
@@ -163,6 +166,8 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
       }
 
       if (result.ok) {
+        // The service also stashes the phrase: the screen's next load shows
+        // it again, so an unmount or a focus reload cannot lose it.
         setPendingRotationStepUp(null);
         setErrorState(null);
         setGeneratedRecoveryPhrase(result.recoveryPhrase);

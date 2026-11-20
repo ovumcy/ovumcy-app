@@ -27,6 +27,7 @@ import {
   type ExportDeliveryClient,
 } from "../../../services/export-delivery";
 import { loadSettingsScreenState } from "../../../services/settings-state-service";
+import { takeUnrevealedManagedRecoveryPhrase } from "../../../sync/managed-recovery-rotation-service";
 import {
   buildSettingsViewData,
   type LoadedSettingsState,
@@ -306,7 +307,9 @@ export function useBackupSyncSessionCore({
         }
 
         setState(loadedState);
-        setGeneratedRecoveryPhrase("");
+        // A managed rotation confirmed while this screen was away is shown
+        // now: the server already retired the old phrase.
+        setGeneratedRecoveryPhrase(takeUnrevealedManagedRecoveryPhrase() ?? "");
         setGeneratedRecoveryCode("");
         setRecoveryPhraseInputValue("");
         resetPartnerFeedback();
