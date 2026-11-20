@@ -316,6 +316,107 @@ describe("rotateManagedRecoveryPhrase", () => {
     expect(replaceRecoveryKey).not.toHaveBeenCalled();
   });
 
+  it("reports unauthorized when the refresh chain is dead, using the current time by default", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock({
+      ...secrets,
+      managedAuthSessionExpiresAt: "2000-01-01T00:00:00.000Z",
+      managedRefreshToken: "refresh-1",
+      managedRefreshTokenExpiresAt: "2000-02-01T00:00:00.000Z",
+    });
+    const replaceRecoveryKey = jest.fn();
+    const client = {
+      refreshSession: jest.fn(async () => ({ ok: false, errorCode: "unauthorized" })),
+      replaceRecoveryKey,
+    } as unknown as ManagedCloudAPIClient;
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, undefined, () => client),
+    ).resolves.toEqual({ ok: false, errorCode: "unauthorized" });
+    expect(replaceRecoveryKey).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the device holds no master key", async () => {
+    const { secrets } = createConnectedSecrets();
+    const { factory, replaceRecoveryKey } = createClient([]);
+
+    await expect(
+      rotateManagedRecoveryPhrase(
+        createSyncSecretStoreMock({ ...secrets, masterKeyHex: "" }),
+        { currentPassword: PASSWORD },
+        NOW,
+        factory,
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "not_connected" });
+    expect(replaceRecoveryKey).not.toHaveBeenCalled();
+  });
+
+  it("stops when provisioning the sync account after a 404 fails", async () => {
+    const { secrets } = createConnectedSecrets();
+    const store = createSyncSecretStoreMock(secrets);
+    const { client, replaceRecoveryKey, createSyncSession } = createClient([
+      { ok: false, errorCode: "sync_account_not_found" },
+    ]);
+    createSyncSession.mockResolvedValueOnce({
+      ok: false,
+      errorCode: "network_failed",
+    } as never);
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, () => client),
+    ).resolves.toEqual({ ok: false, errorCode: "rotation_unconfirmed" });
+    expect(replaceRecoveryKey).toHaveBeenCalledTimes(1);
+    expect((await store.readSyncSecrets())?.authSessionToken).toBe("sync-1");
+  });
+
+  it("stores no provisioned token when the secrets vanished meanwhile", async () => {
+    const { secrets } = createConnectedSecrets();
+    const backing = createSyncSecretStoreMock(secrets);
+    let reads = 0;
+    const store: SyncSecretStore = {
+      ...backing,
+      readSyncSecrets: jest.fn(async () => {
+        reads += 1;
+        return reads === 3 ? null : backing.readSyncSecrets();
+      }),
+      writeSyncSecrets: jest.fn(backing.writeSyncSecrets),
+    };
+    const { factory } = createClient([
+      { ok: false, errorCode: "sync_account_not_found" },
+      { ok: true },
+    ]);
+
+    const result = await rotateManagedRecoveryPhrase(
+      store,
+      { currentPassword: PASSWORD },
+      NOW,
+      factory,
+    );
+
+    expect(result.ok).toBe(true);
+    expect(store.writeSyncSecrets).toHaveBeenCalledTimes(1);
+  });
+
+  it("adopts nothing when the master key changed while the request was in flight", async () => {
+    const { secrets } = createConnectedSecrets();
+    const other = createConnectedSecrets().secrets;
+    const backing = createSyncSecretStoreMock(secrets);
+    let reads = 0;
+    const store: SyncSecretStore = {
+      ...backing,
+      readSyncSecrets: jest.fn(async () => {
+        reads += 1;
+        return reads >= 3 ? other : backing.readSyncSecrets();
+      }),
+    };
+    const { factory } = createClient([{ ok: true }]);
+
+    await expect(
+      rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    expect((await backing.readSyncSecrets())?.wrappedKey).toEqual(secrets.wrappedKey);
+  });
+
   it("never logs or returns the password, the code or the phrase on any path", async () => {
     const spies = (["log", "info", "warn", "error", "debug"] as const).map((method) =>
       jest.spyOn(console, method).mockImplementation(() => undefined),

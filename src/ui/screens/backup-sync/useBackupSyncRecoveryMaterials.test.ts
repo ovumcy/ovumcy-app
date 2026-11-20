@@ -341,6 +341,101 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.managedRecoveryRotationStepUpPrompt?.codeRequired).toBe(false);
     });
 
+    it("shows the code field when the two-factor status is unknown or its lookup throws", async () => {
+      const unknown = await openRotationCard(null);
+      expect(unknown.result.current.managedRecoveryRotationStepUpPrompt?.codeRequired).toBe(
+        true,
+      );
+
+      mockDescribeSyncAccountTwoFactor.mockRejectedValueOnce(new Error("offline"));
+      const core = createBackupSyncSessionCoreMock({ state: createConnectedManagedState() });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+      await act(async () => {
+        await result.current.handlePrepareSyncSetup();
+      });
+      expect(result.current.managedRecoveryRotationStepUpPrompt?.codeRequired).toBe(true);
+    });
+
+    it("ignores a submit when no card is open", async () => {
+      const core = createBackupSyncSessionCoreMock({ state: createConnectedManagedState() });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(mockRotateManagedRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
+    it("closes the card on cancel", async () => {
+      const { result } = await openRotationCard(false);
+
+      await act(() => {
+        result.current.handleCancelManagedRecoveryRotationStepUp();
+      });
+
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
+    it.each(["totp_invalid_code", "totp_replayed"] as const)(
+      "forces the code field on %s",
+      async (errorCode) => {
+        const { result } = await openRotationCard(false);
+        mockRotateManagedRecoveryPhrase.mockResolvedValue({ ok: false, errorCode });
+
+        await act(async () => {
+          await result.current.handleSubmitManagedRecoveryRotationStepUp({
+            currentPassword: "pw",
+          });
+        });
+
+        expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
+          codeRequired: true,
+          errorCode,
+        });
+      },
+    );
+
+    it("treats a thrown rotation as a failed change and keeps the card", async () => {
+      const { core, result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockRejectedValue(new Error("boom"));
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toEqual({
+        codeRequired: false,
+        errorCode: "generic",
+      });
+      expect(result.current.isPreparingSync).toBe(false);
+    });
+
+    it("closes the card and reports not_connected without a managed session", async () => {
+      const { core, result } = await openRotationCard(false);
+      mockRotateManagedRecoveryPhrase.mockResolvedValue({
+        ok: false,
+        errorCode: "not_connected",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitManagedRecoveryRotationStepUp({
+          currentPassword: "pw",
+        });
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "not_connected",
+        scope: "local",
+      });
+      expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
+    });
+
     it("opens no card when the rotation confirm is dismissed", async () => {
       const core = createBackupSyncSessionCoreMock({
         state: createConnectedManagedState(),
