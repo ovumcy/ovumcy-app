@@ -89,6 +89,7 @@ function createRecoveryMaterialsFixture(
 ): ReturnType<typeof useBackupSyncRecoveryMaterials> {
   return {
     isPreparingSync: false,
+    isRotatingRecoveryPhrase: false,
     isExportingRecoveryPhrase: false,
     managedRecoveryRotationCopy: selectManagedRecoveryRotationCopy("en"),
     managedRecoveryRotationStepUpPrompt: null,

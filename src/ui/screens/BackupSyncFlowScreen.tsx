@@ -53,6 +53,7 @@ export type BackupSyncFlowScreenProps = {
   isGuestPartner: boolean;
   isPartnerBusy: boolean;
   isPreparing: boolean;
+  isRotatingRecoveryPhrase: boolean;
   guestUpgradeEmailValue: string;
   guestUpgradeFormErrorMessage: string;
   guestUpgradeGeneratedRecoveryCode: string;
@@ -164,6 +165,7 @@ export function BackupSyncFlowScreen({
   isGuestPartner,
   isPartnerBusy,
   isPreparing,
+  isRotatingRecoveryPhrase,
   guestUpgradeEmailValue,
   guestUpgradeFormErrorMessage,
   guestUpgradeGeneratedRecoveryCode,
@@ -323,7 +325,7 @@ export function BackupSyncFlowScreen({
           managedRecoveryRotationStepUpPrompt ? (
             <BackupSyncRecoveryKeyStepUpSection
               copy={managedRecoveryRotationStepUpCopy}
-              isBusy={isPreparing}
+              isBusy={isPreparing || isRotatingRecoveryPhrase}
               onCancel={onCancelManagedRecoveryRotationStepUp}
               onSubmit={onSubmitManagedRecoveryRotationStepUp}
               prompt={managedRecoveryRotationStepUpPrompt}

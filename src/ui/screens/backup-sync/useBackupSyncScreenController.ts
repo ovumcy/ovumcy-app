@@ -107,6 +107,7 @@ export function useBackupSyncScreenController(
     isSyncDirty &&
       !isSavingSyncDraft &&
       !recovery.isPreparingSync &&
+      !recovery.isRotatingRecoveryPhrase &&
       !connection.isAuthenticatingSync &&
       !connection.isRecoveringSync &&
       !actions.isRestoringSync &&
@@ -162,7 +163,7 @@ export function useBackupSyncScreenController(
     hasStoredSyncSecrets: state.hasStoredSyncSecrets,
     hasSyncSession: state.hasSyncSession,
     isAuthenticating: connection.isAuthenticatingSync,
-    isPreparing: recovery.isPreparingSync,
+    isPreparing: recovery.isPreparingSync || recovery.isRotatingRecoveryPhrase,
     isRecovering: connection.isRecoveringSync,
     isRestoring: actions.isRestoringSync,
     // An in-flight account deletion disables the same action set as a running
@@ -219,6 +220,7 @@ export function useBackupSyncScreenController(
       isExportingRecoveryPhrase: recovery.isExportingRecoveryPhrase,
       isPartnerBusy: partner.isPartnerBusy,
       isPreparing: recovery.isPreparingSync,
+      isRotatingRecoveryPhrase: recovery.isRotatingRecoveryPhrase,
       onBack: () => {
         router.replace("/(tabs)/settings");
       },
