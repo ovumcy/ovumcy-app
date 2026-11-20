@@ -881,7 +881,7 @@ describe("BackupSyncScreen", () => {
               created_at: "2026-04-03T00:00:00.000Z",
               updated_at: "2026-04-03T00:00:00.000Z",
             },
-            invite_url: "ovumcy://backup-sync?invite_token=invite-token-1-fixture-padding",
+            invite_url: "https://invite.ovumcy.cloud/backup-sync?invite_token=invite-token-1-fixture-padding",
           },
           201,
         ),
@@ -943,7 +943,7 @@ describe("BackupSyncScreen", () => {
     // The shared link is the server's URL plus a client-generated secret in
     // the fragment; the server's response never carries that secret.
     expect(screen.getByTestId("settings-partner-invite-link").props.children).toMatch(
-      /^ovumcy:\/\/backup-sync\?invite_token=invite-token-1-fixture-padding#k=[0-9a-f]{64}$/,
+      /^https:\/\/invite\.ovumcy\.cloud\/backup-sync\?invite_token=invite-token-1-fixture-padding#k=[0-9a-f]{64}$/,
     );
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
     // The pending-invite row groups its label and access level into one
