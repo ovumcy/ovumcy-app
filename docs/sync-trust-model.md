@@ -194,7 +194,7 @@ What this means in practice:
 
 Partner sharing is an Ovumcy Cloud feature. The trust model for the partner shared view:
 
-- the owner builds a partner projection from canonical local profile, day-log, and symptom records, applying the chosen access level (summary or full) before encryption;
+- the owner builds a partner projection from canonical local profile, day-log, and symptom records, applying the chosen access level (summary or full) before encryption; the level the owner chose is pinned on the owner device with the invite key, and the projection is built at the stricter of that level and the one the server lists, so the server can narrow but never widen it (a key record with no pinned level builds as summary);
 - the projection is encrypted on the owner device and uploaded to managed as an opaque ciphertext blob tied to a specific grant;
 - the partner device decrypts the projection only after the grant is accepted; managed never holds the plaintext share, nor enough material to derive the share key (see Partner-Share Invite Secret below);
 - the partner experience stays read-only and free — the partner is a guest of the owner's subscription, not a separate billing subject;

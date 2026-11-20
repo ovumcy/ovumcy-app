@@ -1,3 +1,5 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
+import type { PartnerSharedProjectionPayload } from "../models/partner-share";
 import type { PartnerShareSecretStore } from "../security/partner-share-secret-store";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
@@ -60,6 +62,123 @@ describe("syncManagedPartnerSharedProjections", () => {
       { liveOnly: true },
     );
     expect(accessSpy).not.toHaveBeenCalled();
+  });
+
+  describe("access level of the built projection", () => {
+    async function pushOneGrant(
+      listedLevel: "summary" | "full",
+      grantKey: { sourceInviteID: string; accessLevel?: "summary" | "full" },
+    ) {
+      jest.spyOn(syncSetupService, "loadSyncSetupState").mockResolvedValue({
+        hasAuthSession: true,
+        preferences: { ...createDefaultSyncPreferencesRecord(), mode: "managed" },
+      } as Awaited<ReturnType<typeof syncSetupService.loadSyncSetupState>>);
+      jest
+        .spyOn(managedPremiumFeaturesService, "loadManagedPremiumFeatures")
+        .mockResolvedValue({
+          advancedFertility: false,
+          advancedInsights: false,
+          doctorPDF: false,
+          extendedReports: false,
+          partnerAccess: true,
+          reminders: false,
+        });
+      jest.spyOn(managedPartnerAccessService, "loadManagedPartnerAccess").mockResolvedValue({
+        ok: true,
+        value: {
+          owned: {
+            invites: [],
+            grants: [
+              {
+                id: "grant-1",
+                accessLevel: listedLevel,
+                ownerAccountID: "owner-1",
+                revokedAt: null,
+                sourceInviteID: "invite-1",
+              } as never,
+            ],
+          },
+          sharedWithMe: [],
+        },
+      });
+      jest
+        .spyOn(managedPartnerShareService, "reconcileManagedPartnerShareKeys")
+        .mockResolvedValue({ grantKeysByGrantID: { "grant-1": grantKey } } as never);
+      jest
+        .spyOn(managedPartnerShareService, "reserveNextManagedPartnerProjectionGeneration")
+        .mockResolvedValue(1);
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: false, errorCode: "share_key_unavailable" });
+      const storage = createLocalAppStorageMock({
+        readDayLogSummary: jest.fn().mockResolvedValue({
+          hasData: true,
+          dateFrom: "2026-03-10",
+          dateTo: "2026-03-10",
+        }),
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue([
+          {
+            ...createEmptyDayLogRecord("2026-03-10"),
+            isPeriod: true,
+            cycleStart: true,
+            flow: "heavy",
+            mood: 4,
+            notes: "private note",
+          },
+        ]),
+      });
+
+      await syncManagedPartnerSharedProjections(
+        storage,
+        createSyncSecretStoreMock(),
+        {} as PartnerShareSecretStore,
+        FIXED_NOW,
+      );
+
+      expect(uploadSpy).toHaveBeenCalledTimes(1);
+      return uploadSpy.mock.calls[0]?.[2].projection as PartnerSharedProjectionPayload;
+    }
+
+    it("builds a summary projection when the server lists full over a pinned summary", async () => {
+      const projection = await pushOneGrant("full", {
+        sourceInviteID: "invite-1",
+        accessLevel: "summary",
+      });
+
+      expect(projection.accessLevel).toBe("summary");
+      expect(projection.dayLogs[0]).toEqual(
+        expect.objectContaining({ flow: "none", mood: 0, notes: "" }),
+      );
+    });
+
+    it("builds a summary projection when the server lists summary over a pinned full", async () => {
+      const projection = await pushOneGrant("summary", {
+        sourceInviteID: "invite-1",
+        accessLevel: "full",
+      });
+
+      expect(projection.accessLevel).toBe("summary");
+      expect(projection.dayLogs[0]?.mood).toBe(0);
+    });
+
+    it("builds a summary projection from a legacy key record with no pinned level", async () => {
+      const projection = await pushOneGrant("full", { sourceInviteID: "invite-1" });
+
+      expect(projection.accessLevel).toBe("summary");
+      expect(projection.dayLogs[0]?.notes).toBe("");
+    });
+
+    it("keeps full detail only when the pin and the listing both say full", async () => {
+      const projection = await pushOneGrant("full", {
+        sourceInviteID: "invite-1",
+        accessLevel: "full",
+      });
+
+      expect(projection.accessLevel).toBe("full");
+      expect(projection.dayLogs[0]).toEqual(
+        expect.objectContaining({ mood: 4, notes: "private note" }),
+      );
+    });
   });
 
   describe("on 429 rate_limited from the projection PUT", () => {

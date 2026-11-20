@@ -129,6 +129,7 @@ describe("partner-share-secret-store", () => {
           },
         },
         pendingInviteKeysByInviteID: { invite_2: "bb".repeat(32) },
+        pendingInviteAccessLevelsByInviteID: {},
         consumedInviteIDs: {
           invite_1: { grantID: "grant_1", consumedAtISO: "2026-05-01T00:00:00.000Z" },
         },
@@ -250,6 +251,71 @@ describe("partner-share-secret-store", () => {
       expect(result.pendingInviteKeysByInviteID).toEqual({
         invite_ok: "cc".repeat(32),
       });
+    });
+
+    it("reads a record written before access levels were pinned without dropping a key", async () => {
+      const backend = createBackendMock();
+      backend.state.set(
+        STORE_KEY,
+        JSON.stringify({
+          grantKeysByGrantID: {
+            grant_1: {
+              keyHex: "aa".repeat(32),
+              rotatedAtISO: "2026-05-01T00:00:00.000Z",
+              sourceInviteID: "invite_1",
+            },
+          },
+          pendingInviteKeysByInviteID: { invite_2: "bb".repeat(32) },
+        }),
+      );
+      const store = createPartnerShareSecretStore(backend);
+
+      const result = await store.readPartnerShareSecrets();
+
+      expect(result.grantKeysByGrantID.grant_1).toEqual({
+        keyHex: "aa".repeat(32),
+        rotatedAtISO: "2026-05-01T00:00:00.000Z",
+        sourceInviteID: "invite_1",
+      });
+      expect(result.pendingInviteKeysByInviteID).toEqual({
+        invite_2: "bb".repeat(32),
+      });
+      expect(result.pendingInviteAccessLevelsByInviteID).toEqual({});
+    });
+
+    it("round-trips pinned access levels and drops an unknown level", async () => {
+      const backend = createBackendMock();
+      const store = createPartnerShareSecretStore(backend);
+      await store.writePartnerShareSecrets({
+        ...createEmptyPartnerShareSecretsRecord(),
+        grantKeysByGrantID: {
+          grant_1: {
+            keyHex: "aa".repeat(32),
+            rotatedAtISO: "2026-05-01T00:00:00.000Z",
+            sourceInviteID: "invite_1",
+            accessLevel: "summary",
+          },
+        },
+        pendingInviteKeysByInviteID: { invite_2: "bb".repeat(32) },
+        pendingInviteAccessLevelsByInviteID: { invite_2: "full" },
+      });
+      const stored = JSON.parse(backend.state.get(STORE_KEY) as string);
+      stored.grantKeysByGrantID.grant_1.accessLevel = "admin";
+      stored.pendingInviteAccessLevelsByInviteID.invite_3 = "root";
+      const reread = createPartnerShareSecretStore(backend);
+
+      const first = await store.readPartnerShareSecrets();
+      expect(first.grantKeysByGrantID.grant_1?.accessLevel).toBe("summary");
+      expect(first.pendingInviteAccessLevelsByInviteID).toEqual({ invite_2: "full" });
+
+      backend.state.set(STORE_KEY, JSON.stringify(stored));
+      const second = await reread.readPartnerShareSecrets();
+      expect(second.grantKeysByGrantID.grant_1).toEqual({
+        keyHex: "aa".repeat(32),
+        rotatedAtISO: "2026-05-01T00:00:00.000Z",
+        sourceInviteID: "invite_1",
+      });
+      expect(second.pendingInviteAccessLevelsByInviteID).toEqual({ invite_2: "full" });
     });
 
     it("treats a non-object stored maps section as empty", async () => {

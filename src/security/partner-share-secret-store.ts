@@ -1,3 +1,5 @@
+import type { PartnerShareAccessLevel } from "../models/partner-share";
+
 // Per-grant share key after rotation. `keyHex` is K_grant — derived
 // deterministically by both owner and partner from K_invite once the grant
 // exists (see `deriveGrantSubkeyHex` in `partner-share-crypto`). The invite
@@ -13,6 +15,11 @@ export type PartnerShareGrantKeyRecord = {
   // `consumedInviteIDs` has a stable cross-reference even if the secret
   // store is inspected without a fresh `getPartnerAccess` overview.
   sourceInviteID: string;
+  // The access level the owner chose when issuing the invite, pinned on
+  // this device. The projection never exceeds it, whatever level the
+  // server lists for the grant. Absent on records written before the pin
+  // existed, which build as the narrowest level.
+  accessLevel?: PartnerShareAccessLevel;
 };
 
 // Owner-side anti-replay marker. Once an invite has been rotated into a
@@ -31,6 +38,10 @@ export type PartnerShareConsumedInviteRecord = {
 export type PartnerShareSecretsRecord = {
   grantKeysByGrantID: Record<string, PartnerShareGrantKeyRecord>;
   pendingInviteKeysByInviteID: Record<string, string>;
+  // Access level the owner chose per pending invite, rotated into the
+  // grant key record at reconcile. Kept beside (not inside) the key map so
+  // an older build reading this record still finds every pending key.
+  pendingInviteAccessLevelsByInviteID: Record<string, PartnerShareAccessLevel>;
   consumedInviteIDs: Record<string, PartnerShareConsumedInviteRecord>;
   // Owner-side monotonic counter, one per grant. Incremented before
   // every projection upload and embedded inside the AEAD-protected
@@ -79,6 +90,7 @@ export function createEmptyPartnerShareSecretsRecord(): PartnerShareSecretsRecor
   return {
     grantKeysByGrantID: {},
     pendingInviteKeysByInviteID: {},
+    pendingInviteAccessLevelsByInviteID: {},
     consumedInviteIDs: {},
     ownerGenerationByGrantID: {},
     partnerLastSeenGenerationByGrantID: {},
@@ -139,6 +151,7 @@ export function createPartnerShareSecretStore(
       const parsed = JSON.parse(rawValue) as Partial<{
         grantKeysByGrantID: unknown;
         pendingInviteKeysByInviteID: unknown;
+        pendingInviteAccessLevelsByInviteID: unknown;
         consumedInviteIDs: unknown;
         ownerGenerationByGrantID: unknown;
         partnerLastSeenGenerationByGrantID: unknown;
@@ -147,6 +160,9 @@ export function createPartnerShareSecretStore(
         grantKeysByGrantID: normalizeGrantKeysMap(parsed.grantKeysByGrantID),
         pendingInviteKeysByInviteID: normalizeSecretsMap(
           parsed.pendingInviteKeysByInviteID,
+        ),
+        pendingInviteAccessLevelsByInviteID: normalizeAccessLevelsMap(
+          parsed.pendingInviteAccessLevelsByInviteID,
         ),
         consumedInviteIDs: normalizeConsumedInvitesMap(parsed.consumedInviteIDs),
         ownerGenerationByGrantID: normalizeGenerationsMap(
@@ -170,6 +186,9 @@ export function createPartnerShareSecretStore(
         grantKeysByGrantID: normalizeGrantKeysMap(record.grantKeysByGrantID),
         pendingInviteKeysByInviteID: normalizeSecretsMap(
           record.pendingInviteKeysByInviteID,
+        ),
+        pendingInviteAccessLevelsByInviteID: normalizeAccessLevelsMap(
+          record.pendingInviteAccessLevelsByInviteID,
         ),
         consumedInviteIDs: normalizeConsumedInvitesMap(record.consumedInviteIDs),
         ownerGenerationByGrantID: normalizeGenerationsMap(
@@ -221,6 +240,27 @@ function normalizeSecretsMap(value: unknown): Record<string, string> {
   );
 }
 
+function isAccessLevel(value: unknown): value is PartnerShareAccessLevel {
+  return value === "summary" || value === "full";
+}
+
+function normalizeAccessLevelsMap(
+  value: unknown,
+): Record<string, PartnerShareAccessLevel> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  const out: Record<string, PartnerShareAccessLevel> = {};
+  for (const [rawKey, item] of Object.entries(value)) {
+    const key = rawKey.trim();
+    if (key.length > 0 && isAccessLevel(item)) {
+      out[key] = item;
+    }
+  }
+  return out;
+}
+
 function normalizeGenerationsMap(value: unknown): Record<string, number> {
   if (!value || typeof value !== "object") {
     return {};
@@ -268,7 +308,9 @@ function normalizeGrantKeysMap(
       // a zombie record that would later surface as `share_key_unavailable`.
       continue;
     }
-    out[key] = { keyHex, rotatedAtISO, sourceInviteID };
+    out[key] = isAccessLevel(record.accessLevel)
+      ? { keyHex, rotatedAtISO, sourceInviteID, accessLevel: record.accessLevel }
+      : { keyHex, rotatedAtISO, sourceInviteID };
   }
   return out;
 }

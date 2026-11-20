@@ -17,6 +17,7 @@ import {
   reconcileManagedPartnerShareKeys,
   reserveNextManagedPartnerProjectionGeneration,
   storeAcceptedManagedPartnerGrantKey,
+  resolveManagedPartnerProjectionAccessLevel,
   storeIssuedManagedPartnerInviteKey,
   uploadManagedPartnerProjection,
 } from "./managed-partner-share-service";
@@ -154,6 +155,84 @@ describe("managed-partner-share-service", () => {
     global.fetch = originalFetch;
   });
 
+  describe("pinned access level", () => {
+    it("pins the owner's chosen level with the pending key, not the server's echo", async () => {
+      const store = createPartnerShareSecretStoreMock();
+
+      await storeIssuedManagedPartnerInviteKey(
+        store,
+        {
+          invite: buildInviteFixture({ accessLevel: "full" }),
+          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        },
+        "summary",
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.pendingInviteAccessLevelsByInviteID).toEqual({
+        "invite-1": "summary",
+      });
+    });
+
+    it("carries the pinned level into the grant key record and clears the pending pin", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeIssuedManagedPartnerInviteKey(
+        store,
+        {
+          invite: buildInviteFixture(),
+          inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
+        },
+        "summary",
+      );
+
+      const reconciled = await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: {
+            invites: [],
+            grants: [buildGrantFixture({ accessLevel: "full" })],
+          },
+          sharedWithMe: [],
+        },
+        NOW,
+      );
+
+      expect(reconciled.grantKeysByGrantID["grant-1"]?.accessLevel).toBe("summary");
+      expect(reconciled.pendingInviteAccessLevelsByInviteID).toEqual({});
+      expect(reconciled.consumedInviteIDs["invite-1"]?.grantID).toBe("grant-1");
+    });
+
+    it("leaves a pending key without a pinned level unpinned when it rotates", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await store.mutatePartnerShareSecrets((record) => {
+        record.pendingInviteKeysByInviteID["invite-1"] = "ab".repeat(32);
+      });
+
+      const reconciled = await reconcileManagedPartnerShareKeys(
+        store,
+        { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
+        NOW,
+      );
+
+      expect(reconciled.grantKeysByGrantID["grant-1"]).toBeDefined();
+      expect(reconciled.grantKeysByGrantID["grant-1"]?.accessLevel).toBeUndefined();
+    });
+
+    it.each([
+      ["summary", "summary", "summary"],
+      ["summary", "full", "summary"],
+      ["full", "summary", "summary"],
+      ["full", "full", "full"],
+      [undefined, "full", "summary"],
+      [undefined, "summary", "summary"],
+    ] as const)(
+      "builds at the stricter level: pinned %p, listed %p gives %p",
+      (pinned, listed, expected) => {
+        expect(resolveManagedPartnerProjectionAccessLevel(pinned, listed)).toBe(expected);
+      },
+    );
+  });
+
   describe("reconcileManagedPartnerShareKeys", () => {
     it("rotates pending invite keys into per-grant subkeys and clears K_invite", async () => {
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
@@ -164,6 +243,7 @@ describe("managed-partner-share-service", () => {
           invite: buildInviteFixture(),
           inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
         },
+        "full",
       );
 
       const overview: ManagedCloudPartnerAccessOverview = {
@@ -216,7 +296,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
 
       const reconciled = await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
@@ -243,7 +323,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
 
       // First reconcile: invite-1 → grant-1. Pending K_invite is consumed.
       await reconcileManagedPartnerShareKeys(
@@ -291,7 +371,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
       const overview: ManagedCloudPartnerAccessOverview = {
         owned: { invites: [], grants: [buildGrantFixture()] },
         sharedWithMe: [],
@@ -327,7 +407,7 @@ describe("managed-partner-share-service", () => {
       const shareableLink = await storeIssuedManagedPartnerInviteKey(ownerStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
 
       // Partner accept flow, from the link alone.
       const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(shareableLink);
@@ -362,7 +442,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(ownerStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
       await reconcileManagedPartnerShareKeys(
         ownerStore,
         {
@@ -453,7 +533,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
       await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
         { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
@@ -471,7 +551,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
       expect(
         Object.keys(
           (await partnerShareSecretStore.readPartnerShareSecrets())
@@ -528,7 +608,7 @@ describe("managed-partner-share-service", () => {
       await storeIssuedManagedPartnerInviteKey(partnerShareSecretStore, {
         invite: buildInviteFixture(),
         inviteURL: `ovumcy://backup-sync?invite_token=${INVITE_TOKEN}`,
-      });
+      }, "summary");
       await reconcileManagedPartnerShareKeys(
         partnerShareSecretStore,
         { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
