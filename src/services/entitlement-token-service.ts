@@ -26,10 +26,15 @@ import { MANAGED_CLOUD_AUTH_BASE_URL } from "../sync/sync-contract";
  *     verification yields entitlements; an expired token re-locks (the verifier
  *     rejects `exp <= now`), and the caller then falls back to the snapshot.
  *
- * This module NEVER throws to its callers — any failure resolves to an empty
- * entitlement set so the premium gate falls back to the billing-snapshot
- * boolean, preserving today's behaviour exactly.
+ * This module NEVER throws to its callers — any failure resolves to
+ * `unavailable` so the premium gate falls back to the billing-snapshot boolean.
+ * A verified token is reported as `verified` even when its entitlement list is
+ * empty: that is the issuer's answer (no local premium), not a missing token.
  */
+
+export type VerifiedEntitlementsResult =
+  | { status: "verified"; entitlements: ReadonlySet<string> }
+  | { status: "unavailable" };
 
 export type ResolveVerifiedEntitlementsInput = {
   store: EntitlementTokenStore;
@@ -48,22 +53,22 @@ export type ResolveVerifiedEntitlementsInput = {
 };
 
 /**
- * Resolves the set of entitlement keys carried by a VERIFIED token, or an empty
- * set when no valid token is available (offline with an expired cache, no
- * endpoint, unknown kid, tamper, etc.). The caller overlays this set onto the
+ * Resolves the entitlement keys carried by a VERIFIED token, or `unavailable`
+ * when no valid token exists (offline with an expired cache, no endpoint,
+ * unknown kid, tamper, etc.). The caller overlays a verified set onto the
  * billing snapshot for the token-gated features and falls back to the snapshot
- * boolean when the set is empty/absent.
+ * boolean only when the result is `unavailable`.
  */
 export async function resolveVerifiedEntitlements(
   input: ResolveVerifiedEntitlementsInput,
-): Promise<Set<string>> {
+): Promise<VerifiedEntitlementsResult> {
   const publicKeysByKid =
     input.publicKeysByKid ?? resolveEmbeddedEntitlementPublicKeys();
 
   try {
     const token = await loadToken(input);
     if (!token) {
-      return new Set();
+      return { status: "unavailable" };
     }
 
     const verifyOptions: Parameters<typeof verifyEntitlementToken>[1] = {
@@ -76,12 +81,12 @@ export async function resolveVerifiedEntitlements(
 
     const result = verifyEntitlementToken(token, verifyOptions);
     if (!result.valid) {
-      return new Set();
+      return { status: "unavailable" };
     }
-    return new Set(result.entitlements);
+    return { status: "verified", entitlements: new Set(result.entitlements) };
   } catch {
     // Defensive: any unexpected error must not break the gate; fall back.
-    return new Set();
+    return { status: "unavailable" };
   }
 }
 
@@ -106,9 +111,10 @@ async function loadToken(
     // Only a transport failure (no response, or the server's own temporary
     // unavailability) falls through to the cached token (offline grace). Any
     // other refusal — a lapsed plan, an unauthorized session, an absent
-    // endpoint — is an answer: no cached token is served and the gate falls
-    // back to the snapshot.
+    // endpoint — is an answer: the cached token is discarded so no later
+    // offline read can revive it, and the gate falls back to the snapshot.
     if (!isManagedCloudTransportFailure(fetched.errorCode)) {
+      await input.store.clearEntitlementToken();
       return null;
     }
   }

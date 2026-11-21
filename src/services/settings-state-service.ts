@@ -3,11 +3,12 @@ import {
   clearLocalSyncSession,
   loadConnectedSyncCapabilities,
 } from "../sync/sync-client-service";
+import type { SyncPreferencesRecord } from "../sync/sync-contract";
 import { loadSyncSetupState } from "../sync/sync-setup-service";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { buildEntitlementTokenGate } from "./entitlement-token-gate-service";
 import { loadLocalExportState } from "./export-service";
-import { loadManagedBillingSnapshot } from "./managed-premium-features-service";
+import { loadManagedBillingSnapshotWithSource } from "./managed-premium-features-service";
 import {
   createEmptySettingsManagedPremiumAccess,
   createLoadedSettingsState,
@@ -15,6 +16,39 @@ import {
   type LoadedSettingsState,
   type SettingsManagedPremiumAccess,
 } from "./settings-view-service";
+
+async function loadSettingsManagedPremiumAccess(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  mode: SyncPreferencesRecord["mode"],
+  now: Date,
+): Promise<SettingsManagedPremiumAccess> {
+  const result = await loadManagedBillingSnapshotWithSource(
+    storage,
+    secretStore,
+    mode,
+    // Doctor PDF is token-gated: a verified entitlement token decides
+    // `doctorPDF`; absent/invalid, the billing snapshot boolean stands.
+    await buildEntitlementTokenGate(secretStore, mode, {
+      nowSeconds: Math.floor(now.getTime() / 1000),
+    }),
+    now,
+  );
+  if (!result) {
+    return createEmptySettingsManagedPremiumAccess();
+  }
+  if (result.source === "live") {
+    return mapBillingSnapshotToManagedPremiumAccess(result.billing);
+  }
+  // Offline grace: the doctor PDF follows the same cached premium as every
+  // other premium surface, while the plan status that gates sync
+  // upload/restore stays "unknown" — only live billing decides a
+  // server-checked action.
+  return {
+    ...createEmptySettingsManagedPremiumAccess(),
+    doctorPDF: result.billing.premiumFeatures.doctorPDF,
+  };
+}
 
 export async function loadSettingsScreenState(
   storage: LocalAppStorage,
@@ -44,25 +78,15 @@ export async function loadSettingsScreenState(
     );
     if (capabilitiesResult.ok) {
       syncCapabilities = capabilitiesResult.capabilities;
-      const billingSnapshot = await loadManagedBillingSnapshot(
+    }
+    if (capabilitiesResult.ok || capabilitiesResult.errorCode !== "unauthorized") {
+      managedPremiumAccess = await loadSettingsManagedPremiumAccess(
         storage,
         secretStore,
         syncState.preferences.mode,
-        // Doctor PDF is token-gated: a verified entitlement token decides
-        // `doctorPDF`; absent/invalid, the billing snapshot boolean stands.
-        await buildEntitlementTokenGate(secretStore, syncState.preferences.mode, {
-          nowSeconds: Math.floor(now.getTime() / 1000),
-        }),
         now,
-        // Settings gates the sync upload/restore actions on plan status, a
-        // server-checked path, so it never reads the offline-grace cache.
-        { liveOnly: true },
       );
-      if (billingSnapshot) {
-        managedPremiumAccess =
-          mapBillingSnapshotToManagedPremiumAccess(billingSnapshot);
-      }
-    } else if (capabilitiesResult.errorCode === "unauthorized") {
+    } else {
       syncPreferences = await clearLocalSyncSession(
         storage,
         secretStore,

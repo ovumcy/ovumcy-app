@@ -108,6 +108,11 @@ describe("offers-service resolveVisibleBillingOffers", () => {
     expect(resolved.map((offer) => offer.id)).toEqual(["active"]);
   });
 
+  it("treats the offer end instant as exclusive and the start instant as inclusive", () => {
+    expect(isBillingOfferWithinWindow(makeOffer({ endsAt: NOW.toISOString() }), NOW)).toBe(false);
+    expect(isBillingOfferWithinWindow(makeOffer({ startsAt: NOW.toISOString() }), NOW)).toBe(true);
+  });
+
   it("excludes dismissed ids and collapses duplicate ids to the first occurrence", () => {
     const resolved = resolveVisibleBillingOffers({
       offers: [
