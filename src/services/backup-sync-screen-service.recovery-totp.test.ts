@@ -126,7 +126,7 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
     expect(finalizeSpy).not.toHaveBeenCalled();
   });
 
-  it("returns a failed resume as is", async () => {
+  it("marks a failed resume as a spent challenge", async () => {
     jest.spyOn(syncTOTPService, "completeTOTPChallenge").mockResolvedValue({
       ok: true,
       auth: {
@@ -148,6 +148,10 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
       NOW,
     );
 
-    expect(result).toEqual({ ok: false, errorCode: "recovery_package_not_found" });
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "recovery_package_not_found",
+      challengeSpent: true,
+    });
   });
 });

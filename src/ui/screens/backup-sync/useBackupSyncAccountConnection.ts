@@ -194,9 +194,13 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
         code: result.errorCode,
         scope: "account",
       });
-      // Same split as the connect challenge: an expired or replayed challenge
-      // sends the user back to the form, anything else is retried in place.
-      if (result.errorCode === "totp_challenge_invalid") {
+      // An expired or replayed challenge, or one the accepted code spent before
+      // the recovery failed, sends the user back to the form; a refused code
+      // is retried in place.
+      if (
+        result.errorCode === "totp_challenge_invalid" ||
+        ("challengeSpent" in result && result.challengeSpent)
+      ) {
         setPendingTOTPChallenge(null);
         setTotpChallengeCode("");
       }

@@ -712,7 +712,7 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.changeCodeVisible).toBe(true);
     });
 
-    it("keeps a replayed-code answer as is once the code was sent", async () => {
+    it("keeps a replayed-code answer as is once the code was sent, and clears the spent code", async () => {
       jest
         .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
         .mockResolvedValue({ ok: false, errorCode: "totp_replayed" });
@@ -726,6 +726,7 @@ describe("useSyncAccountSecurityController", () => {
       });
 
       expect(result.current.changeErrorCode).toBe("totp_replayed");
+      expect(result.current.changeCode).toBe("");
     });
 
     it.each(["network_failed", "generic"] as const)(

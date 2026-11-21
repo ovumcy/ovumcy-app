@@ -52,7 +52,7 @@ On a connected Ovumcy Cloud account, *Change recovery phrase* asks you to confir
 
 When you sign in to a TOTP-enabled account, the password step still works the same way. As soon as the password is verified the app shows a dedicated *Enter your 6-digit code* screen instead of completing the login. Type the current code from your authenticator app and tap *Verify*.
 
-Recovering a self-hosted account with the recovery phrase works the same way: after the password the app asks for the code, then finishes the recovery with the phrase you entered. The phrase stays on the form only until the recovery completes.
+Recovering a self-hosted account with the recovery phrase works the same way: after the password the app asks for the code, then finishes the recovery with the phrase you entered. The phrase stays on the form only until the recovery completes. If the code is accepted but the recovery still fails (for example a mistyped phrase), the code is spent and the app returns to the recovery form.
 
 A login challenge lives for **5 minutes**. After **5 wrong codes** on the same challenge it is burnt and you have to sign in from the password screen again — this is what keeps an attacker who steals a challenge id from brute-forcing the 6-digit code.
 

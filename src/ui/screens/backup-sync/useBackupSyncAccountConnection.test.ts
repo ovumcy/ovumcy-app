@@ -508,15 +508,18 @@ describe("useBackupSyncAccountConnection", () => {
       });
 
       it.each([
-        ["totp_invalid_code", true],
-        ["totp_challenge_invalid", false],
+        ["totp_invalid_code", false, true],
+        ["totp_challenge_invalid", false, false],
+        ["invalid_recovery_phrase", true, false],
+        ["network_failed", true, false],
       ] as const)(
-        "on %s keeps the challenge open: %s",
-        async (errorCode, keepsChallenge) => {
-          mockCompleteBackupSyncRecoveryTOTPChallenge.mockResolvedValue({
-            ok: false,
-            errorCode,
-          });
+        "on %s (challenge spent: %s) keeps the challenge open: %s",
+        async (errorCode, challengeSpent, keepsChallenge) => {
+          mockCompleteBackupSyncRecoveryTOTPChallenge.mockResolvedValue(
+            challengeSpent
+              ? { ok: false, errorCode, challengeSpent: true }
+              : { ok: false, errorCode },
+          );
           const { core, result } = await recoverIntoChallenge();
 
           await act(async () => {
