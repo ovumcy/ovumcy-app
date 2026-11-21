@@ -978,6 +978,36 @@ describe("managed-partner-share-service", () => {
       expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(7);
     });
 
+    it("refuses a projection whose grant key was replaced while it was being fetched", async () => {
+      const { syncSecretStore, partnerShareSecretStore, shareKey } =
+        await setupPartnerGrant();
+      mockProjectionGetReturnsPayload(
+        shareKey,
+        buildProjectionPayload({ generation: 7 }),
+      );
+      const respond = global.fetch;
+      global.fetch = jest.fn(async (...args: Parameters<typeof fetch>) => {
+        await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+          record.grantKeysByGrantID["grant-1"] = {
+            ...record.grantKeysByGrantID["grant-1"]!,
+            keyHex: "ab".repeat(32),
+          };
+        });
+        return respond(...args);
+      }) as typeof fetch;
+
+      await expect(
+        loadManagedPartnerProjection(
+          syncSecretStore,
+          partnerShareSecretStore,
+          "managed",
+          { id: "grant-1" },
+        ),
+      ).resolves.toEqual({ ok: false, errorCode: "invalid_partner_projection" });
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBeUndefined();
+    });
+
     it("rejects a regression below the last-seen marker", async () => {
       const { syncSecretStore, partnerShareSecretStore, shareKey } =
         await setupPartnerGrant();
