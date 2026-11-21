@@ -20,5 +20,21 @@ describe("selectAccountDeletionStepUpCopy", () => {
     expect(
       selectAccountDeletionStepUpCopy("xx" as InterfaceLanguage),
     ).toEqual(selectAccountDeletionStepUpCopy("en"));
+    expect(
+      selectAccountDeletionStepUpCopy("xx" as InterfaceLanguage, "self_hosted"),
+    ).toEqual(selectAccountDeletionStepUpCopy("en", "self_hosted"));
   });
+
+  it.each(["en", "de", "fr", "ru", "es", "it"] as const)(
+    "names the sync server, not Ovumcy Cloud, for a self-hosted %s account",
+    (language) => {
+      const managed = selectAccountDeletionStepUpCopy(language, "managed");
+      const selfHosted = selectAccountDeletionStepUpCopy(language, "self_hosted");
+
+      expect(selfHosted.explanation).not.toBe(managed.explanation);
+      expect(selfHosted.explanation).not.toContain("Ovumcy Cloud");
+      expect(selfHosted.title).toBe(managed.title);
+      expect(selfHosted.confirmLabel).toBe(managed.confirmLabel);
+    },
+  );
 });

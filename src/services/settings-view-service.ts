@@ -1,4 +1,5 @@
-import { APP_LANGUAGE_LABELS } from "../i18n/runtime";
+import { selectAccountSecurityCopy } from "../i18n/account-security-copy";
+import { APP_LANGUAGE_LABELS, resolveCopyLanguage } from "../i18n/runtime";
 import { getSettingsCopy } from "../i18n/settings-copy";
 import type {
   ManagedCloudActiveSubscription,
@@ -365,6 +366,7 @@ export type SettingsViewData = {
       deleteAccountFailed: string;
       deleteAccountCleanupUnavailable: string;
       deleteAccountServerErased: string;
+      rateLimited: string;
     };
   };
   symptoms: {
@@ -944,6 +946,8 @@ export function buildSettingsViewData(
           settingsCopy.account.errors.deleteAccountCleanupUnavailable,
         deleteAccountServerErased:
           settingsCopy.account.errors.deleteAccountServerErased,
+        rateLimited: selectAccountSecurityCopy(resolveCopyLanguage(locale)).errors
+          .rateLimitedRetry,
       },
     },
     symptoms: {

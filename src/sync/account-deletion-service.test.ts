@@ -351,12 +351,15 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
-      { currentPassword: "managed only, never sent here" },
+      { currentPassword: "owner password", code: "123456" },
       apiClientFactory,
     );
 
     expect(result).toEqual({ ok: true });
-    expect(deleteAccount).toHaveBeenCalledWith("session-1");
+    expect(deleteAccount).toHaveBeenCalledWith("session-1", {
+      currentPassword: "owner password",
+      code: "123456",
+    });
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
   });
@@ -457,7 +460,7 @@ describe("deleteOvumcyAccount", () => {
       secretStore,
       createWipeScopeSecretStoresMock(),
       preferences,
-      undefined,
+      { currentPassword: "owner password" },
       apiClientFactory,
     );
 
@@ -467,6 +470,48 @@ describe("deleteOvumcyAccount", () => {
       expect.objectContaining({ authSessionToken: "session-1" }),
     );
   });
+
+  it.each([
+    ["no step-up", undefined],
+    ["an empty password", { currentPassword: "" }],
+  ])(
+    "refuses a self-hosted deletion with %s before any request and wipes nothing",
+    async (_label, stepUp) => {
+      const storage = createLocalAppStorageMock();
+      const preparedSecrets = createSyncSecretsRecord(
+        "Pixel 7",
+        new Date("2026-03-20T08:00:00.000Z"),
+      );
+      const secretStore = createSyncSecretStoreMock({
+        ...preparedSecrets.record,
+        authSessionToken: "session-1",
+      });
+      const preferences = {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted" as const,
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        setupStatus: "connected" as const,
+      };
+      const apiClientFactory = jest.fn();
+
+      const result = await deleteOvumcyAccount(
+        storage,
+        secretStore,
+        createWipeScopeSecretStoresMock(),
+        preferences,
+        stepUp,
+        apiClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "invalid_current_password" });
+      expect(apiClientFactory).not.toHaveBeenCalled();
+      expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({ authSessionToken: "session-1" }),
+      );
+    },
+  );
 
   it("surfaces a generic error and leaves nothing half-cleared when the local wipe itself throws", async () => {
     const storage = createLocalAppStorageMock({

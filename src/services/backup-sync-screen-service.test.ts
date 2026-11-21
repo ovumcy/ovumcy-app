@@ -1188,7 +1188,7 @@ describe("recoverBackupSyncAccess", () => {
     );
 
     expect(result.ok).toBe(true);
-    if (!result.ok) {
+    if (!result.ok || !("state" in result)) {
       throw new Error("expected a successful recovery result");
     }
     expect(result.state.hasSyncSession).toBe(true);
@@ -1309,7 +1309,7 @@ describe("uploadBackupSyncSnapshot", () => {
             portal_supported: false,
             advanced_cloud_insights: false,
             max_devices: 5,
-            max_blob_bytes: 1024,
+            max_blob_bytes: 16777216,
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );

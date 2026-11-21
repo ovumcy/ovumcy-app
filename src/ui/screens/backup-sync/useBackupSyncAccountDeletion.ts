@@ -25,9 +25,10 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
  * subscription. The copy stays store-neutral until Google Play Billing (the
  * first planned IAP channel) lands. A dismissal at any step is the safe
  * answer and aborts with nothing changed, matching the confirm-dialog
- * invariant used everywhere else in this screen. A managed password account
- * then gets the step-up card: Ovumcy Cloud re-confirms the password (+ TOTP
- * code with two-factor on) before it erases anything. The actual network call +
+ * invariant used everywhere else in this screen. A connected self-hosted or
+ * managed password account then gets the step-up card: the server re-confirms
+ * the password (+ TOTP code with two-factor on) before it erases anything. The
+ * actual network call +
  * secrets/local-data teardown is delegated to `deleteOvumcyAccount`, which
  * aborts before touching local state if the server delete fails.
  */
@@ -62,6 +63,11 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
   } | null>(null);
   const accountDeletionStepUpPrompt =
     pendingStepUp && pendingStepUp.forState === state ? pendingStepUp.prompt : null;
+  // Names the server the card speaks for; the prompt's own state decides it.
+  const accountDeletionStepUpMode =
+    accountDeletionStepUpPrompt && pendingStepUp
+      ? pendingStepUp.forState.savedSyncPreferences.mode
+      : null;
 
   async function handleDeleteAccount() {
     if (!state) {
@@ -135,9 +141,9 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     const preferences = state.savedSyncPreferences;
     if (
       serverDeletedForStateRef.current !== state &&
-      preferences.mode === "managed" &&
       state.hasSyncSession &&
-      !isGuestPartnerAccount(preferences)
+      (preferences.mode === "self_hosted" ||
+        (preferences.mode === "managed" && !isGuestPartnerAccount(preferences)))
     ) {
       // Asked up front: a bodiless try would spend the shared step-up budget.
       setIsDeletingAccount(true);
@@ -294,6 +300,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
 
   return {
     accountDeletionStepUpPrompt,
+    accountDeletionStepUpMode,
     isDeletingAccount,
     handleDeleteAccount,
     handleSubmitAccountDeletionStepUp,

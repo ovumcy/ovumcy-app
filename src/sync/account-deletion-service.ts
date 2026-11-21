@@ -175,9 +175,10 @@ export async function deleteOvumcyAccount(
   secretStore: SyncSecretStore,
   wipeScopeSecretStores: WipeScopeSecretStores,
   preferences: SyncPreferencesRecord,
-  // Managed only: the password (+ TOTP code) Ovumcy Cloud re-confirms before
-  // erasing. Omitted for a guest-partner session, which has no password.
-  managedStepUp?: SyncRecoveryKeyStepUp,
+  // The password (+ TOTP code) the server re-confirms before erasing. Omitted
+  // only for a managed guest-partner session, which has no password; a
+  // self-hosted delete without it is refused before any request.
+  stepUp?: SyncRecoveryKeyStepUp,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
   reminderScheduler: LocalReminderScheduler = createPlatformLocalReminderScheduler(),
@@ -218,12 +219,17 @@ export async function deleteOvumcyAccount(
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
     const result = await managedClient.deleteAccount(
       session.sessionToken,
-      managedStepUp,
+      stepUp,
     );
     if (!result.ok) {
       return { ok: false, errorCode: result.errorCode };
     }
   } else if (preferences.mode === "self_hosted" && secrets?.authSessionToken) {
+    // A bodiless DELETE is refused and still charged to the server's
+    // per-account credential budget.
+    if (!stepUp || stepUp.currentPassword.length === 0) {
+      return { ok: false, errorCode: "invalid_current_password" };
+    }
     const normalizedEndpoint = normalizeSyncEndpoint(
       preferences.mode,
       preferences.endpointInput,
@@ -232,7 +238,7 @@ export async function deleteOvumcyAccount(
       return normalizedEndpoint;
     }
     const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
-    const result = await client.deleteAccount(secrets.authSessionToken);
+    const result = await client.deleteAccount(secrets.authSessionToken, stepUp);
     if (!result.ok) {
       return { ok: false, errorCode: result.errorCode };
     }
