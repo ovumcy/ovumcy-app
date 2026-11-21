@@ -37,7 +37,7 @@ const LOG_PREFIX = "export-web:";
 const EXPORT_COMMAND = "npx expo export -p web --clear";
 
 console.log(
-  `${LOG_PREFIX} running "${EXPORT_COMMAND}" with dotenv loading disabled (EXPO_NO_DOTENV=1) so local dotenv overrides cannot enter the production artifact.`,
+  `${LOG_PREFIX} running "${EXPORT_COMMAND}" with dotenv loading disabled (EXPO_NO_DOTENV=1). Only the ambient environment reaches the bundle; this script does not run the release guards, so a production export must run them first (npm run deploy does).`,
 );
 
 const result = spawnSync(EXPORT_COMMAND, {
