@@ -26,7 +26,7 @@ export type ManagedCloudAPIErrorCode =
   | "partner_invite_limit_reached"
   | "partner_grant_limit_reached"
   | "partner_grant_rekeyed"
-  | "entitlements_unavailable"
+  | "payload_too_large"
   | "entitlements_not_configured"
   | "unauthorized"
   | "sync_not_allowed"
@@ -48,19 +48,22 @@ export type ManagedCloudAPIErrorCode =
   | "invalid_response"
   | "generic";
 
+// The managed API's cap on one partner projection ciphertext (2 MiB).
+export const MANAGED_PARTNER_PROJECTION_MAX_CIPHERTEXT_BYTES = 2 * 1024 * 1024;
+
 /**
  * True only when a failed managed call says "the server could not be asked"
  * rather than "the server answered no". `network_failed` is the synthetic
- * no-response outcome (thrown fetch, status 599); `entitlements_unavailable`
- * is the server's own temporary-unavailability answer; a 5xx without a
- * recognized error body is also mapped to `network_failed`. Every other code
+ * no-response outcome (thrown fetch, status 599); any 5xx, including the
+ * server's temporary-unavailability answer, is also mapped to
+ * `network_failed`. Every other code
  * is an answer (4xx refusals, `unauthorized`, an unparseable 4xx body), so
  * offline-grace readers must treat it as a refusal and fail closed.
  */
 export function isManagedCloudTransportFailure(
   errorCode: ManagedCloudAPIErrorCode,
 ): boolean {
-  return errorCode === "network_failed" || errorCode === "entitlements_unavailable";
+  return errorCode === "network_failed";
 }
 
 export type ManagedCloudEntitlement = {
@@ -1177,6 +1180,10 @@ export function createManagedCloudAPIClient(
     },
 
     async upsertPartnerProjection(sessionToken, grantID, input) {
+      // The server refuses a larger ciphertext; refuse locally and send nothing.
+      if (input.ciphertextSize > MANAGED_PARTNER_PROJECTION_MAX_CIPHERTEXT_BYTES) {
+        return { ok: false, errorCode: "payload_too_large" };
+      }
       return requestJSON<RawManagedCloudPartnerProjection>(
         fetchImpl,
         normalizedBaseURL,
@@ -1340,11 +1347,6 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
 
   try {
     const payload = (await response.json()) as ErrorPayload;
-    // Temporary unavailability is a transport-level signal (offline grace
-    // honours it), so only a 5xx may carry it; on a 4xx it is a refusal.
-    if (payload?.error === "entitlements_unavailable" && response.status < 500) {
-      return "generic";
-    }
     switch (payload?.error) {
       case "invalid_registration_input":
       case "registration_failed":
@@ -1366,7 +1368,7 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "partner_grant_rekeyed":
       case "invalid_partner_projection":
       case "partner_projection_not_found":
-      case "entitlements_unavailable":
+      case "payload_too_large":
       case "entitlements_not_configured":
       case "unauthorized":
       case "sync_not_allowed":
@@ -1395,8 +1397,13 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
 
 // A 5xx without a recognized error body is a server or gateway that could not
 // answer (proxy 502/503/504, crash page), not a refusal: it is reported as a
-// transport failure so offline-grace readers keep the bounded cache.
+// transport failure so offline-grace readers keep the bounded cache. A bare
+// 413 (a proxy rejecting the body before the API sees it) is the same
+// too-large refusal the API itself names.
 function unrecognizedErrorCode(status: number): ManagedCloudAPIErrorCode {
+  if (status === 413) {
+    return "payload_too_large";
+  }
   return status >= 500 ? "network_failed" : "generic";
 }
 

@@ -146,9 +146,9 @@ describe("syncManagedPartnerSharedProjections", () => {
       });
 
       expect(projection.accessLevel).toBe("summary");
-      expect(projection.dayLogs[0]).toEqual(
-        expect.objectContaining({ flow: "none", mood: 0, notes: "" }),
-      );
+      expect(projection.dayLogs).toEqual([]);
+      expect(projection.summarySnapshot).toBeDefined();
+      expect(JSON.stringify(projection)).not.toContain("private note");
     });
 
     it("builds a summary projection when the server lists summary over a pinned full", async () => {
@@ -158,14 +158,14 @@ describe("syncManagedPartnerSharedProjections", () => {
       });
 
       expect(projection.accessLevel).toBe("summary");
-      expect(projection.dayLogs[0]?.mood).toBe(0);
+      expect(projection.dayLogs).toEqual([]);
     });
 
     it("builds a summary projection from a legacy key record with no pinned level", async () => {
       const projection = await pushOneGrant("full", { sourceInviteID: "invite-1" });
 
       expect(projection.accessLevel).toBe("summary");
-      expect(projection.dayLogs[0]?.notes).toBe("");
+      expect(projection.dayLogs).toEqual([]);
     });
 
     it("keeps full detail only when the pin and the listing both say full", async () => {
@@ -315,6 +315,35 @@ describe("syncManagedPartnerSharedProjections", () => {
 
       expect(uploadSpy).toHaveBeenCalledTimes(2);
       expect(isManagedPartnerProjectionPushBackedOff()).toBe(false);
+    });
+
+    it("backs off the push on payload_too_large so the next sync sends no request", async () => {
+      armTwoGrantPush();
+      const uploadSpy = jest
+        .spyOn(managedPartnerShareService, "uploadManagedPartnerProjection")
+        .mockResolvedValue({ ok: false, errorCode: "payload_too_large" });
+      const storage = createLocalAppStorageMock();
+      const syncSecretStore = createSyncSecretStoreMock();
+
+      await syncManagedPartnerSharedProjections(
+        storage,
+        syncSecretStore,
+        {} as PartnerShareSecretStore,
+        FIXED_NOW,
+      );
+      expect(isManagedPartnerProjectionPushBackedOff()).toBe(true);
+      // Every grant of this pass is still attempted (levels differ in size).
+      expect(uploadSpy).toHaveBeenCalledTimes(2);
+
+      await expect(
+        syncManagedPartnerSharedProjections(
+          storage,
+          syncSecretStore,
+          {} as PartnerShareSecretStore,
+          FIXED_NOW,
+        ),
+      ).resolves.toEqual({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] });
+      expect(uploadSpy).toHaveBeenCalledTimes(2);
     });
 
     it("skips a legacy grant before reserving a generation and reports it for a re-share", async () => {

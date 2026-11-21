@@ -745,6 +745,42 @@ describe("PartnerSharedScreen state orchestration", () => {
     ).toBeNull();
   });
 
+  it("renders the owner-computed summary metrics for a summary payload that carries no day logs", async () => {
+    const base = createProjectionPayload();
+    const { lastPeriodStart: _omitted, ...profileWithoutDates } = base.profile;
+    setupMocksWithPayload({
+      ...base,
+      accessLevel: "summary",
+      dayLogs: [],
+      symptomRecords: [],
+      profile: profileWithoutDates,
+      summarySnapshot: {
+        asOfDate: "2026-04-05",
+        cycleStatus: {
+          currentCycleDay: 5,
+          nextPeriodDate: "2026-04-26",
+          nextPeriodWindowEndDate: "2026-04-26",
+          nextPeriodWindowStartDate: "2026-04-26",
+          predictionHint: "none",
+          state: "regular",
+        },
+        metrics: {
+          averageCycleLength: 27,
+          averagePeriodLength: 5,
+          lastCycleLength: 26,
+          totalLoggedDays: 12,
+        },
+      },
+    });
+
+    await renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-summary-card");
+    expect(screen.getByLabelText("Cycle day. 5.")).toBeTruthy();
+    expect(screen.getByLabelText("Last cycle. 26 d.", { exact: false })).toBeTruthy();
+    expect(screen.getByLabelText("Logged days. 12.", { exact: false })).toBeTruthy();
+  });
+
   it("shows placeholder dashes for cycle day and next period window when there is no cycle anchor yet", async () => {
     const base = createProjectionPayload();
     const payload: PartnerSharedProjectionPayload = {
