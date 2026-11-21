@@ -146,6 +146,80 @@ describe("connectBackupSyncAccount managed plan refresh", () => {
       offers: [],
     });
   });
+
+  it("never takes the post-connect plan status from the offline-grace cache when the billing fetch fails", async () => {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        mode: "managed",
+        endpointInput: "",
+        normalizedEndpoint: "https://sync.ovumcy.cloud",
+        deviceLabel: "Pixel 7",
+        setupStatus: "local_ready",
+        preparedAt: "2026-03-19T08:15:00.000Z",
+        lastRemoteGeneration: null,
+        lastSyncedAt: null,
+      }),
+      readManagedBillingCacheRecord: jest.fn().mockResolvedValue({
+        snapshot: {
+          hasActivePlan: true,
+          premiumFeatures: {
+            advancedFertility: true,
+            advancedInsights: true,
+            doctorPDF: true,
+            extendedReports: true,
+            partnerAccess: true,
+            reminders: true,
+          },
+          fetchedAt: new Date().toISOString(),
+        },
+        dismissedOfferIDs: [],
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock(PREPARED_MANAGED_SECRETS);
+    const initialState = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 2, 19),
+    );
+
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            account_id: "acct-1",
+            email: "owner@example.com",
+            session_token: "managed-session-1",
+            session_expires_at: "2099-06-19T08:15:00.000Z",
+            sync_entitlement: {
+              sync_allowed: true,
+              source: "billing_subscription",
+              updated_at: "2026-03-19T08:15:00.000Z",
+              effective_at: "2026-03-19T08:15:00.000Z",
+              explanation: "Trial active.",
+            },
+            recovery_code: "recovery-code-1",
+          }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        ),
+      )
+      .mockRejectedValueOnce(new Error("network down")) as typeof fetch;
+
+    const result = await connectBackupSyncAccount(
+      storage,
+      secretStore,
+      initialState,
+      { login: "owner@example.com", password: "very-secure-pass" },
+      "register",
+      new Date(2026, 2, 19),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok || !("state" in result)) {
+      throw new Error("expected a connected state result");
+    }
+    expect(result.state.managedPremiumAccess.planStatus).toBe("unknown");
+  });
 });
 
 describe("acceptBackupSyncPartnerInviteAsGuest", () => {

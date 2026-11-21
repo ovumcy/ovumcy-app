@@ -62,10 +62,15 @@ async function resolveManagedPremiumAccessAfterConnect(
   preferences: SyncPreferencesRecord,
   fallback: SettingsManagedPremiumAccess,
 ): Promise<SettingsManagedPremiumAccess> {
+  // The plan status decides whether sync upload/restore are offered — a
+  // server-checked path — so it is read live-only, never from the cache.
   const billingSnapshot = await loadManagedBillingSnapshot(
     storage,
     secretStore,
     preferences.mode,
+    undefined,
+    new Date(),
+    { liveOnly: true },
   );
   if (!billingSnapshot) {
     return fallback;

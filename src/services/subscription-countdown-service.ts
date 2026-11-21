@@ -15,12 +15,46 @@ export type SubscriptionCountdown = {
   // down to (kind === "none", or the timestamps could not be parsed).
   daysRemaining: number | null;
   periodEndsAtISO: string | null;
-  // willRenew is false when the subscription is set to cancel at period end or
-  // has already ended; true while it is expected to roll over into a new period.
+  // willRenew is true only for a trialing or active subscription not set to
+  // cancel at period end; any other status has no confirmed renewal.
   willRenew: boolean;
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Managed subscription statuses (billing contract): "trialing" | "active" |
+// "grace_period" | "past_due" | "canceled" | "expired". Only "trialing" and
+// "active" can roll over on their own; "grace_period" still unlocks premium
+// but its renewal is unconfirmed, so it counts down like a plan set to end.
+// "past_due", "canceled", "expired" and any unknown status unlock nothing.
+type LiveCountdownKind = "trialing" | "active" | "canceling" | "ended";
+
+function resolveLiveCountdownKind(
+  subscription: ManagedCloudActiveSubscription,
+): LiveCountdownKind {
+  switch (subscription.status) {
+    // Check trialing before cancelAtPeriodEnd so a trial that will not renew
+    // is reported as "trialing" (with its countdown) rather than "canceling".
+    // "canceling" is reserved for paid plans set not to auto-renew.
+    case "trialing":
+      return "trialing";
+    case "active":
+      return subscription.cancelAtPeriodEnd ? "canceling" : "active";
+    case "grace_period":
+      return "canceling";
+    default:
+      return "ended";
+  }
+}
+
+function willSubscriptionRenew(
+  subscription: ManagedCloudActiveSubscription,
+): boolean {
+  return (
+    (subscription.status === "trialing" || subscription.status === "active") &&
+    !subscription.cancelAtPeriodEnd
+  );
+}
 
 // describeSubscriptionCountdown reduces a billing subscription row plus the
 // current time into a small, locale-agnostic shape the UI can render. The
@@ -44,21 +78,12 @@ export function describeSubscriptionCountdown(
 
   if (Number.isNaN(endMs) || Number.isNaN(nowMs)) {
     // Unparseable timestamps: surface the plan status without a countdown
-    // rather than inventing a day count. Ordering mirrors the live-countdown
-    // branch below: trialing takes priority over cancelAtPeriodEnd so a
-    // trial that will not renew is still reported as "trialing", not
-    // "canceling" (reserved for paid plans set not to auto-renew).
-    const kind =
-      subscription.status === "trialing"
-        ? "trialing"
-        : subscription.cancelAtPeriodEnd
-          ? "canceling"
-          : "active";
+    // rather than inventing a day count.
     return {
-      kind,
+      kind: resolveLiveCountdownKind(subscription),
       daysRemaining: null,
       periodEndsAtISO: subscription.currentPeriodEndsAt || null,
-      willRenew: !subscription.cancelAtPeriodEnd,
+      willRenew: willSubscriptionRenew(subscription),
     };
   }
 
@@ -74,18 +99,13 @@ export function describeSubscriptionCountdown(
     };
   }
 
-  const daysRemaining = Math.ceil(remainingMs / MS_PER_DAY);
-
-  // Check trialing before cancelAtPeriodEnd so a trial that will not renew
-  // is reported as "trialing" (with its countdown) rather than "canceling".
-  // "canceling" is reserved for paid plans set not to auto-renew.
-  if (subscription.status === "trialing") {
-    return { kind: "trialing", daysRemaining, periodEndsAtISO, willRenew: !subscription.cancelAtPeriodEnd };
-  }
-  if (subscription.cancelAtPeriodEnd) {
-    return { kind: "canceling", daysRemaining, periodEndsAtISO, willRenew: false };
-  }
-  return { kind: "active", daysRemaining, periodEndsAtISO, willRenew: true };
+  const kind = resolveLiveCountdownKind(subscription);
+  return {
+    kind,
+    daysRemaining: kind === "ended" ? 0 : Math.ceil(remainingMs / MS_PER_DAY),
+    periodEndsAtISO,
+    willRenew: willSubscriptionRenew(subscription),
+  };
 }
 
 // SubscriptionCountdownCopy is the locale-specific surface the UI passes in so

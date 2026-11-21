@@ -67,8 +67,10 @@ async function applyEntitlementTokenOverlay(
     ...(gate.expectedSub !== undefined ? { expectedSub: gate.expectedSub } : {}),
   });
 
-  // No valid token -> leave the snapshot booleans exactly as they were.
-  if (verified.size === 0) {
+  // No valid token -> leave the snapshot booleans exactly as they were. A
+  // verified token with an empty list is still the issuer's answer and
+  // re-locks both features.
+  if (verified.status !== "verified") {
     return features;
   }
 
@@ -76,7 +78,7 @@ async function applyEntitlementTokenOverlay(
   for (const [entitlement, feature] of Object.entries(
     TOKEN_GATED_FEATURE_BY_ENTITLEMENT,
   )) {
-    overlaid[feature] = verified.has(entitlement);
+    overlaid[feature] = verified.entitlements.has(entitlement);
   }
   return overlaid;
 }
@@ -103,14 +105,32 @@ export const MANAGED_BILLING_CACHE_TTL_MS = 72 * 60 * 60 * 1000;
 export function isManagedBillingCacheFresh(
   fetchedAt: string,
   now: Date,
+  lastServedAt?: string,
 ): boolean {
-  const fetchedAtMs = Date.parse(fetchedAt);
-  if (Number.isNaN(fetchedAtMs)) {
+  if (isManagedBillingClockWoundBack(fetchedAt, now, lastServedAt)) {
     return false;
   }
+  return now.getTime() - Date.parse(fetchedAt) <= MANAGED_BILLING_CACHE_TTL_MS;
+}
 
-  const ageMs = now.getTime() - fetchedAtMs;
-  return ageMs >= 0 && ageMs <= MANAGED_BILLING_CACHE_TTL_MS;
+// The 72h window is measured on the device clock, so the clock must never
+// run backwards across reads: behind the fetch instant, or behind the last
+// instant the cache was already served, means it was wound back.
+function isManagedBillingClockWoundBack(
+  fetchedAt: string,
+  now: Date,
+  lastServedAt: string | undefined,
+): boolean {
+  const nowMs = now.getTime();
+  const fetchedAtMs = Date.parse(fetchedAt);
+  if (Number.isNaN(fetchedAtMs) || nowMs < fetchedAtMs) {
+    return true;
+  }
+  if (lastServedAt === undefined) {
+    return false;
+  }
+  const lastServedMs = Date.parse(lastServedAt);
+  return Number.isNaN(lastServedMs) || nowMs < lastServedMs;
 }
 
 /**
@@ -143,19 +163,46 @@ export async function persistManagedBillingSnapshotCache(
 }
 
 
+async function discardCachedBillingSnapshot(storage: LocalAppStorage): Promise<void> {
+  try {
+    const record = await storage.readManagedBillingCacheRecord();
+    if (record.snapshot) {
+      await storage.writeManagedBillingCacheRecord({ ...record, snapshot: null });
+    }
+  } catch {
+    // Best-effort: an unreadable cache serves nothing anyway.
+  }
+}
+
 async function readFreshCachedBillingSnapshot(
   storage: LocalAppStorage,
   now: Date,
 ): Promise<ManagedCloudBillingSnapshot | null> {
   try {
     const record = await storage.readManagedBillingCacheRecord();
-    if (!record.snapshot || !isManagedBillingCacheFresh(record.snapshot.fetchedAt, now)) {
+    const snapshot = record.snapshot;
+    if (!snapshot) {
       return null;
+    }
+    if (isManagedBillingClockWoundBack(snapshot.fetchedAt, now, snapshot.lastServedAt)) {
+      await storage.writeManagedBillingCacheRecord({ ...record, snapshot: null });
+      return null;
+    }
+    if (!isManagedBillingCacheFresh(snapshot.fetchedAt, now, snapshot.lastServedAt)) {
+      return null;
+    }
+    try {
+      await storage.writeManagedBillingCacheRecord({
+        ...record,
+        snapshot: { ...snapshot, lastServedAt: now.toISOString() },
+      });
+    } catch {
+      // The high-water mark is best-effort; the window bound still holds.
     }
 
     return {
-      hasActivePlan: record.snapshot.hasActivePlan,
-      premiumFeatures: { ...record.snapshot.premiumFeatures },
+      hasActivePlan: snapshot.hasActivePlan,
+      premiumFeatures: { ...snapshot.premiumFeatures },
       // Server-driven display state is never cached: the countdown and the
       // offers both degrade to their empty defaults while the device is on
       // cached billing truth.
@@ -173,6 +220,27 @@ export type ManagedBillingLoadOptions = {
   liveOnly?: boolean;
 };
 
+export type ManagedBillingSnapshotResult = {
+  billing: ManagedCloudBillingSnapshot;
+  // "cache" marks the offline-grace copy: premium booleans only, never plan
+  // truth for a server-checked decision.
+  source: "live" | "cache";
+};
+
+// A sign-out or account switch while a managed fetch is in flight replaces or
+// clears the session token; the answer then belongs to a session that is gone.
+async function isManagedSessionStillCurrent(
+  secretStore: SyncSecretStore,
+  sessionToken: string,
+): Promise<boolean> {
+  try {
+    const secrets = await secretStore.readSyncSecrets();
+    return secrets?.managedAuthSessionToken === sessionToken;
+  } catch {
+    return false;
+  }
+}
+
 export async function loadManagedBillingSnapshot(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
@@ -182,6 +250,25 @@ export async function loadManagedBillingSnapshot(
   now: Date = new Date(),
   options: ManagedBillingLoadOptions = {},
 ): Promise<ManagedCloudBillingSnapshot | null> {
+  const result = await loadManagedBillingSnapshotWithSource(
+    storage,
+    secretStore,
+    syncMode,
+    tokenGate,
+    now,
+    options,
+  );
+  return result?.billing ?? null;
+}
+
+export async function loadManagedBillingSnapshotWithSource(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  syncMode: SyncMode,
+  tokenGate?: EntitlementTokenGate,
+  now: Date = new Date(),
+  options: ManagedBillingLoadOptions = {},
+): Promise<ManagedBillingSnapshotResult | null> {
   if (syncMode !== "managed") {
     return null;
   }
@@ -211,18 +298,23 @@ export async function loadManagedBillingSnapshot(
   ).getBillingSnapshot(session.sessionToken);
 
   let billing: ManagedCloudBillingSnapshot;
+  let source: ManagedBillingSnapshotResult["source"];
   if (billingResult.ok) {
     billing = billingResult.billing;
-    await persistManagedBillingSnapshotCache(storage, billing, now);
+    source = "live";
   } else {
     // The offline-grace cache answers only "the server could not be asked"
     // (no response / temporary unavailability), and only for premium display
-    // surfaces. An explicit refusal, or a caller that reaches a server-checked
-    // operation (`liveOnly`), gets no cached premium.
-    if (
-      options.liveOnly === true ||
-      !isManagedCloudTransportFailure(billingResult.errorCode)
-    ) {
+    // surfaces. An explicit refusal is an answer: it discards the cached
+    // snapshot so a later network blip cannot revive premium the server has
+    // just refused. A server-checked caller (`liveOnly`) gets no cached premium.
+    if (!isManagedCloudTransportFailure(billingResult.errorCode)) {
+      if (await isManagedSessionStillCurrent(secretStore, session.sessionToken)) {
+        await discardCachedBillingSnapshot(storage);
+      }
+      return null;
+    }
+    if (options.liveOnly === true) {
       return null;
     }
     const cached = await readFreshCachedBillingSnapshot(storage, now);
@@ -230,6 +322,7 @@ export async function loadManagedBillingSnapshot(
       return null;
     }
     billing = cached;
+    source = "cache";
   }
 
   // Overlay verified-token entitlements onto the two purely-local features.
@@ -240,10 +333,20 @@ export async function loadManagedBillingSnapshot(
     tokenGate,
     session.sessionToken,
   );
-  if (premiumFeatures === billing.premiumFeatures) {
-    return billing;
+
+  if (!(await isManagedSessionStillCurrent(secretStore, session.sessionToken))) {
+    return null;
   }
-  return { ...billing, premiumFeatures };
+  if (source === "live") {
+    await persistManagedBillingSnapshotCache(storage, billing, now);
+  }
+  return {
+    billing:
+      premiumFeatures === billing.premiumFeatures
+        ? billing
+        : { ...billing, premiumFeatures },
+    source,
+  };
 }
 
 export async function loadManagedPremiumFeatures(

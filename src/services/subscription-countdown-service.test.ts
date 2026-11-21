@@ -149,6 +149,44 @@ describe("describeSubscriptionCountdown", () => {
     expect(result.daysRemaining).toBeNull();
     expect(result.willRenew).toBe(false);
   });
+
+  it("counts a grace-period plan down as ending, without a renewal claim", () => {
+    const result = describeSubscriptionCountdown(
+      sub({ status: "grace_period", source: "google_play" }),
+      "2026-06-28T00:00:00.000Z",
+    );
+    expect(result).toEqual({
+      kind: "canceling",
+      daysRemaining: 2,
+      periodEndsAtISO: "2026-06-30T00:00:00.000Z",
+      willRenew: false,
+    });
+  });
+
+  it.each(["past_due", "canceled", "expired", "some_future_status"])(
+    "reports a %s subscription as ended with no renewal, even inside its period",
+    (status) => {
+      const result = describeSubscriptionCountdown(
+        sub({ status, source: "manual_admin" }),
+        "2026-06-10T00:00:00.000Z",
+      );
+      expect(result).toEqual({
+        kind: "ended",
+        daysRemaining: 0,
+        periodEndsAtISO: "2026-06-30T00:00:00.000Z",
+        willRenew: false,
+      });
+    },
+  );
+
+  it("reports a canceled subscription as ended when its timestamps are unparseable", () => {
+    const result = describeSubscriptionCountdown(
+      sub({ status: "canceled", currentPeriodEndsAt: "not-a-date" }),
+      "2026-06-10T00:00:00.000Z",
+    );
+    expect(result.kind).toBe("ended");
+    expect(result.willRenew).toBe(false);
+  });
 });
 
 describe("formatSubscriptionCountdownMessage", () => {

@@ -92,10 +92,27 @@ function decidePubkeyMap(rawValue) {
     };
   }
 
-  // An explicit empty map ({}) passes: it contains no placeholder key and the
-  // verifier then trusts nothing, which is strictly safer than the placeholder
-  // (see the rollout note in src/security/entitlement-token.ts). The kid count
-  // in the OK line keeps that state visible to the operator.
+  // An empty map verifies no token at all, so the signed-entitlement gate
+  // would silently stay on the snapshot fallback in production.
+  if (kids.length === 0) {
+    return {
+      ok: false,
+      message: `${ENV_VAR} is set to an empty key map; production artifacts must carry at least one production entitlement key.`,
+    };
+  }
+
+  // Stricter than the app's resolver on purpose: a value that is not a
+  // 32-byte Ed25519 public key in hex verifies nothing on device.
+  const malformedKids = Object.entries(parsed).filter(
+    ([kid, value]) => kid.length === 0 || !/^[0-9a-fA-F]{64}$/.test(value),
+  );
+  if (malformedKids.length > 0) {
+    return {
+      ok: false,
+      message: `${ENV_VAR} has ${malformedKids.length} entry(ies) that are not a non-empty kid -> 64-hex-character Ed25519 public key.`,
+    };
+  }
+
   return {
     ok: true,
     message: `OK: ${ENV_VAR} provides ${kids.length} production entitlement key(s); placeholder kid ${PLACEHOLDER_KID} absent.`,
@@ -153,7 +170,9 @@ function runSelfTest() {
     { name: "[--production] map includes placeholder kid -> FAIL", args: ["--production"], env: { [ENV_VAR]: mapWithPlaceholder }, exit: 1, text: "includes the placeholder kid" },
     { name: "[--production] malformed JSON -> FAIL", args: ["--production"], env: { [ENV_VAR]: "{not json" }, exit: 1, text: "not valid JSON" },
     { name: "[--production] JSON but wrong shape -> FAIL", args: ["--production"], env: { [ENV_VAR]: '{"kid":1}' }, exit: 1, text: "not a JSON object of" },
-    { name: "[--production] empty JSON object -> OK (0 keys, verifier trusts nothing)", args: ["--production"], env: { [ENV_VAR]: "{}" }, exit: 0, text: "0 production entitlement key" },
+    { name: "[--production] empty JSON object -> FAIL (verifies no token)", args: ["--production"], env: { [ENV_VAR]: "{}" }, exit: 1, text: "empty key map" },
+    { name: "[--production] value not 64 hex chars -> FAIL", args: ["--production"], env: { [ENV_VAR]: JSON.stringify({ [fakeKid]: "abc" }) }, exit: 1, text: "64-hex-character" },
+    { name: "[--production] empty kid -> FAIL", args: ["--production"], env: { [ENV_VAR]: JSON.stringify({ "": fakeHex }) }, exit: 1, text: "64-hex-character" },
     // --eas-hook: gated on EAS_BUILD_PROFILE === "production".
     { name: "[--eas-hook production] env unset -> FAIL", args: ["--eas-hook"], env: { EAS_BUILD_PROFILE: "production" }, exit: 1, text: "is not set" },
     { name: "[--eas-hook production] valid production map -> OK", args: ["--eas-hook"], env: { EAS_BUILD_PROFILE: "production", [ENV_VAR]: validMap }, exit: 0, text: "OK:" },

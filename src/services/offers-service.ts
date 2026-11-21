@@ -66,7 +66,8 @@ export function isBillingOfferWithinWindow(
 
   if (offer.endsAt !== null) {
     const endsMs = Date.parse(offer.endsAt);
-    if (Number.isNaN(endsMs) || nowMs > endsMs) {
+    // The end instant is exclusive, matching the managed server's window.
+    if (Number.isNaN(endsMs) || nowMs >= endsMs) {
       return false;
     }
   }

@@ -28,6 +28,9 @@ export type ManagedBillingCachedSnapshot = {
     reminders: boolean;
   };
   fetchedAt: string;
+  // Latest device-clock instant at which the cache was served; a clock found
+  // behind it means the clock was wound back, and the cache is void.
+  lastServedAt?: string;
 };
 
 export type ManagedBillingCacheRecord = {
@@ -88,6 +91,9 @@ function normalizeManagedBillingCachedSnapshot(
       reminders: features.reminders === true,
     },
     fetchedAt: snapshot.fetchedAt,
+    ...(typeof snapshot.lastServedAt === "string" && snapshot.lastServedAt.length > 0
+      ? { lastServedAt: snapshot.lastServedAt }
+      : {}),
   };
 }
 

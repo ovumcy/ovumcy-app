@@ -227,11 +227,34 @@ async function run() {
   }
 
   // --- 5. account deletion -------------------------------------------------
-  expectStatus(await call(MANAGED_BASE, "/account", { method: "DELETE", token: guestToken }), 200, "delete upgraded account");
+  // Both accounts hold a password now (the guest was upgraded), so deletion is
+  // a step-up action: without current_password the server must refuse it.
+  const deleteWithoutPassword = await call(MANAGED_BASE, "/account", { method: "DELETE", token: guestToken });
+  assert(
+    deleteWithoutPassword.status >= 400 && deleteWithoutPassword.status < 500,
+    `DELETE /account without current_password was not refused (got ${deleteWithoutPassword.status})`,
+  );
+  expectStatus(
+    await call(MANAGED_BASE, "/account", {
+      method: "DELETE",
+      token: guestToken,
+      body: { current_password: STRONG_PASSWORD },
+    }),
+    200,
+    "delete upgraded account",
+  );
   const afterDelete = await call(MANAGED_BASE, "/auth/session", { token: guestToken });
   assert(afterDelete.status === 401, `session still resolves after deletion (got ${afterDelete.status})`);
   // Clean up the owner account too.
-  expectStatus(await call(MANAGED_BASE, "/account", { method: "DELETE", token: ownerToken }), 200, "delete owner account");
+  expectStatus(
+    await call(MANAGED_BASE, "/account", {
+      method: "DELETE",
+      token: ownerToken,
+      body: { current_password: STRONG_PASSWORD },
+    }),
+    200,
+    "delete owner account",
+  );
   console.log(`${LOG} 5/5 account deleted; session no longer resolves`);
 
   console.log("");

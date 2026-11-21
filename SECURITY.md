@@ -285,8 +285,10 @@ follows from that:
   (`scripts/verify-entitlement-pubkeys.mjs`, run as the
   `eas-build-pre-install` hook on the production EAS profile and at the start
   of `npm run deploy`) fails any production build or web deploy whose
-  `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` would leave the placeholder active, so a
-  production artifact cannot ship it silently. The
+  `EXPO_PUBLIC_ENTITLEMENT_PUBKEYS` would leave the placeholder active, is an empty
+  map, or holds a value that is not a 64-hex-character Ed25519 public key, so a
+  production artifact cannot ship the placeholder or a gate that verifies nothing
+  silently. The
   authoritative gate for any *server-side* premium capability (e.g. managed sync)
   remains enforced on the backend, not by this token.
 - **Managed billing snapshot cache is a bounded 72h offline-grace exception, not a
@@ -300,20 +302,23 @@ follows from that:
   token is still present on-device **and** the failure was at the transport level (no
   response, a 5xx without a recognized error body, or the server's own
   temporary-unavailability answer); an explicit server refusal (unauthorized or any
-  other 4xx-derived error) yields no cached premium. A signed-out or never-connected device gets no
+  other 4xx-derived error) yields no cached premium and discards the cached snapshot,
+  so a later blip cannot revive it. A billing answer whose managed session token
+  changed while the fetch was in flight (sign-out, account switch) is neither cached
+  nor returned. A signed-out or never-connected device gets no
   grace. Past 72 hours, or with nothing ever cached, the gate fails closed exactly as
   it did before this cache existed. Server-checked operations (sync upload/restore and
-  the Settings plan status that gates them, partner projections, the partner-access
-  pre-check on the backup-sync screen) never
-  read this cache — they load the billing snapshot live-only (`liveOnly`), and the
+  the plan status that gates them on Settings and after a managed connect, partner
+  projections, the partner-access pre-check on the backup-sync screen) never
+  read this cache — they load the billing snapshot live-only (`liveOnly`), or take
+  plan status only from a live answer, and the
   server remains their sole authority. The cached entitlement token follows the same
-  transport-only rule: a refused mint serves no cached token. The trade-off is
-  deliberate: a network blip or managed outage should not instantly re-lock the
-  premium gates of the surfaces that read billing on their own (Dashboard, Calendar,
-  Stats) on a paying device, at the cost of a revoked plan keeping its local unlocks
-  for up to 72 hours while the device cannot reach billing truth. Settings loads
-  billing live-only, so a network blip there leaves its doctor PDF locked rather
-  than cache-served.
+  transport-only rule: a refused mint serves no cached token and discards it. The
+  trade-off is deliberate: a network blip or managed outage should not instantly
+  re-lock the premium gates of a paying device, at the cost of a revoked plan keeping
+  its local unlocks for up to 72 hours while the device cannot reach billing truth.
+  Settings follows the same grace for its doctor PDF, while its plan status stays
+  "could not confirm" until a live answer arrives.
 - **Compile-time sync/managed base-URL overrides are dev-only and release-guarded.**
   `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` / `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL` let a
   local build point at a self-hosted dev stack. A release guard
@@ -392,13 +397,14 @@ follows from that:
   `0 <= ageMs <= 72h`; the real call site (`loadManagedBillingSnapshot`) defaults
   `now` to `new Date()`, the device clock at the moment a live fetch fails. A
   fast-forward clock only shortens the effective grace (fails closed sooner than 72
-  real-world hours). A clock set earlier than the recorded fetch instant is rejected
-  outright (`ageMs >= 0` fails closed immediately), but a smaller backward adjustment
-  that still lands inside the fetch-to-72h window can make an already-expired cache
-  read as fresh again — the ceiling is measured in device-clock time, not verified
-  elapsed time. This stays within the bounds the cache itself already accepts above:
-  only the two purely-local gates, only under a still-present managed session token,
-  never a server-checked operation.
+  real-world hours). Each time the cache is served it records that instant
+  (`lastServedAt`) as a high-water mark, and a clock found earlier than either the
+  fetch instant or the high-water mark discards the cache, so winding the clock back
+  after the cache has been read cannot reopen the window. What remains is a clock
+  wound back before the next read and kept there: the ceiling is still measured in
+  device-clock time, not verified elapsed time. This stays within the bounds the
+  cache itself already accepts above: only local premium gates, only under a
+  still-present managed session token, never a server-checked operation.
 - **Local reminder scheduling assumes an approximately correct clock.**
   `buildLocalReminderPlans` (`src/services/local-reminder-plan-service.ts`) resolves
   "today" and the one-time `upcoming_period`/`fertile_window` trigger instants from a
@@ -626,6 +632,7 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | With no token gate the premium snapshot is returned verbatim and the token endpoint is never called (rollout fallback preserves today's behaviour) | `returns the snapshot premiumFeatures verbatim when no gate is supplied`, `does not call the entitlements/token endpoint at all when no gate is supplied` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | When the issuance endpoint 503s (signing key absent) with nothing cached, the gate falls back to the snapshot booleans (no regression) | `falls back to snapshot booleans when the endpoint is 503 and nothing is cached (no regression)` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A verified token overlays the two local features (and only those); an expired cached token re-locks and falls back to the snapshot | `overlays a verified token: the two local features become true, server-gated stay from the snapshot`, `re-locks when the cached token is expired and falls back to the snapshot booleans` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A verified token with an empty entitlement list is the issuer's answer: it re-locks both local features instead of falling back to the snapshot | `reports a verified token with an empty entitlement list as verified, not unavailable` in [src/services/entitlement-token-service.test.ts](src/services/entitlement-token-service.test.ts); `re-locks both local features on a verified token whose entitlement list is empty` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 
 ### Managed billing snapshot offline-grace cache
 
@@ -636,12 +643,14 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | Once the cache exceeds 72h, a failed fetch fails closed exactly as it did before the cache existed | `fails closed exactly as before once the cache is older than 72h` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A failed fetch with nothing ever cached fails closed | `fails closed when the fetch fails and no snapshot was ever cached` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | The cache is never served without a still-present managed session token | `never serves the cache without a managed session token` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
-| A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` on the surfaces that read billing directly (Dashboard, Calendar, Stats); Settings' doctor PDF is not among them because Settings loads billing live-only | `loads billing live-only, never from the offline-grace cache` in [src/services/settings-state-service.live-billing.test.ts](src/services/settings-state-service.live-billing.test.ts);  `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` on the surfaces that read billing directly (Dashboard, Calendar, Stats); Settings' doctor PDF follows the same grace while its plan status stays unknown, and only a live answer sets plan status | `keeps the plan status unknown on a cache-served snapshot while the doctor PDF follows the offline grace`, `takes plan status and doctor PDF from a live billing snapshot` in [src/services/settings-state-service.live-billing.test.ts](src/services/settings-state-service.live-billing.test.ts);  `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | The server's temporary-unavailability answer, and a 5xx without a recognized error body, also serve the fresh cache | `serves the fresh cache when the server reports temporary unavailability`, `serves the fresh cache when the billing server could not answer: %s` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
-| An explicit server refusal (401, 403, 404, 429, unparseable 4xx body) yields no cached premium | `yields no cached premium when the billing fetch is answered with %s`, `unlocks nothing through loadManagedPremiumFeatures when the server answered 401 over a fresh cache` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| An explicit server refusal (401, 403, 404, 429, unparseable 4xx body) yields no cached premium and discards the cached snapshot | `yields no cached premium and discards the cached snapshot when the billing fetch is answered with %s`, `unlocks nothing through loadManagedPremiumFeatures when the server answered 401 over a fresh cache` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A billing answer whose managed session changed while the fetch was in flight is neither cached nor returned | `neither caches nor returns a billing answer whose session changed while the fetch was in flight` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| Serving the cache records a clock high-water mark; a clock behind it discards the cache | `records the serve instant as the clock high-water mark when it serves the cache`, `voids the cache when the device clock is behind the last instant it was served` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A live-only (server-checked) load never reads the cache, even on a network failure | `never reads the cache for a liveOnly (server-checked) load, even on a network failure` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | Partner projection sync and the backup-sync partner-access pre-check load billing live-only | `reads the live billing snapshot only and stops when partner access is not live-confirmed` in [src/services/managed-partner-share-sync-service.test.ts](src/services/managed-partner-share-sync-service.test.ts); `reads the live billing snapshot only, never the offline-grace cache` in [src/ui/screens/backup-sync/useBackupSyncSessionCore.partner-precheck.test.ts](src/ui/screens/backup-sync/useBackupSyncSessionCore.partner-precheck.test.ts) |
-| A refused entitlement-token mint serves no cached token; temporary unavailability still does | `serves no cached token when the mint is refused with %s`, `honors a cached token when the server reports temporary unavailability` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A refused entitlement-token mint serves no cached token and discards it; temporary unavailability still serves it | `serves no cached token and discards it when the mint is refused with %s`, `honors a cached token when the server reports temporary unavailability` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 
 ### Pregnancy, postpartum, and screening data
 
