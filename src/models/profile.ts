@@ -147,9 +147,6 @@ export type ProfileRecord = {
   // rule (stored-cycle-start-repoint-service). Rides the encrypted profile
   // payload; no schema change.
   storedCycleStartRepointVersion?: number;
-  // lastPeriodStart as it was before the one-time launch repoint changed it,
-  // kept so the change can be undone. Same sensitivity as lastPeriodStart.
-  lastPeriodStartBeforeRepoint?: LocalDateISO | null;
 };
 
 export type CycleSettingsValues = Pick<

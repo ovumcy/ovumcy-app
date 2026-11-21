@@ -1,6 +1,6 @@
 import { createDefaultProfileRecord, type ProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
-import { runAppLaunchTasks } from "./app-launch-tasks";
+import { STORED_CYCLE_START_REPOINT_TIMEOUT_MS, runAppLaunchTasks } from "./app-launch-tasks";
 import { cleanupStaleExportArtifacts } from "./export-artifact-cleanup";
 
 jest.mock("./export-artifact-cleanup", () => ({
@@ -68,6 +68,36 @@ describe("runAppLaunchTasks", () => {
     ).resolves.toBeUndefined();
 
     expect(onSettled).toHaveBeenCalledTimes(1);
+  });
+
+  it("settles the profile gate, sweeps and rebuilds when the repoint hangs past the timeout", async () => {
+    jest.useFakeTimers();
+    try {
+      let profileReads = 0;
+      const storage = createLocalAppStorageMock({
+        readProfileRecord: jest.fn(() => {
+          profileReads += 1;
+          return profileReads === 1
+            ? new Promise<ProfileRecord>(() => undefined)
+            : Promise.resolve({ ...createDefaultProfileRecord(), dailyLogReminderEnabled: false });
+        }),
+      });
+      const scheduler = createScheduler();
+      const onSettled = jest.fn();
+
+      const launch = runAppLaunchTasks(storage, scheduler, onSettled);
+      await jest.advanceTimersByTimeAsync(STORED_CYCLE_START_REPOINT_TIMEOUT_MS - 1);
+      expect(onSettled).not.toHaveBeenCalled();
+
+      await jest.advanceTimersByTimeAsync(1);
+      await launch;
+
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      expect(mockCleanup).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("still rebuilds the schedule when the artifact sweep fails", async () => {
