@@ -6,7 +6,12 @@
       "@react-native-community/datetimepicker",
       "expo-notifications",
       "expo-sqlite",
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
       [
         "expo-build-properties",
         {
@@ -14,6 +19,7 @@
         }
       ],
       "./plugins/withAndroidNetworkSecurityConfig",
+      "./plugins/withAndroidExcludeDataFromBackup",
       "./plugins/withIosExcludeDataFromICloudBackup",
       "expo-font",
       [

@@ -135,19 +135,32 @@ follows from that:
   config (`android/app/src/main/res/xml/network_security_config.xml`) is generated
   at prebuild by the committed `plugins/withAndroidNetworkSecurityConfig.js` —
   `android/` itself is gitignored, so the plugin is the real committed source of
-  truth — and sets `cleartextTrafficPermitted="false"` app-wide and permits
-  cleartext only for the emulator-host/loopback dev addresses (`10.0.2.2`,
-  `127.0.0.1`, `localhost`) that serve Metro and local sync stacks in debug builds.
-  Production traffic is HTTPS-only at the OS layer. On top of that,
-  `src/sync/sync-endpoint-policy.ts` rejects `http://` to any non-private host
+  truth — and sets `cleartextTrafficPermitted="false"` app-wide. The
+  emulator-host/loopback dev addresses (`10.0.2.2`, `127.0.0.1`, `localhost`) are
+  exempted only in the debug variant's config (`src/debug`, which Metro needs) and
+  in the main config of an EAS build for the `local` profile (whose sync endpoints
+  are `http://10.0.2.2`); every other release build ships the config with no
+  cleartext exception, so production traffic is HTTPS-only at the OS layer. On
+  top of that, `src/sync/sync-endpoint-policy.ts` rejects `http://` to any non-private host
   (parsing the host as a literal IPv4 and bucketing by octet, never
   prefix-matching the hostname) as defense in depth, so an `http://` sync/managed
   endpoint is refused before a request goes out regardless of the OS layer.
 - **No OS-level backup or remote-delivery channels (Android).** `app.json` sets
-  `android.allowBackup=false`, so Android's OS-managed Auto Backup, cloud backup,
-  and device-transfer flows never copy this app's on-device data (encrypted
-  SQLite, SecureStore-backed material) off the device. The app also ships no
-  Firebase Cloud Messaging integration and no over-the-air update channel (no
+  `android.allowBackup=false`, and the committed config plugin
+  `plugins/withAndroidExcludeDataFromBackup.js` points
+  `android:dataExtractionRules` (Android 12+) and `android:fullBackupContent`
+  (Android 11 and lower) at rules that exclude every backup domain — credential-
+  and device-protected storage and app-specific external storage — from both
+  cloud backup and device-to-device transfer. `allowBackup=false` alone stops
+  device-to-device transfer only up to Android 11; on Android 12+ only the
+  extraction rules do. So Android's OS-managed Auto Backup, cloud backup, and
+  device-transfer flows never copy this app's on-device data (encrypted SQLite,
+  AsyncStorage, SecureStore-backed material, library-persisted state such as
+  scheduled notifications) off the device. `expo-secure-store`'s own backup
+  rules (`configureAndroidBackup`) are disabled because they transfer every
+  shared-preferences file except SecureStore's. Moving to a new device carries
+  data over through JSON export/import or sync, never the OS transfer. The app
+  also ships no Firebase Cloud Messaging integration and no over-the-air update channel (no
   `expo-updates` dependency, no `updates` config in `app.json`) — there is no
   push-delivery or remote-code-update surface to secure or audit.
 - **No OS-level backup channels (iOS).** iOS has no `allowBackup` switch and no
@@ -159,12 +172,13 @@ follows from that:
   (`ovumcy-local.db` plus its `-wal`/`-shm` sidecars) and the AsyncStorage backend
   under `Application Support/<bundleId>` — out of iCloud backups and encrypted
   Finder/iTunes (local) backups, the same backup-exclusion posture Android gets
-  from `allowBackup=false`. Excluding the directories also covers files created
-  after launch; the hook is idempotent and never fatal, and `ios/` is gitignored so
-  the plugin (not a checked-in `AppDelegate`) is the committed source of truth.
-  Keychain secrets are governed separately (`expo-secure-store` with
-  `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), an accessibility class iOS already keeps
-  out of cross-device Keychain sync and restore.
+  from `allowBackup=false` plus its exclude-all extraction rules. Excluding the
+  directories also covers files created after launch; the hook is idempotent and
+  never fatal, and `ios/` is gitignored so the plugin (not a checked-in
+  `AppDelegate`) is the committed source of truth. Keychain secrets are governed
+  separately (`expo-secure-store` with `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY`), an
+  accessibility class iOS already keeps out of cross-device Keychain sync and
+  restore.
 
 ### Pregnancy, postpartum, and screening data
 
@@ -681,6 +695,13 @@ pregnancy never sets it, so neither signal ever covers the other.
 | Period and fertile-window device reminders stay suppressed under either suppression signal | `suppresses period and fertile reminders after a positive pregnancy test`, `suppresses period and fertile reminders for an active pregnancy record with no day-log pause` in [src/services/local-reminder-plan-service.test.ts](src/services/local-reminder-plan-service.test.ts); `suppresses them on the device during an active pregnancy` in [src/services/local-reminder-sync-service.test.ts](src/services/local-reminder-sync-service.test.ts) |
 | Notification payloads carry no sensitive context; the one narrow exception is a cycle-day reminder's owner-entered label, shown in the body only when that rule's own opt-in flag is on (default off), never in the title, the notification data, an identifier, a log or a deep link. A JSON import turns every rule's opt-in off. A cleared schedule (all reminders off, local wipe, account deletion) also dismisses this app's already-shown reminders. On Android the reminders channel has private lock-screen visibility, so a secure lock screen never shows the text. Cycle-day reminders are withheld under a pregnancy pause, an active pregnancy record (read for rules alone), the overdue gate, the stale band, unpredictable mode, and while the cycle start is unsettled | `uses a generic body by default and the label only when that rule opts in`, `is withheld under a positive pregnancy test (paused predictions)`, `is withheld while a pregnancy record is active`, `is withheld past the overdue gate and in the stale band`, `is withheld in unpredictable (facts-only) mode`, `holds every rule until the cycle start is settled` in [src/services/cycle-day-reminders.test.ts](src/services/cycle-day-reminders.test.ts); `reads the pregnancy state for cycle-day rules alone and suppresses them` in [src/services/local-reminder-sync-service.test.ts](src/services/local-reminder-sync-service.test.ts); `restores valid cycle-day reminders and drops invalid, duplicate and surplus rules` in [src/services/import-service.test.ts](src/services/import-service.test.ts); `dismisses its own already-shown reminders when the schedule is cleared`, `creates the reminders channel with private lock-screen visibility` in [src/services/platform-local-reminder-scheduler.native.test.ts](src/services/platform-local-reminder-scheduler.native.test.ts) |
 | Cycle-day reminder rules are validated on every untrusted path (import, sync snapshot restore, stored payload at plan time): day 1-90, hour 0-23, label at most 64 characters without control, format, separator or blank-glyph characters (the one exception: a zero-width joiner or non-joiner between two visible characters, never doubled or space-adjacent; one at either end is trimmed), and never made only of joiners, variation selectors or base-less combining marks, at most 10 rules, ids re-checked; invalid rules are dropped. The rules never reach a partner projection | `drops a rule with %s`, `keeps a label with %s`, `keeps at most ten rules and drops a repeated id`, `re-validates stored rules at plan time` in [src/services/cycle-day-reminders.test.ts](src/services/cycle-day-reminders.test.ts); `restores valid cycle-day reminders and drops invalid, duplicate and surplus rules`, `does not overwrite a device that already holds cycle-day reminders` in [src/services/import-service.test.ts](src/services/import-service.test.ts); `re-validates cycle-day reminder rules from a snapshot before storing them` in [src/sync/sync-snapshot-service.test.ts](src/sync/sync-snapshot-service.test.ts); `never leaks cycle-day reminder rules or their labels into the %s projection` in [src/services/partner-shared-projection-service.test.ts](src/services/partner-shared-projection-service.test.ts) |
+
+### Android platform config (cleartext, backup, device transfer)
+
+| Claim | Enforced by |
+| --- | --- |
+| A release build for any EAS profile but `local` ships a network security config with no cleartext exception; the debug variant and the `local` profile exempt exactly `10.0.2.2`, `127.0.0.1` and `localhost`, no subdomains, and the plugin is wired into `app.json` | `ships no cleartext exception in the main config for EAS profile %s`, `exempts only the emulator-host/loopback dev addresses in the debug variant and the local profile`, `is wired into the app config` in [src/security/android-platform-config.test.ts](src/security/android-platform-config.test.ts) |
+| Cloud backup and device-to-device transfer exclude every backup domain on Android 12+ and below; the manifest points at these rules, replacing expo-secure-store's partial ones; `allowBackup` stays off and expo-secure-store's own backup rules stay disabled | `excludes every backup domain from cloud backup and device-to-device transfer`, `points the manifest at its own rules, replacing expo-secure-store's partial ones`, `keeps allowBackup off, the exclusion plugin wired, and expo-secure-store's own backup rules disabled` in [src/security/android-platform-config.test.ts](src/security/android-platform-config.test.ts) |
 
 ### Policy / Planned (human-reviewed, not in the matrix)
 
