@@ -725,6 +725,35 @@ describe("useBackupSyncPartnerAccess", () => {
       });
       expect(result.current.partnerInviteLink).toBe("");
     });
+
+    it("keeps a just-issued link when a different pending invite is revoked", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockIssueManagedPartnerInvite.mockResolvedValue({
+        ok: true,
+        value: {
+          invite: { id: "invite-new" } as never,
+          inviteURL: "https://invite.ovumcy.cloud/i/abc123",
+        },
+      });
+      mockRevokeManagedPartnerInvite.mockResolvedValue({ ok: true, value: {} as never });
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        await result.current.handleIssuePartnerInvite();
+      });
+      expect(result.current.partnerInviteLink).toBe(SHAREABLE_INVITE_LINK);
+
+      await act(async () => {
+        await result.current.handleRevokePartnerInvite("invite-old");
+      });
+      expect(result.current.partnerInviteLink).toBe(SHAREABLE_INVITE_LINK);
+
+      await act(async () => {
+        await result.current.handleRevokePartnerInvite("invite-new");
+      });
+      expect(result.current.partnerInviteLink).toBe("");
+    });
   });
 
   describe("handleRevokePartnerGrant", () => {
