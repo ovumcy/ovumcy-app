@@ -269,7 +269,6 @@ describe("sync-snapshot-service", () => {
       ...(await source.readProfileRecord()),
       lastPeriodStart: "2026-04-12",
       storedCycleStartRepointVersion: 1,
-      lastPeriodStartBeforeRepoint: "2026-04-20",
     });
     await source.writeDayLogRecord({
       ...createEmptyDayLogRecord("2026-03-01"),
@@ -279,7 +278,6 @@ describe("sync-snapshot-service", () => {
     await source.writeDayLogRecord({ ...createEmptyDayLogRecord("2026-04-12"), mood: 3 });
     const built = await buildSyncSnapshot(source, new Date("2026-05-20T08:00:00.000Z"));
     expect(built.profile).not.toHaveProperty("storedCycleStartRepointVersion");
-    expect(built.profile).not.toHaveProperty("lastPeriodStartBeforeRepoint");
 
     const target = createVolatileWebAppStorage();
     await restoreSyncSnapshot(

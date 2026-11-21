@@ -515,10 +515,10 @@ that owns the canonical web UX).
     closing the former 10-day divergence. Cycle starts read web's
     `CycleBoundaries` rule (`collectCycleStartDates`; spotting never opens a
     cycle, an uncertain mark counts as no mark, an unqualified cluster opens
-    none), pinned by the fixture's `cycleBoundaries` vectors; the one difference
-    is that `profile.lastPeriodStart` does not join when a day logged on its
-    date is spotting or uncertain-marked (transitional; un-ticks repoint the
-    field on the write side as web does, `stored-cycle-start-write-path.test.ts`).
+    none), pinned by the fixture's `cycleBoundaries` vectors;
+    `profile.lastPeriodStart` always joins, and un-ticks, spotting or uncertain
+    marks on its date repoint the field on the write side as web does
+    (`stored-cycle-start-write-path.test.ts`).
     Regression: `cycle-history-service.test.ts`
     ("projected period length" suite) plus the updated dashboard hero phase-card
     expectation.

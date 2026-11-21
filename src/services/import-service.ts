@@ -30,6 +30,11 @@ import {
 } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
+import { MIN_DAY_LOG_DATE } from "./cycle-history-records";
+import {
+  repointStoredCycleStart,
+  savedRowWithdrawsStoredCycleStart,
+} from "./cycle-history-service";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { repointLegacyStoredCycleStart } from "./stored-cycle-start-repoint-service";
 import {
@@ -41,6 +46,7 @@ import {
   clampCycleLength,
   clampPeriodLength,
   clampReminderLeadDays,
+  formatLocalDate,
   normalizeAgeGroup,
   normalizeCrisisContactName,
   normalizeCrisisContactPhone,
@@ -61,7 +67,10 @@ import {
 //   - day logs: a date that already carries data is left untouched (skipped);
 //     only empty dates receive the imported entry. Records are run through
 //     sanitizeDayLogRecord, so unknown enum values collapse to neutral defaults
-//     rather than failing the whole import.
+//     rather than failing the whole import. An imported day on the stored
+//     cycle start's date that would withdraw it (spotting or an uncertain
+//     cycle-start mark) repoints profile.lastPeriodStart in the same commit,
+//     as saving that day in the editor does; no other profile field moves.
 //   - custom symptoms: a symptom whose label already exists is skipped; a new
 //     one is created only when at least one day referencing it is written.
 //   - profile settings are restored ONLY while the device is still pristine
@@ -242,9 +251,9 @@ export async function importBackupEnvelope(
   const outcome = await walkBackupEnvelope(storage, envelope, true);
   if (outcome.profileRestored) {
     // A restored profile may come from an older client, which reads the stored
-    // cycle start under the earlier withdrawal rule. On a configured device
-    // the import is strictly additive and never writes the profile. Best
-    // effort: an unversioned profile is retried at the next launch.
+    // cycle start under the earlier withdrawal rule. A configured device keeps
+    // its own profile; only an imported day on its stored start repoints it.
+    // Best effort: an unversioned profile is retried at the next launch.
     try {
       await repointLegacyStoredCycleStart(storage, new Date());
     } catch {
@@ -315,6 +324,8 @@ async function walkBackupEnvelope(
   // nothing) and the apply (whose earlier writes are visible to later reads)
   // on the same decision.
   const seenDayLogDates = new Set<string>();
+  const profileBeforeDayLogs = apply ? await storage.readProfileRecord() : null;
+  let rowWithdrawingStoredStart: DayLogRecord | null = null;
   for (const rawRecord of envelope.dayLogs ?? []) {
     const record = rawRecord as Partial<DayLogRecord> | null;
     // Trimmed once, before the seen-set, the duplicate read and the write, so
@@ -373,10 +384,22 @@ async function walkBackupEnvelope(
       outcome.symptomsAdded += 1;
     }
 
-    if (apply) {
+    if (
+      profileBeforeDayLogs?.lastPeriodStart === date &&
+      savedRowWithdrawsStoredCycleStart(sanitized, null)
+    ) {
+      rowWithdrawingStoredStart = sanitized;
+    } else if (apply) {
       await storage.writeDayLogRecord(sanitized);
     }
     outcome.dayLogsAdded += 1;
+  }
+  if (profileBeforeDayLogs && rowWithdrawingStoredStart) {
+    await commitRowWithdrawingStoredStart(
+      storage,
+      profileBeforeDayLogs,
+      rowWithdrawingStoredStart,
+    );
   }
 
   const pregnancyResult = await importPregnancyRecords(
@@ -695,6 +718,26 @@ async function importScreeningResponses(
 // configuration that history is read against, whereas custom symptoms are
 // vocabulary and pregnancy, session and screening records carry their own
 // dates and ids and never read the restored cycle fields.
+// Written after every other imported day, so the repoint reads them all; the
+// row and the repointed start land as one unit, as an editor save does.
+async function commitRowWithdrawingStoredStart(
+  storage: LocalAppStorage,
+  profile: ProfileRecord,
+  row: DayLogRecord,
+): Promise<void> {
+  const todayValue = formatLocalDate(new Date());
+  const storedRecords = await storage.listDayLogRecordsInRange(MIN_DAY_LOG_DATE, todayValue);
+  const mergedRecords = [...storedRecords.filter((record) => record.date !== row.date), row];
+  await storage.commitDayLogChanges({
+    writes: [row],
+    deletes: [],
+    profile: {
+      ...profile,
+      lastPeriodStart: repointStoredCycleStart(profile, mergedRecords, todayValue),
+    },
+  });
+}
+
 async function restorePristineProfile(
   storage: LocalAppStorage,
   candidate: unknown,

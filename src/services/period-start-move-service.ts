@@ -1,7 +1,11 @@
 import { createEmptyDayLogRecord, type DayLogRecord } from "../models/day-log";
 import type { ProfileRecord } from "../models/profile";
 import type { DayLogChangeSet } from "../storage/local/storage-contract";
-import { resolveLatestCycleStartAnchorBeforeOrOn } from "./cycle-history-service";
+import {
+  repointStoredCycleStart,
+  resolveLatestCycleStartAnchorBeforeOrOn,
+  savedRowWithdrawsStoredCycleStart,
+} from "./cycle-history-service";
 import { sanitizeDayLogRecord } from "./day-log-policy";
 import { resolvePeriodClusterBounds } from "./manual-cycle-start-service";
 import {
@@ -155,14 +159,19 @@ export function planPeriodStartMove(
 // The stored start ends where the rows put the anchor, as every other write path
 // leaves it: a start moved earlier can leave a later period behind (rows the move
 // may not remove, e.g. days ticked after the old start with auto-fill off), and a
-// typed date on a spotting row opens no cycle.
+// typed date on a spotting row opens no cycle, so it is withdrawn as a spotting
+// save on the stored start is.
 function repointToAnchorAfterMove(
   nextProfile: ProfileRecord,
   merged: DayLogRecord[],
   newStart: string,
   todayValue: string,
 ): ProfileRecord {
-  const anchor = resolveLatestCycleStartAnchorBeforeOrOn(nextProfile, merged, todayValue);
+  const startRow = merged.find((record) => record.date === newStart);
+  const anchor =
+    startRow && savedRowWithdrawsStoredCycleStart(startRow, null)
+      ? repointStoredCycleStart(nextProfile, merged, todayValue)
+      : resolveLatestCycleStartAnchorBeforeOrOn(nextProfile, merged, todayValue);
   return anchor === newStart ? nextProfile : { ...nextProfile, lastPeriodStart: anchor };
 }
 

@@ -260,27 +260,28 @@ no mark; a cluster matching none of the three opens no cycle and does not split
 the cycle around it. A day counts as spotting when its flow is spotting, or when
 the Spotting symptom is its only bleeding signal (no flow chosen). The manual
 cycle-start action is shown disabled on a spotting day, with the reason, and
-refuses the mark: it would open no cycle and would replace the stored start
-with a date the read side withdraws.
+refuses the mark: it would open no cycle and would make a spotting day the
+stored start.
 
 `profile.lastPeriodStart` joins the clusters as an explicit non-spotting day, as
 web's onboarding start does (it also marks the unmarked day onboarding seeds on
-its date), unless a day logged on its date is spotting or under an uncertain
-mark. The write paths keep the field current (web `withdrawOnboardingStartOn`):
-a save on its date that un-ticks a period row, marks spotting or carries an
-uncertain cycle-start mark, and clearing that day, repoint it to the latest
-cycle boundary among rows dated on or before today (`repointStoredCycleStart`,
-the same cluster reading as the anchor and the pregnancy pause; null when none
-is left). A BBT, note or symptom save on a date with no row keeps it. Manual
-uncertain marks are not mirrored into it; confirmed marks are. Rows and profile
-are written as one storage unit. Data stored under the earlier rule (any
-non-period row withdrew it) is re-read once at launch behind a stored version,
-the previous value kept in the profile. The version and the kept value never
-leave the device (sync snapshot, JSON export), since an older client would
-carry a version it does not honour, so every sync restore and every JSON import
-that restores the profile re-reads it as well; an import into a configured
-device never writes the profile. The read-side spotting/uncertain withdrawal is
-transitional.
+its date). The read side trusts the field as stored; the write paths keep it
+current (web `withdrawOnboardingStartOn`): a save on its date that un-ticks a
+period row, marks spotting or carries an uncertain cycle-start mark, and
+clearing that day, repoint it to the latest cycle boundary among rows dated on
+or before today (`repointStoredCycleStart`, the same cluster reading as the
+anchor and the pregnancy pause; null when none is left). A BBT, note or symptom
+save on a date with no row keeps it. Manual uncertain marks are not mirrored
+into it; confirmed marks are. Rows and profile are written as one storage unit.
+An additive JSON import applies the same rule to a day it adds on that date
+(spotting or an uncertain mark repoints, a BBT/note-only day keeps it), after
+every other imported day and in one unit with that row. Data stored under the
+earlier rule (any non-period row withdrew it) is re-read once at launch behind a
+stored version. The version never leaves the device (sync snapshot, JSON
+export), since an older client would carry a version it does not honour, so
+every sync restore and every JSON import that restores the profile re-reads it
+as well. A repoint still pending after ten seconds no longer holds the launch
+screen.
 
 ## Projection and anchor layer
 

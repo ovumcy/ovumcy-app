@@ -1617,11 +1617,10 @@ function rowAlwaysWithdrawsStoredCycleStart(record: DayLogRecord): boolean {
 
 // Period days up to today grouped into bleeding episodes: fewer than five clear
 // days between two of them keep one cluster. The stored start joins as an
-// explicit non-spotting day (ovumcy-web onboarding start) unless a row on its
-// date is spotting or under an uncertain mark. The write paths repoint the
-// stored start on those saves, so this read-side withdrawal is transitional:
-// it covers rows stored before the repoint existed and goes once that data has
-// been migrated.
+// explicit non-spotting day (ovumcy-web onboarding start), trusted as stored:
+// every write that would withdraw it (a spotting or uncertain-marked row on its
+// date, an un-ticked period row, a cleared day, an imported row) repoints it
+// instead.
 function buildObservedPeriodClusters(
   profile: ProfileRecord,
   records: DayLogRecord[],
@@ -1645,9 +1644,7 @@ function buildObservedPeriodClusters(
   }
 
   const storedStart = profile.lastPeriodStart;
-  const storedRows = records.filter((record) => record.date === storedStart);
-  const storedWithdrawn = storedRows.some(rowAlwaysWithdrawsStoredCycleStart);
-  if (storedStart && storedStart <= todayValue && !storedWithdrawn) {
+  if (storedStart && storedStart <= todayValue) {
     pushDay(storedStart, true, false);
   }
 

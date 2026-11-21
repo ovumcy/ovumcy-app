@@ -52,7 +52,8 @@ Dependency rules:
   layout `app/_layout.tsx`, which also runs the launch tasks
   (`src/services/app-launch-tasks`: the stored-cycle-start repoint, the
   export-artifact sweep and the reminder rebuild) and renders nothing until the
-  repoint has finished or failed, so no screen reads a pre-repoint profile; it
+  repoint has finished, failed or run past a ten-second timeout, so no screen
+  reads a pre-repoint profile unless the repoint hangs; it
   also applies screen-capture protection
   (`src/security/app-screen-protection`).
 - Screens call services and pass them `appStorage`. They never import a concrete
