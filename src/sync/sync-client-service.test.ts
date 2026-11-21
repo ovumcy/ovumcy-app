@@ -894,11 +894,6 @@ describe("sync-client-service", () => {
       managedClientFactory,
     );
 
-    // A recovered device starts with no floor, so an unfinished-restore mark goes too.
-    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ lastRemoteGeneration: null }),
-      { restoreInProgress: false },
-    );
     expect(result).toEqual({
       ok: true,
       capabilities: expect.objectContaining({
@@ -5262,6 +5257,30 @@ describe("snapshot AAD across devices", () => {
       expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
       expect(apiClientFactory).not.toHaveBeenCalled();
       expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
+    it("clears the unfinished-restore mark when the server holds no backup to restore", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const marked = { ...selfHostedPreferences, restoreInProgress: true };
+      const storage = createLocalAppStorageMock();
+      jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue(marked);
+
+      const result = await runSyncRestore(
+        storage,
+        createSyncSecretStoreMock({ ...deviceA.record, authSessionToken: "session-2" }),
+        marked,
+        jest.fn().mockReturnValue(
+          createAPIClientMock({
+            getBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "blob_not_found" }),
+          }),
+        ),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "blob_not_found" });
+      expect(storage.clearAllLocalData).not.toHaveBeenCalled();
+      expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(marked, {
+        restoreInProgress: false,
+      });
     });
 
     it("keeps restore allowed while a partial restore is marked, so a retry can finish it", async () => {
