@@ -10,7 +10,8 @@ const { mergeContents } = CodeGenerator;
 /**
  * Excludes the app's on-device data stores from iOS iCloud / iTunes / device-transfer
  * backups at `expo prebuild` time by injecting a launch-time hook into the Swift
- * `AppDelegate`. This is the iOS mirror of `android.allowBackup=false` (app.json):
+ * `AppDelegate`. This is the iOS mirror of `android.allowBackup=false` (app.json)
+ * plus `withAndroidExcludeDataFromBackup.js`:
  * local-first health data must never leave the device through an OS-managed backup.
  *
  * Why a runtime hook and not a static setting:
@@ -50,7 +51,7 @@ const TAG = 'ovumcy-exclude-icloud-backup';
 // Inserted verbatim (indentation included) immediately before the AppDelegate's
 // `return super.application(...)`. Must be valid statements inside that method body.
 const EXCLUDE_BACKUP_SNIPPET = `    // Ovumcy privacy: keep on-device data stores out of iCloud/iTunes/device-transfer
-    // backups (iOS mirror of Android allowBackup=false). Idempotent, runs each launch;
+    // backups (iOS mirror of the Android backup exclusion). Idempotent, runs each launch;
     // directory-level exclusion also covers files created later (SQLite WAL/SHM,
     // AsyncStorage). See SECURITY.md.
     do {
