@@ -8,9 +8,10 @@ import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultSymptomRecords } from "../models/symptom";
 
 describe("partner-shared-projection-service", () => {
-  it("redacts detailed day fields for summary access", () => {
+  it("ships no per-day record, symptom record or date-valued profile field for summary access", () => {
     const profile = {
       ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-04-05",
       hideNotes: true,
       hideSexChip: true,
       trackBBT: false,
@@ -42,22 +43,262 @@ describe("partner-shared-projection-service", () => {
       symptomRecords: createDefaultSymptomRecords(),
     });
 
-    expect(projection.dayLogs).toHaveLength(1);
-    expect(projection.dayLogs[0]).toEqual(
-      expect.objectContaining({
-        // flow is dropped in summary (data minimisation — not rendered in summary UI)
-        flow: "none",
-        mood: 0,
-        sexActivity: "none",
-        bbt: 0,
-        cervicalMucus: "none",
-        lhTest: "none",
-        pregnancyTest: "none",
-        symptomIDs: [],
-        notes: "",
-      }),
-    );
+    expect(projection.dayLogs).toEqual([]);
     expect(projection.symptomRecords).toEqual([]);
+    expect(projection.profile).not.toHaveProperty("lastPeriodStart");
+    expect(projection.summarySnapshot).toBeDefined();
+    const serialized = JSON.stringify(projection);
+    expect(serialized).not.toContain("private note");
+    expect(serialized).not.toContain("lastPeriodStart");
+    expect(serialized).not.toContain("usageGoal");
+  });
+
+  it("computes the summary snapshot on the owner device from the owner's cycle history", () => {
+    const records = [
+      { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+    ];
+    const profile = {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-01-29",
+      cycleLength: 28,
+    };
+    const now = new Date("2026-02-10T09:00:00.000Z");
+
+    const payload = buildPartnerSharedProjectionPayload({
+      accessLevel: "summary",
+      dayLogs: records,
+      generatedAt: now.toISOString(),
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile,
+      symptomRecords: [],
+    });
+
+    expect(payload.summarySnapshot).toEqual({
+      asOfDate: "2026-02-10",
+      cycleStatus: expect.objectContaining({
+        currentCycleDay: 13,
+        nextPeriodDate: "2026-02-26",
+        state: "regular",
+      }),
+      metrics: expect.objectContaining({
+        lastCycleLength: 28,
+        averageCycleLength: 28,
+        totalLoggedDays: 3,
+      }),
+    });
+  });
+
+  it("omits the summary snapshot at full access", () => {
+    const payload = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [{ ...createEmptyDayLogRecord("2026-04-01"), isPeriod: true, cycleStart: true }],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile: { ...createDefaultProfileRecord(), lastPeriodStart: "2026-04-01" },
+      symptomRecords: [],
+    });
+
+    expect(payload).not.toHaveProperty("summarySnapshot");
+    expect(payload.profile.lastPeriodStart).toBe("2026-04-01");
+  });
+
+  it("never ships usageGoal at either access level", () => {
+    for (const accessLevel of ["summary", "full"] as const) {
+      const payload = buildPartnerSharedProjectionPayload({
+        accessLevel,
+        dayLogs: [],
+        generatedAt: "2026-04-05T08:00:00.000Z",
+        generation: 1,
+        grantID: "grant-1",
+        ownerAccountID: "owner-1",
+        profile: { ...createDefaultProfileRecord(), usageGoal: "avoid_pregnancy" },
+        symptomRecords: [],
+      });
+
+      expect(payload.profile).not.toHaveProperty("usageGoal");
+      expect(JSON.stringify(payload)).not.toContain("avoid_pregnancy");
+    }
+  });
+
+  it("sends symptom records to a full-level partner with only id, label and default flag", () => {
+    const payload = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [
+        {
+          ...createEmptyDayLogRecord("2026-04-02"),
+          isPeriod: true,
+          symptomIDs: ["cramps", "custom-private"],
+        },
+      ],
+      generatedAt: "2026-04-05T08:00:00.000Z",
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile: createDefaultProfileRecord(),
+      symptomRecords: [
+        ...createDefaultSymptomRecords(),
+        {
+          id: "custom-private",
+          slug: "custom-private-slug",
+          label: "Custom label",
+          icon: "icon-private",
+          color: "#123456",
+          isArchived: true,
+          sortOrder: 99,
+          isDefault: false,
+        },
+      ],
+    });
+
+    expect(payload.symptomRecords).toEqual([
+      { id: "cramps", isDefault: true, label: "Cramps" },
+      { id: "custom-private", isDefault: false, label: "Custom label" },
+    ]);
+    const serialized = JSON.stringify(payload);
+    expect(serialized).not.toContain("custom-private-slug");
+    expect(serialized).not.toContain("icon-private");
+    expect(serialized).not.toContain("#123456");
+  });
+
+  it("recomputes cycle status from profile and day logs for a summary payload without a snapshot", () => {
+    const now = new Date("2026-02-10T09:00:00.000Z");
+    const legacyPayload = buildPartnerSharedProjectionPayload({
+      accessLevel: "full",
+      dayLogs: [
+        { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+        { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+      ],
+      generatedAt: now.toISOString(),
+      generation: 1,
+      grantID: "grant-1",
+      ownerAccountID: "owner-1",
+      profile: {
+        ...createDefaultProfileRecord(),
+        lastPeriodStart: "2026-01-29",
+        cycleLength: 28,
+      },
+      symptomRecords: [],
+    });
+
+    const readState = buildPartnerSharedReadState(
+      { ...legacyPayload, accessLevel: "summary" },
+      now,
+      "en",
+    );
+
+    expect(readState.cycleStatus.currentCycleDay).toBe(13);
+    expect(readState.cycleStatus.nextPeriodDate).toBe("2026-02-26");
+    expect(readState.summaryMetrics.totalLoggedDays).toBe(3);
+  });
+
+  describe("summary snapshot read path", () => {
+    const records = [
+      { ...createEmptyDayLogRecord("2025-12-04"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-01-01"), isPeriod: true, cycleStart: true },
+      { ...createEmptyDayLogRecord("2026-01-29"), isPeriod: true, cycleStart: true },
+    ];
+    const generatedAt = new Date("2026-02-10T09:00:00.000Z");
+
+    function buildSummaryPayload(
+      overrides: Partial<{ irregularCycle: boolean }> = {},
+    ) {
+      return buildPartnerSharedProjectionPayload({
+        accessLevel: "summary",
+        dayLogs: records,
+        generatedAt: generatedAt.toISOString(),
+        generation: 1,
+        grantID: "grant-1",
+        ownerAccountID: "owner-1",
+        profile: {
+          ...createDefaultProfileRecord(),
+          lastPeriodStart: "2026-01-29",
+          cycleLength: 28,
+          ...overrides,
+        },
+        symptomRecords: [],
+      });
+    }
+
+    it("renders the owner-computed values without any day log on the partner side", () => {
+      const readState = buildPartnerSharedReadState(buildSummaryPayload(), generatedAt, "en");
+
+      expect(readState.cycleStatus.currentCycleDay).toBe(13);
+      expect(readState.cycleStatus.nextPeriodDate).toBe("2026-02-26");
+      expect(readState.cycleStatus.state).toBe("regular");
+      expect(readState.summaryMetrics).toEqual({
+        lastCycleLength: 28,
+        averageCycleLength: 28,
+        averagePeriodLength: expect.any(Number),
+        totalLoggedDays: 3,
+        topSymptoms: [],
+      });
+      expect(readState.recentRows).toEqual([]);
+    });
+
+    it("carries the owner's approximate-prediction explanation to the partner", () => {
+      const readState = buildPartnerSharedReadState(
+        buildSummaryPayload({ irregularCycle: true }),
+        generatedAt,
+        "en",
+      );
+
+      expect(readState.cycleStatus.state).toBe("approximate");
+      expect(readState.cycleStatus.predictionExplanation).not.toBe("");
+    });
+
+    it("advances the cycle day by the whole days elapsed since the owner's date", () => {
+      const readState = buildPartnerSharedReadState(
+        buildSummaryPayload(),
+        new Date("2026-02-13T09:00:00.000Z"),
+        "en",
+      );
+
+      expect(readState.cycleStatus.currentCycleDay).toBe(16);
+    });
+
+    it("shows the cycle day as generated when the partner clock is behind the owner's date", () => {
+      const readState = buildPartnerSharedReadState(
+        buildSummaryPayload(),
+        new Date("2026-02-08T09:00:00.000Z"),
+        "en",
+      );
+
+      expect(readState.cycleStatus.currentCycleDay).toBe(13);
+    });
+
+    it("withholds the cycle day once the predicted window has passed, keeping the shipped dates", () => {
+      const readState = buildPartnerSharedReadState(
+        buildSummaryPayload(),
+        new Date("2026-02-28T09:00:00.000Z"),
+        "en",
+      );
+
+      expect(readState.cycleStatus.currentCycleDay).toBeNull();
+      expect(readState.cycleStatus.nextPeriodDate).toBe("2026-02-26");
+    });
+
+    it("ignores a malformed snapshot and recomputes instead of rendering it", () => {
+      const payload = buildSummaryPayload();
+      const malformed = {
+        ...payload,
+        summarySnapshot: {
+          ...payload.summarySnapshot,
+          cycleStatus: { currentCycleDay: "13" },
+        },
+      } as unknown as typeof payload;
+
+      const readState = buildPartnerSharedReadState(malformed, generatedAt, "en");
+
+      expect(readState.cycleStatus.state).toBe("unknown");
+      expect(readState.cycleStatus.currentCycleDay).toBeNull();
+    });
   });
 
   it("keeps full history but respects owner privacy toggles", () => {
@@ -182,7 +423,7 @@ describe("partner-shared-projection-service", () => {
     expect(projection.dayLogs[0]?.pregnancyTest).toBe("none");
   });
 
-  it("summary projection strips flow (data minimisation)", () => {
+  it("summary projection carries no flow value (data minimisation)", () => {
     const profile = createDefaultProfileRecord();
     const record = {
       ...createEmptyDayLogRecord("2026-04-05"),
@@ -201,7 +442,8 @@ describe("partner-shared-projection-service", () => {
       symptomRecords: [],
     });
 
-    expect(projection.dayLogs[0]?.flow).toBe("none");
+    expect(projection.dayLogs).toEqual([]);
+    expect(JSON.stringify(projection)).not.toContain("heavy");
   });
 
   it("sets isStale when snapshot is older than 14 days", () => {
@@ -341,11 +583,14 @@ describe("partner-shared-projection-service", () => {
       });
 
       // Structural: the redacted day-log carries none of the owner-only fields.
+      // A summary payload ships no day log at all.
       const shared = projection.dayLogs[0];
-      expect(shared).toBeDefined();
-      expect(shared).not.toHaveProperty("weightKg");
-      expect(shared).not.toHaveProperty("bpSystolic");
-      expect(shared).not.toHaveProperty("bpDiastolic");
+      expect(shared === undefined).toBe(accessLevel === "summary");
+      if (shared) {
+        expect(shared).not.toHaveProperty("weightKg");
+        expect(shared).not.toHaveProperty("bpSystolic");
+        expect(shared).not.toHaveProperty("bpDiastolic");
+      }
 
       // Structural: no pregnancy-domain collection ever enters the projection.
       expect(projection).not.toHaveProperty("pregnancies");
@@ -652,6 +897,67 @@ describe("partner-shared-projection-service", () => {
         const readSerialized = JSON.stringify(readState);
         expect(readSerialized).not.toContain("paused");
         expect(readSerialized).not.toContain("pregnancy test");
+      },
+    );
+
+    it.each([
+      {
+        name: "an active pregnancy record after the day-log pause lifts",
+        options: { suppressPredictions: true },
+        extraRecords: [
+          { ...createEmptyDayLogRecord("2026-02-20"), pregnancyTest: "positive" as const },
+          { ...createEmptyDayLogRecord("2026-02-25"), isPeriod: true, cycleStart: true },
+        ],
+      },
+      {
+        name: "the owner's own pregnancy pause with no pregnancy record",
+        options: { suppressPredictions: false },
+        extraRecords: [
+          { ...createEmptyDayLogRecord("2026-02-20"), pregnancyTest: "positive" as const },
+        ],
+      },
+    ])(
+      "ships no prediction value in the summary snapshot for $name",
+      ({ options, extraRecords }) => {
+        const now = new Date("2026-03-05T09:00:00.000Z");
+
+        const payload = buildPartnerSharedProjectionPayload(
+          {
+            accessLevel: "summary",
+            dayLogs: [...completedCycleRecords, ...extraRecords],
+            generatedAt: now.toISOString(),
+            generation: 1,
+            grantID: "grant-1",
+            ownerAccountID: "owner-1",
+            profile: baseProfile,
+            symptomRecords: [],
+          },
+          options,
+        );
+
+        expect(payload.dayLogs).toEqual([]);
+        expect(payload.summarySnapshot?.cycleStatus).toEqual({
+          currentCycleDay: null,
+          nextPeriodDate: null,
+          nextPeriodWindowEndDate: null,
+          nextPeriodWindowStartDate: null,
+          predictionHint: "facts_only",
+          state: "facts_only",
+        });
+        const serialized = JSON.stringify(payload);
+        expect(serialized).not.toContain("paused");
+        expect(serialized).not.toContain("pregnan");
+
+        // Days later the partner still derives nothing from the snapshot.
+        const readState = buildPartnerSharedReadState(
+          payload,
+          new Date("2026-03-08T09:00:00.000Z"),
+          "en",
+        );
+        expect(readState.cycleStatus.currentCycleDay).toBeNull();
+        expect(readState.cycleStatus.nextPeriodWindowStartDate).toBeNull();
+        expect(readState.cycleStatus.predictionExplanation).not.toContain("pregnancy");
+        expect(readState.summaryMetrics.totalLoggedDays).toBeGreaterThan(0);
       },
     );
 
