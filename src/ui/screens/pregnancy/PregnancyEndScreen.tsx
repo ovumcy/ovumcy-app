@@ -282,7 +282,7 @@ export function PregnancyEndScreen({
       storage,
       syncSecretStore,
       partnerShareSecretStore,
-      now ?? new Date(),
+      now,
     );
 
     // After a confirmed BIRTH only (never loss/other — domain rule B8), offer
@@ -526,7 +526,7 @@ export function PregnancyEndScreen({
       storage,
       syncSecretStore,
       partnerShareSecretStore,
-      now ?? new Date(),
+      now,
     );
     router.back();
   }

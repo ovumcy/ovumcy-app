@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react-native";
-import { Dimensions } from "react-native";
+import { AppState, type AppStateStatus, Dimensions } from "react-native";
 
 import { getDashboardCopy } from "../../i18n/dashboard-copy";
 import { createEmptyDayLogRecord, type DayLogRecord } from "../../models/day-log";
@@ -1250,5 +1250,108 @@ describe("CalendarScreen", () => {
     } finally {
       jest.restoreAllMocks();
     }
+  });
+});
+
+describe("CalendarScreen civil-date rollover", () => {
+  let appStateHandlers: ((state: AppStateStatus) => void)[] = [];
+
+  beforeEach(() => {
+    // Only Date is faked: timers, promises and the autosave debounce stay real.
+    jest.useFakeTimers({
+      doNotFake: [
+        "hrtime",
+        "nextTick",
+        "performance",
+        "queueMicrotask",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "requestIdleCallback",
+        "cancelIdleCallback",
+        "setImmediate",
+        "clearImmediate",
+        "setInterval",
+        "clearInterval",
+        "setTimeout",
+        "clearTimeout",
+      ],
+    });
+    jest.setSystemTime(new Date(2026, 5, 30, 23, 59, 30));
+    appStateHandlers = [];
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_type, handler) => {
+      appStateHandlers.push(handler as (state: AppStateStatus) => void);
+      return { remove: jest.fn() } as unknown as ReturnType<typeof AppState.addEventListener>;
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  async function seededStorage() {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      lastPeriodStart: "2026-06-10",
+      cycleLength: 28,
+      periodLength: 5,
+      autoPeriodFill: false,
+      irregularCycle: false,
+      unpredictableCycle: false,
+      ageGroup: "",
+      usageGoal: "health",
+      trackBBT: false,
+      temperatureUnit: "c",
+      trackCervicalMucus: false,
+      hideSexChip: false,
+      languageOverride: "en",
+      themeOverride: "light",
+      dismissedCalendarPredictionNoticeKey: null,
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-06-28"),
+      mood: 4,
+    });
+    return storage;
+  }
+
+  async function returnToForegroundNextMorning() {
+    jest.setSystemTime(new Date(2026, 6, 1, 7, 15, 0));
+    await act(async () => {
+      for (const handler of appStateHandlers) {
+        handler("active");
+      }
+    });
+  }
+
+  it("moves a selection resting on the old today to the new civil date", async () => {
+    await render(<CalendarScreen storage={await seededStorage()} />);
+    await waitForCalendarReady();
+    expect(
+      screen.getByTestId("calendar-day-2026-06-30").props.accessibilityState,
+    ).toEqual(expect.objectContaining({ selected: true }));
+
+    await returnToForegroundNextMorning();
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("calendar-day-2026-07-01").props.accessibilityState,
+      ).toEqual(expect.objectContaining({ selected: true })),
+    );
+  });
+
+  it("keeps an explicitly picked earlier day selected across midnight", async () => {
+    await render(<CalendarScreen storage={await seededStorage()} />);
+    await waitForCalendarReady();
+    await fireEvent.press(screen.getByTestId("calendar-day-2026-06-28"));
+    await screen.findByTestId("calendar-day-edit-button");
+
+    await returnToForegroundNextMorning();
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("calendar-day-2026-06-28").props.accessibilityState,
+      ).toEqual(expect.objectContaining({ selected: true })),
+    );
   });
 });

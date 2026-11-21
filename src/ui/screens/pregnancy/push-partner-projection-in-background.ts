@@ -12,12 +12,12 @@ export function pushPartnerProjectionInBackground(
   storage: LocalAppStorage,
   syncSecretStore: SyncSecretStore,
   partnerShareSecretStore: PartnerShareSecretStore,
-  now: Date,
+  now: Date | undefined,
 ): void {
   void syncManagedPartnerSharedProjections(
     storage,
     syncSecretStore,
     partnerShareSecretStore,
-    now,
+    now ?? new Date(),
   ).catch(() => undefined);
 }
