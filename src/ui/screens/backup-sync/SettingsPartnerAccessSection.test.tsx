@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Share } from "react-native";
 
 import { getPartnerCopy } from "../../../i18n/partner-copy";
 import type {
@@ -164,6 +165,68 @@ describe("SettingsPartnerAccessSection", () => {
     ).toBeNull();
     // The invite/grant history lists still render underneath the lock card.
     expect(screen.getByTestId("settings-partner-invite-invite-1")).toBeTruthy();
+  });
+
+  it("shares the invite link only through the OS share sheet and keeps it selectable", async () => {
+    const link = `https://invite.ovumcy.cloud/backup-sync?invite_token=tok#k=${"11".repeat(32)}`;
+    const shareSpy = jest
+      .spyOn(Share, "share")
+      .mockResolvedValue({ action: Share.sharedAction, activityType: undefined });
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          inviteLink={link}
+          showOwnerControls
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("settings-partner-invite-link").props.selectable).toBe(true);
+    expect(screen.queryByTestId("settings-partner-share-invite-button")).toBeTruthy();
+    expect(screen.getByText(copy.shareInviteLinkLabel)).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId("settings-partner-share-invite-button"));
+
+    expect(shareSpy).toHaveBeenCalledTimes(1);
+    expect(shareSpy).toHaveBeenCalledWith(
+      { message: link },
+      { dialogTitle: copy.shareInviteLinkLabel },
+    );
+    shareSpy.mockRestore();
+  });
+
+  it("offers no share action while no invite link is held", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection {...createBaseProps()} showOwnerControls />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("settings-partner-share-invite-button")).toBeNull();
+  });
+
+  it("tells the user a newer invite link replaced the earlier one, only while an invite is pending", async () => {
+    const { rerender } = await render(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection
+          {...createBaseProps()}
+          inviteReplaced
+          pendingInviteToken="tok"
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("settings-partner-invite-replaced-notice")).toBeTruthy();
+    expect(screen.getByText(copy.inviteReplacedNotice)).toBeTruthy();
+
+    await rerender(
+      <AppPreferencesTestProvider>
+        <SettingsPartnerAccessSection {...createBaseProps()} pendingInviteToken="tok" />
+      </AppPreferencesTestProvider>,
+    );
+    expect(screen.queryByTestId("settings-partner-invite-replaced-notice")).toBeNull();
   });
 
   it("shows the error banner when errorMessage is set", async () => {

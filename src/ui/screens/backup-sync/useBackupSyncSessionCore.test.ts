@@ -33,11 +33,23 @@ let mockSearchParams: { invite_token?: string | string[]; "#"?: string } = {};
 let mockLinkingURL: string | null = null;
 const mockNavigationDispatch = jest.fn();
 
+const mockLinkingListeners = new Set<(event: { url: string }) => void>();
+
 jest.mock("expo-linking", () => {
   return {
-    useLinkingURL: () => mockLinkingURL,
+    getInitialURL: () => Promise.resolve(mockLinkingURL),
+    addEventListener: (_type: string, listener: (event: { url: string }) => void) => {
+      mockLinkingListeners.add(listener);
+      return { remove: () => mockLinkingListeners.delete(listener) };
+    },
   };
 });
+
+function emitLinkingURL(url: string) {
+  for (const listener of [...mockLinkingListeners]) {
+    listener({ url });
+  }
+}
 
 jest.mock("expo-router", () => {
   return {
@@ -73,6 +85,7 @@ describe("useBackupSyncSessionCore", () => {
     mockNavigationDispatch.mockReset();
     mockSearchParams = {};
     mockLinkingURL = null;
+    mockLinkingListeners.clear();
   });
 
   afterEach(async () => {
@@ -187,13 +200,80 @@ describe("useBackupSyncSessionCore", () => {
     it("attaches the secret when the raw link arrives after the route capture", async () => {
       mockSearchParams = { invite_token: TOKEN };
 
-      const { rerender, unmount } = await renderAndSettle();
+      const { unmount } = await renderAndSettle();
       expect(readManagedPartnerInviteSecret()).toBe("");
 
-      mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
-      await rerender({});
+      await act(async () => {
+        emitLinkingURL(`ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`);
+      });
 
       expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+      await unmount();
+    });
+
+    it("captures a link that arrives while the app runs before any route param does", async () => {
+      const { result, unmount } = await renderAndSettle();
+
+      await act(async () => {
+        emitLinkingURL(`ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`);
+      });
+
+      expect(readManagedPartnerInviteToken()).toBe(TOKEN);
+      expect(readManagedPartnerInviteSecret()).toBe(SECRET);
+      expect(result.current.pendingPartnerInviteToken).toBe(TOKEN);
+      await unmount();
+    });
+
+    it("does not retain the raw link or its secret in the returned hook state", async () => {
+      mockSearchParams = { invite_token: TOKEN };
+      mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
+      const { result, unmount } = await renderAndSettle();
+      await act(async () => {
+        emitLinkingURL(`ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`);
+      });
+
+      expect(JSON.stringify(result.current, (_key, value) =>
+        typeof value === "function" ? undefined : value,
+      )).not.toContain(SECRET);
+      await unmount();
+    });
+
+    it("does not revive a redeemed invite from the link that launched the app", async () => {
+      mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
+      const { unmount } = await renderAndSettle();
+
+      expect(readManagedPartnerInviteToken()).toBe("");
+      expect(readManagedPartnerInviteSecret()).toBe("");
+      await unmount();
+    });
+
+    it("flags a newer inbound link that replaces a pending invite, and clears the flag with the invite", async () => {
+      stashManagedPartnerInviteToken(TOKEN, SECRET);
+      const { result, unmount } = await renderAndSettle();
+      expect(result.current.isPartnerInviteReplaced).toBe(false);
+
+      await act(async () => {
+        emitLinkingURL(
+          `ovumcy://backup-sync?invite_token=newer-token-fixture-padding-01#k=${SECRET}`,
+        );
+      });
+      expect(result.current.isPartnerInviteReplaced).toBe(true);
+      expect(readManagedPartnerInviteToken()).toBe("newer-token-fixture-padding-01");
+
+      await act(async () => {
+        result.current.setPendingPartnerInviteToken("");
+      });
+      expect(result.current.isPartnerInviteReplaced).toBe(false);
+      await unmount();
+    });
+
+    it("flags a replacement the web pre-render scrub made before the screen mounted", async () => {
+      stashManagedPartnerInviteToken(TOKEN, SECRET);
+      stashManagedPartnerInviteToken("newer-token-fixture-padding-01", SECRET);
+
+      const { result, unmount } = await renderAndSettle();
+
+      expect(result.current.isPartnerInviteReplaced).toBe(true);
       await unmount();
     });
 

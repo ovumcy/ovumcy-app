@@ -6,25 +6,41 @@ export const MANAGED_PARTNER_INVITE_TOKEN_TTL_MS = 15 * 60 * 1000;
 let pendingManagedPartnerInviteToken = "";
 let pendingManagedPartnerInviteSecretHex = "";
 let pendingManagedPartnerInviteTokenStashedAt = 0;
+// Set when a different live invite was overwritten by a newer link, so the
+// screen can tell the user the earlier link no longer applies. Holds no
+// token or secret.
+let managedPartnerInviteReplacedNotice = false;
 
 // Re-stashing the same token without a secret keeps the secret already
 // buffered for it: the route param and the raw link can arrive in either
 // order, and only the raw link carries the fragment on custom-scheme links.
+// A different token arriving while another invite is still live replaces it
+// and raises the replacement notice (`takeManagedPartnerInviteReplacedNotice`).
 export function stashManagedPartnerInviteToken(
   inviteToken: string,
   inviteSecretHex = "",
 ): void {
   const token = inviteToken.trim();
   const secret = inviteSecretHex.trim();
+  const hasLiveInvite = managedPartnerInviteTokenRemainingMs() > 0;
   const keepSecret =
-    secret === "" &&
-    token === pendingManagedPartnerInviteToken &&
-    managedPartnerInviteTokenRemainingMs() > 0;
+    secret === "" && token === pendingManagedPartnerInviteToken && hasLiveInvite;
+  if (hasLiveInvite && token !== "" && token !== pendingManagedPartnerInviteToken) {
+    managedPartnerInviteReplacedNotice = true;
+  }
   pendingManagedPartnerInviteSecretHex = keepSecret
     ? pendingManagedPartnerInviteSecretHex
     : secret;
   pendingManagedPartnerInviteToken = token;
   pendingManagedPartnerInviteTokenStashedAt = Date.now();
+}
+
+// Reads and clears the replacement notice. The notice is also dropped with
+// the buffer, so it never outlives the invite it describes.
+export function takeManagedPartnerInviteReplacedNotice(): boolean {
+  const notice = managedPartnerInviteReplacedNotice;
+  managedPartnerInviteReplacedNotice = false;
+  return notice;
 }
 
 // Attaches a secret only to the invite already buffered under the same
@@ -76,4 +92,5 @@ export function clearManagedPartnerInviteToken(): void {
   pendingManagedPartnerInviteToken = "";
   pendingManagedPartnerInviteSecretHex = "";
   pendingManagedPartnerInviteTokenStashedAt = 0;
+  managedPartnerInviteReplacedNotice = false;
 }

@@ -110,6 +110,7 @@ export function createBackupSyncSessionCoreMock(
     // Root state
     effectiveNow,
     isLoading: false,
+    isPartnerInviteReplaced: false,
     state,
     setState: jest.fn(),
     isSyncDirty: false,

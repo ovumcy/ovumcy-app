@@ -57,9 +57,11 @@ sits on the verified base `https://invite.ovumcy.cloud/backup-sync`; a
 custom-scheme URL (any installed app can claim a custom scheme) is refused with
 `invalid_partner_invite` and never gets the secret. The custom scheme remains an
 accepted inbound route: the partner side parses `ovumcy://` links as before. Expo Router drops the
-fragment of custom-scheme links, so the partner side reads it from the raw link that opened the app as
-well as from the route; on web the boot-time scrub stashes and strips it with the
-token.
+fragment of custom-scheme links, so the partner side reads it from the raw link that opened the app (one
+initial-URL read) and from links that arrive while the app runs (a URL listener), as well as from the
+route. The raw link is parsed and dropped, never kept in hook state; on web the boot-time scrub stashes
+and strips it with the token. A newer link arriving while another invite is still pending replaces it,
+and the accept card says so, since no inviter identity is known before accept.
 
 Token capture is already hardened on both surfaces:
 
