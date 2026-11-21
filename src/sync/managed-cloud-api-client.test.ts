@@ -1637,7 +1637,7 @@ describe("managed-cloud-api-client", () => {
     expect((init as RequestInit).method).toBe("POST");
   });
 
-  it("maps a 503 (signing key absent) to entitlements_unavailable so the app falls back to the snapshot", async () => {
+  it("maps a 503 entitlements_unavailable body to network_failed so the app falls back to the snapshot", async () => {
     const fetch = jest.fn().mockResolvedValueOnce(
       new Response(JSON.stringify({ error: "entitlements_unavailable" }), {
         status: 503,
@@ -1651,7 +1651,103 @@ describe("managed-cloud-api-client", () => {
 
     await expect(
       client.getEntitlementToken("managed-session-1"),
-    ).resolves.toEqual({ ok: false, errorCode: "entitlements_unavailable" });
+    ).resolves.toEqual({ ok: false, errorCode: "network_failed" });
+  });
+
+  it("maps a 403 entitlements_unavailable body to generic, a refusal rather than a transport failure", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "entitlements_unavailable" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createManagedCloudAPIClient(
+      "https://managed.example/",
+      fetch as unknown as typeof globalThis.fetch,
+    );
+
+    await expect(
+      client.getEntitlementToken("managed-session-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+  });
+
+  it.each([
+    ["a payload_too_large body", JSON.stringify({ error: "payload_too_large" })],
+    ["a bare 413 with no body", ""],
+    ["a 413 with a non-JSON body", "<html>Request Entity Too Large</html>"],
+  ])("maps a 413 with %s on the projection upload to payload_too_large", async (_label, body) => {
+    const fetch = jest.fn().mockResolvedValueOnce(new Response(body, { status: 413 }));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 15,
+        sourceInviteID: "invite-1",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "payload_too_large" });
+  });
+
+  it("refuses a projection ciphertext over the 2 MiB cap locally, sending no request", async () => {
+    const fetch = jest.fn();
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 2 * 1024 * 1024 + 1,
+        sourceInviteID: "invite-1",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "payload_too_large" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("sends a projection ciphertext of exactly 2 MiB", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(new Response("{}", { status: 500 }));
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await client.upsertPartnerProjection("managed-session-1", "grant-1", {
+      schemaVersion: 1,
+      checksumSHA256: "deadbeef",
+      ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+      ciphertextSize: 2 * 1024 * 1024,
+      sourceInviteID: "invite-1",
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("maps an unrecognized 5xx body on the projection upload to network_failed, not payload_too_large", async () => {
+    const fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "something_else" }), { status: 502 }),
+    );
+    const client = createManagedCloudAPIClient(
+      "http://127.0.0.1:8090",
+      fetch as unknown as typeof global.fetch,
+    );
+
+    await expect(
+      client.upsertPartnerProjection("managed-session-1", "grant-1", {
+        schemaVersion: 1,
+        checksumSHA256: "deadbeef",
+        ciphertextBase64: "c29tZS1jaXBoZXJ0ZXh0",
+        ciphertextSize: 15,
+        sourceInviteID: "invite-1",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "network_failed" });
   });
 
   it("maps a 503 (signing disabled server-side) to entitlements_not_configured so the app falls back to the snapshot", async () => {
