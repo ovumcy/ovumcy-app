@@ -1,5 +1,6 @@
 import * as React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { getBabyWeekCopy } from "../../i18n/baby-week-copy";
 import { getDashboardCopy } from "../../i18n/dashboard-copy";
@@ -815,6 +816,91 @@ describe("DashboardScreen", () => {
         }),
       ),
     );
+  });
+
+  it("saves an open draft on its own date and edits the new day after midnight", async () => {
+    // Only Date is faked: timers, promises and the debounce stay real.
+    jest.useFakeTimers({
+      doNotFake: [
+        "hrtime",
+        "nextTick",
+        "performance",
+        "queueMicrotask",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "requestIdleCallback",
+        "cancelIdleCallback",
+        "setImmediate",
+        "clearImmediate",
+        "setInterval",
+        "clearInterval",
+        "setTimeout",
+        "clearTimeout",
+      ],
+    });
+    jest.setSystemTime(new Date(2026, 5, 1, 23, 59, 30));
+    const appStateHandlers: ((state: AppStateStatus) => void)[] = [];
+    const addListener = jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_type, handler) => {
+        appStateHandlers.push(handler as (state: AppStateStatus) => void);
+        return { remove: jest.fn() } as unknown as ReturnType<
+          typeof AppState.addEventListener
+        >;
+      });
+
+    try {
+      const storage = createVolatileWebAppStorage();
+      await storage.writeProfileRecord({
+        lastPeriodStart: "2026-05-25",
+        cycleLength: 28,
+        periodLength: 5,
+        autoPeriodFill: false,
+        irregularCycle: false,
+        unpredictableCycle: false,
+        ageGroup: "",
+        usageGoal: "health",
+        trackBBT: false,
+        temperatureUnit: "c",
+        trackCervicalMucus: false,
+        hideSexChip: false,
+        languageOverride: "en",
+        themeOverride: "light",
+        dismissedCalendarPredictionNoticeKey: null,
+      });
+
+      const view = await render(
+        <AppPreferencesTestProvider languageOverride="en">
+          <DashboardScreen autosaveDebounceMs={60_000} storage={storage} />
+        </AppPreferencesTestProvider>,
+      );
+      await screen.findByText("June 1, 2026");
+      await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+
+      jest.setSystemTime(new Date(2026, 5, 2, 7, 15, 0));
+      await act(async () => {
+        for (const handler of appStateHandlers) {
+          handler("active");
+        }
+      });
+
+      await screen.findByText("June 2, 2026");
+      expect(await storage.readDayLogRecord("2026-06-01")).toEqual(
+        expect.objectContaining({ date: "2026-06-01", isPeriod: true }),
+      );
+      expect((await storage.readDayLogRecord("2026-06-02")).isPeriod).toBe(false);
+
+      await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+      await view.unmount();
+
+      await waitFor(async () =>
+        expect(await storage.readDayLogRecord("2026-06-02")).toEqual(
+          expect.objectContaining({ date: "2026-06-02", isPeriod: true }),
+        ),
+      );
+    } finally {
+      addListener.mockRestore();
+    }
   });
 
   it("shows a success status after marking a manual cycle start", async () => {

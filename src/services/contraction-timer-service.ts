@@ -17,7 +17,7 @@ import {
   resolveBirthOptionVisible,
   type GestationalAge,
 } from "./pregnancy-timeline-service";
-import { formatLocalDate } from "./profile-settings-policy";
+import { formatLocalDate, parseLocalDate } from "./profile-settings-policy";
 
 // Contraction-timer session lifecycle + derived 5-1-1 math + the contraction-
 // timer screen's view-data (GA-aware education + the
@@ -419,9 +419,11 @@ export function formatMinSecLabel(totalSeconds: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+// A session date is a civil `YYYY-MM-DD`; `new Date(value)` would read it as
+// UTC midnight and label it a day early anywhere west of Greenwich.
 function formatDisplayDate(value: string, locale: string): string {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
+  const parsed = parseLocalDate(value);
+  if (!parsed) {
     return value;
   }
   return new Intl.DateTimeFormat(locale, {

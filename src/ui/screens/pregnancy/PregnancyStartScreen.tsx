@@ -16,7 +16,12 @@ import {
   type StartPregnancyErrorCode,
   type StartPregnancyInput,
 } from "../../../services/pregnancy-mode-service";
+import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
+import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
+import { pushPartnerProjectionInBackground } from "./push-partner-projection-in-background";
 import { ScreenScaffold } from "../../components/ScreenScaffold";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import { PregnancyStartFlowScreen } from "./PregnancyStartFlowScreen";
@@ -24,7 +29,9 @@ import { PregnancyStartFlowScreen } from "./PregnancyStartFlowScreen";
 type PregnancyStartScreenProps = {
   storage?: LocalAppStorage;
   now?: Date;
+  partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
+  syncSecretStore?: SyncSecretStore;
 };
 
 type LoadStatus = "loading" | "locked" | "ready";
@@ -32,7 +39,9 @@ type LoadStatus = "loading" | "locked" | "ready";
 export function PregnancyStartScreen({
   storage = appStorage,
   now,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
+  syncSecretStore = defaultSyncSecretStore,
 }: PregnancyStartScreenProps) {
   const router = useRouter();
   const { colors, language } = useAppPreferences();
@@ -198,6 +207,12 @@ export function PregnancyStartScreen({
     await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
       now,
     });
+    pushPartnerProjectionInBackground(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now ?? new Date(),
+    );
     router.replace("/(tabs)/dashboard");
   }
 

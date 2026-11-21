@@ -229,6 +229,9 @@ export function resolveDaySaveMessage(
 export type LoadedDashboardState = {
   historyRecords: DayLogRecord[];
   profile: ProfileRecord;
+  // Either medical-safety suppression signal: an ACTIVE pregnancy record or
+  // the day-log pregnancy pause.
+  predictionsSuppressed: boolean;
   todayEntry: DayLogRecord;
   viewData: DashboardViewData;
   editorViewData: DayLogEditorViewData;
@@ -313,10 +316,14 @@ export async function loadDashboardScreenState(
       pregnancyModeUnlocked = unlocked;
     }
   }
+  const cycleProjection =
+    projection ?? buildCurrentCycleProjection(profile, history, historyRecords, now);
 
   return {
     historyRecords,
     profile,
+    predictionsSuppressed:
+      activePregnancy?.status === "active" || cycleProjection.isPregnancyPaused,
     todayEntry: filteredTodayEntry,
     viewData: buildDashboardViewData(
       profile,
@@ -331,7 +338,7 @@ export async function loadDashboardScreenState(
         screeningResponses,
         pregnancyModeUnlocked,
         endedPregnancyRecords,
-        ...(projection ? { projection } : {}),
+        projection: cycleProjection,
       },
     ),
     editorViewData: buildDayLogEditorViewData(

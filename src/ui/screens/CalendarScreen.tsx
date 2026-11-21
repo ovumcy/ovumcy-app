@@ -1,5 +1,5 @@
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { createEmptyDayLogRecord, hasDayLogData } from "../../models/day-log";
@@ -38,6 +38,7 @@ import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { runManualCycleStartAction } from "./day-log/run-manual-cycle-start-action";
 import { useDayLogAutosave } from "./day-log/use-day-log-autosave";
+import { useLocalCivilNow } from "./day-log/use-local-civil-now";
 import { CalendarOverviewScreen } from "./CalendarOverviewScreen";
 
 type CalendarScreenProps = {
@@ -69,7 +70,15 @@ export function CalendarScreen({
   syncSecretStore = defaultSyncSecretStore,
 }: CalendarScreenProps) {
   const { colors, language } = useAppPreferences();
-  const [effectiveNow] = useState(() => now ?? new Date());
+  // The autosave hook below needs the date, and the rollover needs the
+  // autosave flush and the current selection; the ref breaks that cycle.
+  const rolloverRef = useRef<((previous: Date, next: Date) => Promise<void>) | null>(
+    null,
+  );
+  const effectiveNow = useLocalCivilNow({
+    now,
+    onBeforeRollover: (previous, next) => rolloverRef.current?.(previous, next),
+  });
   const [monthValue, setMonthValue] = useState(() =>
     formatLocalDate(effectiveNow).slice(0, 7),
   );
@@ -239,6 +248,19 @@ export function CalendarScreen({
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
   });
 
+  // A draft is saved on its own date. A selection resting on the old today in
+  // view mode follows the civil date; an open editor keeps its explicit date.
+  useEffect(() => {
+    rolloverRef.current = async (previous, next) => {
+      await flushPendingDraft();
+      if (editorMode === "view" && selectedDate === formatLocalDate(previous)) {
+        const nextToday = formatLocalDate(next);
+        setMonthValue(nextToday.slice(0, 7));
+        setSelectedDate(nextToday);
+      }
+    };
+  }, [editorMode, flushPendingDraft, selectedDate]);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -272,6 +294,7 @@ export function CalendarScreen({
     state.selectedRecord,
     effectiveNow,
     language,
+    { predictionsSuppressed: state.predictionsSuppressed },
   );
 
   async function handleDelete() {

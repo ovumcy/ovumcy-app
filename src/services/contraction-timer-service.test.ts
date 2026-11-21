@@ -832,6 +832,20 @@ describe("buildContractionSessionHistoryViewData", () => {
     expect(viewData.rows[0]!.contractionCountLabel).toContain("2");
   });
 
+  // Zone-sensitive: a UTC run cannot fail here; a run under a zone west of
+  // Greenwich (TZ=America/Los_Angeles) labels May 31 if the civil date is
+  // parsed as a UTC instant.
+  it("labels a past session with its own civil date in any device zone", () => {
+    const past = session({
+      id: "contraction_past",
+      date: "2026-06-01",
+      startedAt: "2026-06-01T19:00:00.000Z",
+    });
+
+    const viewData = buildContractionSessionHistoryViewData([past], null, "en");
+    expect(viewData.rows[0]!.dateLabel).toBe("June 1, 2026");
+  });
+
   it("reports an empty list distinctly from a populated one", () => {
     const viewData = buildContractionSessionHistoryViewData([], null, "en");
     expect(viewData.rows).toEqual([]);
