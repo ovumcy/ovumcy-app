@@ -21,8 +21,10 @@ async function loadSettingsManagedPremiumAccess(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   mode: SyncPreferencesRecord["mode"],
-  now: Date,
 ): Promise<SettingsManagedPremiumAccess> {
+  // The screen's `now` is fixed at mount; token expiry and the offline-grace
+  // window are decided on the live clock instead.
+  const billingNow = new Date();
   const result = await loadManagedBillingSnapshotWithSource(
     storage,
     secretStore,
@@ -30,9 +32,9 @@ async function loadSettingsManagedPremiumAccess(
     // Doctor PDF is token-gated: a verified entitlement token decides
     // `doctorPDF`; absent/invalid, the billing snapshot boolean stands.
     await buildEntitlementTokenGate(secretStore, mode, {
-      nowSeconds: Math.floor(now.getTime() / 1000),
+      nowSeconds: Math.floor(billingNow.getTime() / 1000),
     }),
-    now,
+    billingNow,
   );
   if (!result) {
     return createEmptySettingsManagedPremiumAccess();
@@ -84,7 +86,6 @@ export async function loadSettingsScreenState(
         storage,
         secretStore,
         syncState.preferences.mode,
-        now,
       );
     } else {
       syncPreferences = await clearLocalSyncSession(

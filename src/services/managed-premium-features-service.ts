@@ -194,10 +194,9 @@ async function readFreshCachedBillingSnapshot(
     if (!snapshot) {
       return null;
     }
-    if (isManagedBillingClockWoundBack(snapshot.fetchedAt, now, snapshot.lastServedAt)) {
-      await storage.writeManagedBillingCacheRecord({ ...record, snapshot: null });
-      return null;
-    }
+    // A rewound clock is refused, not deleted: the high-water mark keeps
+    // refusing it, and a caller holding a stale `now` cannot wipe the cache
+    // for every other surface.
     if (!isManagedBillingCacheFresh(snapshot.fetchedAt, now, snapshot.lastServedAt)) {
       return null;
     }
