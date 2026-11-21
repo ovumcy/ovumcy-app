@@ -54,9 +54,9 @@ export const MANAGED_PARTNER_PROJECTION_MAX_CIPHERTEXT_BYTES = 2 * 1024 * 1024;
 /**
  * True only when a failed managed call says "the server could not be asked"
  * rather than "the server answered no". `network_failed` is the synthetic
- * no-response outcome (thrown fetch, status 599); any 5xx, including the
- * server's temporary-unavailability answer, is also mapped to
- * `network_failed`. Every other code
+ * no-response outcome (thrown fetch, status 599); a 5xx without a recognized
+ * error body, including the server's temporary-unavailability answer, is also
+ * mapped to `network_failed`. Every other code
  * is an answer (4xx refusals, `unauthorized`, an unparseable 4xx body), so
  * offline-grace readers must treat it as a refusal and fail closed.
  */
