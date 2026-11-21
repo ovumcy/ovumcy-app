@@ -542,12 +542,12 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       if (source.includes("FROM pregnancy_records")) {
         requirePregnancyTables();
         let rows = [...databaseState.pregnancyRecordsRows];
-        if (source.includes("WHERE status = 'active'")) {
+        if (source.includes("status = 'active'")) {
           rows = rows.filter((row) => row.status === "active");
-          if (source.includes("id != ?")) {
-            const selfID = String(params[0]);
-            rows = rows.filter((row) => row.id !== selfID);
-          }
+        }
+        if (source.includes("id != ?")) {
+          const selfID = String(params[0]);
+          rows = rows.filter((row) => row.id !== selfID);
         }
         return rows as T[];
       }
@@ -565,12 +565,12 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
       if (source.includes("FROM postpartum_records")) {
         requirePostpartumTable();
         let rows = [...databaseState.postpartumRecordsRows];
-        if (source.includes("WHERE status = 'active'")) {
+        if (source.includes("status = 'active'")) {
           rows = rows.filter((row) => row.status === "active");
-          if (source.includes("id != ?")) {
-            const selfID = String(params[0]);
-            rows = rows.filter((row) => row.id !== selfID);
-          }
+        }
+        if (source.includes("id != ?")) {
+          const selfID = String(params[0]);
+          rows = rows.filter((row) => row.id !== selfID);
         }
         return rows as T[];
       }
@@ -3681,6 +3681,40 @@ describe("sqlite-app-storage", () => {
       expect.objectContaining({ id: "pregnancy_3" }),
     );
     await expect(storage.listPregnancyRecords()).resolves.toHaveLength(2);
+  });
+
+  it("resolves the active pregnancy from the authenticated record when the plaintext status column is edited", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+    await storage.writePregnancyRecord(
+      buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+    );
+    for (const row of inspected.state.pregnancyRecordsRows) {
+      row.status = "ended";
+    }
+
+    await expect(storage.readActivePregnancy()).resolves.toEqual(
+      expect.objectContaining({ id: "pregnancy_1", status: "active" }),
+    );
+    await expect(
+      storage.writePregnancyRecord(
+        buildPregnancyRecord({ id: "pregnancy_2", status: "active" }),
+      ),
+    ).rejects.toThrow("another pregnancy is already active");
+  });
+
+  it("resolves the active postpartum record from the authenticated record when the plaintext status column is edited", async () => {
+    const { storage, inspected } = createPregnancyStorage();
+    await storage.writePostpartumRecord(buildPostpartumRecord({ id: "postpartum_1" }));
+    for (const row of inspected.state.postpartumRecordsRows) {
+      row.status = "ended";
+    }
+
+    await expect(storage.readActivePostpartum()).resolves.toEqual(
+      expect.objectContaining({ id: "postpartum_1", status: "active" }),
+    );
+    await expect(
+      storage.writePostpartumRecord(buildPostpartumRecord({ id: "postpartum_2" })),
+    ).rejects.toThrow("another postpartum is already active");
   });
 
   it("wipes the pregnancy tables on destructive local reset and leaves them empty and usable", async () => {
