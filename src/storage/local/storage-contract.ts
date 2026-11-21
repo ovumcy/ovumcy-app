@@ -29,7 +29,7 @@ export type ManagedBillingCachedSnapshot = {
   };
   fetchedAt: string;
   // Latest device-clock instant at which the cache was served; a clock found
-  // behind it means the clock was wound back, and the cache is void.
+  // well behind it means the clock was wound back, and the cache is refused.
   lastServedAt?: string;
 };
 

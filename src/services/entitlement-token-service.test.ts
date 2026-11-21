@@ -113,6 +113,22 @@ describe("resolveVerifiedEntitlements", () => {
     expect(await store.readEntitlementToken()).toBeNull();
   });
 
+  it("reports unavailable instead of throwing when the token store fails", async () => {
+    const store = createMemoryStore();
+    jest.spyOn(store, "readEntitlementToken").mockRejectedValue(new Error("keychain locked"));
+
+    const result = await resolveVerifiedEntitlements({
+      store,
+      managedSessionToken: null,
+      expectedSub: SUB,
+      now: NOW,
+      client: clientAnswering({ ok: false, errorCode: "network_failed" }),
+      publicKeysByKid: PUBLIC_KEYS,
+    });
+
+    expect(result).toEqual({ status: "unavailable" });
+  });
+
   it("keeps and verifies the cached token on a transport failure", async () => {
     const store = createMemoryStore();
     const cached = signToken(["doctor_pdf"]);
