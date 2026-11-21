@@ -461,6 +461,8 @@ function resolveSharedViewErrorMessage(
   switch (errorCode) {
     case "share_key_unavailable":
       return copy.sharedViewLocked;
+    case "partner_grant_rekeyed":
+      return copy.sharedViewRekeyed;
     case "partner_projection_not_found":
       return copy.sharedViewNotReady;
     case "invalid_partner_projection":

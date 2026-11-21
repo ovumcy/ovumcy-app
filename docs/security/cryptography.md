@@ -67,7 +67,7 @@ Enforcement: the test matrix has no row for the sync envelope; its behaviour is 
 | Nonce | Random 24 bytes per upload. |
 | AAD | `ovumcy-partner-share-v1\|<grantID>\|<accessLevel>\|<schemaVersion>`. After decryption the inner payload's `grantID` and `accessLevel` must equal the envelope's, and `generation` must be an integer at or above the initial generation. |
 | Envelope version | AAD label `ovumcy-partner-share-v1` plus `PARTNER_SHARE_SCHEMA_VERSION`; a mismatching `schemaVersion` is refused. |
-| Rotation / rekey | Invite key to grant key rotation at accept time; `consumedInviteIDs` prevents a second grant from being keyed from the same invite. A new grant derives a new key. Freshness is protected by a monotonic owner `generation` inside the encrypted payload and a partner-side last-seen marker. |
+| Rotation / rekey | Invite key to grant key rotation at accept time; `consumedInviteIDs` prevents a second grant from being keyed from the same invite. A new grant derives a new key. Freshness is protected by a monotonic owner `generation` inside the encrypted payload and a partner-side last-seen marker scoped to the invite it was seen under (a re-share under a reused grant id starts a new floor). |
 
 Enforcement rows: [Partner-share crypto and projection privacy](../../SECURITY.md#partner-share-crypto-and-projection-privacy). Rotation and replay rationale: [Partner-Share Key Rotation](../sync-trust-model.md#partner-share-key-rotation).
 
