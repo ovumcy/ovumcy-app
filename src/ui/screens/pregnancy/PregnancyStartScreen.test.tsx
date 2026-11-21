@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { createEmptyDayLogRecord } from "../../../models/day-log";
 import { createDefaultProfileRecord } from "../../../models/profile";
 import { getPregnancyCopy } from "../../../i18n/pregnancy-copy";
+import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { loadPregnancyModuleOwned } from "../../../services/pregnancy-entitlement-service";
 import { addDays, parseLocalDate } from "../../../services/profile-settings-policy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
@@ -38,7 +39,14 @@ jest.mock("../../../services/app-bootstrap-service", () => {
   return { appStorage: createLocalAppStorageMock() };
 });
 
+jest.mock("../../../services/managed-partner-share-sync-service", () => ({
+  syncManagedPartnerSharedProjections: jest
+    .fn()
+    .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] }),
+}));
+
 const mockUnlocked = jest.mocked(loadPregnancyModuleOwned);
+const mockSyncPartnerProjections = jest.mocked(syncManagedPartnerSharedProjections);
 
 const EDD = "2026-10-08";
 
@@ -481,6 +489,7 @@ describe("PregnancyStartScreen reminder rebuild", () => {
     mockReplace.mockReset();
     mockUnlocked.mockReset();
     mockUnlocked.mockResolvedValue(true);
+    mockSyncPartnerProjections.mockClear();
   });
 
   it("rebuilds the reminder schedule once, after the pregnancy record is written", async () => {
@@ -514,6 +523,74 @@ describe("PregnancyStartScreen reminder rebuild", () => {
     expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
     expect(scheduler.sync).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockSyncPartnerProjections).not.toHaveBeenCalled();
+  });
+});
+
+describe("PregnancyStartScreen partner projection push", () => {
+  async function confirmStart(storage: ReturnType<typeof createLocalAppStorageMock>) {
+    await render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyStartScreen
+          now={nowForGaDays(171)}
+          reminderScheduler={{ sync: jest.fn().mockResolvedValue("scheduled") }}
+          storage={storage}
+        />
+      </AppPreferencesTestProvider>,
+    );
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(screen.getByTestId("pregnancy-start-next-button"));
+    await fireEvent.press(await screen.findByTestId("pregnancy-start-confirm-button"));
+  }
+
+  function startableStorage() {
+    return createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profileWithLmp()),
+      readActivePregnancy: jest.fn().mockResolvedValue(null),
+    });
+  }
+
+  beforeEach(() => {
+    mockSyncPartnerProjections.mockClear();
+  });
+
+  afterEach(() => {
+    mockReplace.mockReset();
+    mockSyncPartnerProjections.mockReset();
+    mockSyncPartnerProjections.mockResolvedValue({
+      skipped: true,
+      syncedCount: 0,
+      reshareRequiredGrantIDs: [],
+    });
+  });
+
+  it("pushes the partner projection once, after the pregnancy record is written", async () => {
+    const storage = startableStorage();
+
+    await confirmStart(storage);
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"));
+    expect(mockSyncPartnerProjections).toHaveBeenCalledTimes(1);
+    expect(mockSyncPartnerProjections.mock.calls[0]![0]).toBe(storage);
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.invocationCallOrder[0],
+    ).toBeLessThan(mockSyncPartnerProjections.mock.invocationCallOrder[0]!);
+  });
+
+  it("navigates without waiting on a push that has not settled", async () => {
+    mockSyncPartnerProjections.mockReturnValue(new Promise(() => undefined));
+
+    await confirmStart(startableStorage());
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"));
+  });
+
+  it("navigates when the push fails", async () => {
+    mockSyncPartnerProjections.mockRejectedValue(new Error("network down"));
+
+    await confirmStart(startableStorage());
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/(tabs)/dashboard"));
   });
 });
 

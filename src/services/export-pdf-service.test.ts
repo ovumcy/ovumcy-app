@@ -1048,6 +1048,41 @@ describe("doctor PDF: recorded pregnancy tests", () => {
       expect(report.cycles[0]?.startDate).toBe("2026-01-01");
     });
 
+    // Retrospective fertile / tentative-ovulation markers on completed cycles
+    // stay in the doctor PDF during an active pregnancy; none may fall on or
+    // after the latest cycle start, where the suppressed current cycle runs.
+    it("keeps retrospective calendar markers under suppression and places none on or after the latest cycle start", () => {
+      const everyDay: DayLogRecord[] = [];
+      for (
+        let day = parseLocalDate("2026-01-01")!;
+        formatLocalDate(day) <= "2026-02-14";
+        day = addDays(day, 1)
+      ) {
+        const date = formatLocalDate(day);
+        everyDay.push({
+          ...createEmptyDayLogRecord(date),
+          isPeriod: date === "2026-01-01" || date === "2026-02-01",
+          cycleStart: date === "2026-01-01" || date === "2026-02-01",
+          pregnancyTest: date === "2026-02-12" ? ("positive" as const) : "none",
+          mood: 3,
+        });
+      }
+
+      const report = buildReport({
+        now,
+        dayLogs: everyDay,
+        profile: pdfProfile,
+        symptomRecords: [],
+        suppressPredictions: true,
+      });
+
+      const markedDates = report.calendarDays
+        .filter((day) => day.isFertile || day.isTentativeOvulation || day.isOvulation)
+        .map((day) => day.date);
+      expect(markedDates.length).toBeGreaterThan(0);
+      expect(markedDates.every((date) => date < "2026-02-01")).toBe(true);
+    });
+
     it("pauses from the shared cycle history when the positive test lies outside the export range", () => {
       const report = buildReport({
         now,

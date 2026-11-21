@@ -16,9 +16,12 @@ import type {
 // reminder toggle is off, or the enabled kinds produced no plans (pregnancy
 // pause, no upcoming dates). It is NOT a premium state: the local device
 // channel is a Free-tier feature and never consults the billing snapshot.
+// "failed" means the plan inputs could not be read and the device schedule
+// was cleared rather than left armed.
 export type LocalReminderSyncResult =
   | LocalReminderSchedulerSyncResult
-  | "disabled";
+  | "disabled"
+  | "failed";
 
 // Reminders are local-first and account-free: plans derive purely from
 // on-device profile + day-log data and go straight to the platform scheduler.
@@ -54,7 +57,16 @@ export async function syncLocalReminderSchedule(
   }
 
   const { locale = "en", now = new Date() } = options;
-  const plans = await loadLocalReminderPlans(storage, profile, now, locale);
+  let plans: LocalReminderPlan[];
+  try {
+    plans = await loadLocalReminderPlans(storage, profile, now, locale);
+  } catch {
+    // Fail closed: the armed schedule was planned from data this read can no
+    // longer confirm (a pregnancy started since would make its period and
+    // fertile reminders wrong), so it is cleared until the next rebuild.
+    await scheduler.sync([]).catch(() => undefined);
+    return "failed";
+  }
   return syncLocalReminderPlans(scheduler, plans);
 }
 

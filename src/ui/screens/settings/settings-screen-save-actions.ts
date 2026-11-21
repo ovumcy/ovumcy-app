@@ -249,6 +249,7 @@ function resolveReminderStatusMessage(
     case "permission_denied":
       return viewData.reminders.status.permissionDenied;
     case "unavailable":
+    case "failed":
       return viewData.reminders.status.unavailable;
     default:
       return viewData.reminders.status.saved;
@@ -260,6 +261,7 @@ function resolveReminderStatusTone(
 ): "success" | "error" | "info" {
   switch (result) {
     case "permission_denied":
+    case "failed":
       return "error";
     case "unavailable":
       return "info";
