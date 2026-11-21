@@ -145,7 +145,6 @@ function buildPayload(fields: {
       trackBBT: false,
       trackCervicalMucus: false,
       unpredictableCycle: false,
-      usageGoal: "health",
     },
     dayLogs: [],
     symptomRecords: [],
