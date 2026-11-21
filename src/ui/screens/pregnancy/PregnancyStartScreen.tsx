@@ -211,7 +211,7 @@ export function PregnancyStartScreen({
       storage,
       syncSecretStore,
       partnerShareSecretStore,
-      now ?? new Date(),
+      now,
     );
     router.replace("/(tabs)/dashboard");
   }

@@ -83,7 +83,7 @@ export function useLocalCivilNow({
       return;
     }
 
-    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     const arm = () => {
       timeout = setTimeout(() => {
         void checkCivilDate();
@@ -99,9 +99,7 @@ export function useLocalCivilNow({
     });
 
     return () => {
-      if (timeout) {
-        clearTimeout(timeout);
-      }
+      clearTimeout(timeout);
       subscription.remove();
     };
   }, [checkCivilDate, isPinned]);

@@ -128,6 +128,33 @@ describe("useLocalCivilNow", () => {
     expect(formatLocalDate(result.current)).toBe("2026-06-02");
   });
 
+  it("does not commit the new date when the screen unmounts during the rollover callback", async () => {
+    jest.setSystemTime(lateEvening);
+    let releaseFlush: () => void = () => undefined;
+    const onBeforeRollover = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseFlush = resolve;
+        }),
+    );
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result, unmount } = await renderHook(() => useLocalCivilNow({ onBeforeRollover }));
+
+    jest.setSystemTime(nextMorning);
+    await act(async () => {
+      appStateHandler?.("active");
+    });
+    expect(onBeforeRollover).toHaveBeenCalledTimes(1);
+    await unmount();
+
+    await act(async () => {
+      releaseFlush();
+    });
+
+    expect(formatLocalDate(result.current)).toBe("2026-06-01");
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
   it("keeps an injected instant for the screen's lifetime", async () => {
     const pinned = new Date(2026, 5, 1, 12, 0, 0);
     jest.setSystemTime(lateEvening);
