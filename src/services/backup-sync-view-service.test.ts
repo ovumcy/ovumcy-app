@@ -337,6 +337,23 @@ describe("backup sync view service", () => {
     ).toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
   });
 
+  it("explains a self-hosted package another device replaced", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
+    expect(
+      resolveBackupSyncErrorMessage("recovery_key_changed_elsewhere", viewData.account),
+    ).toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
+  });
+
+  it("asks to wait on rate_limited instead of the generic failure", () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 22), "ru");
+    const message = resolveBackupSyncErrorMessage("rate_limited", viewData.account);
+    expect(message).toBe(viewData.account.errors.rateLimited);
+    expect(message).not.toBe(viewData.account.errors.saveFailed);
+    expect(message).not.toBe(
+      buildSettingsViewData(new Date(2026, 2, 22), "en").account.errors.rateLimited,
+    );
+  });
+
   it("shows the self-hosted account-step hint before a sync session exists", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
     const presentation = buildBackupSyncSetupPresentation({

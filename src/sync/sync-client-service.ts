@@ -30,6 +30,7 @@ import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation
 import { isPasswordTooShort } from "./password-policy";
 import type {
   EncryptedSyncEnvelope,
+  SyncBlobRecord,
   SyncCapabilityDocument,
   SyncDeviceRecord,
   SyncPreferencesRecord,
@@ -89,6 +90,7 @@ export type SyncRecoverErrorCode =
   | "invalid_credentials"
   | "unauthorized"
   | "too_many_devices"
+  | "rate_limited"
   | "network_failed"
   | "generic";
 
@@ -115,6 +117,10 @@ export type SyncRunErrorCode =
   // The managed account's recovery phrase was rotated (on another device, or
   // by an unconfirmed rotation here) and this device holds the old package.
   | "managed_recovery_key_overwrite"
+  // Self-hosted: this device has uploaded under its key before, and the
+  // server now stores a different package, so another device replaced it.
+  | "recovery_key_changed_elsewhere"
+  | "rate_limited"
   | "network_failed"
   | "generic";
 
@@ -898,10 +904,15 @@ export async function recoverSyncAccess(
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
+  | RecoverSyncAccessSuccess
   | {
+      // Self-hosted only: the password verified but the account has TOTP on.
+      // Nothing is stored yet; the caller completes the challenge and calls
+      // `finalizeSyncRecoveryAfterTOTP` with the issued token and the phrase.
       ok: true;
-      capabilities: SyncCapabilityDocument;
-      preferences: SyncPreferencesRecord;
+      totpChallengeRequired: true;
+      challengeID: string;
+      challengeExpiresAt: string;
     }
   | {
       ok: false;
@@ -1066,7 +1077,107 @@ export async function recoverSyncAccess(
     };
   }
 
-  const capabilitiesResult = await client.getCapabilities(authResult.auth.sessionToken);
+  // The deferred login carries an empty session token; nothing may run on it.
+  if (authResult.auth.totpChallenge) {
+    return {
+      ok: true,
+      totpChallengeRequired: true,
+      challengeID: authResult.auth.totpChallenge.challengeID,
+      challengeExpiresAt: authResult.auth.totpChallenge.challengeExpiresAt,
+    };
+  }
+
+  return completeCommunityRecovery(
+    storage,
+    secretStore,
+    preferences,
+    client,
+    normalizedEndpoint.endpoint.baseURL,
+    authResult.auth.sessionToken,
+    normalizedRecoveryPhrase,
+    now,
+  );
+}
+
+type RecoverSyncAccessSuccess = {
+  ok: true;
+  capabilities: SyncCapabilityDocument;
+  preferences: SyncPreferencesRecord;
+};
+
+/**
+ * finalizeSyncRecoveryAfterTOTP finishes a self-hosted phrase recovery whose
+ * login `recoverSyncAccess` deferred for a TOTP challenge. The caller completes
+ * the challenge (`completeTOTPChallenge` in sync-totp-service) and passes the
+ * issued session token with the phrase, both held in memory only.
+ */
+export async function finalizeSyncRecoveryAfterTOTP(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  input: { sessionToken: string; recoveryPhrase: string },
+  now: Date,
+  apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
+): Promise<
+  | RecoverSyncAccessSuccess
+  | {
+      ok: false;
+      errorCode: SyncRecoverErrorCode;
+    }
+> {
+  if (preferences.mode !== "self_hosted") {
+    return { ok: false, errorCode: "generic" };
+  }
+  if (input.sessionToken.length === 0) {
+    return { ok: false, errorCode: "unauthorized" };
+  }
+  if (preferences.deviceLabel.trim().length === 0) {
+    return { ok: false, errorCode: "device_label_required" };
+  }
+  const normalizedRecoveryPhrase = input.recoveryPhrase.trim();
+  if (normalizedRecoveryPhrase.length === 0) {
+    return { ok: false, errorCode: "recovery_phrase_required" };
+  }
+  if (!isValidRecoveryPhrase(normalizedRecoveryPhrase)) {
+    return { ok: false, errorCode: "invalid_recovery_phrase" };
+  }
+  const normalizedEndpoint = normalizeSyncEndpoint(
+    preferences.mode,
+    preferences.endpointInput,
+  );
+  if (!normalizedEndpoint.ok) {
+    return normalizedEndpoint;
+  }
+
+  return completeCommunityRecovery(
+    storage,
+    secretStore,
+    preferences,
+    apiClientFactory(normalizedEndpoint.endpoint.baseURL),
+    normalizedEndpoint.endpoint.baseURL,
+    input.sessionToken,
+    normalizedRecoveryPhrase,
+    now,
+  );
+}
+
+async function completeCommunityRecovery(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  preferences: SyncPreferencesRecord,
+  client: SyncAPIClient,
+  baseURL: string,
+  sessionToken: string,
+  normalizedRecoveryPhrase: string,
+  now: Date,
+): Promise<
+  | RecoverSyncAccessSuccess
+  | {
+      ok: false;
+      errorCode: SyncRecoverErrorCode;
+    }
+> {
+  const capabilitiesResult = await client.getCapabilities(sessionToken);
   if (!capabilitiesResult.ok) {
     return {
       ok: false,
@@ -1080,7 +1191,7 @@ export async function recoverSyncAccess(
     };
   }
 
-  const recoveryKeyResult = await client.getRecoveryKey(authResult.auth.sessionToken);
+  const recoveryKeyResult = await client.getRecoveryKey(sessionToken);
   if (!recoveryKeyResult.ok) {
     return {
       ok: false,
@@ -1103,7 +1214,7 @@ export async function recoverSyncAccess(
     };
   }
 
-  const attachDeviceResult = await client.attachDevice(authResult.auth.sessionToken, {
+  const attachDeviceResult = await client.attachDevice(sessionToken, {
     deviceID: recoveredSecrets.device.deviceID,
     deviceLabel: recoveredSecrets.device.deviceLabel,
   });
@@ -1116,7 +1227,7 @@ export async function recoverSyncAccess(
 
   await secretStore.writeSyncSecrets({
     ...recoveredSecrets,
-    authSessionToken: authResult.auth.sessionToken,
+    authSessionToken: sessionToken,
   });
 
   const nextPreferences: SyncPreferencesRecord = {
@@ -1125,7 +1236,7 @@ export async function recoverSyncAccess(
     deviceLabel: preferences.deviceLabel.trim(),
     endpointInput:
       preferences.mode === "self_hosted" ? preferences.endpointInput.trim() : "",
-    normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
+    normalizedEndpoint: baseURL,
     setupStatus: "connected",
     preparedAt: now.toISOString(),
     lastRemoteGeneration: null,
@@ -1205,11 +1316,14 @@ export async function runSyncUpload(
   // lastRemoteGeneration is null, so steady-state uploads pay no extra
   // request. Fail closed on probe errors other than "no blob yet": if the
   // remote state is unknown, overwriting is exactly the risk being guarded.
+  // undefined = not probed; null = the server holds no blob.
+  let remoteBlob: SyncBlobRecord | null | undefined;
   if (preferences.lastRemoteGeneration === null) {
     const remoteBlobResult = await client.getBlob(prepared.secrets.authSessionToken);
     if (!remoteBlobResult.ok && remoteBlobResult.errorCode !== "blob_not_found") {
       return { ok: false, errorCode: mapRunAPIError(remoteBlobResult.errorCode) };
     }
+    remoteBlob = remoteBlobResult.ok ? remoteBlobResult.blob : null;
 
     if (
       requiresUploadOverBackupConfirmation({
@@ -1241,39 +1355,52 @@ export async function runSyncUpload(
   const checksumSHA256 = bytesToHex(sha256(ciphertextBytes));
 
   const capabilitiesResult = await client.getCapabilities(prepared.secrets.authSessionToken);
-  if (capabilitiesResult.ok) {
-    // The step-up is a community-server check; a managed sync host is not the
-    // auth host and never receives the password or code.
-    const syncedRecoveryKey =
-      preferences.mode === "self_hosted"
-        ? await syncRecoveryKeyIfSupported(
-            client,
-            prepared.secrets.authSessionToken,
-            capabilitiesResult.capabilities,
-            prepared.secrets.wrappedKey,
-            recoveryKeyStepUp,
-          )
-        : await putRecoveryKeyWithoutStepUp(
-            client,
-            prepared.secrets.authSessionToken,
-            capabilitiesResult.capabilities,
-            prepared.secrets.wrappedKey,
-          );
-    if (!syncedRecoveryKey.ok) {
-      const errorCode = syncedRecoveryKey.errorCode;
-      return {
-        ok: false,
-        errorCode:
-          preferences.mode === "self_hosted" && isRecoveryKeyStepUpCode(errorCode)
-            ? errorCode
-            : mapRunAPIError(errorCode as SyncAPIErrorCode),
-      };
-    }
-  } else {
+  if (!capabilitiesResult.ok) {
     // Fail closed: without the capabilities the recovery-key package cannot be
     // kept in step with the blob, so a new-key blob could land under the old
     // package.
     return { ok: false, errorCode: mapRunAPIError(capabilitiesResult.errorCode) };
+  }
+  const capabilities = capabilitiesResult.capabilities;
+  // The server refuses a blob over its limit only after the package write.
+  if (capabilities.maxBlobBytes > 0 && ciphertextBytes.length > capabilities.maxBlobBytes) {
+    return { ok: false, errorCode: "invalid_blob" };
+  }
+
+  // The step-up is a community-server check; a managed sync host is not the
+  // auth host and never receives the password or code.
+  const syncedRecoveryKey =
+    preferences.mode === "self_hosted"
+      ? await syncRecoveryKeyBeforeBlob(
+          client,
+          prepared.secrets.authSessionToken,
+          capabilities,
+          prepared.secrets.wrappedKey,
+          {
+            generation,
+            rollbackFloor: readRollbackFloor(preferences),
+            remoteBlob,
+          },
+          recoveryKeyStepUp,
+        )
+      : await putRecoveryKeyWithoutStepUp(
+          client,
+          prepared.secrets.authSessionToken,
+          capabilities,
+          prepared.secrets.wrappedKey,
+        );
+  if (!syncedRecoveryKey.ok) {
+    const errorCode = syncedRecoveryKey.errorCode;
+    if (errorCode === "recovery_key_changed_elsewhere") {
+      return { ok: false, errorCode };
+    }
+    return {
+      ok: false,
+      errorCode:
+        preferences.mode === "self_hosted" && isRecoveryKeyStepUpCode(errorCode)
+          ? errorCode
+          : mapRunAPIError(errorCode as SyncAPIErrorCode),
+    };
   }
 
   const putBlobResult = await client.putBlob(prepared.secrets.authSessionToken, {
@@ -1904,6 +2031,7 @@ function mapRecoverAPIError(errorCode: SyncAPIErrorCode): SyncRecoverErrorCode {
     case "invalid_credentials":
     case "unauthorized":
     case "too_many_devices":
+    case "rate_limited":
     case "network_failed":
     case "recovery_package_not_found":
       return errorCode;
@@ -1919,6 +2047,7 @@ function mapManagedRecoverAPIError(
     case "invalid_credentials":
     case "unauthorized":
     case "sync_not_allowed":
+    case "rate_limited":
     case "network_failed":
       return errorCode;
     case "sync_bridge_unavailable":
@@ -1934,6 +2063,7 @@ function mapRunAPIError(errorCode: SyncAPIErrorCode): SyncRunErrorCode {
     case "invalid_blob":
     case "stale_generation":
     case "blob_not_found":
+    case "rate_limited":
     case "network_failed":
     case "managed_recovery_key_overwrite":
       return errorCode;
@@ -2035,6 +2165,92 @@ async function syncRecoveryKeyIfSupported(
     default:
       return { ok: false, errorCode };
   }
+}
+
+/**
+ * Interim guard until the server writes the package and the blob atomically:
+ * a package write lands only when the blob after it can still be accepted, so
+ * a failed upload never leaves the old backup under a package that wraps a new
+ * key. An unchanged package is not rewritten. A different stored package is
+ * replaced only by a device that has not uploaded under its key yet (the
+ * fresh-install overwrite confirm and the step-up still gate it); a device
+ * that has uploaded holds the key it published, so a different package there
+ * was replaced elsewhere and must be recovered, not overwritten.
+ */
+async function syncRecoveryKeyBeforeBlob(
+  client: SyncAPIClient,
+  sessionToken: string,
+  capabilities: SyncCapabilityDocument,
+  wrappedKey: SyncSecretsRecord["wrappedKey"],
+  upload: {
+    generation: number;
+    rollbackFloor: number | null;
+    // undefined = not probed yet; null = the server holds no blob.
+    remoteBlob: SyncBlobRecord | null | undefined;
+  },
+  stepUp?: SyncRecoveryKeyStepUp,
+): Promise<
+  | { ok: true }
+  | {
+      ok: false;
+      errorCode:
+        | SyncAPIErrorCode
+        | RecoveryKeyStepUpErrorCode
+        | "recovery_key_changed_elsewhere";
+    }
+> {
+  if (!capabilities.recoverySupported) {
+    return { ok: true };
+  }
+
+  const stored = await client.getRecoveryKey(sessionToken);
+  if (stored.ok) {
+    if (isSameRecoveryKeyPackage(stored.recoveryKey, wrappedKey)) {
+      return { ok: true };
+    }
+    if (upload.rollbackFloor !== null) {
+      return { ok: false, errorCode: "recovery_key_changed_elsewhere" };
+    }
+  } else if (stored.errorCode !== "recovery_package_not_found") {
+    return { ok: false, errorCode: stored.errorCode };
+  }
+
+  let remoteBlob = upload.remoteBlob;
+  if (remoteBlob === undefined) {
+    const remoteBlobResult = await client.getBlob(sessionToken);
+    if (!remoteBlobResult.ok && remoteBlobResult.errorCode !== "blob_not_found") {
+      return { ok: false, errorCode: remoteBlobResult.errorCode };
+    }
+    remoteBlob = remoteBlobResult.ok ? remoteBlobResult.blob : null;
+  }
+  // The server accepts only a strictly higher generation.
+  if (remoteBlob !== null && upload.generation <= remoteBlob.generation) {
+    return { ok: false, errorCode: "stale_generation" };
+  }
+
+  return syncRecoveryKeyIfSupported(
+    client,
+    sessionToken,
+    capabilities,
+    wrappedKey,
+    stepUp,
+  );
+}
+
+// Mirrors the server's normalisation before its whole-package no-op check.
+function isSameRecoveryKeyPackage(
+  stored: SyncSecretsRecord["wrappedKey"],
+  local: SyncSecretsRecord["wrappedKey"],
+): boolean {
+  const normalize = (value: string) => value.trim().toLowerCase();
+  return (
+    normalize(stored.algorithm) === normalize(local.algorithm) &&
+    normalize(stored.kdf) === normalize(local.kdf) &&
+    stored.mnemonicWordCount === local.mnemonicWordCount &&
+    normalize(stored.wrapNonceHex) === normalize(local.wrapNonceHex) &&
+    normalize(stored.wrappedMasterKeyHex) === normalize(local.wrappedMasterKeyHex) &&
+    normalize(stored.phraseFingerprintHex) === normalize(local.phraseFingerprintHex)
+  );
 }
 
 async function putRecoveryKeyWithoutStepUp(

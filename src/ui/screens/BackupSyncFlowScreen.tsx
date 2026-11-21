@@ -130,6 +130,7 @@ export type BackupSyncFlowScreenProps = {
   ) => void | Promise<void>;
   onCancelRecoveryKeyStepUp: () => void;
   accountDeletionStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  accountDeletionStepUpMode: SyncPreferencesRecord["mode"] | null;
   isDeletingAccount: boolean;
   onSubmitAccountDeletionStepUp: (
     stepUp: SyncRecoveryKeyStepUp,
@@ -234,6 +235,7 @@ export function BackupSyncFlowScreen({
   onSubmitRecoveryKeyStepUp,
   onCancelRecoveryKeyStepUp,
   accountDeletionStepUpPrompt,
+  accountDeletionStepUpMode,
   isDeletingAccount,
   onSubmitAccountDeletionStepUp,
   onCancelAccountDeletionStepUp,
@@ -312,7 +314,10 @@ export function BackupSyncFlowScreen({
         accountDeletionStepUp={
           accountDeletionStepUpPrompt ? (
             <BackupSyncRecoveryKeyStepUpSection
-              copy={selectAccountDeletionStepUpCopy(language)}
+              copy={selectAccountDeletionStepUpCopy(
+                language,
+                accountDeletionStepUpMode,
+              )}
               isBusy={isDeletingAccount}
               onCancel={onCancelAccountDeletionStepUp}
               onSubmit={onSubmitAccountDeletionStepUp}

@@ -4,6 +4,8 @@ import {
   type RecoveryKeyStepUpCopy,
 } from "./recovery-key-stepup-copy";
 
+type DeletionServer = "managed" | "self_hosted";
+
 type DeletionOverrides = Pick<
   RecoveryKeyStepUpCopy,
   "title" | "explanation" | "confirmLabel"
@@ -48,11 +50,28 @@ const OVERRIDES: Record<InterfaceLanguage, DeletionOverrides> = {
   },
 };
 
+const SELF_HOSTED_EXPLANATION: Record<InterfaceLanguage, string> = {
+  en: "Your sync server asks for your account password before it erases the account. With two-factor on, also enter the current code.",
+  de: "Ihr Sync-Server fragt vor dem Löschen nach Ihrem Kontopasswort. Ist die Zwei-Faktor-Anmeldung aktiv, geben Sie auch den aktuellen Code ein.",
+  fr: "Votre serveur de synchronisation demande le mot de passe du compte avant de l'effacer. Si la double authentification est activée, saisissez aussi le code actuel.",
+  ru: "Перед удалением аккаунта ваш сервер синхронизации запрашивает пароль. Если включена двухфакторная защита, введите и текущий код.",
+  es: "Tu servidor de sincronización pide la contraseña de la cuenta antes de borrarla. Si tienes la verificación en dos pasos activada, introduce también el código actual.",
+  it: "Il tuo server di sincronizzazione chiede la password dell'account prima di cancellarlo. Con la verifica in due passaggi attiva, inserisci anche il codice attuale.",
+};
+
 export function selectAccountDeletionStepUpCopy(
   language: InterfaceLanguage,
+  mode: DeletionServer | null = "managed",
 ): RecoveryKeyStepUpCopy {
+  const overrides = OVERRIDES[language] ?? OVERRIDES.en;
   return {
     ...selectRecoveryKeyStepUpCopy(language),
-    ...(OVERRIDES[language] ?? OVERRIDES.en),
+    ...overrides,
+    ...(mode === "self_hosted"
+      ? {
+          explanation:
+            SELF_HOSTED_EXPLANATION[language] ?? SELF_HOSTED_EXPLANATION.en,
+        }
+      : {}),
   };
 }

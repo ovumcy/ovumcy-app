@@ -578,7 +578,7 @@ describe("useSyncAccountSecurityController", () => {
         .mockResolvedValue(null);
       jest
         .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
-        .mockResolvedValue({ ok: true });
+        .mockResolvedValue({ ok: true, recoveryCode: null });
 
       const { result } = await renderHook(() =>
         useSyncAccountSecurityController({ storage, syncSecretStore }),
@@ -598,7 +598,151 @@ describe("useSyncAccountSecurityController", () => {
       expect(result.current.changeCurrentPassword).toBe("");
       expect(result.current.changeNewPassword).toBe("");
       expect(result.current.changeErrorCode).toBeNull();
+      expect(result.current.revealedRecoveryCode).toBe("");
     });
+
+    it("reveals once the recovery code a self-hosted password change rotated", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false });
+      jest
+        .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+        .mockResolvedValue({ ok: true, recoveryCode: "NEW-CODE-1" });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setChangeCurrentPassword("old-password-123");
+        result.current.setChangeNewPassword("new-password-456");
+      });
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(result.current.revealedRecoveryCode).toBe("NEW-CODE-1");
+      expect(result.current.revealedRecoveryCodeFromPasswordChange).toBe(true);
+      expect(result.current.revealedRecoveryCodeFromTOTP).toBe(false);
+
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryCode();
+      });
+      expect(result.current.revealedRecoveryCode).toBe("");
+      expect(result.current.revealedRecoveryCodeFromPasswordChange).toBe(false);
+    });
+  });
+
+  describe("handleChangePassword (two-factor code)", () => {
+    async function renderSelfHosted(twoFactorEnabled: boolean | null) {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue(
+          twoFactorEnabled === null ? null : { twoFactorEnabled },
+        );
+      const rendered = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        rendered.result.current.setChangeCurrentPassword("old-password-123");
+        rendered.result.current.setChangeNewPassword("new-password-456");
+      });
+      return rendered;
+    }
+
+    it("shows the code field for an enrolled self-hosted account and sends the code", async () => {
+      const changeSpy = jest
+        .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+        .mockResolvedValue({ ok: true, recoveryCode: "NEW-CODE-1" });
+      const { result } = await renderSelfHosted(true);
+
+      expect(result.current.changeCodeVisible).toBe(true);
+      await act(() => {
+        result.current.setChangeCode("123456");
+      });
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(changeSpy.mock.calls[0]?.[2]).toEqual({
+        currentPassword: "old-password-123",
+        newPassword: "new-password-456",
+        code: "123456",
+      });
+      expect(result.current.changeCode).toBe("");
+    });
+
+    it("never shows the code field on a managed account", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      expect(result.current.changeCodeVisible).toBe(false);
+    });
+
+    it("asks for a code, not a wrong one, when the server demands it unasked", async () => {
+      jest
+        .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+        .mockResolvedValue({ ok: false, errorCode: "totp_invalid_code" });
+      const { result } = await renderSelfHosted(null);
+
+      expect(result.current.changeCodeVisible).toBe(false);
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(result.current.changeErrorCode).toBe("totp_code_required");
+      expect(result.current.changeCodeVisible).toBe(true);
+    });
+
+    it("keeps a replayed-code answer as is once the code was sent", async () => {
+      jest
+        .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+        .mockResolvedValue({ ok: false, errorCode: "totp_replayed" });
+      const { result } = await renderSelfHosted(true);
+
+      await act(() => {
+        result.current.setChangeCode("123456");
+      });
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(result.current.changeErrorCode).toBe("totp_replayed");
+    });
+
+    it.each(["network_failed", "generic"] as const)(
+      "reports a self-hosted %s answer as a possibly applied change",
+      async (errorCode) => {
+        jest
+          .spyOn(syncAccountRecoveryService, "changeSyncAccountPassword")
+          .mockResolvedValue({ ok: false, errorCode });
+        const { result } = await renderSelfHosted(false);
+
+        await act(async () => {
+          await result.current.handleChangePassword();
+        });
+
+        expect(result.current.changeErrorCode).toBe("change_password_response_lost");
+      },
+    );
   });
 
   describe("handleRequestReset (success)", () => {

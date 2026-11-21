@@ -27,7 +27,11 @@ With two-factor on, *Regenerate recovery code* asks for a current 6-digit code n
 
 With or without two-factor, the server replaces the recovery code before it answers a regeneration. If that answer never reaches the app (a network drop or an unreadable reply), the app warns that the old code may no longer work and asks you to regenerate again; a refusal the server did answer, such as a wrong password, keeps its own message.
 
-Deleting an Ovumcy Cloud account asks for your account password after the device check and the confirmations, and — with two-factor on — a current 6-digit code; the server erases nothing until both are right. The code field shows whenever two-factor is on or its status could not be loaded; an empty code is not sent. A wrong password or code, a code already used, or too many attempts keep the form open with their own message, and nothing on the device is touched. Codes count toward the same per-account attempt limit as disable and regenerate. The password and code travel in the request body only and are cleared from the form on every submit. A guest partner session has no password, so it deletes without the form.
+## Changing The Password On A Self-Hosted Server
+
+A self-hosted (community) server replaces the recovery code whenever the password changes, and the old code stops working at once. The app shows the new code once, in the same *Save this recovery code* window as a regeneration; save it before closing. With two-factor on, *Change password* also asks for a current 6-digit code, because the new recovery code could otherwise reset the password and turn two-factor off. The code field appears whenever the app knows two-factor is on, and also after the server refuses the change for a missing or wrong code. A wrong code and a code already used each keep their own message. If the answer never reaches the app, it warns that the password and the recovery code may already have changed; generate a new recovery code with whichever password works. Ovumcy Cloud does not ask for a code here.
+
+Deleting an account asks for your account password after the device check and the confirmations, and — with two-factor on — a current 6-digit code; the server erases nothing until both are right. This holds for Ovumcy Cloud and for a self-hosted (community) server alike; a self-hosted delete is never sent without the password, since the server would refuse it and still count it against the account's attempt limit. The code field shows whenever two-factor is on or its status could not be loaded; an empty code is not sent. A wrong password or code, a code already used, or too many attempts keep the form open with their own message, and nothing on the device is touched. Codes count toward the same per-account attempt limit as disable and regenerate. The password and code travel in the request body only and are cleared from the form on every submit. A guest partner session has no password, so it deletes without the form.
 
 If verification fails:
 
@@ -38,6 +42,8 @@ If verification fails:
 
 When an upload would replace the recovery-key package your self-hosted (community) server holds — typically the first upload after *Set up sync on this device* created a new phrase — the server asks for your password and, with two-factor on, a current 6-digit code. The app shows a prompt for them and retries the upload once you confirm. A wrong password or code, or a code already used, keeps the prompt open with that message. Both values travel in the request body only and are cleared from the screen afterwards.
 
+The server cannot write the package and the backup in one step, so the app checks the backup first: before replacing the package it makes sure the encrypted backup fits the server's size limit and is newer than the stored one. An unchanged package is never rewritten. A device that has already uploaded under its own key never replaces a different package: another device changed it, and this device should be recovered with the current phrase instead.
+
 ## Changing The Recovery Phrase On Ovumcy Cloud
 
 On a connected Ovumcy Cloud account, *Change recovery phrase* asks you to confirm, checks the device lock, and then asks for your account password and, with two-factor on, a current 6-digit code. The new phrase appears only after Ovumcy Cloud confirms the change; until then the current phrase stays active. If the change cannot be confirmed (for example the sync service is briefly unavailable), the prompt stays open and asks you to try again with a new code — the app resends the same new phrase, never a second one. A wrong password or code, a code already used, or too many attempts keep the prompt open with that message. The password and code travel in the request body only and are cleared from the screen afterwards.
@@ -45,6 +51,8 @@ On a connected Ovumcy Cloud account, *Change recovery phrase* asks you to confir
 ## Logging In With Two-Factor
 
 When you sign in to a TOTP-enabled account, the password step still works the same way. As soon as the password is verified the app shows a dedicated *Enter your 6-digit code* screen instead of completing the login. Type the current code from your authenticator app and tap *Verify*.
+
+Recovering a self-hosted account with the recovery phrase works the same way: after the password the app asks for the code, then finishes the recovery with the phrase you entered. The phrase stays on the form only until the recovery completes.
 
 A login challenge lives for **5 minutes**. After **5 wrong codes** on the same challenge it is burnt and you have to sign in from the password screen again — this is what keeps an attacker who steals a challenge id from brute-forcing the 6-digit code.
 
@@ -64,7 +72,7 @@ If two-factor was already turned off elsewhere, the server (self-hosted or Ovumc
 Treat your account-level recovery code as your **only** backup for a lost authenticator:
 
 1. On the login screen, tap *Account Security → Forgot password*.
-2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, or (self-hosted) when you turned two-factor on.
+2. Enter your login/email and the recovery code you saved last — shown once at registration, after the last reset or regeneration, or (self-hosted) when you turned two-factor on or changed the password.
 3. Set a new password.
 
 A successful recovery-code-driven reset does three things together:

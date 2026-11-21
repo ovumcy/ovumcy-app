@@ -30,6 +30,10 @@ export type ChangeSyncPasswordErrorCode =
   | "invalid_current_password"
   | "new_password_must_differ"
   | "weak_new_password"
+  | "totp_code_required"
+  | "totp_invalid_code"
+  | "totp_replayed"
+  | "totp_not_configured"
   | "unauthorized"
   | "rate_limited"
   | "network_failed"
@@ -78,14 +82,23 @@ type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
  * points at. The current session stays valid (backends preserve the caller's
  * session and revoke every other session of the account), so no local secret
  * rewrite is needed on success.
+ *
+ * A community server also rotates the recovery code and returns the new one
+ * (`recoveryCode`, null from a server that predates the rotation); the old
+ * code stops working, so the caller shows the new one once. `code` is the
+ * current TOTP code that server requires once two-factor is on; it is sent
+ * only when given and never to Ovumcy Cloud.
  */
 export async function changeSyncAccountPassword(
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
-  input: { currentPassword: string; newPassword: string },
+  input: { currentPassword: string; newPassword: string; code?: string },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
-): Promise<{ ok: true } | { ok: false; errorCode: ChangeSyncPasswordErrorCode }> {
+): Promise<
+  | { ok: true; recoveryCode: string | null }
+  | { ok: false; errorCode: ChangeSyncPasswordErrorCode }
+> {
   if (input.currentPassword.length === 0) {
     return { ok: false, errorCode: "current_password_required" };
   }
@@ -99,6 +112,13 @@ export async function changeSyncAccountPassword(
   if (isPasswordTooShort(input.newPassword)) {
     return { ok: false, errorCode: "password_too_short" };
   }
+  const code = preferences.mode === "managed" ? undefined : input.code?.trim();
+  if (code === "") {
+    return { ok: false, errorCode: "totp_code_required" };
+  }
+  if (code !== undefined && !isTOTPCodeFormat(code)) {
+    return { ok: false, errorCode: "totp_invalid_code" };
+  }
 
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets) {
@@ -110,14 +130,17 @@ export async function changeSyncAccountPassword(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.changePassword(secrets.managedAuthSessionToken, input);
+    const result = await client.changePassword(secrets.managedAuthSessionToken, {
+      currentPassword: input.currentPassword,
+      newPassword: input.newPassword,
+    });
     if (!result.ok) {
       return {
         ok: false,
         errorCode: mapManagedChangePasswordError(result.errorCode),
       };
     }
-    return { ok: true };
+    return { ok: true, recoveryCode: null };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -131,14 +154,23 @@ export async function changeSyncAccountPassword(
     return { ok: false, errorCode: "not_connected" };
   }
   const client = apiClientFactory(normalizedEndpoint.endpoint.baseURL);
-  const result = await client.changePassword(secrets.authSessionToken, input);
+  const result = await client.changePassword(
+    secrets.authSessionToken,
+    code === undefined
+      ? { currentPassword: input.currentPassword, newPassword: input.newPassword }
+      : {
+          currentPassword: input.currentPassword,
+          newPassword: input.newPassword,
+          code,
+        },
+  );
   if (!result.ok) {
     return {
       ok: false,
       errorCode: mapCommunityChangePasswordError(result.errorCode),
     };
   }
-  return { ok: true };
+  return { ok: true, recoveryCode: result.recoveryCode };
 }
 
 /**
@@ -403,6 +435,9 @@ function mapCommunityChangePasswordError(
     case "invalid_current_password":
     case "new_password_must_differ":
     case "weak_new_password":
+    case "totp_invalid_code":
+    case "totp_replayed":
+    case "totp_not_configured":
     case "unauthorized":
     case "rate_limited":
     case "network_failed":

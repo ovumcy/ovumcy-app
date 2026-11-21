@@ -412,7 +412,10 @@ export function resolveBackupSyncErrorMessage(
     case "blob_not_found":
       return viewData.errors.blobNotFound;
     case "managed_recovery_key_overwrite":
+    case "recovery_key_changed_elsewhere":
       return viewData.errors.recoveryKeyChangedElsewhere;
+    case "rate_limited":
+      return viewData.errors.rateLimited;
     case "invalid_payload":
       return viewData.errors.invalidPayload;
     case "network_failed":

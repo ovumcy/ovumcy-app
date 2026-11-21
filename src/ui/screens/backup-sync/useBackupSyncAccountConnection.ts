@@ -4,6 +4,7 @@ import {
   resolveBackupSyncConnectedStatusMessage,
 } from "../../../services/backup-sync-view-service";
 import {
+  completeBackupSyncRecoveryTOTPChallenge,
   completeBackupSyncTOTPChallenge,
   connectBackupSyncAccount,
   disconnectBackupSyncAccount,
@@ -44,8 +45,10 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
   const [isRecoveringSync, setIsRecoveringSync] = useState(false);
   // Pending TOTP challenge from login. Lives in memory only — the challenge id
   // is single-use and short-lived (~5 min); persisting it would defeat the
-  // purpose of the second factor.
+  // purpose of the second factor. `purpose` says which flow the code resumes:
+  // a connect, or a self-hosted phrase recovery (the phrase stays in its field).
   const [pendingTOTPChallenge, setPendingTOTPChallenge] = useState<{
+    purpose: "connect" | "recover";
     challengeID: string;
     challengeExpiresAt: string;
     preferences: import("../../../sync/sync-contract").SyncPreferencesRecord;
@@ -92,6 +95,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       // screen. The challenge id is single-use and short-lived; if the user
       // cancels we drop it without persisting anywhere.
       setPendingTOTPChallenge({
+        purpose: "connect",
         challengeID: result.challengeID,
         challengeExpiresAt: result.challengeExpiresAt,
         preferences: result.preferences,
@@ -117,6 +121,11 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
 
   async function handleSubmitTOTPChallenge() {
     if (!state || !pendingTOTPChallenge) {
+      return;
+    }
+
+    if (pendingTOTPChallenge.purpose === "recover") {
+      await submitRecoveryTOTPChallenge(state, pendingTOTPChallenge);
       return;
     }
 
@@ -161,6 +170,50 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     setIsAuthenticatingSync(false);
   }
 
+  async function submitRecoveryTOTPChallenge(
+    currentState: NonNullable<typeof state>,
+    challenge: NonNullable<typeof pendingTOTPChallenge>,
+  ) {
+    resetFeedbackMessages();
+    setIsRecoveringSync(true);
+
+    const result = await completeBackupSyncRecoveryTOTPChallenge(
+      storage,
+      syncSecretStore,
+      currentState,
+      challenge.preferences,
+      {
+        challengeID: challenge.challengeID,
+        code: totpChallengeCode,
+        recoveryPhrase: core.recoveryPhraseInputValue,
+      },
+      effectiveNow,
+    );
+    if (!result.ok) {
+      setErrorState({
+        code: result.errorCode,
+        scope: "account",
+      });
+      // Same split as the connect challenge: an expired or replayed challenge
+      // sends the user back to the form, anything else is retried in place.
+      if (result.errorCode === "totp_challenge_invalid") {
+        setPendingTOTPChallenge(null);
+        setTotpChallengeCode("");
+      }
+      setIsRecoveringSync(false);
+      return;
+    }
+
+    setErrorState(null);
+    setState(result.state);
+    setPendingTOTPChallenge(null);
+    setTotpChallengeCode("");
+    await reloadPartnerAccess(result.state);
+    setRecoveryPhraseInputValue("");
+    setAccountStatusMessage(viewData.account.status.recovered);
+    setIsRecoveringSync(false);
+  }
+
   function handleCancelTOTPChallenge() {
     setPendingTOTPChallenge(null);
     setTotpChallengeCode("");
@@ -197,6 +250,21 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
         code: result.errorCode,
         scope: "account",
       });
+      setIsRecoveringSync(false);
+      return;
+    }
+
+    if ("totpChallengeRequired" in result) {
+      // The verified password leaves state; the phrase stays in its field
+      // until the code completes the recovery.
+      setPendingTOTPChallenge({
+        purpose: "recover",
+        challengeID: result.challengeID,
+        challengeExpiresAt: result.challengeExpiresAt,
+        preferences: syncReadyState.savedSyncPreferences,
+      });
+      setAccountPasswordValue("");
+      setErrorState(null);
       setIsRecoveringSync(false);
       return;
     }

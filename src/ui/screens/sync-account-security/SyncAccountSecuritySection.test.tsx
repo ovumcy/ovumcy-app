@@ -18,6 +18,9 @@ function baseProps() {
     onChangeCurrentPasswordChange: noop,
     changeNewPassword: "",
     onChangeNewPasswordChange: noop,
+    changeCode: "",
+    onChangeCodeChange: noop,
+    changeCodeVisible: false,
     changeStatus: "idle" as const,
     changeErrorCode: null,
     onChangePassword: noop,
@@ -48,6 +51,7 @@ function baseProps() {
 
     revealedRecoveryCode: "",
     revealedRecoveryCodeFromTOTP: false,
+    revealedRecoveryCodeFromPasswordChange: false,
     onAcknowledgeRecoveryCode: noop,
 
     totpCopy,
@@ -94,6 +98,59 @@ describe("SyncAccountSecuritySection", () => {
     ).toBe(copy.changePassword.newPasswordLabel);
     expect(screen.queryByTestId("account-security-recovery-code-modal")).toBeNull();
     expect(screen.queryByTestId("account-security-forgot-cancel")).toBeNull();
+    expect(screen.queryByTestId("account-security-change-code")).toBeNull();
+  });
+
+  it("shows the change-password code field when asked and forwards its edits", async () => {
+    const onChangeCodeChange = jest.fn();
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          changeCodeVisible
+          onChangeCodeChange={onChangeCodeChange}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    const field = screen.getByTestId("account-security-change-code");
+    expect(field.props.accessibilityLabel).toBe(copy.regenerate.codeLabel);
+    await act(async () => {
+      await fireEvent.changeText(field, "123456");
+    });
+    expect(onChangeCodeChange).toHaveBeenCalledWith("123456");
+  });
+
+  it.each([
+    ["change_password_response_lost", copy.errors.changePasswordResponseLost],
+    ["totp_replayed", totpCopy.errors.totpReplayed],
+    ["totp_invalid_code", totpCopy.errors.totpInvalidCode],
+    ["totp_not_configured", totpCopy.errors.totpNotConfigured],
+    ["totp_code_required", copy.errors.totpCodeRequired],
+  ] as const)("renders the %s change-password error", async (code, message) => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} changeErrorCode={code} />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(message)).toBeTruthy();
+  });
+
+  it("explains that a password change replaced the revealed recovery code", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection
+          {...baseProps()}
+          revealedRecoveryCode="NEW-CODE-1"
+          revealedRecoveryCodeFromPasswordChange
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(
+      screen.getByTestId("account-security-recovery-code-hint").props.children,
+    ).toBe(copy.reveal.passwordChangedHint);
   });
 
   it("submits the change-password form via the press handler", async () => {

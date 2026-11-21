@@ -41,6 +41,7 @@ export type AccountSecurityCopy = {
   reveal: {
     title: string;
     hint: string;
+    passwordChangedHint: string;
     confirmLabel: string;
   };
 
@@ -62,6 +63,7 @@ export type AccountSecurityCopy = {
     unauthorized: string;
     totpCodeRequired: string;
     regenerateResponseLost: string;
+    changePasswordResponseLost: string;
     generic: string;
   };
 };
@@ -110,6 +112,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
   reveal: {
     title: "Save this recovery code",
     hint: "Shown only once. Use it if you ever forget the account password.",
+    passwordChangedHint:
+      "Changing the password replaced your recovery code, and the old one no longer works. Shown only once.",
     confirmLabel: "I have saved it",
   },
 
@@ -135,6 +139,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
       "Two-factor is on. Enter the current 6-digit code from your authenticator app.",
     regenerateResponseLost:
       "The answer did not reach this device, so your recovery code may already have been replaced and the old one may no longer work. Use “Generate new recovery code” again.",
+    changePasswordResponseLost:
+      "The answer did not reach this device, so the password may already have changed and the old recovery code may no longer work. Use “Generate new recovery code” with the password that works.",
     generic: "Something went wrong. Try again.",
   },
 };
@@ -183,6 +189,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
   reveal: {
     title: "Diesen Wiederherstellungscode speichern",
     hint: "Wird nur einmal angezeigt. Verwenden Sie ihn, falls Sie das Konto-Passwort vergessen.",
+    passwordChangedHint:
+      "Die Passwortänderung hat Ihren Wiederherstellungscode ersetzt; der alte funktioniert nicht mehr. Wird nur einmal angezeigt.",
     confirmLabel: "Ich habe ihn gespeichert",
   },
 
@@ -210,6 +218,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
       "Zwei-Faktor ist aktiv. Geben Sie den aktuellen 6-stelligen Code aus Ihrer Authenticator-App ein.",
     regenerateResponseLost:
       "Die Antwort hat dieses Gerät nicht erreicht. Ihr Wiederherstellungscode wurde möglicherweise schon ersetzt, und der bisherige funktioniert dann nicht mehr. Tippen Sie erneut auf „Neuen Wiederherstellungscode erzeugen“.",
+    changePasswordResponseLost:
+      "Die Antwort hat dieses Gerät nicht erreicht. Das Passwort wurde möglicherweise schon geändert, und der alte Wiederherstellungscode funktioniert dann nicht mehr. Erzeugen Sie mit dem funktionierenden Passwort einen neuen Wiederherstellungscode.",
     generic: "Etwas ist schiefgelaufen. Versuchen Sie es erneut.",
   },
 };
@@ -260,6 +270,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
   reveal: {
     title: "Sauvegardez ce code de récupération",
     hint: "Affiché une seule fois. Utilisez-le si vous oubliez le mot de passe du compte.",
+    passwordChangedHint:
+      "Le changement de mot de passe a remplacé votre code de récupération ; l'ancien ne fonctionne plus. Affiché une seule fois.",
     confirmLabel: "Je l'ai sauvegardé",
   },
 
@@ -288,6 +300,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
       "La double authentification est activée. Saisissez le code à 6 chiffres actuel de votre application.",
     regenerateResponseLost:
       "La réponse n'est pas parvenue à cet appareil : votre code de récupération a peut-être déjà été remplacé, et l'ancien ne fonctionne alors plus. Utilisez à nouveau « Générer un nouveau code de récupération ».",
+    changePasswordResponseLost:
+      "La réponse n'est pas parvenue à cet appareil : le mot de passe a peut-être déjà changé et l'ancien code de récupération ne fonctionne peut-être plus. Générez un nouveau code de récupération avec le mot de passe qui fonctionne.",
     generic: "Quelque chose s'est mal passé. Réessayez.",
   },
 };
@@ -337,6 +351,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
   reveal: {
     title: "Сохраните этот код восстановления",
     hint: "Показывается только один раз. Понадобится, если забудете пароль аккаунта.",
+    passwordChangedHint:
+      "Смена пароля заменила код восстановления, старый больше не работает. Показывается только один раз.",
     confirmLabel: "Я сохранил(а)",
   },
 
@@ -364,6 +380,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
       "Двухфакторка включена. Введите текущий шестизначный код из приложения-аутентификатора.",
     regenerateResponseLost:
       "Ответ не дошёл до этого устройства: код восстановления, возможно, уже заменён, и прежний тогда больше не работает. Нажмите «Сгенерировать новый код восстановления» ещё раз.",
+    changePasswordResponseLost:
+      "Ответ не дошёл до устройства: пароль, возможно, уже изменён, и старый код восстановления может не работать. Создайте новый код восстановления с тем паролем, который подходит.",
     generic: "Что-то пошло не так. Попробуйте снова.",
   },
 };
@@ -414,6 +432,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
   reveal: {
     title: "Guarda este código de recuperación",
     hint: "Se muestra solo una vez. Úsalo si olvidas la contraseña de la cuenta.",
+    passwordChangedHint:
+      "El cambio de contraseña reemplazó tu código de recuperación y el anterior ya no funciona. Se muestra solo una vez.",
     confirmLabel: "Lo he guardado",
   },
 
@@ -442,6 +462,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
       "El doble factor está activado. Introduce el código actual de 6 dígitos de tu app de autenticación.",
     regenerateResponseLost:
       "La respuesta no llegó a este dispositivo: es posible que tu código de recuperación ya se haya reemplazado y que el anterior ya no funcione. Usa de nuevo «Generar nuevo código de recuperación».",
+    changePasswordResponseLost:
+      "La respuesta no llegó a este dispositivo: puede que la contraseña ya haya cambiado y que el código de recuperación anterior ya no funcione. Genera un nuevo código de recuperación con la contraseña que funcione.",
     generic: "Algo salió mal. Vuelve a intentarlo.",
   },
 };
@@ -491,6 +513,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
   reveal: {
     title: "Salva questo codice di recupero",
     hint: "Mostrato solo una volta. Usalo se dovessi dimenticare la password dell'account.",
+    passwordChangedHint:
+      "La modifica della password ha sostituito il codice di recupero e quello precedente non funziona più. Mostrato solo una volta.",
     confirmLabel: "L'ho salvato",
   },
 
@@ -516,6 +540,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
       "L'autenticazione a due fattori è attiva. Inserisci il codice a 6 cifre attuale della tua app di autenticazione.",
     regenerateResponseLost:
       "La risposta non è arrivata su questo dispositivo: il codice di recupero potrebbe essere già stato sostituito e quello precedente non funzionare più. Usa di nuovo «Genera nuovo codice di recupero».",
+    changePasswordResponseLost:
+      "La risposta non è arrivata a questo dispositivo: la password potrebbe essere già cambiata e il vecchio codice di recupero potrebbe non funzionare più. Genera un nuovo codice di recupero con la password che funziona.",
     generic: "Qualcosa è andato storto. Riprova.",
   },
 };

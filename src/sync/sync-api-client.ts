@@ -112,9 +112,11 @@ export type SyncAPIClient = {
     sessionToken: string,
   ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
   // deleteAccount permanently erases the self-hosted account's blobs and
-  // registration (DELETE /account).
+  // registration (DELETE /account). The server re-confirms the password, and
+  // a current TOTP code once two-factor is on, before it erases anything.
   deleteAccount(
     sessionToken: string,
+    stepUp: SyncRecoveryKeyStepUp,
   ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
   putBlob(
     sessionToken: string,
@@ -144,10 +146,15 @@ export type SyncAPIClient = {
     | { ok: true; auth: SyncAuthResult }
     | { ok: false; errorCode: SyncAPIErrorCode }
   >;
+  // The server rotates the recovery code on success; `recoveryCode` is null
+  // only from a server that predates the rotation.
   changePassword(
     sessionToken: string,
-    input: { currentPassword: string; newPassword: string },
-  ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
+    input: { currentPassword: string; newPassword: string; code?: string },
+  ): Promise<
+    | { ok: true; recoveryCode: string | null }
+    | { ok: false; errorCode: SyncAPIErrorCode }
+  >;
   forgotPassword(
     input: { login: string; recoveryCode: string },
   ): Promise<
@@ -238,6 +245,7 @@ type RawSyncRecoveryCodePayload = {
 
 type RawSyncChangePasswordResult = {
   status: string;
+  recovery_code?: string;
 };
 
 type RawSyncCapabilityDocument = {
@@ -303,10 +311,14 @@ export function createSyncAPIClient(
       });
     },
 
-    async deleteAccount(sessionToken) {
+    async deleteAccount(sessionToken, stepUp) {
+      const code = stepUp.code?.trim();
       return requestNoPayload(fetchImpl, normalizedBaseURL, "/account", {
         method: "DELETE",
         sessionToken,
+        body: code
+          ? { current_password: stepUp.currentPassword, code }
+          : { current_password: stepUp.currentPassword },
       });
     },
 
@@ -318,16 +330,26 @@ export function createSyncAPIClient(
         {
           method: "POST",
           sessionToken,
-          body: {
-            current_password: input.currentPassword,
-            new_password: input.newPassword,
-          },
+          body:
+            input.code === undefined
+              ? {
+                  current_password: input.currentPassword,
+                  new_password: input.newPassword,
+                }
+              : {
+                  current_password: input.currentPassword,
+                  new_password: input.newPassword,
+                  code: input.code,
+                },
         },
         isRawSyncChangePasswordResult,
         "invalid_response",
       ).then((result) =>
         result.ok
-          ? { ok: true }
+          ? {
+              ok: true,
+              recoveryCode: result.payload.recovery_code?.trim() || null,
+            }
           : { ok: false, errorCode: result.errorCode },
       );
     },
@@ -720,6 +742,7 @@ async function requestNoPayload(
   options: {
     method: "DELETE";
     sessionToken?: string;
+    body?: unknown;
   },
 ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }> {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
@@ -930,7 +953,12 @@ function isRawSyncRecoveryCodePayload(
 function isRawSyncChangePasswordResult(
   value: unknown,
 ): value is RawSyncChangePasswordResult {
-  return isObject(value) && typeof value.status === "string";
+  return (
+    isObject(value) &&
+    typeof value.status === "string" &&
+    (typeof value.recovery_code === "string" ||
+      typeof value.recovery_code === "undefined")
+  );
 }
 
 type RawSyncAccountSession = {
