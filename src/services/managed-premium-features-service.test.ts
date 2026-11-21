@@ -342,12 +342,14 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
   });
 
   it.each([
-    ["a plan-lapse refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
-    ["an unauthorized session", jsonResponse({ error: "unauthorized" }, 401)],
-    ["an absent endpoint", jsonResponse({ error: "not_found" }, 404)],
+    ["a plan-lapse refusal", jsonResponse({ error: "sync_not_allowed" }, 403), true],
+    ["an absent endpoint", jsonResponse({ error: "not_found" }, 404), true],
+    // A 401 may only mean the bearer rotated mid-request: no cached token is
+    // served, but it is not deleted either.
+    ["an unauthorized session", jsonResponse({ error: "unauthorized" }, 401), false],
   ])(
-    "serves no cached token and discards it when the mint is refused with %s",
-    async (_label, tokenResponse) => {
+    "serves no cached token when the mint is refused with %s",
+    async (_label, tokenResponse, discarded) => {
       mockManagedFetch({ billingFeatures: FULL_FALSE_FEATURES, tokenResponse });
       const store = createMemoryEntitlementTokenStore();
       await store.writeEntitlementToken({ token: GOLDEN_TOKEN });
@@ -363,7 +365,9 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
       // snapshot booleans (all false) standing.
       expect(snapshot?.premiumFeatures.doctorPDF).toBe(false);
       expect(snapshot?.premiumFeatures.advancedInsights).toBe(false);
-      expect(await store.readEntitlementToken()).toBeNull();
+      expect(await store.readEntitlementToken()).toEqual(
+        discarded ? null : { token: GOLDEN_TOKEN },
+      );
     },
   );
 
@@ -771,7 +775,7 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
     });
   });
 
-  it("voids the cache when the device clock is behind the last instant it was served", async () => {
+  it("refuses the cache, without deleting it, when the device clock is behind the last instant it was served", async () => {
     mockFailedBillingFetch();
     const record = cachedRecord(FRESH_FETCHED_AT);
     const storage = createLocalAppStorageMock({
@@ -791,10 +795,7 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
         CACHE_NOW,
       ),
     ).resolves.toBeNull();
-    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith({
-      snapshot: null,
-      dismissedOfferIDs: ["offer-1"],
-    });
+    expect(storage.writeManagedBillingCacheRecord).not.toHaveBeenCalled();
   });
 
   it("serves the cache when another load recorded a serve instant a few minutes later", async () => {

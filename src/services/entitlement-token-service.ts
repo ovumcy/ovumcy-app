@@ -111,10 +111,14 @@ async function loadToken(
     // Only a transport failure (no response, or the server's own temporary
     // unavailability) falls through to the cached token (offline grace). Any
     // other refusal — a lapsed plan, an unauthorized session, an absent
-    // endpoint — is an answer: the cached token is discarded so no later
-    // offline read can revive it, and the gate falls back to the snapshot.
+    // endpoint — is an answer and the gate falls back to the snapshot. A plan
+    // or endpoint refusal also discards the cached token so no later offline
+    // read can revive it; an unauthorized answer may only mean the bearer was
+    // rotated mid-request, and a dead session is wiped by sign-out anyway.
     if (!isManagedCloudTransportFailure(fetched.errorCode)) {
-      await input.store.clearEntitlementToken();
+      if (fetched.errorCode !== "unauthorized") {
+        await input.store.clearEntitlementToken();
+      }
       return null;
     }
   }
