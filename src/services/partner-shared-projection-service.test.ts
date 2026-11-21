@@ -6,6 +6,7 @@ import { buildCycleHistorySummary, buildCurrentCycleProjection } from "./cycle-h
 import { createDefaultProfileRecord } from "../models/profile";
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultSymptomRecords } from "../models/symptom";
+import * as predictionExplanationService from "./prediction-explanation-service";
 
 describe("partner-shared-projection-service", () => {
   it("ships no per-day record, symptom record or date-valued profile field for summary access", () => {
@@ -282,6 +283,89 @@ describe("partner-shared-projection-service", () => {
 
       expect(readState.cycleStatus.currentCycleDay).toBeNull();
       expect(readState.cycleStatus.nextPeriodDate).toBe("2026-02-26");
+    });
+
+    function withSnapshot(
+      cycleStatus: Partial<
+        NonNullable<
+          ReturnType<typeof buildSummaryPayload>["summarySnapshot"]
+        >["cycleStatus"]
+      >,
+    ) {
+      const payload = buildSummaryPayload();
+      const snapshot = payload.summarySnapshot;
+      if (!snapshot) {
+        throw new Error("expected a snapshot");
+      }
+      return {
+        ...payload,
+        summarySnapshot: {
+          ...snapshot,
+          cycleStatus: { ...snapshot.cycleStatus, ...cycleStatus },
+        },
+      };
+    }
+
+    it("keeps counting an overdue cycle day from its anchor", () => {
+      const readState = buildPartnerSharedReadState(
+        withSnapshot({
+          currentCycleDay: 31,
+          nextPeriodDate: null,
+          nextPeriodWindowEndDate: null,
+          nextPeriodWindowStartDate: null,
+          state: "stale",
+        }),
+        new Date("2026-02-12T09:00:00.000Z"),
+        "en",
+      );
+
+      expect(readState.cycleStatus.currentCycleDay).toBe(33);
+    });
+
+    it("withholds an advanced cycle day when the snapshot carries no predicted date", () => {
+      const noDates = {
+        nextPeriodDate: null,
+        nextPeriodWindowEndDate: null,
+        nextPeriodWindowStartDate: null,
+      };
+
+      expect(
+        buildPartnerSharedReadState(withSnapshot(noDates), generatedAt, "en").cycleStatus
+          .currentCycleDay,
+      ).toBe(13);
+      expect(
+        buildPartnerSharedReadState(
+          withSnapshot(noDates),
+          new Date("2026-02-11T09:00:00.000Z"),
+          "en",
+        ).cycleStatus.currentCycleDay,
+      ).toBeNull();
+    });
+
+    it("maps an owner-side pregnancy-paused explanation to the neutral facts-only hint", () => {
+      const spy = jest
+        .spyOn(predictionExplanationService, "resolvePredictionExplanationKind")
+        .mockReturnValue("pregnancy_paused");
+      try {
+        const payload = buildSummaryPayload();
+
+        expect(payload.summarySnapshot?.cycleStatus.predictionHint).toBe("facts_only");
+        expect(JSON.stringify(payload)).not.toContain("pregnancy_paused");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("ignores a snapshot with no cycle status", () => {
+      const payload = buildSummaryPayload();
+      const stripped = {
+        ...payload,
+        summarySnapshot: { asOfDate: "2026-02-10" },
+      } as unknown as typeof payload;
+
+      expect(buildPartnerSharedReadState(stripped, generatedAt, "en").cycleStatus.state).toBe(
+        "unknown",
+      );
     });
 
     it("ignores a malformed snapshot and recomputes instead of rendering it", () => {

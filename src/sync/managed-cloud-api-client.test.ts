@@ -1,4 +1,7 @@
-import { createManagedCloudAPIClient } from "./managed-cloud-api-client";
+import {
+  createManagedCloudAPIClient,
+  isManagedCloudTransportFailure,
+} from "./managed-cloud-api-client";
 
 describe("managed-cloud-api-client", () => {
   it("maps register, session, billing, and sync-session responses", async () => {
@@ -1691,6 +1694,12 @@ describe("managed-cloud-api-client", () => {
         sourceInviteID: "invite-1",
       }),
     ).resolves.toEqual({ ok: false, errorCode: "payload_too_large" });
+  });
+
+  it("treats only network_failed as a transport failure", () => {
+    expect(isManagedCloudTransportFailure("network_failed")).toBe(true);
+    expect(isManagedCloudTransportFailure("generic")).toBe(false);
+    expect(isManagedCloudTransportFailure("payload_too_large")).toBe(false);
   });
 
   it("refuses a projection ciphertext over the 2 MiB cap locally, sending no request", async () => {
