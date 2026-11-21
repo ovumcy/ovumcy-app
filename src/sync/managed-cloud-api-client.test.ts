@@ -1495,6 +1495,7 @@ describe("managed-cloud-api-client", () => {
 
   it.each([
     ["verifyTOTPEnrollment", "totp_enrollment_not_started"],
+    ["verifyTOTPEnrollment", "totp_enrollment_discarded"],
     ["disableTOTP", "totp_not_enabled"],
   ] as const)(
     "keeps the managed 409 %s state key %s instead of collapsing it to generic",

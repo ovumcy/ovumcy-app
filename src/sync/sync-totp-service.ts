@@ -402,6 +402,8 @@ function mapManagedVerifyEnrollmentError(
   code: ManagedCloudAPIErrorCode,
 ): VerifyTOTPEnrollmentErrorCode {
   switch (code) {
+    case "totp_enrollment_discarded":
+      return "totp_enrollment_not_started";
     case "totp_enrollment_not_started":
     case "totp_not_configured":
     case "totp_already_enabled":
@@ -423,6 +425,8 @@ function mapCommunityVerifyEnrollmentError(
   switch (code) {
     case "rate_limited":
       return "totp_enrollment_restart_required";
+    case "totp_enrollment_discarded":
+      return "totp_enrollment_not_started";
     case "totp_enrollment_not_started":
     case "totp_not_configured":
     case "totp_already_enabled":
