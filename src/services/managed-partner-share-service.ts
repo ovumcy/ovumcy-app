@@ -60,7 +60,8 @@ export type ManagedPartnerShareResult<T> =
 export type ManagedPartnerGrantKeyContext = Pick<
   ManagedCloudPartnerAccessGrant,
   "id" | "ownerAccountID" | "sourceInviteID"
->;
+> &
+  Partial<Pick<ManagedCloudPartnerAccessGrant, "partnerAccountID">>;
 
 /**
  * Owner-side handler for a freshly issued invite. Generates the client-only
@@ -122,12 +123,23 @@ export async function storeAcceptedManagedPartnerGrantKey(
     sourceInviteID,
   });
   const rotatedAtISO = now.toISOString();
+  const partnerAccountID = grant.partnerAccountID?.trim() ?? "";
 
   await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+    // A re-shared grant keeps its id under a new invite and the owner's
+    // counter restarts, so the floor seen under the previous key is dropped.
+    // Old ciphertexts cannot be replayed past this: they fail to decrypt
+    // under the new key.
+    if (record.grantKeysByGrantID[grant.id]?.sourceInviteID !== sourceInviteID) {
+      delete record.partnerLastSeenGenerationByGrantID[grant.id];
+      delete record.partnerLastSeenInviteIDByGrantID[grant.id];
+    }
     record.grantKeysByGrantID[grant.id] = {
       keyHex: grantKeyHex,
       rotatedAtISO,
       sourceInviteID,
+      role: "partner",
+      ...(partnerAccountID.length > 0 ? { accountID: partnerAccountID } : {}),
     };
   });
 }
@@ -155,9 +167,16 @@ export async function reconcileManagedPartnerShareKeys(
       if (!inviteID) {
         continue;
       }
-      // Idempotent: if K_grant for this grantID already exists we don't re-derive,
+      // Idempotent: K_grant already derived under the listed invite is kept,
       // even if the same overview is re-processed (e.g. on a focus refresh).
-      if (record.grantKeysByGrantID[grant.id]) {
+      // A key derived under an earlier invite is replaced below once the
+      // re-share's pending key is here. A key this device holds as the
+      // partner is never replaced by an owner key.
+      const existingKey = record.grantKeysByGrantID[grant.id];
+      if (
+        existingKey &&
+        (existingKey.role === "partner" || existingKey.sourceInviteID === inviteID)
+      ) {
         continue;
       }
       // Anti-replay (F4): once an invite has been consumed for one grant, refuse
@@ -180,11 +199,14 @@ export async function reconcileManagedPartnerShareKeys(
         sourceInviteID: inviteID,
       });
       const pinnedLevel = record.pendingInviteAccessLevelsByInviteID[inviteID];
+      const ownerAccountID = grant.ownerAccountID.trim();
       record.grantKeysByGrantID[grant.id] = {
         keyHex: grantKeyHex,
         rotatedAtISO: nowISO,
         sourceInviteID: inviteID,
         ...(pinnedLevel ? { accessLevel: pinnedLevel } : {}),
+        role: "owner",
+        ...(ownerAccountID.length > 0 ? { accountID: ownerAccountID } : {}),
       };
       record.consumedInviteIDs[inviteID] = {
         grantID: grant.id,
@@ -202,6 +224,25 @@ export async function reconcileManagedPartnerShareKeys(
       }
       delete record.pendingInviteKeysByInviteID[inviteID];
       delete record.pendingInviteAccessLevelsByInviteID[inviteID];
+    }
+
+    // A received grant the server lists as revoked can never be read again,
+    // so its key and replay markers go. A grant missing from the listing is
+    // kept: a partial or failed listing must not cost the partner a key the
+    // single-use invite cannot restore. Only a key from the revoked row's own
+    // invite goes, so a listing fetched before a re-share accept cannot delete
+    // the key just stored under the new invite.
+    for (const grant of overview.sharedWithMe) {
+      const receivedKey = record.grantKeysByGrantID[grant.id];
+      if (
+        grant.revokedAt !== null &&
+        receivedKey?.role === "partner" &&
+        receivedKey.sourceInviteID === (grant.sourceInviteID?.trim() ?? "")
+      ) {
+        delete record.grantKeysByGrantID[grant.id];
+        delete record.partnerLastSeenGenerationByGrantID[grant.id];
+        delete record.partnerLastSeenInviteIDByGrantID[grant.id];
+      }
     }
 
     return record;
@@ -293,6 +334,15 @@ export async function uploadManagedPartnerProjection(
   if (!grantKey) {
     return { ok: false, errorCode: "share_key_unavailable" };
   }
+  // A received key, or an owner key created under another account than the
+  // projection names, never encrypts this device's data.
+  if (
+    grantKey.role === "partner" ||
+    (grantKey.accountID !== undefined &&
+      grantKey.accountID !== input.projection.ownerAccountID.trim())
+  ) {
+    return { ok: false, errorCode: "share_key_unavailable" };
+  }
   if (grantKey.sourceInviteID !== listedSourceInviteID) {
     return { ok: false, errorCode: "partner_grant_rekeyed" };
   }
@@ -353,17 +403,29 @@ export async function loadManagedPartnerProjection(
   syncSecretStore: SyncSecretStore,
   partnerShareSecretStore: PartnerShareSecretStore,
   syncMode: SyncMode,
-  grant: Pick<ManagedCloudPartnerAccessGrant, "id">,
+  grant: Pick<ManagedCloudPartnerAccessGrant, "id"> &
+    Partial<Pick<ManagedCloudPartnerAccessGrant, "sourceInviteID">>,
 ): Promise<ManagedPartnerShareResult<PartnerSharedProjectionPayload>> {
   const sessionToken = await readManagedSessionToken(syncSecretStore, syncMode);
   if (!sessionToken) {
     return { ok: false, errorCode: "not_connected" };
   }
 
-  const shareKey = (await readGrantKeyRecord(partnerShareSecretStore, grant.id))
-    ?.keyHex;
-  if (!shareKey) {
+  const grantKey = await readGrantKeyRecord(partnerShareSecretStore, grant.id);
+  if (!grantKey) {
     return { ok: false, errorCode: "share_key_unavailable" };
+  }
+  const shareKey = grantKey.keyHex;
+  const keyInviteID = grantKey.sourceInviteID;
+  // The listing names a newer invite than the one this key came from: the
+  // owner re-shared, and only accepting the new invite restores reading.
+  const listedSourceInviteID = grant.sourceInviteID?.trim() ?? "";
+  if (
+    listedSourceInviteID.length > 0 &&
+    keyInviteID.length > 0 &&
+    listedSourceInviteID !== keyInviteID
+  ) {
+    return { ok: false, errorCode: "partner_grant_rekeyed" };
   }
 
   const result = await createManagedCloudAPIClient(
@@ -388,9 +450,24 @@ export async function loadManagedPartnerProjection(
   // before a fresh upload). Strict regression is treated as tampering.
   //
   // Whole compare-and-advance runs inside `mutate` so that two concurrent
-  // loads cannot regress each other's marker.
+  // loads cannot regress each other's marker. The floor counts only for the
+  // invite it was seen under (a re-shared grant restarts the counter).
   return partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
-    const lastSeen = record.partnerLastSeenGenerationByGrantID[grant.id];
+    // The key was replaced while this projection was being decrypted.
+    if (pickGrantKey(record.grantKeysByGrantID, grant.id)?.keyHex !== shareKey) {
+      return {
+        ok: false,
+        errorCode: "invalid_partner_projection",
+      } satisfies ManagedPartnerShareResult<PartnerSharedProjectionPayload>;
+    }
+    const floorInviteID = Object.prototype.hasOwnProperty.call(record.partnerLastSeenInviteIDByGrantID, grant.id)
+      ? record.partnerLastSeenInviteIDByGrantID[grant.id]
+      : undefined;
+    const lastSeen =
+      Object.prototype.hasOwnProperty.call(record.partnerLastSeenGenerationByGrantID, grant.id) &&
+      (floorInviteID === undefined || floorInviteID === keyInviteID)
+        ? record.partnerLastSeenGenerationByGrantID[grant.id]
+        : undefined;
     if (lastSeen !== undefined && decrypted.generation < lastSeen) {
       return {
         ok: false,
@@ -399,6 +476,9 @@ export async function loadManagedPartnerProjection(
     }
     if (lastSeen === undefined || decrypted.generation > lastSeen) {
       record.partnerLastSeenGenerationByGrantID[grant.id] = decrypted.generation;
+    }
+    if (keyInviteID.length > 0) {
+      record.partnerLastSeenInviteIDByGrantID[grant.id] = keyInviteID;
     }
     return {
       ok: true,
@@ -419,18 +499,36 @@ async function readManagedSessionToken(
   return secrets?.managedAuthSessionToken?.trim() || null;
 }
 
+type ReadGrantKey = Pick<PartnerShareGrantKeyRecord, "keyHex" | "sourceInviteID"> &
+  Partial<Pick<PartnerShareGrantKeyRecord, "role" | "accountID">>;
+
 async function readGrantKeyRecord(
   partnerShareSecretStore: PartnerShareSecretStore,
   grantID: string,
-): Promise<{ keyHex: string; sourceInviteID: string } | null> {
+): Promise<ReadGrantKey | null> {
   const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
-  const record: PartnerShareGrantKeyRecord | undefined =
-    secrets.grantKeysByGrantID[grantID];
-  const keyHex = record?.keyHex.trim() || "";
+  return pickGrantKey(secrets.grantKeysByGrantID, grantID);
+}
+
+function pickGrantKey(
+  grantKeysByGrantID: PartnerShareSecretsRecord["grantKeysByGrantID"],
+  grantID: string,
+): ReadGrantKey | null {
+  if (!Object.prototype.hasOwnProperty.call(grantKeysByGrantID, grantID)) {
+    return null;
+  }
+  const record = grantKeysByGrantID[grantID];
+  const keyHex = typeof record?.keyHex === "string" ? record.keyHex.trim() : "";
   if (!record || keyHex.length === 0) {
     return null;
   }
-  return { keyHex, sourceInviteID: record.sourceInviteID.trim() };
+  const accountID = record.accountID?.trim() ?? "";
+  return {
+    keyHex,
+    sourceInviteID: record.sourceInviteID.trim(),
+    ...(record.role ? { role: record.role } : {}),
+    ...(accountID.length > 0 ? { accountID } : {}),
+  };
 }
 
 function parseInviteTokenFromURL(inviteURL: string): string {

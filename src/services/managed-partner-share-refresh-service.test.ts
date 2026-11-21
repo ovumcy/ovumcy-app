@@ -64,6 +64,7 @@ describe("managed-partner-share-refresh-service", () => {
       consumedInviteIDs: {},
       ownerGenerationByGrantID: {},
       partnerLastSeenGenerationByGrantID: {},
+      partnerLastSeenInviteIDByGrantID: {},
     });
 
     await expect(
@@ -110,6 +111,7 @@ describe("managed-partner-share-refresh-service", () => {
       consumedInviteIDs: {},
       ownerGenerationByGrantID: {},
       partnerLastSeenGenerationByGrantID: {},
+      partnerLastSeenInviteIDByGrantID: {},
     });
 
     await expect(

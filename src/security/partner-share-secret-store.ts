@@ -20,7 +20,16 @@ export type PartnerShareGrantKeyRecord = {
   // server lists for the grant. Absent on records written before the pin
   // existed, which build as the narrowest level.
   accessLevel?: PartnerShareAccessLevel;
+  // Which side of the grant this device holds the key for, and the account
+  // the key was created under. A `partner` key never encrypts an upload, so a
+  // server that lists a received grant as owned cannot make this device
+  // publish its own data to the inviter. Absent on records written before
+  // the fields existed: such a key behaves as before.
+  role?: PartnerShareGrantKeyRole;
+  accountID?: string;
 };
+
+export type PartnerShareGrantKeyRole = "owner" | "partner";
 
 // Owner-side anti-replay marker. Once an invite has been rotated into a
 // K_grant, no second grant can ever consume the same invite — a malicious
@@ -53,6 +62,12 @@ export type PartnerShareSecretsRecord = {
   // managed cloud that retains and replays an older ciphertext gets
   // rejected once the partner has observed a newer generation.
   partnerLastSeenGenerationByGrantID: Record<string, number>;
+  // The invite the floor above was observed under. A re-shared grant keeps
+  // its id but restarts the owner's counter under a new invite key, so a
+  // floor applies only to projections decrypted under the same invite. A
+  // floor without an entry here (written before the field existed) applies
+  // as before until the grant's key is replaced.
+  partnerLastSeenInviteIDByGrantID: Record<string, string>;
 };
 
 const PARTNER_SHARE_SECRET_STORE_KEY = "ovumcy.partner-share-secrets-v2";
@@ -86,14 +101,21 @@ export interface PartnerShareSecretStore {
   ): Promise<T>;
 }
 
+// Maps keyed by server-issued ids have no prototype, so an id such as
+// `__proto__` or `constructor` reads as absent instead of an inherited member.
+export function createPartnerShareIDMap<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>;
+}
+
 export function createEmptyPartnerShareSecretsRecord(): PartnerShareSecretsRecord {
   return {
-    grantKeysByGrantID: {},
-    pendingInviteKeysByInviteID: {},
-    pendingInviteAccessLevelsByInviteID: {},
-    consumedInviteIDs: {},
-    ownerGenerationByGrantID: {},
-    partnerLastSeenGenerationByGrantID: {},
+    grantKeysByGrantID: createPartnerShareIDMap(),
+    pendingInviteKeysByInviteID: createPartnerShareIDMap(),
+    pendingInviteAccessLevelsByInviteID: createPartnerShareIDMap(),
+    consumedInviteIDs: createPartnerShareIDMap(),
+    ownerGenerationByGrantID: createPartnerShareIDMap(),
+    partnerLastSeenGenerationByGrantID: createPartnerShareIDMap(),
+    partnerLastSeenInviteIDByGrantID: createPartnerShareIDMap(),
   };
 }
 
@@ -155,6 +177,7 @@ export function createPartnerShareSecretStore(
         consumedInviteIDs: unknown;
         ownerGenerationByGrantID: unknown;
         partnerLastSeenGenerationByGrantID: unknown;
+        partnerLastSeenInviteIDByGrantID: unknown;
       }>;
       return {
         grantKeysByGrantID: normalizeGrantKeysMap(parsed.grantKeysByGrantID),
@@ -170,6 +193,9 @@ export function createPartnerShareSecretStore(
         ),
         partnerLastSeenGenerationByGrantID: normalizeGenerationsMap(
           parsed.partnerLastSeenGenerationByGrantID,
+        ),
+        partnerLastSeenInviteIDByGrantID: normalizeSecretsMap(
+          parsed.partnerLastSeenInviteIDByGrantID,
         ),
       };
     } catch {
@@ -197,6 +223,9 @@ export function createPartnerShareSecretStore(
         partnerLastSeenGenerationByGrantID: normalizeGenerationsMap(
           record.partnerLastSeenGenerationByGrantID,
         ),
+        partnerLastSeenInviteIDByGrantID: normalizeSecretsMap(
+          record.partnerLastSeenInviteIDByGrantID,
+        ),
       }),
     );
   }
@@ -223,35 +252,36 @@ export function createPartnerShareSecretStore(
 }
 
 function normalizeSecretsMap(value: unknown): Record<string, string> {
+  const out = createPartnerShareIDMap<string>();
   if (!value || typeof value !== "object") {
-    return {};
+    return out;
   }
 
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(
-        ([key, item]) =>
-          typeof key === "string" &&
-          key.trim().length > 0 &&
-          typeof item === "string" &&
-          item.trim().length > 0,
-      )
-      .map(([key, item]) => [key.trim(), item.trim()]),
-  );
+  for (const [rawKey, item] of Object.entries(value)) {
+    const key = rawKey.trim();
+    if (key.length > 0 && typeof item === "string" && item.trim().length > 0) {
+      out[key] = item.trim();
+    }
+  }
+  return out;
 }
 
 function isAccessLevel(value: unknown): value is PartnerShareAccessLevel {
   return value === "summary" || value === "full";
 }
 
+function isGrantKeyRole(value: unknown): value is PartnerShareGrantKeyRole {
+  return value === "owner" || value === "partner";
+}
+
 function normalizeAccessLevelsMap(
   value: unknown,
 ): Record<string, PartnerShareAccessLevel> {
+  const out = createPartnerShareIDMap<PartnerShareAccessLevel>();
   if (!value || typeof value !== "object") {
-    return {};
+    return out;
   }
 
-  const out: Record<string, PartnerShareAccessLevel> = {};
   for (const [rawKey, item] of Object.entries(value)) {
     const key = rawKey.trim();
     if (key.length > 0 && isAccessLevel(item)) {
@@ -262,32 +292,33 @@ function normalizeAccessLevelsMap(
 }
 
 function normalizeGenerationsMap(value: unknown): Record<string, number> {
+  const out = createPartnerShareIDMap<number>();
   if (!value || typeof value !== "object") {
-    return {};
+    return out;
   }
 
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(
-        ([key, item]) =>
-          typeof key === "string" &&
-          key.trim().length > 0 &&
-          typeof item === "number" &&
-          Number.isInteger(item) &&
-          item >= 0,
-      )
-      .map(([key, item]) => [key.trim(), item as number]),
-  );
+  for (const [rawKey, item] of Object.entries(value)) {
+    const key = rawKey.trim();
+    if (
+      key.length > 0 &&
+      typeof item === "number" &&
+      Number.isInteger(item) &&
+      item >= 0
+    ) {
+      out[key] = item;
+    }
+  }
+  return out;
 }
 
 function normalizeGrantKeysMap(
   value: unknown,
 ): Record<string, PartnerShareGrantKeyRecord> {
+  const out = createPartnerShareIDMap<PartnerShareGrantKeyRecord>();
   if (!value || typeof value !== "object") {
-    return {};
+    return out;
   }
 
-  const out: Record<string, PartnerShareGrantKeyRecord> = {};
   for (const [rawKey, rawItem] of Object.entries(value)) {
     if (typeof rawKey !== "string") {
       continue;
@@ -308,9 +339,16 @@ function normalizeGrantKeysMap(
       // a zombie record that would later surface as `share_key_unavailable`.
       continue;
     }
-    out[key] = isAccessLevel(record.accessLevel)
-      ? { keyHex, rotatedAtISO, sourceInviteID, accessLevel: record.accessLevel }
-      : { keyHex, rotatedAtISO, sourceInviteID };
+    const accountID =
+      typeof record.accountID === "string" ? record.accountID.trim() : "";
+    out[key] = {
+      keyHex,
+      rotatedAtISO,
+      sourceInviteID,
+      ...(isAccessLevel(record.accessLevel) ? { accessLevel: record.accessLevel } : {}),
+      ...(isGrantKeyRole(record.role) ? { role: record.role } : {}),
+      ...(accountID.length > 0 ? { accountID } : {}),
+    };
   }
   return out;
 }
@@ -318,11 +356,11 @@ function normalizeGrantKeysMap(
 function normalizeConsumedInvitesMap(
   value: unknown,
 ): Record<string, PartnerShareConsumedInviteRecord> {
+  const out = createPartnerShareIDMap<PartnerShareConsumedInviteRecord>();
   if (!value || typeof value !== "object") {
-    return {};
+    return out;
   }
 
-  const out: Record<string, PartnerShareConsumedInviteRecord> = {};
   for (const [rawKey, rawItem] of Object.entries(value)) {
     if (typeof rawKey !== "string") {
       continue;
