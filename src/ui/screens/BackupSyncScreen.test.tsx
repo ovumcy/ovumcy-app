@@ -178,6 +178,7 @@ describe("BackupSyncScreen", () => {
           deviceLabel: "Pixel 7",
           setupStatus: "local_ready",
         }),
+        { restoreInProgress: false },
       ),
     );
     expect(screen.getByTestId("settings-sync-recovery-export-button")).toBeTruthy();
