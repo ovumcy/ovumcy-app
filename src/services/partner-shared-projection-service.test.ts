@@ -322,6 +322,23 @@ describe("partner-shared-projection-service", () => {
       expect(readState.cycleStatus.currentCycleDay).toBe(33);
     });
 
+    it("keeps counting a facts-only cycle day from its anchor", () => {
+      const readState = buildPartnerSharedReadState(
+        withSnapshot({
+          currentCycleDay: 10,
+          nextPeriodDate: null,
+          nextPeriodWindowEndDate: null,
+          nextPeriodWindowStartDate: null,
+          predictionHint: "facts_only",
+          state: "facts_only",
+        }),
+        new Date("2026-02-12T09:00:00.000Z"),
+        "en",
+      );
+
+      expect(readState.cycleStatus.currentCycleDay).toBe(12);
+    });
+
     it("withholds an advanced cycle day when the snapshot carries no predicted date", () => {
       const noDates = {
         nextPeriodDate: null,

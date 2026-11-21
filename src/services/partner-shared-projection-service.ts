@@ -370,8 +370,9 @@ export function buildPartnerSharedReadState(
 // partner's clock, so a snapshot read days later does not show a frozen day.
 // Once the window has passed the day is withheld ("—"): rolling an elapsed
 // prediction forward would invent a cycle the owner device never computed.
-// An overdue ("stale") day count keeps counting from its anchor. A clock
-// behind `asOfDate` shows the day as generated.
+// An overdue ("stale") day count, and a facts-only one (no predicted window
+// to pass), keeps counting from its anchor. A clock behind `asOfDate` shows
+// the day as generated.
 function advanceSnapshotCycleDay(
   snapshot: PartnerSharedSummarySnapshot,
   now: Date,
@@ -384,7 +385,7 @@ function advanceSnapshotCycleDay(
 
   const today = formatLocalDate(atLocalDay(now));
   const elapsedDays = Math.max(0, diffLocalDays(snapshot.asOfDate, today));
-  if (state === "stale") {
+  if (state === "stale" || state === "facts_only") {
     return currentCycleDay + elapsedDays;
   }
 
