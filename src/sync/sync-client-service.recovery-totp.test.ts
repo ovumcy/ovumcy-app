@@ -155,6 +155,18 @@ describe("self-hosted phrase recovery with two-factor on", () => {
     expect(apiClientFactory).not.toHaveBeenCalled();
   });
 
+  it("refuses a managed setup with the default client factory too", async () => {
+    await expect(
+      finalizeSyncRecoveryAfterTOTP(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(),
+        { ...preferences, mode: "managed" },
+        { sessionToken: "token", recoveryPhrase: serverAccount().recoveryPhrase },
+        NOW,
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+  });
+
   it("refuses an invalid phrase on resume before any request", async () => {
     const apiClientFactory = jest.fn();
 
