@@ -1,8 +1,12 @@
 import type { DayLogRecord } from "../models/day-log";
 import type {
   PartnerShareAccessLevel,
+  PartnerSharedPredictionHint,
+  PartnerSharedProfileRecord,
   PartnerSharedProjectionPayload,
   PartnerSharedReadState,
+  PartnerSharedSummarySnapshot,
+  PartnerSharedSymptomRecord,
 } from "../models/partner-share";
 import { getBuiltinSymptomLabel } from "../i18n/symptom-copy";
 import {
@@ -16,8 +20,13 @@ import {
   buildCurrentCycleProjection,
   resolveDisplayCycleDay,
 } from "./cycle-history-service";
-import { buildPredictionExplanation } from "./prediction-explanation-service";
+import {
+  buildPredictionExplanation,
+  buildPredictionExplanationText,
+  resolvePredictionExplanationKind,
+} from "./prediction-explanation-service";
 import { buildExportCSVRows } from "./export-service";
+import { atLocalDay, diffLocalDays, formatLocalDate } from "./profile-settings-policy";
 import { getSymptomDisplayLabel } from "./symptom-presentation-service";
 
 // Snapshots older than this many days are considered stale. Predictions are
@@ -105,47 +114,155 @@ export function buildPartnerSharedProjectionPayload(
   const suppressPredictions =
     (options.suppressPredictions ?? false) || ownerProjection.isPregnancyPaused;
 
-  return {
+  // EXPLICIT field-pick (fail-closed), mirroring redactDayLogForPartner: the
+  // partner profile is built field-by-field, never `...input.profile`. Any
+  // owner-only additive ProfileRecord field is excluded by construction and
+  // can never leak into a partner projection. The crisis-support contact
+  // (crisisContactName/crisisContactPhone) is deliberately NOT listed here
+  // and must NEVER be added — it is owner-only private safety data. The
+  // PartnerSharedProfileRecord Pick type is the compile-time twin of this
+  // allowlist; the leak pins (crisisContact tokens + phone value, both access
+  // levels) prove it structurally and after serialization.
+  const sharedProfile: PartnerSharedProfileRecord = {
+    ageGroup: input.profile.ageGroup,
+    cycleLength: input.profile.cycleLength,
+    hideNotes: input.profile.hideNotes === true,
+    hideSexChip: input.profile.hideSexChip,
+    irregularCycle: input.profile.irregularCycle,
+    periodLength: input.profile.periodLength,
+    temperatureUnit: input.profile.temperatureUnit,
+    trackBBT: input.profile.trackBBT,
+    trackCervicalMucus: input.profile.trackCervicalMucus,
+    // While suppressPredictions holds (active pregnancy record, or the
+    // owner's own day-log pause not yet lifted), force the SHARED profile's
+    // unpredictableCycle true regardless of the owner's real setting. This
+    // is the lever buildPartnerSharedReadState's payload-only recomputation
+    // keys off (full level, or a summary payload from an older owner build)
+    // to reach the SAME neutral facts_only shape a real facts_only owner's
+    // partner already sees (no current-cycle prediction fields, no
+    // pregnancy-adjacent copy). Every OTHER shared field (day-log history,
+    // summary metrics) stays fully accurate.
+    unpredictableCycle: suppressPredictions ? true : input.profile.unpredictableCycle,
+  };
+
+  const payload: PartnerSharedProjectionPayload = {
     schemaVersion: PARTNER_SHARE_SCHEMA_VERSION,
     generatedAt: input.generatedAt,
     generation: input.generation,
     accessLevel: input.accessLevel,
     ownerAccountID: input.ownerAccountID,
     grantID: input.grantID,
-    // EXPLICIT field-pick (fail-closed), mirroring redactDayLogForPartner: the
-    // partner profile is built field-by-field, never `...input.profile`. Any
-    // owner-only additive ProfileRecord field is excluded by construction and
-    // can never leak into a partner projection. The crisis-support contact
-    // (crisisContactName/crisisContactPhone) is deliberately NOT listed here
-    // and must NEVER be added — it is owner-only private safety data. The
-    // PartnerSharedProfileRecord Pick type is the compile-time twin of this
-    // allowlist; the leak pins (crisisContact tokens + phone value, both access
-    // levels) prove it structurally and after serialization.
-    profile: {
-      ageGroup: input.profile.ageGroup,
-      cycleLength: input.profile.cycleLength,
-      hideNotes: input.profile.hideNotes === true,
-      hideSexChip: input.profile.hideSexChip,
-      irregularCycle: input.profile.irregularCycle,
+    profile: sharedProfile,
+    dayLogs: [],
+    symptomRecords: [],
+  };
+
+  if (input.accessLevel === "full") {
+    sharedProfile.lastPeriodStart = input.profile.lastPeriodStart;
+    payload.dayLogs = sharedDayLogs;
+    payload.symptomRecords = sharedSymptomRecords;
+    return payload;
+  }
+
+  // Summary level: the owner device computes what the partner's summary view
+  // renders and ships only that. No per-day date, no date-valued profile
+  // field and no symptom record leaves the device; the snapshot is derived
+  // from the same redacted logs and shared profile a full-level partner
+  // would recompute from.
+  payload.summarySnapshot = buildSummarySnapshot(
+    {
+      ...createDefaultProfileRecord(),
+      ...sharedProfile,
       lastPeriodStart: input.profile.lastPeriodStart,
-      periodLength: input.profile.periodLength,
-      temperatureUnit: input.profile.temperatureUnit,
-      trackBBT: input.profile.trackBBT,
-      trackCervicalMucus: input.profile.trackCervicalMucus,
-      // While suppressPredictions holds (active pregnancy record, or the
-      // owner's own day-log pause not yet lifted), force the SHARED profile's
-      // unpredictableCycle true regardless of the owner's real setting. This
-      // is the only lever buildPartnerSharedReadState's UNMODIFIED, payload-
-      // only projection recomputation can key off later to reach the SAME
-      // neutral facts_only shape a real facts_only owner's partner already
-      // sees (no current-cycle prediction fields, no pregnancy-adjacent
-      // copy) -- no new i18n string, no model change, and every OTHER shared
-      // field (day-log history, summaryMetrics) stays fully accurate.
-      unpredictableCycle: suppressPredictions ? true : input.profile.unpredictableCycle,
-      usageGoal: input.profile.usageGoal,
     },
-    dayLogs: sharedDayLogs,
-    symptomRecords: sharedSymptomRecords,
+    sharedDayLogs,
+    ownerNow,
+    suppressPredictions,
+  );
+  return payload;
+}
+
+function buildSummarySnapshot(
+  profile: ProfileRecord,
+  sharedDayLogs: readonly DayLogRecord[],
+  ownerNow: Date,
+  suppressPredictions: boolean,
+): PartnerSharedSummarySnapshot {
+  const { history, projection, state, explanationKind } = resolvePartnerCycleStatus(
+    profile,
+    [...sharedDayLogs],
+    ownerNow,
+  );
+  const metrics = {
+    averageCycleLength: history.averageCycleLength,
+    averagePeriodLength: averageInts(
+      history.completedCycles.map((cycle) => cycle.periodLength),
+    ),
+    lastCycleLength: history.lastCycleLength,
+    totalLoggedDays: sharedDayLogs.length,
+  };
+  const asOfDate = formatLocalDate(atLocalDay(ownerNow));
+
+  // Medical safety: every prediction value is dropped, explicitly rather than
+  // by trusting the recomputation, while an active pregnancy record or the
+  // owner's own pause holds. The hint is the neutral facts-only one, never
+  // pregnancy-specific wording.
+  if (suppressPredictions) {
+    return {
+      asOfDate,
+      cycleStatus: {
+        currentCycleDay: null,
+        nextPeriodDate: null,
+        nextPeriodWindowEndDate: null,
+        nextPeriodWindowStartDate: null,
+        predictionHint: "facts_only",
+        state: "facts_only",
+      },
+      metrics,
+    };
+  }
+
+  const predictionHint: PartnerSharedPredictionHint =
+    explanationKind === null
+      ? "none"
+      : explanationKind === "pregnancy_paused"
+        ? "facts_only"
+        : explanationKind;
+  return {
+    asOfDate,
+    cycleStatus: {
+      currentCycleDay: resolveDisplayCycleDay(projection),
+      nextPeriodDate: projection.nextPeriodDate,
+      nextPeriodWindowEndDate: projection.nextPeriodWindowEndDate,
+      nextPeriodWindowStartDate: projection.nextPeriodWindowStartDate,
+      predictionHint,
+      state,
+    },
+    metrics,
+  };
+}
+
+function resolvePartnerCycleStatus(
+  profile: ProfileRecord,
+  dayLogs: DayLogRecord[],
+  now: Date,
+) {
+  const history = buildCycleHistorySummary(profile, dayLogs, now);
+  const projection = buildCurrentCycleProjection(profile, history, dayLogs, now);
+  const state: PartnerSharedReadState["cycleStatus"]["state"] = profile.unpredictableCycle
+    ? "facts_only"
+    : projection.isPredictionStale
+      ? "stale"
+      : !projection.cycleAnchorDate || projection.currentCycleDay === null
+        ? "unknown"
+        : profile.irregularCycle
+          ? "approximate"
+          : "regular";
+  return {
+    history,
+    projection,
+    state,
+    explanationKind: resolvePredictionExplanationKind(profile, projection),
   };
 }
 
@@ -154,10 +271,6 @@ export function buildPartnerSharedReadState(
   now: Date,
   locale = "en",
 ): PartnerSharedReadState {
-  const profile = buildProjectionProfile(payload);
-  const history = buildCycleHistorySummary(profile, payload.dayLogs, now);
-  const projection = buildCurrentCycleProjection(profile, history, payload.dayLogs, now);
-
   const generatedAtMs = Date.parse(payload.generatedAt);
   const staleDeltaDays =
     Number.isNaN(generatedAtMs)
@@ -186,26 +299,59 @@ export function buildPartnerSharedReadState(
           }))
       : [];
 
-  return {
+  const base = {
     accessLevel: payload.accessLevel,
     generatedAt: payload.generatedAt,
     isStale,
     temperatureUnit: payload.profile.temperatureUnit,
+    recentRows,
+  };
+
+  // A summary payload carries the owner-computed snapshot; one from an older
+  // owner build (no snapshot) falls through to the recomputation below.
+  if (payload.accessLevel === "summary" && isSummarySnapshot(payload.summarySnapshot)) {
+    const snapshot = payload.summarySnapshot;
+    return {
+      ...base,
+      cycleStatus: {
+        currentCycleDay: advanceSnapshotCycleDay(snapshot, now),
+        nextPeriodDate: snapshot.cycleStatus.nextPeriodDate,
+        nextPeriodWindowEndDate: snapshot.cycleStatus.nextPeriodWindowEndDate,
+        nextPeriodWindowStartDate: snapshot.cycleStatus.nextPeriodWindowStartDate,
+        predictionExplanation: buildPredictionExplanationText(
+          snapshot.cycleStatus.predictionHint === "none"
+            ? null
+            : snapshot.cycleStatus.predictionHint,
+          locale,
+        ),
+        state: snapshot.cycleStatus.state,
+      },
+      summaryMetrics: {
+        lastCycleLength: snapshot.metrics.lastCycleLength,
+        averageCycleLength: snapshot.metrics.averageCycleLength,
+        averagePeriodLength: snapshot.metrics.averagePeriodLength,
+        totalLoggedDays: snapshot.metrics.totalLoggedDays,
+        topSymptoms: [],
+      },
+    };
+  }
+
+  const profile = buildProjectionProfile(payload.profile);
+  const { history, projection, state } = resolvePartnerCycleStatus(
+    profile,
+    payload.dayLogs,
+    now,
+  );
+
+  return {
+    ...base,
     cycleStatus: {
       currentCycleDay: resolveDisplayCycleDay(projection),
       nextPeriodDate: projection.nextPeriodDate,
       nextPeriodWindowEndDate: projection.nextPeriodWindowEndDate,
       nextPeriodWindowStartDate: projection.nextPeriodWindowStartDate,
       predictionExplanation: buildPredictionExplanation(profile, projection, locale),
-      state: profile.unpredictableCycle
-        ? "facts_only"
-        : projection.isPredictionStale
-          ? "stale"
-          : !projection.cycleAnchorDate || projection.currentCycleDay === null
-            ? "unknown"
-            : profile.irregularCycle
-              ? "approximate"
-              : "regular",
+      state,
     },
     summaryMetrics: {
       lastCycleLength: history.lastCycleLength,
@@ -216,8 +362,81 @@ export function buildPartnerSharedReadState(
       totalLoggedDays: payload.dayLogs.length,
       topSymptoms: buildTopSymptomLabels(payload.dayLogs, payload.symptomRecords, locale),
     },
-    recentRows,
   };
+}
+
+// The cycle day is the owner's as of `asOfDate`. While the predicted window
+// has not yet passed it advances by the whole local days elapsed on the
+// partner's clock, so a snapshot read days later does not show a frozen day.
+// Once the window has passed the day is withheld ("—"): rolling an elapsed
+// prediction forward would invent a cycle the owner device never computed.
+// An overdue ("stale") day count keeps counting from its anchor. A clock
+// behind `asOfDate` shows the day as generated.
+function advanceSnapshotCycleDay(
+  snapshot: PartnerSharedSummarySnapshot,
+  now: Date,
+): number | null {
+  const { currentCycleDay, nextPeriodWindowEndDate, nextPeriodDate, state } =
+    snapshot.cycleStatus;
+  if (currentCycleDay === null) {
+    return null;
+  }
+
+  const today = formatLocalDate(atLocalDay(now));
+  const elapsedDays = Math.max(0, diffLocalDays(snapshot.asOfDate, today));
+  if (state === "stale") {
+    return currentCycleDay + elapsedDays;
+  }
+
+  const windowEnd = nextPeriodWindowEndDate ?? nextPeriodDate;
+  if (windowEnd === null || today > windowEnd) {
+    return elapsedDays === 0 ? currentCycleDay : null;
+  }
+  return currentCycleDay + elapsedDays;
+}
+
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const SNAPSHOT_STATES: readonly string[] = [
+  "regular",
+  "approximate",
+  "facts_only",
+  "unknown",
+  "stale",
+];
+const SNAPSHOT_HINTS: readonly string[] = [
+  "approximate",
+  "facts_only",
+  "none",
+  "variable_ranges",
+];
+
+function isSummarySnapshot(value: unknown): value is PartnerSharedSummarySnapshot {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const snapshot = value as Partial<PartnerSharedSummarySnapshot>;
+  const status = snapshot.cycleStatus;
+  const metrics = snapshot.metrics;
+  if (!status || !metrics || typeof snapshot.asOfDate !== "string") {
+    return false;
+  }
+  const isDateOrNull = (field: unknown) =>
+    field === null || (typeof field === "string" && DATE_KEY_PATTERN.test(field));
+  const isFiniteNumber = (field: unknown) =>
+    typeof field === "number" && Number.isFinite(field);
+  return (
+    DATE_KEY_PATTERN.test(snapshot.asOfDate) &&
+    (status.currentCycleDay === null || isFiniteNumber(status.currentCycleDay)) &&
+    isDateOrNull(status.nextPeriodDate) &&
+    isDateOrNull(status.nextPeriodWindowStartDate) &&
+    isDateOrNull(status.nextPeriodWindowEndDate) &&
+    SNAPSHOT_HINTS.includes(status.predictionHint) &&
+    SNAPSHOT_STATES.includes(status.state) &&
+    isFiniteNumber(metrics.averageCycleLength) &&
+    isFiniteNumber(metrics.averagePeriodLength) &&
+    isFiniteNumber(metrics.lastCycleLength) &&
+    isFiniteNumber(metrics.totalLoggedDays)
+  );
 }
 
 function redactDayLogForPartner(
@@ -273,12 +492,21 @@ function redactDayLogForPartner(
   };
 }
 
+// Explicit field-pick, never a spread: only the fields the partner read path
+// uses leave the device. Slug, icon, colour, archive flag and sort order are
+// owner presentation state and stay out by construction.
 function filterReferencedSymptomRecords(
   dayLogs: readonly DayLogRecord[],
   symptomRecords: readonly SymptomRecord[],
-): SymptomRecord[] {
+): PartnerSharedSymptomRecord[] {
   const usedIDs = new Set(dayLogs.flatMap((record) => record.symptomIDs));
-  return symptomRecords.filter((record) => usedIDs.has(record.id));
+  return symptomRecords
+    .filter((record) => usedIDs.has(record.id))
+    .map((record) => ({
+      id: record.id,
+      isDefault: record.isDefault,
+      label: record.label,
+    }));
 }
 
 function hasPartnerVisibleData(record: DayLogRecord): boolean {
@@ -298,18 +526,16 @@ function hasPartnerVisibleData(record: DayLogRecord): boolean {
   );
 }
 
-function buildProjectionProfile(
-  payload: PartnerSharedProjectionPayload,
-): ProfileRecord {
+function buildProjectionProfile(profile: PartnerSharedProfileRecord): ProfileRecord {
   return {
     ...createDefaultProfileRecord(),
-    ...payload.profile,
+    ...profile,
   };
 }
 
 function buildTopSymptomLabels(
   dayLogs: readonly DayLogRecord[],
-  symptomRecords: readonly SymptomRecord[],
+  symptomRecords: readonly PartnerSharedSymptomRecord[],
   locale = "en",
 ): string[] {
   if (symptomRecords.length === 0) {
