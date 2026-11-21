@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Share, StyleSheet, Text, View } from "react-native";
 
 import type { PartnerCopy } from "../../../i18n/partner-copy";
 import { formatBackupSyncLastSeen } from "../../../services/backup-sync-view-service";
@@ -18,12 +18,22 @@ import type { AppThemeColors } from "../../theme/tokens";
 import { spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
 
+// The invite link carries the client-only invite secret in its fragment, so
+// it goes only to the OS share sheet the user opens: never the clipboard, a
+// log, or a route param. A failed or dismissed sheet is not an error to
+// surface, and its reason is not logged.
+function shareInviteLink(inviteLink: string, dialogTitle: string): void {
+  void Share.share({ message: inviteLink }, { dialogTitle }).catch(() => {});
+}
+
 type SettingsPartnerAccessSectionProps = {
   copy: PartnerCopy;
   errorMessage: string;
   hasManagedSession: boolean;
   inviteAccessLevel: ManagedCloudPartnerAccessLevel;
   inviteLink: string;
+  // True when a newer inbound link replaced an earlier pending invite.
+  inviteReplaced?: boolean;
   isBusy: boolean;
   locale?: string | undefined;
   onAcceptInvite: () => void | Promise<void>;
@@ -49,6 +59,7 @@ export function SettingsPartnerAccessSection({
   hasManagedSession,
   inviteAccessLevel,
   inviteLink,
+  inviteReplaced = false,
   isBusy,
   locale,
   onAcceptInvite,
@@ -110,6 +121,13 @@ export function SettingsPartnerAccessSection({
         {pendingInviteToken ? (
           <View style={styles.card} testID="settings-partner-accept-card">
             <Text style={styles.sectionTitle}>{copy.acceptTitle}</Text>
+            {inviteReplaced ? (
+              <StatusBanner
+                message={copy.inviteReplacedNotice}
+                testID="settings-partner-invite-replaced-notice"
+                tone="info"
+              />
+            ) : null}
             {hasManagedSession ? (
               <>
                 <Text style={styles.helperText}>{copy.acceptReadyHint}</Text>
@@ -199,10 +217,22 @@ export function SettingsPartnerAccessSection({
             {inviteLink ? (
               <View style={styles.linkCard} testID="settings-partner-invite-link-card">
                 <Text style={styles.fieldLabel}>{copy.inviteLinkTitle}</Text>
-                <Text style={styles.linkText} testID="settings-partner-invite-link">
+                <Text
+                  selectable
+                  style={styles.linkText}
+                  testID="settings-partner-invite-link"
+                >
                   {inviteLink}
                 </Text>
                 <Text style={styles.helperText}>{copy.inviteLinkHint}</Text>
+                <AppButton
+                  label={copy.shareInviteLinkLabel}
+                  onPress={() => {
+                    shareInviteLink(inviteLink, copy.shareInviteLinkLabel);
+                  }}
+                  testID="settings-partner-share-invite-button"
+                  variant="secondary"
+                />
               </View>
             ) : null}
 

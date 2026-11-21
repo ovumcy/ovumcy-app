@@ -1,5 +1,22 @@
 import { getPartnerCopy } from "./partner-copy";
 
+describe("partner copy invite link hint", () => {
+  it.each([
+    ["en", "guest"],
+    ["de", "Gast"],
+    ["fr", "invité"],
+    ["ru", "гость"],
+    ["es", "invitad"],
+    ["it", "ospite"],
+  ])("names guest acceptance in %s", (locale, guestWord) => {
+    const copy = getPartnerCopy(locale);
+
+    expect(copy.inviteLinkHint).toContain(guestWord);
+    expect(copy.shareInviteLinkLabel.length).toBeGreaterThan(0);
+    expect(copy.inviteReplacedNotice.length).toBeGreaterThan(0);
+  });
+});
+
 describe("partner copy (ru)", () => {
   const copy = getPartnerCopy("ru");
 

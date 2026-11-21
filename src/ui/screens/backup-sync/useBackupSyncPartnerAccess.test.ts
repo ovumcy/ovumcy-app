@@ -70,6 +70,8 @@ function createGrant(
   };
 }
 
+// At least the 22-char floor the key derivation enforces.
+const INVITE_TOKEN = "invite-token-fixture-0123456789";
 const INVITE_SECRET_HEX = "11".repeat(32);
 const SHAREABLE_INVITE_LINK = `https://invite.ovumcy.cloud/i/abc123#k=${INVITE_SECRET_HEX}`;
 
@@ -77,7 +79,7 @@ describe("useBackupSyncPartnerAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     clearManagedPartnerInviteToken();
-    stashManagedPartnerInviteToken("invite-token", INVITE_SECRET_HEX);
+    stashManagedPartnerInviteToken(INVITE_TOKEN, INVITE_SECRET_HEX);
     mockStoreIssuedManagedPartnerInviteKey.mockResolvedValue(SHAREABLE_INVITE_LINK);
     mockStoreAcceptedManagedPartnerGrantKey.mockResolvedValue(undefined);
     mockClearManagedPartnerGrantKey.mockResolvedValue(undefined);
@@ -232,7 +234,7 @@ describe("useBackupSyncPartnerAccess", () => {
     it("does nothing without a loaded state", async () => {
       const core = createBackupSyncSessionCoreMock({
         state: null,
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
@@ -258,7 +260,7 @@ describe("useBackupSyncPartnerAccess", () => {
 
     it("surfaces the mapped error message when accept fails", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       mockAcceptManagedPartnerInvite.mockResolvedValue({
         ok: false,
@@ -278,7 +280,7 @@ describe("useBackupSyncPartnerAccess", () => {
 
     it("keeps the still-pending invite buffered when the owner's grant cap is reached", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       mockAcceptManagedPartnerInvite.mockResolvedValue({
         ok: false,
@@ -294,12 +296,12 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerCopy.errors.partnerGrantLimitReached,
       );
       expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
-      expect(readManagedPartnerInviteToken()).toBe("invite-token");
+      expect(readManagedPartnerInviteToken()).toBe(INVITE_TOKEN);
     });
 
     it("surfaces the generic error when persisting the grant key throws", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const grant = createGrant();
       mockAcceptManagedPartnerInvite.mockResolvedValue({
@@ -333,12 +335,12 @@ describe("useBackupSyncPartnerAccess", () => {
         core.partnerCopy.errors.generic,
       );
       expect(core.setPendingPartnerInviteToken).not.toHaveBeenCalled();
-      expect(readManagedPartnerInviteToken()).toBe("invite-token");
+      expect(readManagedPartnerInviteToken()).toBe(INVITE_TOKEN);
     });
 
     it("clears the pending invite, navigates back, and refreshes partner access on success", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const grant = createGrant();
       mockAcceptManagedPartnerInvite.mockResolvedValue({
@@ -370,7 +372,7 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(mockStoreAcceptedManagedPartnerGrantKey).toHaveBeenCalledWith(
         core.partnerShareSecretStore,
         grant,
-        "invite-token",
+        INVITE_TOKEN,
         INVITE_SECRET_HEX,
         core.effectiveNow,
       );
@@ -398,9 +400,9 @@ describe("useBackupSyncPartnerAccess", () => {
       "%s refuses a link without its invite secret before redeeming the invite",
       async (handlerName, serverCall) => {
         clearManagedPartnerInviteToken();
-        stashManagedPartnerInviteToken("invite-token");
+        stashManagedPartnerInviteToken(INVITE_TOKEN);
         const core = createBackupSyncSessionCoreMock({
-          pendingPartnerInviteToken: "invite-token",
+          pendingPartnerInviteToken: INVITE_TOKEN,
         });
         const { result } = await renderHook(() =>
           useBackupSyncPartnerAccess(core),
@@ -419,11 +421,50 @@ describe("useBackupSyncPartnerAccess", () => {
       },
     );
 
+    it.each([
+      ["handleAcceptPartnerInvite", () => mockAcceptManagedPartnerInvite],
+      [
+        "handleAcceptPartnerInviteAsGuest",
+        () => mockAcceptBackupSyncPartnerInviteAsGuest,
+      ],
+    ] as const)(
+      "%s refuses a token below the length floor or a malformed secret before redeeming the invite",
+      async (handlerName, serverCall) => {
+        const cases = [
+          { token: "short-token", secret: INVITE_SECRET_HEX },
+          { token: INVITE_TOKEN, secret: "zz".repeat(32) },
+          { token: INVITE_TOKEN, secret: "11".repeat(31) },
+        ];
+        for (const { token, secret } of cases) {
+          clearManagedPartnerInviteToken();
+          stashManagedPartnerInviteToken(token, secret);
+          const core = createBackupSyncSessionCoreMock({
+            pendingPartnerInviteToken: token,
+          });
+          const { result } = await renderHook(() =>
+            useBackupSyncPartnerAccess(core),
+          );
+
+          await act(async () => {
+            await result.current[handlerName]();
+          });
+
+          expect(serverCall()).not.toHaveBeenCalled();
+          expect(mockStoreAcceptedManagedPartnerGrantKey).not.toHaveBeenCalled();
+          expect(core.setPartnerErrorMessage).toHaveBeenCalledWith(
+            core.partnerCopy.errors.invalidPartnerInvite,
+          );
+          expect(readManagedPartnerInviteToken()).toBe(token);
+          expect(result.current.isPartnerBusy).toBe(false);
+        }
+      },
+    );
+
     it("refuses a secret buffered for a different invite token", async () => {
       clearManagedPartnerInviteToken();
       stashManagedPartnerInviteToken("other-token", INVITE_SECRET_HEX);
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
@@ -454,7 +495,7 @@ describe("useBackupSyncPartnerAccess", () => {
 
     it("surfaces the mapped error message when the guest accept fails", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       mockAcceptBackupSyncPartnerInviteAsGuest.mockResolvedValue({
         ok: false,
@@ -474,7 +515,7 @@ describe("useBackupSyncPartnerAccess", () => {
 
     it("surfaces the generic error when persisting the grant key throws", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const guestState = createLoadedSettingsStateFixture({
         hasSyncSession: true,
@@ -502,7 +543,7 @@ describe("useBackupSyncPartnerAccess", () => {
 
     it("persists the new guest session, clears the invite, navigates, and refreshes partner access on success", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const guestState = createLoadedSettingsStateFixture({
         hasSyncSession: true,
@@ -523,13 +564,13 @@ describe("useBackupSyncPartnerAccess", () => {
         core.storage,
         core.syncSecretStore,
         core.state,
-        "invite-token",
+        INVITE_TOKEN,
         core.effectiveNow,
       );
       expect(mockStoreAcceptedManagedPartnerGrantKey).toHaveBeenCalledWith(
         core.partnerShareSecretStore,
         grant,
-        "invite-token",
+        INVITE_TOKEN,
         INVITE_SECRET_HEX,
         core.effectiveNow,
       );
@@ -550,7 +591,7 @@ describe("useBackupSyncPartnerAccess", () => {
   describe("handleChoosePartnerSignIn", () => {
     it("only resets partner feedback and leaves the pending invite untouched", async () => {
       const core = createBackupSyncSessionCoreMock({
-        pendingPartnerInviteToken: "invite-token",
+        pendingPartnerInviteToken: INVITE_TOKEN,
       });
       const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
 
@@ -564,7 +605,7 @@ describe("useBackupSyncPartnerAccess", () => {
       expect(mockAcceptBackupSyncPartnerInviteAsGuest).not.toHaveBeenCalled();
       // The single-use token must survive this choice so "Accept as guest"
       // still works afterward.
-      expect(readManagedPartnerInviteToken()).toBe("invite-token");
+      expect(readManagedPartnerInviteToken()).toBe(INVITE_TOKEN);
     });
   });
 
@@ -654,6 +695,35 @@ describe("useBackupSyncPartnerAccess", () => {
       );
       expect(core.reloadPartnerAccess).toHaveBeenCalledWith(core.state);
       expect(result.current.isPartnerBusy).toBe(false);
+    });
+
+    it("drops the shareable invite link, with its secret, from hook state once the invite is revoked", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockOpenConfirmation.mockResolvedValue(true);
+      const { result } = await renderHook(() => useBackupSyncPartnerAccess(core));
+
+      await act(async () => {
+        result.current.setPartnerInviteLink(SHAREABLE_INVITE_LINK);
+      });
+      expect(result.current.partnerInviteLink).toBe(SHAREABLE_INVITE_LINK);
+
+      mockRevokeManagedPartnerInvite.mockResolvedValue({
+        ok: false,
+        errorCode: "partner_invite_not_found",
+      } as never);
+      await act(async () => {
+        await result.current.handleRevokePartnerInvite("invite-1");
+      });
+      expect(result.current.partnerInviteLink).toBe(SHAREABLE_INVITE_LINK);
+
+      mockRevokeManagedPartnerInvite.mockResolvedValue({
+        ok: true,
+        value: {} as never,
+      });
+      await act(async () => {
+        await result.current.handleRevokePartnerInvite("invite-1");
+      });
+      expect(result.current.partnerInviteLink).toBe("");
     });
   });
 

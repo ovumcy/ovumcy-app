@@ -21,7 +21,10 @@ const partnerCopyEn = {
   issueInviteLabel: "Create invite link",
   inviteLinkTitle: "Invite link",
   inviteLinkHint:
-    "Open or share this link with the partner. Acceptance still requires their own Ovumcy Cloud sign-in.",
+    "Share this link with the partner. They can accept it as a guest or after signing in to their own Ovumcy Cloud account. The link is shown only once, so share it now.",
+  shareInviteLinkLabel: "Share invite link",
+  inviteReplacedNotice:
+    "A newer invite link replaced the earlier one. Only the newest link can be accepted.",
   pendingInvitesTitle: "Pending invites",
   pendingInvitesEmpty: "No pending invites yet.",
   pendingInviteLabel: "Invite link pending",
@@ -164,7 +167,10 @@ const partnerCopyDe = {
   issueInviteLabel: "Einladungslink erstellen",
   inviteLinkTitle: "Einladungslink",
   inviteLinkHint:
-    "Diesen Link mit dem Partner teilen oder öffnen. Die Annahme erfordert trotzdem eine eigene Anmeldung bei Ovumcy Cloud.",
+    "Teile diesen Link mit dem Partner. Er kann ihn als Gast annehmen oder nach der Anmeldung bei seinem eigenen Ovumcy-Cloud-Konto. Der Link wird nur einmal angezeigt, teile ihn daher jetzt.",
+  shareInviteLinkLabel: "Einladungslink teilen",
+  inviteReplacedNotice:
+    "Ein neuerer Einladungslink hat den früheren ersetzt. Nur der neueste Link kann angenommen werden.",
   pendingInvitesTitle: "Ausstehende Einladungen",
   pendingInvitesEmpty: "Noch keine ausstehenden Einladungen.",
   pendingInviteLabel: "Einladungslink ausstehend",
@@ -312,7 +318,10 @@ const partnerCopyFr = {
   issueInviteLabel: "Créer un lien d’invitation",
   inviteLinkTitle: "Lien d’invitation",
   inviteLinkHint:
-    "Partagez ou ouvrez ce lien avec le partenaire. L’acceptation demande quand même sa propre connexion à Ovumcy Cloud.",
+    "Partagez ce lien avec le partenaire. Il peut l’accepter en tant qu’invité ou après connexion à son propre compte Ovumcy Cloud. Le lien n’est affiché qu’une seule fois, partagez-le donc maintenant.",
+  shareInviteLinkLabel: "Partager le lien d’invitation",
+  inviteReplacedNotice:
+    "Un lien d’invitation plus récent a remplacé le précédent. Seul le lien le plus récent peut être accepté.",
   pendingInvitesTitle: "Invitations en attente",
   pendingInvitesEmpty: "Aucune invitation en attente pour le moment.",
   pendingInviteLabel: "Lien d’invitation en attente",
@@ -459,7 +468,10 @@ const partnerCopyRu = {
   issueInviteLabel: "Создать ссылку-приглашение",
   inviteLinkTitle: "Ссылка-приглашение",
   inviteLinkHint:
-    "Поделитесь этой ссылкой с партнёром или откройте её. Для принятия всё равно нужен его собственный вход в Ovumcy Cloud.",
+    "Поделитесь этой ссылкой с партнёром. Он может принять её как гость или после входа в собственный аккаунт Ovumcy Cloud. Ссылка показывается только один раз, поэтому поделитесь ею сейчас.",
+  shareInviteLinkLabel: "Поделиться ссылкой-приглашением",
+  inviteReplacedNotice:
+    "Более новая ссылка-приглашение заменила прежнюю. Принять можно только самую новую ссылку.",
   pendingInvitesTitle: "Ожидающие приглашения",
   pendingInvitesEmpty: "Пока нет ожидающих приглашений.",
   pendingInviteLabel: "Ссылка-приглашение ожидает принятия",
@@ -602,7 +614,10 @@ const partnerCopyEs = {
   issueInviteLabel: "Crear enlace de invitación",
   inviteLinkTitle: "Enlace de invitación",
   inviteLinkHint:
-    "Comparte o abre este enlace con la pareja. La aceptación igualmente requiere su propio inicio de sesión en Ovumcy Cloud.",
+    "Comparte este enlace con la pareja. Puede aceptarlo como invitada o invitado, o tras iniciar sesión en su propia cuenta de Ovumcy Cloud. El enlace se muestra una sola vez, así que compártelo ahora.",
+  shareInviteLinkLabel: "Compartir enlace de invitación",
+  inviteReplacedNotice:
+    "Un enlace de invitación más reciente sustituyó al anterior. Solo se puede aceptar el enlace más reciente.",
   pendingInvitesTitle: "Invitaciones pendientes",
   pendingInvitesEmpty: "Todavía no hay invitaciones pendientes.",
   pendingInviteLabel: "Enlace de invitación pendiente",
@@ -747,7 +762,10 @@ const partnerCopyIt = {
   issueInviteLabel: "Crea link di invito",
   inviteLinkTitle: "Link di invito",
   inviteLinkHint:
-    "Apri o condividi questo link con il partner. L'accettazione richiede comunque il suo accesso a Ovumcy Cloud.",
+    "Condividi questo link con il partner. Può accettarlo come ospite o dopo aver effettuato l'accesso al proprio account Ovumcy Cloud. Il link viene mostrato una sola volta, quindi condividilo adesso.",
+  shareInviteLinkLabel: "Condividi il link di invito",
+  inviteReplacedNotice:
+    "Un link di invito più recente ha sostituito quello precedente. Solo il link più recente può essere accettato.",
   pendingInvitesTitle: "Inviti in sospeso",
   pendingInvitesEmpty: "Ancora nessun invito in sospeso.",
   pendingInviteLabel: "Link di invito in sospeso",
