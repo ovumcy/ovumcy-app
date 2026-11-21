@@ -1040,12 +1040,7 @@ export async function recoverSyncAccess(
       guestSessionExpiresAt: null,
       guestSessionRenewable: false,
     };
-    // A recovered device starts with no floor, like a fresh install: the
-    // fresh-install probe guards the backup, and an unfinished-restore mark
-    // from before could otherwise outlive any backup this device can restore.
-    await storage.writeSyncPreferencesRecord(nextPreferences, {
-      restoreInProgress: false,
-    });
+    await storage.writeSyncPreferencesRecord(nextPreferences);
 
     // Recovery establishes a fresh managed session context as well.
     await storage.writeManagedBillingCacheRecord(
@@ -1141,10 +1136,7 @@ export async function recoverSyncAccess(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  // No floor after recovery; see the managed branch for the restore mark.
-  await storage.writeSyncPreferencesRecord(nextPreferences, {
-    restoreInProgress: false,
-  });
+  await storage.writeSyncPreferencesRecord(nextPreferences);
 
   return {
     ok: true,
@@ -1337,6 +1329,15 @@ export async function runSyncRestore(
   const client = apiClientFactory(prepared.baseURL);
   const blobResult = await client.getBlob(prepared.secrets.authSessionToken);
   if (!blobResult.ok) {
+    if (blobResult.errorCode === "blob_not_found") {
+      // No backup is left for an unfinished restore to protect or finish.
+      const stored = await storage.readSyncPreferencesRecord();
+      if (stored.restoreInProgress === true) {
+        await storage.writeSyncPreferencesRecord(stored, {
+          restoreInProgress: false,
+        });
+      }
+    }
     return { ok: false, errorCode: mapRunAPIError(blobResult.errorCode) };
   }
 
