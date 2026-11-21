@@ -633,8 +633,6 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
   });
 
   it.each([
-    ["an explicit 401", jsonResponse({ error: "unauthorized" }, 401)],
-    ["a 403 refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
     ["a 404", jsonResponse({ error: "not_found" }, 404)],
     ["a 429", jsonResponse({ error: "rate_limited" }, 429)],
     ["an unparseable 400 body", new Response("<html>", { status: 400 })],
@@ -642,6 +640,28 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
       "a 403 claiming temporary unavailability",
       jsonResponse({ error: "entitlements_unavailable" }, 403),
     ],
+  ])(
+    "yields no cached premium but keeps the cached snapshot when the billing fetch is answered with %s",
+    async (_label, response) => {
+      global.fetch = jest.fn(async () => response.clone()) as unknown as typeof fetch;
+      const storage = freshCacheStorage();
+
+      await expect(
+        loadManagedBillingSnapshot(
+          storage,
+          createSyncSecretStoreMock(MANAGED_SECRETS),
+          "managed",
+          undefined,
+          CACHE_NOW,
+        ),
+      ).resolves.toBeNull();
+      expect(storage.writeManagedBillingCacheRecord).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["an explicit 401", jsonResponse({ error: "unauthorized" }, 401)],
+    ["a 403 plan refusal", jsonResponse({ error: "sync_not_allowed" }, 403)],
   ])(
     "yields no cached premium and discards the cached snapshot when the billing fetch is answered with %s",
     async (_label, response) => {
@@ -777,18 +797,80 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
     });
   });
 
-  it("neither caches nor returns a billing answer whose session changed while the fetch was in flight", async () => {
+  it("serves the cache when another load recorded a serve instant a few minutes later", async () => {
+    mockFailedBillingFetch();
+    const record = cachedRecord(FRESH_FETCHED_AT);
+    const storage = createLocalAppStorageMock({
+      readManagedBillingCacheRecord: jest.fn().mockResolvedValue({
+        ...record,
+        snapshot: { ...record.snapshot, lastServedAt: "2026-07-01T12:05:00.000Z" },
+      }),
+    });
+
+    const snapshot = await loadManagedBillingSnapshot(
+      storage,
+      createSyncSecretStoreMock(MANAGED_SECRETS),
+      "managed",
+      undefined,
+      CACHE_NOW,
+    );
+
+    expect(snapshot?.hasActivePlan).toBe(true);
+    // The high-water mark never moves backwards.
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith({
+      ...record,
+      snapshot: { ...record.snapshot, lastServedAt: "2026-07-01T12:05:00.000Z" },
+    });
+  });
+
+  it("re-reads billing under the session now present when the session changes mid-fetch, never caching the old answer", async () => {
     const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const bearers: string[] = [];
+    global.fetch = jest.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      bearers.push(new Headers(init?.headers).get("Authorization") ?? "");
+      if (bearers.length === 1) {
+        // An account switch lands while the first billing request is outstanding.
+        await secretStore.writeSyncSecrets({
+          ...MANAGED_SECRETS,
+          managedAuthSessionToken: "managed-session-other-account",
+        });
+        return jsonResponse({ has_active_plan: true, premium_features: { doctor_pdf: true } });
+      }
+      return jsonResponse({ has_active_plan: false, premium_features: {} });
+    }) as unknown as typeof fetch;
+    const storage = createLocalAppStorageMock();
+
+    const snapshot = await loadManagedBillingSnapshot(
+      storage,
+      secretStore,
+      "managed",
+      undefined,
+      CACHE_NOW,
+    );
+
+    expect(bearers).toEqual([
+      "Bearer managed-session-1",
+      "Bearer managed-session-other-account",
+    ]);
+    expect(snapshot?.hasActivePlan).toBe(false);
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledTimes(1);
+    expect(storage.writeManagedBillingCacheRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        snapshot: expect.objectContaining({ hasActivePlan: false }),
+      }),
+    );
+  });
+
+  it("returns nothing and caches nothing when the session keeps changing under every fetch", async () => {
+    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    let rotation = 0;
     global.fetch = jest.fn(async () => {
-      // An account switch lands while the billing request is outstanding.
+      rotation += 1;
       await secretStore.writeSyncSecrets({
         ...MANAGED_SECRETS,
-        managedAuthSessionToken: "managed-session-other-account",
+        managedAuthSessionToken: `managed-session-rotated-${rotation}`,
       });
-      return jsonResponse({
-        has_active_plan: true,
-        premium_features: { doctor_pdf: true },
-      });
+      return jsonResponse({ has_active_plan: true, premium_features: { doctor_pdf: true } });
     }) as unknown as typeof fetch;
     const storage = createLocalAppStorageMock();
 
