@@ -17,10 +17,23 @@ import {
   readManagedPartnerInviteSecret,
   readManagedPartnerInviteToken,
 } from "../../../security/managed-partner-invite-token-buffer";
+import { derivePartnerShareKeyHex } from "../../../security/partner-share-crypto";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 import type { ManagedCloudPartnerAccessLevel } from "../../../sync/managed-cloud-api-client";
 import { resolvePartnerErrorMessage } from "./backup-sync-partner-errors";
+
+function isInviteSecretUsable(inviteToken: string, inviteSecretHex: string): boolean {
+  if (inviteSecretHex.length === 0) {
+    return false;
+  }
+  try {
+    derivePartnerShareKeyHex(inviteToken, inviteSecretHex);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Partner-access concern (managed-only): issuing/accepting/revoking invites and
@@ -55,18 +68,21 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
 
   // Read before any accept call: accepting consumes the single-use invite,
   // so a link without its secret — or a secret buffered for another
-  // token — must fail before it is redeemed.
+  // token, or a token or secret the key derivation would refuse — must fail
+  // before it is redeemed. The derived key is discarded; it is only the
+  // same check the post-accept key storage runs.
   function readPendingInviteSecretOrReport(): string {
     const inviteSecretHex =
       readManagedPartnerInviteToken() === pendingPartnerInviteToken
         ? readManagedPartnerInviteSecret()
         : "";
-    if (inviteSecretHex.length === 0) {
-      setPartnerErrorMessage(
-        resolvePartnerErrorMessage("invalid_partner_invite", partnerCopy),
-      );
+    if (isInviteSecretUsable(pendingPartnerInviteToken, inviteSecretHex)) {
+      return inviteSecretHex;
     }
-    return inviteSecretHex;
+    setPartnerErrorMessage(
+      resolvePartnerErrorMessage("invalid_partner_invite", partnerCopy),
+    );
+    return "";
   }
 
   async function handleIssuePartnerInvite() {
@@ -255,6 +271,8 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       return;
     }
 
+    // The link, with its secret, was for an invite that no longer works.
+    setPartnerInviteLink("");
     setPartnerStatusMessage(partnerCopy.statusInviteRevoked);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);

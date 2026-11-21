@@ -6,6 +6,7 @@ import {
   readManagedPartnerInviteSecret,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
+  takeManagedPartnerInviteReplacedNotice,
 } from "./managed-partner-invite-token-buffer";
 
 const SECRET = "11".repeat(32);
@@ -127,6 +128,38 @@ describe("managed-partner-invite-token-buffer", () => {
     expect(managedPartnerInviteTokenRemainingMs()).toBe(
       MANAGED_PARTNER_INVITE_TOKEN_TTL_MS - 1000,
     );
+  });
+
+  it("raises a one-shot replacement notice only when a different live invite is overwritten", () => {
+    stashManagedPartnerInviteToken("first", SECRET);
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
+
+    stashManagedPartnerInviteToken("first");
+    stashManagedPartnerInviteToken("first", SECRET);
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
+
+    stashManagedPartnerInviteToken("second", SECRET);
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(true);
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
+    expect(readManagedPartnerInviteToken()).toBe("second");
+  });
+
+  it("raises no replacement notice over an expired invite or an empty token", () => {
+    stashManagedPartnerInviteToken("first", SECRET);
+    jest.advanceTimersByTime(MANAGED_PARTNER_INVITE_TOKEN_TTL_MS);
+    stashManagedPartnerInviteToken("second", SECRET);
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
+
+    stashManagedPartnerInviteToken("  ");
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
+  });
+
+  it("drops a pending replacement notice with the buffer", () => {
+    stashManagedPartnerInviteToken("first", SECRET);
+    stashManagedPartnerInviteToken("second", SECRET);
+    clearManagedPartnerInviteToken();
+
+    expect(takeManagedPartnerInviteReplacedNotice()).toBe(false);
   });
 
   it("clears on demand", () => {
