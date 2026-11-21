@@ -4,6 +4,7 @@ import type { EntitlementTokenStore } from "../security/entitlement-token-store"
 import {
   createManagedCloudAPIClient,
   isManagedCloudTransportFailure,
+  type ManagedCloudAPIErrorCode,
   type ManagedCloudBillingSnapshot,
   type ManagedCloudPremiumFeatures,
 } from "../sync/managed-cloud-api-client";
@@ -113,24 +114,33 @@ export function isManagedBillingCacheFresh(
   return now.getTime() - Date.parse(fetchedAt) <= MANAGED_BILLING_CACHE_TTL_MS;
 }
 
+// Concurrent loads take `now` before their network await and can reach the
+// cache out of order, so instants a few minutes apart are not a rewind.
+export const MANAGED_BILLING_CLOCK_SKEW_TOLERANCE_MS = 10 * 60 * 1000;
+
 // The 72h window is measured on the device clock, so the clock must never
-// run backwards across reads: behind the fetch instant, or behind the last
-// instant the cache was already served, means it was wound back.
+// run backwards across reads: well behind the fetch instant, or well behind
+// the last instant the cache was already served, means it was wound back.
 function isManagedBillingClockWoundBack(
   fetchedAt: string,
   now: Date,
   lastServedAt: string | undefined,
 ): boolean {
-  const nowMs = now.getTime();
+  const floorMs = now.getTime() + MANAGED_BILLING_CLOCK_SKEW_TOLERANCE_MS;
   const fetchedAtMs = Date.parse(fetchedAt);
-  if (Number.isNaN(fetchedAtMs) || nowMs < fetchedAtMs) {
+  if (Number.isNaN(fetchedAtMs) || floorMs < fetchedAtMs) {
     return true;
   }
   if (lastServedAt === undefined) {
     return false;
   }
   const lastServedMs = Date.parse(lastServedAt);
-  return Number.isNaN(lastServedMs) || nowMs < lastServedMs;
+  return Number.isNaN(lastServedMs) || floorMs < lastServedMs;
+}
+
+function laterInstant(a: string | undefined, b: Date): string {
+  const aMs = a === undefined ? Number.NaN : Date.parse(a);
+  return !Number.isNaN(aMs) && aMs > b.getTime() ? (a as string) : b.toISOString();
 }
 
 /**
@@ -192,10 +202,18 @@ async function readFreshCachedBillingSnapshot(
       return null;
     }
     try {
-      await storage.writeManagedBillingCacheRecord({
-        ...record,
-        snapshot: { ...snapshot, lastServedAt: now.toISOString() },
-      });
+      // Re-read so a concurrent writer (offer dismissal, another serve) is
+      // not overwritten, and only ever move the high-water mark forward.
+      const latest = await storage.readManagedBillingCacheRecord();
+      if (latest.snapshot?.fetchedAt === snapshot.fetchedAt) {
+        await storage.writeManagedBillingCacheRecord({
+          ...latest,
+          snapshot: {
+            ...latest.snapshot,
+            lastServedAt: laterInstant(latest.snapshot.lastServedAt, now),
+          },
+        });
+      }
     } catch {
       // The high-water mark is best-effort; the window bound still holds.
     }
@@ -261,6 +279,13 @@ export async function loadManagedBillingSnapshot(
   return result?.billing ?? null;
 }
 
+// Only an answer about the session or the plan itself retires the cache; a
+// rate limit or an unrecognized refusal says nothing about the plan.
+const BILLING_CACHE_RETIRING_ERROR_CODES: ReadonlySet<ManagedCloudAPIErrorCode> =
+  new Set<ManagedCloudAPIErrorCode>(["unauthorized", "sync_not_allowed"]);
+
+const SESSION_CHANGED = Symbol("session_changed");
+
 export async function loadManagedBillingSnapshotWithSource(
   storage: LocalAppStorage,
   secretStore: SyncSecretStore,
@@ -273,6 +298,30 @@ export async function loadManagedBillingSnapshotWithSource(
     return null;
   }
 
+  // A session token that changes mid-load is either a refresh rotation or an
+  // account switch; one more pass reads billing under the session now present.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const result = await loadManagedBillingSnapshotOnce(
+      storage,
+      secretStore,
+      tokenGate,
+      now,
+      options,
+    );
+    if (result !== SESSION_CHANGED) {
+      return result;
+    }
+  }
+  return null;
+}
+
+async function loadManagedBillingSnapshotOnce(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  tokenGate: EntitlementTokenGate | undefined,
+  now: Date,
+  options: ManagedBillingLoadOptions,
+): Promise<ManagedBillingSnapshotResult | null | typeof SESSION_CHANGED> {
   const secrets = await secretStore.readSyncSecrets();
   if (!secrets?.managedAuthSessionToken) {
     // No session, no grace: the cache is only ever served underneath a
@@ -305,11 +354,15 @@ export async function loadManagedBillingSnapshotWithSource(
   } else {
     // The offline-grace cache answers only "the server could not be asked"
     // (no response / temporary unavailability), and only for premium display
-    // surfaces. An explicit refusal is an answer: it discards the cached
-    // snapshot so a later network blip cannot revive premium the server has
-    // just refused. A server-checked caller (`liveOnly`) gets no cached premium.
+    // surfaces. A refusal yields no cached premium, and one about the session
+    // or the plan discards the cached snapshot so a later network blip cannot
+    // revive premium the server has just refused. A server-checked caller
+    // (`liveOnly`) gets no cached premium.
     if (!isManagedCloudTransportFailure(billingResult.errorCode)) {
-      if (await isManagedSessionStillCurrent(secretStore, session.sessionToken)) {
+      if (!(await isManagedSessionStillCurrent(secretStore, session.sessionToken))) {
+        return SESSION_CHANGED;
+      }
+      if (BILLING_CACHE_RETIRING_ERROR_CODES.has(billingResult.errorCode)) {
         await discardCachedBillingSnapshot(storage);
       }
       return null;
@@ -335,7 +388,7 @@ export async function loadManagedBillingSnapshotWithSource(
   );
 
   if (!(await isManagedSessionStillCurrent(secretStore, session.sessionToken))) {
-    return null;
+    return SESSION_CHANGED;
   }
   if (source === "live") {
     await persistManagedBillingSnapshotCache(storage, billing, now);

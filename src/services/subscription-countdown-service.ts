@@ -24,9 +24,10 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // Managed subscription statuses (billing contract): "trialing" | "active" |
 // "grace_period" | "past_due" | "canceled" | "expired". Only "trialing" and
-// "active" can roll over on their own; "grace_period" still unlocks premium
-// but its renewal is unconfirmed, so it counts down like a plan set to end.
-// "past_due", "canceled", "expired" and any unknown status unlock nothing.
+// "active" can roll over on their own. "grace_period" and "past_due" have an
+// unconfirmed renewal that a payment retry may still charge, so they count
+// down like a plan set to end (which keeps the account-deletion warning).
+// "canceled", "expired" and any unknown status read as ended.
 type LiveCountdownKind = "trialing" | "active" | "canceling" | "ended";
 
 function resolveLiveCountdownKind(
@@ -41,6 +42,7 @@ function resolveLiveCountdownKind(
     case "active":
       return subscription.cancelAtPeriodEnd ? "canceling" : "active";
     case "grace_period":
+    case "past_due":
       return "canceling";
     default:
       return "ended";

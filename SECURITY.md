@@ -302,10 +302,12 @@ follows from that:
   token is still present on-device **and** the failure was at the transport level (no
   response, a 5xx without a recognized error body, or the server's own
   temporary-unavailability answer); an explicit server refusal (unauthorized or any
-  other 4xx-derived error) yields no cached premium and discards the cached snapshot,
-  so a later blip cannot revive it. A billing answer whose managed session token
-  changed while the fetch was in flight (sign-out, account switch) is neither cached
-  nor returned. A signed-out or never-connected device gets no
+  other 4xx-derived error) yields no cached premium, and a refusal about the session
+  or the plan (unauthorized, sync not allowed) also discards the cached snapshot, so
+  a later blip cannot revive it. A billing answer whose managed session token
+  changed while the fetch was in flight (refresh rotation, sign-out, account switch)
+  is never cached or returned; billing is read once more under the session then
+  present, and nothing is served if it changes again. A signed-out or never-connected device gets no
   grace. Past 72 hours, or with nothing ever cached, the gate fails closed exactly as
   it did before this cache existed. Server-checked operations (sync upload/restore and
   the plan status that gates them on Settings and after a managed connect, partner
@@ -398,11 +400,13 @@ follows from that:
   `now` to `new Date()`, the device clock at the moment a live fetch fails. A
   fast-forward clock only shortens the effective grace (fails closed sooner than 72
   real-world hours). Each time the cache is served it records that instant
-  (`lastServedAt`) as a high-water mark, and a clock found earlier than either the
-  fetch instant or the high-water mark discards the cache, so winding the clock back
-  after the cache has been read cannot reopen the window. What remains is a clock
-  wound back before the next read and kept there: the ceiling is still measured in
-  device-clock time, not verified elapsed time. This stays within the bounds the
+  (`lastServedAt`) as a high-water mark that only moves forward, and a clock more
+  than ten minutes (`MANAGED_BILLING_CLOCK_SKEW_TOLERANCE_MS`, the allowance for
+  concurrent loads reaching the cache out of order) earlier than either the fetch
+  instant or the high-water mark discards the cache, so winding the clock back after
+  the cache has been read cannot reopen the window. What remains is a rewind within
+  that allowance, or one made before the next read and kept there: the ceiling is
+  still measured in device-clock time, not verified elapsed time. This stays within the bounds the
   cache itself already accepts above: only local premium gates, only under a
   still-present managed session token, never a server-checked operation.
 - **Local reminder scheduling assumes an approximately correct clock.**
@@ -645,9 +649,9 @@ items) are intentionally excluded — they are reviewed by humans, not by
 | The cache is never served without a still-present managed session token | `never serves the cache without a managed session token` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A network blip keeps all six premium gates unlocked via `loadManagedPremiumFeatures` on the surfaces that read billing directly (Dashboard, Calendar, Stats); Settings' doctor PDF follows the same grace while its plan status stays unknown, and only a live answer sets plan status | `keeps the plan status unknown on a cache-served snapshot while the doctor PDF follows the offline grace`, `takes plan status and doctor PDF from a live billing snapshot` in [src/services/settings-state-service.live-billing.test.ts](src/services/settings-state-service.live-billing.test.ts);  `keeps six premium gates unlocked through loadManagedPremiumFeatures on a network blip` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | The server's temporary-unavailability answer, and a 5xx without a recognized error body, also serve the fresh cache | `serves the fresh cache when the server reports temporary unavailability`, `serves the fresh cache when the billing server could not answer: %s` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
-| An explicit server refusal (401, 403, 404, 429, unparseable 4xx body) yields no cached premium and discards the cached snapshot | `yields no cached premium and discards the cached snapshot when the billing fetch is answered with %s`, `unlocks nothing through loadManagedPremiumFeatures when the server answered 401 over a fresh cache` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
-| A billing answer whose managed session changed while the fetch was in flight is neither cached nor returned | `neither caches nor returns a billing answer whose session changed while the fetch was in flight` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
-| Serving the cache records a clock high-water mark; a clock behind it discards the cache | `records the serve instant as the clock high-water mark when it serves the cache`, `voids the cache when the device clock is behind the last instant it was served` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| An explicit server refusal (401, 403, 404, 429, unparseable 4xx body) yields no cached premium; a refusal about the session or the plan (401 unauthorized, 403 sync not allowed) also discards the cached snapshot, the others keep it | `yields no cached premium and discards the cached snapshot when the billing fetch is answered with %s`, `yields no cached premium but keeps the cached snapshot when the billing fetch is answered with %s`, `unlocks nothing through loadManagedPremiumFeatures when the server answered 401 over a fresh cache` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| A billing answer whose managed session changed while the fetch was in flight is never cached or returned; billing is re-read once under the current session, and nothing is served if it changes again | `re-reads billing under the session now present when the session changes mid-fetch, never caching the old answer`, `returns nothing and caches nothing when the session keeps changing under every fetch` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
+| Serving the cache records a forward-only clock high-water mark; a clock more than the skew allowance behind it discards the cache | `records the serve instant as the clock high-water mark when it serves the cache`, `voids the cache when the device clock is behind the last instant it was served`, `serves the cache when another load recorded a serve instant a few minutes later` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | A live-only (server-checked) load never reads the cache, even on a network failure | `never reads the cache for a liveOnly (server-checked) load, even on a network failure` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
 | Partner projection sync and the backup-sync partner-access pre-check load billing live-only | `reads the live billing snapshot only and stops when partner access is not live-confirmed` in [src/services/managed-partner-share-sync-service.test.ts](src/services/managed-partner-share-sync-service.test.ts); `reads the live billing snapshot only, never the offline-grace cache` in [src/ui/screens/backup-sync/useBackupSyncSessionCore.partner-precheck.test.ts](src/ui/screens/backup-sync/useBackupSyncSessionCore.partner-precheck.test.ts) |
 | A refused entitlement-token mint serves no cached token and discards it; temporary unavailability still serves it | `serves no cached token and discards it when the mint is refused with %s`, `honors a cached token when the server reports temporary unavailability` in [src/services/managed-premium-features-service.test.ts](src/services/managed-premium-features-service.test.ts) |
