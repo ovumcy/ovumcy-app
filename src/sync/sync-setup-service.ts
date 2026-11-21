@@ -129,7 +129,12 @@ export async function prepareSyncSetup(
       ...result.record,
       managedAuthSessionToken: existingSecrets?.managedAuthSessionToken ?? null,
     });
-    await storage.writeSyncPreferencesRecord(nextPreferences);
+    // A new sync key can never finish a restore of the old backup, so an
+    // unfinished-restore mark would block uploads for good. With the floor
+    // reset, the fresh-install probe asks before overwriting a backup instead.
+    await storage.writeSyncPreferencesRecord(nextPreferences, {
+      restoreInProgress: false,
+    });
 
     return {
       ok: true,
@@ -222,7 +227,12 @@ export async function saveSyncPreferencesDraft(
         createDefaultManagedBillingCacheRecord(),
       );
     }
-    await storage.writeSyncPreferencesRecord(nextPreferences);
+    // Cleared secrets end the old backup relationship along with the floor;
+    // see prepareSyncSetup for why the unfinished-restore mark goes too.
+    await storage.writeSyncPreferencesRecord(
+      nextPreferences,
+      shouldResetPreparedState ? { restoreInProgress: false } : undefined,
+    );
 
     return {
       ok: true,
