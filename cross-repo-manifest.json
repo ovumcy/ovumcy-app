@@ -18,7 +18,7 @@
     "ovumcy-managed": {
       "role": "Go managed cloud (accounts/billing/entitlement/partner routes)",
       "branch": "main",
-      "commit": "9fb092379a6fc14d0cdba48c35d6fef90c37efb5",
+      "commit": "a42336da020c36c81a813c8f950bed0ec4916749",
       "pin": "exact"
     },
     "ovumcy-sync-community": {
