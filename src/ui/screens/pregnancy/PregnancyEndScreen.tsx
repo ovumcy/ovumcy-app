@@ -34,7 +34,12 @@ import {
 } from "../../../services/pregnancy-mode-service";
 import { resolveBirthOptionVisible } from "../../../services/pregnancy-timeline-service";
 import { formatLocalDate } from "../../../services/profile-settings-policy";
+import type { PartnerShareSecretStore } from "../../../security/partner-share-secret-store";
+import type { SyncSecretStore } from "../../../security/sync-secret-store";
 import type { LocalAppStorage } from "../../../storage/local/storage-contract";
+import { partnerShareSecretStore as defaultPartnerShareSecretStore } from "../../../sync/app-partner-share-service";
+import { syncSecretStore as defaultSyncSecretStore } from "../../../sync/app-sync-service";
+import { pushPartnerProjectionInBackground } from "./push-partner-projection-in-background";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import { useAppPreferences } from "../../providers/AppPreferencesProvider";
 import {
@@ -56,7 +61,9 @@ type PregnancyEndScreenProps = {
   // never gated (lapse posture mirrors pregnancy). Injectable so tests can
   // drive locked/unlocked directly.
   loadPostpartumUnlocked?: () => Promise<boolean>;
+  partnerShareSecretStore?: PartnerShareSecretStore;
   reminderScheduler?: LocalReminderScheduler;
+  syncSecretStore?: SyncSecretStore;
 };
 
 function resolveInitialReason(
@@ -72,7 +79,9 @@ export function PregnancyEndScreen({
   storage = appStorage,
   now,
   loadPostpartumUnlocked = loadPregnancyModuleOwned,
+  partnerShareSecretStore = defaultPartnerShareSecretStore,
   reminderScheduler = createPlatformLocalReminderScheduler(),
+  syncSecretStore = defaultSyncSecretStore,
 }: PregnancyEndScreenProps) {
   const router = useRouter();
   const { language } = useAppPreferences();
@@ -269,6 +278,12 @@ export function PregnancyEndScreen({
     await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
       now,
     });
+    pushPartnerProjectionInBackground(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now ?? new Date(),
+    );
 
     // After a confirmed BIRTH only (never loss/other — domain rule B8), offer
     // postpartum tracking, but only when the premium capability is unlocked
@@ -507,6 +522,12 @@ export function PregnancyEndScreen({
     await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
       now,
     });
+    pushPartnerProjectionInBackground(
+      storage,
+      syncSecretStore,
+      partnerShareSecretStore,
+      now ?? new Date(),
+    );
     router.back();
   }
 

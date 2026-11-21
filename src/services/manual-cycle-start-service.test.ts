@@ -571,8 +571,15 @@ describe("early-bleeding notice structure (medical safety)", () => {
   // ESTIMATED ovulation (previous start + [cycleLength - luteal]). That estimate
   // inherits the prediction's error, so the surface must NOT imply a precise
   // implantation window — it stays a hedged "may not be a new cycle" nudge.
-  function earlyBleedViewData(targetDate: string, now: Date) {
-    const profile = createProfileRecord({ lastPeriodStart: "2026-03-01" });
+  function earlyBleedViewData(
+    targetDate: string,
+    now: Date,
+    options: { predictionsSuppressed?: boolean; unpredictableCycle?: boolean } = {},
+  ) {
+    const profile = createProfileRecord({
+      lastPeriodStart: "2026-03-01",
+      unpredictableCycle: options.unpredictableCycle === true,
+    });
     const records = [
       {
         ...createEmptyDayLogRecord("2026-03-01"),
@@ -584,8 +591,28 @@ describe("early-bleeding notice structure (medical safety)", () => {
       ...createEmptyDayLogRecord(targetDate),
       isPeriod: true,
     };
-    return buildManualCycleStartViewData(profile, records, draftRecord, now);
+    return buildManualCycleStartViewData(profile, records, draftRecord, now, "en", {
+      predictionsSuppressed: options.predictionsSuppressed === true,
+    });
   }
+
+  it("withholds the notice under either prediction suppression signal", () => {
+    const viewData = earlyBleedViewData("2026-03-23", new Date(2026, 2, 23), {
+      predictionsSuppressed: true,
+    });
+
+    expect(viewData?.notices.implantation).toBeUndefined();
+    // The manual cycle-start action itself stays available.
+    expect(viewData?.isBlocked).toBe(false);
+  });
+
+  it("withholds the notice in unpredictable mode, which publishes no ovulation", () => {
+    const viewData = earlyBleedViewData("2026-03-23", new Date(2026, 2, 23), {
+      unpredictableCycle: true,
+    });
+
+    expect(viewData?.notices.implantation).toBeUndefined();
+  });
 
   it("fires the hedged notice for a bleed inside the 6-12 day post-ovulation window", () => {
     // calcOvulationDay(28, 14) is cycle day 14, so the estimate is

@@ -148,6 +148,9 @@ export type CalendarViewData = {
 export type LoadedCalendarState = {
   records: DayLogRecord[];
   profile: ProfileRecord;
+  // Either medical-safety suppression signal: an ACTIVE pregnancy record or
+  // the day-log pregnancy pause.
+  predictionsSuppressed: boolean;
   selectedRecord: DayLogRecord;
   selectedDaySummary: CalendarDaySummaryViewData;
   editorViewData: DayLogEditorViewData;
@@ -275,6 +278,7 @@ export async function loadCalendarScreenState(
   return {
     records: logs,
     profile,
+    predictionsSuppressed: activePregnancy !== null || projection.isPregnancyPaused,
     selectedRecord: effectiveSelectedRecord,
     selectedDaySummary: buildCalendarDaySummaryViewData(
       effectiveSelectedRecord,

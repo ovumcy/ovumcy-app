@@ -59,6 +59,12 @@ export function buildManualCycleStartViewData(
   record: DayLogRecord,
   now: Date,
   locale = "en",
+  options: {
+    // Either medical-safety suppression signal (SECURITY.md): an ACTIVE
+    // pregnancy record or the day-log pregnancy pause, as the screen loader
+    // resolved them from the shared cycle history.
+    predictionsSuppressed?: boolean;
+  } = {},
 ): ManualCycleStartViewData | null {
   const dashboardCopy = getDashboardCopy(locale);
 
@@ -81,6 +87,13 @@ export function buildManualCycleStartViewData(
   const mergedRecords = mergeDraftRecord(records, record);
   const policy = resolveManualCycleStartPolicy(profile, mergedRecords, record.date, now, locale);
   const prompts: ManualCycleStartPrompt[] = [];
+  // The implantation notice is a prediction: it places the bleed against an
+  // estimated ovulation, so it obeys the same suppression as every other
+  // prediction surface, and unpredictable mode publishes no ovulation at all.
+  const showsImplantationNotice =
+    policy.potentialImplantation &&
+    options.predictionsSuppressed !== true &&
+    !profile.unpredictableCycle;
 
   if (policy.hasConflict) {
     prompts.push({
@@ -113,7 +126,7 @@ export function buildManualCycleStartViewData(
       ...(isFutureManualCycleStartDate(record.date, now)
         ? { future: dashboardCopy.futureCycleStartNotice }
         : {}),
-      ...(policy.potentialImplantation
+      ...(showsImplantationNotice
         ? { implantation: dashboardCopy.implantationWarning }
         : {}),
       ...(shouldSuggestManualCycleStart(profile, mergedRecords, record, now)

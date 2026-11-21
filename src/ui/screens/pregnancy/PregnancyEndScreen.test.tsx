@@ -10,6 +10,7 @@ import { createPregnancyRecord } from "../../../models/pregnancy";
 import { createPostpartumRecord } from "../../../models/postpartum";
 import { createScreeningResponse } from "../../../models/screening";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
+import { syncManagedPartnerSharedProjections } from "../../../services/managed-partner-share-sync-service";
 import { addDays, parseLocalDate } from "../../../services/profile-settings-policy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
 import { createLocalAppStorageMock } from "../../../test/create-local-app-storage-mock";
@@ -51,8 +52,15 @@ jest.mock("../../../services/app-bootstrap-service", () => {
   return { appStorage: createLocalAppStorageMock() };
 });
 
+jest.mock("../../../services/managed-partner-share-sync-service", () => ({
+  syncManagedPartnerSharedProjections: jest
+    .fn()
+    .mockResolvedValue({ skipped: true, syncedCount: 0, reshareRequiredGrantIDs: [] }),
+}));
+
 const mockOpenConfirmation = jest.mocked(openConfirmation);
 const mockChallenge = jest.mocked(requestSensitiveActionChallenge);
+const mockSyncPartnerProjections = jest.mocked(syncManagedPartnerSharedProjections);
 
 const EDD = "2026-10-08";
 
@@ -1328,6 +1336,90 @@ describe("PregnancyEndScreen reminder rebuild", () => {
     ).toBeTruthy();
     expect(scheduler.sync).not.toHaveBeenCalled();
     expect(mockBack).not.toHaveBeenCalled();
+  });
+});
+
+describe("PregnancyEndScreen partner projection push", () => {
+  function renderEnd(
+    storage: ReturnType<typeof createLocalAppStorageMock>,
+    reasonParam?: string,
+  ) {
+    return render(
+      <AppPreferencesTestProvider languageOverride="en">
+        <PregnancyEndScreen
+          now={new Date(2026, 5, 15)}
+          reasonParam={reasonParam}
+          reminderScheduler={{ sync: jest.fn().mockResolvedValue("scheduled") }}
+          storage={storage}
+          loadPostpartumUnlocked={() => Promise.resolve(false)}
+        />
+      </AppPreferencesTestProvider>,
+    );
+  }
+
+  beforeEach(() => {
+    mockSyncPartnerProjections.mockClear();
+  });
+
+  afterEach(() => {
+    mockReplace.mockReset();
+    mockBack.mockReset();
+    mockOpenConfirmation.mockReset();
+    mockChallenge.mockReset();
+  });
+
+  it("pushes the partner projection once after a confirmed end, after the record is written", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    await renderEnd(storage, "birth");
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+
+    await waitFor(() => expect(mockSyncPartnerProjections).toHaveBeenCalledTimes(1));
+    expect(mockSyncPartnerProjections.mock.calls[0]![0]).toBe(storage);
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.invocationCallOrder[0],
+    ).toBeLessThan(mockSyncPartnerProjections.mock.invocationCallOrder[0]!);
+  });
+
+  it("does not push when the end fails to save", async () => {
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    (storage.writePregnancyRecord as jest.Mock).mockRejectedValue(new Error("busy"));
+    await renderEnd(storage, "birth");
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-confirm-button"));
+
+    expect(
+      await screen.findByText(getPregnancyEndCopy("en").status.endFailed),
+    ).toBeTruthy();
+    expect(mockSyncPartnerProjections).not.toHaveBeenCalled();
+  });
+
+  it("pushes the partner projection once after delete-all, after the delete", async () => {
+    mockChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(true);
+    const storage = activeStorage();
+    await renderEnd(storage);
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    expect(mockSyncPartnerProjections).toHaveBeenCalledTimes(1);
+    expect(
+      jest.mocked(storage.deleteAllPregnancyData).mock.invocationCallOrder[0],
+    ).toBeLessThan(mockSyncPartnerProjections.mock.invocationCallOrder[0]!);
+  });
+
+  it("leaves the screen when the push fails", async () => {
+    mockChallenge.mockResolvedValue({ ok: true });
+    mockOpenConfirmation.mockResolvedValue(true);
+    mockSyncPartnerProjections.mockRejectedValueOnce(new Error("network down"));
+    await renderEnd(activeStorage());
+
+    await fireEvent.press(await screen.findByTestId("pregnancy-end-delete-button"));
+
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
   });
 });
 
