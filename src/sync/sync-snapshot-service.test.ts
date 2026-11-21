@@ -217,7 +217,10 @@ describe("sync-snapshot-service", () => {
     expect(storage.writeProfileRecord).toHaveBeenCalledWith(
       expect.objectContaining({ cycleLength: 28 }),
     );
-    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(syncPreferences);
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenLastCalledWith(
+      syncPreferences,
+      { restoreInProgress: false },
+    );
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
     expect(storage.writeSymptomRecord).toHaveBeenCalledTimes(symptomRecords.length);
   });
@@ -707,6 +710,62 @@ describe("restoreSyncSnapshot reminder rebuild", () => {
     ).rejects.toThrow("disk full");
 
     expect(scheduler.sync).not.toHaveBeenCalled();
+  });
+
+  it("leaves the restore marked in progress when it stops partway, and clears the mark once a retry completes", async () => {
+    const target = createVolatileWebAppStorage();
+    const retained = {
+      ...createDefaultSyncPreferencesRecord(),
+      lastRemoteGeneration: 100,
+    };
+    const restored = { ...retained, lastRemoteGeneration: 200 };
+    const scheduler = { sync: jest.fn().mockResolvedValue("scheduled") };
+    const writeProfileRecord = target.writeProfileRecord.bind(target);
+    const failing = {
+      ...target,
+      writeProfileRecord: jest.fn().mockRejectedValue(new Error("disk full")),
+    };
+
+    await expect(
+      restoreSyncSnapshot(failing, baseSnapshot(), restored, scheduler, retained),
+    ).rejects.toThrow("disk full");
+    await expect(target.readSyncPreferencesRecord()).resolves.toMatchObject({
+      lastRemoteGeneration: 100,
+      restoreInProgress: true,
+    });
+
+    // An ordinary preferences write built from a copy without the mark keeps it.
+    await target.writeSyncPreferencesRecord({ ...retained, restoreInProgress: false });
+    await expect(target.readSyncPreferencesRecord()).resolves.toMatchObject({
+      restoreInProgress: true,
+    });
+
+    await restoreSyncSnapshot(
+      { ...target, writeProfileRecord },
+      baseSnapshot(),
+      restored,
+      scheduler,
+      { ...retained, restoreInProgress: true },
+    );
+    await expect(target.readSyncPreferencesRecord()).resolves.toMatchObject({
+      lastRemoteGeneration: 200,
+      restoreInProgress: false,
+    });
+  });
+
+  it("marks the restore in progress even with no retained preferences", async () => {
+    const storage = createLocalAppStorageMock();
+    jest.mocked(storage.writeProfileRecord).mockRejectedValue(new Error("disk full"));
+
+    await expect(
+      restoreSyncSnapshot(storage, baseSnapshot(), createDefaultSyncPreferencesRecord(), {
+        sync: jest.fn().mockResolvedValue("scheduled"),
+      }),
+    ).rejects.toThrow("disk full");
+
+    expect(jest.mocked(storage.writeSyncPreferencesRecord).mock.calls).toEqual([
+      [createDefaultSyncPreferencesRecord(), { restoreInProgress: true }],
+    ]);
   });
 
   it("keeps a successful restore when the rebuild itself fails", async () => {

@@ -1228,6 +1228,40 @@ describe("uploadBackupSyncSnapshot", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("names an unfinished restore instead of asking to prepare sync, without any network call", async () => {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue({
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
+        normalizedEndpoint: "http://192.168.1.20:8080",
+        deviceLabel: "Pixel 7",
+        setupStatus: "connected",
+        restoreInProgress: true,
+      }),
+    });
+    const secretStore = createSyncSecretStoreMock(
+      createSyncSecretsRecord("Pixel 7", new Date("2026-04-05T08:00:00.000Z")),
+    );
+    const state = await loadSettingsScreenState(
+      storage,
+      secretStore,
+      new Date(2026, 3, 5),
+    );
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy as unknown as typeof fetch;
+
+    const result = await uploadBackupSyncSnapshot(
+      storage,
+      secretStore,
+      state,
+      new Date(2026, 3, 5),
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "restore_incomplete" });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("uploads a fresh-device snapshot after the no-existing-backup probe and marks the state connected", async () => {
     const preparedSecrets = createSyncSecretsRecord(
       "Pixel 7",

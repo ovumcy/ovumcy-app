@@ -695,6 +695,7 @@ describe("backup sync view service", () => {
       ["recovery_not_available", viewData.account.errors.recoveryNotAvailable],
       ["too_many_devices", viewData.account.errors.tooManyDevices],
       ["sync_not_prepared", viewData.account.errors.syncNotPrepared],
+      ["restore_incomplete", viewData.account.errors.restoreIncomplete],
       ["not_connected", viewData.account.errors.notConnected],
       ["blob_not_found", viewData.account.errors.blobNotFound],
       ["invalid_payload", viewData.account.errors.invalidPayload],

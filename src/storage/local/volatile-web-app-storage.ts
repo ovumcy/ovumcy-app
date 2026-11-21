@@ -51,6 +51,7 @@ import type {
   LocalBootstrapState,
   LocalDayLogSummary,
   ManagedBillingCacheRecord,
+  SyncPreferencesWriteOptions,
 } from "./storage-contract";
 import {
   createDefaultBootstrapState,
@@ -125,10 +126,19 @@ export function createVolatileWebAppStorage(): LocalAppStorage {
       return mergeSyncPreferencesRecord(state.syncPreferencesRecord);
     },
 
-    async writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void> {
+    async writeSyncPreferencesRecord(
+      record: SyncPreferencesRecord,
+      options?: SyncPreferencesWriteOptions,
+    ): Promise<void> {
+      const restoreInProgress =
+        options?.restoreInProgress ??
+        state.syncPreferencesRecord.restoreInProgress === true;
       state = {
         ...state,
-        syncPreferencesRecord: mergeSyncPreferencesRecord(record),
+        syncPreferencesRecord: mergeSyncPreferencesRecord({
+          ...record,
+          restoreInProgress,
+        }),
       };
     },
 
@@ -643,6 +653,8 @@ function mergeSyncPreferencesRecord(
     // field existed means: those guest sessions had no renewal path, so the
     // countdown they were showing stays correct.
     guestSessionRenewable: record.guestSessionRenewable === true,
+    // A record written before this field existed reads as false.
+    restoreInProgress: record.restoreInProgress === true,
   };
 }
 

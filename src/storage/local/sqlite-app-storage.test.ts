@@ -19,6 +19,7 @@ import {
   encryptLocalDataRecord,
 } from "../../security/local-data-crypto";
 import { createDefaultBootstrapState } from "./storage-contract";
+import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
 
 // Plaintext profile columns as the schema still carries them; reads never
 // consult them.
@@ -1128,6 +1129,44 @@ describe("sqlite-app-storage", () => {
     );
   });
 
+  it("keeps the stored restore mark across ordinary preferences writes and changes it only when asked", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      lastRemoteGeneration: 100,
+    };
+
+    await storage.writeSyncPreferencesRecord({ ...preferences, restoreInProgress: true });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      restoreInProgress: false,
+    });
+
+    await storage.writeSyncPreferencesRecord(preferences, { restoreInProgress: true });
+    await storage.writeSyncPreferencesRecord({
+      ...preferences,
+      deviceLabel: "Pixel 7",
+      restoreInProgress: false,
+    });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      deviceLabel: "Pixel 7",
+      restoreInProgress: true,
+    });
+
+    await storage.writeSyncPreferencesRecord(preferences, { restoreInProgress: false });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      restoreInProgress: false,
+    });
+  });
+
   it("round-trips the managed billing cache record through the encrypted payload only", async () => {
     const inspected = createInspectableFakeDatabase();
     const storage = createSQLiteAppStorage({
@@ -2006,6 +2045,9 @@ describe("sqlite-app-storage", () => {
       // A row written before this field existed reads back false: those guest
       // sessions had no renewal path, so the countdown they showed was right.
       guestSessionRenewable: false,
+      // Likewise a row from before the restore marker reads as no restore
+      // in progress.
+      restoreInProgress: false,
     });
     expect(inspected.state.syncPreferencesColumns).toEqual(
       expect.arrayContaining(["last_remote_generation", "last_synced_at"]),

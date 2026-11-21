@@ -1180,6 +1180,14 @@ export async function runSyncUpload(
       errorCode: SyncRunErrorCode;
     }
 > {
+  // A restore that stopped partway left local data incomplete; uploading it
+  // would replace the backup. The stored flag is read rather than the
+  // caller's copy, which may predate the restore.
+  const storedPreferences = await storage.readSyncPreferencesRecord();
+  if (storedPreferences.restoreInProgress === true) {
+    return { ok: false, errorCode: "sync_not_prepared" };
+  }
+
   const prepared = await readPreparedSyncContext(
     secretStore,
     preferences,
@@ -1373,12 +1381,15 @@ export async function runSyncRestore(
     }
   }
 
-  const nextPreferences = buildSyncedPreferences(
-    preferences,
-    nextRollbackFloor(rollbackFloor, opened.sealedGeneration, reportedGeneration),
-    blobResult.blob.updatedAt,
-    "connected",
-  );
+  const nextPreferences: SyncPreferencesRecord = {
+    ...buildSyncedPreferences(
+      preferences,
+      nextRollbackFloor(rollbackFloor, opened.sealedGeneration, reportedGeneration),
+      blobResult.blob.updatedAt,
+      "connected",
+    ),
+    restoreInProgress: false,
+  };
   await restoreSyncSnapshot(
     storage,
     snapshot,

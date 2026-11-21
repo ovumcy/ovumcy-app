@@ -73,6 +73,7 @@ import type {
   LocalBootstrapState,
   LocalDayLogSummary,
   ManagedBillingCacheRecord,
+  SyncPreferencesWriteOptions,
 } from "./storage-contract";
 import {
   createDefaultBootstrapState,
@@ -458,10 +459,18 @@ export function createSQLiteAppStorage(
 
   async function writeSyncPreferencesRecordInternal(
     record: SyncPreferencesRecord,
+    options: SyncPreferencesWriteOptions | undefined,
   ): Promise<void> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
-    await upsertSyncPreferencesRecord(database, record, localDataKey);
+    const restoreInProgress =
+      options?.restoreInProgress ??
+      (await readStoredSyncRestoreInProgress(database, localDataKey));
+    await upsertSyncPreferencesRecord(
+      database,
+      { ...record, restoreInProgress },
+      localDataKey,
+    );
   }
 
   async function readOnboardingRecordInternal(): Promise<OnboardingRecord> {
@@ -978,8 +987,10 @@ export function createSQLiteAppStorage(
     readSyncPreferencesRecord() {
       return enqueueStorageOperation(() => readSyncPreferencesRecordInternal());
     },
-    writeSyncPreferencesRecord(record) {
-      return enqueueStorageOperation(() => writeSyncPreferencesRecordInternal(record));
+    writeSyncPreferencesRecord(record, options) {
+      return enqueueStorageOperation(() =>
+        writeSyncPreferencesRecordInternal(record, options),
+      );
     },
     readOnboardingRecord() {
       return enqueueStorageOperation(() => readOnboardingRecordInternal());
@@ -1501,6 +1512,17 @@ async function upsertProfileRecord(
       buildLocalDataAad("profile_settings", "1"),
     ),
   );
+}
+
+async function readStoredSyncRestoreInProgress(
+  database: LocalAppDatabase,
+  localDataKey: string,
+): Promise<boolean> {
+  const row = await database.getFirstAsync<
+    Pick<SyncPreferencesRow, "encrypted_payload">
+  >("SELECT encrypted_payload FROM sync_preferences WHERE id = 1;");
+
+  return (row && mapSyncPreferencesRow(row, localDataKey))?.restoreInProgress === true;
 }
 
 async function upsertSyncPreferencesRecord(
@@ -2250,6 +2272,8 @@ function mapNormalizedSyncPreferencesRecord(
     // existed means: those guest sessions had no renewal path, so the
     // countdown they were showing stays correct.
     guestSessionRenewable: record.guestSessionRenewable === true,
+    // A row written before this field existed reads as false.
+    restoreInProgress: record.restoreInProgress === true,
   };
 }
 

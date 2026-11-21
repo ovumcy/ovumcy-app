@@ -349,6 +349,7 @@ export type SettingsViewData = {
       recoveryPackageNotFound: string;
       tooManyDevices: string;
       syncNotPrepared: string;
+      restoreIncomplete: string;
       notConnected: string;
       recoveryKeyChangedElsewhere: string;
       blobNotFound: string;
@@ -923,6 +924,7 @@ export function buildSettingsViewData(
           settingsCopy.account.errors.recoveryPackageNotFound,
         tooManyDevices: settingsCopy.account.errors.tooManyDevices,
         syncNotPrepared: settingsCopy.account.errors.syncNotPrepared,
+        restoreIncomplete: settingsCopy.account.errors.restoreIncomplete,
         notConnected: settingsCopy.account.errors.notConnected,
         recoveryKeyChangedElsewhere:
           settingsCopy.account.errors.recoveryKeyChangedElsewhere,

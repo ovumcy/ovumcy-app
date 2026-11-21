@@ -46,7 +46,9 @@ import {
 
 type SyncConnectScreenErrorCode = SyncConnectErrorCode;
 type SyncRecoverScreenErrorCode = SyncRecoverErrorCode;
-type SyncRunScreenErrorCode = SyncRunErrorCode;
+// restore_incomplete: the upload refused (sync_not_prepared) because a sync
+// restore stopped partway; the screen names that instead of "prepare sync".
+type SyncRunScreenErrorCode = SyncRunErrorCode | "restore_incomplete";
 
 // After a managed connect (register/login/TOTP finalisation) the cloud plan
 // status must be re-fetched from the billing snapshot. Reusing the pre-connect
@@ -530,6 +532,12 @@ export async function uploadBackupSyncSnapshot(
     recoveryKeyStepUp,
   );
   if (!result.ok) {
+    if (
+      result.errorCode === "sync_not_prepared" &&
+      (await storage.readSyncPreferencesRecord()).restoreInProgress === true
+    ) {
+      return { ok: false, errorCode: "restore_incomplete" };
+    }
     return result;
   }
 

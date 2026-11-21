@@ -112,6 +112,16 @@ export type SyncPreferencesRecord = {
   // heading for a deadline, so only it gets the countdown. Always false when
   // guestSessionExpiresAt is null, which is what a non-guest session is.
   guestSessionRenewable: boolean;
+  // restoreInProgress is true from the wipe that starts a sync restore until
+  // the restore's final preferences write. A restore that stops partway leaves
+  // it set, and uploads refuse while it is set, so partial local data never
+  // replaces the backup; a retried restore that completes clears it. Absent
+  // (a record written before this field existed) reads as false.
+  //
+  // Only the restore sets or clears it: `writeSyncPreferencesRecord` keeps the
+  // stored value and ignores this field unless the caller passes the flag
+  // explicitly, so a write built from an in-memory copy cannot clear it.
+  restoreInProgress?: boolean;
 };
 
 export type SyncAuthResult = {
@@ -266,5 +276,6 @@ export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {
     lastSyncedAt: null,
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
+    restoreInProgress: false,
   };
 }

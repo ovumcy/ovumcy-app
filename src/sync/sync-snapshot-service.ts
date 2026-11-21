@@ -21,7 +21,10 @@ import {
   repointLegacyStoredCycleStart,
   withoutStoredCycleStartRepointState,
 } from "../services/stored-cycle-start-repoint-service";
-import type { SyncPreferencesRecord } from "./sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncPreferencesRecord,
+} from "./sync-contract";
 
 export const SYNC_SNAPSHOT_SCHEMA_VERSION = 3;
 
@@ -247,9 +250,12 @@ export async function restoreSyncSnapshot(
   // The floor the device held before the restore is put back first, so a
   // write that fails partway leaves the floor where it was; the restored
   // preferences (the raised floor) are written only after the data is in.
-  if (retainedPreferences !== null) {
-    await storage.writeSyncPreferencesRecord(retainedPreferences);
-  }
+  // The same write marks the restore in progress, which blocks uploads until
+  // the final write below clears it.
+  await storage.writeSyncPreferencesRecord(
+    retainedPreferences ?? createDefaultSyncPreferencesRecord(),
+    { restoreInProgress: true },
+  );
   await storage.writeBootstrapState(snapshot.bootstrapState);
   await storage.writeProfileRecord({
     ...snapshot.profile,
@@ -329,8 +335,11 @@ export async function restoreSyncSnapshot(
     }
   }
 
-  // Every data write has landed: only now does the floor rise.
-  await storage.writeSyncPreferencesRecord(syncPreferences);
+  // Every data write has landed: only now does the floor rise and the
+  // in-progress mark clear.
+  await storage.writeSyncPreferencesRecord(syncPreferences, {
+    restoreInProgress: false,
+  });
 
   // The snapshot may come from an older client, which reads the stored cycle
   // start under the earlier withdrawal rule; re-read it before anything
