@@ -405,6 +405,7 @@ export function useBackupSyncScreenController(
       onSubmitRecoveryKeyStepUp: actions.handleSubmitRecoveryKeyStepUp,
       onCancelRecoveryKeyStepUp: actions.handleCancelRecoveryKeyStepUp,
       accountDeletionStepUpPrompt: deletion.accountDeletionStepUpPrompt,
+      accountDeletionStepUpMode: deletion.accountDeletionStepUpMode,
       isDeletingAccount: deletion.isDeletingAccount,
       onSubmitAccountDeletionStepUp: deletion.handleSubmitAccountDeletionStepUp,
       onCancelAccountDeletionStepUp: deletion.handleCancelAccountDeletionStepUp,

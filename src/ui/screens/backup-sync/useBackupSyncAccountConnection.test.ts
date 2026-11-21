@@ -32,6 +32,9 @@ const mockConnectBackupSyncAccount = jest.mocked(
 const mockCompleteBackupSyncTOTPChallenge = jest.mocked(
   backupSyncScreenService.completeBackupSyncTOTPChallenge,
 );
+const mockCompleteBackupSyncRecoveryTOTPChallenge = jest.mocked(
+  backupSyncScreenService.completeBackupSyncRecoveryTOTPChallenge,
+);
 const mockRecoverBackupSyncAccess = jest.mocked(
   backupSyncScreenService.recoverBackupSyncAccess,
 );
@@ -141,6 +144,7 @@ describe("useBackupSyncAccountConnection", () => {
       });
 
       expect(result.current.pendingTOTPChallenge).toEqual({
+        purpose: "connect",
         challengeID: "challenge-1",
         challengeExpiresAt: "2026-03-20T08:05:00.000Z",
         preferences: core.state!.syncPreferences,
@@ -428,6 +432,105 @@ describe("useBackupSyncAccountConnection", () => {
         core.viewData.account.status.recovered,
       );
       expect(result.current.isRecoveringSync).toBe(false);
+    });
+
+    describe("two-factor challenge", () => {
+      const PHRASE = "alpha beta gamma delta epsilon zeta";
+
+      async function recoverIntoChallenge() {
+        const core = createBackupSyncSessionCoreMock({
+          recoveryPhraseInputValue: PHRASE,
+        });
+        mockRecoverBackupSyncAccess.mockResolvedValue({
+          ok: true,
+          totpChallengeRequired: true,
+          challengeID: "challenge-1",
+          challengeExpiresAt: "2026-03-20T08:05:00.000Z",
+        });
+        const rendered = await renderHook(() => useBackupSyncAccountConnection(core));
+        await act(() => {
+          rendered.result.current.setAccountPasswordValue("hunter2-hunter2");
+        });
+        await act(async () => {
+          await rendered.result.current.handleRecoverSync();
+        });
+        return { core, ...rendered };
+      }
+
+      it("opens the challenge, drops the password and keeps the phrase", async () => {
+        const { core, result } = await recoverIntoChallenge();
+
+        expect(result.current.pendingTOTPChallenge).toEqual({
+          purpose: "recover",
+          challengeID: "challenge-1",
+          challengeExpiresAt: "2026-03-20T08:05:00.000Z",
+          preferences: core.state!.savedSyncPreferences,
+        });
+        expect(result.current.accountPasswordValue).toBe("");
+        expect(core.setRecoveryPhraseInputValue).not.toHaveBeenCalled();
+        expect(core.setState).not.toHaveBeenCalled();
+        expect(result.current.isRecoveringSync).toBe(false);
+      });
+
+      it("finishes the recovery with the code and the kept phrase", async () => {
+        const recoveredState = createLoadedSettingsStateFixture({
+          hasSyncSession: true,
+        });
+        mockCompleteBackupSyncRecoveryTOTPChallenge.mockResolvedValue({
+          ok: true,
+          state: recoveredState,
+        });
+        const { core, result } = await recoverIntoChallenge();
+
+        await act(() => {
+          result.current.setTotpChallengeCode("123456");
+        });
+        await act(async () => {
+          await result.current.handleSubmitTOTPChallenge();
+        });
+
+        expect(mockCompleteBackupSyncTOTPChallenge).not.toHaveBeenCalled();
+        expect(mockCompleteBackupSyncRecoveryTOTPChallenge).toHaveBeenCalledWith(
+          core.storage,
+          core.syncSecretStore,
+          core.state,
+          core.state!.savedSyncPreferences,
+          { challengeID: "challenge-1", code: "123456", recoveryPhrase: PHRASE },
+          core.effectiveNow,
+        );
+        expect(core.setState).toHaveBeenCalledWith(recoveredState);
+        expect(core.setRecoveryPhraseInputValue).toHaveBeenCalledWith("");
+        expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
+          core.viewData.account.status.recovered,
+        );
+        expect(result.current.pendingTOTPChallenge).toBeNull();
+        expect(result.current.isRecoveringSync).toBe(false);
+      });
+
+      it.each([
+        ["totp_invalid_code", true],
+        ["totp_challenge_invalid", false],
+      ] as const)(
+        "on %s keeps the challenge open: %s",
+        async (errorCode, keepsChallenge) => {
+          mockCompleteBackupSyncRecoveryTOTPChallenge.mockResolvedValue({
+            ok: false,
+            errorCode,
+          });
+          const { core, result } = await recoverIntoChallenge();
+
+          await act(async () => {
+            await result.current.handleSubmitTOTPChallenge();
+          });
+
+          expect(core.setErrorState).toHaveBeenCalledWith({
+            code: errorCode,
+            scope: "account",
+          });
+          expect(result.current.pendingTOTPChallenge !== null).toBe(keepsChallenge);
+          expect(core.setRecoveryPhraseInputValue).not.toHaveBeenCalled();
+        },
+      );
     });
   });
 

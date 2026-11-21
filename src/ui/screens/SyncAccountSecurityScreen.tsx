@@ -73,6 +73,9 @@ export function SyncAccountSecurityScreen({
         onChangeCurrentPasswordChange={controller.setChangeCurrentPassword}
         changeNewPassword={controller.changeNewPassword}
         onChangeNewPasswordChange={controller.setChangeNewPassword}
+        changeCode={controller.changeCode}
+        onChangeCodeChange={controller.setChangeCode}
+        changeCodeVisible={controller.changeCodeVisible}
         changeStatus={controller.changeStatus}
         changeErrorCode={controller.changeErrorCode}
         onChangePassword={controller.handleChangePassword}
@@ -100,6 +103,9 @@ export function SyncAccountSecurityScreen({
         onRegenerate={controller.handleRegenerate}
         revealedRecoveryCode={controller.revealedRecoveryCode}
         revealedRecoveryCodeFromTOTP={controller.revealedRecoveryCodeFromTOTP}
+        revealedRecoveryCodeFromPasswordChange={
+          controller.revealedRecoveryCodeFromPasswordChange
+        }
         onAcknowledgeRecoveryCode={controller.handleAcknowledgeRecoveryCode}
         totpCopy={totpCopy}
         twoFactorEnabled={controller.twoFactorEnabled}

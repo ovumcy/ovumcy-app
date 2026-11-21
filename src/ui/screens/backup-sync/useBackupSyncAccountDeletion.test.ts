@@ -842,6 +842,99 @@ describe("useBackupSyncAccountDeletion", () => {
     });
   });
 
+  describe("self-hosted step-up", () => {
+    function createSelfHostedCore(hasSyncSession = true) {
+      return createBackupSyncSessionCoreMock({
+        state: createLoadedSettingsStateFixture({
+          hasSyncSession,
+          savedSyncPreferences: {
+            ...createDefaultSyncPreferencesRecord(),
+            mode: "self_hosted",
+            endpointInput: "192.168.1.20:8080",
+            normalizedEndpoint: "http://192.168.1.20:8080",
+            setupStatus: "connected",
+          },
+        }),
+      });
+    }
+
+    beforeEach(() => {
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockOpenConfirmation.mockResolvedValue(true);
+    });
+
+    it("asks a connected self-hosted account for the password before any delete", async () => {
+      mockDescribeTwoFactor.mockResolvedValue({ twoFactorEnabled: true });
+      const core = createSelfHostedCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockDeleteOvumcyAccount).not.toHaveBeenCalled();
+      expect(result.current.accountDeletionStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: null,
+      });
+      expect(result.current.accountDeletionStepUpMode).toBe("self_hosted");
+    });
+
+    it("sends the password and code the card collected to the self-hosted delete", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+      const core = createSelfHostedCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result, { currentPassword: PASSWORD, code: "123456" });
+
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(mockDeleteOvumcyAccount.mock.calls[0]?.[4]).toEqual({
+        currentPassword: PASSWORD,
+        code: "123456",
+      });
+      expect(core.router.replace).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the card with the server's answer after a wrong password", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "invalid_current_password",
+      });
+      const core = createSelfHostedCore();
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+      await submitStepUp(result);
+
+      expect(result.current.accountDeletionStepUpPrompt).toEqual({
+        codeRequired: false,
+        errorCode: "invalid_current_password",
+      });
+      expect(core.router.replace).not.toHaveBeenCalled();
+    });
+
+    it("a self-hosted device with no session deletes locally with no card", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+      const core = createSelfHostedCore(false);
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockDescribeTwoFactor).not.toHaveBeenCalled();
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(mockDeleteOvumcyAccount.mock.calls[0]?.[4]).toBeUndefined();
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(result.current.accountDeletionStepUpMode).toBeNull();
+    });
+  });
+
   it("tells the deletion a connected session was loaded, so a vanished one aborts", async () => {
     const core = createBackupSyncSessionCoreMock();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });

@@ -33,6 +33,7 @@ import type {
   SyncAccountSecurityStatus,
   SyncAccountSecurityTOTPMode,
   SyncAccountSecurityTOTPStage,
+  ChangePasswordResponseLostErrorCode,
   RegenerateResponseLostErrorCode,
   TOTPRecoveryCodeLostErrorCode,
 } from "./useSyncAccountSecurityController";
@@ -56,8 +57,14 @@ export type SyncAccountSecuritySectionProps = {
   onChangeCurrentPasswordChange: (value: string) => void;
   changeNewPassword: string;
   onChangeNewPasswordChange: (value: string) => void;
+  changeCode: string;
+  onChangeCodeChange: (value: string) => void;
+  changeCodeVisible: boolean;
   changeStatus: SyncAccountSecurityStatus;
-  changeErrorCode: ChangeSyncPasswordErrorCode | null;
+  changeErrorCode:
+    | ChangeSyncPasswordErrorCode
+    | ChangePasswordResponseLostErrorCode
+    | null;
   onChangePassword: () => void | Promise<void>;
 
   forgotLogin: string;
@@ -92,6 +99,7 @@ export type SyncAccountSecuritySectionProps = {
 
   revealedRecoveryCode: string;
   revealedRecoveryCodeFromTOTP: boolean;
+  revealedRecoveryCodeFromPasswordChange: boolean;
   onAcknowledgeRecoveryCode: () => void;
 
   totpCopy: TOTPCopy;
@@ -123,7 +131,12 @@ function ignoreRequestClose() {}
 // wait message. The controller clears a rate_limited error on the next input
 // edit or submit, which re-enables the button — no countdown is needed.
 function isRateLimited(
-  code: AnyErrorCode | TOTPErrorCode | RegenerateResponseLostErrorCode | null,
+  code:
+    | AnyErrorCode
+    | TOTPErrorCode
+    | RegenerateResponseLostErrorCode
+    | ChangePasswordResponseLostErrorCode
+    | null,
 ): boolean {
   return code === "rate_limited";
 }
@@ -134,6 +147,9 @@ export function SyncAccountSecuritySection({
   onChangeCurrentPasswordChange,
   changeNewPassword,
   onChangeNewPasswordChange,
+  changeCode,
+  onChangeCodeChange,
+  changeCodeVisible,
   changeStatus,
   changeErrorCode,
   onChangePassword,
@@ -161,6 +177,7 @@ export function SyncAccountSecuritySection({
   onRegenerate,
   revealedRecoveryCode,
   revealedRecoveryCodeFromTOTP,
+  revealedRecoveryCodeFromPasswordChange,
   onAcknowledgeRecoveryCode,
   totpCopy,
   totpMode,
@@ -216,9 +233,24 @@ export function SyncAccountSecuritySection({
           testID="account-security-change-new-password"
           value={changeNewPassword}
         />
+        {changeCodeVisible ? (
+          <>
+            <Text style={styles.fieldLabel}>{copy.regenerate.codeLabel}</Text>
+            <AppTextInput
+              accessibilityLabel={copy.regenerate.codeLabel}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="number-pad"
+              onChangeText={onChangeCodeChange}
+              style={styles.input}
+              testID="account-security-change-code"
+              value={changeCode}
+            />
+          </>
+        ) : null}
         {changeErrorCode ? (
           <StatusBanner
-            message={resolveErrorMessage(copy, changeErrorCode)}
+            message={resolveChangeErrorMessage(copy, totpCopy, changeErrorCode)}
             testID="account-security-change-error-banner"
             tone="error"
           />
@@ -606,7 +638,9 @@ export function SyncAccountSecuritySection({
             >
               {revealedRecoveryCodeFromTOTP
                 ? totpCopy.enroll.recoveryCodeReplacedHint
-                : copy.reveal.hint}
+                : revealedRecoveryCodeFromPasswordChange
+                  ? copy.reveal.passwordChangedHint
+                  : copy.reveal.hint}
             </Text>
             <View style={styles.codeCard}>
               <Text
@@ -666,6 +700,23 @@ function resolveTOTPErrorMessage(
       return copy.errors.unauthorized;
     default:
       return copy.errors.generic;
+  }
+}
+
+function resolveChangeErrorMessage(
+  copy: AccountSecurityCopy,
+  totpCopy: TOTPCopy,
+  code: ChangeSyncPasswordErrorCode | ChangePasswordResponseLostErrorCode,
+): string {
+  switch (code) {
+    case "change_password_response_lost":
+      return copy.errors.changePasswordResponseLost;
+    case "totp_invalid_code":
+    case "totp_replayed":
+    case "totp_not_configured":
+      return resolveTOTPErrorMessage(totpCopy, code);
+    default:
+      return resolveErrorMessage(copy, code);
   }
 }
 

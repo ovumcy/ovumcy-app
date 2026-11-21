@@ -175,6 +175,7 @@ function createAccountDeletionFixture(
 ): ReturnType<typeof useBackupSyncAccountDeletion> {
   return {
     accountDeletionStepUpPrompt: null,
+    accountDeletionStepUpMode: null,
     isDeletingAccount: false,
     handleDeleteAccount: jest.fn(),
     handleSubmitAccountDeletionStepUp: jest.fn(),

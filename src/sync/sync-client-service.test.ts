@@ -226,7 +226,7 @@ describe("sync-client-service", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({
@@ -361,7 +361,7 @@ describe("sync-client-service", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         putRecoveryKey,
@@ -481,7 +481,7 @@ describe("sync-client-service", () => {
               portalSupported: false,
               advancedCloudInsights: false,
               maxDevices: 5,
-              maxBlobBytes: 1024,
+              maxBlobBytes: 16 << 20,
             },
           }),
           getBlob,
@@ -756,7 +756,7 @@ describe("sync-client-service", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         getRecoveryKey: jest.fn().mockResolvedValue({
@@ -1479,7 +1479,11 @@ function createAPIClientMock(
     login: jest.fn(),
     logout: jest.fn(),
     getCapabilities: jest.fn(),
-    getRecoveryKey: jest.fn(),
+    // Default to "no package stored" so a self-hosted upload goes on to the
+    // package write without an explicit override.
+    getRecoveryKey: jest
+      .fn()
+      .mockResolvedValue({ ok: false, errorCode: "recovery_package_not_found" }),
     attachDevice: jest.fn(),
     listDevices: jest.fn(),
     removeDevice: jest.fn(),
@@ -1690,7 +1694,7 @@ describe("finalizeSyncSessionAfterTOTP", () => {
           portalSupported: false,
           advancedCloudInsights: false,
           maxDevices: 5,
-          maxBlobBytes: 1024,
+          maxBlobBytes: 16 << 20,
         },
       }),
       attachDevice: jest.fn().mockResolvedValue({
@@ -2588,7 +2592,7 @@ describe("connectSyncAccount self-hosted handshake failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
@@ -2640,7 +2644,7 @@ describe("connectSyncAccount self-hosted handshake failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({
@@ -2702,7 +2706,7 @@ describe("connectSyncAccount self-hosted handshake failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({
@@ -2847,7 +2851,7 @@ describe("finalizeSyncSessionAfterTOTP additional branches", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({
@@ -2999,7 +3003,7 @@ describe("finalizeSyncSessionAfterTOTP additional branches", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         attachDevice: jest.fn().mockResolvedValue({ ok: false, errorCode: "too_many_devices" }),
@@ -3186,7 +3190,7 @@ describe("loadConnectedSyncCapabilities additional branches", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
       }),
@@ -3439,6 +3443,7 @@ describe("recoverSyncAccess managed failures", () => {
     ["sync_not_allowed", "sync_not_allowed"],
     ["network_failed", "network_failed"],
     ["sync_bridge_unavailable", "network_failed"],
+    ["rate_limited", "rate_limited"],
     ["totp_not_configured", "generic"],
   ])(
     "maps managed login failure %s to %s",
@@ -3679,7 +3684,7 @@ describe("recoverSyncAccess self-hosted failures", () => {
     ["too_many_devices", "too_many_devices"],
     ["network_failed", "network_failed"],
     ["recovery_package_not_found", "recovery_package_not_found"],
-    ["rate_limited", "generic"],
+    ["rate_limited", "rate_limited"],
   ])(
     "maps self-hosted login failure %s to %s",
     async (apiErrorCode, expectedErrorCode) => {
@@ -3758,7 +3763,7 @@ describe("recoverSyncAccess self-hosted failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
       }),
@@ -3793,7 +3798,7 @@ describe("recoverSyncAccess self-hosted failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         getRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" }),
@@ -3833,7 +3838,7 @@ describe("recoverSyncAccess self-hosted failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         getRecoveryKey: jest.fn().mockResolvedValue({ ok: true, recoveryKey: wrappedKeyOnServer }),
@@ -3869,7 +3874,7 @@ describe("recoverSyncAccess self-hosted failures", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         getRecoveryKey: jest
@@ -3951,7 +3956,7 @@ describe("runSyncUpload additional branches", () => {
     ["stale_generation", "stale_generation"],
     ["blob_not_found", "blob_not_found"],
     ["network_failed", "network_failed"],
-    ["rate_limited", "generic"],
+    ["rate_limited", "rate_limited"],
   ])(
     "maps a recovery-key sync failure %s to %s during upload",
     async (apiErrorCode, expectedErrorCode) => {
@@ -3976,7 +3981,7 @@ describe("runSyncUpload additional branches", () => {
               portalSupported: false,
               advancedCloudInsights: false,
               maxDevices: 5,
-              maxBlobBytes: 1024,
+              maxBlobBytes: 16 << 20,
             },
           }),
           putRecoveryKey: jest.fn().mockResolvedValue({ ok: false, errorCode: apiErrorCode }),
@@ -4042,7 +4047,7 @@ describe("runSyncUpload additional branches", () => {
               portalSupported: false,
               advancedCloudInsights: false,
               maxDevices: 5,
-              maxBlobBytes: 1024,
+              maxBlobBytes: 16 << 20,
             },
           }),
           putRecoveryKey,
@@ -4071,7 +4076,7 @@ describe("runSyncUpload additional branches", () => {
       ["totp_invalid_code", { currentPassword: "pw", code: "123456" }, "totp_invalid_code"],
       ["totp_replayed", { currentPassword: "pw", code: "123456" }, "totp_replayed"],
       ["rate_limited", { currentPassword: "pw" }, "recovery_key_step_up_rate_limited"],
-      ["rate_limited", undefined, "generic"],
+      ["rate_limited", undefined, "rate_limited"],
     ] as const)(
       "maps a %s refusal (step-up %j) to %s and stops before the blob",
       async (apiErrorCode, stepUp, expected) => {
@@ -4148,7 +4153,7 @@ describe("runSyncUpload additional branches", () => {
               portalSupported: false,
               advancedCloudInsights: false,
               maxDevices: 5,
-              maxBlobBytes: 1024,
+              maxBlobBytes: 16 << 20,
             },
           }),
           putRecoveryKey,
@@ -4238,7 +4243,7 @@ describe("runSyncUpload additional branches", () => {
               portalSupported: false,
               advancedCloudInsights: false,
               maxDevices: 5,
-              maxBlobBytes: 1024,
+              maxBlobBytes: 16 << 20,
             },
           }),
           attachDevice: jest.fn().mockResolvedValue({
@@ -4315,7 +4320,7 @@ describe("runSyncUpload additional branches", () => {
             portalSupported: false,
             advancedCloudInsights: false,
             maxDevices: 5,
-            maxBlobBytes: 1024,
+            maxBlobBytes: 16 << 20,
           },
         }),
         putBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "stale_generation" }),
@@ -4344,7 +4349,7 @@ describe("runSyncUpload additional branches", () => {
 
   it.each([
     ["network_failed", "network_failed"],
-    ["rate_limited", "generic"],
+    ["rate_limited", "rate_limited"],
   ] as const)(
     "stops before any write when getCapabilities fails with %s",
     async (capabilitiesError, expected) => {

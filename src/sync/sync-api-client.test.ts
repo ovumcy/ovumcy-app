@@ -495,7 +495,8 @@ describe("sync-api-client", () => {
       newPassword: "new password 12345",
     });
 
-    expect(result).toEqual({ ok: true });
+    // A server that predates recovery-code rotation sends no code.
+    expect(result).toEqual({ ok: true, recoveryCode: null });
     const call = typedFetchMock.mock.calls[0];
     expect(call?.[0]).toBe("http://127.0.0.1:8080/auth/change-password");
     const headers = call?.[1]?.headers as Headers;
@@ -506,6 +507,50 @@ describe("sync-api-client", () => {
         new_password: "new password 12345",
       }),
     );
+  });
+
+  it("returns the recovery code the server rotated on a password change", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: "password_changed", recovery_code: "ABCD-EFGH-IJKL" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    const result = await client.changePassword("session-1", {
+      currentPassword: "old password 12345",
+      newPassword: "new password 12345",
+      code: "123456",
+    });
+
+    expect(result).toEqual({ ok: true, recoveryCode: "ABCD-EFGH-IJKL" });
+    expect(typedFetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({
+        current_password: "old password 12345",
+        new_password: "new password 12345",
+        code: "123456",
+      }),
+    );
+  });
+
+  it("refuses a change-password answer whose recovery code is not a string", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ status: "password_changed", recovery_code: 42 }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await expect(
+      client.changePassword("session-1", {
+        currentPassword: "old password 12345",
+        newPassword: "new password 12345",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "invalid_response" });
   });
 
   it("maps change-password error keys", async () => {
@@ -1087,23 +1132,47 @@ describe("sync-api-client", () => {
     );
   });
 
-  it("deletes the self-hosted account with a DELETE /account bearer request and tolerates an empty body", async () => {
+  it("deletes the self-hosted account with the password in a JSON DELETE /account body and tolerates an empty answer", async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 204 }));
     const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
     const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
 
-    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+    await expect(
+      client.deleteAccount("session-1", { currentPassword: "pw-1", code: "  " }),
+    ).resolves.toEqual({
       ok: true,
     });
     const call = fetchMock.mock.calls[0];
     expect(call?.[0]).toBe("http://127.0.0.1:8080/account");
     expect(call?.[1]?.method).toBe("DELETE");
-    expect((call?.[1]?.headers as Headers).get("Authorization")).toBe(
-      "Bearer session-1",
-    );
+    const headers = call?.[1]?.headers as Headers;
+    expect(headers.get("Authorization")).toBe("Bearer session-1");
+    expect(headers.get("Content-Type")).toBe("application/json");
+    // A blank code is not sent: the server would read it as a wrong code.
+    expect(call?.[1]?.body).toBe(JSON.stringify({ current_password: "pw-1" }));
     expect((call?.[1] as RequestInit).redirect).toBe("error");
+  });
+
+  it("sends the trimmed TOTP code with the password on account deletion", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "account_deleted" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
+    const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
+
+    await expect(
+      client.deleteAccount("session-1", { currentPassword: "pw-1", code: " 123456 " }),
+    ).resolves.toEqual({ ok: true });
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ current_password: "pw-1", code: "123456" }),
+    );
   });
 
   it("maps deleteAccount error keys, including unauthorized and network failure", async () => {
@@ -1119,11 +1188,12 @@ describe("sync-api-client", () => {
     const typedFetchMock = fetchMock as jest.MockedFunction<typeof fetch>;
     const client = createSyncAPIClient("http://127.0.0.1:8080/", typedFetchMock);
 
-    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+    const stepUp = { currentPassword: "pw-1" };
+    await expect(client.deleteAccount("session-1", stepUp)).resolves.toEqual({
       ok: false,
       errorCode: "unauthorized",
     });
-    await expect(client.deleteAccount("session-1")).resolves.toEqual({
+    await expect(client.deleteAccount("session-1", stepUp)).resolves.toEqual({
       ok: false,
       errorCode: "network_failed",
     });

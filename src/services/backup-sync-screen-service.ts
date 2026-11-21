@@ -4,6 +4,7 @@ import {
   clearLocalSyncSession,
   connectSyncAccount,
   disconnectSyncAccount,
+  finalizeSyncRecoveryAfterTOTP,
   finalizeSyncSessionAfterTOTP,
   persistGuestPartnerSession,
   recoverSyncAccess,
@@ -18,7 +19,10 @@ import {
   type UploadOverBackupGuard,
 } from "../sync/sync-client-service";
 import type { SyncRecoveryKeyStepUp } from "../sync/sync-api-client";
-import type { SyncPreferencesRecord } from "../sync/sync-contract";
+import type {
+  SyncCapabilityDocument,
+  SyncPreferencesRecord,
+} from "../sync/sync-contract";
 import type {
   ManagedCloudAPIErrorCode,
   ManagedCloudPartnerAccessGrant,
@@ -474,6 +478,12 @@ export async function recoverBackupSyncAccess(
       state: LoadedSettingsState;
     }
   | {
+      ok: true;
+      totpChallengeRequired: true;
+      challengeID: string;
+      challengeExpiresAt: string;
+    }
+  | {
       ok: false;
       errorCode: SyncRecoverScreenErrorCode;
     }
@@ -489,21 +499,86 @@ export async function recoverBackupSyncAccess(
   if (!result.ok) {
     return result;
   }
+  if ("totpChallengeRequired" in result) {
+    return result;
+  }
 
   return {
     ok: true,
-    state: createLoadedSettingsState(
-      currentState.profile,
-      result.preferences,
-      true,
-      true,
-      currentState.symptomRecords,
-      currentState.exportState,
-      result.preferences,
-      result.capabilities,
-      currentState.managedPremiumAccess,
-    ),
+    state: buildRecoveredSettingsState(currentState, result),
   };
+}
+
+/**
+ * completeBackupSyncRecoveryTOTPChallenge consumes the TOTP challenge a
+ * self-hosted `recoverBackupSyncAccess` returned, then finishes the recovery
+ * with the issued session token. The challenge id and the phrase travel via
+ * screen state only — neither is persisted. `totp_challenge_invalid` means
+ * the caller restarts from `recoverBackupSyncAccess`.
+ */
+export async function completeBackupSyncRecoveryTOTPChallenge(
+  storage: LocalAppStorage,
+  secretStore: SyncSecretStore,
+  currentState: LoadedSettingsState,
+  preferences: SyncPreferencesRecord,
+  input: { challengeID: string; code: string; recoveryPhrase: string },
+  now: Date,
+): Promise<
+  | {
+      ok: true;
+      state: LoadedSettingsState;
+    }
+  | {
+      ok: false;
+      errorCode: CompleteTOTPChallengeErrorCode | SyncRecoverScreenErrorCode;
+    }
+> {
+  const challengeResult = await completeTOTPChallenge(preferences, {
+    challengeID: input.challengeID,
+    code: input.code,
+  });
+  if (!challengeResult.ok) {
+    return { ok: false, errorCode: challengeResult.errorCode };
+  }
+
+  const result = await finalizeSyncRecoveryAfterTOTP(
+    storage,
+    secretStore,
+    preferences,
+    {
+      sessionToken: challengeResult.auth.sessionToken,
+      recoveryPhrase: input.recoveryPhrase,
+    },
+    now,
+  );
+  if (!result.ok) {
+    return result;
+  }
+
+  return {
+    ok: true,
+    state: buildRecoveredSettingsState(currentState, result),
+  };
+}
+
+function buildRecoveredSettingsState(
+  currentState: LoadedSettingsState,
+  result: {
+    preferences: SyncPreferencesRecord;
+    capabilities: SyncCapabilityDocument;
+  },
+): LoadedSettingsState {
+  return createLoadedSettingsState(
+    currentState.profile,
+    result.preferences,
+    true,
+    true,
+    currentState.symptomRecords,
+    currentState.exportState,
+    result.preferences,
+    result.capabilities,
+    currentState.managedPremiumAccess,
+  );
 }
 
 export async function uploadBackupSyncSnapshot(

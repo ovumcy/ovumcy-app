@@ -93,7 +93,7 @@ describe("sync-account-recovery-service", () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const changePassword = jest
         .fn()
-        .mockResolvedValue({ ok: true });
+        .mockResolvedValue({ ok: true, recoveryCode: "NEW-CODE-1" });
       const apiFactory = jest
         .fn()
         .mockReturnValue(communityClientMock({ changePassword }));
@@ -109,7 +109,8 @@ describe("sync-account-recovery-service", () => {
         jest.fn(),
       );
 
-      expect(result).toEqual({ ok: true });
+      // The server rotated the recovery code; the new one reaches the caller.
+      expect(result).toEqual({ ok: true, recoveryCode: "NEW-CODE-1" });
       expect(changePassword).toHaveBeenCalledWith("community-session-1", {
         currentPassword: "old password 12345",
         newPassword: "new password 12345",
@@ -131,17 +132,99 @@ describe("sync-account-recovery-service", () => {
         {
           currentPassword: "old password 12345",
           newPassword: "new password 12345",
+          code: "123456",
         },
         jest.fn(),
         managedFactory,
       );
 
-      expect(result).toEqual({ ok: true });
+      expect(result).toEqual({ ok: true, recoveryCode: null });
+      // Ovumcy Cloud takes no code on this route.
       expect(changePassword).toHaveBeenCalledWith("managed-session-1", {
         currentPassword: "old password 12345",
         newPassword: "new password 12345",
       });
     });
+
+    it("sends the trimmed TOTP code to the community server", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const changePassword = jest
+        .fn()
+        .mockResolvedValue({ ok: true, recoveryCode: "NEW-CODE-1" });
+      const apiFactory = jest
+        .fn()
+        .mockReturnValue(communityClientMock({ changePassword }));
+
+      await changeSyncAccountPassword(
+        secretStore,
+        selfHostedPreferences(),
+        {
+          currentPassword: "old password 12345",
+          newPassword: "new password 12345",
+          code: " 123456 ",
+        },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(changePassword).toHaveBeenCalledWith("community-session-1", {
+        currentPassword: "old password 12345",
+        newPassword: "new password 12345",
+        code: "123456",
+      });
+    });
+
+    it.each([
+      ["  ", "totp_code_required"],
+      ["12ab56", "totp_invalid_code"],
+    ] as const)(
+      "refuses a code of %j as %s before any request",
+      async (code, errorCode) => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const apiFactory = jest.fn();
+
+        const result = await changeSyncAccountPassword(
+          secretStore,
+          selfHostedPreferences(),
+          {
+            currentPassword: "old password 12345",
+            newPassword: "new password 12345",
+            code,
+          },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual({ ok: false, errorCode });
+        expect(apiFactory).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["totp_invalid_code", "totp_replayed", "totp_not_configured"] as const)(
+      "maps the community %s answer instead of generic",
+      async (errorCode) => {
+        const secretStore = createSyncSecretStoreMock(connectedSecrets());
+        const apiFactory = jest.fn().mockReturnValue(
+          communityClientMock({
+            changePassword: jest.fn().mockResolvedValue({ ok: false, errorCode }),
+          }),
+        );
+
+        const result = await changeSyncAccountPassword(
+          secretStore,
+          selfHostedPreferences(),
+          {
+            currentPassword: "old password 12345",
+            newPassword: "new password 12345",
+            code: "123456",
+          },
+          apiFactory,
+          jest.fn(),
+        );
+
+        expect(result).toEqual({ ok: false, errorCode });
+      },
+    );
 
     it("maps invalid_current_password from the community client", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());

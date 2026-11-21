@@ -58,6 +58,13 @@ export type RegenerateResponseLostErrorCode = "regenerate_response_lost";
 const REGENERATE_RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<RegenerateSyncRecoveryCodeErrorCode> =
   new Set(["network_failed", "generic"]);
 
+// UI-only: a sent self-hosted password change got no readable answer. The
+// server rotates the recovery code with the password, so both may have changed.
+export type ChangePasswordResponseLostErrorCode = "change_password_response_lost";
+
+const CHANGE_PASSWORD_RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<ChangeSyncPasswordErrorCode> =
+  new Set(["network_failed", "generic"]);
+
 const RESPONSE_MAY_BE_LOST_CODES: ReadonlySet<VerifyTOTPEnrollmentErrorCode> =
   new Set(["network_failed", "generic", "totp_already_enabled"]);
 
@@ -97,8 +104,13 @@ export function useSyncAccountSecurityController({
   const [changeNewPassword, setChangeNewPassword] = useState("");
   const [changeStatus, setChangeStatus] =
     useState<SyncAccountSecurityStatus>("idle");
-  const [changeErrorCode, setChangeErrorCode] =
-    useState<ChangeSyncPasswordErrorCode | null>(null);
+  const [changeErrorCode, setChangeErrorCode] = useState<
+    ChangeSyncPasswordErrorCode | ChangePasswordResponseLostErrorCode | null
+  >(null);
+  const [changeCode, setChangeCode] = useState("");
+  // Set when the server refused the change for a TOTP code, so the field
+  // stays reachable even when the two-factor status could not be read.
+  const [changeCodeDemanded, setChangeCodeDemanded] = useState(false);
 
   // Forgot password (two-stage)
   const [forgotLogin, setForgotLogin] = useState("");
@@ -138,6 +150,12 @@ export function useSyncAccountSecurityController({
   // silently replaced the code from registration or the last regeneration.
   const [revealedRecoveryCodeFromTOTP, setRevealedRecoveryCodeFromTOTP] =
     useState(false);
+  // True when the revealed code came from a password change, which replaced
+  // the previous code on the server.
+  const [
+    revealedRecoveryCodeFromPasswordChange,
+    setRevealedRecoveryCodeFromPasswordChange,
+  ] = useState(false);
 
   // Two-factor authentication (TOTP)
   const [totpMode, setTotpMode] =
@@ -184,6 +202,12 @@ export function useSyncAccountSecurityController({
     };
   }, [storage, syncSecretStore]);
 
+  // Ovumcy Cloud takes no code on this route, so the field is self-hosted only.
+  const changeCodeVisible =
+    preferences !== null &&
+    preferences.mode !== "managed" &&
+    (twoFactorEnabled === true || changeCodeDemanded);
+
   async function handleChangePassword() {
     if (!preferences) {
       return;
@@ -193,19 +217,45 @@ export function useSyncAccountSecurityController({
     const result = await changeSyncAccountPassword(
       syncSecretStore,
       preferences,
-      {
-        currentPassword: changeCurrentPassword,
-        newPassword: changeNewPassword,
-      },
+      changeCodeVisible
+        ? {
+            currentPassword: changeCurrentPassword,
+            newPassword: changeNewPassword,
+            code: changeCode,
+          }
+        : {
+            currentPassword: changeCurrentPassword,
+            newPassword: changeNewPassword,
+          },
     );
     if (result.ok) {
       setChangeStatus("success");
       setChangeCurrentPassword("");
       setChangeNewPassword("");
-    } else {
-      setChangeErrorCode(result.errorCode);
-      setChangeStatus("idle");
+      setChangeCode("");
+      if (result.recoveryCode) {
+        setRevealedRecoveryCode(result.recoveryCode);
+        setRevealedRecoveryCodeFromTOTP(false);
+        setRevealedRecoveryCodeFromPasswordChange(true);
+      }
+      return;
     }
+    if (
+      result.errorCode === "totp_invalid_code" ||
+      result.errorCode === "totp_replayed"
+    ) {
+      setChangeCodeDemanded(true);
+    }
+    // No code was sent, so the server is asking for one, not judging one.
+    setChangeErrorCode(
+      result.errorCode === "totp_invalid_code" && !changeCodeVisible
+        ? "totp_code_required"
+        : preferences.mode !== "managed" &&
+            CHANGE_PASSWORD_RESPONSE_MAY_BE_LOST_CODES.has(result.errorCode)
+          ? "change_password_response_lost"
+          : result.errorCode,
+    );
+    setChangeStatus("idle");
   }
 
   async function handleRequestReset() {
@@ -249,6 +299,7 @@ export function useSyncAccountSecurityController({
       setPreferences(result.preferences);
       setRevealedRecoveryCode(result.recoveryCode);
       setRevealedRecoveryCodeFromTOTP(false);
+      setRevealedRecoveryCodeFromPasswordChange(false);
       setForgotStage("completed");
       setForgotStatus("success");
       setForgotSignedOut(true);
@@ -292,6 +343,7 @@ export function useSyncAccountSecurityController({
     if (result.ok) {
       setRevealedRecoveryCode(result.recoveryCode);
       setRevealedRecoveryCodeFromTOTP(false);
+      setRevealedRecoveryCodeFromPasswordChange(false);
       setRegenerateStatus("success");
       setRegeneratePassword("");
       setRegenerateCode("");
@@ -397,6 +449,7 @@ export function useSyncAccountSecurityController({
     if (result.recoveryCode) {
       setRevealedRecoveryCode(result.recoveryCode);
       setRevealedRecoveryCodeFromTOTP(true);
+      setRevealedRecoveryCodeFromPasswordChange(false);
     }
     const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
     setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
@@ -419,6 +472,7 @@ export function useSyncAccountSecurityController({
         setTotpDisablePassword("");
         setTotpDisableCode("");
         setRegenerateCodeDemanded(false);
+        setChangeCodeDemanded(false);
         const status = await describeSyncAccountTwoFactor(
           syncSecretStore,
           preferences,
@@ -433,6 +487,7 @@ export function useSyncAccountSecurityController({
     setTotpDisablePassword("");
     setTotpDisableCode("");
     setRegenerateCodeDemanded(false);
+    setChangeCodeDemanded(false);
     const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
     setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
   }
@@ -448,6 +503,7 @@ export function useSyncAccountSecurityController({
   function handleAcknowledgeRecoveryCode() {
     setRevealedRecoveryCode("");
     setRevealedRecoveryCodeFromTOTP(false);
+    setRevealedRecoveryCodeFromPasswordChange(false);
     // After acknowledging a regenerate-issued code, the success flag stays
     // long enough to show a confirmation banner if the screen still wants it;
     // we reset it explicitly so the form is ready for further changes.
@@ -471,6 +527,9 @@ export function useSyncAccountSecurityController({
       setChangeNewPassword,
       setChangeErrorCode,
     ),
+    changeCode,
+    setChangeCode: clearRateLimitOnEdit(setChangeCode, setChangeErrorCode),
+    changeCodeVisible,
     changeStatus,
     changeErrorCode,
     handleChangePassword,
@@ -516,6 +575,7 @@ export function useSyncAccountSecurityController({
     // reveal
     revealedRecoveryCode,
     revealedRecoveryCodeFromTOTP,
+    revealedRecoveryCodeFromPasswordChange,
     handleAcknowledgeRecoveryCode,
 
     // two-factor
