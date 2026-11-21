@@ -84,7 +84,7 @@ export async function rebuildLocalReminderScheduleFromStorage(
   options: {
     now?: Date | undefined;
   } = {},
-): Promise<LocalReminderSyncResult | "failed"> {
+): Promise<LocalReminderSyncResult> {
   try {
     const profile = await storage.readProfileRecord();
     return await syncLocalReminderSchedule(storage, scheduler, profile, {
