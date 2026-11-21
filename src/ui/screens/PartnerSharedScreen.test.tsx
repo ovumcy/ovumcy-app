@@ -66,7 +66,6 @@ function createProjectionPayload(): PartnerSharedProjectionPayload {
       trackBBT: true,
       trackCervicalMucus: true,
       unpredictableCycle: false,
-      usageGoal: "health",
     },
     dayLogs: [
       {
@@ -233,12 +232,7 @@ function createProjectionPayload(): PartnerSharedProjectionPayload {
     symptomRecords: [
       {
         id: "cramps",
-        slug: "cramps",
         label: "Cramps",
-        icon: "",
-        color: "#000000",
-        isArchived: false,
-        sortOrder: 1,
         isDefault: true,
       },
     ],

@@ -1,3 +1,7 @@
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
+
 import {
   INITIAL_GENERATION,
   PARTNER_SHARE_SCHEMA_VERSION,
@@ -181,7 +185,6 @@ describe("encryptPartnerSharedProjection / decryptPartnerSharedProjection", () =
         trackBBT: false,
         trackCervicalMucus: false,
         unpredictableCycle: false,
-        usageGoal: "health",
       },
       dayLogs: [],
       symptomRecords: [],
@@ -194,6 +197,81 @@ describe("encryptPartnerSharedProjection / decryptPartnerSharedProjection", () =
       const envelope = encryptPartnerSharedProjection(keyHex, buildPayload({ generation }));
       expect(envelope.checksumSHA256).toMatch(/^[0-9a-f]{64}$/);
     }
+  });
+
+  it("does not emit a plain SHA-256 of the payload as the digest the server stores", () => {
+    const payload = buildPayload();
+    const envelope = encryptPartnerSharedProjection(keyHex, payload);
+    const plainDigest = bytesToHex(sha256(utf8ToBytes(JSON.stringify(payload))));
+
+    expect(envelope.checksumSHA256).not.toBe(plainDigest);
+  });
+
+  it("emits a digest that depends on the grant key", () => {
+    const payload = buildPayload();
+    const otherKeyHex = derivePartnerShareKeyHex("b".repeat(22), INVITE_SECRET_HEX);
+
+    expect(encryptPartnerSharedProjection(keyHex, payload).checksumSHA256).toBe(
+      encryptPartnerSharedProjection(keyHex, payload).checksumSHA256,
+    );
+    expect(encryptPartnerSharedProjection(keyHex, payload).checksumSHA256).not.toBe(
+      encryptPartnerSharedProjection(otherKeyHex, payload).checksumSHA256,
+    );
+  });
+
+  it("keys the digest with a subkey separate from the AEAD key", () => {
+    const payload = buildPayload();
+    const encodedPayload = utf8ToBytes(JSON.stringify(payload));
+    const envelope = encryptPartnerSharedProjection(keyHex, payload);
+    const aeadKeyedDigest = bytesToHex(hmac(sha256, hexToBytes(keyHex), encodedPayload));
+
+    expect(envelope.checksumSHA256).not.toBe(aeadKeyedDigest);
+  });
+
+  it("accepts an envelope carrying the legacy plaintext SHA-256 digest (rollout)", () => {
+    const payload = buildPayload();
+    const envelope = encryptPartnerSharedProjection(keyHex, payload);
+    const legacyDigest = bytesToHex(sha256(utf8ToBytes(JSON.stringify(payload))));
+
+    const decrypted = decryptPartnerSharedProjection(keyHex, {
+      ...envelope,
+      checksumSHA256: legacyDigest,
+    });
+
+    expect(decrypted.grantID).toBe(payload.grantID);
+  });
+
+  it("rejects an envelope whose digest is neither the keyed nor the legacy digest", () => {
+    const envelope = encryptPartnerSharedProjection(keyHex, buildPayload());
+
+    for (const checksumSHA256 of ["0".repeat(64), "", envelope.checksumSHA256.slice(1)]) {
+      expect(() =>
+        decryptPartnerSharedProjection(keyHex, { ...envelope, checksumSHA256 }),
+      ).toThrow("invalid_partner_projection");
+    }
+  });
+
+  it("rejects a digest computed over another payload", () => {
+    const envelope = encryptPartnerSharedProjection(keyHex, buildPayload());
+    const other = encryptPartnerSharedProjection(keyHex, buildPayload({ generation: 9 }));
+
+    expect(() =>
+      decryptPartnerSharedProjection(keyHex, {
+        ...envelope,
+        checksumSHA256: other.checksumSHA256,
+      }),
+    ).toThrow("invalid_partner_projection");
+  });
+
+  it("keeps the AEAD bound to the grant context when the digest is valid", () => {
+    const envelope = encryptPartnerSharedProjection(keyHex, buildPayload());
+
+    expect(() =>
+      decryptPartnerSharedProjection(keyHex, { ...envelope, accessLevel: "full" }),
+    ).toThrow();
+    expect(() =>
+      decryptPartnerSharedProjection(keyHex, { ...envelope, grantID: "grant-2" }),
+    ).toThrow();
   });
 
   it("preserves the generation counter across an encrypt/decrypt round-trip", () => {

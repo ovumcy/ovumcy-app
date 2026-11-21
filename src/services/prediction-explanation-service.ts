@@ -2,31 +2,35 @@ import { getDashboardCopy } from "../i18n/dashboard-copy";
 import type { ProfileRecord } from "../models/profile";
 import type { StatsCycleProjection } from "../models/stats";
 
-export function buildPredictionExplanation(
+export type PredictionExplanationKind =
+  | "approximate"
+  | "facts_only"
+  | "pregnancy_paused"
+  | "variable_ranges";
+
+// Which explanation applies, independent of locale; null when none does.
+export function resolvePredictionExplanationKind(
   profile: ProfileRecord,
   projection: StatsCycleProjection,
-  locale = "en",
-): string {
-  const dashboardCopy = getDashboardCopy(locale);
-
+): PredictionExplanationKind | null {
   if (projection.isPregnancyPaused) {
-    return dashboardCopy.pregnancyPausedHint;
+    return "pregnancy_paused";
   }
 
   if (profile.unpredictableCycle) {
-    return dashboardCopy.factsOnlyHint;
+    return "facts_only";
   }
 
   if (!projection.cycleAnchorDate) {
-    return "";
+    return null;
   }
 
   if (projection.isPredictionStale) {
-    return "";
+    return null;
   }
 
   if (profile.irregularCycle) {
-    return dashboardCopy.predictionsApproximateHint;
+    return "approximate";
   }
 
   if (
@@ -34,12 +38,38 @@ export function buildPredictionExplanation(
     projection.nextPeriodWindowEndDate &&
     projection.nextPeriodWindowStartDate !== projection.nextPeriodWindowEndDate
   ) {
-    return dashboardCopy.predictionVariableRangesHint;
+    return "variable_ranges";
   }
 
-  if (!projection.ovulationDate) {
-    return "";
-  }
+  return null;
+}
 
-  return "";
+export function buildPredictionExplanationText(
+  kind: Exclude<PredictionExplanationKind, "pregnancy_paused"> | null,
+  locale = "en",
+): string {
+  const dashboardCopy = getDashboardCopy(locale);
+
+  switch (kind) {
+    case "facts_only":
+      return dashboardCopy.factsOnlyHint;
+    case "approximate":
+      return dashboardCopy.predictionsApproximateHint;
+    case "variable_ranges":
+      return dashboardCopy.predictionVariableRangesHint;
+    default:
+      return "";
+  }
+}
+
+export function buildPredictionExplanation(
+  profile: ProfileRecord,
+  projection: StatsCycleProjection,
+  locale = "en",
+): string {
+  const kind = resolvePredictionExplanationKind(profile, projection);
+  if (kind === "pregnancy_paused") {
+    return getDashboardCopy(locale).pregnancyPausedHint;
+  }
+  return buildPredictionExplanationText(kind, locale);
 }

@@ -1,4 +1,5 @@
 import { hkdf } from "@noble/hashes/hkdf.js";
+import { hmac } from "@noble/hashes/hmac.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { fromByteArray, toByteArray } from "base64-js";
@@ -25,6 +26,14 @@ const PARTNER_SHARE_AAD_VERSION = "ovumcy-partner-share-v1";
 // explicit "this is the grant rotation step" domain separation); the info
 // encodes the per-grant context that must match between owner and partner.
 const PARTNER_SHARE_GRANT_SALT = utf8ToBytes("ovumcy-partner-share-grant-v1");
+
+// Domain labels for the payload-digest subkey. The digest travels in the
+// clear next to the ciphertext (the managed cloud stores it), so it is a keyed
+// HMAC under a subkey of K_grant that differs from the AEAD key: the AEAD key
+// is never reused as an HMAC key, and the server cannot confirm a guessed
+// plaintext by hashing it.
+const PARTNER_SHARE_DIGEST_SALT = utf8ToBytes("ovumcy-partner-share-digest-v1");
+const PARTNER_SHARE_DIGEST_INFO = utf8ToBytes("ovumcy-partner-share-payload-digest-v1");
 
 // Minimum length floor on the invite token. Confidentiality rests on the
 // client-only invite secret, but the token is still the redemption
@@ -147,12 +156,42 @@ type DecryptablePartnerSharedEnvelope = Pick<
   "grantID" | "accessLevel" | "schemaVersion" | "checksumSHA256" | "ciphertextBase64"
 >;
 
+/**
+ * Keyed digest of the plaintext payload: HMAC-SHA256 under a subkey derived
+ * from the grant key with its own HKDF domain label. Same 64-hex shape as the
+ * former plaintext SHA-256 so the server-side field is unchanged and opaque.
+ */
+function computePartnerSharePayloadDigestHex(
+  keyHex: string,
+  encodedPayload: Uint8Array,
+): string {
+  const digestKey = hkdf(
+    sha256,
+    hexToBytes(keyHex),
+    PARTNER_SHARE_DIGEST_SALT,
+    PARTNER_SHARE_DIGEST_INFO,
+    32,
+  );
+  return bytesToHex(hmac(sha256, digestKey, encodedPayload));
+}
+
+function constantTimeEqualsHex(left: string, right: string): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  let difference = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    difference |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
 export function encryptPartnerSharedProjection(
   keyHex: string,
   payload: PartnerSharedProjectionPayload,
 ): PartnerSharedProjectionEnvelope {
   const encodedPayload = utf8ToBytes(JSON.stringify(payload));
-  const checksumSHA256 = bytesToHex(sha256(encodedPayload));
+  const checksumSHA256 = computePartnerSharePayloadDigestHex(keyHex, encodedPayload);
   const aad = buildPartnerShareAad(
     payload.grantID,
     payload.accessLevel,
@@ -190,8 +229,16 @@ export function decryptPartnerSharedProjection(
     envelope.schemaVersion,
   );
   const encodedPayload = decryptPayload(keyHex, encryptedEnvelope, aad);
-  const checksumSHA256 = bytesToHex(sha256(encodedPayload));
-  if (checksumSHA256 !== envelope.checksumSHA256) {
+  // Rollout: an envelope written before the keyed digest carries the plain
+  // SHA-256 of the payload. The AEAD tag above already authenticated the
+  // plaintext, so accepting the legacy form leaks and weakens nothing; it is
+  // dropped once no owner build older than the keyed digest can still be
+  // served (docs/sync-trust-model.md, "Payload digest rollout").
+  const keyedDigest = computePartnerSharePayloadDigestHex(keyHex, encodedPayload);
+  const legacyDigest = bytesToHex(sha256(encodedPayload));
+  const keyedMatches = constantTimeEqualsHex(keyedDigest, envelope.checksumSHA256);
+  const legacyMatches = constantTimeEqualsHex(legacyDigest, envelope.checksumSHA256);
+  if (!keyedMatches && !legacyMatches) {
     throw new Error("invalid_partner_projection");
   }
 

@@ -446,7 +446,7 @@ async function defaultBuildPDFContent(
 
 export function buildExportCSVRows(
   dayLogs: readonly DayLogRecord[],
-  symptomRecords: readonly SymptomRecord[],
+  symptomRecords: readonly Pick<SymptomRecord, "id" | "label">[],
   temperatureUnit: ProfileRecord["temperatureUnit"] = "c",
   kickSessions: readonly KickCountSession[] = [],
 ): ExportCSVRow[] {
@@ -540,7 +540,7 @@ export function serializeExportCSV(
 
 function buildExportSymptomProjection(
   symptomIDs: readonly string[],
-  symptomLookup: Map<string, SymptomRecord>,
+  symptomLookup: Map<string, Pick<SymptomRecord, "id" | "label">>,
 ): { flags: ExportSymptomFlags; otherSymptoms: string[] } {
   const flags = createEmptyExportSymptomFlags();
   const otherSymptoms: string[] = [];

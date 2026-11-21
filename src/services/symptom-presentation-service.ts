@@ -18,7 +18,7 @@ export type PersonalizedSymptomOrderOptions = {
 };
 
 export function getSymptomDisplayLabel(
-  record: SymptomRecord,
+  record: Pick<SymptomRecord, "id" | "isDefault" | "label">,
   locale = "en",
 ): string {
   if (!record.isDefault) {
