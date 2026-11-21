@@ -1208,6 +1208,7 @@ describe("settings services", () => {
         deviceLabel: "Pixel 7",
         normalizedEndpoint: "http://192.168.1.20:8080",
       }),
+      { restoreInProgress: false },
     );
   });
 

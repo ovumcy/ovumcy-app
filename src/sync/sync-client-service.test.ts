@@ -894,6 +894,11 @@ describe("sync-client-service", () => {
       managedClientFactory,
     );
 
+    // A recovered device starts with no floor, so an unfinished-restore mark goes too.
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastRemoteGeneration: null }),
+      { restoreInProgress: false },
+    );
     expect(result).toEqual({
       ok: true,
       capabilities: expect.objectContaining({

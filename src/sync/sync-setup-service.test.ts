@@ -79,7 +79,9 @@ describe("sync-setup-service", () => {
       expect.objectContaining({
         normalizedEndpoint: "http://192.168.1.20:8080",
         setupStatus: "local_ready",
+        lastRemoteGeneration: null,
       }),
+      { restoreInProgress: false },
     );
     expect(await secretStore.readSyncSecrets()).toEqual(result.secrets);
   });
@@ -322,5 +324,33 @@ describe("sync-setup-service", () => {
       hasStoredSecrets: false,
     });
     await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    // The cleared secrets end the backup relationship, unfinished-restore mark included.
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ lastRemoteGeneration: null }),
+      { restoreInProgress: false },
+    );
+  });
+
+  it("keeps the unfinished-restore mark on a local-only draft save", async () => {
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    await saveSyncPreferencesDraft(
+      storage,
+      secretStore,
+      createDefaultSyncPreferencesRecord(),
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: "   ",
+        deviceLabel: " Phone ",
+      },
+      false,
+    );
+
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ deviceLabel: "Phone" }),
+      undefined,
+    );
   });
 });

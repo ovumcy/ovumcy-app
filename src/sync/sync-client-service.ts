@@ -1040,7 +1040,12 @@ export async function recoverSyncAccess(
       guestSessionExpiresAt: null,
       guestSessionRenewable: false,
     };
-    await storage.writeSyncPreferencesRecord(nextPreferences);
+    // A recovered device starts with no floor, like a fresh install: the
+    // fresh-install probe guards the backup, and an unfinished-restore mark
+    // from before could otherwise outlive any backup this device can restore.
+    await storage.writeSyncPreferencesRecord(nextPreferences, {
+      restoreInProgress: false,
+    });
 
     // Recovery establishes a fresh managed session context as well.
     await storage.writeManagedBillingCacheRecord(
@@ -1136,7 +1141,10 @@ export async function recoverSyncAccess(
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
   };
-  await storage.writeSyncPreferencesRecord(nextPreferences);
+  // No floor after recovery; see the managed branch for the restore mark.
+  await storage.writeSyncPreferencesRecord(nextPreferences, {
+    restoreInProgress: false,
+  });
 
   return {
     ok: true,
