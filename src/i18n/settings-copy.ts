@@ -582,6 +582,7 @@ const settingsCopyDe: SettingsCopy = {
     ...settingsCopyEn.common,
     cancelAction: "Abbrechen",
     confirmAction: "Bestätigen",
+    daysShort: "T",
     saveChanges: "Änderungen speichern",
     changeDate: "Datum wählen",
     clearDate: "Datum löschen",
@@ -596,6 +597,8 @@ const settingsCopyDe: SettingsCopy = {
     lastPeriodStart: "Startdatum der letzten Periode",
     lastPeriodStartHint:
       "Optionaler Fallback, wenn in Ihrem Journal noch kein Zyklusbeginn markiert ist.",
+    errorIncompatible:
+      "Die Periodendauer ist mit der Zykluslänge nicht vereinbar. Die Menstruation kann nicht fast den gesamten Zyklus einnehmen.",
     warningApproximate:
       "Mit diesen Werten lässt sich der Eisprung nicht zuverlässig berechnen. Die Vorhersage wird nur ungefähr sein.",
     infoAdjusted:
@@ -1202,6 +1205,7 @@ const settingsCopyFr: SettingsCopy = {
     ...settingsCopyEn.common,
     cancelAction: "Annuler",
     confirmAction: "Confirmer",
+    daysShort: "j",
     saveChanges: "Enregistrer les modifications",
     changeDate: "Choisir une date",
     clearDate: "Effacer la date",
@@ -1216,6 +1220,8 @@ const settingsCopyFr: SettingsCopy = {
     lastPeriodStart: "Date de début des dernières règles",
     lastPeriodStartHint:
       "Valeur de secours facultative si votre journal n'a pas encore de début de cycle marqué.",
+    errorIncompatible:
+      "La durée des règles est incompatible avec la durée du cycle. Les règles ne peuvent pas occuper presque tout le cycle.",
     warningApproximate:
       "Avec ces valeurs, l'ovulation ne peut pas être calculée de façon fiable. La prédiction sera approximative.",
     infoAdjusted:
