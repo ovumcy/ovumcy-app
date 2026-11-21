@@ -376,7 +376,7 @@ export function useBackupSyncScreenController(
       partnerReshareRequiredGrantIDs,
       partnerStatusMessage,
       pendingPartnerInviteToken,
-      isPartnerInviteReplaced: isPartnerInviteReplaced && pendingPartnerInviteToken.length > 0,
+      isPartnerInviteReplaced,
       presentation,
       preferences: state.syncPreferences,
       guestUpgradeEmailValue: guestUpgrade.emailValue,

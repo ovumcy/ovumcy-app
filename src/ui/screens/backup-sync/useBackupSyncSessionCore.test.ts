@@ -224,6 +224,18 @@ describe("useBackupSyncSessionCore", () => {
       await unmount();
     });
 
+    it("ignores an inbound link that carries no invite", async () => {
+      const { result, unmount } = await renderAndSettle();
+
+      await act(async () => {
+        emitLinkingURL("ovumcy://settings");
+      });
+
+      expect(readManagedPartnerInviteToken()).toBe("");
+      expect(result.current.pendingPartnerInviteToken).toBe("");
+      await unmount();
+    });
+
     it("does not retain the raw link or its secret in the returned hook state", async () => {
       mockSearchParams = { invite_token: TOKEN };
       mockLinkingURL = `ovumcy://backup-sync?invite_token=${TOKEN}#k=${SECRET}`;
