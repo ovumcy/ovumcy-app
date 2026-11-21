@@ -5283,6 +5283,30 @@ describe("snapshot AAD across devices", () => {
       });
     });
 
+    it.each([
+      ["a missing backup on an unmarked device", "blob_not_found", false],
+      ["a network failure on a marked device", "network_failed", true],
+    ] as const)("writes no preferences on %s", async (_label, errorCode, restoreInProgress) => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const preferences = { ...selfHostedPreferences, restoreInProgress };
+      const storage = createLocalAppStorageMock();
+      jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue(preferences);
+
+      const result = await runSyncRestore(
+        storage,
+        createSyncSecretStoreMock({ ...deviceA.record, authSessionToken: "session-2" }),
+        preferences,
+        jest.fn().mockReturnValue(
+          createAPIClientMock({
+            getBlob: jest.fn().mockResolvedValue({ ok: false, errorCode }),
+          }),
+        ),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode });
+      expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
     it("keeps restore allowed while a partial restore is marked, so a retry can finish it", async () => {
       const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
       const { blob } = await uploadFromDevice(deviceA.record);
