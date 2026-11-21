@@ -343,6 +343,20 @@ What revoke cannot do: symmetric AEAD does not support post-hoc key revocation f
 
 Decision (2026-07-23): a revoke is permanent for the issued handshake — a repeat accept of the consumed invite, or any invite issued before the revoke, never resurrects access. Sharing with the same person again is legitimate and supported, but only through a fresh invite issued after the revoke: a new handshake deriving a new `K_grant`, with the old link and the old stored projection dead. Re-sharing the same pair via a fresh post-revoke invite is a supported scenario, not a revocation bypass.
 
+## Partner-Share Payload Digest and Summary Snapshot
+
+**Keyed digest.** The `checksumSHA256` field next to a projection's ciphertext is visible to the managed cloud. A plain SHA-256 of the plaintext would let the server confirm a guess against a low-entropy payload, so the owner emits an HMAC-SHA256 under a subkey derived from `K_grant` with its own HKDF domain label (never the AEAD key). The field name and 64-hex shape are unchanged, so the server stays unaware and treats it as opaque. The AEAD associated data (`grantID`, `accessLevel`, `schemaVersion`) is built identically at encrypt and decrypt.
+
+*Rollout.* Partner acceptance of both digests and owner emission of the keyed one ship in the same build; the app has no public release yet, so no deployed owner build emits the legacy form. Decrypt still accepts the legacy plaintext digest because the AEAD tag already authenticates the plaintext, so accepting it leaks nothing. The legacy acceptance can be removed once the first public release has shipped and every projection stored by a pre-release build has been superseded (a projection is a full snapshot re-uploaded on every sync, so one release cycle after the first public release is enough).
+
+**Summary snapshot.** For a summary-level grant the owner device computes what the partner's summary view renders (cycle day, next-period date and window, a prediction-hint kind, last/average cycle length, average period length, logged-day count) and ships it as the optional `summarySnapshot` field inside the AEAD payload. A summary payload carries `dayLogs: []`, `symptomRecords: []` and no date-valued profile field, so no per-day date reaches the partner. `PARTNER_SHARE_SCHEMA_VERSION` stays 1 (the field is additive); a partner reading a payload without it, or with a malformed one, recomputes from `profile` and `dayLogs` as before. Full level is unchanged. `usageGoal` is not shared at either level, and symptom records carry only `id`, `label` and `isDefault`.
+
+*Time passing.* The snapshot records the owner's local calendar date at generation (`asOfDate`). The partner advances the cycle day by the whole local days elapsed since, only while the predicted next-period window has not passed; afterwards the cycle day is shown as unknown while the shipped dates stay, because rolling an elapsed prediction forward would invent a cycle the owner device never computed. An overdue ("stale") day count keeps counting from its anchor. A partner clock behind `asOfDate` shows the day as generated. The 14-day snapshot staleness rule hides the prediction block entirely after that.
+
+*Medical safety.* While an active pregnancy record exists, or the owner is pregnancy-paused, the snapshot carries no prediction value (cycle day, dates all null, state and hint `facts_only`); the wording is the neutral facts-only one, never pregnancy-specific.
+
+**Upload size.** The managed API refuses a projection ciphertext over 2 MiB (`413 payload_too_large`, also read from a bare 413). The client refuses a larger ciphertext locally without sending a request, and a `payload_too_large` result backs off later pushes like a rate limit does.
+
 ## Managed Session Renewal
 
 The app declares `refresh_supported` on every managed register, login, TOTP-challenge completion, and guest-partner invite accept. A managed cloud that understands the flag answers with a short-lived access session plus a refresh token; one that does not simply ignores it and returns the long-lived session as before, so the client works against either.

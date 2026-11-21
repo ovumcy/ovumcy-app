@@ -148,6 +148,12 @@ export async function syncManagedPartnerSharedProjections(
       // The limit is per account, so the remaining grants would 429 too.
       backOffManagedPartnerProjectionPush(uploadResult.retryAfterSeconds);
       break;
+    } else if (uploadResult.errorCode === "payload_too_large") {
+      // The projection grows with the owner's history, so retrying it on every
+      // sync cannot succeed; hold later pushes for the default window. The
+      // remaining grants in this pass still run: a summary-level grant's
+      // payload is far smaller than a full-level one's.
+      backOffManagedPartnerProjectionPush(undefined);
     }
   }
 
