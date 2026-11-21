@@ -5,8 +5,8 @@
 // chain may consult loadManagedBillingSnapshot or require a sync session.
 //
 // Lapse / scope policy (same rule as every premium gate in this codebase):
-// ownership gates ONLY (i) starting or creating new pregnancy data and
-// (ii) rendering pregnancy-mode surfaces. Reading and exporting already-logged
+// ownership gates ONLY the entry of new pregnancy data (starting a pregnancy,
+// logging into the module). Reading, rendering and exporting already-logged
 // data must never consult it — baseline local tracking, local analytics, and
 // CSV/JSON export stay available regardless (local-first privacy boundary
 // invariant, see SECURITY.md).
