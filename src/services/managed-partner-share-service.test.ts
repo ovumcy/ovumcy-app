@@ -1303,6 +1303,29 @@ describe("managed-partner-share-service", () => {
       expect(secrets.grantKeysByGrantID["grant-2"]).toBeDefined();
     });
 
+    it("keeps a key accepted under a newer invite than the revoked row names", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture({ sourceInviteID: "invite-2" }),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [buildGrantFixture({ revokedAt: "2026-04-06T00:00:00.000Z" })],
+        },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]?.sourceInviteID).toBe("invite-2");
+    });
+
     it("keeps an owner key even if the listing shows the grant revoked as received", async () => {
       const store = createPartnerShareSecretStoreMock();
       await storeOwnerGrantKeyFixture(store);

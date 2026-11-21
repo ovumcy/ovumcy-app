@@ -229,11 +229,15 @@ export async function reconcileManagedPartnerShareKeys(
     // A received grant the server lists as revoked can never be read again,
     // so its key and replay markers go. A grant missing from the listing is
     // kept: a partial or failed listing must not cost the partner a key the
-    // single-use invite cannot restore.
+    // single-use invite cannot restore. Only a key from the revoked row's own
+    // invite goes, so a listing fetched before a re-share accept cannot delete
+    // the key just stored under the new invite.
     for (const grant of overview.sharedWithMe) {
+      const receivedKey = record.grantKeysByGrantID[grant.id];
       if (
         grant.revokedAt !== null &&
-        record.grantKeysByGrantID[grant.id]?.role === "partner"
+        receivedKey?.role === "partner" &&
+        receivedKey.sourceInviteID === (grant.sourceInviteID?.trim() ?? "")
       ) {
         delete record.grantKeysByGrantID[grant.id];
         delete record.partnerLastSeenGenerationByGrantID[grant.id];
@@ -456,11 +460,11 @@ export async function loadManagedPartnerProjection(
         errorCode: "invalid_partner_projection",
       } satisfies ManagedPartnerShareResult<PartnerSharedProjectionPayload>;
     }
-    const floorInviteID = Object.hasOwn(record.partnerLastSeenInviteIDByGrantID, grant.id)
+    const floorInviteID = Object.prototype.hasOwnProperty.call(record.partnerLastSeenInviteIDByGrantID, grant.id)
       ? record.partnerLastSeenInviteIDByGrantID[grant.id]
       : undefined;
     const lastSeen =
-      Object.hasOwn(record.partnerLastSeenGenerationByGrantID, grant.id) &&
+      Object.prototype.hasOwnProperty.call(record.partnerLastSeenGenerationByGrantID, grant.id) &&
       (floorInviteID === undefined || floorInviteID === keyInviteID)
         ? record.partnerLastSeenGenerationByGrantID[grant.id]
         : undefined;
@@ -510,7 +514,7 @@ function pickGrantKey(
   grantKeysByGrantID: PartnerShareSecretsRecord["grantKeysByGrantID"],
   grantID: string,
 ): ReadGrantKey | null {
-  if (!Object.hasOwn(grantKeysByGrantID, grantID)) {
+  if (!Object.prototype.hasOwnProperty.call(grantKeysByGrantID, grantID)) {
     return null;
   }
   const record = grantKeysByGrantID[grantID];
