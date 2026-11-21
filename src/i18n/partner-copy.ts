@@ -68,6 +68,8 @@ const partnerCopyEn = {
     "The owner has not uploaded shared data for this grant yet.",
   sharedViewLocked:
     "This device cannot open the shared view because the invite key is missing.",
+  sharedViewRekeyed:
+    "The owner renewed this share. Open the new invite link from the owner to keep viewing.",
   sharedViewSummaryHint:
     "Summary access keeps the lighter shared overview without detailed day-by-day history.",
   sharedViewFullHint:
@@ -211,6 +213,8 @@ const partnerCopyDe = {
     "Die Besitzerin oder der Besitzer hat für diesen Zugriff noch keine geteilten Daten hochgeladen.",
   sharedViewLocked:
     "Diese geteilte Ansicht kann auf diesem Gerät nicht geöffnet werden, weil der Einladungsschlüssel fehlt.",
+  sharedViewRekeyed:
+    "Die Freigabe wurde erneuert. Öffne den neuen Einladungslink, um weiter mitzulesen.",
   sharedViewSummaryHint:
     "Zusammenfassender Zugriff behält die leichtere Übersicht ohne detaillierte Tageshistorie.",
   sharedViewFullHint:
@@ -359,6 +363,8 @@ const partnerCopyFr = {
     "Le propriétaire n’a pas encore téléversé de données partagées pour cet accès.",
   sharedViewLocked:
     "Cet appareil ne peut pas ouvrir la vue partagée, car la clé d’invitation est absente.",
+  sharedViewRekeyed:
+    "Ce partage a été renouvelé. Ouvrez le nouveau lien d’invitation pour continuer à le consulter.",
   sharedViewSummaryHint:
     "L’accès résumé conserve la vue partagée légère sans historique détaillé jour par jour.",
   sharedViewFullHint:
@@ -506,6 +512,8 @@ const partnerCopyRu = {
     "Владелец ещё не загрузил общие данные для этого доступа.",
   sharedViewLocked:
     "На этом устройстве нельзя открыть общий просмотр, потому что не найден ключ приглашения.",
+  sharedViewRekeyed:
+    "Владелец обновил доступ. Откройте новую ссылку-приглашение, чтобы продолжить просмотр.",
   sharedViewSummaryHint:
     "Режим сводки сохраняет облегчённый общий обзор без подробной истории по дням.",
   sharedViewFullHint:
@@ -649,6 +657,8 @@ const partnerCopyEs = {
     "La persona propietaria todavía no ha subido datos compartidos para este acceso.",
   sharedViewLocked:
     "Este dispositivo no puede abrir la vista compartida porque falta la clave de invitación.",
+  sharedViewRekeyed:
+    "Se renovó este acceso compartido. Abre el nuevo enlace de invitación para seguir viéndolo.",
   sharedViewSummaryHint:
     "El acceso de resumen mantiene la vista compartida ligera sin historial detallado día a día.",
   sharedViewFullHint:
@@ -794,6 +804,8 @@ const partnerCopyIt = {
     "Il proprietario non ha ancora caricato dati condivisi per questo accesso.",
   sharedViewLocked:
     "Questo dispositivo non può aprire la vista condivisa perché manca la chiave di invito.",
+  sharedViewRekeyed:
+    "Questa condivisione è stata rinnovata. Apri il nuovo link di invito per continuare a vederla.",
   sharedViewSummaryHint:
     "L'accesso di riepilogo mantiene la panoramica condivisa più leggera senza cronologia dettagliata giorno per giorno.",
   sharedViewFullHint:

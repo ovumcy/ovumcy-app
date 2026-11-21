@@ -666,6 +666,30 @@ describe("PartnerSharedScreen state orchestration", () => {
     await renderPartnerSharedScreen();
 
     await screen.findByTestId("partner-shared-summary-card");
+    expect(mockLoadManagedPartnerProjection).toHaveBeenCalledTimes(1);
+    expect(mockLoadManagedPartnerProjection).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "managed",
+      expect.objectContaining({ id: "grant-1" }),
+    );
+  });
+
+  it("asks for the new invite when the owner re-shared under a new key", async () => {
+    setupMocksWithPayload(createProjectionPayload());
+    mockLoadManagedPartnerProjection.mockResolvedValue({
+      ok: false,
+      errorCode: "partner_grant_rekeyed",
+    });
+
+    await renderPartnerSharedScreen();
+
+    await screen.findByTestId("partner-shared-error-banner");
+    expect(
+      screen.getByText(
+        "The owner renewed this share. Open the new invite link from the owner to keep viewing.",
+      ),
+    ).toBeTruthy();
   });
 
   it("maps a not-connected access error to its sign-in message", async () => {

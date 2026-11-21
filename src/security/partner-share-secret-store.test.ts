@@ -126,6 +126,8 @@ describe("partner-share-secret-store", () => {
             keyHex: "aa".repeat(32),
             rotatedAtISO: "2026-05-01T00:00:00.000Z",
             sourceInviteID: "invite_1",
+            role: "partner",
+            accountID: "account_1",
           },
         },
         pendingInviteKeysByInviteID: { invite_2: "bb".repeat(32) },
@@ -135,6 +137,7 @@ describe("partner-share-secret-store", () => {
         },
         ownerGenerationByGrantID: { grant_1: 3 },
         partnerLastSeenGenerationByGrantID: { grant_1: 2 },
+        partnerLastSeenInviteIDByGrantID: { grant_1: "invite_1" },
       };
 
       await store.writePartnerShareSecrets(record);
@@ -316,6 +319,57 @@ describe("partner-share-secret-store", () => {
         sourceInviteID: "invite_1",
       });
       expect(second.pendingInviteAccessLevelsByInviteID).toEqual({ invite_2: "full" });
+    });
+
+    it("reads a key record without a side or account as before and drops an unknown side", async () => {
+      const backend = createBackendMock();
+      backend.state.set(
+        STORE_KEY,
+        JSON.stringify({
+          grantKeysByGrantID: {
+            grant_1: { keyHex: "aa".repeat(32), rotatedAtISO: "", sourceInviteID: "invite_1" },
+            grant_2: {
+              keyHex: "bb".repeat(32),
+              rotatedAtISO: "",
+              sourceInviteID: "invite_2",
+              role: "admin",
+              accountID: "  ",
+            },
+          },
+          partnerLastSeenGenerationByGrantID: { grant_1: 4 },
+        }),
+      );
+      const store = createPartnerShareSecretStore(backend);
+
+      const record = await store.readPartnerShareSecrets();
+      expect(record.grantKeysByGrantID.grant_1).toEqual({
+        keyHex: "aa".repeat(32),
+        rotatedAtISO: "",
+        sourceInviteID: "invite_1",
+      });
+      expect(record.grantKeysByGrantID.grant_2).toEqual({
+        keyHex: "bb".repeat(32),
+        rotatedAtISO: "",
+        sourceInviteID: "invite_2",
+      });
+      expect(record.partnerLastSeenGenerationByGrantID).toEqual({ grant_1: 4 });
+      expect(record.partnerLastSeenInviteIDByGrantID).toEqual({});
+    });
+
+    it("reads ids named after Object members as plain entries", async () => {
+      const backend = createBackendMock();
+      backend.state.set(
+        STORE_KEY,
+        '{"grantKeysByGrantID":{"__proto__":{"keyHex":"' +
+          "aa".repeat(32) +
+          '","rotatedAtISO":"","sourceInviteID":"invite_1"}}}',
+      );
+      const store = createPartnerShareSecretStore(backend);
+
+      const record = await store.readPartnerShareSecrets();
+      expect(Object.hasOwn(record.grantKeysByGrantID, "__proto__")).toBe(true);
+      expect(record.grantKeysByGrantID.constructor).toBeUndefined();
+      expect(record.ownerGenerationByGrantID.toString).toBeUndefined();
     });
 
     it("treats a non-object stored maps section as empty", async () => {

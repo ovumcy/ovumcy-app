@@ -52,6 +52,24 @@ function createPartnerShareSecretStoreMock() {
   return createPartnerShareSecretStore(backend);
 }
 
+// The owner derives the same K_grant as the partner; only the recorded side
+// differs, and only an owner-side key may encrypt an upload.
+async function storeOwnerGrantKeyFixture(
+  store: ReturnType<typeof createPartnerShareSecretStoreMock>,
+) {
+  await storeAcceptedManagedPartnerGrantKey(
+    store,
+    buildGrantFixture(),
+    INVITE_TOKEN,
+    INVITE_SECRET_HEX,
+    NOW,
+  );
+  await store.mutatePartnerShareSecrets((record) => {
+    record.grantKeysByGrantID["grant-1"]!.role = "owner";
+    record.grantKeysByGrantID["grant-1"]!.accountID = "owner-1";
+  });
+}
+
 function buildInviteFixture(
   overrides: Partial<ManagedCloudPartnerInvite> = {},
 ): ManagedCloudPartnerInvite {
@@ -767,13 +785,7 @@ describe("managed-partner-share-service", () => {
     it("forwards a rate-limited upload with the server's Retry-After", async () => {
       const syncSecretStore = await setupConnectedSyncSecrets();
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
-      await storeAcceptedManagedPartnerGrantKey(
-        partnerShareSecretStore,
-        buildGrantFixture(),
-        INVITE_TOKEN,
-        INVITE_SECRET_HEX,
-        NOW,
-      );
+      await storeOwnerGrantKeyFixture(partnerShareSecretStore);
       global.fetch = jest.fn(
         async () =>
           new Response(JSON.stringify({ error: "rate_limited" }), {
@@ -800,13 +812,7 @@ describe("managed-partner-share-service", () => {
     async function setupOwnerWithGrantKey() {
       const syncSecretStore = await setupConnectedSyncSecrets();
       const partnerShareSecretStore = createPartnerShareSecretStoreMock();
-      await storeAcceptedManagedPartnerGrantKey(
-        partnerShareSecretStore,
-        buildGrantFixture(),
-        INVITE_TOKEN,
-        INVITE_SECRET_HEX,
-        NOW,
-      );
+      await storeOwnerGrantKeyFixture(partnerShareSecretStore);
       return { syncSecretStore, partnerShareSecretStore };
     }
 
@@ -998,5 +1004,366 @@ describe("managed-partner-share-service", () => {
       const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
       expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(5);
     });
+
+    it("drops the floor when a re-share replaces the key under a new invite", async () => {
+      const { syncSecretStore, partnerShareSecretStore } = await setupPartnerGrant();
+      await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+        record.partnerLastSeenGenerationByGrantID["grant-1"] = 9;
+        record.partnerLastSeenInviteIDByGrantID["grant-1"] = "invite-1";
+      });
+
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        buildGrantFixture({ sourceInviteID: "invite-2" }),
+        INVITE_TOKEN,
+        "22".repeat(32),
+        NOW,
+      );
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBeUndefined();
+      expect(secrets.partnerLastSeenInviteIDByGrantID["grant-1"]).toBeUndefined();
+
+      mockProjectionGetReturnsPayload(
+        secrets.grantKeysByGrantID["grant-1"]!.keyHex,
+        buildProjectionPayload({ generation: 1 }),
+      );
+      await expect(
+        loadManagedPartnerProjection(syncSecretStore, partnerShareSecretStore, "managed", {
+          id: "grant-1",
+          sourceInviteID: "invite-2",
+        }),
+      ).resolves.toEqual({ ok: true, value: expect.objectContaining({ generation: 1 }) });
+      const after = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(after.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(1);
+      expect(after.partnerLastSeenInviteIDByGrantID["grant-1"]).toBe("invite-2");
+    });
+
+    it("keeps the floor when the same invite is accepted again", async () => {
+      const { partnerShareSecretStore } = await setupPartnerGrant();
+      await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+        record.partnerLastSeenGenerationByGrantID["grant-1"] = 9;
+        record.partnerLastSeenInviteIDByGrantID["grant-1"] = "invite-1";
+      });
+
+      await storeAcceptedManagedPartnerGrantKey(
+        partnerShareSecretStore,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(9);
+    });
+
+    it("ignores a floor recorded under another invite than the key's", async () => {
+      const { syncSecretStore, partnerShareSecretStore, shareKey } =
+        await setupPartnerGrant();
+      await partnerShareSecretStore.mutatePartnerShareSecrets((record) => {
+        record.partnerLastSeenGenerationByGrantID["grant-1"] = 9;
+        record.partnerLastSeenInviteIDByGrantID["grant-1"] = "invite-0";
+      });
+      mockProjectionGetReturnsPayload(shareKey, buildProjectionPayload({ generation: 2 }));
+
+      await expect(
+        loadManagedPartnerProjection(syncSecretStore, partnerShareSecretStore, "managed", {
+          id: "grant-1",
+        }),
+      ).resolves.toEqual({ ok: true, value: expect.objectContaining({ generation: 2 }) });
+      const secrets = await partnerShareSecretStore.readPartnerShareSecrets();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBe(2);
+      expect(secrets.partnerLastSeenInviteIDByGrantID["grant-1"]).toBe("invite-1");
+    });
+
+    it("answers partner_grant_rekeyed without a fetch when the listing names a newer invite", async () => {
+      const { syncSecretStore, partnerShareSecretStore } = await setupPartnerGrant();
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await expect(
+        loadManagedPartnerProjection(syncSecretStore, partnerShareSecretStore, "managed", {
+          id: "grant-1",
+          sourceInviteID: "invite-2",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "partner_grant_rekeyed" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("grant direction", () => {
+    it("records a received key as the partner's, under the partner account", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]).toEqual(
+        expect.objectContaining({ role: "partner", accountID: "partner-1" }),
+      );
+    });
+
+    it("records a rotated owner key as the owner's, under the owner account", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeIssuedManagedPartnerInviteKey(store, {
+        invite: buildInviteFixture(),
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
+      }, "summary");
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]).toEqual(
+        expect.objectContaining({ role: "owner", accountID: "owner-1" }),
+      );
+    });
+
+    it("never encrypts an upload under a received key, whatever the listing says", async () => {
+      const syncSecretStore = await setupConnectedSyncSecrets();
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await expect(
+        uploadManagedPartnerProjection(syncSecretStore, "managed", {
+          projection: buildProjectionPayload({ ownerAccountID: "partner-1" }),
+          partnerShareSecretStore: store,
+          listedSourceInviteID: "invite-1",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "share_key_unavailable" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("refuses an owner key created under another account than the projection's", async () => {
+      const syncSecretStore = await setupConnectedSyncSecrets();
+      const store = createPartnerShareSecretStoreMock();
+      await storeOwnerGrantKeyFixture(store);
+      const fetchMock = jest.fn();
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await expect(
+        uploadManagedPartnerProjection(syncSecretStore, "managed", {
+          projection: buildProjectionPayload({ ownerAccountID: "owner-2" }),
+          partnerShareSecretStore: store,
+          listedSourceInviteID: "invite-1",
+        }),
+      ).resolves.toEqual({ ok: false, errorCode: "share_key_unavailable" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("uploads under a key written before the side was recorded", async () => {
+      const syncSecretStore = await setupConnectedSyncSecrets();
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      await store.mutatePartnerShareSecrets((record) => {
+        delete record.grantKeysByGrantID["grant-1"]!.role;
+        delete record.grantKeysByGrantID["grant-1"]!.accountID;
+      });
+      const fetchMock = jest.fn(
+        async () =>
+          new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          }),
+      );
+      global.fetch = fetchMock as unknown as typeof fetch;
+
+      await uploadManagedPartnerProjection(syncSecretStore, "managed", {
+        projection: buildProjectionPayload(),
+        partnerShareSecretStore: store,
+        listedSourceInviteID: "invite-1",
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("never replaces a received key with an owner key for the same grant id", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture({ sourceInviteID: "invite-0" }),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      const received = (await store.readPartnerShareSecrets()).grantKeysByGrantID["grant-1"];
+      await storeIssuedManagedPartnerInviteKey(store, {
+        invite: buildInviteFixture(),
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
+      }, "summary");
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]).toEqual(received);
+    });
+  });
+
+  describe("owner re-share under a reused grant id", () => {
+    it("replaces the key derived under the earlier invite once the new invite's key is here", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeIssuedManagedPartnerInviteKey(store, {
+        invite: buildInviteFixture(),
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
+      }, "summary");
+      await reconcileManagedPartnerShareKeys(
+        store,
+        { owned: { invites: [], grants: [buildGrantFixture()] }, sharedWithMe: [] },
+        NOW,
+      );
+      const firstKey = (await store.readPartnerShareSecrets()).grantKeysByGrantID["grant-1"];
+
+      await storeIssuedManagedPartnerInviteKey(store, {
+        invite: buildInviteFixture({ id: "invite-2" }),
+        inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}-2`,
+      }, "full");
+      await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: {
+            invites: [],
+            grants: [buildGrantFixture({ sourceInviteID: "invite-2", accessLevel: "full" })],
+          },
+          sharedWithMe: [],
+        },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      const replaced = secrets.grantKeysByGrantID["grant-1"];
+      expect(replaced?.sourceInviteID).toBe("invite-2");
+      expect(replaced?.keyHex).not.toBe(firstKey?.keyHex);
+      expect(replaced).toEqual(
+        expect.objectContaining({ accessLevel: "full", role: "owner", accountID: "owner-1" }),
+      );
+      expect(secrets.consumedInviteIDs["invite-2"]?.grantID).toBe("grant-1");
+      expect(secrets.pendingInviteKeysByInviteID["invite-2"]).toBeUndefined();
+    });
+  });
+
+  describe("received grant revoked", () => {
+    it("purges the key and replay markers of a received grant listed as revoked", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture(),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      await storeAcceptedManagedPartnerGrantKey(
+        store,
+        buildGrantFixture({ id: "grant-2" }),
+        INVITE_TOKEN,
+        INVITE_SECRET_HEX,
+        NOW,
+      );
+      await store.mutatePartnerShareSecrets((record) => {
+        record.partnerLastSeenGenerationByGrantID["grant-1"] = 4;
+        record.partnerLastSeenInviteIDByGrantID["grant-1"] = "invite-1";
+      });
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [buildGrantFixture({ revokedAt: "2026-04-06T00:00:00.000Z" })],
+        },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]).toBeUndefined();
+      expect(secrets.partnerLastSeenGenerationByGrantID["grant-1"]).toBeUndefined();
+      expect(secrets.partnerLastSeenInviteIDByGrantID["grant-1"]).toBeUndefined();
+      // Missing from the listing is not revoked: the key stays.
+      expect(secrets.grantKeysByGrantID["grant-2"]).toBeDefined();
+    });
+
+    it("keeps an owner key even if the listing shows the grant revoked as received", async () => {
+      const store = createPartnerShareSecretStoreMock();
+      await storeOwnerGrantKeyFixture(store);
+
+      await reconcileManagedPartnerShareKeys(
+        store,
+        {
+          owned: { invites: [], grants: [] },
+          sharedWithMe: [buildGrantFixture({ revokedAt: "2026-04-06T00:00:00.000Z" })],
+        },
+        NOW,
+      );
+
+      const secrets = await store.readPartnerShareSecrets();
+      expect(secrets.grantKeysByGrantID["grant-1"]?.role).toBe("owner");
+    });
+  });
+
+  describe("server ids that name Object members", () => {
+    it.each(["__proto__", "constructor", "toString"])(
+      "treats grant id %p as having no key instead of throwing",
+      async (grantID) => {
+        const syncSecretStore = await setupConnectedSyncSecrets();
+        const store = createPartnerShareSecretStoreMock();
+        const fetchMock = jest.fn();
+        global.fetch = fetchMock as unknown as typeof fetch;
+
+        await expect(
+          uploadManagedPartnerProjection(syncSecretStore, "managed", {
+            projection: buildProjectionPayload({ grantID }),
+            partnerShareSecretStore: store,
+            listedSourceInviteID: "invite-1",
+          }),
+        ).resolves.toEqual({ ok: false, errorCode: "share_key_unavailable" });
+        await expect(
+          loadManagedPartnerProjection(syncSecretStore, store, "managed", { id: grantID }),
+        ).resolves.toEqual({ ok: false, errorCode: "share_key_unavailable" });
+        expect(fetchMock).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["__proto__", "constructor"])(
+      "rotates and stores a key for grant id %p",
+      async (grantID) => {
+        const store = createPartnerShareSecretStoreMock();
+        await storeIssuedManagedPartnerInviteKey(store, {
+          invite: buildInviteFixture(),
+          inviteURL: `https://invite.ovumcy.cloud/backup-sync?invite_token=${INVITE_TOKEN}`,
+        }, "summary");
+
+        await reconcileManagedPartnerShareKeys(
+          store,
+          { owned: { invites: [], grants: [buildGrantFixture({ id: grantID })] }, sharedWithMe: [] },
+          NOW,
+        );
+
+        const secrets = await store.readPartnerShareSecrets();
+        expect(Object.hasOwn(secrets.grantKeysByGrantID, grantID)).toBe(true);
+        expect(secrets.grantKeysByGrantID[grantID]?.role).toBe("owner");
+      },
+    );
   });
 });
