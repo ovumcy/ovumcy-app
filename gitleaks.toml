@@ -8,28 +8,22 @@
 useDefault = true
 
 [allowlist]
-  # Broad, path-based allowlisting is intentional and scoped to a file class
-  # that is legitimately allowed to carry fixture values: TypeScript test
-  # files. These paths are never production source and are not reachable at
-  # runtime. Mirrors ovumcy-web's '_test\.go$' allowlist, retargeted to this
-  # repo's '*.test.ts' / '*.test.tsx' convention.
+  # Only the test files that carry a triaged public fixture are allowlisted;
+  # every other test file is scanned like production source, so a real secret
+  # pasted into a new test is still caught. Each file below holds the golden
+  # signed entitlement JWT (pinned to match the Go signer) or a deep-link
+  # query sample, both of which trip generic-api-key; neither is a credential.
+  # A new fixture file is added here deliberately, not by glob.
   paths = [
-    # All TypeScript test files repo-wide. The golden crypto interop vectors
-    # live here: the Ed25519 public key and signed entitlement JWT pinned to
-    # match the Go signer in src/security/entitlement-token.test.ts (reused by
-    # src/services/managed-premium-features-service.test.ts) exercise
-    # token-verification and the end-to-end entitlement path without any
-    # private key. gitleaks' generic-api-key rule flags the base64 token
-    # string; it is a public, non-secret test vector.
-    '''\.test\.tsx?$''',
+    '''src/security/deep-link-query-parsing\.test\.tsx$''',
+    '''src/security/entitlement-token\.test\.ts$''',
+    '''src/services/managed-premium-features-service\.test\.ts$''',
+    '''src/services/premium-entitlement-unlock\.test\.ts$''',
   ]
 
-  # Belt-and-suspenders exact-value allowlisting for the golden vector named
-  # above, in case a future refactor moves it out of an allowlisted path (e.g.
-  # extracted into a shared non-test fixture helper). If that happens, prefer
-  # re-scoping the path allowlist over relying on this list. This is the
-  # signature segment of the signed golden JWT — a public test vector, not a
-  # credential; no real secret equals it.
+  # Exact-value allowlisting for the golden vector in case it moves out of an
+  # allowlisted file. This is the signature segment of the signed golden JWT —
+  # a public test vector, not a credential; no real secret equals it.
   regexes = [
     '''aLxva7cu0mWgbcl5QJCnFQFvyC4z5j9GEEuSTnSDomqkC1xccZl3tBaw45_RwaTLlRVQS9qjgRaDO8Nq2w2zBw''',
   ]

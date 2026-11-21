@@ -51,10 +51,14 @@ const config = {
     // misstates gestational age on every pregnancy surface at once.
     "src/services/pregnancy-timeline-service.ts",
     // Pregnancy module ownership: the one-time on-device unlock predicate. It
-    // gates starting pregnancy data and rendering pregnancy surfaces, and must
-    // never gate reading or exporting already-logged data (local-first privacy
+    // gates only the entry of new pregnancy data, and must never gate reading,
+    // rendering or exporting already-logged data (local-first privacy
     // boundary). Dependency-free and fully deterministic.
     "src/services/pregnancy-entitlement-service.ts",
+    // Transport policy: literal-IPv4 private-network classification and the
+    // cleartext/endpoint allow rules. Pure string/number logic with a dedicated
+    // unit suite; a surviving mutant here is a silent security regression.
+    "src/sync/sync-endpoint-policy.ts",
     // Deliberately NOT in scope: `pregnancy-mode-service.ts`. It orchestrates
     // `LocalAppStorage` reads/writes rather than computing, so it fails the
     // purity criterion above; its dating and ownership invariants are already

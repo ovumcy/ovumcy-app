@@ -39,8 +39,9 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # Always-runnable sanity job: prove the flows parse and the Maestro CLI is
-  # installable, without needing a device.
+  # Always-runnable sanity job, no device needed: every flow is well-formed
+  # YAML with an `appId` header and a command section. It does not run the
+  # Maestro CLI, so it proves syntax only, not that a flow's commands exist.
   validate-flows:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -48,9 +49,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: List Maestro flows
-        run: ls -la .maestro
+      - name: Check Maestro flows parse
+        run: |
+          python3 - <<'PY'
+          import glob, sys, yaml
+          files = sorted(glob.glob(".maestro/*.yaml"))
+          if not files:
+              sys.exit("no Maestro flows found in .maestro")
+          for path in files:
+              with open(path, encoding="utf-8") as handle:
+                  docs = list(yaml.safe_load_all(handle))
+              header = docs[0] if docs else None
+              if len(docs) != 2 or not isinstance(header, dict) or "appId" not in header or not docs[1]:
+                  sys.exit(f"{path}: expected an appId header and a command section")
+              print(f"ok {path}: {len(docs[1])} commands")
+          PY
 
   # Device-dependent job: builds a debug Android APK, boots an emulator, installs
   # the app, and runs the Maestro flows against it.
