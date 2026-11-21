@@ -36,6 +36,7 @@ export type SyncAPIErrorCode =
   | "totp_not_configured"
   | "totp_not_enabled"
   | "totp_enrollment_not_started"
+  | "totp_enrollment_discarded"
   | "totp_already_enabled"
   | "totp_invalid_code"
   | "totp_replayed"
@@ -845,6 +846,7 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
       case "totp_not_configured":
       case "totp_not_enabled":
       case "totp_enrollment_not_started":
+      case "totp_enrollment_discarded":
       case "totp_already_enabled":
       case "totp_invalid_code":
       case "totp_replayed":

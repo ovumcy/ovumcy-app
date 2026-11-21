@@ -434,6 +434,56 @@ describe("sync-totp-service", () => {
       });
     });
 
+    it("maps a managed totp_enrollment_discarded to a restart", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const managedFactory = jest.fn().mockReturnValue(
+        managedClientMock({
+          verifyTOTPEnrollment: jest.fn().mockResolvedValue({
+            ok: false,
+            errorCode: "totp_enrollment_discarded",
+          }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        managedPreferences(),
+        { code: "123456" },
+        jest.fn(),
+        managedFactory,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "totp_enrollment_not_started",
+      });
+    });
+
+    it("maps a community totp_enrollment_discarded to a restart", async () => {
+      const secretStore = createSyncSecretStoreMock(connectedSecrets());
+      const apiFactory = jest.fn().mockReturnValue(
+        communityClientMock({
+          verifyTOTPEnrollment: jest.fn().mockResolvedValue({
+            ok: false,
+            errorCode: "totp_enrollment_discarded",
+          }),
+        }),
+      );
+
+      const result = await verifyTOTPEnrollment(
+        secretStore,
+        selfHostedPreferences(),
+        { code: "123456" },
+        apiFactory,
+        jest.fn(),
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        errorCode: "totp_enrollment_not_started",
+      });
+    });
+
     it("keeps a managed 429 as rate_limited", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const managedFactory = jest.fn().mockReturnValue(
