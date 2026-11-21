@@ -64,6 +64,8 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
   const [partnerInviteAccessLevel, setPartnerInviteAccessLevel] =
     useState<ManagedCloudPartnerAccessLevel>("summary");
   const [partnerInviteLink, setPartnerInviteLink] = useState("");
+  // The invite the shown link was issued for; empty when unknown.
+  const [partnerInviteLinkInviteID, setPartnerInviteLinkInviteID] = useState("");
   const [isPartnerBusy, setIsPartnerBusy] = useState(false);
 
   // Read before any accept call: accepting consumes the single-use invite,
@@ -121,6 +123,7 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
     }
 
     setPartnerInviteLink(shareableInviteURL);
+    setPartnerInviteLinkInviteID(result.value.invite.id);
     setPartnerStatusMessage(partnerCopy.statusInviteIssued);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
@@ -271,8 +274,12 @@ export function useBackupSyncPartnerAccess(core: BackupSyncSessionCore) {
       return;
     }
 
-    // The link, with its secret, was for an invite that no longer works.
-    setPartnerInviteLink("");
+    // The link, with its secret, was for an invite that no longer works. A
+    // link issued for another, still-live invite stays: it is shown only once.
+    if (partnerInviteLinkInviteID === "" || partnerInviteLinkInviteID === inviteID) {
+      setPartnerInviteLink("");
+      setPartnerInviteLinkInviteID("");
+    }
     setPartnerStatusMessage(partnerCopy.statusInviteRevoked);
     await reloadPartnerAccess(state);
     setIsPartnerBusy(false);
