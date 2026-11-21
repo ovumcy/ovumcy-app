@@ -1241,7 +1241,7 @@ describe("uploadBackupSyncSnapshot", () => {
       }),
     });
     const secretStore = createSyncSecretStoreMock(
-      createSyncSecretsRecord("Pixel 7", new Date("2026-04-05T08:00:00.000Z")),
+      createSyncSecretsRecord("Pixel 7", new Date("2026-04-05T08:00:00.000Z")).record,
     );
     const state = await loadSettingsScreenState(
       storage,
