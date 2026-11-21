@@ -116,7 +116,7 @@ describe("SyncAccountSecuritySection", () => {
     const field = screen.getByTestId("account-security-change-code");
     expect(field.props.accessibilityLabel).toBe(copy.regenerate.codeLabel);
     await act(async () => {
-      fireEvent.changeText(field, "123456");
+      await fireEvent.changeText(field, "123456");
     });
     expect(onChangeCodeChange).toHaveBeenCalledWith("123456");
   });
