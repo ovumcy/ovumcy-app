@@ -100,6 +100,38 @@ describe("runAppLaunchTasks", () => {
     }
   });
 
+  it("writes nothing when a timed-out repoint finishes late", async () => {
+    jest.useFakeTimers();
+    try {
+      let finishRead: (records: never[]) => void = () => undefined;
+      const storage = createLocalAppStorageMock({
+        readProfileRecord: jest.fn().mockResolvedValue({
+          ...createDefaultProfileRecord(),
+          dailyLogReminderEnabled: false,
+        }),
+        listDayLogRecordsInRange: jest
+          .fn()
+          .mockImplementationOnce(
+            () => new Promise<never[]>((resolve) => {
+              finishRead = resolve;
+            }),
+          )
+          .mockResolvedValue([]),
+        writeProfileRecord: jest.fn().mockResolvedValue(undefined),
+      });
+
+      const launch = runAppLaunchTasks(storage, createScheduler());
+      await jest.advanceTimersByTimeAsync(STORED_CYCLE_START_REPOINT_TIMEOUT_MS);
+      finishRead([]);
+      await launch;
+      await jest.advanceTimersByTimeAsync(0);
+
+      expect(storage.writeProfileRecord).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("still rebuilds the schedule when the artifact sweep fails", async () => {
     mockCleanup.mockRejectedValue(new Error("cache unavailable"));
     const scheduler = createScheduler();

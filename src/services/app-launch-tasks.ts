@@ -10,9 +10,9 @@ export const STORED_CYCLE_START_REPOINT_TIMEOUT_MS = 10_000;
 // `onProfileSettled` fires once the one-time stored-cycle-start repoint has
 // finished or failed; the shell renders screens only after it, so no screen
 // reads (and later saves back) a profile from before the repoint. A repoint
-// still pending after the timeout settles the gate anyway: a late write it
-// makes can be saved over by a screen, and then the unstored version re-runs
-// it at the next launch.
+// still pending after the timeout settles the gate anyway and writes nothing
+// when it ends, so it never saves over a profile edited since; the unstored
+// version re-runs it at the next launch.
 export async function runAppLaunchTasks(
   storage: LocalAppStorage,
   scheduler: LocalReminderScheduler,
@@ -21,11 +21,15 @@ export async function runAppLaunchTasks(
   // One-time re-read of the stored cycle start written under the earlier
   // withdrawal rule; it runs before the rebuild so reminders use the result.
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
   try {
     await Promise.race([
-      repointLegacyStoredCycleStart(storage, new Date()),
+      repointLegacyStoredCycleStart(storage, new Date(), () => !timedOut),
       new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, STORED_CYCLE_START_REPOINT_TIMEOUT_MS);
+        timer = setTimeout(() => {
+          timedOut = true;
+          resolve();
+        }, STORED_CYCLE_START_REPOINT_TIMEOUT_MS);
       }),
     ]);
   } catch {

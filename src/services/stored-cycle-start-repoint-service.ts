@@ -26,9 +26,13 @@ export function withoutStoredCycleStartRepointState(profile: ProfileRecord): Pro
 // shows the start that data was read with.
 // It runs at launch until the version is stored, and after a sync restore or a
 // profile-restoring import, whose profile never carries the version.
+// `isStillWanted` is asked right before the write: a caller that has stopped
+// waiting returns false, so a late result never saves over a profile edited
+// since the read.
 export async function repointLegacyStoredCycleStart(
   storage: LocalAppStorage,
   now: Date,
+  isStillWanted: () => boolean = () => true,
 ): Promise<void> {
   const profile = await storage.readProfileRecord();
   if ((profile.storedCycleStartRepointVersion ?? 0) >= STORED_CYCLE_START_REPOINT_VERSION) {
@@ -43,6 +47,9 @@ export async function repointLegacyStoredCycleStart(
   };
   if (legacyRowsWithdrawStoredCycleStart(profile, records)) {
     nextProfile.lastPeriodStart = repointStoredCycleStart(profile, records, todayValue);
+  }
+  if (!isStillWanted()) {
+    return;
   }
   await storage.writeProfileRecord(nextProfile);
 }
