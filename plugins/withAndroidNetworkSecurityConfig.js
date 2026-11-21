@@ -18,7 +18,9 @@ const path = require('path');
  * server actually needs them: in the debug variant (Metro) and in the main
  * config of an EAS build for a profile listed in DEV_CLEARTEXT_PROFILES (the
  * eas.json "local" profile, a release-type APK whose sync endpoints are
- * http://10.0.2.2). Release builds for every other profile ship no exception.
+ * http://10.0.2.2). Release builds for every other profile ship no exception;
+ * a release build made outside EAS against a local stack needs
+ * EAS_BUILD_PROFILE=local set at prebuild.
  *
  * This local plugin exists because the installed expo-build-properties
  * (SDK 58) exposes only a boolean `android.usesCleartextTraffic` and has no
