@@ -68,7 +68,7 @@ The app ships no analytics, advertising, crash-reporting, attribution or other t
 
 Default hosts: `https://sync.ovumcy.cloud` (self-hosted protocol default) and `https://managed.ovumcy.cloud` (managed cloud); a build can override them with `EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL` and `EXPO_PUBLIC_OVUMCY_MANAGED_BASE_URL`, and the owner can point sync at their own server.
 
-Transport rules: every sync and managed-cloud request refuses redirects, and cleartext HTTP is blocked on Android outside emulator and loopback hosts and rejected for non-private hosts by the endpoint policy. Certificate pinning is scaffolded but not enforced natively; TLS relies on the platform CA store (see Accepted Residual Risks in `SECURITY.md`). Server-visible network metadata (IP address, timing, request sizes) is inherent to any request and is not controlled by the app.
+Transport rules: every sync and managed-cloud request refuses redirects, and cleartext HTTP is blocked on Android (release builds allow none; only debug builds and the `local` EAS profile exempt the emulator and loopback hosts) and rejected for non-private hosts by the endpoint policy. Certificate pinning is scaffolded but not enforced natively; TLS relies on the platform CA store (see Accepted Residual Risks in `SECURITY.md`). Server-visible network metadata (IP address, timing, request sizes) is inherent to any request and is not controlled by the app.
 
 The only deliberate exception to "no secret in a URL" is the managed partner invite token carried by an invite link; it is never persisted or logged and is scrubbed from route state immediately after capture.
 
@@ -108,7 +108,7 @@ Whether and how long the backend retains data after account deletion is determin
 
 ## OS Backups
 
-- Android: `android.allowBackup` is `false` in `app.json`; Auto Backup, cloud backup and device transfer do not copy app data.
+- Android: `android.allowBackup` is `false` in `app.json`, and a config plugin (`plugins/withAndroidExcludeDataFromBackup.js`) sets backup and data-extraction rules that exclude every app data domain; Auto Backup, cloud backup and device-to-device transfer (which `allowBackup` alone no longer stops on Android 12+) do not copy app data. To move to a new device, use JSON export/import or sync.
 - iOS: a config plugin (`plugins/withIosExcludeDataFromICloudBackup.js`) marks `Documents` (SQLite files) and `Library/Application Support` (legacy AsyncStorage) as excluded from backup at every launch. The exclusion is applied at runtime and is best-effort: a failure to set the flag is logged, not fatal. Keychain items use a this-device-only class that is not synced to other devices or restored from backup.
 - Export files are written to the cache directory, which is not part of OS backups, and are deleted after use.
 
