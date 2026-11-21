@@ -54,6 +54,7 @@ jobs:
 
       - name: Check Maestro flows parse
         run: |
+          python3 -m pip install --quiet --user pyyaml==6.0.2
           python3 - <<'PY'
           import glob, sys, yaml
           files = sorted(glob.glob(".maestro/*.yaml"))
