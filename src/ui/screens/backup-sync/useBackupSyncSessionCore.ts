@@ -1,4 +1,4 @@
-import { useLinkingURL } from "expo-linking";
+import * as Linking from "expo-linking";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigation } from "expo-router/react-navigation";
@@ -37,6 +37,7 @@ import {
   managedPartnerInviteTokenRemainingMs,
   readManagedPartnerInviteToken,
   stashManagedPartnerInviteToken,
+  takeManagedPartnerInviteReplacedNotice,
 } from "../../../security/managed-partner-invite-token-buffer";
 import {
   parsePartnerInviteLink,
@@ -111,9 +112,6 @@ export function useBackupSyncSessionCore({
     invite_token?: string | string[];
     "#"?: string | string[];
   }>();
-  // expo-router drops the fragment of custom-scheme links, so the invite
-  // secret is also read from the raw link that opened the app.
-  const linkingURL = useLinkingURL();
   const [effectiveNow] = useState(() => now ?? new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [state, setState] = useState<LoadedSettingsState | null>(null);
@@ -135,6 +133,11 @@ export function useBackupSyncSessionCore({
   const [pendingPartnerInviteToken, setPendingPartnerInviteToken] = useState(() =>
     readManagedPartnerInviteToken(),
   );
+  // The web pre-render scrub can already have replaced a pending invite
+  // before this screen mounts.
+  const [isPartnerInviteReplaced, setIsPartnerInviteReplaced] = useState(() =>
+    takeManagedPartnerInviteReplacedNotice(),
+  );
   const [showPartnerOwnerControls, setShowPartnerOwnerControls] = useState(false);
   const [isSavingSyncDraft, setIsSavingSyncDraft] = useState(false);
   const [dismissedOfferIDs, setDismissedOfferIDs] = useState<string[]>([]);
@@ -142,6 +145,14 @@ export function useBackupSyncSessionCore({
   const partnerCopy = getPartnerCopy(language);
   const viewData = buildSettingsViewData(effectiveNow, language);
   const isSyncDirty = buildBackupSyncDirtyState(state);
+
+  function captureInboundInvite(inviteToken: string, inviteSecretHex: string) {
+    stashManagedPartnerInviteToken(inviteToken, inviteSecretHex);
+    if (takeManagedPartnerInviteReplacedNotice()) {
+      setIsPartnerInviteReplaced(true);
+    }
+    setPendingPartnerInviteToken(inviteToken);
+  }
 
   const routeInviteToken = searchParams.invite_token;
   const routeFragment = searchParams["#"];
@@ -151,20 +162,55 @@ export function useBackupSyncSessionCore({
       return;
     }
 
-    stashManagedPartnerInviteToken(
+    captureInboundInvite(
       trimmedInviteToken,
       parsePartnerInviteSecretFromFragment(resolveSingleRouteParam(routeFragment)),
     );
-    setPendingPartnerInviteToken(trimmedInviteToken);
     router.replace("/backup-sync");
   }, [router, routeInviteToken, routeFragment]);
 
-  // The raw link and the route params can update in either order; the
-  // secret attaches only to the invite already buffered under its token.
+  // The raw link and the route params can update in either order. The link
+  // that launched the app is read once per buffered token and its secret
+  // attaches only to the invite already buffered under that token, so it can
+  // never resurrect a redeemed invite. A link arriving while the app runs is
+  // a fresh capture of its own. Neither is kept in hook state: expo-router
+  // drops the fragment of custom-scheme links, so the secret is read from the
+  // raw link here and the link is dropped after parsing.
   useEffect(() => {
-    const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(linkingURL);
-    attachManagedPartnerInviteSecret(inviteToken, inviteSecretHex);
-  }, [linkingURL, pendingPartnerInviteToken]);
+    let isActive = true;
+    void Linking.getInitialURL()
+      .then((initialURL) => {
+        if (!isActive) {
+          return;
+        }
+        const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(initialURL);
+        attachManagedPartnerInviteSecret(inviteToken, inviteSecretHex);
+      })
+      .catch(() => {});
+    return () => {
+      isActive = false;
+    };
+  }, [pendingPartnerInviteToken]);
+
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      const { inviteToken, inviteSecretHex } = parsePartnerInviteLink(url);
+      if (inviteToken.length > 0) {
+        captureInboundInvite(inviteToken, inviteSecretHex);
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+    // captureInboundInvite only calls stable state setters.
+  }, []);
+
+  // The notice describes the pending invite, so it ends with it.
+  useEffect(() => {
+    if (pendingPartnerInviteToken.length === 0) {
+      setIsPartnerInviteReplaced(false);
+    }
+  }, [pendingPartnerInviteToken]);
 
   // The state copy expires with the buffer, so a screen left open cannot
   // redeem a token past its TTL.
@@ -421,6 +467,7 @@ export function useBackupSyncSessionCore({
     // Root state
     effectiveNow,
     isLoading,
+    isPartnerInviteReplaced,
     state,
     setState,
     isSyncDirty,
