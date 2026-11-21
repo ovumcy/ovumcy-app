@@ -105,7 +105,7 @@ export type BackupSyncFlowScreenProps = {
   partnerOverview: ManagedCloudPartnerAccessOverview | null;
   partnerReshareRequiredGrantIDs: string[];
   pendingPartnerInviteToken: string;
-  isPartnerInviteReplaced?: boolean;
+  isPartnerInviteReplaced: boolean;
   preferences: SyncPreferencesRecord;
   recoveryPhraseValue: string;
   showDeviceSection: boolean;
@@ -219,7 +219,7 @@ export function BackupSyncFlowScreen({
   partnerOverview,
   partnerReshareRequiredGrantIDs,
   pendingPartnerInviteToken,
-  isPartnerInviteReplaced = false,
+  isPartnerInviteReplaced,
   preferences,
   recoveryPhraseValue,
   showDeviceSection,
