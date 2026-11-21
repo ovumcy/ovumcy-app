@@ -385,6 +385,8 @@ const settingsCopyEn = {
       tooManyDevices:
         "This account has reached its device limit. On a device that is still connected, open Backup & sync and remove a device you no longer use to free a slot.",
       syncNotPrepared: "Prepare encrypted sync on this device first.",
+      restoreIncomplete:
+        "The last restore did not finish, so the data on this device may be incomplete. Restore the backup again before uploading.",
       notConnected: "Connect this device to a sync server first.",
       recoveryKeyChangedElsewhere:
         "Your account's recovery phrase was changed, and this device still holds the old one. If you changed it here, finish the change; otherwise disconnect and sign back in with the new phrase.",
@@ -979,6 +981,8 @@ const settingsCopyDe: SettingsCopy = {
         "Dieses Konto hat das Geräte-Limit erreicht. Öffnen Sie auf einem noch verbundenen Gerät Backup & Sync und entfernen Sie ein Gerät, das Sie nicht mehr verwenden, um einen Platz freizugeben.",
       syncNotPrepared:
         "Bereiten Sie zuerst den verschlüsselten Sync auf diesem Gerät vor.",
+      restoreIncomplete:
+        "Die letzte Wiederherstellung wurde nicht abgeschlossen, daher können die Daten auf diesem Gerät unvollständig sein. Stellen Sie das Backup erneut wieder her, bevor Sie hochladen.",
       notConnected:
         "Verbinden Sie dieses Gerät zuerst mit einem Sync-Server.",
       recoveryKeyChangedElsewhere:
@@ -1605,6 +1609,8 @@ const settingsCopyFr: SettingsCopy = {
         "Ce compte a atteint la limite d'appareils. Sur un appareil encore connecté, ouvrez Sauvegarde et sync et retirez un appareil que vous n'utilisez plus pour libérer une place.",
       syncNotPrepared:
         "Préparez d'abord le sync chiffré sur cet appareil.",
+      restoreIncomplete:
+        "La dernière restauration n'a pas abouti : les données de cet appareil peuvent être incomplètes. Restaurez à nouveau la sauvegarde avant d'envoyer.",
       notConnected:
         "Connectez d'abord cet appareil à un serveur de sync.",
       recoveryKeyChangedElsewhere:
@@ -2214,6 +2220,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         tooManyDevices:
           "Для этого аккаунта уже достигнут лимит устройств. На устройстве, которое ещё подключено, откройте «Резервная копия и sync» и удалите неиспользуемое устройство, чтобы освободить слот.",
         syncNotPrepared: "Сначала подготовьте зашифрованный sync на этом устройстве.",
+        restoreIncomplete:
+          "Последнее восстановление не завершилось, поэтому данные на этом устройстве могут быть неполными. Восстановите резервную копию ещё раз перед отправкой.",
         notConnected: "Сначала подключите это устройство к sync-серверу.",
         recoveryKeyChangedElsewhere:
           "Фраза восстановления аккаунта была изменена, а на этом устройстве осталась старая. Если вы меняли её здесь, завершите смену; иначе отключитесь и войдите снова с новой фразой.",
@@ -2803,6 +2811,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Esta cuenta ya alcanzó el límite de dispositivos. En un dispositivo que siga conectado, abre Copia y sync y quita un dispositivo que ya no uses para liberar una plaza.",
         syncNotPrepared:
           "Primero prepara el sync cifrado en este dispositivo.",
+        restoreIncomplete:
+          "La última restauración no terminó, así que los datos de este dispositivo pueden estar incompletos. Vuelve a restaurar la copia antes de subir.",
         notConnected:
           "Primero conecta este dispositivo a un servidor de sync.",
         recoveryKeyChangedElsewhere:
@@ -3397,6 +3407,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Questo account ha raggiunto il limite di dispositivi. Su un dispositivo ancora collegato, apri Backup & sync e rimuovi un dispositivo che non usi più per liberare uno slot.",
         syncNotPrepared:
           "Prepara prima il sync cifrato su questo dispositivo.",
+        restoreIncomplete:
+          "L'ultimo ripristino non è stato completato, quindi i dati su questo dispositivo potrebbero essere incompleti. Ripristina di nuovo il backup prima di caricare.",
         notConnected:
           "Collega prima questo dispositivo a un server di sync.",
         recoveryKeyChangedElsewhere:

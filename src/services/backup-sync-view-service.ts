@@ -402,6 +402,8 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.tooManyDevices;
     case "sync_not_prepared":
       return viewData.errors.syncNotPrepared;
+    case "restore_incomplete":
+      return viewData.errors.restoreIncomplete;
     case "sync_not_allowed":
       return viewData.syncBlockedNoPlan;
     case "not_connected":

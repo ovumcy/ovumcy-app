@@ -1029,10 +1029,11 @@ describe("sync-client-service", () => {
     expect(reminderScheduler.sync).toHaveBeenCalledTimes(1);
     expect(storage.clearAllLocalData).toHaveBeenCalledTimes(1);
     expect(storage.writeDayLogRecord).toHaveBeenCalledWith(dayLog);
-    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenLastCalledWith(
       expect.objectContaining({
         lastRemoteGeneration: 456,
       }),
+      { restoreInProgress: false },
     );
   });
 
@@ -5229,6 +5230,70 @@ describe("snapshot AAD across devices", () => {
         jest.mocked(ok.writeSyncPreferencesRecord).mock.invocationCallOrder.at(-1),
       ).toBeGreaterThan(
         jest.mocked(ok.writeProfileRecord).mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it("refuses to upload while a restore that stopped partway is unfinished, whatever the caller's copy says", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const storage = createLocalAppStorageMock();
+      jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue({
+        ...selfHostedPreferences,
+        restoreInProgress: true,
+      });
+      const secretStore = createSyncSecretStoreMock({
+        ...deviceA.record,
+        authSessionToken: "session-1",
+      });
+      const apiClientFactory = jest.fn();
+
+      const result = await runSyncUpload(
+        storage,
+        secretStore,
+        { ...selfHostedPreferences, restoreInProgress: false },
+        new Date("2026-03-20T08:15:00.000Z"),
+        apiClientFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "sync_not_prepared" });
+      expect(apiClientFactory).not.toHaveBeenCalled();
+      expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+    });
+
+    it("keeps restore allowed while a partial restore is marked, so a retry can finish it", async () => {
+      const deviceA = createSyncSecretsRecord("Pixel 7", new Date("2026-03-20T08:00:00.000Z"));
+      const { blob } = await uploadFromDevice(deviceA.record);
+      const storage = createLocalAppStorageMock();
+      jest.mocked(storage.readSyncPreferencesRecord).mockResolvedValue({
+        ...selfHostedPreferences,
+        restoreInProgress: true,
+      });
+
+      const result = await runSyncRestore(
+        storage,
+        createSyncSecretStoreMock({ ...deviceA.record, authSessionToken: "session-2" }),
+        { ...selfHostedPreferences, restoreInProgress: true },
+        jest.fn().mockReturnValue(
+          createAPIClientMock({
+            getBlob: jest.fn().mockResolvedValue({
+              ok: true,
+              blob: {
+                ...blob,
+                checksumSHA256: "aa",
+                ciphertextSize: toByteArray(blob.ciphertextBase64).byteLength,
+                updatedAt: "2026-03-20T08:12:00.000Z",
+              },
+            }),
+          }),
+        ),
+      );
+
+      expect(result).toMatchObject({
+        ok: true,
+        preferences: { restoreInProgress: false },
+      });
+      expect(storage.writeSyncPreferencesRecord).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lastRemoteGeneration: blob.generation }),
+        { restoreInProgress: false },
       );
     });
 

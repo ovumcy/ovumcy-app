@@ -153,6 +153,10 @@ export type DayLogChangeSet = {
   profile: ProfileRecord | null;
 };
 
+export type SyncPreferencesWriteOptions = {
+  restoreInProgress?: boolean;
+};
+
 export interface LocalAppStorage {
   readBootstrapState(): Promise<LocalBootstrapState>;
   writeBootstrapState(state: LocalBootstrapState): Promise<void>;
@@ -160,7 +164,12 @@ export interface LocalAppStorage {
   readProfileRecord(): Promise<ProfileRecord>;
   writeProfileRecord(record: ProfileRecord): Promise<void>;
   readSyncPreferencesRecord(): Promise<SyncPreferencesRecord>;
-  writeSyncPreferencesRecord(record: SyncPreferencesRecord): Promise<void>;
+  // Keeps the stored `restoreInProgress` and ignores the record's copy unless
+  // `options.restoreInProgress` is given; only the sync restore passes it.
+  writeSyncPreferencesRecord(
+    record: SyncPreferencesRecord,
+    options?: SyncPreferencesWriteOptions,
+  ): Promise<void>;
   readOnboardingRecord(): Promise<OnboardingRecord>;
   writeOnboardingRecord(record: OnboardingRecord): Promise<void>;
   readDayLogRecord(date: DayLogRecord["date"]): Promise<DayLogRecord>;
