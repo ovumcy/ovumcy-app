@@ -245,6 +245,7 @@ export function useSyncAccountSecurityController({
       result.errorCode === "totp_replayed"
     ) {
       setChangeCodeDemanded(true);
+      setChangeCode("");
     }
     // No code was sent, so the server is asking for one, not judging one.
     setChangeErrorCode(

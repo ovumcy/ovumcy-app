@@ -509,7 +509,9 @@ export async function recoverBackupSyncAccess(
  * self-hosted `recoverBackupSyncAccess` returned, then finishes the recovery
  * with the issued session token. The challenge id and the phrase travel via
  * screen state only — neither is persisted. `totp_challenge_invalid` means
- * the caller restarts from `recoverBackupSyncAccess`.
+ * the caller restarts from `recoverBackupSyncAccess`, and so does
+ * `challengeSpent`: the code was accepted, so the challenge is gone, but the
+ * recovery after it failed.
  */
 export async function completeBackupSyncRecoveryTOTPChallenge(
   storage: LocalAppStorage,
@@ -526,6 +528,7 @@ export async function completeBackupSyncRecoveryTOTPChallenge(
   | {
       ok: false;
       errorCode: CompleteTOTPChallengeErrorCode | SyncRecoverScreenErrorCode;
+      challengeSpent?: true;
     }
 > {
   const challengeResult = await completeTOTPChallenge(preferences, {
@@ -547,7 +550,7 @@ export async function completeBackupSyncRecoveryTOTPChallenge(
     now,
   );
   if (!result.ok) {
-    return result;
+    return { ok: false, errorCode: result.errorCode, challengeSpent: true };
   }
 
   return {
