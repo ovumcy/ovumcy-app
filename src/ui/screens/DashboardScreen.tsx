@@ -1,6 +1,6 @@
 import type { PostpartumCycleReturnOfferViewData } from "../../services/postpartum-mode-service";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import { buildCrisisSupportViewData } from "../../i18n/crisis-copy";
@@ -39,6 +39,7 @@ import { openConfirmation } from "../confirm/open-confirmation";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { runManualCycleStartAction } from "./day-log/run-manual-cycle-start-action";
 import { useDayLogAutosave } from "./day-log/use-day-log-autosave";
+import { useLocalCivilNow } from "./day-log/use-local-civil-now";
 import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
 
 type DashboardScreenProps = {
@@ -65,7 +66,13 @@ export function DashboardScreen({
 }: DashboardScreenProps) {
   const { colors, language } = useAppPreferences();
   const router = useRouter();
-  const [effectiveNow] = useState(() => now ?? new Date());
+  // The autosave hook below needs the date, and the rollover needs the
+  // autosave flush; the ref breaks that cycle.
+  const flushBeforeRolloverRef = useRef<(() => Promise<void>) | null>(null);
+  const effectiveNow = useLocalCivilNow({
+    now,
+    onBeforeRollover: () => flushBeforeRolloverRef.current?.(),
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [state, setState] = useState<LoadedDashboardState | null>(null);
@@ -174,6 +181,10 @@ export function DashboardScreen({
     ...(autosaveDebounceMs !== undefined ? { debounceMs: autosaveDebounceMs } : {}),
   });
 
+  useEffect(() => {
+    flushBeforeRolloverRef.current = flushPendingDraft;
+  }, [flushPendingDraft]);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -207,6 +218,7 @@ export function DashboardScreen({
     state.todayEntry,
     effectiveNow,
     language,
+    { predictionsSuppressed: state.predictionsSuppressed },
   );
 
   // Crisis-support view-data for the postpartum support-resources row. Built

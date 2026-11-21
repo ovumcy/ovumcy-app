@@ -1781,3 +1781,54 @@ describe("loadDashboardScreenState postpartum stale window", () => {
     expect(state.viewData.postpartumDashboard).toBeDefined();
   });
 });
+
+describe("loadDashboardScreenState predictionsSuppressed", () => {
+  const profile: ProfileRecord = {
+    ...createDefaultProfileRecord(),
+    lastPeriodStart: "2026-03-01",
+    cycleLength: 28,
+    periodLength: 5,
+  };
+  const cycleStart: DayLogRecord = {
+    ...createEmptyDayLogRecord("2026-03-01"),
+    isPeriod: true,
+    cycleStart: true,
+  };
+  const deps = { loadPregnancyModuleOwned: jest.fn().mockResolvedValue(false) };
+
+  it("is set by an active pregnancy record with no day-log pause", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profile),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([cycleStart]),
+      readActivePregnancy: jest.fn().mockResolvedValue(pregnancyActiveRecord()),
+    });
+
+    const state = await loadDashboardScreenState(storage, new Date(2026, 2, 25), "en", {}, deps);
+
+    expect(state.predictionsSuppressed).toBe(true);
+  });
+
+  it("is set by the day-log pause with no pregnancy record", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profile),
+      listDayLogRecordsInRange: jest
+        .fn()
+        .mockResolvedValue([cycleStart, ...positivePregnancyTestRecords("2026-03-20")]),
+    });
+
+    const state = await loadDashboardScreenState(storage, new Date(2026, 2, 25), "en", {}, deps);
+
+    expect(state.predictionsSuppressed).toBe(true);
+  });
+
+  it("is clear with neither signal", async () => {
+    const storage = createLocalAppStorageMock({
+      readProfileRecord: jest.fn().mockResolvedValue(profile),
+      listDayLogRecordsInRange: jest.fn().mockResolvedValue([cycleStart]),
+    });
+
+    const state = await loadDashboardScreenState(storage, new Date(2026, 2, 25), "en", {}, deps);
+
+    expect(state.predictionsSuppressed).toBe(false);
+  });
+});

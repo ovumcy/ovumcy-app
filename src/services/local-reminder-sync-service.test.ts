@@ -106,6 +106,52 @@ describe("local-reminder-sync-service", () => {
     expect(storage.readSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["the day-log history", "listDayLogRecordsInRange"],
+    ["the active pregnancy record", "readActivePregnancy"],
+  ] as const)(
+    "clears the armed schedule and reports failed when %s cannot be read",
+    async (_label, failingRead) => {
+      const storage = createLocalAppStorageMock({
+        listDayLogRecordsInRange: jest.fn().mockResolvedValue(cycleStartRecords),
+        [failingRead]: jest.fn().mockRejectedValue(new Error("storage read failed")),
+      });
+      const scheduler = createScheduler();
+      const profile = {
+        ...createDefaultProfileRecord(),
+        upcomingPeriodReminderEnabled: true,
+        fertileWindowReminderEnabled: true,
+      };
+
+      await expect(
+        syncLocalReminderSchedule(storage, scheduler, profile, {
+          now: new Date(2026, 3, 5, 10, 0, 0, 0),
+        }),
+      ).resolves.toBe("failed");
+
+      expect(scheduler.sync).toHaveBeenCalledTimes(1);
+      expect(scheduler.sync).toHaveBeenCalledWith([]);
+    },
+  );
+
+  it("still reports failed when clearing the schedule after a failed read also fails", async () => {
+    const storage = createLocalAppStorageMock({
+      listDayLogRecordsInRange: jest.fn().mockRejectedValue(new Error("storage read failed")),
+    });
+    const scheduler: LocalReminderScheduler = {
+      sync: jest.fn().mockRejectedValue(new Error("scheduler unavailable")),
+    };
+
+    await expect(
+      syncLocalReminderSchedule(
+        storage,
+        scheduler,
+        { ...createDefaultProfileRecord(), dailyLogReminderEnabled: true },
+        { now: new Date(2026, 3, 5, 10, 0, 0, 0) },
+      ),
+    ).resolves.toBe("failed");
+  });
+
   // The plan builder suppresses period/fertile reminders for an ACTIVE
   // pregnancy record, but it can only do so if this service actually reads one.
   // The read used to be short-circuited on the kick-count flag alone — off by

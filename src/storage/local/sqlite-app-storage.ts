@@ -716,17 +716,16 @@ export function createSQLiteAppStorage(
       "sqlite/readActivePregnancy/select",
       () =>
         database.getAllAsync<PregnancyRecordRow>(
-          `SELECT id, status, encrypted_payload
-           FROM pregnancy_records
-           WHERE status = 'active';`,
+          `SELECT id, status, encrypted_payload FROM pregnancy_records;`,
         ),
     );
 
+    // Every row is read and the decrypted status decides: the plaintext
+    // column sits outside the AAD, so filtering on it would let a database-file
+    // edit hide an active record and drop prediction suppression. A row that
+    // fails to decrypt/sanitize is skipped, not surfaced.
     for (const row of rows) {
       const record = decodePregnancyRow(row, localDataKey);
-      // Defensive: a row whose plaintext status says "active" but whose payload
-      // fails to decrypt/sanitize (e.g. a swapped/foreign blob, or a payload
-      // whose inner status disagrees with the column) is skipped, not surfaced.
       if (record && record.status === "active") {
         return record;
       }
@@ -864,17 +863,13 @@ export function createSQLiteAppStorage(
       "sqlite/readActivePostpartum/select",
       () =>
         database.getAllAsync<PostpartumRecordRow>(
-          `SELECT id, status, encrypted_payload
-           FROM postpartum_records
-           WHERE status = 'active';`,
+          `SELECT id, status, encrypted_payload FROM postpartum_records;`,
         ),
     );
 
+    // The decrypted status decides, never the plaintext column outside the AAD.
     for (const row of rows) {
       const record = decodePostpartumRow(row, localDataKey);
-      // Defensive: a row whose plaintext status says "active" but whose payload
-      // fails to decrypt/sanitize (swapped/foreign blob, or an inner status
-      // that disagrees with the column) is skipped, not surfaced.
       if (record && record.status === "active") {
         return record;
       }
@@ -1741,10 +1736,12 @@ async function assertNoOtherActivePregnancy(
   localDataKey: string,
   selfID: string,
 ): Promise<void> {
+  // No filter on the plaintext status column (outside the AAD): an edited
+  // column must not let a second active record slip past this check.
   const rows = await database.getAllAsync<PregnancyRecordRow>(
     `SELECT id, status, encrypted_payload
      FROM pregnancy_records
-     WHERE status = 'active' AND id != ?;`,
+     WHERE id != ?;`,
     selfID,
   );
 
@@ -1931,10 +1928,11 @@ async function assertNoOtherActivePostpartum(
   localDataKey: string,
   selfID: string,
 ): Promise<void> {
+  // No filter on the plaintext status column (outside the AAD).
   const rows = await database.getAllAsync<PostpartumRecordRow>(
     `SELECT id, status, encrypted_payload
      FROM postpartum_records
-     WHERE status = 'active' AND id != ?;`,
+     WHERE id != ?;`,
     selfID,
   );
 

@@ -1594,3 +1594,51 @@ describe("selected-day advanced fertility summary suppression (loadCalendarScree
     expect(state.selectedDaySummary.advancedFertilitySummary).toBeNull();
   });
 });
+
+describe("loadCalendarScreenState predictionsSuppressed", () => {
+  async function storageWithCycleStart() {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-01"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    return storage;
+  }
+
+  it("is set by an active pregnancy record with no day-log pause", async () => {
+    const storage = await storageWithCycleStart();
+    await storage.writePregnancyRecord(
+      createPregnancyRecord({
+        edd: "2026-12-06",
+        eddBasis: "lmp",
+        lmpDate: "2026-03-01",
+        startedAt: "2026-03-25",
+      }),
+    );
+
+    const state = await loadCalendarScreenState(storage, new Date(2026, 2, 25), "2026-03", "2026-03-25");
+
+    expect(state.predictionsSuppressed).toBe(true);
+  });
+
+  it("is set by the day-log pause with no pregnancy record", async () => {
+    const storage = await storageWithCycleStart();
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-20"),
+      pregnancyTest: "positive",
+    });
+
+    const state = await loadCalendarScreenState(storage, new Date(2026, 2, 25), "2026-03", "2026-03-25");
+
+    expect(state.predictionsSuppressed).toBe(true);
+  });
+
+  it("is clear with neither signal", async () => {
+    const storage = await storageWithCycleStart();
+
+    const state = await loadCalendarScreenState(storage, new Date(2026, 2, 25), "2026-03", "2026-03-25");
+
+    expect(state.predictionsSuppressed).toBe(false);
+  });
+});
