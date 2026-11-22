@@ -360,7 +360,7 @@ describe("sync-totp-service", () => {
       });
     });
 
-    it("maps a community 429 to totp_enrollment_restart_required because the pending secret may be discarded", async () => {
+    it("keeps a community 429 as rate_limited because the rolling budget does not discard the pending secret", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
       const apiFactory = jest.fn().mockReturnValue(
         communityClientMock({
@@ -380,7 +380,7 @@ describe("sync-totp-service", () => {
 
       expect(result).toEqual({
         ok: false,
-        errorCode: "totp_enrollment_restart_required",
+        errorCode: "rate_limited",
       });
     });
 

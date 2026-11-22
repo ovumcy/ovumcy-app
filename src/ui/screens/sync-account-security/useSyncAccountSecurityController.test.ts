@@ -118,71 +118,53 @@ describe("useSyncAccountSecurityController", () => {
   });
 
   describe("handleDisableTOTP", () => {
-    it("re-derives twoFactorEnabled from the server after successful disable", async () => {
-      const storage = createLocalAppStorageMock({
-        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
-      });
-      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+    it.each([
+      ["managed", managedPreferences],
+      ["self_hosted", selfHostedPreferences],
+    ] as const)(
+      "clears this device's %s session after a successful disable",
+      async (_mode, preferencesFixture) => {
+        const preferences = preferencesFixture();
+        const storage = createLocalAppStorageMock({
+          readSyncPreferencesRecord: jest.fn().mockResolvedValue(preferences),
+        });
+        const syncSecretStore = createSyncSecretStoreMock({
+          ...connectedSecrets(),
+          authSessionToken: "community-session",
+          managedAuthSessionToken: "managed-session",
+        });
+        jest
+          .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+          .mockResolvedValue({ twoFactorEnabled: true });
+        jest.spyOn(syncTOTPService, "disableTOTP").mockResolvedValue({ ok: true });
 
-      jest
-        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        // Mount: 2FA is on
-        .mockResolvedValueOnce({ twoFactorEnabled: true })
-        // After disable: server confirms it's off
-        .mockResolvedValueOnce({ twoFactorEnabled: false });
+        const { result } = await renderHook(() =>
+          useSyncAccountSecurityController({ storage, syncSecretStore }),
+        );
+        await act(async () => {});
+        expect(result.current.twoFactorEnabled).toBe(true);
 
-      jest
-        .spyOn(syncTOTPService, "disableTOTP")
-        .mockResolvedValue({ ok: true });
+        await act(async () => {
+          await result.current.handleDisableTOTP();
+        });
 
-      const { result } = await renderHook(() =>
-        useSyncAccountSecurityController({ storage, syncSecretStore }),
-      );
-
-      await act(async () => {});
-
-      expect(result.current.twoFactorEnabled).toBe(true);
-
-      await act(async () => {
-        await result.current.handleDisableTOTP();
-      });
-
-      expect(syncAccountSessionService.describeSyncAccountTwoFactor).toHaveBeenCalledTimes(2);
-      expect(result.current.twoFactorEnabled).toBe(false);
-    });
-
-    it("keeps previous twoFactorEnabled when describe fails after disable", async () => {
-      const storage = createLocalAppStorageMock({
-        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
-      });
-      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
-
-      jest
-        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
-        // Mount: 2FA is on
-        .mockResolvedValueOnce({ twoFactorEnabled: true })
-        // After disable: describe fails
-        .mockResolvedValueOnce(null);
-
-      jest
-        .spyOn(syncTOTPService, "disableTOTP")
-        .mockResolvedValue({ ok: true });
-
-      const { result } = await renderHook(() =>
-        useSyncAccountSecurityController({ storage, syncSecretStore }),
-      );
-
-      await act(async () => {});
-
-      expect(result.current.twoFactorEnabled).toBe(true);
-
-      await act(async () => {
-        await result.current.handleDisableTOTP();
-      });
-
-      // Preserved from before the mutation
-      expect(result.current.twoFactorEnabled).toBe(true);
-    });
+        const secrets = await syncSecretStore.readSyncSecrets();
+        expect(secrets?.authSessionToken).toBeNull();
+        if (preferences.mode === "managed") {
+          expect(secrets?.managedAuthSessionToken).toBeNull();
+        }
+        expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+          expect.objectContaining({ mode: preferences.mode, setupStatus: "local_ready" }),
+        );
+        // No live session is left to ask; the server just turned it off.
+        expect(
+          syncAccountSessionService.describeSyncAccountTwoFactor,
+        ).toHaveBeenCalledTimes(1);
+        expect(result.current.twoFactorEnabled).toBe(false);
+        expect(result.current.totpStage).toBe("completed");
+        expect(result.current.totpStatus).toBe("success");
+      },
+    );
   });
 
   // FIX 7.1: a successful reset wipes local session tokens and drops setup back
@@ -1227,7 +1209,7 @@ describe("useSyncAccountSecurityController", () => {
       });
       jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
         ok: false,
-        errorCode: "totp_enrollment_restart_required",
+        errorCode: "totp_enrollment_not_started",
       });
 
       const { result } = await renderHook(() =>
@@ -1247,13 +1229,55 @@ describe("useSyncAccountSecurityController", () => {
         await result.current.handleVerifyTOTPEnrollment();
       });
 
-      expect(result.current.totpErrorCode).toBe(
-        "totp_enrollment_restart_required",
-      );
+      expect(result.current.totpErrorCode).toBe("totp_enrollment_not_started");
       expect(result.current.totpStage).toBe("idle");
       expect(result.current.totpEnrollment).toBeNull();
       expect(result.current.totpVerifyCode).toBe("");
       expect(result.current.totpStatus).toBe("idle");
+    });
+
+    it("keeps the pending enrollment on a rate-limited verify", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(selfHostedPreferences()),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: false });
+      jest.spyOn(syncTOTPService, "startTOTPEnrollment").mockResolvedValue({
+        ok: true,
+        enrollment: {
+          secretBase32: "JBSWY3DPEHPK3PXP",
+          provisioningURI: "otpauth://totp/Ovumcy:owner?secret=JBSWY3DPEHPK3PXP",
+        },
+      });
+      jest.spyOn(syncTOTPService, "verifyTOTPEnrollment").mockResolvedValue({
+        ok: false,
+        errorCode: "rate_limited",
+      });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+      await act(() => {
+        result.current.setTotpEnrollPassword("hunter2-hunter2");
+      });
+      await act(async () => {
+        await result.current.handleStartTOTPEnrollment();
+      });
+      const stageBeforeVerify = result.current.totpStage;
+      await act(() => {
+        result.current.setTotpVerifyCode("123456");
+      });
+      await act(async () => {
+        await result.current.handleVerifyTOTPEnrollment();
+      });
+
+      expect(result.current.totpErrorCode).toBe("rate_limited");
+      expect(result.current.totpStage).toBe(stageBeforeVerify);
+      expect(result.current.totpStage).not.toBe("idle");
+      expect(result.current.totpEnrollment).not.toBeNull();
     });
   });
 

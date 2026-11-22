@@ -92,7 +92,8 @@ const totpCopyEn: TOTPCopy = {
     currentPasswordLabel: "Current password",
     codeLabel: "6-digit code",
     submitLabel: "Disable two-factor",
-    successMessage: "Two-factor is off. All sessions were signed out.",
+    successMessage:
+      "Two-factor is off. Every session was signed out, this device included. Sign in again to keep syncing here.",
   },
   challenge: {
     title: "Enter your 6-digit code",
@@ -159,7 +160,8 @@ const totpCopyDe: TOTPCopy = {
     currentPasswordLabel: "Aktuelles Passwort",
     codeLabel: "6-stelliger Code",
     submitLabel: "Zwei-Faktor deaktivieren",
-    successMessage: "Zwei-Faktor ist aus. Alle Sitzungen wurden beendet.",
+    successMessage:
+      "Zwei-Faktor ist aus. Alle Sitzungen wurden beendet, auch auf diesem Gerät. Melden Sie sich erneut an, um hier weiter zu synchronisieren.",
   },
   challenge: {
     title: "Geben Sie Ihren 6-stelligen Code ein",
@@ -230,7 +232,8 @@ const totpCopyFr: TOTPCopy = {
     currentPasswordLabel: "Mot de passe actuel",
     codeLabel: "Code à 6 chiffres",
     submitLabel: "Désactiver le deuxième facteur",
-    successMessage: "Le deuxième facteur est désactivé. Toutes les sessions ont été déconnectées.",
+    successMessage:
+      "Le deuxième facteur est désactivé. Toutes les sessions ont été déconnectées, y compris sur cet appareil. Reconnectez-vous pour continuer à synchroniser ici.",
   },
   challenge: {
     title: "Saisissez votre code à 6 chiffres",
@@ -302,7 +305,8 @@ const totpCopyRu: TOTPCopy = {
     currentPasswordLabel: "Текущий пароль",
     codeLabel: "Шестизначный код",
     submitLabel: "Выключить двухфакторку",
-    successMessage: "Двухфакторка выключена. Все сессии завершены.",
+    successMessage:
+      "Двухфакторка выключена. Все сессии завершены, включая это устройство. Чтобы продолжить синхронизацию здесь, войдите снова.",
   },
   challenge: {
     title: "Введите свой шестизначный код",
@@ -371,7 +375,8 @@ const totpCopyEs: TOTPCopy = {
     currentPasswordLabel: "Contraseña actual",
     codeLabel: "Código de 6 dígitos",
     submitLabel: "Desactivar dos pasos",
-    successMessage: "Dos pasos desactivado. Todas las sesiones fueron cerradas.",
+    successMessage:
+      "Dos pasos desactivado. Todas las sesiones fueron cerradas, también la de este dispositivo. Vuelve a iniciar sesión para seguir sincronizando aquí.",
   },
   challenge: {
     title: "Introduce tu código de 6 dígitos",
@@ -443,7 +448,8 @@ const totpCopyIt: TOTPCopy = {
     currentPasswordLabel: "Password corrente",
     codeLabel: "Codice a 6 cifre",
     submitLabel: "Disattiva l'autenticazione a due fattori",
-    successMessage: "L'autenticazione a due fattori è disattivata. Tutte le sessioni sono state disconnesse.",
+    successMessage:
+      "L'autenticazione a due fattori è disattivata. Tutte le sessioni sono state disconnesse, anche su questo dispositivo. Accedi di nuovo per continuare a sincronizzare qui.",
   },
   challenge: {
     title: "Inserisci il tuo codice a 6 cifre",

@@ -169,12 +169,12 @@ export async function startTOTPEnrollment(
  * A community server also rotates the account recovery code on success and
  * returns the new one; it is the only working recovery code from then on, so
  * the caller must show it once. `recoveryCode` is null when the backend issued
- * none (managed, or a community server that predates rotation). A community
- * 429 may mean the pending secret's verify budget is spent and the secret is
- * gone (the general rate limit answers identically), so it surfaces as
- * `totp_enrollment_restart_required`. A 409 `totp_enrollment_not_started`
- * (community or managed) means no secret is pending (expired, or
- * replaced by a newer setup) — also a restart, not a server fault.
+ * none (managed, or a community server that predates rotation). A 429 is the
+ * rolling attempt budget and keeps the pending secret: it surfaces as
+ * `rate_limited`. A 409 `totp_enrollment_discarded` (the secret's own attempt
+ * or lifetime cap) or `totp_enrollment_not_started` (community or managed)
+ * means no secret is pending (expired, or replaced by a newer setup) — a
+ * restart, not a server fault.
  */
 export async function verifyTOTPEnrollment(
   secretStore: SyncSecretStore,
@@ -446,8 +446,6 @@ function mapCommunityVerifyEnrollmentError(
   code: SyncAPIErrorCode,
 ): VerifyTOTPEnrollmentErrorCode {
   switch (code) {
-    case "rate_limited":
-      return "totp_enrollment_restart_required";
     case "totp_enrollment_discarded":
       return "totp_enrollment_not_started";
     case "totp_enrollment_not_started":
@@ -457,6 +455,7 @@ function mapCommunityVerifyEnrollmentError(
     case "totp_replayed":
     case "totp_secret_failed":
     case "unauthorized":
+    case "rate_limited":
     case "network_failed":
       return code;
     default:
