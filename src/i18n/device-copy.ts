@@ -19,6 +19,11 @@ export type DeviceCopy = {
   removeDevicePrompt: (label: string) => string;
   removeCurrentDevicePrompt: (label: string) => string;
   statusRemoved: string;
+  // Self-hosted servers revoke every session bound to a removed device.
+  removeSelfHostedDevicePrompt: (label: string) => string;
+  removeCurrentSelfHostedDevicePrompt: (label: string) => string;
+  statusRemovedSignedOut: string;
+  removeStepUpExplanation: string;
   fallbackDeviceLabel: string;
   errors: {
     notConnected: string;
@@ -46,6 +51,14 @@ const deviceCopyEn: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `"${label}" is the device you are using right now. Removing it frees its slot but does not sign this device out — sync keeps working here, and it will register again the next time you sign in. Remove it anyway?`,
   statusRemoved: "Device removed. Its slot is now free.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `Remove "${label}" from this account? Its slot is freed and that device is signed out of your sync server; it can sign in again later.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `"${label}" is the device you are using right now. Removing it frees its slot and signs this device out of your sync server; sign in again to keep syncing here. Remove it anyway?`,
+  statusRemovedSignedOut:
+    "Device removed and signed out of sync. Sign in again to keep syncing here.",
+  removeStepUpExplanation:
+    "Two-factor authentication is on for this account. Confirm removing the device with your password and a current code.",
   fallbackDeviceLabel: "Unnamed device",
   errors: {
     notConnected: "Connect this device to your sync account first.",
@@ -74,6 +87,14 @@ const deviceCopyDe: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `„${label}“ ist das Gerät, das Sie gerade verwenden. Das Entfernen gibt seinen Platz frei, meldet dieses Gerät aber nicht ab — Sync funktioniert hier weiter, und es registriert sich bei der nächsten Anmeldung erneut. Trotzdem entfernen?`,
   statusRemoved: "Gerät entfernt. Sein Platz ist jetzt frei.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `„${label}“ aus diesem Konto entfernen? Sein Platz wird frei und das Gerät wird von Ihrem Sync-Server abgemeldet; es kann sich später wieder anmelden.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `„${label}“ ist das Gerät, das Sie gerade verwenden. Das Entfernen gibt seinen Platz frei und meldet dieses Gerät von Ihrem Sync-Server ab; melden Sie sich erneut an, um hier weiter zu synchronisieren. Trotzdem entfernen?`,
+  statusRemovedSignedOut:
+    "Gerät entfernt und vom Sync abgemeldet. Melden Sie sich erneut an, um hier weiter zu synchronisieren.",
+  removeStepUpExplanation:
+    "Für dieses Konto ist die Zwei-Faktor-Authentifizierung aktiv. Bestätigen Sie das Entfernen des Geräts mit Ihrem Passwort und einem aktuellen Code.",
   fallbackDeviceLabel: "Unbenanntes Gerät",
   errors: {
     notConnected: "Verbinden Sie dieses Gerät zuerst mit Ihrem Sync-Konto.",
@@ -104,6 +125,14 @@ const deviceCopyFr: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `« ${label} » est l'appareil que vous utilisez en ce moment. Le retirer libère sa place sans le déconnecter — le sync continue ici, et il se réenregistrera à votre prochaine connexion. Le retirer quand même ?`,
   statusRemoved: "Appareil retiré. Sa place est maintenant libre.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `Retirer « ${label} » de ce compte ? Sa place est libérée et cet appareil est déconnecté de votre serveur de sync ; il pourra se reconnecter plus tard.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `« ${label} » est l'appareil que vous utilisez en ce moment. Le retirer libère sa place et déconnecte cet appareil de votre serveur de sync ; reconnectez-vous pour continuer à synchroniser ici. Le retirer quand même ?`,
+  statusRemovedSignedOut:
+    "Appareil retiré et déconnecté du sync. Reconnectez-vous pour continuer à synchroniser ici.",
+  removeStepUpExplanation:
+    "La double authentification est activée pour ce compte. Confirmez le retrait de l'appareil avec votre mot de passe et un code actuel.",
   fallbackDeviceLabel: "Appareil sans nom",
   errors: {
     notConnected: "Connectez d'abord cet appareil à votre compte de sync.",
@@ -134,6 +163,14 @@ const deviceCopyRu: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `«${label}» — это устройство, которым вы пользуетесь сейчас. Удаление освободит его слот, но не завершит сессию — sync здесь продолжит работать, а устройство снова зарегистрируется при следующем входе. Всё равно удалить?`,
   statusRemoved: "Устройство удалено. Слот освобождён.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `Удалить «${label}» из аккаунта? Его слот освободится, а устройство будет отключено от вашего sync-сервера; позже оно сможет войти снова.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `«${label}» — это устройство, которым вы пользуетесь сейчас. Удаление освободит его слот и отключит это устройство от вашего sync-сервера; чтобы продолжить синхронизацию здесь, войдите снова. Всё равно удалить?`,
+  statusRemovedSignedOut:
+    "Устройство удалено и отключено от sync. Чтобы продолжить синхронизацию здесь, войдите снова.",
+  removeStepUpExplanation:
+    "Для аккаунта включена двухфакторная аутентификация. Подтвердите удаление устройства паролем и текущим кодом.",
   fallbackDeviceLabel: "Устройство без названия",
   errors: {
     notConnected: "Сначала подключите это устройство к sync-аккаунту.",
@@ -163,6 +200,14 @@ const deviceCopyEs: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `"${label}" es el dispositivo que estás usando ahora. Quitarlo libera su plaza sin cerrar la sesión: el sync sigue funcionando aquí y volverá a registrarse la próxima vez que inicies sesión. ¿Quitarlo de todos modos?`,
   statusRemoved: "Dispositivo quitado. Su plaza queda libre.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `¿Quitar "${label}" de esta cuenta? Su plaza queda libre y ese dispositivo se desconecta de tu servidor de sync; podrá volver a iniciar sesión más tarde.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `"${label}" es el dispositivo que estás usando ahora. Quitarlo libera su plaza y desconecta este dispositivo de tu servidor de sync; vuelve a iniciar sesión para seguir sincronizando aquí. ¿Quitarlo de todos modos?`,
+  statusRemovedSignedOut:
+    "Dispositivo quitado y desconectado del sync. Vuelve a iniciar sesión para seguir sincronizando aquí.",
+  removeStepUpExplanation:
+    "La autenticación en dos pasos está activada en esta cuenta. Confirma que quieres quitar el dispositivo con tu contraseña y un código actual.",
   fallbackDeviceLabel: "Dispositivo sin nombre",
   errors: {
     notConnected: "Primero conecta este dispositivo a tu cuenta de sync.",
@@ -193,6 +238,14 @@ const deviceCopyIt: DeviceCopy = {
   removeCurrentDevicePrompt: (label: string) =>
     `"${label}" è il dispositivo che stai usando adesso. Rimuoverlo libera il suo slot senza disconnetterlo: il sync continua a funzionare qui e si registrerà di nuovo al prossimo accesso. Rimuoverlo comunque?`,
   statusRemoved: "Dispositivo rimosso. Il suo slot è ora libero.",
+  removeSelfHostedDevicePrompt: (label: string) =>
+    `Rimuovere "${label}" da questo account? Il suo slot si libera e il dispositivo viene disconnesso dal tuo server di sync; potrà accedere di nuovo più tardi.`,
+  removeCurrentSelfHostedDevicePrompt: (label: string) =>
+    `"${label}" è il dispositivo che stai usando adesso. Rimuoverlo libera il suo slot e disconnette questo dispositivo dal tuo server di sync; accedi di nuovo per continuare a sincronizzare qui. Rimuoverlo comunque?`,
+  statusRemovedSignedOut:
+    "Dispositivo rimosso e disconnesso dal sync. Accedi di nuovo per continuare a sincronizzare qui.",
+  removeStepUpExplanation:
+    "L'autenticazione a due fattori è attiva per questo account. Conferma la rimozione del dispositivo con la password e un codice attuale.",
   fallbackDeviceLabel: "Dispositivo senza nome",
   errors: {
     notConnected: "Collega prima questo dispositivo al tuo account di sync.",
