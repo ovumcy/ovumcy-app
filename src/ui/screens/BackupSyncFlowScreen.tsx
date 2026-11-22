@@ -22,6 +22,7 @@ import { ScreenScaffold } from "../components/ScreenScaffold";
 import { InlineBackButton } from "../components/InlineBackButton";
 import { useAppPreferences } from "../providers/AppPreferencesProvider";
 import { SettingsSyncSetupSection } from "./backup-sync/SettingsSyncSetupSection";
+import type { AccountChangeRecoveryOffer } from "./backup-sync/SettingsSyncSetupSection";
 import { SettingsPartnerAccessSection } from "./backup-sync/SettingsPartnerAccessSection";
 import { SettingsSyncDevicesSection } from "./backup-sync/SettingsSyncDevicesSection";
 import { BackupSyncRecoveryKeyStepUpSection } from "./backup-sync/BackupSyncRecoveryKeyStepUpSection";
@@ -140,6 +141,7 @@ export type BackupSyncFlowScreenProps = {
   onCancelAccountDeletionStepUp: () => void;
   managedRecoveryRotationStepUpCopy: RecoveryKeyStepUpCopy;
   managedRecoveryRotationStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  accountChangeRecovery: AccountChangeRecoveryOffer;
   onSubmitManagedRecoveryRotationStepUp: (
     stepUp: SyncRecoveryKeyStepUp,
   ) => void | Promise<void>;
@@ -251,6 +253,7 @@ export function BackupSyncFlowScreen({
   onCancelAccountDeletionStepUp,
   managedRecoveryRotationStepUpCopy,
   managedRecoveryRotationStepUpPrompt,
+  accountChangeRecovery,
   onSubmitManagedRecoveryRotationStepUp,
   onCancelManagedRecoveryRotationStepUp,
   deviceRemovalStepUpCopy,
@@ -340,6 +343,7 @@ export function BackupSyncFlowScreen({
             />
           ) : null
         }
+        accountChangeRecovery={accountChangeRecovery}
         recoveryRotationStepUp={
           managedRecoveryRotationStepUpPrompt ? (
             <BackupSyncRecoveryKeyStepUpSection

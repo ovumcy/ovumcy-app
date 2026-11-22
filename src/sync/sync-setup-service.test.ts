@@ -1,3 +1,4 @@
+import { createSyncSecretsRecord } from "../security/sync-crypto";
 import { createDefaultSyncPreferencesRecord } from "./sync-contract";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
@@ -579,5 +580,66 @@ describe("sync-setup-service", () => {
         });
       },
     );
+  });
+});
+
+describe("sync key and account binding", () => {
+  const NOW = new Date("2026-03-22T08:15:00.000Z");
+  const boundManaged = {
+    ...createDefaultSyncPreferencesRecord(),
+    mode: "managed" as const,
+    deviceLabel: "Pixel 7",
+    setupStatus: "local_ready" as const,
+    accountId: "account-a",
+  };
+
+  it("binds a key set up while signed out to no account, so the next sign-in keeps it", async () => {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue(boundManaged),
+    });
+
+    const result = await prepareSyncSetup(storage, createSyncSecretStoreMock(), boundManaged, NOW);
+
+    expect(result.ok && result.preferences.accountId).toBeNull();
+    expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ accountId: null }),
+      { restoreInProgress: false },
+    );
+  });
+
+  it("keeps the account bound when new keys keep the signed-in session", async () => {
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue(boundManaged),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      ...createSyncSecretsRecord("Pixel 7", NOW).record,
+      managedAuthSessionToken: "managed-1",
+    });
+
+    const result = await prepareSyncSetup(storage, secretStore, boundManaged, NOW);
+
+    expect(result.ok && result.preferences.accountId).toBe("account-a");
+  });
+
+  it("unbinds the account when a material draft change clears the keys, and keeps it on a relabel", async () => {
+    const secrets = createSyncSecretsRecord("Pixel 7", NOW).record;
+
+    const material = await saveSyncPreferencesDraft(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(secrets),
+      boundManaged,
+      { ...boundManaged, mode: "self_hosted", endpointInput: "192.168.1.20:8080" },
+      true,
+    );
+    const relabel = await saveSyncPreferencesDraft(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(secrets),
+      boundManaged,
+      { ...boundManaged, deviceLabel: "Pixel 8" },
+      true,
+    );
+
+    expect(material.ok && material.preferences.accountId).toBeNull();
+    expect(relabel.ok && relabel.preferences.accountId).toBe("account-a");
   });
 });

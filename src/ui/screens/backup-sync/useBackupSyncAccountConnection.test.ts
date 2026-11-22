@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react-native";
 
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
 import { resolveBackupSyncConnectedStatusMessage } from "../../../services/backup-sync-view-service";
@@ -202,6 +203,44 @@ describe("useBackupSyncAccountConnection", () => {
       expect(result.current.isAuthenticatingSync).toBe(false);
     });
 
+    it("offers the new phrase's reveal, not the plain status, when the sign-in replaced the sync key", async () => {
+      const connectedState = createLoadedSettingsStateFixture({ hasSyncSession: true });
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: connectedState,
+        accountKeyReset: true,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("login");
+      });
+
+      expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("reveal");
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
+        selectAccountChangeRecoveryCopy("en").connectedStatus,
+      );
+    });
+
+    it("offers no reveal for a sign-in that kept the sync key", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: createLoadedSettingsStateFixture({ hasSyncSession: true }),
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("login");
+      });
+
+      expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
     it("surfaces the one-time recovery code on a fresh register", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockConnectBackupSyncAccount.mockResolvedValue({
@@ -298,6 +337,25 @@ describe("useBackupSyncAccountConnection", () => {
         core.state!.syncPreferences,
         { challengeID: "challenge-1", code: "123456" },
       );
+    });
+
+    it("offers the new phrase's reveal after a TOTP sign-in that replaced the sync key", async () => {
+      const { core, result } = await renderHookWithPendingChallenge();
+      mockCompleteBackupSyncTOTPChallenge.mockResolvedValue({
+        ok: true,
+        connected: true,
+        state: core.state!,
+        accountKeyReset: true,
+      });
+
+      await act(() => {
+        result.current.setTotpChallengeCode("123456");
+      });
+      await act(async () => {
+        await result.current.handleSubmitTOTPChallenge();
+      });
+
+      expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("reveal");
     });
 
     it("drops the pending challenge on an invalid/expired challenge error", async () => {

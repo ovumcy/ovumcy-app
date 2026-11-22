@@ -185,6 +185,9 @@ export async function connectBackupSyncAccount(
       // exactly once at register. Undefined on login. Callers must surface it
       // immediately to the owner — the server never reissues the same code.
       recoveryCode?: string;
+      // The sign-in reached another account and replaced the sync key; the
+      // screen offers the gated reveal of its phrase.
+      accountKeyReset?: true;
     }
   | {
       // The password verified but the account has TOTP enabled. No session
@@ -241,6 +244,7 @@ export async function connectBackupSyncAccount(
     state: LoadedSettingsState;
     connected: boolean;
     recoveryCode?: string;
+    accountKeyReset?: true;
   } = {
     ok: true,
     connected: true,
@@ -258,6 +262,9 @@ export async function connectBackupSyncAccount(
   };
   if (result.recoveryCode) {
     success.recoveryCode = result.recoveryCode;
+  }
+  if (result.accountKeyReset) {
+    success.accountKeyReset = true;
   }
   return success;
 }
@@ -417,6 +424,7 @@ export async function completeBackupSyncTOTPChallenge(
       ok: true;
       state: LoadedSettingsState;
       connected: boolean;
+      accountKeyReset?: true;
     }
   | {
       ok: false;
@@ -435,6 +443,7 @@ export async function completeBackupSyncTOTPChallenge(
     {
       sessionToken: challengeResult.auth.sessionToken,
       sessionExpiresAt: challengeResult.auth.sessionExpiresAt,
+      accountID: challengeResult.auth.accountID,
       ...(challengeResult.auth.refreshToken
         ? {
             refreshToken: challengeResult.auth.refreshToken,
@@ -468,6 +477,7 @@ export async function completeBackupSyncTOTPChallenge(
       finalizeResult.capabilities,
       managedPremiumAccess,
     ),
+    ...(finalizeResult.accountKeyReset ? { accountKeyReset: true as const } : {}),
   };
 }
 
@@ -559,6 +569,7 @@ export async function completeBackupSyncRecoveryTOTPChallenge(
       sessionToken: challengeResult.auth.sessionToken,
       recoveryPhrase: input.recoveryPhrase,
       sessionExpiresAt: challengeResult.auth.sessionExpiresAt,
+      accountID: challengeResult.auth.accountID,
       ...(challengeResult.auth.refreshToken
         ? {
             refreshToken: challengeResult.auth.refreshToken,

@@ -5,6 +5,7 @@ import * as appBootstrapService from "../../../services/app-bootstrap-service";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
 import * as offersService from "../../../services/offers-service";
 import * as settingsStateService from "../../../services/settings-state-service";
+import * as accountChangeRecoveryPhrase from "../../../sync/account-change-recovery-phrase";
 import * as managedRecoveryRotationService from "../../../sync/managed-recovery-rotation-service";
 import * as syncSetupService from "../../../sync/sync-setup-service";
 import {
@@ -735,6 +736,20 @@ describe("useBackupSyncSessionCore", () => {
       expect(second.result.current.generatedRecoveryPhrase).toBe("rotated phrase");
       expect(peekSpy).toHaveBeenCalledTimes(2);
     });
+
+    it.each(["reveal", "replace"] as const)(
+      "restores the %s offer for a replaced sync key on every load, never the phrase itself",
+      async (offer) => {
+        jest
+          .spyOn(accountChangeRecoveryPhrase, "loadAccountChangeRecoveryPhraseState")
+          .mockResolvedValue(offer);
+
+        const { result } = await renderLoadedCore();
+
+        expect(result.current.accountChangeRecoveryPhrase).toBe(offer);
+        expect(result.current.generatedRecoveryPhrase).toBe("");
+      },
+    );
 
     it("surfaces a failed save as errorState scoped to the caller and leaves the draft state untouched", async () => {
       const { result } = await renderLoadedCore();

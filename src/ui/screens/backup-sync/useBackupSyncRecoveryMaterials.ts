@@ -1,10 +1,16 @@
 import { useMemo, useRef, useState } from "react";
 
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { prepareBackupSyncSetup } from "../../../services/backup-sync-screen-service";
 import { shouldRotateManagedRecoveryPhrase } from "../../../services/backup-sync-view-service";
 import { deliverRecoveryPhraseArtifact } from "../../../services/recovery-phrase-delivery-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
+import {
+  acknowledgeAccountChangeRecoveryPhrase,
+  loadAccountChangeRecoveryPhraseState,
+  readPendingAccountChangeRecoveryPhrase,
+} from "../../../sync/account-change-recovery-phrase";
 import {
   acknowledgeManagedRecoveryPhrase,
   rotateManagedRecoveryPhrase,
@@ -20,11 +26,15 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
  * (which reveals the recovery phrase once), rotating a connected managed
  * account's phrase, and exporting that phrase. Both paths keep a
  * confirm-then-device-auth gate; rotation adds the step-up card and reveals the
- * new phrase only after Ovumcy Cloud confirmed it. The phrase itself lives on
- * the shared core because the focus-load reset and the draft-save both clear it.
+ * new phrase only after Ovumcy Cloud confirmed it. A key a sign-in to another
+ * account replaced reveals its phrase behind the same confirm-then-device-auth
+ * gate, or, once a process kill lost it, offers a new phrase through the
+ * regular path. The phrase itself lives on the shared core because the
+ * focus-load reset and the draft-save both clear it.
  */
 export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
   const {
+    accountChangeRecoveryPhrase,
     effectiveNow,
     exportDeliveryClient,
     generatedRecoveryPhrase,
@@ -33,6 +43,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     resetFeedbackMessages,
     setAccountStatusMessage,
     setErrorState,
+    setAccountChangeRecoveryPhrase,
     setGeneratedRecoveryPhrase,
     setState,
     state,
@@ -57,6 +68,18 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     () => selectManagedRecoveryRotationCopy(language),
     [language],
   );
+  const accountChangeCopy = useMemo(
+    () => selectAccountChangeRecoveryCopy(language),
+    [language],
+  );
+
+  function reportDeviceAuthFailure(reason: string) {
+    if (reason === "unavailable") {
+      setErrorState({ code: "deviceAuthUnavailable", scope: "local" });
+    } else if (reason === "failed") {
+      setErrorState({ code: "deviceAuthFailed", scope: "local" });
+    }
+  }
 
   async function handlePrepareSyncSetup() {
     if (!state) {
@@ -93,17 +116,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
           : viewData.account.regenerateDeviceAuthPrompt,
       );
       if (!challengeResult.ok) {
-        if (challengeResult.reason === "unavailable") {
-          setErrorState({
-            code: "deviceAuthUnavailable",
-            scope: "local",
-          });
-        } else if (challengeResult.reason === "failed") {
-          setErrorState({
-            code: "deviceAuthFailed",
-            scope: "local",
-          });
-        }
+        reportDeviceAuthFailure(challengeResult.reason);
         return;
       }
     }
@@ -139,6 +152,8 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
 
     setErrorState(null);
     setState(result.state);
+    // A new key has a phrase of its own, revealed right below.
+    setAccountChangeRecoveryPhrase("none");
     await reloadPartnerAccess(result.state);
     setGeneratedRecoveryPhrase(result.recoveryPhrase);
     setAccountStatusMessage(
@@ -230,9 +245,49 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     core.setGeneratedRecoveryCode("");
   }
 
+  // Only the explicit confirm reveals: a dismissed confirm or a failed device
+  // auth keeps the offer, and the phrase stays in its buffer for a retry.
+  async function handleRevealAccountChangeRecoveryPhrase() {
+    if (accountChangeRecoveryPhrase !== "reveal") {
+      return;
+    }
+    resetFeedbackMessages();
+
+    const confirmed = await openConfirmation(
+      accountChangeCopy.confirmPrompt,
+      accountChangeCopy.confirmAccept,
+      viewData.common.cancelAction,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    const challengeResult = await requestSensitiveActionChallenge(
+      accountChangeCopy.deviceAuthPrompt,
+    );
+    if (!challengeResult.ok) {
+      reportDeviceAuthFailure(challengeResult.reason);
+      return;
+    }
+
+    const phrase = await readPendingAccountChangeRecoveryPhrase(syncSecretStore);
+    if (phrase === null) {
+      setAccountChangeRecoveryPhrase(
+        await loadAccountChangeRecoveryPhraseState(syncSecretStore),
+      );
+      return;
+    }
+    setErrorState(null);
+    setGeneratedRecoveryPhrase(phrase);
+  }
+
   function handleAcknowledgeRecoveryPhrase() {
     setGeneratedRecoveryPhrase("");
     acknowledgeManagedRecoveryPhrase();
+    setAccountChangeRecoveryPhrase("none");
+    // A failed write leaves the flag, so the next load offers a new phrase:
+    // the safe side of a lost acknowledgement.
+    void acknowledgeAccountChangeRecoveryPhrase(syncSecretStore).catch(() => undefined);
   }
 
   async function handleExportRecoveryPhrase() {
@@ -267,8 +322,11 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     isRotatingRecoveryPhrase,
     isExportingRecoveryPhrase,
     managedRecoveryRotationCopy: rotationCopy,
+    accountChangeRecoveryCopy: accountChangeCopy,
+    accountChangeRecoveryPhrase,
     managedRecoveryRotationStepUpPrompt,
     handlePrepareSyncSetup,
+    handleRevealAccountChangeRecoveryPhrase,
     handleSubmitManagedRecoveryRotationStepUp,
     handleCancelManagedRecoveryRotationStepUp,
     handleAcknowledgeRecoveryCode,

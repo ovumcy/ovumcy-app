@@ -11,6 +11,8 @@ import {
 } from "react-native";
 
 import type { SettingsViewData } from "../../../services/settings-view-service";
+import type { AccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
+import type { AccountChangeRecoveryPhraseState } from "../../../sync/account-change-recovery-phrase";
 import type {
   BackupSyncErrorPresentation,
   BackupSyncSetupPresentation,
@@ -29,7 +31,18 @@ import type { AppThemeColors } from "../../theme/tokens";
 import { fontScale, spacing } from "../../theme/tokens";
 import { useThemedStyles } from "../../theme/useThemedStyles";
 
+// A sign-in to another account replaced the sync key: `reveal` shows its
+// phrase behind the confirm and device auth, `replace` (the phrase was lost to
+// a process kill) creates a new one through the regular gated path.
+export type AccountChangeRecoveryOffer = {
+  copy: AccountChangeRecoveryCopy;
+  offer: AccountChangeRecoveryPhraseState;
+  onReveal: () => void;
+  onReplace: () => void;
+};
+
 type SettingsSyncSetupSectionProps = {
+  accountChangeRecovery?: AccountChangeRecoveryOffer;
   authLoginValue: string;
   authPasswordValue: string;
   billingOffers?: ResolvedBillingOffer[];
@@ -77,6 +90,7 @@ type SettingsSyncSetupSectionProps = {
 function ignoreRequestClose() {}
 
 export function SettingsSyncSetupSection({
+  accountChangeRecovery,
   authLoginValue,
   authPasswordValue,
   billingOffers = [],
@@ -295,6 +309,34 @@ export function SettingsSyncSetupSection({
                   onPress={onExportRecoveryPhrase}
                   testID="settings-sync-recovery-export-button"
                   variant="secondary"
+                />
+              </View>
+            ) : accountChangeRecovery && accountChangeRecovery.offer !== "none" ? (
+              <View
+                style={styles.recoveryPhraseCard}
+                testID="settings-sync-account-change-recovery-card"
+              >
+                <Text style={styles.recoveryTitle}>
+                  {accountChangeRecovery.copy.pendingTitle}
+                </Text>
+                <Text style={styles.recoveryNotice}>
+                  {accountChangeRecovery.offer === "reveal"
+                    ? accountChangeRecovery.copy.pendingHint
+                    : accountChangeRecovery.copy.lostHint}
+                </Text>
+                <AppButton
+                  disabled={isPreparing}
+                  label={
+                    accountChangeRecovery.offer === "reveal"
+                      ? accountChangeRecovery.copy.revealLabel
+                      : accountChangeRecovery.copy.replaceLabel
+                  }
+                  onPress={
+                    accountChangeRecovery.offer === "reveal"
+                      ? accountChangeRecovery.onReveal
+                      : accountChangeRecovery.onReplace
+                  }
+                  testID="settings-sync-account-change-recovery-button"
                 />
               </View>
             ) : (

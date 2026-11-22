@@ -126,6 +126,8 @@ export function createBackupSyncSessionCoreMock(
     setGeneratedRecoveryPhrase: jest.fn(),
     generatedRecoveryCode: "",
     setGeneratedRecoveryCode: jest.fn(),
+    accountChangeRecoveryPhrase: "none",
+    setAccountChangeRecoveryPhrase: jest.fn(),
     recoveryPhraseInputValue: "",
     setRecoveryPhraseInputValue: jest.fn(),
     // Partner buffer + partner-access snapshot

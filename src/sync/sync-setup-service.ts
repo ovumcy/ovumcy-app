@@ -158,16 +158,24 @@ export async function prepareSyncSetup(
         existingSecrets?.managedRefreshTokenExpiresAt ?? null,
     };
     await secretStore.writeSyncSecrets(secrets);
+    // A new key serves the account of the session it keeps; with no session
+    // left it is bound to none yet, so the next sign-in, to any account,
+    // keeps it and the phrase revealed below stays the one that opens it.
+    const retainsSession =
+      secrets.authSessionToken !== null || secrets.managedAuthSessionToken !== null;
+    const preparedPreferences: SyncPreferencesRecord = retainsSession
+      ? nextPreferences
+      : { ...nextPreferences, accountId: null };
     // A new sync key can never finish a restore of the old backup, so an
     // unfinished-restore mark would block uploads for good. With the floor
     // reset, the fresh-install probe asks before overwriting a backup instead.
-    await storage.writeSyncPreferencesRecord(nextPreferences, {
+    await storage.writeSyncPreferencesRecord(preparedPreferences, {
       restoreInProgress: false,
     });
 
     return {
       ok: true,
-      preferences: nextPreferences,
+      preferences: preparedPreferences,
       recoveryPhrase: result.recoveryPhrase,
       secrets,
     };
@@ -244,6 +252,7 @@ export async function saveSyncPreferencesDraft(
       ? null
       : savedPreferences.lastRemoteGeneration,
     lastSyncedAt: shouldResetPreparedState ? null : savedPreferences.lastSyncedAt,
+    accountId: shouldResetPreparedState ? null : savedPreferences.accountId,
     // A materially-changed draft (mode/endpoint) with existing secrets clears
     // local secrets below, ending any guest session context along with them;
     // otherwise this is a local-only save (device label, etc.) that must not
