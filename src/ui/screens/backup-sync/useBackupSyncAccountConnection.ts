@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import {
   resolveBackupSyncConnectedStatusMessage,
 } from "../../../services/backup-sync-view-service";
@@ -25,6 +26,7 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
   const {
     effectiveNow,
+    language,
     reloadPartnerAccess,
     resetFeedbackMessages,
     saveSyncDraftIfNeeded,
@@ -122,10 +124,24 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     }
     await reloadPartnerAccess(result.state);
     setAccountPasswordValue("");
-    setAccountStatusMessage(
-      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
-    );
+    announceConnected(result.state, result.accountKeyReset === true);
     setIsAuthenticatingSync(false);
+  }
+
+  // A sign-in that replaced the sync key offers the gated reveal of the new
+  // phrase instead of the plain connected status.
+  function announceConnected(
+    connectedState: NonNullable<typeof state>,
+    accountKeyReset: boolean,
+  ) {
+    if (accountKeyReset) {
+      core.setAccountChangeRecoveryPhrase("reveal");
+      setAccountStatusMessage(selectAccountChangeRecoveryCopy(language).connectedStatus);
+      return;
+    }
+    setAccountStatusMessage(
+      resolveBackupSyncConnectedStatusMessage(connectedState, viewData.account),
+    );
   }
 
   async function handleSubmitTOTPChallenge() {
@@ -173,9 +189,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     setPendingTOTPChallenge(null);
     setTotpChallengeCode("");
     await reloadPartnerAccess(result.state);
-    setAccountStatusMessage(
-      resolveBackupSyncConnectedStatusMessage(result.state, viewData.account),
-    );
+    announceConnected(result.state, result.accountKeyReset === true);
     setIsAuthenticatingSync(false);
   }
 

@@ -113,13 +113,16 @@ export type SyncPreferencesRecord = {
   // guestSessionExpiresAt is null, which is what a non-guest session is.
   guestSessionRenewable: boolean;
   // accountId is the server account the rollback floor (lastRemoteGeneration)
-  // and the local master key were last used with. Every connect, TOTP finalize,
-  // recovery and guest accept writes the account it signed in to; when that
-  // account differs from this one (or this one is null), the floor and
-  // lastSyncedAt reset, so the first upload probes the server again and asks
-  // before overwriting another account's backup. A disconnect keeps it: it is
-  // what the next sign-in is compared against. Null when unknown (a record
-  // written before this field existed, or a device that never signed in).
+  // and the local master key were last used with. Every connect, TOTP finalize
+  // and recovery writes the account it signed in to; when that account differs
+  // from this one (or this one is null), the floor and lastSyncedAt reset, so
+  // the first upload probes the server again and asks before overwriting
+  // another account's backup. A connect or TOTP finalize that differs from a
+  // non-null value here also replaces the master key (see SyncSecretsRecord.
+  // recoveryPhraseUnrevealed). A guest accept resets the floor but keeps this
+  // value for a kept key; a disconnect keeps it: it is what the next sign-in is
+  // compared against. Null when unknown (a record written before this field
+  // existed, a device that never signed in, or a key set up while signed out).
   accountId: string | null;
   // restoreInProgress is true from the wipe that starts a sync restore until
   // the restore's final preferences write. A restore that stops partway leaves
@@ -251,6 +254,13 @@ export type SyncSecretsRecord = {
   // before this device declared refresh support).
   managedRefreshToken: string | null;
   managedRefreshTokenExpiresAt: string | null;
+  // Set, together with a new master key, when a sign-in to another account
+  // replaced the key; cleared once its recovery phrase was shown and
+  // acknowledged. Not a secret: the phrase itself is never written anywhere.
+  // A process kill before the acknowledgement loses the in-memory phrase, and
+  // this flag is what still tells the screen to offer a new phrase. Absent on
+  // every other record (a key from setup or recovery has a known phrase).
+  recoveryPhraseUnrevealed?: true;
 };
 
 export function normalizeSyncMode(

@@ -27,6 +27,10 @@ import {
   type ExportDeliveryClient,
 } from "../../../services/export-delivery";
 import { loadSettingsScreenState } from "../../../services/settings-state-service";
+import {
+  loadAccountChangeRecoveryPhraseState,
+  type AccountChangeRecoveryPhraseState,
+} from "../../../sync/account-change-recovery-phrase";
 import { peekUnacknowledgedManagedRecoveryPhrase } from "../../../sync/managed-recovery-rotation-service";
 import {
   buildSettingsViewData,
@@ -123,6 +127,10 @@ export function useBackupSyncSessionCore({
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");
   const [generatedRecoveryCode, setGeneratedRecoveryCode] = useState("");
+  // Only which offer the screen shows; the phrase itself stays in its
+  // in-memory buffer until the gated reveal.
+  const [accountChangeRecoveryPhrase, setAccountChangeRecoveryPhrase] =
+    useState<AccountChangeRecoveryPhraseState>("none");
   const [recoveryPhraseInputValue, setRecoveryPhraseInputValue] = useState("");
   const [partnerOverview, setPartnerOverview] =
     useState<ManagedCloudPartnerAccessOverview | null>(null);
@@ -352,11 +360,17 @@ export function useBackupSyncSessionCore({
         if (!isMounted) {
           return;
         }
+        const accountChangePhraseState =
+          await loadAccountChangeRecoveryPhraseState(syncSecretStore);
+        if (!isMounted) {
+          return;
+        }
 
         setState(loadedState);
         // A confirmed managed rotation the user has not acknowledged is shown
         // again: the server already retired the old phrase.
         setGeneratedRecoveryPhrase(peekUnacknowledgedManagedRecoveryPhrase() ?? "");
+        setAccountChangeRecoveryPhrase(accountChangePhraseState);
         setGeneratedRecoveryCode("");
         setRecoveryPhraseInputValue("");
         resetPartnerFeedback();
@@ -442,6 +456,7 @@ export function useBackupSyncSessionCore({
     if (!syncResult.state.hasStoredSyncSecrets) {
       setGeneratedRecoveryPhrase("");
       setGeneratedRecoveryCode("");
+      setAccountChangeRecoveryPhrase("none");
     }
     setState(syncResult.state);
     return syncResult.state;
@@ -484,6 +499,8 @@ export function useBackupSyncSessionCore({
     setGeneratedRecoveryPhrase,
     generatedRecoveryCode,
     setGeneratedRecoveryCode,
+    accountChangeRecoveryPhrase,
+    setAccountChangeRecoveryPhrase,
     recoveryPhraseInputValue,
     setRecoveryPhraseInputValue,
     // Partner buffer + partner-access snapshot

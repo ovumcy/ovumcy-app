@@ -30,6 +30,7 @@ import {
   callWithManagedSession,
   type ManagedSessionCallFailure,
 } from "./managed-session-call";
+import { holdAccountChangeRecoveryPhrase } from "./account-change-recovery-phrase";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import {
@@ -212,6 +213,61 @@ export function bindSyncPreferencesToAccount(
   };
 }
 
+type AccountKeyedSecrets = {
+  secrets: SyncSecretsRecord;
+  // The new key's phrase, for the gated reveal only; null when the key stays.
+  recoveryPhrase: string | null;
+};
+
+/**
+ * A sync key serves one account. A sign-in to an account other than the one
+ * the stored key was last used with replaces the master key, recovery phrase
+ * and device identity before anything reaches the server, so the new account
+ * never receives the old key's ciphertext, recovery package or device id. A
+ * key bound to no account yet (fresh setup, a record written before the
+ * binding existed) stays. Recovery never comes here: it adopts the account's
+ * own key.
+ */
+function keySecretsForAccount(
+  secrets: SyncSecretsRecord,
+  preferences: SyncPreferencesRecord,
+  accountId: string | null | undefined,
+  now: Date,
+): AccountKeyedSecrets {
+  const storedAccountId =
+    typeof preferences.accountId === "string" && preferences.accountId.length > 0
+      ? preferences.accountId
+      : null;
+  const signedInAccountId =
+    typeof accountId === "string" && accountId.length > 0 ? accountId : null;
+  if (storedAccountId === null || storedAccountId === signedInAccountId) {
+    return { secrets, recoveryPhrase: null };
+  }
+  const fresh = createSyncSecretsRecord(secrets.device.deviceLabel, now);
+  return {
+    secrets: {
+      ...fresh.record,
+      authSessionToken: secrets.authSessionToken,
+      managedAuthSessionToken: secrets.managedAuthSessionToken,
+      managedAuthSessionExpiresAt: secrets.managedAuthSessionExpiresAt,
+      managedRefreshToken: secrets.managedRefreshToken,
+      managedRefreshTokenExpiresAt: secrets.managedRefreshTokenExpiresAt,
+      recoveryPhraseUnrevealed: true,
+    },
+    recoveryPhrase: fresh.recoveryPhrase,
+  };
+}
+
+// Called right after the keyed secrets are written, so the phrase is held for
+// exactly the key the device now uses.
+function holdNewAccountKeyPhrase(keyed: AccountKeyedSecrets): { accountKeyReset?: true } {
+  if (keyed.recoveryPhrase === null) {
+    return {};
+  }
+  holdAccountChangeRecoveryPhrase(keyed.recoveryPhrase, keyed.secrets.masterKeyHex);
+  return { accountKeyReset: true };
+}
+
 export type UploadOverBackupGuard = {
   // Invoked only when the policy above fires. Resolving false (the safe
   // dismissal answer) aborts the upload with "upload_over_backup_declined".
@@ -254,6 +310,9 @@ export type ConnectSyncAccountResult =
       // server never reissues an existing recovery code). The caller is
       // expected to surface it once to the owner and then forget it.
       recoveryCode?: string;
+      // Set when the sign-in reached another account and replaced the sync
+      // key; its phrase waits in the account-change buffer, never here.
+      accountKeyReset?: true;
     }
   | {
       // totpChallengeRequired indicates the password verified but the account
@@ -361,12 +420,19 @@ export async function connectSyncAccount(
       };
     }
 
+    const keyed = keySecretsForAccount(
+      secrets,
+      preferences,
+      authResult.auth.accountID,
+      now,
+    );
     await secretStore.writeSyncSecrets(
       applyManagedAuthResultToSecrets(
-        { ...secrets, authSessionToken: null },
+        { ...keyed.secrets, authSessionToken: null },
         authResult.auth,
       ),
     );
+    const keyReset = holdNewAccountKeyPhrase(keyed);
 
     const nextPreferences: SyncPreferencesRecord = {
       ...bindSyncPreferencesToAccount(preferences, authResult.auth.accountID),
@@ -392,12 +458,14 @@ export async function connectSyncAccount(
       capabilities: SyncCapabilityDocument;
       preferences: SyncPreferencesRecord;
       recoveryCode?: string;
+      accountKeyReset?: true;
     } = {
       ok: true,
       capabilities: buildManagedCapabilitiesDocument(
         authResult.auth.entitlement.syncAllowed,
       ),
       preferences: nextPreferences,
+      ...keyReset,
     };
     if (authResult.auth.recoveryCode) {
       success.recoveryCode = authResult.auth.recoveryCode;
@@ -444,9 +512,10 @@ export async function connectSyncAccount(
     return failAfterRegister(mapConnectAPIError(capabilitiesResult.errorCode));
   }
 
+  const keyed = keySecretsForAccount(secrets, preferences, authResult.auth.accountID, now);
   const attachDeviceResult = await client.attachDevice(authResult.auth.sessionToken, {
-    deviceID: secrets.device.deviceID,
-    deviceLabel: secrets.device.deviceLabel,
+    deviceID: keyed.secrets.device.deviceID,
+    deviceLabel: keyed.secrets.device.deviceLabel,
   });
   if (!attachDeviceResult.ok) {
     return failAfterRegister(mapConnectAPIError(attachDeviceResult.errorCode));
@@ -460,7 +529,7 @@ export async function connectSyncAccount(
       client,
       authResult.auth.sessionToken,
       capabilitiesResult.capabilities,
-      secrets.wrappedKey,
+      keyed.secrets.wrappedKey,
       { currentPassword: credentials.password },
     );
     // A step-up refusal does not fail the connect: the next upload prompts.
@@ -470,9 +539,10 @@ export async function connectSyncAccount(
   }
 
   await secretStore.writeSyncSecrets({
-    ...secrets,
+    ...keyed.secrets,
     authSessionToken: authResult.auth.sessionToken,
   });
+  const keyReset = holdNewAccountKeyPhrase(keyed);
 
   const nextPreferences: SyncPreferencesRecord = {
     ...bindSyncPreferencesToAccount(preferences, authResult.auth.accountID),
@@ -490,10 +560,12 @@ export async function connectSyncAccount(
     capabilities: SyncCapabilityDocument;
     preferences: SyncPreferencesRecord;
     recoveryCode?: string;
+    accountKeyReset?: true;
   } = {
     ok: true,
     capabilities: capabilitiesResult.capabilities,
     preferences: nextPreferences,
+    ...keyReset,
   };
   if (authResult.auth.recoveryCode) {
     success.recoveryCode = authResult.auth.recoveryCode;
@@ -535,11 +607,14 @@ export async function finalizeSyncSessionAfterTOTP(
   },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+  now: Date = new Date(),
 ): Promise<
   | {
       ok: true;
       capabilities: SyncCapabilityDocument;
       preferences: SyncPreferencesRecord;
+      // As on connectSyncAccount: the sign-in replaced the sync key.
+      accountKeyReset?: true;
     }
   | {
       ok: false;
@@ -576,14 +651,21 @@ export async function finalizeSyncSessionAfterTOTP(
       };
     }
 
+    const keyed = keySecretsForAccount(
+      secrets,
+      preferences,
+      sessionResult.session.accountID,
+      now,
+    );
     await secretStore.writeSyncSecrets({
-      ...secrets,
+      ...keyed.secrets,
       authSessionToken: null,
       managedAuthSessionToken: input.sessionToken,
       managedAuthSessionExpiresAt: input.sessionExpiresAt ?? null,
       managedRefreshToken: input.refreshToken ?? null,
       managedRefreshTokenExpiresAt: input.refreshTokenExpiresAt ?? null,
     });
+    const keyReset = holdNewAccountKeyPhrase(keyed);
 
     const nextPreferences: SyncPreferencesRecord = {
       ...bindSyncPreferencesToAccount(preferences, sessionResult.session.accountID),
@@ -608,6 +690,7 @@ export async function finalizeSyncSessionAfterTOTP(
         sessionResult.session.entitlement.syncAllowed,
       ),
       preferences: nextPreferences,
+      ...keyReset,
     };
   }
 
@@ -620,9 +703,10 @@ export async function finalizeSyncSessionAfterTOTP(
     };
   }
 
+  const keyed = keySecretsForAccount(secrets, preferences, input.accountID, now);
   const attachDeviceResult = await client.attachDevice(input.sessionToken, {
-    deviceID: secrets.device.deviceID,
-    deviceLabel: secrets.device.deviceLabel,
+    deviceID: keyed.secrets.device.deviceID,
+    deviceLabel: keyed.secrets.device.deviceLabel,
   });
   if (!attachDeviceResult.ok) {
     return {
@@ -634,9 +718,10 @@ export async function finalizeSyncSessionAfterTOTP(
   // A TOTP challenge only follows a login, so the package is left to the
   // upload, as on a login connect.
   await secretStore.writeSyncSecrets({
-    ...secrets,
+    ...keyed.secrets,
     authSessionToken: input.sessionToken,
   });
+  const keyReset = holdNewAccountKeyPhrase(keyed);
 
   const nextPreferences: SyncPreferencesRecord = {
     ...bindSyncPreferencesToAccount(preferences, input.accountID),
@@ -653,6 +738,7 @@ export async function finalizeSyncSessionAfterTOTP(
     ok: true,
     capabilities: capabilitiesResult.capabilities,
     preferences: nextPreferences,
+    ...keyReset,
   };
 }
 
@@ -741,9 +827,15 @@ export async function persistGuestPartnerSession(
   });
 
   const nextPreferences: SyncPreferencesRecord = {
-    // A guest account is always freshly minted and its id is not handed back
-    // here, so the floor of the previous account never carries over.
-    ...bindSyncPreferencesToAccount(preferences, null),
+    // A guest account is always freshly minted, so the floor of the previous
+    // account never carries over. The kept key stays bound to the account it
+    // served (a guest has no sync entitlement, so it uploads nothing with it):
+    // a later sign-in to any other account still replaces it. A key minted
+    // here served no account yet.
+    ...preferences,
+    accountId: existingSecrets ? preferences.accountId : null,
+    lastRemoteGeneration: null,
+    lastSyncedAt: null,
     mode: "managed",
     endpointInput: "",
     normalizedEndpoint: MANAGED_SYNC_BASE_URL,

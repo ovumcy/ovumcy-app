@@ -419,6 +419,16 @@ export function useBackupSyncScreenController(
       onCancelAccountDeletionStepUp: deletion.handleCancelAccountDeletionStepUp,
       managedRecoveryRotationStepUpCopy: recovery.managedRecoveryRotationCopy.stepUp,
       managedRecoveryRotationStepUpPrompt: recovery.managedRecoveryRotationStepUpPrompt,
+      accountChangeRecovery: {
+        copy: recovery.accountChangeRecoveryCopy,
+        offer: recovery.accountChangeRecoveryPhrase,
+        onReveal: () => {
+          void recovery.handleRevealAccountChangeRecoveryPhrase();
+        },
+        onReplace: () => {
+          void recovery.handlePrepareSyncSetup();
+        },
+      },
       onSubmitManagedRecoveryRotationStepUp:
         recovery.handleSubmitManagedRecoveryRotationStepUp,
       onCancelManagedRecoveryRotationStepUp:

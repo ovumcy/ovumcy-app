@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { Platform } from "react-native";
 
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import type { ResolvedBillingOffer } from "../../../services/offers-service";
 import { buildBackupSyncSetupPresentation } from "../../../services/backup-sync-view-service";
 import { buildSettingsViewData } from "../../../services/settings-view-service";
@@ -251,6 +252,60 @@ describe("SettingsSyncSetupSection", () => {
     expect(await screen.findByTestId("settings-sync-recovery-phrase")).toBeTruthy();
     expect(screen.getByTestId("settings-sync-recovery-phrase").props.selectable).toBeFalsy();
     expect(screen.getByTestId("settings-sync-recovery-export-button")).toBeTruthy();
+  });
+
+  describe("account-change recovery offer", () => {
+    const copy = selectAccountChangeRecoveryCopy("en");
+
+    async function renderOffer(
+      offer: "none" | "reveal" | "replace",
+      generatedRecoveryPhrase = "",
+    ) {
+      const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+      const onReveal = jest.fn();
+      const onReplace = jest.fn();
+      await render(
+        <AppPreferencesTestProvider>
+          <SettingsSyncSetupSection
+            {...createBaseProps(viewData)}
+            accountChangeRecovery={{ copy, offer, onReveal, onReplace }}
+            generatedRecoveryPhrase={generatedRecoveryPhrase}
+          />
+        </AppPreferencesTestProvider>,
+      );
+      return { onReveal, onReplace };
+    }
+
+    it("shows the reveal action, never the phrase, until it is pressed", async () => {
+      const { onReveal, onReplace } = await renderOffer("reveal");
+
+      expect(screen.getByText(copy.pendingHint)).toBeTruthy();
+      expect(screen.queryByTestId("settings-sync-recovery-phrase")).toBeNull();
+      await act(async () => {
+        await fireEvent.press(screen.getByTestId("settings-sync-account-change-recovery-button"));
+      });
+      expect(onReveal).toHaveBeenCalledTimes(1);
+      expect(onReplace).not.toHaveBeenCalled();
+    });
+
+    it("offers a new phrase once the unrevealed one was lost", async () => {
+      const { onReveal, onReplace } = await renderOffer("replace");
+
+      expect(screen.getByText(copy.lostHint)).toBeTruthy();
+      await act(async () => {
+        await fireEvent.press(screen.getByTestId("settings-sync-account-change-recovery-button"));
+      });
+      expect(onReplace).toHaveBeenCalledTimes(1);
+      expect(onReveal).not.toHaveBeenCalled();
+    });
+
+    it("shows no offer without a replaced key, or while a phrase is on screen", async () => {
+      await renderOffer("none");
+      expect(screen.queryByTestId("settings-sync-account-change-recovery-card")).toBeNull();
+
+      await renderOffer("reveal", "alpha beta gamma");
+      expect(screen.queryByTestId("settings-sync-account-change-recovery-card")).toBeNull();
+    });
   });
 
   it("shows managed account auth controls on the dedicated backup and sync screen", async () => {

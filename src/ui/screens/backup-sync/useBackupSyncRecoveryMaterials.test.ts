@@ -1,7 +1,9 @@
 import { act, renderHook } from "@testing-library/react-native";
 
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
+import * as accountChangeRecoveryPhrase from "../../../sync/account-change-recovery-phrase";
 import * as managedRecoveryRotationService from "../../../sync/managed-recovery-rotation-service";
 import * as syncAccountSessionService from "../../../sync/sync-account-session-service";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
@@ -25,6 +27,7 @@ jest.mock("../../../security/sensitive-action-auth", () => ({
 jest.mock("../../../services/backup-sync-screen-service");
 jest.mock("../../../services/recovery-phrase-delivery-service");
 jest.mock("../../../sync/managed-recovery-rotation-service");
+jest.mock("../../../sync/account-change-recovery-phrase");
 jest.mock("../../../sync/sync-account-session-service");
 
 const mockRotateManagedRecoveryPhrase = jest.mocked(
@@ -65,6 +68,9 @@ const mockDeliverRecoveryPhraseArtifact = jest.mocked(
 describe("useBackupSyncRecoveryMaterials", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(accountChangeRecoveryPhrase.acknowledgeAccountChangeRecoveryPhrase)
+      .mockResolvedValue(undefined);
   });
 
   describe("handlePrepareSyncSetup", () => {
@@ -659,6 +665,122 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(
         managedRecoveryRotationService.acknowledgeManagedRecoveryPhrase,
       ).toHaveBeenCalledTimes(1);
+    });
+
+    it("settles an account-change phrase, so neither the offer nor the phrase comes back", async () => {
+      jest
+        .mocked(accountChangeRecoveryPhrase.acknowledgeAccountChangeRecoveryPhrase)
+        .mockResolvedValue(undefined);
+      const core = createBackupSyncSessionCoreMock({
+        generatedRecoveryPhrase: "alpha beta gamma",
+        accountChangeRecoveryPhrase: "reveal",
+      });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryPhrase();
+      });
+
+      expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("none");
+      expect(
+        accountChangeRecoveryPhrase.acknowledgeAccountChangeRecoveryPhrase,
+      ).toHaveBeenCalledWith(core.syncSecretStore);
+    });
+  });
+
+  describe("handleRevealAccountChangeRecoveryPhrase", () => {
+    const copy = selectAccountChangeRecoveryCopy("en");
+    const mockReadPending = jest.mocked(
+      accountChangeRecoveryPhrase.readPendingAccountChangeRecoveryPhrase,
+    );
+    const mockLoadState = jest.mocked(
+      accountChangeRecoveryPhrase.loadAccountChangeRecoveryPhraseState,
+    );
+
+    async function renderWithOffer(offer: "none" | "reveal" | "replace" = "reveal") {
+      const core = createBackupSyncSessionCoreMock({ accountChangeRecoveryPhrase: offer });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+      return { core, result };
+    }
+
+    it("reveals the phrase only after the explicit confirm and device auth", async () => {
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockReadPending.mockResolvedValue("alpha beta gamma");
+      const { core, result } = await renderWithOffer();
+
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        copy.confirmPrompt,
+        copy.confirmAccept,
+        core.viewData.common.cancelAction,
+      );
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(copy.deviceAuthPrompt);
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("alpha beta gamma");
+      expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
+    it("keeps the offer and reads no phrase when the confirm is dismissed", async () => {
+      mockOpenConfirmation.mockResolvedValue(false);
+      const { core, result } = await renderWithOffer();
+
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+
+      expect(mockRequestSensitiveActionChallenge).not.toHaveBeenCalled();
+      expect(mockReadPending).not.toHaveBeenCalled();
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["unavailable", "deviceAuthUnavailable"],
+      ["failed", "deviceAuthFailed"],
+    ] as const)(
+      "keeps the offer and reads no phrase when device auth is %s",
+      async (reason, code) => {
+        mockOpenConfirmation.mockResolvedValue(true);
+        mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: false, reason });
+        const { core, result } = await renderWithOffer();
+
+        await act(async () => {
+          await result.current.handleRevealAccountChangeRecoveryPhrase();
+        });
+
+        expect(core.setErrorState).toHaveBeenCalledWith({ code, scope: "local" });
+        expect(mockReadPending).not.toHaveBeenCalled();
+        expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+        expect(core.setAccountChangeRecoveryPhrase).not.toHaveBeenCalled();
+      },
+    );
+
+    it("switches to the new-phrase offer when the held phrase is gone by the time it is read", async () => {
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
+      mockReadPending.mockResolvedValue(null);
+      mockLoadState.mockResolvedValue("replace");
+      const { core, result } = await renderWithOffer();
+
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+
+      expect(core.setGeneratedRecoveryPhrase).not.toHaveBeenCalled();
+      expect(core.setAccountChangeRecoveryPhrase).toHaveBeenCalledWith("replace");
+    });
+
+    it.each(["none", "replace"] as const)("does nothing on the %s offer", async (offer) => {
+      const { result } = await renderWithOffer(offer);
+
+      await act(async () => {
+        await result.current.handleRevealAccountChangeRecoveryPhrase();
+      });
+
+      expect(mockOpenConfirmation).not.toHaveBeenCalled();
     });
   });
 

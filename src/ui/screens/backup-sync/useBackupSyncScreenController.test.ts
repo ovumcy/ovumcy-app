@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
+import { selectAccountChangeRecoveryCopy } from "../../../i18n/account-change-recovery-copy";
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
 import { selectRecoveryKeyStepUpCopy } from "../../../i18n/recovery-key-stepup-copy";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
@@ -94,7 +95,10 @@ function createRecoveryMaterialsFixture(
     isExportingRecoveryPhrase: false,
     managedRecoveryRotationCopy: selectManagedRecoveryRotationCopy("en"),
     managedRecoveryRotationStepUpPrompt: null,
+    accountChangeRecoveryCopy: selectAccountChangeRecoveryCopy("en"),
+    accountChangeRecoveryPhrase: "none",
     handlePrepareSyncSetup: jest.fn(),
+    handleRevealAccountChangeRecoveryPhrase: jest.fn(),
     handleSubmitManagedRecoveryRotationStepUp: jest.fn(),
     handleCancelManagedRecoveryRotationStepUp: jest.fn(),
     handleAcknowledgeRecoveryCode: jest.fn(),

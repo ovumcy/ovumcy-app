@@ -106,6 +106,7 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
         sessionToken: "session-after-totp",
         recoveryPhrase: PHRASE,
         sessionExpiresAt: "2026-03-21T08:05:00.000Z",
+        accountID: "account-1",
       },
       NOW,
     );
@@ -203,6 +204,7 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
         sessionToken: "managed-after-totp",
         recoveryPhrase: PHRASE,
         sessionExpiresAt: "2026-03-20T09:05:00.000Z",
+        accountID: "managed-account-1",
         refreshToken: "refresh-1",
         refreshTokenExpiresAt: "2026-04-19T08:05:00.000Z",
       },

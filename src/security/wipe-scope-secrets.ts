@@ -2,6 +2,7 @@ import type { CertPinStore } from "./cert-pin-store";
 import type { EntitlementTokenStore } from "./entitlement-token-store";
 import type { PartnerShareSecretStore } from "./partner-share-secret-store";
 import type { SyncSecretStore } from "./sync-secret-store";
+import { clearAccountChangeRecoveryPhrase } from "../sync/account-change-recovery-phrase";
 import { clearPendingManagedRecoveryRotation } from "../sync/managed-recovery-rotation-service";
 
 // WipeScopeSecretStores names every SecureStore-backed store, besides the
@@ -32,6 +33,7 @@ export async function clearWipeScopeSecrets(
   stores: WipeScopeSecretStores,
 ): Promise<void> {
   clearPendingManagedRecoveryRotation();
+  clearAccountChangeRecoveryPhrase();
   const clears: (() => Promise<void>)[] = [
     () => syncSecretStore.clearSyncSecrets(),
     () => stores.partnerShareSecretStore.clearPartnerShareSecrets(),
