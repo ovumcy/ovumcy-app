@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react-native";
 
 import { createEmptyDayLogRecord } from "../../models/day-log";
+import * as entitlementTokenGateService from "../../services/entitlement-token-gate-service";
 import { createLocalAppStorageMock } from "../../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../../test/create-sync-secret-store-mock";
 import { AppPreferencesTestProvider } from "../../test/AppPreferencesTestProvider";
@@ -668,5 +669,112 @@ describe("StatsScreen", () => {
         "Cycle predictions are paused after a positive pregnancy test. Log a new period to resume them.",
       ),
     ).toBeTruthy();
+  });
+
+  describe("managed premium resolution", () => {
+    function createManagedSecretStore() {
+      return createSyncSecretStoreMock({
+        device: {
+          deviceID: "device-1",
+          deviceLabel: "Pixel 7",
+          createdAt: "2026-03-19T08:15:00.000Z",
+        },
+        masterKeyHex: "aa",
+        deviceSecretHex: "bb",
+        wrappedKey: {
+          algorithm: "xchacha20poly1305",
+          kdf: "bip39_seed_hkdf_sha256",
+          mnemonicWordCount: 12,
+          wrapNonceHex: "cc",
+          wrappedMasterKeyHex: "dd",
+          phraseFingerprintHex: "ee",
+        },
+        authSessionToken: null,
+        managedAuthSessionToken: "managed-session-1",
+        managedAuthSessionExpiresAt: null,
+        managedRefreshToken: null,
+        managedRefreshTokenExpiresAt: null,
+      });
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      jest.useRealTimers();
+    });
+
+    it("renders local stats while the managed premium fetch is still pending", async () => {
+      jest
+        .spyOn(entitlementTokenGateService, "buildEntitlementTokenGate")
+        .mockResolvedValue(undefined);
+      global.fetch = jest.fn(
+        () => new Promise<Response>(() => {}),
+      ) as unknown as typeof global.fetch;
+
+      await render(
+        <AppPreferencesTestProvider>
+          <StatsScreen
+            now={new Date(2026, 2, 17)}
+            storage={createStorageMock()}
+            syncSecretStore={createManagedSecretStore()}
+          />
+        </AppPreferencesTestProvider>,
+      );
+
+      expect(await screen.findByTestId("stats-empty-hero")).toBeTruthy();
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it("reads the token-gate clock on every focus pass, not once at mount", async () => {
+      jest.useFakeTimers({
+        doNotFake: [
+          "hrtime",
+          "nextTick",
+          "performance",
+          "queueMicrotask",
+          "requestAnimationFrame",
+          "cancelAnimationFrame",
+          "requestIdleCallback",
+          "cancelIdleCallback",
+          "setImmediate",
+          "clearImmediate",
+          "setInterval",
+          "clearInterval",
+          "setTimeout",
+          "clearTimeout",
+        ],
+      });
+      const mountedAt = new Date(2026, 2, 17, 9, 0, 0);
+      jest.setSystemTime(mountedAt);
+      const gateSpy = jest
+        .spyOn(entitlementTokenGateService, "buildEntitlementTokenGate")
+        .mockResolvedValue(undefined);
+      global.fetch = jest.fn(
+        () => new Promise<Response>(() => {}),
+      ) as unknown as typeof global.fetch;
+      const syncSecretStore = createManagedSecretStore();
+
+      const view = await render(
+        <AppPreferencesTestProvider>
+          <StatsScreen storage={createStorageMock()} syncSecretStore={syncSecretStore} />
+        </AppPreferencesTestProvider>,
+      );
+      await waitFor(() => expect(gateSpy).toHaveBeenCalledTimes(1));
+      expect(gateSpy.mock.calls[0]?.[2]).toEqual({
+        nowSeconds: Math.floor(mountedAt.getTime() / 1000),
+      });
+
+      const refocusedAt = new Date(2026, 2, 17, 12, 0, 0);
+      jest.setSystemTime(refocusedAt);
+      await view.rerender(
+        <AppPreferencesTestProvider>
+          <StatsScreen storage={createStorageMock()} syncSecretStore={syncSecretStore} />
+        </AppPreferencesTestProvider>,
+      );
+
+      await waitFor(() => expect(gateSpy).toHaveBeenCalledTimes(2));
+      expect(gateSpy.mock.calls[1]?.[2]).toEqual({
+        nowSeconds: Math.floor(refocusedAt.getTime() / 1000),
+      });
+    });
   });
 });

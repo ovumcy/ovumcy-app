@@ -41,6 +41,7 @@ import { runManualCycleStartAction } from "./day-log/run-manual-cycle-start-acti
 import { useDayLogAutosave } from "./day-log/use-day-log-autosave";
 import { useLocalCivilNow } from "./day-log/use-local-civil-now";
 import { DashboardOverviewScreen } from "./DashboardOverviewScreen";
+import { useLocalFirstPremium } from "./use-local-first-premium";
 
 type DashboardScreenProps = {
   autosaveDebounceMs?: number;
@@ -86,21 +87,27 @@ export function DashboardScreen({
   const dashboardCopy = getDashboardCopy(language);
   const postpartumCopy = getPostpartumCopy(language);
 
+  const runLocalFirstPass = useLocalFirstPremium();
+
+  const loadLocalFirst = useCallback(
+    () =>
+      runLocalFirstPass({
+        loadLocal: (premiumFeatures) =>
+          loadDashboardScreenState(storage, effectiveNow, language, {
+            showLHTests: premiumFeatures.advancedFertility,
+          }),
+        loadPremium: () =>
+          loadManagedPremiumFeaturesForCurrentSession(storage, syncSecretStore),
+        apply: (loadedState) => {
+          setState(loadedState);
+          setIsLoading(false);
+        },
+      }),
+    [effectiveNow, language, runLocalFirstPass, storage, syncSecretStore],
+  );
+
   const refresh = useCallback(async (options?: { syncReminders?: boolean }) => {
-    const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
-      storage,
-      syncSecretStore,
-    );
-    const loadedState = await loadDashboardScreenState(
-      storage,
-      effectiveNow,
-      language,
-      {
-        showLHTests: premiumFeatures.advancedFertility,
-      },
-    );
-    setState(loadedState);
-    setIsLoading(false);
+    const loadedState = await loadLocalFirst();
     if (options?.syncReminders) {
       await syncLocalReminderSchedule(
         storage,
@@ -115,37 +122,12 @@ export function DashboardScreen({
       );
     }
     return loadedState;
-  }, [effectiveNow, language, now, reminderScheduler, storage, syncSecretStore]);
+  }, [language, loadLocalFirst, now, reminderScheduler, storage]);
 
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-
-      void (async () => {
-        const premiumFeatures = await loadManagedPremiumFeaturesForCurrentSession(
-          storage,
-          syncSecretStore,
-        );
-        const loadedState = await loadDashboardScreenState(
-          storage,
-          effectiveNow,
-          language,
-          {
-            showLHTests: premiumFeatures.advancedFertility,
-          },
-            );
-        if (!isMounted) {
-          return;
-        }
-
-        setState(loadedState);
-        setIsLoading(false);
-      })();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [effectiveNow, language, storage, syncSecretStore]),
+      void loadLocalFirst();
+    }, [loadLocalFirst]),
   );
 
   const {
