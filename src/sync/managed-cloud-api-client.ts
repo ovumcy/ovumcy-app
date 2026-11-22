@@ -1331,6 +1331,8 @@ async function performFetch(
       // body there. The default fetchImpl enforces this natively; the origin
       // check below fails closed for any fetch that ignores it.
       redirect: "error",
+      // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
+      credentials: "omit",
     };
     if (options.body !== undefined) {
       requestInit.body = JSON.stringify(options.body);

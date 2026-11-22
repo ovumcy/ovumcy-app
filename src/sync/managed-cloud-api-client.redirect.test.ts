@@ -79,7 +79,7 @@ describe("managed-cloud-api-client redirect refusal", () => {
 
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(fetch.mock.calls[0][1]).toEqual(
-        expect.objectContaining({ redirect: "error" }),
+        expect.objectContaining({ redirect: "error", credentials: "omit" }),
       );
     });
 
