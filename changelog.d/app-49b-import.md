@@ -11,7 +11,9 @@
 ### Security
 
 - **Restore never stores ids chosen by the file.** Pregnancy, kick, contraction, postpartum and
-  screening records get new random ids; a repeated import is still recognised by content.
+  screening records get new random ids; a repeated import is still recognised by content, and a
+  pregnancy, postpartum record or contraction session by its start, so an ended pregnancy never
+  returns as active from an older backup.
 - **Restore cannot quietly change device protections.** Screen-capture protection can only be
   turned on by a restore, and reminders from a backup are turned on only through an explicit
   option in the preview, off by default.

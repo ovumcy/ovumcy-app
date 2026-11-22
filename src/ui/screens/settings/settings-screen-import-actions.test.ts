@@ -112,7 +112,7 @@ describe("offline JSON restore gates", () => {
     const refreshed = context.setPendingImportPreview.mock.calls.at(-1)?.[0] as PendingImportPreview;
     expect(refreshed.outcome).toMatchObject({ dayLogsAdded: 0, dayLogsSkipped: 1 });
     expect(refreshed.envelope).toBe(pending.envelope);
-    expect(context.setImportStatusMessage).toHaveBeenLastCalledWith(
+    expect(context.setImportErrorMessage).toHaveBeenLastCalledWith(
       viewData.import.previewChanged,
     );
   });

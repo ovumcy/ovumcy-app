@@ -20,6 +20,7 @@ import type { ExportBackupEnvelope } from "../models/export";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   importBackupEnvelope,
+  MAX_IMPORT_SYMPTOMS,
   parseImportEnvelope,
   previewImportBackupEnvelope,
   restoreFromJSONBackup,
@@ -1297,6 +1298,49 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
     expect(storage.writeContractionSession).not.toHaveBeenCalled();
   });
 
+  it("recognises a record edited since the backup by its start, so an ended record never returns as active", async () => {
+    const { storage, pregnancies, contractionSessions, postpartumRecords } =
+      createStatefulStorage();
+    pregnancies.set(
+      "p1",
+      pregnancyRecord({ id: "p1", status: "ended", endedAt: "2026-09-20", endReason: "birth" }),
+    );
+    contractionSessions.set("c1", contractionSession({ id: "c1" }));
+    postpartumRecords.set(
+      "pp1",
+      postpartumRecord({ id: "pp1", status: "ended", endedAt: "2026-05-01", endReason: "manual" }),
+    );
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        formatVersion: 3,
+        pregnancies: [pregnancyRecord({ id: "p1", status: "active" })],
+        contractionSessions: [
+          contractionSession({
+            id: "c1",
+            contractions: [{ startedAt: "2026-03-10T10:05:00.000Z", durationSeconds: 45 }],
+          }),
+        ],
+        postpartumRecords: [postpartumRecord({ id: "pp1", status: "active" })],
+      }),
+    );
+
+    expect(outcome).toMatchObject({
+      pregnanciesAdded: 0,
+      pregnanciesSkipped: 1,
+      contractionSessionsAdded: 0,
+      contractionSessionsSkipped: 1,
+      postpartumRecordsAdded: 0,
+      postpartumRecordsSkipped: 1,
+    });
+    expect([...pregnancies.values()].map((record) => record.status)).toEqual(["ended"]);
+    expect([...postpartumRecords.values()].map((record) => record.status)).toEqual([
+      "ended",
+    ]);
+    expect(contractionSessions.size).toBe(1);
+  });
+
   it("never overwrites a pregnancy record, kick session, or contraction session whose id already exists on-device", async () => {
     const { storage, pregnancies, kickSessions, contractionSessions } =
       createStatefulStorage();
@@ -1311,7 +1355,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       storage,
       envelope({
         formatVersion: 2,
-        pregnancies: [pregnancyRecord({ id: "p1", status: "active" })],
+        pregnancies: [pregnancyRecord({ id: "p1", status: "active", startedAt: "2026-01-15" })],
         kickSessions: [kickSession({ id: "k1", kickCount: 99 })],
         contractionSessions: [contractionSession({ id: "c1", startedAt: "2026-03-10T23:00:00.000Z" })],
       }),
@@ -1367,7 +1411,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       storage,
       envelope({
         formatVersion: 2,
-        pregnancies: [pregnancyRecord({ id: "incoming-active", status: "active" })],
+        pregnancies: [pregnancyRecord({ id: "incoming-active", status: "active", startedAt: "2026-01-15" })],
       }),
     );
 
@@ -1390,7 +1434,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
       envelope({
         formatVersion: 2,
         pregnancies: [
-          pregnancyRecord({ id: "new-active", status: "active" }),
+          pregnancyRecord({ id: "new-active", status: "active", startedAt: "2026-01-15" }),
           pregnancyRecord({ id: "old-ended", status: "ended", endedAt: "2025-06-01" }),
         ],
       }),
@@ -1412,7 +1456,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
         formatVersion: 2,
         pregnancies: [
           pregnancyRecord({ id: "first-active", status: "active", edd: "2026-09-01" }),
-          pregnancyRecord({ id: "second-active", status: "active", edd: "2026-10-01" }),
+          pregnancyRecord({ id: "second-active", status: "active", edd: "2026-10-01", startedAt: "2026-01-15" }),
         ],
       }),
     );
@@ -1562,7 +1606,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       storage,
       envelope({
         formatVersion: 3,
-        postpartumRecords: [postpartumRecord({ id: "pp1", status: "active" })],
+        postpartumRecords: [postpartumRecord({ id: "pp1", status: "active", startedAt: "2026-04-01" })],
         screeningResponses: [screeningResponse({ id: "sc1" })],
       }),
     );
@@ -1608,7 +1652,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
       envelope({
         formatVersion: 3,
         postpartumRecords: [
-          postpartumRecord({ id: "new-active", status: "active" }),
+          postpartumRecord({ id: "new-active", status: "active", startedAt: "2026-04-01" }),
           postpartumRecord({ id: "old-ended", status: "ended", endedAt: "2025-06-01", endReason: "cycle_returned" }),
         ],
       }),
@@ -2159,6 +2203,31 @@ describe("import-service symptom catalog limit", () => {
     expect(dayLogs.get("2026-03-10")?.symptomIDs).toEqual([glow?.id]);
     expect(dayLogs.get("2026-03-11")?.symptomIDs).toEqual([]);
     expect(dayLogs.get("2026-03-12")?.symptomIDs).toEqual([]);
+  });
+
+  it("keeps the new symptoms of one day within the room left in the catalog", async () => {
+    const { storage, symptoms, dayLogs } = createStatefulStorage();
+    fillCatalog(symptoms, MAX_SYMPTOM_CATALOG_SIZE - 1);
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [portableSymptom("file_a", "Glow"), portableSymptom("file_b", "Spark")],
+        dayLogs: [dayLog("2026-03-10", { mood: 2, symptomIDs: ["file_a", "file_b"] })],
+      }),
+    );
+
+    expect(outcome).toMatchObject({ symptomsAdded: 1, symptomsOverLimit: 1 });
+    expect(symptoms).toHaveLength(MAX_SYMPTOM_CATALOG_SIZE);
+    expect(dayLogs.get("2026-03-10")?.symptomIDs).toHaveLength(1);
+  });
+
+  it("refuses a backup whose symptom list is past the import guardrail", () => {
+    const symptoms = new Array(MAX_IMPORT_SYMPTOMS + 1).fill(portableSymptom("s", "Symptom"));
+
+    expect(
+      parseImportEnvelope(JSON.stringify({ app: "ovumcy", formatVersion: 3, symptoms })),
+    ).toEqual({ ok: false, errorCode: "too_large" });
   });
 
   it("previews the same over-limit count the apply produces", async () => {
