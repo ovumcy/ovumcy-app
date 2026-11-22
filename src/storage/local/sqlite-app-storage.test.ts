@@ -1172,6 +1172,36 @@ describe("sqlite-app-storage", () => {
     });
   });
 
+  it("keeps the floor's account id in the encrypted payload only, and reads an empty one as unbound", async () => {
+    const inspected = createInspectableFakeDatabase();
+    const storage = createSQLiteAppStorage({
+      legacyStorageSource: {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(false),
+        readBootstrapState: jest.fn(),
+        readProfileRecord: jest.fn(),
+      },
+      openDatabase: async () => inspected.database,
+    });
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      lastRemoteGeneration: 100,
+      accountId: "account-a",
+    };
+
+    await storage.writeSyncPreferencesRecord(preferences);
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      accountId: "account-a",
+      lastRemoteGeneration: 100,
+    });
+    expect(JSON.stringify(inspected.state)).not.toContain("account-a");
+
+    await storage.writeSyncPreferencesRecord({ ...preferences, accountId: "" });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      accountId: null,
+    });
+  });
+
   it("round-trips the managed billing cache record through the encrypted payload only", async () => {
     const inspected = createInspectableFakeDatabase();
     const storage = createSQLiteAppStorage({
@@ -1874,6 +1904,7 @@ describe("sqlite-app-storage", () => {
       lastSyncedAt: "2026-03-17T10:05:00.000Z",
       guestSessionExpiresAt: null,
       guestSessionRenewable: false,
+      accountId: null,
     });
     await storage.writeDayLogRecord({
       date: "2026-03-17",
@@ -2050,6 +2081,8 @@ describe("sqlite-app-storage", () => {
       // A row written before this field existed reads back false: those guest
       // sessions had no renewal path, so the countdown they showed was right.
       guestSessionRenewable: false,
+      // A row from before account binding reads as unbound.
+      accountId: null,
       // Likewise a row from before the restore marker reads as no restore
       // in progress.
       restoreInProgress: false,

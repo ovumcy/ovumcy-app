@@ -283,8 +283,13 @@ describe("backup sync view service", () => {
     expect(ownerPresentation.shouldShowPrepareAction).toBe(true);
   });
 
-  it("rotates the phrase only for a connected, non-guest managed account", () => {
-    const managed = { ...createDefaultSyncPreferencesRecord(), mode: "managed" as const };
+  it("rotates the phrase only for a connected, non-guest managed account with a floor", () => {
+    const managed = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      accountId: "acct-1",
+      lastRemoteGeneration: 7,
+    };
     const selfHosted = { ...managed, mode: "self_hosted" as const };
     const guest = { ...managed, guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" };
     const connected = { hasStoredSyncSecrets: true, hasSyncSession: true };
@@ -297,6 +302,23 @@ describe("backup sync view service", () => {
         hasStoredSyncSecrets: true,
         hasSyncSession: false,
         preferences: managed,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps the recovery action local on a managed device whose key never opened this account's backup", () => {
+    const signedInWithoutRecovery = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "managed" as const,
+      accountId: "acct-1",
+      lastRemoteGeneration: null,
+    };
+
+    expect(
+      shouldRotateManagedRecoveryPhrase({
+        hasStoredSyncSecrets: true,
+        hasSyncSession: true,
+        preferences: signedInWithoutRecovery,
       }),
     ).toBe(false);
   });

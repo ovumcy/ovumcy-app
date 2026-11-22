@@ -112,6 +112,15 @@ export type SyncPreferencesRecord = {
   // heading for a deadline, so only it gets the countdown. Always false when
   // guestSessionExpiresAt is null, which is what a non-guest session is.
   guestSessionRenewable: boolean;
+  // accountId is the server account the rollback floor (lastRemoteGeneration)
+  // and the local master key were last used with. Every connect, TOTP finalize,
+  // recovery and guest accept writes the account it signed in to; when that
+  // account differs from this one (or this one is null), the floor and
+  // lastSyncedAt reset, so the first upload probes the server again and asks
+  // before overwriting another account's backup. A disconnect keeps it: it is
+  // what the next sign-in is compared against. Null when unknown (a record
+  // written before this field existed, or a device that never signed in).
+  accountId: string | null;
   // restoreInProgress is true from the wipe that starts a sync restore until
   // the restore's final preferences write. A restore that stops partway leaves
   // it set, and uploads refuse while it is set, so partial local data never
@@ -276,6 +285,7 @@ export function createDefaultSyncPreferencesRecord(): SyncPreferencesRecord {
     lastSyncedAt: null,
     guestSessionExpiresAt: null,
     guestSessionRenewable: false,
+    accountId: null,
     restoreInProgress: false,
   };
 }

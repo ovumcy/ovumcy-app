@@ -279,6 +279,15 @@ describe("useBackupSyncScreenController", () => {
       expect(mockPreventRemoveCallback).toEqual(expect.any(Function));
     });
 
+    it("does not register the guard while a disconnect revoke is in flight, so no save races the local clear", async () => {
+      setUpLoadedController({ isSyncDirty: true });
+      mockUseBackupSyncAccountConnection.mockReturnValue(
+        createAccountConnectionFixture({ isDisconnectingSync: true }),
+      );
+      await renderHook(() => useBackupSyncScreenController({}));
+      expect(mockPreventRemoveCallback).toBeNull();
+    });
+
     it("does not register the guard when the draft is clean", async () => {
       setUpLoadedController({ isSyncDirty: false });
       await renderHook(() => useBackupSyncScreenController({}));

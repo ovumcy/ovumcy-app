@@ -2347,6 +2347,11 @@ function mapNormalizedSyncPreferencesRecord(
     // existed means: those guest sessions had no renewal path, so the
     // countdown they were showing stays correct.
     guestSessionRenewable: record.guestSessionRenewable === true,
+    // A row written before this field existed reads as unbound (null).
+    accountId:
+      typeof record.accountId === "string" && record.accountId.length > 0
+        ? record.accountId
+        : null,
     // A row written before this field existed reads as false.
     restoreInProgress: record.restoreInProgress === true,
   };

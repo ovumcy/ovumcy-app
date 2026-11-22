@@ -1,7 +1,27 @@
 import { createDefaultProfileRecord } from "../../models/profile";
+import { createDefaultSyncPreferencesRecord } from "../../sync/sync-contract";
 import { createVolatileWebAppStorage } from "./volatile-web-app-storage";
 
 describe("volatile-web-app-storage", () => {
+  it("keeps the floor's account id and reads an empty one as unbound", async () => {
+    const storage = createVolatileWebAppStorage();
+    const preferences = {
+      ...createDefaultSyncPreferencesRecord(),
+      lastRemoteGeneration: 100,
+      accountId: "account-a",
+    };
+
+    await storage.writeSyncPreferencesRecord(preferences);
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      accountId: "account-a",
+    });
+
+    await storage.writeSyncPreferencesRecord({ ...preferences, accountId: "" });
+    await expect(storage.readSyncPreferencesRecord()).resolves.toMatchObject({
+      accountId: null,
+    });
+  });
+
   it("keeps health data only for the current app session", async () => {
     const storage = createVolatileWebAppStorage();
 
