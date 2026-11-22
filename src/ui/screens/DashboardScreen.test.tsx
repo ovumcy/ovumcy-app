@@ -1162,6 +1162,47 @@ describe("DashboardScreen", () => {
     ).toBeTruthy();
   });
 
+  it("repoints the stored start against the screen's own today when clearing today", async () => {
+    const storage = createVolatileWebAppStorage();
+    await storage.writeProfileRecord({
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-17",
+      languageOverride: "en",
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-02-10"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-17"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+    // Dated after the screen's today but before the wall clock: only a clear
+    // that honours the screen's today leaves it out of the repoint.
+    await storage.writeDayLogRecord({
+      ...createEmptyDayLogRecord("2026-03-25"),
+      isPeriod: true,
+      cycleStart: true,
+    });
+
+    await renderDashboard(storage);
+
+    await screen.findByTestId("day-log-delete-button");
+    mockOpenConfirmation.mockResolvedValueOnce(true);
+    await fireEvent.press(screen.getByTestId("day-log-delete-button"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
+        expect.objectContaining({ checked: false }),
+      ),
+    );
+    await waitFor(async () =>
+      expect((await storage.readProfileRecord()).lastPeriodStart).toBe("2026-02-10"),
+    );
+  });
+
   it("shows the pregnancy-pause hint and suppresses the upcoming-ovulation prediction, without blocking logging", async () => {
     const storage = createStorageMock({
       listDayLogRecordsInRange: jest.fn().mockResolvedValue([
