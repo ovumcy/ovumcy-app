@@ -126,7 +126,10 @@ edit:
    (`src/ui/screens/day-log/use-day-log-autosave.ts`) debounces the draft
    (`DAY_LOG_AUTOSAVE_DEBOUNCE_MS`, 700 ms), tracks a draft version so a stale
    save does not overwrite a newer edit, and reports saving, saved and failed
-   states with localized labels.
+   states with localized labels. Only a new draft version schedules a save: a
+   record the screen reloads (focus refresh, midnight rollover, another selected
+   day) neither re-saves nor clears a failed state, and the retry action saves
+   the failed draft on its own date.
 2. **Service.** The screen passes
    `saveDayLogEditorRecord(storage, record)`
    (`src/services/day-log-editor-service.ts`) as `onPersist`. It reads the

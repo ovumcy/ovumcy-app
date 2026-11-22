@@ -151,6 +151,144 @@ describe("useDayLogAutosave", () => {
     expect(result.current.hasSaveError).toBe(false);
   });
 
+  it("keeps the save error and does not re-save when the record reloads after a failed save, then retries the failed edit on its own date", async () => {
+    const failedEdit = buildRecord({ mood: 1 });
+    const onPersist = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockImplementation(async (record: DayLogRecord) => ({ ok: true, record }));
+    const onSaved = jest.fn();
+    const { result, rerender } = await renderAutosave({
+      debounceMs: 5,
+      draftVersion: 0,
+      labels,
+      onPersist,
+      onSaved,
+      record: buildRecord(),
+    });
+
+    await rerender({
+      debounceMs: 5,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      onSaved,
+      record: failedEdit,
+    });
+    await waitFor(() => expect(result.current.hasSaveError).toBe(true));
+
+    // The civil date moves on: the screen reloads the new day's record under
+    // the same draft version.
+    await rerender({
+      debounceMs: 5,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      onSaved,
+      record: createEmptyDayLogRecord("2026-03-15"),
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    expect(onPersist).toHaveBeenCalledTimes(1);
+    expect(result.current.hasSaveError).toBe(true);
+    expect(result.current.status).toEqual({
+      message: labels.saveFailedLabel,
+      tone: "error",
+    });
+
+    await act(async () => {
+      await result.current.saveNow();
+    });
+
+    expect(onPersist).toHaveBeenCalledTimes(2);
+    expect(onPersist).toHaveBeenLastCalledWith(failedEdit);
+    expect(onSaved).toHaveBeenCalledWith(failedEdit);
+    expect(result.current.hasSaveError).toBe(false);
+    expect(result.current.status).toEqual({
+      message: labels.savedLabel,
+      tone: "success",
+    });
+  });
+
+  it("flushPendingDraft retries the failed edit rather than the reloaded record", async () => {
+    const failedEdit = buildRecord({ mood: 2 });
+    const onPersist = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false })
+      .mockImplementation(async (record: DayLogRecord) => ({ ok: true, record }));
+    const { result, rerender } = await renderAutosave({
+      debounceMs: 5,
+      draftVersion: 0,
+      labels,
+      onPersist,
+      record: buildRecord(),
+    });
+
+    await rerender({
+      debounceMs: 5,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      record: failedEdit,
+    });
+    await waitFor(() => expect(result.current.hasSaveError).toBe(true));
+
+    await rerender({
+      debounceMs: 5,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      record: buildRecord(),
+    });
+    await act(async () => {
+      await result.current.flushPendingDraft();
+    });
+
+    expect(onPersist).toHaveBeenCalledTimes(2);
+    expect(onPersist).toHaveBeenLastCalledWith(failedEdit);
+    expect(result.current.hasSaveError).toBe(false);
+  });
+
+  it("keeps a debounced edit when the record reloads before the debounce fires", async () => {
+    jest.useFakeTimers();
+
+    const pendingEdit = buildRecord({ mood: 3 });
+    const onPersist = jest
+      .fn()
+      .mockImplementation(async (record: DayLogRecord) => ({ ok: true, record }));
+    const { rerender } = await renderAutosave({
+      debounceMs: 50,
+      draftVersion: 0,
+      labels,
+      onPersist,
+      record: buildRecord(),
+    });
+
+    await rerender({
+      debounceMs: 50,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      record: pendingEdit,
+    });
+    await rerender({
+      debounceMs: 50,
+      draftVersion: 1,
+      labels,
+      onPersist,
+      record: buildRecord(),
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(onPersist).toHaveBeenCalledTimes(1);
+    expect(onPersist).toHaveBeenCalledWith(pendingEdit);
+  });
+
   it("coalesces a save requested while a save is already in flight, without dropping the newer edit", async () => {
     const first = createDeferred<{ ok: true; record: DayLogRecord } | { ok: false }>();
     const onPersist = jest
