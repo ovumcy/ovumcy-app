@@ -38,10 +38,9 @@ export function responseLeftRequestOrigin(
   if (response.redirected === true) {
     return true;
   }
-  const responseURL = typeof response.url === "string" ? response.url : "";
-  if (responseURL === "") {
+  if (!response.url) {
     return false;
   }
   const expected = originOf(requestURL);
-  return expected === null || originOf(responseURL) !== expected;
+  return expected === null || originOf(response.url) !== expected;
 }
