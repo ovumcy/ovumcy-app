@@ -1541,14 +1541,22 @@ describe("SettingsScreen", () => {
 
     await screen.findByTestId("settings-import-status-banner");
     expect(storage.writePregnancyRecord).toHaveBeenCalledTimes(1);
+    // File ids are never reused as storage keys: each row gets a fresh id.
     expect(storage.writePregnancyRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "p1", status: "ended" }),
+      expect.objectContaining({
+        id: expect.not.stringMatching(/^p1$/),
+        startedAt: "2025-01-01",
+        status: "ended",
+      }),
     );
     expect(storage.writeKickSession).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "k1", kickCount: 10 }),
+      expect.objectContaining({
+        id: expect.not.stringMatching(/^k1$/),
+        kickCount: 10,
+      }),
     );
     expect(storage.writeContractionSession).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "c1" }),
+      expect.objectContaining({ id: expect.not.stringMatching(/^c1$/) }),
     );
     expect(screen.queryByTestId("settings-import-preview")).toBeNull();
   });
@@ -1738,6 +1746,63 @@ describe("SettingsScreen", () => {
         "Restored 2 days (0 already present, 0 ignored). Cycle settings were restored from the backup.",
       ),
     ).toBeTruthy();
+    expect(screen.queryByTestId("settings-import-reminders-opt-in")).toBeNull();
+  });
+
+  it("restores a backup's reminders only after the preview opt-in is switched on", async () => {
+    const storage = createSettingsStorageMock({
+      readProfileRecord: jest
+        .fn()
+        .mockResolvedValue(createDefaultProfileRecord()),
+      readDayLogSummary: jest.fn().mockResolvedValue({
+        totalEntries: 0,
+        hasData: false,
+        dateFrom: null,
+        dateTo: null,
+      }),
+    });
+    const importFilePickerClient = createImportPickerMock(
+      importEnvelopeJSON({
+        profile: {
+          ...createDefaultProfileRecord(),
+          dailyLogReminderEnabled: true,
+        },
+      }),
+    );
+
+    await render(
+      <SettingsScreen
+        importFilePickerClient={importFilePickerClient}
+        now={new Date(2026, 2, 17)}
+        section="data"
+        storage={storage}
+      />,
+    );
+
+    await screen.findByTestId("settings-import-section");
+    await fireEvent.press(screen.getByTestId("settings-import-pick-button"));
+
+    const optIn = await screen.findByTestId("settings-import-reminders-opt-in");
+    expect(optIn.props.accessibilityState).toEqual({ checked: false });
+    expect(screen.getByText("Your current settings stay unchanged.")).toBeTruthy();
+
+    await fireEvent.press(optIn);
+
+    expect(
+      screen.getByTestId("settings-import-reminders-opt-in").props.accessibilityState,
+    ).toEqual({ checked: true });
+    expect(
+      screen.getByText(
+        "Cycle settings from the backup will be applied — this device still has the default settings.",
+      ),
+    ).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId("settings-import-confirm-button"));
+
+    await screen.findByTestId("settings-import-status-banner");
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ dailyLogReminderEnabled: true }),
+    );
   });
 
   it("maps a picker rejection to the generic restore-failed message", async () => {
