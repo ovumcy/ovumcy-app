@@ -4,6 +4,11 @@ import type {
   SyncTOTPEnrollmentStart,
   WrappedSyncKeyMetadata,
 } from "./sync-contract";
+import {
+  redirectRefusingFetch,
+  responseLeftRequestOrigin,
+  type RedirectRefusingFetch,
+} from "./redirect-refusing-fetch";
 
 export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
@@ -498,7 +503,7 @@ export type ManagedCloudAPIClient = {
   >;
 };
 
-type FetchLike = typeof fetch;
+type FetchLike = RedirectRefusingFetch;
 
 type RawSyncAuthResult = {
   account_id: string;
@@ -675,7 +680,7 @@ type ErrorPayload = {
 
 export function createManagedCloudAPIClient(
   baseURL: string,
-  fetchImpl: FetchLike = fetch,
+  fetchImpl: FetchLike = redirectRefusingFetch,
 ): ManagedCloudAPIClient {
   const normalizedBaseURL = baseURL.replace(/\/+$/, "");
 
@@ -1322,22 +1327,30 @@ async function performFetch(
     const requestInit: RequestInit = {
       method: options.method,
       headers,
-      // Same rationale as sync-api-client: refuse redirects so a malicious
-      // upstream cannot exfiltrate the managed bearer session token via a
-      // 307/308 Location to an attacker-controlled host.
+      // A 307/308 to another host would re-send the bearer token and the JSON
+      // body there. The default fetchImpl enforces this natively; the origin
+      // check below fails closed for any fetch that ignores it.
       redirect: "error",
     };
     if (options.body !== undefined) {
       requestInit.body = JSON.stringify(options.body);
     }
 
-    return await fetchImpl(url, requestInit);
+    const response = await fetchImpl(url, requestInit);
+    if (responseLeftRequestOrigin(url, response)) {
+      return networkFailedResponse();
+    }
+    return response;
   } catch {
-    return new Response(JSON.stringify({ error: "network_failed" }), {
-      status: 599,
-      headers: { "Content-Type": "application/json" },
-    });
+    return networkFailedResponse();
   }
+}
+
+function networkFailedResponse(): Response {
+  return new Response(JSON.stringify({ error: "network_failed" }), {
+    status: 599,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCode> {

@@ -373,7 +373,9 @@ Disconnect (`disconnectSyncAccount`) does not renew. `DELETE /auth/session` revo
 
 ## Outbound Fetch Posture
 
-`sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token because HTTP preserves method + headers on those status codes.
+`sync-api-client` and `managed-cloud-api-client` set `redirect: "error"` on every request. The sync API is strictly same-origin, so any 3xx is unambiguously suspicious; following a 307/308 to a different host re-sends the bearer session token and the JSON body (password, TOTP code, ciphertext) because HTTP preserves method, headers and body on those status codes.
+
+The flag alone is not enforcement on native builds: React Native's global fetch is whatwg-fetch over XHR and never reads `redirect`, so the platform stack follows the 3xx. `managed-cloud-api-client` therefore defaults to `expo/fetch` (`src/sync/redirect-refusing-fetch.ts`), whose native module disables redirect following in OkHttp and URLSession and throws on a 3xx, so the redirected request is never sent; on web it is the browser fetch, which honours the flag. As defence in depth, every managed response that reports a followed redirect or a final URL on another origin fails closed to `network_failed`. `sync-api-client` still uses the global fetch and is not yet covered.
 
 ## TLS Pinning Posture
 
