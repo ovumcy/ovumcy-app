@@ -174,6 +174,7 @@ describe("useBackupSyncAccountDeletion", () => {
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
         core.viewData.account.deleteAccountPrompt,
         core.viewData.account.deleteAccountAccept,
+        core.viewData.common.cancelAction,
       );
     });
 
@@ -222,6 +223,7 @@ describe("useBackupSyncAccountDeletion", () => {
         2,
         `${core.viewData.account.deleteAccountSubscriptionWarningTitle}\n\n${core.viewData.account.deleteAccountSubscriptionWarningMessage}`,
         core.viewData.account.deleteAccountSubscriptionWarningAccept,
+        core.viewData.common.cancelAction,
       );
       expect(mockDeleteOvumcyAccount).toHaveBeenCalledWith(
         core.storage,
@@ -296,6 +298,7 @@ describe("useBackupSyncAccountDeletion", () => {
         2,
         `${core.viewData.account.deleteAccountBillingUnknownWarningTitle}\n\n${core.viewData.account.deleteAccountBillingUnknownWarningMessage}`,
         core.viewData.account.deleteAccountSubscriptionWarningAccept,
+        core.viewData.common.cancelAction,
       );
       expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
     });

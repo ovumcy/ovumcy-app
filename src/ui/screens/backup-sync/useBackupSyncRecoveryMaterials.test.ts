@@ -119,6 +119,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
         core.viewData.account.regeneratePrompt,
         core.viewData.account.regenerateAccept,
+        core.viewData.common.cancelAction,
       );
       expect(mockRequestSensitiveActionChallenge).not.toHaveBeenCalled();
       expect(mockPrepareBackupSyncSetup).not.toHaveBeenCalled();
@@ -323,6 +324,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
         rotationCopy.confirmPrompt,
         rotationCopy.confirmAccept,
+        core.viewData.common.cancelAction,
       );
       expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledWith(
         rotationCopy.deviceAuthPrompt,
@@ -572,7 +574,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       expect(result.current.managedRecoveryRotationStepUpPrompt).toBeNull();
     });
 
-    it("never consumes the stashed phrase, so the next load can show it after an unmount", async () => {
+    it("never acknowledges the stashed phrase, so the next load can show it after an unmount", async () => {
       const { result, unmount } = await openRotationCard(false);
       let resolveRotation: (value: { ok: true; recoveryPhrase: string }) => void = () => {};
       mockRotateManagedRecoveryPhrase.mockReturnValue(
@@ -592,7 +594,7 @@ describe("useBackupSyncRecoveryMaterials", () => {
       await pending;
 
       expect(
-        managedRecoveryRotationService.takeUnrevealedManagedRecoveryPhrase,
+        managedRecoveryRotationService.acknowledgeManagedRecoveryPhrase,
       ).not.toHaveBeenCalled();
     });
 
@@ -630,6 +632,24 @@ describe("useBackupSyncRecoveryMaterials", () => {
       });
 
       expect(core.setGeneratedRecoveryCode).toHaveBeenCalledWith("");
+    });
+  });
+
+  describe("handleAcknowledgeRecoveryPhrase", () => {
+    it("clears the shown phrase and the rotation stash, so no later load shows it again", async () => {
+      const core = createBackupSyncSessionCoreMock({
+        generatedRecoveryPhrase: "alpha beta gamma",
+      });
+      const { result } = await renderHook(() => useBackupSyncRecoveryMaterials(core));
+
+      await act(() => {
+        result.current.handleAcknowledgeRecoveryPhrase();
+      });
+
+      expect(core.setGeneratedRecoveryPhrase).toHaveBeenCalledWith("");
+      expect(
+        managedRecoveryRotationService.acknowledgeManagedRecoveryPhrase,
+      ).toHaveBeenCalledTimes(1);
     });
   });
 

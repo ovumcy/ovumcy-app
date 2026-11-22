@@ -317,6 +317,7 @@ describe("useBackupSyncActions", () => {
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
         core.viewData.account.restorePrompt,
         core.viewData.account.restoreAccept,
+        core.viewData.common.cancelAction,
       );
     });
 

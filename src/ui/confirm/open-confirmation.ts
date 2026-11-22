@@ -7,7 +7,7 @@ import {
 export function openConfirmation(
   message: string,
   acceptLabel: string,
-  cancelLabel = "Cancel",
+  cancelLabel: string,
 ): Promise<boolean> {
   return requestConfirmation(message, acceptLabel, cancelLabel);
 }

@@ -235,6 +235,7 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
     const confirmed = await openConfirmation(
       viewData.account.restorePrompt,
       viewData.account.restoreAccept,
+      viewData.common.cancelAction,
     );
     if (!confirmed) {
       return;
