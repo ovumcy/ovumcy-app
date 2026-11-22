@@ -1312,8 +1312,6 @@ function mapPreparedContextToConnectError(
       return "unauthorized";
     case "network_failed":
       return "network_failed";
-    case "rate_limited":
-      return "rate_limited";
     default:
       return "generic";
   }

@@ -24,6 +24,8 @@ const blobInput = {
 
 describe("mapServerErrorKey", () => {
   it.each([
+    ["invalid_registration_input", 400, "invalid_registration_input"],
+    ["registration_failed", 400, "registration_failed"],
     ["registration_disabled", 403, "registration_disabled"],
     ["sync_disabled", 403, "sync_disabled"],
     ["rate_limited", 429, "rate_limited"],

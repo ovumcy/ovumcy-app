@@ -183,6 +183,16 @@ describe("SyncAccountSecuritySection", () => {
     ).toBeTruthy();
   });
 
+  it("maps the client-side password_too_long code on the change flow", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SyncAccountSecuritySection {...baseProps()} changeErrorCode="password_too_long" />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByText(copy.errors.passwordTooLong)).toBeTruthy();
+  });
+
   it("maps the client-side password_too_short code on change and reset flows", async () => {
     const { rerender } = await render(
       <AppPreferencesTestProvider>
