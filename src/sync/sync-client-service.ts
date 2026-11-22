@@ -189,6 +189,29 @@ export function requiresUploadOverBackupConfirmation(input: {
   return input.lastRemoteGeneration === null && input.remoteBackupExists;
 }
 
+/**
+ * The rollback floor only proves something about the account it was raised
+ * under. A sign-in to any other account, or to one whose id is unknown, starts
+ * the floor over, so the next upload probes the server and asks before it
+ * overwrites that account's backup.
+ */
+export function bindSyncPreferencesToAccount(
+  preferences: SyncPreferencesRecord,
+  accountId: string | null | undefined,
+): SyncPreferencesRecord {
+  const signedInAccountId =
+    typeof accountId === "string" && accountId.length > 0 ? accountId : null;
+  if (signedInAccountId !== null && preferences.accountId === signedInAccountId) {
+    return preferences;
+  }
+  return {
+    ...preferences,
+    accountId: signedInAccountId,
+    lastRemoteGeneration: null,
+    lastSyncedAt: null,
+  };
+}
+
 export type UploadOverBackupGuard = {
   // Invoked only when the policy above fires. Resolving false (the safe
   // dismissal answer) aborts the upload with "upload_over_backup_declined".
@@ -346,7 +369,7 @@ export async function connectSyncAccount(
     );
 
     const nextPreferences: SyncPreferencesRecord = {
-      ...preferences,
+      ...bindSyncPreferencesToAccount(preferences, authResult.auth.accountID),
       normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
       setupStatus: "connected",
       // A real register/login/TOTP-finalized session is never a guest —
@@ -452,7 +475,7 @@ export async function connectSyncAccount(
   });
 
   const nextPreferences: SyncPreferencesRecord = {
-    ...preferences,
+    ...bindSyncPreferencesToAccount(preferences, authResult.auth.accountID),
     normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
     setupStatus: "connected",
     // Self-hosted community sync has no guest-partner concept; clear any
@@ -506,6 +529,9 @@ export async function finalizeSyncSessionAfterTOTP(
     sessionExpiresAt?: string;
     refreshToken?: string;
     refreshTokenExpiresAt?: string;
+    // The self-hosted account the challenge signed in to; managed reads it
+    // from the session. Absent, the rollback floor starts over.
+    accountID?: string;
   },
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
@@ -560,7 +586,7 @@ export async function finalizeSyncSessionAfterTOTP(
     });
 
     const nextPreferences: SyncPreferencesRecord = {
-      ...preferences,
+      ...bindSyncPreferencesToAccount(preferences, sessionResult.session.accountID),
       normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
       setupStatus: "connected",
       // A real register/login/TOTP-finalized session is never a guest —
@@ -613,7 +639,7 @@ export async function finalizeSyncSessionAfterTOTP(
   });
 
   const nextPreferences: SyncPreferencesRecord = {
-    ...preferences,
+    ...bindSyncPreferencesToAccount(preferences, input.accountID),
     normalizedEndpoint: normalizedEndpoint.endpoint.baseURL,
     setupStatus: "connected",
     // Self-hosted community sync has no guest-partner concept; clear any
@@ -715,7 +741,9 @@ export async function persistGuestPartnerSession(
   });
 
   const nextPreferences: SyncPreferencesRecord = {
-    ...preferences,
+    // A guest account is always freshly minted and its id is not handed back
+    // here, so the floor of the previous account never carries over.
+    ...bindSyncPreferencesToAccount(preferences, null),
     mode: "managed",
     endpointInput: "",
     normalizedEndpoint: MANAGED_SYNC_BASE_URL,
@@ -1080,6 +1108,7 @@ export async function recoverSyncAccess(
     client,
     normalizedEndpoint.endpoint.baseURL,
     authResult.auth.sessionToken,
+    authResult.auth.accountID,
     normalizedRecoveryPhrase,
     now,
   );
@@ -1172,7 +1201,7 @@ async function completeManagedRecovery(
 
   const nextPreferences: SyncPreferencesRecord = {
     ...createDefaultSyncPreferencesRecord(),
-    ...preferences,
+    ...bindSyncPreferencesToAccount(preferences, managedAuth.accountID),
     deviceLabel: preferences.deviceLabel.trim(),
     endpointInput: "",
     normalizedEndpoint: baseURL,
@@ -1226,6 +1255,9 @@ export async function finalizeSyncRecoveryAfterTOTP(
     sessionExpiresAt?: string;
     refreshToken?: string;
     refreshTokenExpiresAt?: string;
+    // The self-hosted account the challenge signed in to; managed reads it
+    // from the session.
+    accountID?: string;
   },
   now: Date,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
@@ -1309,6 +1341,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
     apiClientFactory(normalizedEndpoint.endpoint.baseURL),
     normalizedEndpoint.endpoint.baseURL,
     input.sessionToken,
+    input.accountID,
     normalizedRecoveryPhrase,
     now,
   );
@@ -1321,6 +1354,7 @@ async function completeCommunityRecovery(
   client: SyncAPIClient,
   baseURL: string,
   sessionToken: string,
+  accountID: string | undefined,
   normalizedRecoveryPhrase: string,
   now: Date,
 ): Promise<
@@ -1385,7 +1419,7 @@ async function completeCommunityRecovery(
 
   const nextPreferences: SyncPreferencesRecord = {
     ...createDefaultSyncPreferencesRecord(),
-    ...preferences,
+    ...bindSyncPreferencesToAccount(preferences, accountID),
     deviceLabel: preferences.deviceLabel.trim(),
     endpointInput:
       preferences.mode === "self_hosted" ? preferences.endpointInput.trim() : "",

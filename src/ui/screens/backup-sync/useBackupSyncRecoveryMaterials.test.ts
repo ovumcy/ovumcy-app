@@ -36,10 +36,19 @@ const mockDescribeSyncAccountTwoFactor = jest.mocked(
 const rotationCopy = selectManagedRecoveryRotationCopy("en");
 
 function createConnectedManagedState() {
-  return createLoadedSettingsStateFixture({
+  const base = createLoadedSettingsStateFixture({
     hasStoredSyncSecrets: true,
     hasSyncSession: true,
   });
+  // Rotation needs a rollback floor raised under this account's key.
+  return {
+    ...base,
+    savedSyncPreferences: {
+      ...base.savedSyncPreferences,
+      accountId: "acct-1",
+      lastRemoteGeneration: 7,
+    },
+  };
 }
 
 const mockOpenConfirmation = jest.mocked(openConfirmation);

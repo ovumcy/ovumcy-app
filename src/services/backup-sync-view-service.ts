@@ -106,6 +106,11 @@ export function isGuestPartnerAccount(
 // that wraps it (PUT /account/recovery-key): a fresh local key would leave the
 // backup under a key no stored package opens, and the managed sync host
 // refuses a different package anyway (`managed_recovery_key_overwrite`).
+// Rotation also needs proof that the local key opens this account's backup:
+// a rollback floor, which only an upload or restore under this key raises and
+// every sign-in to another account resets. A device signed in without phrase
+// recovery has none, so its recovery action stays local and the remote
+// package is never replaced.
 export function shouldRotateManagedRecoveryPhrase(input: {
   hasStoredSyncSecrets: boolean;
   hasSyncSession: boolean;
@@ -115,7 +120,8 @@ export function shouldRotateManagedRecoveryPhrase(input: {
     input.hasStoredSyncSecrets &&
     input.hasSyncSession &&
     input.preferences.mode === "managed" &&
-    !isGuestPartnerAccount(input.preferences)
+    !isGuestPartnerAccount(input.preferences) &&
+    typeof input.preferences.lastRemoteGeneration === "number"
   );
 }
 

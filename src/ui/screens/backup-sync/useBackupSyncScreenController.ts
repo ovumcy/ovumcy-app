@@ -112,6 +112,7 @@ export function useBackupSyncScreenController(
       !recovery.isRotatingRecoveryPhrase &&
       !connection.isAuthenticatingSync &&
       !connection.isRecoveringSync &&
+      !connection.isDisconnectingSync &&
       !actions.isRestoringSync &&
       !actions.isSyncingNow,
     ({ data }) => {
