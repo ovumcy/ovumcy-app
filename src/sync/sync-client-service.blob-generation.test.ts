@@ -129,6 +129,18 @@ describe("runSyncUpload expected_generation", () => {
     expect(putArg(putBlob, 0)).not.toHaveProperty("expectedGeneration");
   });
 
+  it("sends no expected generation when the stored floor is unreadable", async () => {
+    const putBlob = jest.fn(async (_token: string, input: PutInput) => ({
+      ok: true,
+      blob: echo(input),
+    }));
+    const { upload } = setup(putBlob);
+
+    await upload(selfHosted({ lastRemoteGeneration: -5 }));
+
+    expect(putArg(putBlob, 0)).not.toHaveProperty("expectedGeneration");
+  });
+
   it("retries once without the field when an older server rejects it", async () => {
     const putBlob = jest
       .fn()
