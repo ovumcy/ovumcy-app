@@ -1198,4 +1198,40 @@ describe("sync-api-client", () => {
       errorCode: "network_failed",
     });
   });
+
+  it("sends expected_generation on a blob PUT only when given", async () => {
+    const fetchMock = jest.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ error: "stale_generation" }), {
+          status: 409,
+          headers: { "Content-Type": "application/json" },
+        }),
+    );
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080/",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+    const input = {
+      schemaVersion: 3,
+      generation: 20,
+      checksumSHA256: "ab",
+      ciphertextBase64: "AA==",
+    };
+
+    await expect(
+      client.putBlob("session-1", { ...input, expectedGeneration: 10 }),
+    ).resolves.toEqual({ ok: false, errorCode: "stale_generation" });
+    await client.putBlob("session-1", input);
+
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+      schema_version: 3,
+      generation: 20,
+      checksum_sha256: "ab",
+      ciphertext_base64: "AA==",
+      expected_generation: 10,
+    });
+    expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string)).not.toHaveProperty(
+      "expected_generation",
+    );
+  });
 });
