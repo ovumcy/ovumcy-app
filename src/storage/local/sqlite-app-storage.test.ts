@@ -612,6 +612,11 @@ function createInspectableFakeDatabase(state?: Partial<FakeDatabaseState>) {
           !hasPayload(databaseState.syncPreferencesRow)
         ) {
           databaseState.syncPreferencesRow = null;
+        } else if (
+          unauthenticatedDelete === "managed_billing_cache" &&
+          !hasPayload(databaseState.managedBillingCacheRow)
+        ) {
+          databaseState.managedBillingCacheRow = null;
         }
         return { changes: 1 };
       }
@@ -4417,5 +4422,274 @@ describe("sqlite-app-storage", () => {
       expect.objectContaining({ id: "screening_a" }),
       expect.objectContaining({ id: "screening_b" }),
     ]);
+  });
+
+  describe("hydrate and erase robustness", () => {
+    const localDataKey = "a".repeat(64);
+
+    function trackStatements(database: LocalAppDatabase, failOn?: (source: string) => boolean) {
+      const statements: string[] = [];
+      const tracked: LocalAppDatabase = {
+        ...database,
+        execAsync: (source) => {
+          statements.push(source);
+          return database.execAsync(source);
+        },
+        getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+          database.getFirstAsync<T>(source, ...params),
+        getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+          database.getAllAsync<T>(source, ...params),
+        runAsync: (source: string, ...params: unknown[]) => {
+          statements.push(source);
+          if (failOn?.(source)) {
+            return Promise.reject(new Error("simulated write failure"));
+          }
+          return database.runAsync(source, ...params);
+        },
+      };
+      return { tracked, statements };
+    }
+
+    function legacySourceWithData() {
+      return {
+        clear: jest.fn().mockResolvedValue(undefined),
+        hasData: jest.fn().mockResolvedValue(true),
+        readBootstrapState: jest.fn().mockResolvedValue({
+          hasCompletedOnboarding: true,
+          profileVersion: 3,
+          incompleteOnboardingStep: null,
+        }),
+        readProfileRecord: jest.fn().mockResolvedValue({
+          ...createDefaultProfileRecord(),
+          lastPeriodStart: "2026-03-14",
+          cycleLength: 31,
+        }),
+      };
+    }
+
+    function encryptedBootstrapRow(state = createDefaultBootstrapState()) {
+      return {
+        has_completed_onboarding: 0,
+        profile_version: 1,
+        incomplete_onboarding_step: null,
+        encrypted_payload: encryptLocalDataRecord(
+          localDataKey,
+          state,
+          buildLocalDataAad("bootstrap_state", "1"),
+        ),
+      };
+    }
+
+    it("migrates the legacy profile when an earlier launch was killed after only the bootstrap row was written", async () => {
+      const legacy = legacySourceWithData();
+      const storedBootstrap = {
+        hasCompletedOnboarding: true,
+        profileVersion: 3,
+        incompleteOnboardingStep: null,
+      };
+      const inspected = createInspectableFakeDatabase({
+        bootstrapRow: encryptedBootstrapRow(storedBootstrap),
+      });
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(storage.readProfileRecord()).resolves.toEqual(
+        expect.objectContaining({ lastPeriodStart: "2026-03-14", cycleLength: 31 }),
+      );
+      await expect(storage.readBootstrapState()).resolves.toEqual(storedBootstrap);
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("clears leftover legacy plaintext when both encrypted rows already exist", async () => {
+      const legacy = legacySourceWithData();
+      const inspected = createInspectableFakeDatabase();
+      const first = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+      await first.readProfileRecord();
+
+      const second = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(second.readProfileRecord()).resolves.toEqual(
+        createDefaultProfileRecord(),
+      );
+      expect(legacy.readProfileRecord).not.toHaveBeenCalled();
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("writes the legacy bootstrap and profile rows inside one transaction and rolls both back on failure", async () => {
+      const legacy = legacySourceWithData();
+      const inspected = createInspectableFakeDatabase();
+      const { tracked, statements } = trackStatements(inspected.database, (source) =>
+        source.includes("INSERT INTO profile_settings"),
+      );
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(storage.readProfileRecord()).rejects.toThrow(
+        "simulated write failure",
+      );
+      const begin = statements.indexOf("BEGIN IMMEDIATE;");
+      expect(begin).toBeGreaterThanOrEqual(0);
+      expect(statements.slice(begin)).toEqual([
+        "BEGIN IMMEDIATE;",
+        expect.stringContaining("INSERT INTO bootstrap_state"),
+        expect.stringContaining("INSERT INTO profile_settings"),
+        "ROLLBACK;",
+      ]);
+      expect(legacy.clear).not.toHaveBeenCalled();
+    });
+
+    it("drops a managed billing cache row that does not authenticate at hydrate and reseeds the default", async () => {
+      const inspected = createInspectableFakeDatabase({
+        hasManagedBillingCacheTable: true,
+        userVersion: 13,
+        managedBillingCacheRow: {
+          encrypted_payload: encryptLocalDataRecord(
+            "b".repeat(64),
+            { snapshot: null, dismissedOfferIDs: ["offer_1"] },
+            buildLocalDataAad("managed_billing_cache", "1"),
+          ),
+        },
+      });
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+        snapshot: null,
+        dismissedOfferIDs: [],
+      });
+      expect(inspected.state.managedBillingCacheRow?.encrypted_payload).toEqual(
+        expect.any(String),
+      );
+      await storage.writeManagedBillingCacheRecord({
+        snapshot: null,
+        dismissedOfferIDs: ["offer_2"],
+      });
+      await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+        snapshot: null,
+        dismissedOfferIDs: ["offer_2"],
+      });
+    });
+
+    it("resolves the default managed billing cache when the row is corrupted after hydrate", async () => {
+      const inspected = createInspectableFakeDatabase({
+        hasManagedBillingCacheTable: true,
+        userVersion: 13,
+      });
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+      await storage.writeManagedBillingCacheRecord({
+        snapshot: null,
+        dismissedOfferIDs: ["offer_1"],
+      });
+
+      inspected.state.managedBillingCacheRow = { encrypted_payload: TRUNCATED_ENVELOPE };
+
+      await expect(storage.readManagedBillingCacheRecord()).resolves.toEqual({
+        snapshot: null,
+        dismissedOfferIDs: [],
+      });
+    });
+
+    it("leaves day-log and symptom rows already under their opaque key untouched at hydrate", async () => {
+      const inspected = createInspectableFakeDatabase();
+      const first = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+      await first.writeDayLogRecord({
+        ...createEmptyDayLogRecord("2026-03-10"),
+        isPeriod: true,
+      });
+
+      const { tracked, statements } = trackStatements(inspected.database);
+      const second = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(second.readDayLogRecord("2026-03-10")).resolves.toEqual(
+        expect.objectContaining({ date: "2026-03-10", isPeriod: true }),
+      );
+      expect(
+        statements.filter(
+          (source) =>
+            source.includes("INSERT INTO day_logs") ||
+            source.includes("INSERT INTO symptoms"),
+        ),
+      ).toEqual([]);
+    });
+
+    it("erases the pregnancy tables inside one transaction and rolls back when a DELETE fails", async () => {
+      const { storage: seeded, inspected } = createPregnancyStorage();
+      await seeded.writePregnancyRecord(
+        buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+      );
+      await seeded.writeKickSession(buildKickSession({ id: "kick_1" }));
+
+      const { tracked, statements } = trackStatements(inspected.database, (source) =>
+        source === "DELETE FROM kick_sessions;",
+      );
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(storage.deleteAllPregnancyData()).rejects.toThrow(
+        "simulated write failure",
+      );
+      expect(statements.slice(statements.lastIndexOf("BEGIN IMMEDIATE;"))).toEqual([
+        "BEGIN IMMEDIATE;",
+        "DELETE FROM pregnancy_records;",
+        "DELETE FROM kick_sessions;",
+        "ROLLBACK;",
+      ]);
+    });
+
+    it("commits the pregnancy erase as one transaction", async () => {
+      const { storage: seeded, inspected } = createPregnancyStorage();
+      await seeded.writePregnancyRecord(
+        buildPregnancyRecord({ id: "pregnancy_1", status: "active" }),
+      );
+      const { tracked, statements } = trackStatements(inspected.database);
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await storage.deleteAllPregnancyData();
+
+      expect(statements.slice(statements.lastIndexOf("BEGIN IMMEDIATE;"))).toEqual([
+        "BEGIN IMMEDIATE;",
+        "DELETE FROM pregnancy_records;",
+        "DELETE FROM kick_sessions;",
+        "DELETE FROM contraction_sessions;",
+        "COMMIT;",
+      ]);
+      await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
+    });
   });
 });

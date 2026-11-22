@@ -89,6 +89,7 @@ import {
 } from "./sqlite-schema-migrations";
 import {
   resolveLocalDataKey,
+  runLocalDataTransaction,
   wipeLocalAppTables,
 } from "./sqlite-local-data-key";
 
@@ -541,31 +542,29 @@ export function createSQLiteAppStorage(
   async function commitDayLogChangesInternal(change: DayLogChangeSet): Promise<void> {
     const database = await getHydratedDatabase();
     const localDataKey = await getLocalDataKey(database);
-    await database.execAsync("BEGIN IMMEDIATE;");
-    try {
-      for (const record of change.writes) {
-        await upsertDayLogRecord(database, record, localDataKey);
-      }
-      for (const date of change.deletes) {
-        await database.runAsync(
-          "DELETE FROM day_logs WHERE day = ?;",
-          buildOpaqueLookupKey(localDataKey, "day_log", date),
-        );
-      }
-      if (change.profile) {
-        await upsertProfileRecord(database, change.profile, localDataKey);
-      }
-      await database.execAsync("COMMIT;");
-    } catch (error) {
-      try {
-        await database.execAsync("ROLLBACK;");
-      } catch {
-        // The original failure is the one worth reporting; the next queued
-        // operation retries the rollback before it runs.
-        danglingTransactionDatabase = database;
-      }
-      throw error;
-    }
+    await runLocalDataTransaction(
+      database,
+      async () => {
+        for (const record of change.writes) {
+          await upsertDayLogRecord(database, record, localDataKey);
+        }
+        for (const date of change.deletes) {
+          await database.runAsync(
+            "DELETE FROM day_logs WHERE day = ?;",
+            buildOpaqueLookupKey(localDataKey, "day_log", date),
+          );
+        }
+        if (change.profile) {
+          await upsertProfileRecord(database, change.profile, localDataKey);
+        }
+      },
+      () => markDanglingTransaction(database),
+    );
+  }
+
+  // The next queued operation retries the rollback before it runs.
+  function markDanglingTransaction(database: LocalAppDatabase): void {
+    danglingTransactionDatabase = database;
   }
 
   async function listDayLogRecordsInRangeInternal(
@@ -843,16 +842,21 @@ export function createSQLiteAppStorage(
     const database = await getHydratedDatabase();
     // Hard-delete the whole pregnancy data class. Only the three pregnancy
     // tables are cleared; day_logs / profile_settings / symptoms and the rest
-    // stay intact (unlike wipeLocalAppTables). No schema change — DELETE FROM
-    // only. The whole batch runs inside one enqueued storage operation, so the
-    // per-connection serialization is preserved (no overlapping bursts).
+    // stay intact (unlike wipeLocalAppTables). One transaction: a kill or a
+    // failed DELETE midway leaves all three tables as they were, never a
+    // pregnancy record without its sessions or sessions without their record.
     await withStorageOperationLabel(
       "sqlite/deleteAllPregnancyData/delete",
-      async () => {
-        await database.runAsync("DELETE FROM pregnancy_records;");
-        await database.runAsync("DELETE FROM kick_sessions;");
-        await database.runAsync("DELETE FROM contraction_sessions;");
-      },
+      () =>
+        runLocalDataTransaction(
+          database,
+          async () => {
+            await database.runAsync("DELETE FROM pregnancy_records;");
+            await database.runAsync("DELETE FROM kick_sessions;");
+            await database.runAsync("DELETE FROM contraction_sessions;");
+          },
+          () => markDanglingTransaction(database),
+        ),
     );
   }
 
@@ -1189,17 +1193,31 @@ async function maybeMigrateLegacyLocalAppData(
     legacyStorageSource.hasData(),
   ]);
 
-  if (bootstrapCount > 0 || profileCount > 0 || !hasLegacyData) {
+  if (!hasLegacyData) {
     return;
   }
 
-  const [bootstrapState, profileRecord] = await Promise.all([
-    legacyStorageSource.readBootstrapState(),
-    legacyStorageSource.readProfileRecord(),
-  ]);
+  // Each singleton still missing is filled from the legacy source in one
+  // transaction, so a kill midway never leaves one migrated and the other
+  // skipped on the next launch. The plaintext source is cleared only after the
+  // encrypted rows are committed, and is cleared even when both rows already
+  // exist (a kill between the commit and the clear).
+  if (bootstrapCount === 0 || profileCount === 0) {
+    const [bootstrapState, profileRecord] = await Promise.all([
+      legacyStorageSource.readBootstrapState(),
+      legacyStorageSource.readProfileRecord(),
+    ]);
 
-  await upsertBootstrapState(database, bootstrapState, localDataKey);
-  await upsertProfileRecord(database, profileRecord, localDataKey);
+    await runLocalDataTransaction(database, async () => {
+      if (bootstrapCount === 0) {
+        await upsertBootstrapState(database, bootstrapState, localDataKey);
+      }
+      if (profileCount === 0) {
+        await upsertProfileRecord(database, profileRecord, localDataKey);
+      }
+    });
+  }
+
   await legacyStorageSource.clear();
 }
 
@@ -1215,6 +1233,7 @@ const PAYLOAD_BEARING_TABLES = [
   "bootstrap_state",
   "profile_settings",
   "sync_preferences",
+  "managed_billing_cache",
   "day_logs",
   "symptoms",
 ] as const;
@@ -1276,8 +1295,28 @@ async function dropUnauthenticatedLocalDataRows(
     }
   }
 
+  const managedBillingCacheRow = await withStorageOperationLabel(
+    "sqlite/unauthenticatedRows/managedBillingCache/select",
+    () =>
+      database.getFirstAsync<ManagedBillingCacheRow>(
+        "SELECT encrypted_payload FROM managed_billing_cache WHERE id = 1;",
+      ),
+  );
+  if (
+    managedBillingCacheRow &&
+    !decryptSingletonRecord<ManagedBillingCacheRecord>(
+      localDataKey,
+      managedBillingCacheRow.encrypted_payload,
+      "managed_billing_cache",
+    )
+  ) {
+    await database.runAsync("DELETE FROM managed_billing_cache WHERE id = 1;");
+  }
+
   // Encrypted list rows stored under a plain date/id key are re-keyed to the
-  // opaque lookup key; their AAD still binds the stored key.
+  // opaque lookup key; their AAD still binds the stored key. A row already
+  // under its opaque key is left as it is: reads decrypt and sanitize it, so
+  // rewriting it on every launch would only add work and flash wear.
   const dayLogRows = await withStorageOperationLabel(
     "sqlite/unauthenticatedRows/dayLogs/select",
     () =>
@@ -1294,15 +1333,11 @@ async function dropUnauthenticatedLocalDataRows(
       await database.runAsync("DELETE FROM day_logs WHERE day = ?;", row.day);
       continue;
     }
-    const nextLookupKey = buildOpaqueLookupKey(
-      localDataKey,
-      "day_log",
-      record.date,
-    );
-    await upsertDayLogRecord(database, record, localDataKey);
-    if (row.day !== nextLookupKey) {
-      await database.runAsync("DELETE FROM day_logs WHERE day = ?;", row.day);
+    if (row.day === buildOpaqueLookupKey(localDataKey, "day_log", record.date)) {
+      continue;
     }
+    await upsertDayLogRecord(database, record, localDataKey);
+    await database.runAsync("DELETE FROM day_logs WHERE day = ?;", row.day);
   }
 
   const symptomRows = await withStorageOperationLabel(
@@ -1321,15 +1356,11 @@ async function dropUnauthenticatedLocalDataRows(
       await database.runAsync("DELETE FROM symptoms WHERE id = ?;", row.id);
       continue;
     }
-    const nextLookupKey = buildOpaqueLookupKey(
-      localDataKey,
-      "symptom",
-      record.id,
-    );
-    await upsertSymptomRecord(database, record, localDataKey);
-    if (row.id !== nextLookupKey) {
-      await database.runAsync("DELETE FROM symptoms WHERE id = ?;", row.id);
+    if (row.id === buildOpaqueLookupKey(localDataKey, "symptom", record.id)) {
+      continue;
     }
+    await upsertSymptomRecord(database, record, localDataKey);
+    await database.runAsync("DELETE FROM symptoms WHERE id = ?;", row.id);
   }
 }
 
@@ -2082,17 +2113,17 @@ function mapManagedBillingCacheRow(
   row: ManagedBillingCacheRow,
   localDataKey: string,
 ): ManagedBillingCacheRecord {
-  if (!row.encrypted_payload) {
-    return createDefaultManagedBillingCacheRecord();
-  }
-
-  return normalizeManagedBillingCacheRecord(
-    decryptLocalDataRecord<ManagedBillingCacheRecord>(
-      localDataKey,
-      row.encrypted_payload,
-      buildLocalDataAad("managed_billing_cache", "1"),
-    ),
+  // The default carries no snapshot, so a corrupt row degrades to "no cached
+  // billing truth" rather than failing the read.
+  const record = decryptSingletonRecord<ManagedBillingCacheRecord>(
+    localDataKey,
+    row.encrypted_payload,
+    "managed_billing_cache",
   );
+
+  return record
+    ? normalizeManagedBillingCacheRecord(record)
+    : createDefaultManagedBillingCacheRecord();
 }
 
 // A singleton row with no payload, an unparseable envelope or a failing

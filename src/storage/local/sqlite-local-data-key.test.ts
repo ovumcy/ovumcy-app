@@ -403,4 +403,60 @@ describe("sqlite-local-data-key", () => {
       expect(onRollbackFailed).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("canary breadth beyond the four primary tables", () => {
+    const rightKey = "a".repeat(64);
+    const wrongKey = "b".repeat(64);
+    const probedTables: { table: string; rowKey?: string }[] = [
+      { table: "sync_preferences" },
+      { table: "managed_billing_cache" },
+      { table: "pregnancy_records", rowKey: "pregnancy_1" },
+      { table: "kick_sessions", rowKey: "kick_1" },
+      { table: "contraction_sessions", rowKey: "contraction_1" },
+      { table: "postpartum_records", rowKey: "postpartum_1" },
+      { table: "screening_responses", rowKey: "screening_1" },
+    ];
+
+    function seedOnly(table: string, rowKey: string | undefined): EncryptedRowSeed {
+      return {
+        table,
+        ...(rowKey ? { rowKey } : {}),
+        payload: encryptLocalDataRecord(
+          rightKey,
+          { ok: true },
+          buildLocalDataAad(table, rowKey ?? "1"),
+        ),
+      };
+    }
+
+    it.each(probedTables)(
+      "wipes when the only encrypted row lives in $table and the key does not authenticate it",
+      async ({ table, rowKey }) => {
+        const keyStore = createFakeLocalDataKeyStore(wrongKey);
+        const fake = createKeyResolutionFakeDatabase({
+          encryptedRows: [seedOnly(table, rowKey)],
+        });
+
+        const resolvedKey = await resolveLocalDataKey(fake.database, keyStore);
+
+        expect(resolvedKey).not.toBe(wrongKey);
+        expect(fake.deletedTables).toContain(table);
+      },
+    );
+
+    it.each(probedTables)(
+      "keeps the key when the only encrypted row lives in $table and authenticates",
+      async ({ table, rowKey }) => {
+        const keyStore = createFakeLocalDataKeyStore(rightKey);
+        const fake = createKeyResolutionFakeDatabase({
+          encryptedRows: [seedOnly(table, rowKey)],
+        });
+
+        await expect(resolveLocalDataKey(fake.database, keyStore)).resolves.toBe(
+          rightKey,
+        );
+        expect(fake.deletedTables).toEqual([]);
+      },
+    );
+  });
 });
