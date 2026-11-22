@@ -168,10 +168,13 @@ export function useBackupSyncScreenController(
     isPreparing: recovery.isPreparingSync || recovery.isRotatingRecoveryPhrase,
     isRecovering: connection.isRecoveringSync,
     isRestoring: actions.isRestoringSync,
-    // An in-flight account deletion disables the same action set as a running
-    // upload, so the owner cannot start another destructive action
-    // mid-deletion.
-    isSyncing: actions.isSyncingNow || deletion.isDeletingAccount,
+    // An in-flight account deletion or disconnect revoke disables the same
+    // action set as a running upload, so the owner cannot start another
+    // destructive action, or an upload that re-marks the device connected.
+    isSyncing:
+      actions.isSyncingNow ||
+      deletion.isDeletingAccount ||
+      connection.isDisconnectingSync,
     locale: language,
     managedPlanStatus: state.managedPremiumAccess.planStatus,
     managedRecoveryRotationLabel: shouldRotateManagedRecoveryPhrase({
