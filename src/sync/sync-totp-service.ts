@@ -5,6 +5,10 @@ import {
   type ManagedCloudAPIErrorCode,
 } from "./managed-cloud-api-client";
 import {
+  callWithManagedSession,
+  type ManagedSessionCallFailure,
+} from "./managed-session-call";
+import {
   createSyncAPIClient,
   type SyncAPIClient,
   type SyncAPIErrorCode,
@@ -120,9 +124,10 @@ export async function startTOTPEnrollment(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.startTOTPEnrollment(
-      secrets.managedAuthSessionToken,
-      input,
+    const result = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => client.startTOTPEnrollment(sessionToken, input),
+      { managedClientFactory },
     );
     if (!result.ok) {
       return {
@@ -195,9 +200,10 @@ export async function verifyTOTPEnrollment(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.verifyTOTPEnrollment(
-      secrets.managedAuthSessionToken,
-      input,
+    const result = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => client.verifyTOTPEnrollment(sessionToken, input),
+      { managedClientFactory },
     );
     if (!result.ok) {
       return {
@@ -261,7 +267,11 @@ export async function disableTOTP(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.disableTOTP(secrets.managedAuthSessionToken, input);
+    const result = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => client.disableTOTP(sessionToken, input),
+      { managedClientFactory },
+    );
     if (!result.ok) {
       return {
         ok: false,
@@ -364,15 +374,25 @@ export async function completeTOTPChallenge(
   return { ok: true, auth: result.auth };
 }
 
+// "unauthorized" means the session ended and its credentials were cleared
+// (`session_expired`); a 401 callWithManagedSession passes through kept them,
+// so it reads as "generic": callers end the local session on "unauthorized".
+type ManagedSessionCallErrorCode =
+  | ManagedCloudAPIErrorCode
+  | ManagedSessionCallFailure["errorCode"];
+
 function mapManagedStartEnrollmentError(
-  code: ManagedCloudAPIErrorCode,
+  code: ManagedSessionCallErrorCode,
 ): StartTOTPEnrollmentErrorCode {
   switch (code) {
+    case "no_session":
+      return "not_connected";
+    case "session_expired":
+      return "unauthorized";
     case "invalid_current_password":
     case "totp_not_configured":
     case "totp_already_enabled":
     case "totp_secret_failed":
-    case "unauthorized":
     case "rate_limited":
     case "network_failed":
       return code;
@@ -399,9 +419,13 @@ function mapCommunityStartEnrollmentError(
 }
 
 function mapManagedVerifyEnrollmentError(
-  code: ManagedCloudAPIErrorCode,
+  code: ManagedSessionCallErrorCode,
 ): VerifyTOTPEnrollmentErrorCode {
   switch (code) {
+    case "no_session":
+      return "not_connected";
+    case "session_expired":
+      return "unauthorized";
     case "totp_enrollment_discarded":
       return "totp_enrollment_not_started";
     case "totp_enrollment_not_started":
@@ -410,7 +434,6 @@ function mapManagedVerifyEnrollmentError(
     case "totp_invalid_code":
     case "totp_replayed":
     case "totp_secret_failed":
-    case "unauthorized":
     case "rate_limited":
     case "network_failed":
       return code;
@@ -442,9 +465,13 @@ function mapCommunityVerifyEnrollmentError(
 }
 
 function mapManagedDisableError(
-  code: ManagedCloudAPIErrorCode,
+  code: ManagedSessionCallErrorCode,
 ): DisableTOTPErrorCode {
   switch (code) {
+    case "no_session":
+      return "not_connected";
+    case "session_expired":
+      return "unauthorized";
     case "totp_not_enabled":
       return "totp_already_disabled";
     case "invalid_current_password":
@@ -452,7 +479,6 @@ function mapManagedDisableError(
     case "totp_invalid_code":
     case "totp_replayed":
     case "totp_secret_failed":
-    case "unauthorized":
     case "rate_limited":
     case "network_failed":
       return code;

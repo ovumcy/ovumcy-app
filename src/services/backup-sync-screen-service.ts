@@ -370,7 +370,10 @@ export async function upgradeBackupSyncGuestAccount(
     currentState.profile,
     result.preferences,
     currentState.hasStoredSyncSecrets,
-    currentState.hasSyncSession,
+    // "unauthorized" arrives only once the managed session has ended and its
+    // credentials were cleared.
+    currentState.hasSyncSession &&
+      (result.ok || result.errorCode !== "unauthorized"),
     currentState.symptomRecords,
     currentState.exportState,
     result.preferences,

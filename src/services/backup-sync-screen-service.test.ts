@@ -529,6 +529,31 @@ describe("upgradeBackupSyncGuestAccount", () => {
     expect(result.state.syncPreferences.guestSessionExpiresAt).toBeNull();
   });
 
+  it("drops the sync session from the returned state when a refused upgrade ended a non-renewable guest session", async () => {
+    const { storage, secretStore, state } = await loadGuestState();
+    expect(state.hasSyncSession).toBe(true);
+
+    global.fetch = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ) as typeof fetch;
+
+    const result = await upgradeBackupSyncGuestAccount(storage, secretStore, state, {
+      email: "owner@example.com",
+      password: "very secure password 12345",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({ ok: false, errorCode: "unauthorized" }),
+    );
+    expect(result.state.hasSyncSession).toBe(false);
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ managedAuthSessionToken: null }),
+    );
+  });
+
   it("leaves the guest marker untouched on a retryable error (invalid_registration_input)", async () => {
     const { storage, secretStore, state } = await loadGuestState();
 
