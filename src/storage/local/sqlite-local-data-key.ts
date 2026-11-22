@@ -18,6 +18,7 @@ import {
 export async function resolveLocalDataKey(
   database: LocalAppDatabase,
   localDataKeyStore: LocalDataKeyStore,
+  onRollbackFailed?: () => void,
 ): Promise<string> {
   const existingKey = await localDataKeyStore.readLocalDataKey();
   if (existingKey) {
@@ -40,7 +41,7 @@ export async function resolveLocalDataKey(
     // The replacement key is written only after the wipe commits: a kill
     // before the commit rolls the wipe back and the next boot re-detects the
     // mismatch with the old key still in place.
-    await wipeLocalAppTables(database);
+    await wipeLocalAppTables(database, onRollbackFailed);
     const replacementKey = createLocalDataKeyHex();
     await localDataKeyStore.writeLocalDataKey(replacementKey);
     return replacementKey;
@@ -51,7 +52,7 @@ export async function resolveLocalDataKey(
       hasEncryptedLocalData(database),
     )
   ) {
-    await wipeLocalAppTables(database);
+    await wipeLocalAppTables(database, onRollbackFailed);
   }
 
   const keyHex = createLocalDataKeyHex();

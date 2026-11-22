@@ -1125,23 +1125,46 @@ async function hydrateLocalAppDatabase(
   localDataKeyStore: LocalDataKeyStore,
 ): Promise<LocalAppDatabase> {
   const database = createSerializedLocalAppDatabase(await openDatabase());
+  let rollbackFailed = false;
+  const onRollbackFailed = () => {
+    rollbackFailed = true;
+  };
 
-  await withStorageOperationLabel("sqlite/hydrate/schema", () =>
-    ensureLocalAppSchema(database),
-  );
-  const localDataKey = await withStorageOperationLabel(
-    "sqlite/hydrate/localDataKey",
-    () => resolveLocalDataKey(database, localDataKeyStore),
-  );
-  await withStorageOperationLabel("sqlite/hydrate/legacyMigration", () =>
-    maybeMigrateLegacyLocalAppData(database, legacyStorageSource, localDataKey),
-  );
-  await withStorageOperationLabel("sqlite/hydrate/unauthenticatedRows", () =>
-    dropUnauthenticatedLocalDataRows(database, localDataKey),
-  );
-  await withStorageOperationLabel("sqlite/hydrate/seedRows", () =>
-    ensureSeedRows(database, localDataKey),
-  );
+  try {
+    await withStorageOperationLabel("sqlite/hydrate/schema", () =>
+      ensureLocalAppSchema(database),
+    );
+    const localDataKey = await withStorageOperationLabel(
+      "sqlite/hydrate/localDataKey",
+      () => resolveLocalDataKey(database, localDataKeyStore, onRollbackFailed),
+    );
+    await withStorageOperationLabel("sqlite/hydrate/legacyMigration", () =>
+      maybeMigrateLegacyLocalAppData(
+        database,
+        legacyStorageSource,
+        localDataKey,
+        onRollbackFailed,
+      ),
+    );
+    await withStorageOperationLabel("sqlite/hydrate/unauthenticatedRows", () =>
+      dropUnauthenticatedLocalDataRows(database, localDataKey),
+    );
+    await withStorageOperationLabel("sqlite/hydrate/seedRows", () =>
+      ensureSeedRows(database, localDataKey),
+    );
+  } catch (error) {
+    // The reopened handle can be the same cached native connection, still
+    // inside the transaction whose ROLLBACK failed; the next hydrate's BEGIN
+    // would then fail as nested until the app restarts.
+    if (rollbackFailed) {
+      try {
+        await database.execAsync("ROLLBACK;");
+      } catch {
+        // Nothing was open after all; the hydrate failure is the one reported.
+      }
+    }
+    throw error;
+  }
 
   return database;
 }
@@ -1186,6 +1209,7 @@ async function maybeMigrateLegacyLocalAppData(
   database: LocalAppDatabase,
   legacyStorageSource: LegacyLocalAppStorageSource,
   localDataKey: string,
+  onRollbackFailed: () => void,
 ): Promise<void> {
   if (!(await legacyStorageSource.hasData())) {
     return;
@@ -1220,14 +1244,18 @@ async function maybeMigrateLegacyLocalAppData(
       legacyStorageSource.readProfileRecord(),
     ]);
 
-    await runLocalDataTransaction(database, async () => {
-      if (!hasBootstrap) {
-        await upsertBootstrapState(database, bootstrapState, localDataKey);
-      }
-      if (!hasProfile) {
-        await upsertProfileRecord(database, profileRecord, localDataKey);
-      }
-    });
+    await runLocalDataTransaction(
+      database,
+      async () => {
+        if (!hasBootstrap) {
+          await upsertBootstrapState(database, bootstrapState, localDataKey);
+        }
+        if (!hasProfile) {
+          await upsertProfileRecord(database, profileRecord, localDataKey);
+        }
+      },
+      onRollbackFailed,
+    );
   }
 
   // Best effort once the encrypted rows exist: a failing clear must not fail
