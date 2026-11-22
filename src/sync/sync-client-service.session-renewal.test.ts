@@ -324,6 +324,35 @@ describe("sync-client-service managed session renewal", () => {
     );
   });
 
+  it("reports not_connected without minting a sync session when the managed session is signed out between the two calls", async () => {
+    const secretStore = createStore();
+    const cloud = createManagedCloud([]);
+    const signedIn = cloud.client.getSession.getMockImplementation()!;
+    cloud.client.getSession.mockImplementation(async (token: string) => {
+      const record = await secretStore.readSyncSecrets();
+      await secretStore.writeSyncSecrets({
+        ...(record as SyncSecretsRecord),
+        authSessionToken: null,
+        managedAuthSessionToken: null,
+        managedRefreshToken: null,
+      });
+      return signedIn(token);
+    });
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      createSyncAPIFactory().apiClientFactory,
+      cloud.managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    expect(cloud.client.createSyncSession).not.toHaveBeenCalled();
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({ authSessionToken: null, managedAuthSessionToken: null }),
+    );
+  });
+
   it("keeps the renewed pair when the capabilities read drops a sync session the plan no longer allows", async () => {
     const secretStore = createStore();
     const cloud = createManagedCloud(["getSession"]);
