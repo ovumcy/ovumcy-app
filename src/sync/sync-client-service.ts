@@ -769,11 +769,11 @@ export type UpgradeGuestPartnerAccountResult =
 /**
  * upgradeGuestPartnerAccount converts the guest-partner account behind this
  * device's CURRENT managed session into a normal email+password account
- * (POST /account/upgrade). Bearer auth is the existing session token read
- * from secure storage; unlike connectSyncAccount/persistGuestPartnerSession
- * the server never issues or revokes a session here, so there is no secrets
- * write — the same managedAuthSessionToken keeps authenticating every
- * subsequent call after this succeeds.
+ * (POST /account/upgrade). Bearer auth is the stored managed session, renewed
+ * and retried once on a 401 like every managed call; unlike
+ * connectSyncAccount/persistGuestPartnerSession the upgrade itself never
+ * issues or revokes a session, so it writes no secrets of its own — the same
+ * managed session keeps authenticating every subsequent call after it succeeds.
  *
  * On success the local `guestSessionExpiresAt` marker is cleared so the
  * "Keep your access" CTA and expiry nudge disappear immediately, without
@@ -1950,9 +1950,13 @@ async function readPreparedSyncContext(
       return { ok: false, errorCode: "sync_not_allowed" };
     }
 
+    const minted = { underSessionToken: "" };
     const syncSessionResult = await callWithManagedSession(
       secretStore,
-      (sessionToken) => managedClient.createSyncSession(sessionToken),
+      (sessionToken) => {
+        minted.underSessionToken = sessionToken;
+        return managedClient.createSyncSession(sessionToken);
+      },
       { managedClientFactory },
     );
     if (!syncSessionResult.ok) {
@@ -1966,9 +1970,13 @@ async function readPreparedSyncContext(
     }
 
     // Re-read: a renewal inside either call rotated the managed tokens, and a
-    // write from the record read above would put the spent pair back.
+    // write from the record read above would put the spent pair back. A record
+    // no longer on the minting session belongs to a sign-out or another account.
     const current = await secretStore.readSyncSecrets();
-    if (!current?.managedAuthSessionToken) {
+    if (
+      !current?.managedAuthSessionToken ||
+      current.managedAuthSessionToken !== minted.underSessionToken
+    ) {
       return { ok: false, errorCode: "not_connected" };
     }
     const nextSecrets = {
