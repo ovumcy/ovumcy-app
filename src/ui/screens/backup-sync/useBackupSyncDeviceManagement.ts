@@ -32,7 +32,15 @@ import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
  * wording. Dialog dismissal = keep.
  */
 export function useBackupSyncDeviceManagement(core: BackupSyncSessionCore) {
-  const { language, setState, state, storage, syncSecretStore, viewData } = core;
+  const {
+    language,
+    setAccountStatusMessage,
+    setState,
+    state,
+    storage,
+    syncSecretStore,
+    viewData,
+  } = core;
 
   const [deviceListItems, setDeviceListItems] = useState<
     BackupSyncDeviceListItemView[] | null
@@ -207,10 +215,12 @@ export function useBackupSyncDeviceManagement(core: BackupSyncSessionCore) {
 
     setPendingStepUp(null);
     if (result.preferences) {
-      // The server revoked this install's session with the device.
+      // The server revoked this install's session with the device. Signed
+      // out, the device section is hidden, so the notice goes to the account
+      // banner that stays on screen.
       setDeviceListItems(null);
       setState(buildSignedOutBackupSyncState(forState, result.preferences));
-      setDeviceStatusMessage(deviceCopy.statusRemovedSignedOut);
+      setAccountStatusMessage(deviceCopy.statusRemovedSignedOut);
       return;
     }
 
