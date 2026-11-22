@@ -391,6 +391,8 @@ const settingsCopyEn = {
       recoveryKeyChangedElsewhere:
         "Your account's recovery phrase was changed, and this device still holds the old one. If you changed it here, finish the change; otherwise disconnect and sign back in with the new phrase.",
       blobNotFound: "No encrypted backup copy exists on this server yet.",
+      remoteBackupChanged:
+        "The backup on the server was changed by another device. Restore it first, then upload again.",
       invalidPayload:
         "The encrypted backup copy from the server could not be read.",
       networkFailed: "Unable to reach the sync server right now.",
@@ -1013,6 +1015,8 @@ const settingsCopyDe: SettingsCopy = {
         "Die Wiederherstellungsphrase Ihres Kontos wurde geändert, dieses Gerät hat noch die alte. Haben Sie sie hier geändert, schließen Sie die Änderung ab; sonst trennen Sie die Verbindung und melden Sie sich mit der neuen Phrase wieder an.",
       blobNotFound:
         "Auf diesem Server gibt es noch keine verschlüsselte Sicherungskopie.",
+      remoteBackupChanged:
+        "Die Sicherung auf dem Server wurde von einem anderen Gerät geändert. Stellen Sie sie zuerst wieder her und laden Sie dann erneut hoch.",
       invalidPayload:
         "Die verschlüsselte Sicherungskopie vom Server konnte nicht gelesen werden.",
       networkFailed:
@@ -1665,6 +1669,8 @@ const settingsCopyFr: SettingsCopy = {
         "La phrase de récupération de votre compte a été changée et cet appareil conserve l'ancienne. Si vous l'avez changée ici, terminez le changement ; sinon déconnectez-vous et reconnectez-vous avec la nouvelle phrase.",
       blobNotFound:
         "Aucune copie de sauvegarde chiffrée n'existe encore sur ce serveur.",
+      remoteBackupChanged:
+        "La sauvegarde sur le serveur a été modifiée par un autre appareil. Restaurez-la d'abord, puis envoyez à nouveau.",
       invalidPayload:
         "La copie de sauvegarde chiffrée provenant du serveur n'a pas pu être lue.",
       networkFailed:
@@ -2296,6 +2302,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Фраза восстановления аккаунта была изменена, а на этом устройстве осталась старая. Если вы меняли её здесь, завершите смену; иначе отключитесь и войдите снова с новой фразой.",
         blobNotFound:
           "На этом сервере ещё нет зашифрованной резервной копии.",
+        remoteBackupChanged:
+          "Резервную копию на сервере изменило другое устройство. Сначала восстановите её, затем загрузите снова.",
         invalidPayload:
           "Не удалось прочитать зашифрованную резервную копию, полученную с сервера.",
         networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
@@ -2909,6 +2917,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "La frase de recuperación de tu cuenta cambió y este dispositivo aún tiene la anterior. Si la cambiaste aquí, termina el cambio; si no, desconéctate y vuelve a entrar con la frase nueva.",
         blobNotFound:
           "Todavía no existe una copia de respaldo cifrada en este servidor.",
+        remoteBackupChanged:
+          "Otro dispositivo cambió la copia de respaldo del servidor. Restáurala primero y luego vuelve a subirla.",
         invalidPayload:
           "No se pudo leer la copia de respaldo cifrada recibida del servidor.",
         networkFailed:
@@ -3526,6 +3536,8 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "La frase di recupero del tuo account è stata cambiata e questo dispositivo ha ancora quella vecchia. Se l'hai cambiata qui, completa la modifica; altrimenti disconnettiti e accedi di nuovo con la nuova frase.",
         blobNotFound:
           "Non esiste ancora un backup cifrato su questo server.",
+        remoteBackupChanged:
+          "Il backup sul server è stato modificato da un altro dispositivo. Ripristinalo prima, poi caricalo di nuovo.",
         invalidPayload:
           "Impossibile leggere il backup cifrato ricevuto dal server.",
         networkFailed:

@@ -715,6 +715,7 @@ describe("backup sync view service", () => {
       ["restore_incomplete", viewData.account.errors.restoreIncomplete],
       ["not_connected", viewData.account.errors.notConnected],
       ["blob_not_found", viewData.account.errors.blobNotFound],
+      ["remote_backup_changed", viewData.account.errors.remoteBackupChanged],
       ["invalid_payload", viewData.account.errors.invalidPayload],
       ["network_failed", viewData.account.errors.networkFailed],
       ["deviceAuthUnavailable", viewData.account.errors.deviceAuthUnavailable],
