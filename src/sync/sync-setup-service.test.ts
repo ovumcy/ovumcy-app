@@ -341,7 +341,8 @@ describe("sync-setup-service", () => {
       savedPreferences,
       {
         ...savedPreferences,
-        deviceLabel: "Tablet",
+        mode: "self_hosted",
+        endpointInput: "192.168.1.20:8080",
       },
       true,
     );
@@ -349,7 +350,7 @@ describe("sync-setup-service", () => {
     expect(result).toEqual({
       ok: true,
       preferences: expect.objectContaining({
-        deviceLabel: "Tablet",
+        mode: "self_hosted",
         setupStatus: "not_configured",
         preparedAt: null,
       }),
@@ -383,6 +384,180 @@ describe("sync-setup-service", () => {
     expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
       expect.objectContaining({ deviceLabel: "Phone" }),
       undefined,
+    );
+  });
+
+  describe("device label and session continuity", () => {
+    const storedSecrets = (overrides = {}) => ({
+      device: {
+        deviceID: "device-1",
+        deviceLabel: "Pixel 7",
+        createdAt: "2026-03-19T08:15:00.000Z",
+      },
+      masterKeyHex: "aa",
+      deviceSecretHex: "bb",
+      wrappedKey: {
+        algorithm: "xchacha20poly1305" as const,
+        kdf: "bip39_seed_hkdf_sha256" as const,
+        mnemonicWordCount: 12 as const,
+        wrapNonceHex: "cc",
+        wrappedMasterKeyHex: "dd",
+        phraseFingerprintHex: "ee",
+      },
+      authSessionToken: null,
+      managedAuthSessionToken: null,
+      managedAuthSessionExpiresAt: null,
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
+      ...overrides,
+    });
+    const connectedSelfHosted = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted" as const,
+      endpointInput: "192.168.1.20:8080",
+      normalizedEndpoint: "http://192.168.1.20:8080",
+      deviceLabel: "Pixel 7",
+      setupStatus: "connected" as const,
+      preparedAt: "2026-03-19T08:15:00.000Z",
+      lastRemoteGeneration: 42,
+      lastSyncedAt: "2026-03-20T08:15:00.000Z",
+    };
+
+    it("relabels a connected device in place, keeping its keys, session and rollback floor", async () => {
+      const storage = createLocalAppStorageMock();
+      const secrets = storedSecrets({ authSessionToken: "session-1" });
+      const secretStore = createSyncSecretStoreMock(secrets);
+
+      const result = await saveSyncPreferencesDraft(
+        storage,
+        secretStore,
+        connectedSelfHosted,
+        { ...connectedSelfHosted, deviceLabel: " Tablet " },
+        true,
+      );
+
+      expect(result).toEqual({
+        ok: true,
+        preferences: expect.objectContaining({
+          deviceLabel: "Tablet",
+          setupStatus: "connected",
+          preparedAt: connectedSelfHosted.preparedAt,
+          lastRemoteGeneration: 42,
+          lastSyncedAt: connectedSelfHosted.lastSyncedAt,
+        }),
+        hasStoredSecrets: true,
+      });
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual({
+        ...secrets,
+        device: { ...secrets.device, deviceLabel: "Tablet" },
+      });
+      expect(storage.writeManagedBillingCacheRecord).not.toHaveBeenCalled();
+      expect(storage.writeSyncPreferencesRecord).toHaveBeenCalledWith(
+        expect.anything(),
+        undefined,
+      );
+    });
+
+    it("keeps the stored device label when the draft label is cleared", async () => {
+      const secrets = storedSecrets();
+      const secretStore = createSyncSecretStoreMock(secrets);
+
+      const result = await saveSyncPreferencesDraft(
+        createLocalAppStorageMock(),
+        secretStore,
+        connectedSelfHosted,
+        { ...connectedSelfHosted, deviceLabel: "  " },
+        true,
+      );
+
+      expect(result).toMatchObject({ ok: true, hasStoredSecrets: true });
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(secrets);
+    });
+
+    it("skips the relabel when the secret record is already gone", async () => {
+      const secretStore = createSyncSecretStoreMock();
+
+      const result = await saveSyncPreferencesDraft(
+        createLocalAppStorageMock(),
+        secretStore,
+        connectedSelfHosted,
+        { ...connectedSelfHosted, deviceLabel: "Tablet" },
+        true,
+      );
+
+      expect(result).toMatchObject({ ok: true });
+      await expect(secretStore.readSyncSecrets()).resolves.toBeNull();
+    });
+
+    it("keeps the self-hosted session and managed refresh fields when regenerating keys for the same server", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(connectedSelfHosted),
+      });
+      const secretStore = createSyncSecretStoreMock(
+        storedSecrets({
+          authSessionToken: "session-1",
+          managedAuthSessionToken: "managed-1",
+          managedAuthSessionExpiresAt: "2026-03-21T08:15:00.000Z",
+          managedRefreshToken: "refresh-1",
+          managedRefreshTokenExpiresAt: "2026-04-19T08:15:00.000Z",
+        }),
+      );
+
+      const result = await prepareSyncSetup(
+        storage,
+        secretStore,
+        connectedSelfHosted,
+        new Date("2026-03-22T08:15:00.000Z"),
+      );
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) {
+        return;
+      }
+      expect(result.secrets).toMatchObject({
+        authSessionToken: "session-1",
+        managedAuthSessionToken: "managed-1",
+        managedAuthSessionExpiresAt: "2026-03-21T08:15:00.000Z",
+        managedRefreshToken: "refresh-1",
+        managedRefreshTokenExpiresAt: "2026-04-19T08:15:00.000Z",
+      });
+      expect(result.secrets.masterKeyHex).not.toBe("aa");
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(result.secrets);
+    });
+
+    it.each([
+      [
+        "another self-hosted server",
+        { ...connectedSelfHosted, endpointInput: "192.168.1.30:8080" },
+        connectedSelfHosted,
+      ],
+      [
+        "a switch from managed",
+        connectedSelfHosted,
+        { ...createDefaultSyncPreferencesRecord(), mode: "managed" as const },
+      ],
+    ])(
+      "drops a self-hosted session token when regenerating keys for %s",
+      async (_case, draft, saved) => {
+        const storage = createLocalAppStorageMock({
+          readSyncPreferencesRecord: jest.fn().mockResolvedValue(saved),
+        });
+        const secretStore = createSyncSecretStoreMock(
+          storedSecrets({ authSessionToken: "session-1" }),
+        );
+
+        const result = await prepareSyncSetup(
+          storage,
+          secretStore,
+          draft,
+          new Date("2026-03-22T08:15:00.000Z"),
+        );
+
+        expect(result.ok).toBe(true);
+        await expect(secretStore.readSyncSecrets()).resolves.toMatchObject({
+          authSessionToken: null,
+        });
+      },
     );
   });
 });

@@ -1,11 +1,20 @@
 import type { DayLogRecord } from "../models/day-log";
-import type {
-  ContractionSession,
-  KickCountSession,
-  PregnancyRecord,
+import {
+  sanitizeContractionSession,
+  sanitizeKickCountSession,
+  sanitizePregnancyRecord,
+  type ContractionSession,
+  type KickCountSession,
+  type PregnancyRecord,
 } from "../models/pregnancy";
-import type { PostpartumRecord } from "../models/postpartum";
-import type { ScreeningResponse } from "../models/screening";
+import {
+  sanitizePostpartumRecord,
+  type PostpartumRecord,
+} from "../models/postpartum";
+import {
+  sanitizeScreeningResponse,
+  type ScreeningResponse,
+} from "../models/screening";
 import type { ProfileRecord } from "../models/profile";
 import type { SymptomRecord } from "../models/symptom";
 import type {
@@ -271,68 +280,46 @@ export async function restoreSyncSnapshot(
     await storage.writeDayLogRecord(dayLogRecord);
   }
 
-  // Pregnancy records: write ended records BEFORE the active one so the
-  // at-most-one-active storage invariant can never trip on restore ordering.
-  // A record that fails sanitize / the one-active guard is skipped, never
-  // aborting the restore — mirroring how legacy day-log rows are tolerated.
-  const endedPregnancies = snapshot.pregnancies.filter(
-    (record) => record.status !== "active",
-  );
-  const activePregnancies = snapshot.pregnancies.filter(
-    (record) => record.status === "active",
-  );
-  for (const record of [...endedPregnancies, ...activePregnancies]) {
-    try {
-      await storage.writePregnancyRecord(record);
-    } catch {
-      // Skip an invalid / duplicate-active pregnancy record; keep restoring.
-    }
+  // Records the storage layer would reject (failed sanitize, a second active
+  // pregnancy/postpartum) are dropped here, before any write, mirroring how
+  // legacy day-log rows are tolerated. Every write below is expected to land,
+  // so a storage error aborts the restore with the floor still at its old
+  // value instead of committing a reduced data set.
+  for (const record of selectRestorableWithOneActive(
+    snapshot.pregnancies,
+    sanitizePregnancyRecord,
+  )) {
+    await storage.writePregnancyRecord(record);
   }
 
-  for (const session of snapshot.kickSessions) {
-    try {
-      await storage.writeKickSession(session);
-    } catch {
-      // Skip an invalid kick session; keep restoring.
-    }
+  for (const session of selectRestorable(
+    snapshot.kickSessions,
+    sanitizeKickCountSession,
+  )) {
+    await storage.writeKickSession(session);
   }
 
-  for (const session of snapshot.contractionSessions) {
-    try {
-      await storage.writeContractionSession(session);
-    } catch {
-      // Skip an invalid contraction session; keep restoring.
-    }
+  for (const session of selectRestorable(
+    snapshot.contractionSessions,
+    sanitizeContractionSession,
+  )) {
+    await storage.writeContractionSession(session);
   }
 
-  // Postpartum records: write ended records BEFORE the active one so the
-  // at-most-one-active storage invariant can never trip on restore ordering,
-  // mirroring the pregnancy block above exactly. A record that fails sanitize /
-  // the one-active guard is skipped, never aborting the restore.
-  const endedPostpartum = snapshot.postpartumRecords.filter(
-    (record) => record.status !== "active",
-  );
-  const activePostpartum = snapshot.postpartumRecords.filter(
-    (record) => record.status === "active",
-  );
-  for (const record of [...endedPostpartum, ...activePostpartum]) {
-    try {
-      await storage.writePostpartumRecord(record);
-    } catch {
-      // Skip an invalid / duplicate-active postpartum record; keep restoring.
-    }
+  for (const record of selectRestorableWithOneActive(
+    snapshot.postpartumRecords,
+    sanitizePostpartumRecord,
+  )) {
+    await storage.writePostpartumRecord(record);
   }
 
-  // Screening responses: an append-only history with no active concept, so
-  // there is no ordering constraint — each is written independently. The
-  // storage layer re-sanitizes (recomputing score/selfHarmFlag from answers);
-  // an invalid response is skipped, never aborting the restore.
-  for (const response of snapshot.screeningResponses) {
-    try {
-      await storage.writeScreeningResponse(response);
-    } catch {
-      // Skip an invalid screening response; keep restoring.
-    }
+  // Screening responses are an append-only history with no active concept;
+  // the storage layer recomputes score/selfHarmFlag from the answers.
+  for (const response of selectRestorable(
+    snapshot.screeningResponses,
+    sanitizeScreeningResponse,
+  )) {
+    await storage.writeScreeningResponse(response);
   }
 
   // Every data write has landed: only now does the floor rise and the
@@ -356,4 +343,35 @@ export async function restoreSyncSnapshot(
   // data is stale. Best effort: the rebuild never throws, and a failed one
   // must not undo a restore that has already succeeded.
   await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler);
+}
+
+function selectRestorable<T>(
+  records: readonly T[],
+  sanitize: (value: unknown) => T | null,
+): T[] {
+  return records.filter((record) => sanitize(record) !== null);
+}
+
+// Ended records come before the active one, and only the first active id is
+// kept: storage refuses an active record while a different one is active.
+function selectRestorableWithOneActive<T extends { id: string; status: string }>(
+  records: readonly T[],
+  sanitize: (value: unknown) => T | null,
+): T[] {
+  const ended: T[] = [];
+  const active: T[] = [];
+  let activeID: string | null = null;
+  for (const record of records) {
+    const normalized = sanitize(record);
+    if (normalized === null) {
+      continue;
+    }
+    if (normalized.status !== "active") {
+      ended.push(record);
+    } else if (activeID === null || activeID === normalized.id) {
+      activeID = normalized.id;
+      active.push(record);
+    }
+  }
+  return [...ended, ...active];
 }
