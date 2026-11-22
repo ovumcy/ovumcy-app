@@ -6,7 +6,7 @@ import {
   resolveGuestSessionExpiryNudgeDays,
 } from "../../../services/backup-sync-view-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
-import { isPasswordTooShort } from "../../../sync/password-policy";
+import { isPasswordTooLong, isPasswordTooShort } from "../../../sync/password-policy";
 import { resolveGuestUpgradeErrorMessage } from "./backup-sync-partner-errors";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 
@@ -94,6 +94,10 @@ export function useBackupSyncGuestUpgrade(core: BackupSyncSessionCore) {
     }
     if (isPasswordTooShort(passwordValue)) {
       setFormErrorMessage(partnerCopy.guestUpgrade.errors.passwordTooShort);
+      return;
+    }
+    if (isPasswordTooLong(passwordValue)) {
+      setFormErrorMessage(partnerCopy.guestUpgrade.errors.passwordTooLong);
       return;
     }
 
