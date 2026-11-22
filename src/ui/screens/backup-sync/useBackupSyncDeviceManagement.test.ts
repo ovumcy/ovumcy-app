@@ -561,6 +561,33 @@ describe("useBackupSyncDeviceManagement", () => {
       );
     });
 
+    it("puts the server's wait time in the rate-limit banner", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await renderHookWithLoadedDevices(
+        core,
+        [DEVICE_A, DEVICE_B],
+        "device-a",
+      );
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "rate_limited",
+        retryAfterSeconds: 42,
+      });
+
+      await act(async () => {
+        await result.current.handleRemoveDevice("device-b");
+      });
+
+      expect(result.current.deviceErrorMessage).toBe(
+        resolveBackupSyncDeviceErrorMessage("rate_limited", deviceCopy, {
+          retryAfterSeconds: 42,
+          template: core.viewData.account.errors.retryInSeconds,
+        }),
+      );
+      expect(result.current.deviceErrorMessage).toContain("42");
+    });
+
     it("signs this install out after removing its own device", async () => {
       const core = createSelfHostedCore();
       const { result } = await renderHookWithLoadedDevices(

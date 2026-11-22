@@ -334,7 +334,11 @@ export function buildBackupSyncDeviceListView(
 export function resolveBackupSyncDeviceErrorMessage(
   errorCode: SyncDeviceManagementErrorCode,
   copy: DeviceCopy,
+  retry?: { retryAfterSeconds: number | undefined; template: string },
 ): string {
+  if (errorCode === "rate_limited" && retry?.retryAfterSeconds !== undefined) {
+    return `${copy.errors.rateLimited} ${retry.template.replace("%s", String(retry.retryAfterSeconds))}`;
+  }
   switch (errorCode) {
     case "sync_not_prepared":
     case "not_connected":

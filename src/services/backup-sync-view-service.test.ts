@@ -560,6 +560,30 @@ describe("backup sync view service", () => {
     );
   });
 
+  it("appends the server's wait time only to a rate-limited device error", () => {
+    const copy = getDeviceCopy("en");
+    const template = "Try again in %s s.";
+
+    expect(
+      resolveBackupSyncDeviceErrorMessage("rate_limited", copy, {
+        retryAfterSeconds: 30,
+        template,
+      }),
+    ).toBe(`${copy.errors.rateLimited} Try again in 30 s.`);
+    expect(
+      resolveBackupSyncDeviceErrorMessage("rate_limited", copy, {
+        retryAfterSeconds: undefined,
+        template,
+      }),
+    ).toBe(copy.errors.rateLimited);
+    expect(
+      resolveBackupSyncDeviceErrorMessage("network_failed", copy, {
+        retryAfterSeconds: 30,
+        template,
+      }),
+    ).toBe(copy.errors.networkFailed);
+  });
+
   describe("isGuestPartnerAccount", () => {
     it("is true only for a non-empty guestSessionExpiresAt string", () => {
       expect(
