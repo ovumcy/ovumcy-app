@@ -1187,38 +1187,56 @@ async function maybeMigrateLegacyLocalAppData(
   legacyStorageSource: LegacyLocalAppStorageSource,
   localDataKey: string,
 ): Promise<void> {
-  const [bootstrapCount, profileCount, hasLegacyData] = await Promise.all([
-    readRowCount(database, "bootstrap_state"),
-    readRowCount(database, "profile_settings"),
-    legacyStorageSource.hasData(),
-  ]);
-
-  if (!hasLegacyData) {
+  if (!(await legacyStorageSource.hasData())) {
     return;
   }
+
+  // A row counts as present only when it authenticates: one that does not is
+  // deleted right after this step, so treating it as migrated would discard
+  // the legacy value it should have been replaced with.
+  const [bootstrapRow, profileRow] = await Promise.all([
+    database.getFirstAsync<Pick<BootstrapStateRow, "encrypted_payload">>(
+      "SELECT encrypted_payload FROM bootstrap_state WHERE id = 1;",
+    ),
+    database.getFirstAsync<Pick<ProfileSettingsRow, "encrypted_payload">>(
+      "SELECT encrypted_payload FROM profile_settings WHERE id = 1;",
+    ),
+  ]);
+  const hasBootstrap = Boolean(
+    bootstrapRow && mapBootstrapStateRow(bootstrapRow, localDataKey),
+  );
+  const hasProfile = Boolean(
+    profileRow && mapProfileSettingsRow(profileRow, localDataKey),
+  );
 
   // Each singleton still missing is filled from the legacy source in one
   // transaction, so a kill midway never leaves one migrated and the other
   // skipped on the next launch. The plaintext source is cleared only after the
   // encrypted rows are committed, and is cleared even when both rows already
   // exist (a kill between the commit and the clear).
-  if (bootstrapCount === 0 || profileCount === 0) {
+  if (!hasBootstrap || !hasProfile) {
     const [bootstrapState, profileRecord] = await Promise.all([
       legacyStorageSource.readBootstrapState(),
       legacyStorageSource.readProfileRecord(),
     ]);
 
     await runLocalDataTransaction(database, async () => {
-      if (bootstrapCount === 0) {
+      if (!hasBootstrap) {
         await upsertBootstrapState(database, bootstrapState, localDataKey);
       }
-      if (profileCount === 0) {
+      if (!hasProfile) {
         await upsertProfileRecord(database, profileRecord, localDataKey);
       }
     });
   }
 
-  await legacyStorageSource.clear();
+  // Best effort once the encrypted rows exist: a failing clear must not fail
+  // every later launch, and the next launch retries it.
+  try {
+    await legacyStorageSource.clear();
+  } catch {
+    // Retried at the next launch.
+  }
 }
 
 // Plaintext columns predate at-rest encryption and were only ever written by

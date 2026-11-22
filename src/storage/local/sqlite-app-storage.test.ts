@@ -4691,5 +4691,79 @@ describe("sqlite-app-storage", () => {
       ]);
       await expect(storage.listPregnancyRecords()).resolves.toEqual([]);
     });
+
+    it("rolls back a pregnancy erase left open by a failed ROLLBACK before the next operation", async () => {
+      const { storage: seeded, inspected } = createPregnancyStorage();
+      await seeded.writeKickSession(buildKickSession({ id: "kick_1" }));
+      let failRollback = true;
+      const { tracked, statements } = trackStatements(
+        {
+          ...inspected.database,
+          execAsync: (source) => {
+            if (source === "ROLLBACK;" && failRollback) {
+              failRollback = false;
+              return Promise.reject(new Error("simulated rollback failure"));
+            }
+            return inspected.database.execAsync(source);
+          },
+        },
+        (source) => source === "DELETE FROM kick_sessions;",
+      );
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(storage.deleteAllPregnancyData()).rejects.toThrow(
+        "simulated write failure",
+      );
+      const afterFailure = statements.length;
+      await storage.listKickSessions();
+
+      expect(statements[afterFailure]).toBe("ROLLBACK;");
+    });
+
+    it("migrates the legacy bootstrap when the stored bootstrap row does not authenticate", async () => {
+      const legacy = legacySourceWithData();
+      const inspected = createInspectableFakeDatabase({
+        bootstrapRow: {
+          has_completed_onboarding: 0,
+          profile_version: 1,
+          incomplete_onboarding_step: null,
+          encrypted_payload: TRUNCATED_ENVELOPE,
+        },
+      });
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(storage.readBootstrapState()).resolves.toEqual({
+        hasCompletedOnboarding: true,
+        profileVersion: 3,
+        incompleteOnboardingStep: null,
+      });
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps hydrating when clearing the legacy source fails", async () => {
+      const legacy = {
+        ...legacySourceWithData(),
+        clear: jest.fn().mockRejectedValue(new Error("simulated clear failure")),
+      };
+      const inspected = createInspectableFakeDatabase();
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(storage.readProfileRecord()).resolves.toEqual(
+        expect.objectContaining({ lastPeriodStart: "2026-03-14" }),
+      );
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
   });
 });
