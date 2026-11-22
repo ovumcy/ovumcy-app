@@ -182,4 +182,25 @@ describe("useLocalFirstPremium", () => {
 
     expect(applied).toEqual([false]);
   });
+
+  it("drops the premium-phase reload that settles after unmount", async () => {
+    const { result, unmount } = await renderHook(() => useLocalFirstPremium());
+    const upgraded = deferred<boolean>();
+    const applied: boolean[] = [];
+
+    await act(async () => {
+      await result.current({
+        loadLocal: (features) =>
+          features.advancedFertility ? upgraded.promise : Promise.resolve(false),
+        loadPremium: async () => UNLOCKED,
+        apply: (state) => applied.push(state),
+      });
+    });
+    await flush();
+    await unmount();
+    upgraded.resolve(true);
+    await flush();
+
+    expect(applied).toEqual([false]);
+  });
 });
