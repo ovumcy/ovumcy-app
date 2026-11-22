@@ -553,6 +553,33 @@ describe("BackupSyncScreen", () => {
     return { storage, syncSecretStore, writeSecrets, deletedDeviceIDs, removalBodies };
   }
 
+  it("tells the user this install was signed out after removing its own device", async () => {
+    const fixture = createConnectedSelfHostedDeviceFixture();
+    await fixture.writeSecrets;
+    const deviceCopy = getDeviceCopy("en");
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    await render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={fixture.storage}
+        syncSecretStore={fixture.syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(
+      await screen.findByTestId("settings-sync-devices-load-button"),
+    );
+    await screen.findByTestId("settings-sync-device-device-1");
+    await fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-1"));
+
+    await waitFor(() => expect(fixture.deletedDeviceIDs).toEqual(["device-1"]));
+    expect(await screen.findByText(deviceCopy.statusRemovedSignedOut)).toBeTruthy();
+    expect(screen.queryByTestId("settings-sync-devices-section")).toBeNull();
+  });
+
   it("asks a two-factor self-hosted server's password and code before removing a device", async () => {
     const fixture = createConnectedSelfHostedDeviceFixture({ twoFactor: true });
     await fixture.writeSecrets;

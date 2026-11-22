@@ -611,7 +611,7 @@ describe("useBackupSyncDeviceManagement", () => {
       expect(core.setState).toHaveBeenCalledWith(
         buildSignedOutBackupSyncState(core.state!, signedOut),
       );
-      expect(result.current.deviceStatusMessage).toBe(
+      expect(core.setAccountStatusMessage).toHaveBeenCalledWith(
         deviceCopy.statusRemovedSignedOut,
       );
       expect(result.current.deviceListItems).toBeNull();

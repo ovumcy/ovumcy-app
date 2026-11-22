@@ -165,6 +165,22 @@ describe("removeSyncDevice on the current device", () => {
     );
   });
 
+  it("still reports the removal when clearing the revoked session fails", async () => {
+    const { record, store } = secrets({ authSessionToken: "session-1" });
+    store.writeSyncSecrets = jest.fn().mockRejectedValue(new Error("keychain locked"));
+
+    const result = await removeSyncDevice(
+      createLocalAppStorageMock(),
+      store,
+      selfHosted,
+      record.device.deviceID,
+      undefined,
+      communityClient(jest.fn().mockResolvedValue({ ok: true })),
+    );
+
+    expect(result).toEqual({ ok: true, removedCurrentDevice: true, preferences: null });
+  });
+
   it("keeps the managed session, which no device binds", async () => {
     const { record, store } = secrets({ managedAuthSessionToken: "managed-session-1" });
     const storage = createLocalAppStorageMock();

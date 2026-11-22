@@ -1750,14 +1750,20 @@ export async function removeSyncDevice(
   }
 
   const removedCurrentDevice = deviceID === prepared.secrets.device.deviceID;
-  return {
-    ok: true,
-    removedCurrentDevice,
-    preferences:
-      removedCurrentDevice && selfHosted
-        ? await clearLocalSyncSession(storage, secretStore, preferences)
-        : null,
-  };
+  let signedOutPreferences: SyncPreferencesRecord | null = null;
+  if (removedCurrentDevice && selfHosted) {
+    try {
+      signedOutPreferences = await clearLocalSyncSession(
+        storage,
+        secretStore,
+        preferences,
+      );
+    } catch {
+      // The server already removed the device; the revoked session fails its
+      // next call and is cleared there.
+    }
+  }
+  return { ok: true, removedCurrentDevice, preferences: signedOutPreferences };
 }
 
 function mapPreparedContextToDeviceManagementError(
