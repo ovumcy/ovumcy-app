@@ -8,4 +8,4 @@
 
 ### Internal
 
-- Managed calls can go through one helper that renews the session on a 401 and retries once. A rejected access token alone never clears the refresh token. Call sites switch to it in a follow-up.
+- Managed calls can go through one helper that renews the session on a 401 and retries once. A rejected access token alone never clears the refresh token.

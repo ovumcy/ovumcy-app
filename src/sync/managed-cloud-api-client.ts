@@ -65,10 +65,11 @@ export const MANAGED_CLOUD_REQUEST_TIMEOUT_MS = 30_000;
  * rather than "the server answered no". `network_failed` is the synthetic
  * no-response outcome (thrown fetch, timeout, refused redirect: status 599);
  * a 502/503/504 without a recognized error body, including the server's
- * temporary-unavailability answer, is also mapped to `network_failed`. Every
- * other code is an answer (4xx refusals, `unauthorized`, a 500
- * `internal_error`, an unparseable 4xx body), so offline-grace readers must
- * treat it as a refusal and fail closed.
+ * temporary-unavailability answer, is also mapped to `network_failed`. On the
+ * offline-grace reads (billing snapshot, entitlement-token mint) a 500 is an
+ * answer too. Every other code is an answer (4xx refusals, `unauthorized`, an
+ * unparseable 4xx body), so offline-grace readers must treat it as a refusal
+ * and fail closed.
  */
 export function isManagedCloudTransportFailure(
   errorCode: ManagedCloudAPIErrorCode,
@@ -699,19 +700,11 @@ export function createManagedCloudAPIClient(
     },
 
     async logout({ sessionToken, refreshToken }) {
-      // A 5xx logout rolled back and committed nothing; reporting it as a
-      // transport failure lets the caller send it once more.
-      return requestNoPayload(
-        fetchImpl,
-        normalizedBaseURL,
-        "/auth/session",
-        {
-          method: "DELETE",
-          ...(sessionToken ? { sessionToken } : {}),
-          ...(refreshToken ? { body: { refresh_token: refreshToken } } : {}),
-        },
-        true,
-      );
+      return requestNoPayload(fetchImpl, normalizedBaseURL, "/auth/session", {
+        method: "DELETE",
+        ...(sessionToken ? { sessionToken } : {}),
+        ...(refreshToken ? { body: { refresh_token: refreshToken } } : {}),
+      });
     },
 
     async deleteAccount(sessionToken, stepUp) {
@@ -1005,6 +998,7 @@ export function createManagedCloudAPIClient(
           sessionToken,
         },
         isRawManagedCloudBillingSnapshot,
+        GRACE_READ,
       ).then((result) =>
         result.ok
           ? { ok: true, billing: mapBillingSnapshot(result.payload) }
@@ -1022,6 +1016,7 @@ export function createManagedCloudAPIClient(
           sessionToken,
         },
         isRawManagedCloudEntitlementToken,
+        GRACE_READ,
       ).then((result) =>
         result.ok
           ? {
@@ -1265,13 +1260,12 @@ async function requestNoPayload(
     body?: unknown;
     sessionToken?: string;
   },
-  serverFaultIsTransport = false,
 ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }> {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
   if (!response.ok) {
     return {
       ok: false,
-      errorCode: await readErrorCode(response, serverFaultIsTransport),
+      errorCode: await readErrorCode(response, SERVER_FAULT_IS_TRANSPORT),
     };
   }
 
@@ -1288,6 +1282,7 @@ async function requestJSON<T>(
     sessionToken?: string;
   },
   guard: (value: unknown) => value is T,
+  serverFault: ServerFaultClass = SERVER_FAULT_IS_TRANSPORT,
 ): Promise<
   | { ok: true; payload: T }
   | { ok: false; errorCode: ManagedCloudAPIErrorCode; retryAfterSeconds?: number }
@@ -1300,7 +1295,7 @@ async function requestJSON<T>(
         : null;
     return {
       ok: false,
-      errorCode: await readErrorCode(response),
+      errorCode: await readErrorCode(response, serverFault),
       ...(retryAfterSeconds === null ? {} : { retryAfterSeconds }),
     };
   }
@@ -1407,7 +1402,7 @@ function networkFailedResponse(): Response {
 
 async function readErrorCode(
   response: Response,
-  serverFaultIsTransport = false,
+  serverFault: ServerFaultClass,
 ): Promise<ManagedCloudAPIErrorCode> {
   if (response.status === 599) {
     return "network_failed";
@@ -1456,23 +1451,30 @@ async function readErrorCode(
       case "totp_secret_failed":
         return payload.error;
       default:
-        return unrecognizedErrorCode(response.status, serverFaultIsTransport);
+        return unrecognizedErrorCode(response.status, serverFault);
     }
   } catch {
-    return unrecognizedErrorCode(response.status, serverFaultIsTransport);
+    return unrecognizedErrorCode(response.status, serverFault);
   }
 }
 
+// How an unrecognized 500 (the API's `internal_error`, a crash page) is read.
+// For an offline-grace read it is a live server answer and fails closed as
+// `generic`, so a server fault never opens the grace. Everywhere else it stays
+// a transport failure: a write that faulted may or may not have committed, and
+// its caller's "unconfirmed" path (logout retry, rotation resend) depends on it.
+type ServerFaultClass = "answer" | "transport";
+const GRACE_READ: ServerFaultClass = "answer";
+const SERVER_FAULT_IS_TRANSPORT: ServerFaultClass = "transport";
+
 // A gateway or temporary-unavailability status (502/503/504) without a
-// recognized error body means the API could not be asked, so it is reported as
-// a transport failure and offline-grace readers keep the bounded cache. Any
-// other 5xx — the API's own `internal_error` included — is a server answer and
-// fails closed as `generic`, except where the caller marks every 5xx as
-// retryable (logout, which no offline-grace reader consumes). A bare 413 (a proxy rejecting the body before the
-// API sees it) is the same too-large refusal the API itself names.
+// recognized error body means the API could not be asked: always a transport
+// failure, so offline-grace readers keep the bounded cache. A bare 413 (a proxy
+// rejecting the body before the API sees it) is the same too-large refusal the
+// API itself names.
 function unrecognizedErrorCode(
   status: number,
-  serverFaultIsTransport: boolean,
+  serverFault: ServerFaultClass,
 ): ManagedCloudAPIErrorCode {
   if (status === 413) {
     return "payload_too_large";
@@ -1480,7 +1482,7 @@ function unrecognizedErrorCode(
   if (status === 502 || status === 503 || status === 504) {
     return "network_failed";
   }
-  return serverFaultIsTransport && status >= 500 ? "network_failed" : "generic";
+  return status >= 500 && serverFault === "transport" ? "network_failed" : "generic";
 }
 
 // Delta-seconds only; an HTTP-date or junk value yields null and the caller
