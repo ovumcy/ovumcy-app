@@ -555,14 +555,12 @@ describe("SyncAccountSecuritySection", () => {
       <AppPreferencesTestProvider>
         <SyncAccountSecuritySection
           {...baseProps()}
-          totpErrorCode="totp_enrollment_restart_required"
+          totpErrorCode="totp_enrollment_not_started"
         />
       </AppPreferencesTestProvider>,
     );
 
-    expect(
-      screen.getByText(totpCopy.errors.totpEnrollmentRestartRequired),
-    ).toBeTruthy();
+    expect(screen.getByText(totpCopy.errors.totpEnrollmentNotStarted)).toBeTruthy();
     expect(
       screen.getByTestId("account-security-totp-enroll-submit").props
         .accessibilityState?.disabled,

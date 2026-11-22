@@ -682,8 +682,6 @@ function resolveTOTPErrorMessage(
       return copy.errors.totpReplayed;
     case "totp_secret_failed":
       return copy.errors.totpSecretFailed;
-    case "totp_enrollment_restart_required":
-      return copy.errors.totpEnrollmentRestartRequired;
     case "totp_enrollment_not_started":
       return copy.errors.totpEnrollmentNotStarted;
     case "totp_already_disabled":
