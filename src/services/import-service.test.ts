@@ -10,7 +10,11 @@ import {
   createDefaultProfileRecord,
   type ProfileRecord,
 } from "../models/profile";
-import { createDefaultSymptomRecords, type SymptomRecord } from "../models/symptom";
+import {
+  createDefaultSymptomRecords,
+  MAX_SYMPTOM_CATALOG_SIZE,
+  type SymptomRecord,
+} from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import type { ExportBackupEnvelope } from "../models/export";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
@@ -895,6 +899,7 @@ describe("import-service profile restore (pristine-only)", () => {
           ],
         } as never),
       }),
+      { restoreReminders: true },
     );
 
     expect(outcome.profileRestored).toBe(true);
@@ -1144,6 +1149,8 @@ describe("previewImportBackupEnvelope (dry-run)", () => {
       postpartumRecordsSkipped: 0,
       screeningResponsesAdded: 0,
       screeningResponsesSkipped: 0,
+      symptomsOverLimit: 0,
+      reminderSettingsAvailable: false,
     });
   });
 });
@@ -1176,6 +1183,8 @@ describe("import-service v1 compatibility", () => {
       postpartumRecordsSkipped: 0,
       screeningResponsesAdded: 0,
       screeningResponsesSkipped: 0,
+      symptomsOverLimit: 0,
+      reminderSettingsAvailable: false,
     });
     expect(dayLogs.has("2026-03-10")).toBe(true);
     // A v1 file never carries pregnancy-mode keys, so the pregnancy repos are
@@ -2009,5 +2018,163 @@ describe("import-service day logs with untrusted field types", () => {
       mood: 3,
     });
     expect(dayLogs.get("2026-03-11")).toMatchObject({ mood: 2 });
+  });
+});
+
+describe("import-service device settings on a pristine device", () => {
+  function settingsProfile(overrides: Partial<ProfileRecord>): ProfileRecord {
+    return {
+      ...createDefaultProfileRecord(),
+      lastPeriodStart: "2026-03-01",
+      cycleLength: 31,
+      ...overrides,
+    };
+  }
+
+  it("never turns screen-capture protection off", async () => {
+    const { storage, getProfile } = createStatefulStorage();
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({ profile: settingsProfile({ screenCaptureProtectionEnabled: false }) }),
+    );
+
+    expect(outcome.profileRestored).toBe(true);
+    expect(getProfile().screenCaptureProtectionEnabled).toBe(true);
+    expect(getProfile().cycleLength).toBe(31);
+  });
+
+  it("leaves reminders off unless the preview opt-in is taken, and reports that the backup has some", async () => {
+    const backup = envelope({
+      profile: settingsProfile({
+        dailyLogReminderEnabled: true,
+        fertileWindowReminderEnabled: true,
+      }),
+    });
+
+    const preview = await previewImportBackupEnvelope(createStatefulStorage().storage, backup);
+    expect(preview).toMatchObject({ profileRestored: true, reminderSettingsAvailable: true });
+
+    const withoutOptIn = createStatefulStorage();
+    await importBackupEnvelope(withoutOptIn.storage, backup);
+    expect(withoutOptIn.getProfile()).toMatchObject({
+      cycleLength: 31,
+      dailyLogReminderEnabled: false,
+      fertileWindowReminderEnabled: false,
+    });
+
+    const withOptIn = createStatefulStorage();
+    await importBackupEnvelope(withOptIn.storage, backup, { restoreReminders: true });
+    expect(withOptIn.getProfile()).toMatchObject({
+      dailyLogReminderEnabled: true,
+      fertileWindowReminderEnabled: true,
+    });
+  });
+
+  it("restores a profile whose only non-default settings are reminders only on the opt-in", async () => {
+    const backup = envelope({
+      profile: { ...createDefaultProfileRecord(), dailyLogReminderEnabled: true },
+    });
+
+    const preview = await previewImportBackupEnvelope(createStatefulStorage().storage, backup);
+    expect(preview).toMatchObject({ profileRestored: false, reminderSettingsAvailable: true });
+
+    const withOptIn = createStatefulStorage();
+    const outcome = await importBackupEnvelope(withOptIn.storage, backup, {
+      restoreReminders: true,
+    });
+    expect(outcome.profileRestored).toBe(true);
+    expect(withOptIn.getProfile().dailyLogReminderEnabled).toBe(true);
+  });
+
+  it("reports no reminder settings when the backup turns none on", async () => {
+    const preview = await previewImportBackupEnvelope(
+      createStatefulStorage().storage,
+      envelope({ profile: settingsProfile({}) }),
+    );
+
+    expect(preview.reminderSettingsAvailable).toBe(false);
+  });
+});
+
+describe("import-service symptom catalog limit", () => {
+  function fillCatalog(symptoms: SymptomRecord[], size: number) {
+    while (symptoms.length < size) {
+      const index = symptoms.length;
+      symptoms.push({
+        id: `filler_${index}`,
+        slug: `filler-${index}`,
+        label: `Filler ${index}`,
+        icon: "✨",
+        color: "#E8799F",
+        isArchived: false,
+        sortOrder: index,
+        isDefault: false,
+      });
+    }
+  }
+
+  function portableSymptom(id: string, label: string): SymptomRecord {
+    return {
+      id,
+      slug: label.toLowerCase(),
+      label,
+      icon: "✨",
+      color: "#E8799F",
+      isArchived: false,
+      sortOrder: 0,
+      isDefault: false,
+    };
+  }
+
+  it("parses a backup whose catalog exceeds the limit instead of refusing it", () => {
+    const symptoms = Array.from({ length: MAX_SYMPTOM_CATALOG_SIZE + 5 }, (_, index) =>
+      portableSymptom(`s${index}`, `Symptom ${index}`),
+    );
+
+    expect(
+      parseImportEnvelope(JSON.stringify({ app: "ovumcy", formatVersion: 3, symptoms })).ok,
+    ).toBe(true);
+  });
+
+  it("adds new symptoms only while the catalog has room and drops the marks of the rest", async () => {
+    const { storage, symptoms, dayLogs } = createStatefulStorage();
+    fillCatalog(symptoms, MAX_SYMPTOM_CATALOG_SIZE - 1);
+
+    const outcome = await importBackupEnvelope(
+      storage,
+      envelope({
+        symptoms: [portableSymptom("file_a", "Glow"), portableSymptom("file_b", "Spark")],
+        dayLogs: [
+          dayLog("2026-03-10", { mood: 2, symptomIDs: ["file_a"] }),
+          dayLog("2026-03-11", { mood: 3, symptomIDs: ["file_b"] }),
+          dayLog("2026-03-12", { mood: 4, symptomIDs: ["file_b"] }),
+        ],
+      }),
+    );
+
+    expect(outcome).toMatchObject({ symptomsAdded: 1, symptomsOverLimit: 1, dayLogsAdded: 3 });
+    expect(symptoms).toHaveLength(MAX_SYMPTOM_CATALOG_SIZE);
+    const glow = symptoms.find((symptom) => symptom.label === "Glow");
+    expect(dayLogs.get("2026-03-10")?.symptomIDs).toEqual([glow?.id]);
+    expect(dayLogs.get("2026-03-11")?.symptomIDs).toEqual([]);
+    expect(dayLogs.get("2026-03-12")?.symptomIDs).toEqual([]);
+  });
+
+  it("previews the same over-limit count the apply produces", async () => {
+    const backup = envelope({
+      symptoms: [portableSymptom("file_a", "Glow"), portableSymptom("file_b", "Spark")],
+      dayLogs: [dayLog("2026-03-10", { mood: 2, symptomIDs: ["file_a", "file_b"] })],
+    });
+    const previewed = createStatefulStorage();
+    fillCatalog(previewed.symptoms, MAX_SYMPTOM_CATALOG_SIZE);
+    const applied = createStatefulStorage();
+    fillCatalog(applied.symptoms, MAX_SYMPTOM_CATALOG_SIZE);
+
+    const preview = await previewImportBackupEnvelope(previewed.storage, backup);
+    const outcome = await importBackupEnvelope(applied.storage, backup);
+
+    expect(preview).toEqual(outcome);
+    expect(outcome).toMatchObject({ symptomsAdded: 0, symptomsOverLimit: 2 });
   });
 });

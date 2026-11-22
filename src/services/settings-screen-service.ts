@@ -6,7 +6,7 @@ import type {
   ReminderSettingsValues,
   TrackingSettingsValues,
 } from "../models/profile";
-import type { SymptomID } from "../models/symptom";
+import { MAX_SYMPTOM_CATALOG_SIZE, type SymptomID } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import {
   type ExportArtifact,
@@ -267,6 +267,9 @@ export async function createSettingsSymptom(
   currentState: LoadedSettingsState,
   draft: SymptomDraftValues,
 ): Promise<SaveStateResult<SaveSymptomErrorCode>> {
+  if (currentState.symptomRecords.length >= MAX_SYMPTOM_CATALOG_SIZE) {
+    return { ok: false, errorCode: "catalog_full" };
+  }
   const result = createCustomSymptomRecord(currentState.symptomRecords, draft);
   if (!result.ok) {
     return result;

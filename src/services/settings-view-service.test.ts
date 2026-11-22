@@ -9,6 +9,7 @@ import {
   buildSettingsFlowPresentationState,
   buildSettingsHubNavigation,
   buildSettingsImportPreviewViewData,
+  buildSettingsImportResultMessage,
   buildSettingsViewData,
   createLoadedSettingsState,
   revertLoadedSettingsDraftValues,
@@ -316,6 +317,8 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
       postpartumRecordsSkipped: 0,
       screeningResponsesAdded: 0,
       screeningResponsesSkipped: 0,
+      symptomsOverLimit: 0,
+      reminderSettingsAvailable: false,
       ...overrides,
     };
   }
@@ -341,6 +344,69 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
 
   const importCopy = buildSettingsViewData(new Date(2026, 2, 22), "en").import;
 
+  it("reads the backup range from the day logs, never from the file's summary", () => {
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope({
+        summary: {
+          totalEntries: 2,
+          hasData: true,
+          dateFrom: "1990-01-01",
+          dateTo: "2099-12-31",
+        },
+        dayLogs: [
+          createEmptyDayLogRecord("2026-03-05"),
+          { date: "not-a-date" } as unknown as ReturnType<typeof createEmptyDayLogRecord>,
+          createEmptyDayLogRecord("2026-02-10"),
+        ],
+      }),
+      zeroImportOutcome({ dayLogsAdded: 1 }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.detailLines[0]).toBe("Backup range: 2026-02-10 to 2026-03-05");
+  });
+
+  it("warns about custom symptoms left out by the catalog limit, in the preview and the result", () => {
+    const outcome = zeroImportOutcome({ dayLogsAdded: 1, symptomsOverLimit: 2 });
+    const preview = buildSettingsImportPreviewViewData(
+      previewEnvelope(),
+      outcome,
+      importCopy,
+      "en",
+    );
+
+    expect(preview.detailLines).toContain(
+      "Custom symptoms not added because your symptom list is full: 2",
+    );
+    expect(buildSettingsImportResultMessage(outcome, importCopy)).toContain(
+      "Custom symptoms not added because your symptom list is full: 2",
+    );
+  });
+
+  it("offers the reminder opt-in only when the backup carries reminders, and counts it as a change once taken", () => {
+    const remindersOnly = zeroImportOutcome({ reminderSettingsAvailable: true });
+
+    const off = buildSettingsImportPreviewViewData(previewEnvelope(), remindersOnly, importCopy, "en");
+    expect(off.remindersOptInLabel).toBe("Also turn on the reminders saved in this backup");
+    expect(off.canConfirm).toBe(false);
+
+    const on = buildSettingsImportPreviewViewData(
+      previewEnvelope(),
+      remindersOnly,
+      importCopy,
+      "en",
+      true,
+    );
+    expect(on.canConfirm).toBe(true);
+    expect(on.profileLine).toBe(importCopy.previewProfileRestore);
+
+    expect(
+      buildSettingsImportPreviewViewData(previewEnvelope(), zeroImportOutcome(), importCopy, "en")
+        .remindersOptInLabel,
+    ).toBe("");
+  });
+
   it("renders one preview row per pregnancy-mode collection with a positive count (v2 file)", () => {
     const preview = buildSettingsImportPreviewViewData(
       previewEnvelope({ dayLogs: [createEmptyDayLogRecord("2026-03-01")] }),
@@ -355,6 +421,7 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     );
 
     expect(preview.detailLines).toEqual([
+      "Backup range: 2026-03-01 to 2026-03-01",
       "Entries in backup: 1",
       "New days to add: 1",
       "New pregnancy records: 1",
@@ -382,6 +449,7 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     // Exact-array pin: the preview must be byte-identical to the pre-import-preview
     // output for a v1 outcome — no pregnancy/kick/contraction rows.
     expect(preview.detailLines).toEqual([
+      "Backup range: 2026-03-01 to 2026-03-02",
       "Entries in backup: 2",
       "New days to add: 1",
       "Days already on this device (kept unchanged): 1",
@@ -432,6 +500,7 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     );
 
     expect(preview.detailLines).toEqual([
+      "Backup range: 2026-03-01 to 2026-03-01",
       "Entries in backup: 1",
       "New days to add: 1",
       "New postpartum records: 1",
@@ -456,6 +525,7 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     // Exact-array pin: the preview must be byte-identical to the pre-postpartum output
     // for a v2 outcome — no postpartum/check-in rows.
     expect(preview.detailLines).toEqual([
+      "Backup range: 2026-03-01 to 2026-03-01",
       "Entries in backup: 1",
       "New days to add: 1",
       "New pregnancy records: 1",

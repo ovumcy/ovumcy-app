@@ -1444,7 +1444,34 @@ export type SettingsImportPreviewViewData = {
   profileLine: string;
   nothingNewLine: string;
   canConfirm: boolean;
+  // Label of the reminder opt-in, or "" when the backup restores none.
+  remindersOptInLabel: string;
 };
+
+function resolveImportedDayLogRange(dayLogs: readonly unknown[] | undefined): {
+  rangeFrom: string;
+  rangeTo: string;
+} {
+  let rangeFrom = "";
+  let rangeTo = "";
+  for (const entry of dayLogs ?? []) {
+    const rawDate =
+      typeof entry === "object" && entry !== null
+        ? (entry as { date?: unknown }).date
+        : undefined;
+    const date = typeof rawDate === "string" ? rawDate.trim() : "";
+    if (!parseLocalDate(date)) {
+      continue;
+    }
+    if (!rangeFrom || date < rangeFrom) {
+      rangeFrom = date;
+    }
+    if (!rangeTo || date > rangeTo) {
+      rangeTo = date;
+    }
+  }
+  return { rangeFrom, rangeTo };
+}
 
 // Assemble the localized preview lines for the two-phase import flow: what the
 // backup contains and exactly what confirming will add. Values coming from the
@@ -1455,6 +1482,7 @@ export function buildSettingsImportPreviewViewData(
   outcome: ImportOutcome,
   viewData: SettingsViewData["import"],
   locale: string,
+  restoreReminders = false,
 ): SettingsImportPreviewViewData {
   const detailLines: string[] = [];
 
@@ -1468,16 +1496,9 @@ export function buildSettingsImportPreviewViewData(
     );
   }
 
-  const rangeFrom =
-    typeof envelope.summary?.dateFrom === "string" &&
-    parseLocalDate(envelope.summary.dateFrom)
-      ? envelope.summary.dateFrom
-      : "";
-  const rangeTo =
-    typeof envelope.summary?.dateTo === "string" &&
-    parseLocalDate(envelope.summary.dateTo)
-      ? envelope.summary.dateTo
-      : "";
+  // The range is read from the day logs themselves, never from the file's own
+  // summary block, which an edited file can set to anything.
+  const { rangeFrom, rangeTo } = resolveImportedDayLogRange(envelope.dayLogs);
   if (rangeFrom && rangeTo) {
     detailLines.push(
       formatTemplate(viewData.previewRangeTemplate, [rangeFrom, rangeTo]),
@@ -1510,6 +1531,13 @@ export function buildSettingsImportPreviewViewData(
     detailLines.push(
       formatTemplate(viewData.previewSymptomsTemplate, [
         String(outcome.symptomsAdded),
+      ]),
+    );
+  }
+  if (outcome.symptomsOverLimit > 0) {
+    detailLines.push(
+      formatTemplate(viewData.previewSymptomsOverLimitTemplate, [
+        String(outcome.symptomsOverLimit),
       ]),
     );
   }
@@ -1564,10 +1592,15 @@ export function buildSettingsImportPreviewViewData(
   // whose only new content is one of these collections can actually be
   // confirmed — otherwise the preview would list rows to add while
   // simultaneously claiming "nothing new" with a disabled confirm button.
+  // The outcome is previewed without reminders; opting in restores the
+  // profile even when its reminders are its only non-default settings.
+  const profileRestored =
+    outcome.profileRestored ||
+    (restoreReminders && outcome.reminderSettingsAvailable);
   const hasChanges =
     outcome.dayLogsAdded > 0 ||
     outcome.symptomsAdded > 0 ||
-    outcome.profileRestored ||
+    profileRestored ||
     outcome.pregnanciesAdded > 0 ||
     outcome.kickSessionsAdded > 0 ||
     outcome.contractionSessionsAdded > 0 ||
@@ -1576,11 +1609,14 @@ export function buildSettingsImportPreviewViewData(
 
   return {
     detailLines,
-    profileLine: outcome.profileRestored
+    profileLine: profileRestored
       ? viewData.previewProfileRestore
       : viewData.previewProfileKept,
     nothingNewLine: hasChanges ? "" : viewData.previewNothingNew,
     canConfirm: hasChanges,
+    remindersOptInLabel: outcome.reminderSettingsAvailable
+      ? viewData.previewRemindersOptIn
+      : "",
   };
 }
 
@@ -1594,9 +1630,18 @@ export function buildSettingsImportResultMessage(
     String(outcome.dayLogsRejected),
   ]);
 
-  return outcome.profileRestored
-    ? `${base} ${viewData.successProfileNote}`
-    : base;
+  const notes = [
+    base,
+    ...(outcome.profileRestored ? [viewData.successProfileNote] : []),
+    ...(outcome.symptomsOverLimit > 0
+      ? [
+          formatTemplate(viewData.previewSymptomsOverLimitTemplate, [
+            String(outcome.symptomsOverLimit),
+          ]),
+        ]
+      : []),
+  ];
+  return notes.join(" ");
 }
 
 export function buildSettingsFlowPresentationState(

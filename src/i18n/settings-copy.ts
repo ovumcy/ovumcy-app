@@ -463,6 +463,7 @@ const settingsCopyEn = {
       labelInvalidCharacters:
         "Use plain text only. Angle brackets and control characters are not allowed.",
       duplicateLabel: "That symptom name already exists in your list.",
+      catalogFull: "Your symptom list has reached its limit of 200 entries.",
       saveFailed: "Unable to save this symptom right now. Please try again.",
       notFound: "This symptom could not be found anymore. Reload settings and try again.",
     },
@@ -531,6 +532,12 @@ const settingsCopyEn = {
     previewProfileRestore:
       "Cycle settings from the backup will be applied — this device still has the default settings.",
     previewProfileKept: "Your current settings stay unchanged.",
+    previewSymptomsOverLimitTemplate:
+      "Custom symptoms not added because your symptom list is full: %d",
+    previewRemindersOptIn:
+      "Also turn on the reminders saved in this backup",
+    previewChanged:
+      "This device changed since the preview. Check the updated numbers and confirm again.",
     previewNothingNew: "Everything in this backup is already on this device.",
     confirmAction: "Restore now",
     cancelAction: "Cancel",
@@ -1087,6 +1094,7 @@ const settingsCopyDe: SettingsCopy = {
       labelInvalidCharacters:
         "Verwenden Sie nur Klartext. Spitzklammern und Steuerzeichen sind nicht erlaubt.",
       duplicateLabel: "Dieser Symptomname existiert bereits in Ihrer Liste.",
+      catalogFull: "Ihre Symptomliste hat die Höchstzahl von 200 Einträgen erreicht.",
       saveFailed:
         "Dieses Symptom konnte gerade nicht gespeichert werden. Bitte versuchen Sie es erneut.",
       notFound:
@@ -1161,6 +1169,12 @@ const settingsCopyDe: SettingsCopy = {
     previewProfileRestore:
       "Die Zykluseinstellungen aus der Sicherung werden übernommen — dieses Gerät hat noch die Standardeinstellungen.",
     previewProfileKept: "Ihre aktuellen Einstellungen bleiben unverändert.",
+    previewSymptomsOverLimitTemplate:
+      "Nicht hinzugefügte eigene Symptome, weil Ihre Symptomliste voll ist: %d",
+    previewRemindersOptIn:
+      "Auch die in dieser Sicherung gespeicherten Erinnerungen einschalten",
+    previewChanged:
+      "Auf diesem Gerät hat sich seit der Vorschau etwas geändert. Prüfen Sie die neuen Zahlen und bestätigen Sie erneut.",
     previewNothingNew:
       "Alles aus dieser Sicherung ist bereits auf diesem Gerät vorhanden.",
     confirmAction: "Jetzt wiederherstellen",
@@ -1732,6 +1746,7 @@ const settingsCopyFr: SettingsCopy = {
       labelInvalidCharacters:
         "Utilisez uniquement du texte simple. Les chevrons et caractères de contrôle ne sont pas autorisés.",
       duplicateLabel: "Ce nom de symptôme existe déjà dans votre liste.",
+      catalogFull: "Votre liste de symptômes a atteint sa limite de 200 entrées.",
       saveFailed:
         "Impossible d'enregistrer ce symptôme pour le moment. Réessayez.",
       notFound:
@@ -1806,6 +1821,12 @@ const settingsCopyFr: SettingsCopy = {
     previewProfileRestore:
       "Les réglages de cycle de la sauvegarde seront appliqués — cet appareil a encore les réglages par défaut.",
     previewProfileKept: "Vos réglages actuels restent inchangés.",
+    previewSymptomsOverLimitTemplate:
+      "Symptômes personnalisés non ajoutés, car votre liste est pleine : %d",
+    previewRemindersOptIn:
+      "Activer aussi les rappels enregistrés dans cette sauvegarde",
+    previewChanged:
+      "Cet appareil a changé depuis l'aperçu. Vérifiez les nouveaux chiffres et confirmez à nouveau.",
     previewNothingNew:
       "Tout le contenu de cette sauvegarde est déjà sur cet appareil.",
     confirmAction: "Restaurer maintenant",
@@ -2348,6 +2369,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         labelInvalidCharacters:
           "Используйте только обычный текст. Угловые скобки и управляющие символы запрещены.",
         duplicateLabel: "Такое название уже есть в вашем списке.",
+        catalogFull: "В списке симптомов уже максимальное число записей — 200.",
         saveFailed: "Сейчас не удалось сохранить симптом. Попробуйте ещё раз.",
         notFound: "Этот симптом больше не найден. Перезагрузите настройки и попробуйте снова.",
       },
@@ -2417,6 +2439,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       previewProfileRestore:
         "Настройки цикла из копии будут применены — на этом устройстве ещё стандартные настройки.",
       previewProfileKept: "Ваши текущие настройки останутся без изменений.",
+      previewSymptomsOverLimitTemplate:
+        "Свои симптомы не добавлены — список симптомов заполнен: %d",
+      previewRemindersOptIn:
+        "Также включить напоминания из этой копии",
+      previewChanged:
+        "С момента предпросмотра на устройстве что-то изменилось. Проверьте обновлённые цифры и подтвердите снова.",
       previewNothingNew: "Всё из этой копии уже есть на этом устройстве.",
       confirmAction: "Восстановить сейчас",
       cancelAction: "Отмена",
@@ -2955,6 +2983,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         labelInvalidCharacters:
           "Usa solo texto simple. No se permiten corchetes angulares ni caracteres de control.",
         duplicateLabel: "Ese nombre ya existe en tu lista.",
+        catalogFull: "Tu lista de síntomas ha llegado al límite de 200 entradas.",
         saveFailed: "No se pudo guardar este síntoma ahora. Inténtalo de nuevo.",
         notFound: "No se pudo encontrar este síntoma. Recarga ajustes e inténtalo de nuevo.",
       },
@@ -3025,6 +3054,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       previewProfileRestore:
         "Se aplicarán los ajustes de ciclo de la copia — este dispositivo aún tiene los ajustes predeterminados.",
       previewProfileKept: "Tus ajustes actuales se mantienen sin cambios.",
+      previewSymptomsOverLimitTemplate:
+        "Síntomas propios sin añadir porque tu lista está llena: %d",
+      previewRemindersOptIn:
+        "Activar también los recordatorios guardados en esta copia",
+      previewChanged:
+        "Este dispositivo cambió desde la vista previa. Revisa las cifras actualizadas y confirma de nuevo.",
       previewNothingNew: "Todo lo de esta copia ya está en este dispositivo.",
       confirmAction: "Restaurar ahora",
       cancelAction: "Cancelar",
@@ -3565,6 +3600,7 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
         labelInvalidCharacters:
           "Usa solo testo semplice. Parentesi angolari e caratteri di controllo non sono consentiti.",
         duplicateLabel: "Quel nome esiste già nella tua lista.",
+        catalogFull: "La tua lista di sintomi ha raggiunto il limite di 200 voci.",
         saveFailed: "Impossibile salvare questo sintomo in questo momento. Riprova.",
         notFound: "Impossibile trovare questo sintomo. Ricarica le impostazioni e riprova.",
       },
@@ -3635,6 +3671,12 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
       previewProfileRestore:
         "Le impostazioni del ciclo del backup verranno applicate — questo dispositivo ha ancora le impostazioni predefinite.",
       previewProfileKept: "Le tue impostazioni attuali restano invariate.",
+      previewSymptomsOverLimitTemplate:
+        "Sintomi personalizzati non aggiunti perché la lista è piena: %d",
+      previewRemindersOptIn:
+        "Attiva anche i promemoria salvati in questo backup",
+      previewChanged:
+        "Questo dispositivo è cambiato dopo l'anteprima. Controlla i numeri aggiornati e conferma di nuovo.",
       previewNothingNew:
         "Tutto il contenuto di questo backup è già su questo dispositivo.",
       confirmAction: "Ripristina ora",

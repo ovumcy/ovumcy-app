@@ -30,7 +30,7 @@ import {
   resolveScreenCaptureProtectionEnabled,
   type ProfileRecord,
 } from "../models/profile";
-import type { SymptomRecord } from "../models/symptom";
+import { MAX_SYMPTOM_CATALOG_SIZE, type SymptomRecord } from "../models/symptom";
 import type { LocalAppStorage } from "../storage/local/storage-contract";
 import { MIN_DAY_LOG_DATE } from "./cycle-history-records";
 import {
@@ -110,7 +110,10 @@ import {
 
 // Guardrail mirroring web's MaxImportEntries — bounds a hostile/oversized file.
 export const MAX_IMPORT_DAY_LOGS = 20000;
-export const MAX_IMPORT_SYMPTOMS = 200;
+// The symptom collection has no count cap of its own: an existing catalog over
+// MAX_SYMPTOM_CATALOG_SIZE exports in full and imports with a warning (new
+// symptoms past the limit are counted in symptomsOverLimit), and the byte cap
+// on the file bounds its size.
 // Pregnancy records are a handful per lifetime at most; kick/contraction
 // sessions are daily-at-most like day logs, so they share that bound.
 export const MAX_IMPORT_PREGNANCIES = 200;
@@ -158,6 +161,16 @@ export type ImportOutcome = {
   postpartumRecordsSkipped: number;
   screeningResponsesAdded: number;
   screeningResponsesSkipped: number;
+  // New custom symptoms left out because the catalog reached
+  // MAX_SYMPTOM_CATALOG_SIZE; their marks on imported days are dropped.
+  symptomsOverLimit: number;
+  // The restorable profile turns on at least one reminder. Reminders are
+  // restored only on an explicit opt-in (ImportApplyOptions.restoreReminders).
+  reminderSettingsAvailable: boolean;
+};
+
+export type ImportApplyOptions = {
+  restoreReminders?: boolean;
 };
 
 export type RestoreFromJSONResult =
@@ -210,7 +223,6 @@ export function parseImportEnvelope(rawJson: string): ImportParseResult {
     : [];
   if (
     dayLogs.length > MAX_IMPORT_DAY_LOGS ||
-    symptoms.length > MAX_IMPORT_SYMPTOMS ||
     pregnancies.length > MAX_IMPORT_PREGNANCIES ||
     kickSessions.length > MAX_IMPORT_KICK_SESSIONS ||
     contractionSessions.length > MAX_IMPORT_CONTRACTION_SESSIONS ||
@@ -241,8 +253,9 @@ export function parseImportEnvelope(rawJson: string): ImportParseResult {
 export async function previewImportBackupEnvelope(
   storage: LocalAppStorage,
   envelope: ExportBackupEnvelope,
+  options: ImportApplyOptions = {},
 ): Promise<ImportOutcome> {
-  return walkBackupEnvelope(storage, envelope, false);
+  return walkBackupEnvelope(storage, envelope, false, options);
 }
 
 // Apply a parsed envelope to local storage, additively. Existing data is never
@@ -250,8 +263,9 @@ export async function previewImportBackupEnvelope(
 export async function importBackupEnvelope(
   storage: LocalAppStorage,
   envelope: ExportBackupEnvelope,
+  options: ImportApplyOptions = {},
 ): Promise<ImportOutcome> {
-  const outcome = await walkBackupEnvelope(storage, envelope, true);
+  const outcome = await walkBackupEnvelope(storage, envelope, true, options);
   if (outcome.profileRestored) {
     // A restored profile may come from an older client, which reads the stored
     // cycle start under the earlier withdrawal rule. A configured device keeps
@@ -286,6 +300,7 @@ async function walkBackupEnvelope(
   storage: LocalAppStorage,
   envelope: ExportBackupEnvelope,
   apply: boolean,
+  options: ImportApplyOptions,
 ): Promise<ImportOutcome> {
   const outcome: ImportOutcome = {
     dayLogsAdded: 0,
@@ -303,13 +318,18 @@ async function walkBackupEnvelope(
     postpartumRecordsSkipped: 0,
     screeningResponsesAdded: 0,
     screeningResponsesSkipped: 0,
+    symptomsOverLimit: 0,
+    reminderSettingsAvailable: false,
   };
 
-  outcome.profileRestored = await restorePristineProfile(
+  const profileResult = await restorePristineProfile(
     storage,
     envelope.profile,
     apply,
+    options.restoreReminders === true,
   );
+  outcome.profileRestored = profileResult.restored;
+  outcome.reminderSettingsAvailable = profileResult.reminderSettingsAvailable;
 
   const symptomImportResult = await importCustomSymptoms(
     storage,
@@ -320,6 +340,10 @@ async function walkBackupEnvelope(
   // A custom symptom is created only when a day that references it is
   // written, so a file whose referencing days are all skipped adds none.
   const pendingSymptoms = symptomImportResult.pending;
+  // A pending symptom is written only while the catalog has room; one that
+  // does not fit is dropped from every imported day that references it.
+  let catalogSize = symptomImportResult.catalogSize;
+  const symptomsOverLimit = new Set<string>();
 
   // The first record for a calendar date decides it; a later record repeating
   // that date is rejected (the web restore does the same). Tracking this in
@@ -361,7 +385,7 @@ async function walkBackupEnvelope(
       record?.symptomIDs,
       symptomIDMap,
     );
-    const sanitized = sanitizeDayLogRecord({
+    const sanitizedWithAllSymptoms = sanitizeDayLogRecord({
       ...existing,
       ...(record as DayLogRecord),
       date,
@@ -369,6 +393,18 @@ async function walkBackupEnvelope(
         ? { symptomIDs: remappedSymptomIDs }
         : {}),
     });
+    for (const symptomID of sanitizedWithAllSymptoms.symptomIDs) {
+      if (pendingSymptoms.has(symptomID) && catalogSize >= MAX_SYMPTOM_CATALOG_SIZE) {
+        pendingSymptoms.delete(symptomID);
+        symptomsOverLimit.add(symptomID);
+      }
+    }
+    const sanitized = {
+      ...sanitizedWithAllSymptoms,
+      symptomIDs: sanitizedWithAllSymptoms.symptomIDs.filter(
+        (symptomID) => !symptomsOverLimit.has(symptomID),
+      ),
+    };
     if (!hasDayLogData(sanitized)) {
       // Nothing meaningful to restore for this date after sanitizing.
       outcome.dayLogsSkipped += 1;
@@ -384,6 +420,7 @@ async function walkBackupEnvelope(
       if (apply) {
         await storage.writeSymptomRecord(pendingSymptom);
       }
+      catalogSize += 1;
       outcome.symptomsAdded += 1;
     }
 
@@ -397,6 +434,7 @@ async function walkBackupEnvelope(
     }
     outcome.dayLogsAdded += 1;
   }
+  outcome.symptomsOverLimit = symptomsOverLimit.size;
   if (profileBeforeDayLogs && rowWithdrawingStoredStart) {
     await commitRowWithdrawingStoredStart(
       storage,
@@ -760,22 +798,25 @@ async function restorePristineProfile(
   storage: LocalAppStorage,
   candidate: unknown,
   apply: boolean,
-): Promise<boolean> {
-  const imported = sanitizeImportedProfileRecord(candidate);
-  if (imported === null) {
-    return false;
+  restoreReminders: boolean,
+): Promise<{ restored: boolean; reminderSettingsAvailable: boolean }> {
+  const notRestored = { restored: false, reminderSettingsAvailable: false };
+  const sanitized = sanitizeImportedProfileRecord(candidate);
+  if (sanitized === null) {
+    return notRestored;
   }
 
   const defaults = createDefaultProfileRecord();
-  if (profileFieldsEqual(imported, defaults)) {
+  const withReminders = applyImportedDeviceSettingRules(sanitized, defaults, true);
+  if (profileFieldsEqual(withReminders, defaults)) {
     // The backup carries no non-default settings; writing it would change
     // nothing, so don't report a restore that didn't happen.
-    return false;
+    return notRestored;
   }
 
   const current = await storage.readProfileRecord();
   if (!profileFieldsEqual(current, defaults)) {
-    return false;
+    return notRestored;
   }
 
   // A default profile under existing day logs is not an empty device: the
@@ -784,13 +825,47 @@ async function restorePristineProfile(
   // answer.
   const localLogs = await storage.readDayLogSummary();
   if (localLogs.totalEntries > 0) {
-    return false;
+    return notRestored;
+  }
+
+  const withoutReminders = applyImportedDeviceSettingRules(sanitized, defaults, false);
+  const reminderSettingsAvailable = !profileFieldsEqual(withReminders, withoutReminders);
+  const imported = restoreReminders ? withReminders : withoutReminders;
+  if (profileFieldsEqual(imported, defaults)) {
+    return { restored: false, reminderSettingsAvailable };
   }
 
   if (apply) {
     await storage.writeProfileRecord(imported);
   }
-  return true;
+  return { restored: true, reminderSettingsAvailable };
+}
+
+// Device settings a backup must not change silently: screen-capture
+// protection can only be turned on by an import, never off, and the reminder
+// switches and rules are restored only on the preview's explicit opt-in. The
+// restore runs on a pristine device only, so the defaults stand in for its
+// current values.
+function applyImportedDeviceSettingRules(
+  imported: ProfileRecord,
+  defaults: ProfileRecord,
+  restoreReminders: boolean,
+): ProfileRecord {
+  const screenCaptureProtectionEnabled =
+    imported.screenCaptureProtectionEnabled === true ||
+    defaults.screenCaptureProtectionEnabled === true;
+  if (restoreReminders) {
+    return { ...imported, screenCaptureProtectionEnabled };
+  }
+  return {
+    ...imported,
+    screenCaptureProtectionEnabled,
+    dailyLogReminderEnabled: defaults.dailyLogReminderEnabled === true,
+    upcomingPeriodReminderEnabled: defaults.upcomingPeriodReminderEnabled === true,
+    fertileWindowReminderEnabled: defaults.fertileWindowReminderEnabled === true,
+    kickCountReminderEnabled: defaults.kickCountReminderEnabled === true,
+    cycleDayReminders: defaults.cycleDayReminders ?? [],
+  };
 }
 
 function profileFieldsEqual(left: ProfileRecord, right: ProfileRecord): boolean {
@@ -890,6 +965,7 @@ async function importCustomSymptoms(
 ): Promise<{
   pending: Map<string, SymptomRecord>;
   idMap: Map<string, string>;
+  catalogSize: number;
 }> {
   // Valid new custom symptoms keyed by their freshly minted id, not yet
   // written; see the walker for when one is committed.
@@ -901,10 +977,11 @@ async function importCustomSymptoms(
   // shared by every install, so a day log referencing one already resolves.
   const idMap = new Map<string, string>();
   if (!symptoms || symptoms.length === 0) {
-    return { pending, idMap };
+    return { pending, idMap, catalogSize: 0 };
   }
 
   let existing = await storage.listSymptomRecords();
+  const catalogSize = existing.length;
 
   for (const rawSymptom of symptoms) {
     const record = rawSymptom as Partial<SymptomRecord> | null;
@@ -952,7 +1029,7 @@ async function importCustomSymptoms(
     existing = [...existing, result.record];
   }
 
-  return { pending, idMap };
+  return { pending, idMap, catalogSize };
 }
 
 // Applies the old-id -> new-id map built by importCustomSymptoms to one day

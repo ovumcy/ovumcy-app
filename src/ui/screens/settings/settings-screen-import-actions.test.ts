@@ -1,4 +1,5 @@
 import { createEmptyDayLogRecord } from "../../../models/day-log";
+import { createDefaultProfileRecord } from "../../../models/profile";
 import { loadSettingsScreenState } from "../../../services/settings-state-service";
 import {
   buildSettingsViewData,
@@ -91,6 +92,65 @@ describe("offline JSON restore gates", () => {
 
     expect(storage.writeDayLogRecord).toHaveBeenCalledTimes(1);
     expect(context.setPendingImportPreview).toHaveBeenLastCalledWith(null);
+  });
+
+  it("refreshes the preview instead of applying when the device changed after it", async () => {
+    const { context, storage } = createContext();
+    await runPickImportFileAction(context);
+    const pending = context.setPendingImportPreview.mock.calls.at(-1)?.[0] as PendingImportPreview;
+    jest.mocked(storage.readDayLogRecord).mockResolvedValue({
+      ...createEmptyDayLogRecord("2026-02-01"),
+      isPeriod: true,
+      flow: "light",
+    });
+
+    await runConfirmImportAction(context, await loadReadyState(), pending);
+
+    expect(calledMutators(storage)).toEqual([]);
+    expect(context.reminderScheduler.sync).not.toHaveBeenCalled();
+    const refreshed = context.setPendingImportPreview.mock.calls.at(-1)?.[0] as PendingImportPreview;
+    expect(refreshed.outcome).toMatchObject({ dayLogsAdded: 0, dayLogsSkipped: 1 });
+    expect(refreshed.envelope).toBe(pending.envelope);
+    expect(context.setImportStatusMessage).toHaveBeenLastCalledWith(
+      viewData.import.previewChanged,
+    );
+  });
+
+  it("starts every preview with the reminder opt-in off and applies the opt-in the user chose", async () => {
+    const { context, storage } = createContext();
+    jest.mocked(storage.readProfileRecord).mockResolvedValue(createDefaultProfileRecord());
+    jest.mocked(storage.readDayLogSummary).mockResolvedValue({
+      totalEntries: 0,
+      hasData: false,
+      dateFrom: null,
+      dateTo: null,
+    });
+    const backupWithReminders = JSON.stringify({
+      ...JSON.parse(backupJSON),
+      dayLogs: [],
+      profile: {
+        ...createDefaultProfileRecord(),
+        cycleLength: 31,
+        dailyLogReminderEnabled: true,
+      },
+    });
+    context.importFilePickerClient.pick.mockResolvedValue({
+      status: "picked",
+      content: backupWithReminders,
+    });
+    await runPickImportFileAction(context);
+    const pending = context.setPendingImportPreview.mock.calls.at(-1)?.[0] as PendingImportPreview;
+    expect(pending.restoreReminders).toBe(false);
+    expect(pending.outcome.reminderSettingsAvailable).toBe(true);
+
+    await runConfirmImportAction(context, await loadReadyState(), {
+      ...pending,
+      restoreReminders: true,
+    });
+
+    expect(storage.writeProfileRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ cycleLength: 31, dailyLogReminderEnabled: true }),
+    );
   });
 });
 

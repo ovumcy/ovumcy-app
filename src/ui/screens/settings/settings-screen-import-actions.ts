@@ -19,10 +19,12 @@ import type { LocalAppStorage } from "../../../storage/local/storage-contract";
 import { resolveSettingsImportErrorMessage } from "./settings-screen-messages";
 
 // The parsed envelope held between the preview and the explicit confirm. It
-// stays in memory only — never persisted, never logged.
+// stays in memory only — never persisted, never logged. restoreReminders is
+// the preview's opt-in, off until the user turns it on.
 export type PendingImportPreview = {
   envelope: ExportBackupEnvelope;
   outcome: ImportOutcome;
+  restoreReminders: boolean;
 };
 
 type ImportActionContext = {
@@ -80,7 +82,11 @@ export async function runPickImportFileAction(context: ImportActionContext) {
     }
 
     const outcome = await previewImportBackupEnvelope(storage, parsed.envelope);
-    setPendingImportPreview({ envelope: parsed.envelope, outcome });
+    setPendingImportPreview({
+      envelope: parsed.envelope,
+      outcome,
+      restoreReminders: false,
+    });
   } catch {
     setImportErrorMessage(
       resolveSettingsImportErrorMessage("import_failed", viewData),
@@ -114,9 +120,23 @@ export async function runConfirmImportAction(
 
   resetImportMessages();
   setIsImporting(true);
+  let applying = false;
 
   try {
-    const outcome = await importBackupEnvelope(storage, pending.envelope);
+    // The confirmed counts must be the ones the user saw: if the device
+    // changed since the preview, the preview is refreshed and confirmed again
+    // instead of applying a different restore.
+    const current = await previewImportBackupEnvelope(storage, pending.envelope);
+    if (!areImportOutcomesEqual(current, pending.outcome)) {
+      setPendingImportPreview({ ...pending, outcome: current });
+      setImportStatusMessage(viewData.import.previewChanged);
+      return;
+    }
+
+    applying = true;
+    const outcome = await importBackupEnvelope(storage, pending.envelope, {
+      restoreReminders: pending.restoreReminders,
+    });
     const nextState = await refreshSettingsStateAfterImport(
       storage,
       readyState,
@@ -141,9 +161,19 @@ export async function runConfirmImportAction(
     // An import can add day logs, a pregnancy record and a profile with its
     // own reminder settings — and a failed one may have written part of them
     // — so the schedule is rebuilt from storage either way.
-    await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
-      now: reminderNow,
-    });
+    if (applying) {
+      await rebuildLocalReminderScheduleFromStorage(storage, reminderScheduler, {
+        now: reminderNow,
+      });
+    }
     setIsImporting(false);
   }
+}
+
+function areImportOutcomesEqual(left: ImportOutcome, right: ImportOutcome): boolean {
+  const keys = Object.keys(left) as (keyof ImportOutcome)[];
+  return (
+    keys.length === Object.keys(right).length &&
+    keys.every((key) => Object.is(left[key], right[key]))
+  );
 }
