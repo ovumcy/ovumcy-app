@@ -16,6 +16,7 @@ import {
   type RequestSyncPasswordResetErrorCode,
   type ResetSyncPasswordErrorCode,
 } from "../../../sync/sync-account-recovery-service";
+import { clearLocalSyncSession } from "../../../sync/sync-client-service";
 import type {
   SyncPreferencesRecord,
   SyncTOTPEnrollmentStart,
@@ -483,14 +484,21 @@ export function useSyncAccountSecurityController({
       setTotpStatus("idle");
       return;
     }
+    // Both servers revoke every session of the account on disable, this
+    // device's included, so the local session goes with them.
+    const nextPreferences = await clearLocalSyncSession(
+      storage,
+      syncSecretStore,
+      preferences,
+    );
+    setPreferences(nextPreferences);
     setTotpStage("completed");
     setTotpStatus("success");
     setTotpDisablePassword("");
     setTotpDisableCode("");
     setRegenerateCodeDemanded(false);
     setChangeCodeDemanded(false);
-    const status = await describeSyncAccountTwoFactor(syncSecretStore, preferences);
-    setTwoFactorEnabled(status ? status.twoFactorEnabled : twoFactorEnabled);
+    setTwoFactorEnabled(false);
   }
 
   function handleCancelTOTPEnrollment() {
