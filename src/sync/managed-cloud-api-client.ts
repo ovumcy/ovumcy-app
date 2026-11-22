@@ -9,6 +9,7 @@ import {
   responseLeftRequestOrigin,
   type RedirectRefusingFetch,
 } from "./redirect-refusing-fetch";
+import { normalizeSyncEndpoint } from "./sync-endpoint-policy";
 
 export type ManagedCloudAPIErrorCode =
   | "invalid_registration_input"
@@ -689,6 +690,9 @@ export function createManagedCloudAPIClient(
   fetchImpl: FetchLike = redirectRefusingFetch,
 ): ManagedCloudAPIClient {
   const normalizedBaseURL = baseURL.replace(/\/+$/, "");
+  if (!isPermittedManagedBaseURL(normalizedBaseURL)) {
+    fetchImpl = refuseManagedBaseURL;
+  }
 
   return {
     async register(input) {
@@ -1221,6 +1225,25 @@ export function createManagedCloudAPIClient(
     },
   };
 }
+
+// The managed base URL is build-time configuration, so it gets the rule an
+// owner-entered self-hosted endpoint gets: an explicit https URL, or plaintext
+// http only to a local-network host (the `local` EAS profile points a release
+// build at an emulator-host server). Anything else would put passwords and
+// bearer tokens on the wire in the clear, so the client never sends a request.
+function isPermittedManagedBaseURL(baseURL: string): boolean {
+  try {
+    new URL(baseURL);
+  } catch {
+    return false;
+  }
+  return normalizeSyncEndpoint("self_hosted", baseURL).ok;
+}
+
+// Rejects without touching the network; `fetchAndBuffer` maps the rejection to
+// `network_failed`, the same outcome as any request that never reached a server.
+const refuseManagedBaseURL: FetchLike = () =>
+  Promise.reject(new Error("managed base URL refused"));
 
 async function requestAuthResult(
   fetchImpl: FetchLike,
