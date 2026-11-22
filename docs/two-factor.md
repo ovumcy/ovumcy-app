@@ -36,7 +36,12 @@ Deleting an account asks for your account password after the device check and th
 If verification fails:
 
 - *Code is incorrect* — besides a mistyped or expired code, this is also what you see when setup was started again on another device: only the newest pending secret counts. Finish setup on that device, or tap *Cancel* and start again here.
-- *Too many attempts for this setup* (self-hosted) — the server allows 10 codes per pending secret and then discards it. Its general per-account rate limit answers the same way, and the app cannot tell the two apart, so it always returns you to the password step to start setup again with a fresh secret.
+- *This setup is no longer pending* — the server allows 10 codes per pending secret and then discards it (a 409 answer). The app returns you to the password step to start setup again with a fresh secret.
+- *Too many attempts* — the server's per-account rate limit (a 429 answer) is not a discard: the pending setup stays, so wait a moment and enter a new code on the same screen.
+
+## Removing A Device On A Self-Hosted Server
+
+Removing a device from a self-hosted (community) server's device list asks for confirmation first. With two-factor on, the server then asks for your account password and a current 6-digit code; the app shows a prompt for them under the device list and retries the removal once you confirm. A wrong password or code, a code already used, or too many attempts keep the prompt open with that message; a rate limit hit before the prompt shows how long to wait. The password and code travel in the request body only and are cleared from the screen afterwards. Removing this device signs this install out of the server, since the server revokes every session bound to the removed device. Ovumcy Cloud binds no session to a device and never asks for the prompt.
 
 ## Replacing The Recovery-Key Backup On A Self-Hosted Server
 
