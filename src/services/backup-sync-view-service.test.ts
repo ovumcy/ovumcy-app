@@ -341,7 +341,10 @@ describe("backup sync view service", () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 22), "en");
     expect(
       resolveBackupSyncErrorMessage("recovery_key_changed_elsewhere", viewData.account),
-    ).toBe(viewData.account.errors.recoveryKeyChangedElsewhere);
+    ).toBe(viewData.account.errors.recoveryKeyReplacedOnServer);
+    expect(viewData.account.errors.recoveryKeyReplacedOnServer).not.toBe(
+      viewData.account.errors.recoveryKeyChangedElsewhere,
+    );
   });
 
   it("asks to wait on rate_limited instead of the generic failure", () => {

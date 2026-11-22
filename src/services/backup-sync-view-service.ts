@@ -428,8 +428,10 @@ export function resolveBackupSyncErrorMessage(
     case "remote_backup_changed":
       return viewData.errors.remoteBackupChanged;
     case "managed_recovery_key_overwrite":
-    case "recovery_key_changed_elsewhere":
       return viewData.errors.recoveryKeyChangedElsewhere;
+    // Self-hosted only; the managed text speaks of a phrase change.
+    case "recovery_key_changed_elsewhere":
+      return viewData.errors.recoveryKeyReplacedOnServer;
     case "rate_limited":
       return viewData.errors.rateLimited;
     case "invalid_payload":
