@@ -5,6 +5,7 @@ import {
   createManagedCloudAPIClient,
   type ManagedCloudAPIClient,
 } from "../sync/managed-cloud-api-client";
+import { callWithManagedSession } from "../sync/managed-session-call";
 import { MANAGED_CLOUD_AUTH_BASE_URL, type SyncMode } from "../sync/sync-contract";
 import type { EntitlementTokenGate } from "./managed-premium-features-service";
 
@@ -64,13 +65,19 @@ export async function buildEntitlementTokenGate(
     return undefined;
   }
 
-  const client =
-    options.managedClient ??
-    createManagedCloudAPIClient(MANAGED_CLOUD_AUTH_BASE_URL);
+  const injectedClient = options.managedClient;
+  const managedClientFactory = injectedClient
+    ? () => injectedClient
+    : createManagedCloudAPIClient;
+  const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
 
   let expectedSub = "";
   try {
-    const sessionResult = await client.getSession(sessionToken);
+    const sessionResult = await callWithManagedSession(
+      secretStore,
+      (renewedToken) => client.getSession(renewedToken),
+      { managedClientFactory },
+    );
     if (!sessionResult.ok) {
       // Cannot confirm the active account id (offline, unauthorized, malformed):
       // do NOT bind a gate. The premium resolution falls back to the snapshot.

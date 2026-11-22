@@ -4,6 +4,7 @@ import {
 } from "../security/entitlement-token-store";
 import type { SyncSecretStore } from "../security/sync-secret-store";
 import type { ManagedCloudAPIClient } from "../sync/managed-cloud-api-client";
+import { resetManagedSessionRefreshStateForTests } from "../sync/managed-session-refresh-service";
 import type { SyncSecretsRecord } from "../sync/sync-contract";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { buildEntitlementTokenGate } from "./entitlement-token-gate-service";
@@ -204,5 +205,109 @@ describe("buildEntitlementTokenGate", () => {
     );
 
     expect(gate).toBeUndefined();
+  });
+
+  describe("session renewal", () => {
+    const RENEWABLE_SECRETS: SyncSecretsRecord = {
+      ...MANAGED_SECRETS,
+      managedAuthSessionToken: "access-1",
+      managedRefreshToken: "refresh-1",
+      managedRefreshTokenExpiresAt: "2099-06-18T08:00:00.000Z",
+    };
+
+    // Refuses "access-1", accepts any other token, and answers the refresh of
+    // "refresh-1" with `refreshAnswer` ("access-2" pair when it is ok).
+    function renewingClient(
+      refreshAnswer: { ok: true } | { ok: false; errorCode: "network_failed" | "unauthorized" },
+    ) {
+      const accepted = sessionClient({ ok: true, accountID: "acct-1" });
+      const getSession = jest.fn((token: string) =>
+        token === "access-1"
+          ? Promise.resolve({ ok: false as const, errorCode: "unauthorized" as const })
+          : accepted.getSession(token),
+      );
+      const refreshSession = jest.fn(async () =>
+        refreshAnswer.ok
+          ? {
+              ok: true as const,
+              auth: {
+                accountID: "acct-1",
+                email: "owner@example.com",
+                sessionToken: "access-2",
+                sessionExpiresAt: "2099-03-21T08:00:00.000Z",
+                entitlement: {
+                  syncAllowed: true,
+                  source: "billing_subscription",
+                  updatedAt: "2026-03-20T08:05:00.000Z",
+                  effectiveAt: "2026-03-20T08:05:00.000Z",
+                  explanation: "plan active",
+                },
+                refreshToken: "refresh-2",
+                refreshTokenExpiresAt: "2099-06-18T08:00:00.000Z",
+              },
+            }
+          : refreshAnswer,
+      );
+      return {
+        getSession,
+        client: { getSession, refreshSession } as unknown as ManagedCloudAPIClient,
+      };
+    }
+
+    beforeEach(() => {
+      resetManagedSessionRefreshStateForTests();
+    });
+
+    it("renews a 401 on the session read and binds the gate to the account behind the renewed token", async () => {
+      const secretStore = createSyncSecretStoreMock(RENEWABLE_SECRETS);
+      const { client, getSession } = renewingClient({ ok: true });
+
+      const gate = await buildEntitlementTokenGate(secretStore, "managed", {
+        managedClient: client,
+        tokenStore: createMemoryEntitlementTokenStore(),
+      });
+
+      expect(gate?.expectedSub).toBe("acct-1");
+      expect(getSession.mock.calls.map(([token]) => token)).toEqual(["access-1", "access-2"]);
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({
+          managedAuthSessionToken: "access-2",
+          managedRefreshToken: "refresh-2",
+        }),
+      );
+    });
+
+    it("binds no gate and keeps the session when the refresh after a 401 on the session read fails", async () => {
+      const secretStore = createSyncSecretStoreMock(RENEWABLE_SECRETS);
+      const { client } = renewingClient({ ok: false, errorCode: "network_failed" });
+
+      const gate = await buildEntitlementTokenGate(secretStore, "managed", {
+        managedClient: client,
+        tokenStore: createMemoryEntitlementTokenStore(),
+      });
+
+      expect(gate).toBeUndefined();
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({
+          managedAuthSessionToken: "access-1",
+          managedRefreshToken: "refresh-1",
+        }),
+      );
+    });
+
+    it("binds no gate when the refresh token itself is refused after a 401 on the session read", async () => {
+      const secretStore = createSyncSecretStoreMock(RENEWABLE_SECRETS);
+      const { client } = renewingClient({ ok: false, errorCode: "unauthorized" });
+
+      const gate = await buildEntitlementTokenGate(secretStore, "managed", {
+        managedClient: client,
+        tokenStore: createMemoryEntitlementTokenStore(),
+      });
+
+      expect(gate).toBeUndefined();
+      await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+        expect.objectContaining({ managedAuthSessionToken: null, managedRefreshToken: null }),
+      );
+    });
   });
 });

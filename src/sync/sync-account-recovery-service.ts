@@ -6,6 +6,10 @@ import {
   type ManagedCloudAPIErrorCode,
 } from "./managed-cloud-api-client";
 import {
+  callWithManagedSession,
+  type ManagedSessionCallFailure,
+} from "./managed-session-call";
+import {
   createSyncAPIClient,
   type SyncAPIClient,
   type SyncAPIErrorCode,
@@ -135,10 +139,15 @@ export async function changeSyncAccountPassword(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.changePassword(secrets.managedAuthSessionToken, {
+    const credentials = {
       currentPassword: input.currentPassword,
       newPassword: input.newPassword,
-    });
+    };
+    const result = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => client.changePassword(sessionToken, credentials),
+      { managedClientFactory },
+    );
     if (!result.ok) {
       return {
         ok: false,
@@ -383,9 +392,10 @@ export async function regenerateSyncAccountRecoveryCode(
       return { ok: false, errorCode: "not_connected" };
     }
     const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const result = await client.regenerateRecoveryCode(
-      secrets.managedAuthSessionToken,
-      body,
+    const result = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => client.regenerateRecoveryCode(sessionToken, body),
+      { managedClientFactory },
     );
     if (!result.ok) {
       return {
@@ -420,14 +430,24 @@ export async function regenerateSyncAccountRecoveryCode(
   return { ok: true, recoveryCode: result.result.recoveryCode };
 }
 
+// "unauthorized" means the session ended and its credentials were cleared
+// (`session_expired`); a 401 callWithManagedSession passes through kept them,
+// so it reads as "generic": callers end the local session on "unauthorized".
+type ManagedSessionCallErrorCode =
+  | ManagedCloudAPIErrorCode
+  | ManagedSessionCallFailure["errorCode"];
+
 function mapManagedChangePasswordError(
-  code: ManagedCloudAPIErrorCode,
+  code: ManagedSessionCallErrorCode,
 ): ChangeSyncPasswordErrorCode {
   switch (code) {
+    case "no_session":
+      return "not_connected";
+    case "session_expired":
+      return "unauthorized";
     case "invalid_current_password":
     case "new_password_must_differ":
     case "weak_new_password":
-    case "unauthorized":
     case "rate_limited":
     case "network_failed":
       return code;
@@ -510,15 +530,18 @@ function mapCommunityResetPasswordError(
 }
 
 function mapManagedRegenerateError(
-  code: ManagedCloudAPIErrorCode,
+  code: ManagedSessionCallErrorCode,
 ): RegenerateSyncRecoveryCodeErrorCode {
   switch (code) {
+    case "no_session":
+      return "not_connected";
+    case "session_expired":
+      return "unauthorized";
     case "invalid_current_password":
     case "totp_invalid_code":
     case "totp_replayed":
     case "totp_not_configured":
     case "totp_secret_failed":
-    case "unauthorized":
     case "rate_limited":
     case "network_failed":
       return code;
