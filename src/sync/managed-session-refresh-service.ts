@@ -162,8 +162,8 @@ export async function renewRejectedManagedSession(
           return { ok: true, sessionToken: outcome.sessionToken };
         }
         if (!joined) {
-          // Unreachable: a rejected-trigger flight never answers with the
-          // rejected token. Treated as unavailable rather than looping.
+          // The exchange handed back the rejected token itself: nothing new
+          // to retry with, and looping would only spend another refresh.
           return { ok: false, errorCode: "refresh_unavailable" };
         }
         // A scheduled refresh that found nothing due; this 401 needs its own.

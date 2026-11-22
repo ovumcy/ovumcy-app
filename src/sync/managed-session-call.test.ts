@@ -205,7 +205,7 @@ describe("callWithManagedSession", () => {
     const call = jest.fn(async (): Promise<CallResult> => ({ ok: true, value: "v" }));
 
     await expect(
-      callWithManagedSession(createSyncSecretStoreMock(), call, { now: NOW }),
+      callWithManagedSession(createSyncSecretStoreMock(), call),
     ).resolves.toEqual({ ok: false, errorCode: "no_session" });
     expect(call).not.toHaveBeenCalled();
   });

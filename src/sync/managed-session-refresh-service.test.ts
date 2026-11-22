@@ -6,6 +6,7 @@ import {
   endManagedSessionRefresh,
   ensureFreshManagedSession,
   renewRejectedManagedSession,
+  settleInFlightManagedRefresh,
   resetManagedSessionRefreshStateForTests,
 } from "./managed-session-refresh-service";
 import type { SyncSecretsRecord } from "./sync-contract";
@@ -718,5 +719,159 @@ describe("renewRejectedManagedSession", () => {
     expect(scheduled).toEqual({ ok: true, sessionToken: "access-2", refreshed: true });
     expect(renewed).toEqual({ ok: true, sessionToken: "access-2" });
     expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("refresh flights that see a different record than their caller", () => {
+  beforeEach(() => {
+    resetManagedSessionRefreshStateForTests();
+  });
+
+  const DUE = "2026-07-21T12:01:00.000Z";
+  const FAR = "2026-07-22T12:00:00.000Z";
+
+  // Holds the reads whose 1-based index is in `held` until released; each
+  // read's snapshot is taken when it is made, not when it is handed back.
+  function holdReads(secretStore: ReturnType<typeof createSyncSecretStoreMock>, held: number[]) {
+    const realRead = secretStore.readSyncSecrets.bind(secretStore);
+    const releases = new Map<number, () => void>();
+    const gates = new Map<number, Promise<void>>();
+    for (const index of held) {
+      gates.set(index, new Promise<void>((resolve) => releases.set(index, resolve)));
+    }
+    let reads = 0;
+    jest.spyOn(secretStore, "readSyncSecrets").mockImplementation(async () => {
+      reads += 1;
+      const gate = gates.get(reads);
+      const snapshot = await realRead();
+      if (gate) {
+        await gate;
+      }
+      return snapshot;
+    });
+    return (index: number) => releases.get(index)!();
+  }
+
+  const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+  async function update(
+    store: ReturnType<typeof createSyncSecretStoreMock>,
+    patch: Partial<SyncSecretsRecord>,
+  ) {
+    const current = await store.readSyncSecrets();
+    await store.writeSyncSecrets({ ...current!, ...patch });
+  }
+
+  it("reports no session when the session is cleared before the flight reads it", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets({ managedAuthSessionExpiresAt: DUE }));
+    const release = holdReads(secretStore, [1]);
+    const refreshSession = okRefresh("access-2", "refresh-2");
+
+    const pending = ensureFreshManagedSession(secretStore, NOW, createRefreshingClient(refreshSession));
+    await flush();
+    await secretStore.clearSyncSecrets();
+    release(1);
+
+    await expect(pending).resolves.toEqual({ ok: false, errorCode: "no_session" });
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("keeps the session unrenewed when its refresh token is gone by the time the flight reads it", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets({ managedAuthSessionExpiresAt: DUE }));
+    const release = holdReads(secretStore, [1]);
+    const refreshSession = okRefresh("access-2", "refresh-2");
+
+    const pending = ensureFreshManagedSession(secretStore, NOW, createRefreshingClient(refreshSession));
+    await flush();
+    await update(secretStore, { managedRefreshToken: null, managedRefreshTokenExpiresAt: null });
+    release(1);
+
+    await expect(pending).resolves.toEqual({
+      ok: true,
+      sessionToken: "access-1",
+      refreshed: false,
+    });
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("runs its own exchange after joining a scheduled flight that found nothing due", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets({ managedAuthSessionExpiresAt: DUE }));
+    const release = holdReads(secretStore, [1, 3]);
+    const refreshSession = okRefresh("access-2", "refresh-2");
+    const factory = createRefreshingClient(refreshSession);
+
+    const scheduled = ensureFreshManagedSession(secretStore, NOW, factory);
+    await flush();
+    // Read 2 (inside update): the session's expiry moves out before the
+    // flight's own read, read 3, is made.
+    await update(secretStore, { managedAuthSessionExpiresAt: FAR });
+    release(1);
+    await flush();
+    const renewed = renewRejectedManagedSession(secretStore, "access-1", factory);
+    release(3);
+
+    await expect(scheduled).resolves.toEqual({
+      ok: true,
+      sessionToken: "access-1",
+      refreshed: false,
+    });
+    await expect(renewed).resolves.toEqual({ ok: true, sessionToken: "access-2" });
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the stored token after joining a failed scheduled flight on a newer session", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets({ managedAuthSessionExpiresAt: DUE }));
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const refreshSession = jest.fn(async () => {
+      await gate;
+      return { ok: false as const, errorCode: "network_failed" as const };
+    });
+    const factory = createRefreshingClient(refreshSession as never);
+
+    const scheduled = ensureFreshManagedSession(secretStore, NOW, factory);
+    await flush();
+    const renewed = renewRejectedManagedSession(secretStore, "access-0", factory);
+    release();
+
+    await expect(scheduled).resolves.toEqual({
+      ok: true,
+      sessionToken: "access-1",
+      refreshed: false,
+    });
+    await expect(renewed).resolves.toEqual({ ok: true, sessionToken: "access-1" });
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the refresh unavailable when the exchange hands back the rejected token", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets());
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(okRefresh("access-1", "refresh-2")),
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "refresh_unavailable" });
+  });
+
+  it("lets a caller wait out the refresh in flight", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets({ managedAuthSessionExpiresAt: DUE }));
+    const refreshSession = okRefresh("access-2", "refresh-2");
+
+    const pending = ensureFreshManagedSession(secretStore, NOW, createRefreshingClient(refreshSession));
+    await flush();
+    await settleInFlightManagedRefresh();
+
+    expect((await secretStore.readSyncSecrets())?.managedAuthSessionToken).toBe("access-2");
+    await pending;
   });
 });
