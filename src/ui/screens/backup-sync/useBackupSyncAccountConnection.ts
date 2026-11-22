@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   resolveBackupSyncConnectedStatusMessage,
@@ -43,6 +43,11 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
   const [accountPasswordValue, setAccountPasswordValue] = useState("");
   const [isAuthenticatingSync, setIsAuthenticatingSync] = useState(false);
   const [isRecoveringSync, setIsRecoveringSync] = useState(false);
+  // The revoke call can run up to its timeout; the busy flag lets the screen
+  // disable the other sync actions so an upload cannot rewrite `connected`
+  // after the local clear, and the ref refuses a second tap before it renders.
+  const [isDisconnectingSync, setIsDisconnectingSync] = useState(false);
+  const disconnectInFlightRef = useRef(false);
   // Pending TOTP challenge from login. Lives in memory only — the challenge id
   // is single-use and short-lived (~5 min); persisting it would defeat the
   // purpose of the second factor. `purpose` says which flow the code resumes:
@@ -286,10 +291,20 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
   }
 
   async function handleDisconnectSync() {
-    if (!state) {
+    if (!state || disconnectInFlightRef.current) {
       return;
     }
 
+    disconnectInFlightRef.current = true;
+    try {
+      await runDisconnect(state);
+    } finally {
+      disconnectInFlightRef.current = false;
+      setIsDisconnectingSync(false);
+    }
+  }
+
+  async function runDisconnect(currentState: NonNullable<typeof state>) {
     resetFeedbackMessages();
     const challengeResult = await requestSensitiveActionChallenge(
       viewData.account.disconnectDeviceAuthPrompt,
@@ -317,10 +332,11 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       return;
     }
 
+    setIsDisconnectingSync(true);
     const result = await disconnectBackupSyncAccount(
       storage,
       syncSecretStore,
-      state,
+      currentState,
     );
     // Drop any pending partner invite captured for the prior session so it
     // can't be redeemed under a different managed account after re-login.
@@ -339,6 +355,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     setAccountPasswordValue,
     isAuthenticatingSync,
     isRecoveringSync,
+    isDisconnectingSync,
     pendingTOTPChallenge,
     totpChallengeCode,
     setTotpChallengeCode,
