@@ -122,6 +122,39 @@ describe("managed-cloud-api-client server error classification", () => {
     },
   );
 
+  it("maps a 500 internal_error at entitlement-token mint to generic", async () => {
+    const fetch = jest.fn(
+      async () => new Response(JSON.stringify({ error: "internal_error" }), { status: 500 }),
+    );
+
+    await expect(
+      createManagedCloudAPIClient(BASE_URL, fetch).getEntitlementToken("s"),
+    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+  });
+
+  it.each([
+    [
+      "a recovery-key rotation",
+      (c: ReturnType<typeof createManagedCloudAPIClient>) =>
+        c.replaceRecoveryKey("s", { recoveryKeyPackage: {} } as never),
+    ],
+    [
+      "an account deletion",
+      (c: ReturnType<typeof createManagedCloudAPIClient>) => c.deleteAccount("s", {} as never),
+    ],
+  ])(
+    "keeps a 500 on %s, a write that may have committed, as network_failed",
+    async (_label, call) => {
+      const fetch = jest.fn(
+        async () => new Response(JSON.stringify({ error: "internal_error" }), { status: 500 }),
+      );
+
+      await expect(call(createManagedCloudAPIClient(BASE_URL, fetch))).resolves.toEqual(
+        expect.objectContaining({ ok: false, errorCode: "network_failed" }),
+      );
+    },
+  );
+
   it.each([
     ["an unparseable 502 gateway page", 502, "<html>"],
     ["a 503 with no body", 503, ""],
