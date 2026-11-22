@@ -55,6 +55,7 @@ import {
 import {
   runConfirmImportAction,
   runPickImportFileAction,
+  withRestoreReminders,
   type PendingImportPreview,
 } from "./settings-screen-import-actions";
 import {
@@ -742,9 +743,7 @@ export function useSettingsScreenController({
         void runPickImportFileAction(importActionContext);
       },
       onImportRestoreRemindersChange: (value) => {
-        setPendingImportPreview((pending) =>
-          pending ? { ...pending, restoreReminders: value } : pending,
-        );
+        setPendingImportPreview((pending) => withRestoreReminders(pending, value));
       },
       onInterfaceLanguageSelect: (value) => {
         applyInterfaceValues({

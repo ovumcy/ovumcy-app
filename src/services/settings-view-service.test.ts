@@ -355,7 +355,9 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
         },
         dayLogs: [
           createEmptyDayLogRecord("2026-03-05"),
-          { date: "not-a-date" } as unknown as ReturnType<typeof createEmptyDayLogRecord>,
+          ...([null, 7, { date: 20260301 }, { date: "not-a-date" }] as unknown as ReturnType<
+            typeof createEmptyDayLogRecord
+          >[]),
           createEmptyDayLogRecord("2026-02-10"),
         ],
       }),
@@ -365,6 +367,21 @@ describe("buildSettingsImportPreviewViewData (import preview)", () => {
     );
 
     expect(preview.detailLines[0]).toBe("Backup range: 2026-02-10 to 2026-03-05");
+  });
+
+  it("shows no backup range when the file carries no day logs", () => {
+    const envelope: Partial<ExportBackupEnvelope> = previewEnvelope();
+    delete envelope.dayLogs;
+    const preview = buildSettingsImportPreviewViewData(
+      envelope as ExportBackupEnvelope,
+      zeroImportOutcome({ symptomsAdded: 1 }),
+      importCopy,
+      "en",
+    );
+
+    expect(preview.detailLines.some((line) => line.startsWith("Backup range"))).toBe(
+      false,
+    );
   });
 
   it("warns about custom symptoms left out by the catalog limit, in the preview and the result", () => {

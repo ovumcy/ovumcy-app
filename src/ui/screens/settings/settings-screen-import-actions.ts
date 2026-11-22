@@ -27,6 +27,13 @@ export type PendingImportPreview = {
   restoreReminders: boolean;
 };
 
+export function withRestoreReminders(
+  pending: PendingImportPreview | null,
+  restoreReminders: boolean,
+): PendingImportPreview | null {
+  return pending ? { ...pending, restoreReminders } : null;
+}
+
 type ImportActionContext = {
   effectiveNow: Date;
   importFilePickerClient: ImportFilePickerClient;

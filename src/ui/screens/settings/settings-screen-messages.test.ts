@@ -16,6 +16,7 @@ describe("resolveSettingsSymptomErrorMessage", () => {
       () => viewData.symptoms.errors.labelInvalidCharacters,
     ],
     ["duplicate_label", () => viewData.symptoms.errors.duplicateLabel],
+    ["catalog_full", () => viewData.symptoms.errors.catalogFull],
     ["not_found", () => viewData.symptoms.errors.notFound],
     ["builtin_edit_forbidden", () => viewData.symptoms.errors.notFound],
     // Unmapped/unexpected codes (e.g. icon_too_long, invalid_color, generic)
