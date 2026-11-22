@@ -1280,7 +1280,7 @@ export async function finalizeSyncRecoveryAfterTOTP(
       accountID: session.accountID,
       email: session.email,
       sessionToken: input.sessionToken,
-      sessionExpiresAt: input.sessionExpiresAt ?? session.sessionExpiresAt,
+      sessionExpiresAt: input.sessionExpiresAt || session.sessionExpiresAt,
       entitlement: session.entitlement,
       ...(input.refreshToken !== undefined
         ? { refreshToken: input.refreshToken }
