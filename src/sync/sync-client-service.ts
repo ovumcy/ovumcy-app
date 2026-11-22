@@ -117,6 +117,9 @@ export type SyncRunErrorCode =
   | "blob_not_found"
   | "invalid_blob"
   | "stale_generation"
+  // The server holds a backup this device has not seen (another device
+  // uploaded since); the upload refused to overwrite it. Restore first.
+  | "remote_backup_changed"
   | "invalid_payload"
   | "upload_over_backup_declined"
   | "restore_older_backup_declined"
@@ -1461,13 +1464,24 @@ export async function runSyncUpload(
     };
   }
 
-  const putBlobResult = await client.putBlob(prepared.secrets.authSessionToken, {
-    schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
-    generation,
-    checksumSHA256,
-    ciphertextBase64: fromByteArray(ciphertextBytes),
-  });
+  const putBlobResult = await putBlobComparingGeneration(
+    client,
+    prepared.secrets.authSessionToken,
+    {
+      schemaVersion: SYNC_SNAPSHOT_SCHEMA_VERSION,
+      generation,
+      checksumSHA256,
+      ciphertextBase64: fromByteArray(ciphertextBytes),
+    },
+    remoteBlob === undefined
+      ? (readRollbackFloor(preferences) ?? undefined)
+      : (remoteBlob?.generation ?? undefined),
+    preferences.lastSyncedAt,
+  );
   if (!putBlobResult.ok) {
+    if (putBlobResult.errorCode === "remote_backup_changed") {
+      return { ok: false, errorCode: "remote_backup_changed" };
+    }
     return withRetryAfter(
       { ok: false, errorCode: mapRunAPIError(putBlobResult.errorCode) },
       putBlobResult,
@@ -2096,6 +2110,101 @@ function nextRemoteGeneration(
   const nowGeneration = now.getTime();
   const floor = readRollbackFloor(preferences);
   return floor === null ? nowGeneration : Math.max(nowGeneration, floor + 1);
+}
+
+type BlobPutInput = Parameters<SyncAPIClient["putBlob"]>[1];
+
+/**
+ * Writes the blob only while the server still stores the generation this
+ * device last read or wrote, so another device's newer backup is never
+ * overwritten blind. A 409 or a lost reply is reconciled with a GET:
+ * - the stored blob is this attempt's own (same generation and checksum):
+ *   the write landed and its reply was lost;
+ * - the stored blob is the one this device last synced (same server
+ *   timestamp) under another generation, as after a confirmed older
+ *   restore: retry once against it;
+ * - anything else came from another device: refuse with
+ *   `remote_backup_changed`.
+ * A server that predates `expected_generation` rejects the unknown field
+ * with 400 invalid_json; the write is retried once without it.
+ */
+async function putBlobComparingGeneration(
+  client: SyncAPIClient,
+  sessionToken: string,
+  input: BlobPutInput,
+  expectedGeneration: number | undefined,
+  lastSyncedAt: string | null,
+): Promise<
+  | { ok: true; blob: SyncBlobRecord }
+  | SyncAPIFailure
+  | { ok: false; errorCode: "remote_backup_changed" }
+> {
+  const first = await client.putBlob(
+    sessionToken,
+    expectedGeneration === undefined ? input : { ...input, expectedGeneration },
+  );
+  if (first.ok) {
+    return first;
+  }
+  if (first.errorCode === "invalid_json" && expectedGeneration !== undefined) {
+    return reconcileAmbiguousPut(
+      client,
+      sessionToken,
+      input,
+      await client.putBlob(sessionToken, input),
+    );
+  }
+  if (first.errorCode !== "stale_generation") {
+    return reconcileAmbiguousPut(client, sessionToken, input, first);
+  }
+
+  const stored = await client.getBlob(sessionToken);
+  if (!stored.ok) {
+    return { ok: false, errorCode: "remote_backup_changed" };
+  }
+  if (isSameBlob(stored.blob, input)) {
+    return stored;
+  }
+  if (
+    expectedGeneration !== undefined &&
+    lastSyncedAt !== null &&
+    stored.blob.updatedAt === lastSyncedAt &&
+    stored.blob.generation < input.generation
+  ) {
+    const retried = await client.putBlob(sessionToken, {
+      ...input,
+      expectedGeneration: stored.blob.generation,
+    });
+    if (retried.ok || retried.errorCode !== "stale_generation") {
+      return reconcileAmbiguousPut(client, sessionToken, input, retried);
+    }
+  }
+  return { ok: false, errorCode: "remote_backup_changed" };
+}
+
+// A network failure or a 5xx leaves the write's outcome unknown; the stored
+// blob says whether it landed.
+async function reconcileAmbiguousPut(
+  client: SyncAPIClient,
+  sessionToken: string,
+  input: BlobPutInput,
+  result: { ok: true; blob: SyncBlobRecord } | SyncAPIFailure,
+): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure> {
+  if (
+    result.ok ||
+    (result.errorCode !== "network_failed" && result.errorCode !== "server_busy")
+  ) {
+    return result;
+  }
+  const stored = await client.getBlob(sessionToken);
+  return stored.ok && isSameBlob(stored.blob, input) ? stored : result;
+}
+
+function isSameBlob(blob: SyncBlobRecord, input: BlobPutInput): boolean {
+  return (
+    blob.generation === input.generation &&
+    blob.checksumSHA256.toLowerCase() === input.checksumSHA256.toLowerCase()
+  );
 }
 
 function encodeEncryptedEnvelope(envelope: EncryptedSyncEnvelope): Uint8Array {

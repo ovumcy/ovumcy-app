@@ -33,7 +33,7 @@ describe("mapServerErrorKey", () => {
     ["totp_not_configured", 503, "totp_not_configured"],
     ["totp_enrollment_discarded", 409, "totp_enrollment_discarded"],
     ["stale_generation", 409, "stale_generation"],
-    ["invalid_json", 400, "generic"],
+    ["invalid_json", 400, "invalid_json"],
     ["invalid_ciphertext", 400, "generic"],
     ["unsupported_media_type", 415, "generic"],
     ["not_found", 404, "generic"],
