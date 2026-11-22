@@ -1175,6 +1175,31 @@ describe("sync-api-client", () => {
     );
   });
 
+  it("sends only the password on a device removal step-up with a blank code", async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "removed" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const client = createSyncAPIClient(
+      "http://127.0.0.1:8080/",
+      fetchMock as jest.MockedFunction<typeof fetch>,
+    );
+
+    await expect(
+      client.removeDevice(
+        "session-1",
+        { deviceID: "device-2" },
+        { currentPassword: "pw-1", code: "  " },
+      ),
+    ).resolves.toEqual({ ok: true });
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("DELETE");
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ current_password: "pw-1" }),
+    );
+  });
+
   it("maps deleteAccount error keys, including unauthorized and network failure", async () => {
     const fetchMock = jest
       .fn()
