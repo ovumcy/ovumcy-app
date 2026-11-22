@@ -132,12 +132,32 @@ export async function prepareSyncSetup(
   };
 
   try {
-    const existingSecrets = await secretStore.readSyncSecrets();
+    const [existingSecrets, savedPreferences] = await Promise.all([
+      secretStore.readSyncSecrets(),
+      storage.readSyncPreferencesRecord(),
+    ]);
     const result = createSyncSecretsRecord(nextLabel, now);
-    await secretStore.writeSyncSecrets({
+    // New keys do not end the signed-in session: dropping its tokens without
+    // a logout would leave the server session alive while every caller that
+    // needs it (account deletion included) treats the device as signed out.
+    // A self-hosted token is kept only for the server that issued it.
+    const sameSelfHostedServer =
+      savedPreferences.mode === "self_hosted" &&
+      nextPreferences.mode === "self_hosted" &&
+      savedPreferences.normalizedEndpoint === nextPreferences.normalizedEndpoint;
+    const secrets: SyncSecretsRecord = {
       ...result.record,
+      authSessionToken: sameSelfHostedServer
+        ? (existingSecrets?.authSessionToken ?? null)
+        : null,
       managedAuthSessionToken: existingSecrets?.managedAuthSessionToken ?? null,
-    });
+      managedAuthSessionExpiresAt:
+        existingSecrets?.managedAuthSessionExpiresAt ?? null,
+      managedRefreshToken: existingSecrets?.managedRefreshToken ?? null,
+      managedRefreshTokenExpiresAt:
+        existingSecrets?.managedRefreshTokenExpiresAt ?? null,
+    };
+    await secretStore.writeSyncSecrets(secrets);
     // A new sync key can never finish a restore of the old backup, so an
     // unfinished-restore mark would block uploads for good. With the floor
     // reset, the fresh-install probe asks before overwriting a backup instead.
@@ -149,10 +169,7 @@ export async function prepareSyncSetup(
       ok: true,
       preferences: nextPreferences,
       recoveryPhrase: result.recoveryPhrase,
-      secrets: {
-        ...result.record,
-        managedAuthSessionToken: existingSecrets?.managedAuthSessionToken ?? null,
-      },
+      secrets,
     };
   } catch {
     return {
@@ -201,12 +218,18 @@ export async function saveSyncPreferencesDraft(
     }
   }
 
+  // The device label is not material: the stored keys, session and rollback
+  // floor stay valid under a new label, so a relabel is applied in place.
   const materialChange =
     savedPreferences.mode !== nextMode ||
-    savedPreferences.deviceLabel.trim() !== nextDeviceLabel ||
     savedPreferences.normalizedEndpoint !== nextNormalizedEndpoint;
 
   const shouldResetPreparedState = hasStoredSecrets && materialChange;
+  const shouldRelabelStoredSecrets =
+    hasStoredSecrets &&
+    !shouldResetPreparedState &&
+    nextDeviceLabel.length > 0 &&
+    savedPreferences.deviceLabel.trim() !== nextDeviceLabel;
   const nextPreferences: SyncPreferencesRecord = {
     ...createDefaultSyncPreferencesRecord(),
     mode: nextMode,
@@ -221,10 +244,10 @@ export async function saveSyncPreferencesDraft(
       ? null
       : savedPreferences.lastRemoteGeneration,
     lastSyncedAt: shouldResetPreparedState ? null : savedPreferences.lastSyncedAt,
-    // A materially-changed draft (mode/label/endpoint) with existing secrets
-    // clears local secrets below, ending any guest session context along
-    // with them; otherwise this is a local-only save (device label, etc.)
-    // that must not disturb an unrelated guest marker.
+    // A materially-changed draft (mode/endpoint) with existing secrets clears
+    // local secrets below, ending any guest session context along with them;
+    // otherwise this is a local-only save (device label, etc.) that must not
+    // disturb an unrelated guest marker.
     guestSessionExpiresAt: shouldResetPreparedState
       ? null
       : savedPreferences.guestSessionExpiresAt,
@@ -233,12 +256,22 @@ export async function saveSyncPreferencesDraft(
   try {
     if (shouldResetPreparedState) {
       await secretStore.clearSyncSecrets();
-      // Clearing sync secrets ends the managed session context (mode switch,
-      // endpoint change, relabel): purge the billing-snapshot cache alongside,
-      // per the same session-boundary invariant as the partner-invite buffer.
+      // Clearing sync secrets ends the managed session context (mode switch or
+      // endpoint change): purge the billing-snapshot cache alongside, per the
+      // same session-boundary invariant as the partner-invite buffer.
       await storage.writeManagedBillingCacheRecord(
         createDefaultManagedBillingCacheRecord(),
       );
+    } else if (shouldRelabelStoredSecrets) {
+      // Only the local device identity is relabelled; no server device
+      // record is renamed here.
+      const storedSecrets = await secretStore.readSyncSecrets();
+      if (storedSecrets) {
+        await secretStore.writeSyncSecrets({
+          ...storedSecrets,
+          device: { ...storedSecrets.device, deviceLabel: nextDeviceLabel },
+        });
+      }
     }
     // Cleared secrets end the old backup relationship along with the floor;
     // see prepareSyncSetup for why the unfinished-restore mark goes too.

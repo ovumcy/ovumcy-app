@@ -653,6 +653,72 @@ describe("sync-snapshot-service", () => {
     const restored = await target.listScreeningResponses();
     expect(restored.map((response) => response.id)).toEqual([valid.id]);
   });
+
+  it("keeps only the first active pregnancy and postpartum record, without attempting the others", async () => {
+    const firstActive = sampleActivePregnancy();
+    const secondActive = { ...sampleActivePregnancy(), id: "pregnancy-active-2" };
+    const ended = sampleEndedPregnancy("pregnancy-ended-a");
+    const firstPostpartum = sampleActivePostpartum();
+    const secondPostpartum = { ...sampleActivePostpartum(), id: "postpartum-active-2" };
+    const storage = createLocalAppStorageMock();
+
+    await restoreSyncSnapshot(
+      storage,
+      baseSnapshot({
+        pregnancies: [firstActive, secondActive, firstActive, ended],
+        postpartumRecords: [firstPostpartum, secondPostpartum],
+      }),
+      createDefaultSyncPreferencesRecord(),
+    );
+
+    expect(
+      jest.mocked(storage.writePregnancyRecord).mock.calls.map((call) => call[0].id),
+    ).toEqual([ended.id, firstActive.id, firstActive.id]);
+    expect(
+      jest.mocked(storage.writePostpartumRecord).mock.calls.map((call) => call[0].id),
+    ).toEqual([firstPostpartum.id]);
+  });
+
+  it.each([
+    "writePregnancyRecord",
+    "writeKickSession",
+    "writeContractionSession",
+    "writePostpartumRecord",
+    "writeScreeningResponse",
+  ] as const)(
+    "aborts with the old floor kept when %s fails in storage",
+    async (method) => {
+      const target = createVolatileWebAppStorage();
+      const retained = {
+        ...createDefaultSyncPreferencesRecord(),
+        lastRemoteGeneration: 100,
+      };
+      const failing = {
+        ...target,
+        [method]: jest.fn().mockRejectedValue(new Error("disk full")),
+      };
+
+      await expect(
+        restoreSyncSnapshot(
+          failing,
+          baseSnapshot({
+            pregnancies: [sampleActivePregnancy()],
+            kickSessions: [sampleKickSession],
+            contractionSessions: [sampleContractionSession],
+            postpartumRecords: [sampleActivePostpartum()],
+            screeningResponses: [sampleScreeningResponse],
+          }),
+          { ...retained, lastRemoteGeneration: 200 },
+          { sync: jest.fn().mockResolvedValue("scheduled") },
+          retained,
+        ),
+      ).rejects.toThrow("disk full");
+      await expect(target.readSyncPreferencesRecord()).resolves.toMatchObject({
+        lastRemoteGeneration: 100,
+        restoreInProgress: true,
+      });
+    },
+  );
 });
 
 describe("restoreSyncSnapshot reminder rebuild", () => {
