@@ -176,6 +176,26 @@ describe("useBackupSyncActions", () => {
       expect(result.current.isSyncingNow).toBe(false);
     });
 
+    it("keeps the server's wait with a busy upload error", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockUploadBackupSyncSnapshot.mockResolvedValue({
+        ok: false,
+        errorCode: "server_busy",
+        retryAfterSeconds: 30,
+      });
+      const { result } = await renderHook(() => useBackupSyncActions(core));
+
+      await act(async () => {
+        await result.current.handleSyncNow();
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "server_busy",
+        scope: "sync",
+        retryAfterSeconds: 30,
+      });
+    });
+
     it("marks the upload successful and refreshes partner access", async () => {
       const uploadedState = createLoadedSettingsStateFixture({
         savedSyncPreferences: {

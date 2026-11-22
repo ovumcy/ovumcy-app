@@ -20,6 +20,13 @@ export type SyncAPIErrorCode =
   | "invalid_recovery_credentials"
   | "invalid_reset_token"
   | "rate_limited"
+  // The server answered 503 without a key this client knows: overloaded or
+  // briefly unavailable. Retry later, never automatically with the same
+  // generation.
+  | "server_busy"
+  | "registration_disabled"
+  // The account's capabilities have sync turned off (403).
+  | "sync_disabled"
   | "unauthorized"
   | "invalid_device"
   | "too_many_devices"
@@ -45,6 +52,14 @@ export type SyncAPIErrorCode =
   | "network_failed"
   | "invalid_response"
   | "generic";
+
+// Seconds from a 429/503 `Retry-After` header, when the server sent a usable
+// delta-seconds value; carried only by the blob calls, whose callers show it.
+export type SyncAPIFailure = {
+  ok: false;
+  errorCode: SyncAPIErrorCode;
+  retryAfterSeconds?: number;
+};
 
 export type SyncRecoveryKeyStepUp = {
   currentPassword: string;
@@ -80,10 +95,7 @@ export type SyncAPIClient = {
   ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
   getBlob(
     sessionToken: string,
-  ): Promise<
-    | { ok: true; blob: SyncBlobRecord }
-    | { ok: false; errorCode: SyncAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
   getCapabilities(
     sessionToken: string,
   ): Promise<
@@ -126,10 +138,7 @@ export type SyncAPIClient = {
       checksumSHA256: string;
       ciphertextBase64: string;
     },
-  ): Promise<
-    | { ok: true; blob: SyncBlobRecord }
-    | { ok: false; errorCode: SyncAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
   // A package that differs from the stored one needs the step-up on a
   // community server; the same package is a no-op that needs none.
   putRecoveryKey(
@@ -683,9 +692,7 @@ export function createSyncAPIClient(
         isRawSyncBlobRecord,
         "invalid_response",
       ).then((result) =>
-        result.ok
-          ? { ok: true, blob: mapSyncBlobRecord(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
+        result.ok ? { ok: true, blob: mapSyncBlobRecord(result.payload) } : result,
       );
     },
 
@@ -701,9 +708,7 @@ export function createSyncAPIClient(
         isRawSyncBlobRecord,
         "invalid_response",
       ).then((result) =>
-        result.ok
-          ? { ok: true, blob: mapSyncBlobRecord(result.payload) }
-          : { ok: false, errorCode: result.errorCode },
+        result.ok ? { ok: true, blob: mapSyncBlobRecord(result.payload) } : result,
       );
     },
   };
@@ -744,13 +749,10 @@ async function requestNoPayload(
     sessionToken?: string;
     body?: unknown;
   },
-): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }> {
+): Promise<{ ok: true } | SyncAPIFailure> {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
   if (!response.ok) {
-    return {
-      ok: false,
-      errorCode: await readErrorCode(response),
-    };
+    return readFailure(response);
   }
 
   return { ok: true };
@@ -767,16 +769,10 @@ async function requestJSON<T>(
   },
   guard: (value: unknown) => value is T,
   invalidResponseCode: SyncAPIErrorCode,
-): Promise<
-  | { ok: true; payload: T }
-  | { ok: false; errorCode: SyncAPIErrorCode }
-> {
+): Promise<{ ok: true; payload: T } | SyncAPIFailure> {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
   if (!response.ok) {
-    return {
-      ok: false,
-      errorCode: await readErrorCode(response),
-    };
+    return readFailure(response);
   }
 
   let payload: unknown;
@@ -843,44 +839,85 @@ async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
     return "network_failed";
   }
 
+  let key: unknown;
   try {
-    const payload = (await response.json()) as ErrorPayload;
-    switch (payload?.error) {
-      case "invalid_registration_input":
-      case "registration_failed":
-      case "invalid_credentials":
-      case "invalid_current_password":
-      case "new_password_must_differ":
-      case "weak_new_password":
-      case "invalid_recovery_credentials":
-      case "invalid_reset_token":
-      case "rate_limited":
-      case "unauthorized":
-      case "invalid_device":
-      case "too_many_devices":
-      case "device_not_found":
-      case "invalid_blob":
-      case "invalid_recovery_package":
-      case "managed_recovery_key_overwrite":
-      case "stale_generation":
-      case "blob_not_found":
-      case "recovery_package_not_found":
-      case "origin_not_allowed":
-      case "totp_not_configured":
-      case "totp_not_enabled":
-      case "totp_enrollment_not_started":
-      case "totp_enrollment_discarded":
-      case "totp_already_enabled":
-      case "totp_invalid_code":
-      case "totp_replayed":
-      case "totp_challenge_invalid":
-      case "totp_secret_failed":
-        return payload.error;
-      default:
-        return "generic";
-    }
+    key = ((await response.json()) as ErrorPayload)?.error;
   } catch {
-    return "generic";
+    key = undefined;
+  }
+  return mapServerErrorKey(key, response.status);
+}
+
+const MAX_RETRY_AFTER_SECONDS = 3600;
+
+async function readFailure(response: Response): Promise<SyncAPIFailure> {
+  const errorCode = await readErrorCode(response);
+  const failure: SyncAPIFailure = { ok: false, errorCode };
+  if (errorCode === "rate_limited" || errorCode === "server_busy") {
+    const retryAfterSeconds = parseRetryAfterSeconds(response.headers.get("Retry-After"));
+    if (retryAfterSeconds !== null) {
+      failure.retryAfterSeconds = retryAfterSeconds;
+    }
+  }
+  return failure;
+}
+
+// Only the delta-seconds form; an HTTP-date or an out-of-range value is
+// ignored rather than read against the device clock.
+export function parseRetryAfterSeconds(value: string | null): number | null {
+  const trimmed = value?.trim() ?? "";
+  if (!/^\d{1,5}$/.test(trimmed)) {
+    return null;
+  }
+  const seconds = Number(trimmed);
+  return seconds >= 1 && seconds <= MAX_RETRY_AFTER_SECONDS ? seconds : null;
+}
+
+// Every key the community server sends has a deliberate answer here; a key
+// added later reads as `generic` until it is listed.
+export function mapServerErrorKey(key: unknown, status: number): SyncAPIErrorCode {
+  switch (key) {
+    case "invalid_registration_input":
+    case "registration_failed":
+    case "registration_disabled":
+    case "invalid_credentials":
+    case "invalid_current_password":
+    case "new_password_must_differ":
+    case "weak_new_password":
+    case "invalid_recovery_credentials":
+    case "invalid_reset_token":
+    case "rate_limited":
+    case "unauthorized":
+    case "invalid_device":
+    case "too_many_devices":
+    case "device_not_found":
+    case "invalid_blob":
+    case "invalid_recovery_package":
+    case "managed_recovery_key_overwrite":
+    case "stale_generation":
+    case "blob_not_found":
+    case "recovery_package_not_found":
+    case "origin_not_allowed":
+    case "sync_disabled":
+    case "totp_not_configured":
+    case "totp_not_enabled":
+    case "totp_enrollment_not_started":
+    case "totp_enrollment_discarded":
+    case "totp_already_enabled":
+    case "totp_invalid_code":
+    case "totp_replayed":
+    case "totp_challenge_invalid":
+    case "totp_secret_failed":
+      return key;
+    case "not_ready":
+      return "server_busy";
+    // Requests this client never sends malformed (invalid_json,
+    // invalid_ciphertext, unsupported_media_type, not_found), managed-bridge
+    // and host checks it never reaches (host_not_allowed, managed_*,
+    // recovery_key_conflict, session_device_bound) and internal_error stay
+    // generic on purpose.
+    default:
+      return status === 503 ? "server_busy" : "generic";
   }
 }
 

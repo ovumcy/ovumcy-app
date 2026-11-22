@@ -24,6 +24,7 @@ export type DeviceCopy = {
     notConnected: string;
     syncNotAllowed: string;
     deviceNotFound: string;
+    rateLimited: string;
     networkFailed: string;
     generic: string;
   };
@@ -50,6 +51,8 @@ const deviceCopyEn: DeviceCopy = {
     notConnected: "Connect this device to your sync account first.",
     syncNotAllowed: "Managing devices requires an active Ovumcy Cloud plan.",
     deviceNotFound: "That device is no longer in the list.",
+    rateLimited:
+      "Too many requests. Please wait a moment before trying again.",
     networkFailed: "Unable to reach the sync server right now.",
     generic: "Unable to update the device list right now. Please try again.",
   },
@@ -77,6 +80,8 @@ const deviceCopyDe: DeviceCopy = {
     syncNotAllowed:
       "Die Geräteverwaltung erfordert einen aktiven Ovumcy-Cloud-Plan.",
     deviceNotFound: "Dieses Gerät ist nicht mehr in der Liste.",
+    rateLimited:
+      "Zu viele Anfragen. Bitte warten Sie einen Moment, bevor Sie es erneut versuchen.",
     networkFailed: "Der Sync-Server ist gerade nicht erreichbar.",
     generic:
       "Die Geräteliste konnte gerade nicht aktualisiert werden. Bitte versuchen Sie es erneut.",
@@ -105,6 +110,8 @@ const deviceCopyFr: DeviceCopy = {
     syncNotAllowed:
       "La gestion des appareils demande un plan Ovumcy Cloud actif.",
     deviceNotFound: "Cet appareil n'est plus dans la liste.",
+    rateLimited:
+      "Trop de requêtes. Veuillez patienter un instant avant de réessayer.",
     networkFailed: "Impossible de joindre le serveur de sync pour le moment.",
     generic:
       "Impossible de mettre à jour la liste des appareils pour le moment. Réessayez.",
@@ -133,6 +140,8 @@ const deviceCopyRu: DeviceCopy = {
     syncNotAllowed:
       "Для управления устройствами нужен активный план Ovumcy Cloud.",
     deviceNotFound: "Этого устройства уже нет в списке.",
+    rateLimited:
+      "Слишком много запросов. Подождите немного и повторите попытку.",
     networkFailed: "Сейчас не удаётся связаться с sync-сервером.",
     generic: "Сейчас не удалось обновить список устройств. Попробуйте ещё раз.",
   },
@@ -160,6 +169,8 @@ const deviceCopyEs: DeviceCopy = {
     syncNotAllowed:
       "Gestionar dispositivos requiere un plan activo de Ovumcy Cloud.",
     deviceNotFound: "Ese dispositivo ya no está en la lista.",
+    rateLimited:
+      "Demasiadas solicitudes. Espera un momento antes de volver a intentarlo.",
     networkFailed: "No se puede contactar con el servidor de sync ahora mismo.",
     generic:
       "No se pudo actualizar la lista de dispositivos ahora mismo. Inténtalo otra vez.",
@@ -188,6 +199,8 @@ const deviceCopyIt: DeviceCopy = {
     syncNotAllowed:
       "La gestione dei dispositivi richiede un piano Ovumcy Cloud attivo.",
     deviceNotFound: "Questo dispositivo non è più nell'elenco.",
+    rateLimited:
+      "Troppe richieste. Attendi un momento prima di riprovare.",
     networkFailed: "Impossibile raggiungere il server di sync in questo momento.",
     generic:
       "Impossibile aggiornare l'elenco dei dispositivi in questo momento. Riprova.",

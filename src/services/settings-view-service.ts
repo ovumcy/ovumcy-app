@@ -367,6 +367,13 @@ export type SettingsViewData = {
       deleteAccountCleanupUnavailable: string;
       deleteAccountServerErased: string;
       rateLimited: string;
+      registrationDisabled: string;
+      loginInvalidLength: string;
+      passwordTooLong: string;
+      deviceLabelInvalidLength: string;
+      backupTooLarge: string;
+      serverBusy: string;
+      retryInSeconds: string;
     };
   };
   symptoms: {
@@ -948,6 +955,14 @@ export function buildSettingsViewData(
           settingsCopy.account.errors.deleteAccountServerErased,
         rateLimited: selectAccountSecurityCopy(resolveCopyLanguage(locale)).errors
           .rateLimitedRetry,
+        registrationDisabled: settingsCopy.account.errors.registrationDisabled,
+        loginInvalidLength: settingsCopy.account.errors.loginInvalidLength,
+        passwordTooLong: settingsCopy.account.errors.passwordTooLong,
+        deviceLabelInvalidLength:
+          settingsCopy.account.errors.deviceLabelInvalidLength,
+        backupTooLarge: settingsCopy.account.errors.backupTooLarge,
+        serverBusy: settingsCopy.account.errors.serverBusy,
+        retryInSeconds: settingsCopy.account.errors.retryInSeconds,
       },
     },
     symptoms: {

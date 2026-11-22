@@ -915,3 +915,50 @@ describe("backup sync view service", () => {
     });
   });
 });
+
+describe("backup sync limits, waits and refusals", () => {
+  const account = buildSettingsViewData(new Date(2026, 2, 22), "en").account;
+
+  it.each([
+    ["registration_disabled", account.errors.registrationDisabled],
+    ["login_invalid_length", account.errors.loginInvalidLength],
+    ["password_too_long", account.errors.passwordTooLong],
+    ["device_label_invalid_length", account.errors.deviceLabelInvalidLength],
+    ["backup_too_large", account.errors.backupTooLarge],
+    ["server_busy", account.errors.serverBusy],
+  ])("gives %s its own message", (errorCode, expected) => {
+    expect(resolveBackupSyncErrorMessage(errorCode, account)).toBe(expected);
+    expect(expected).not.toBe(account.errors.saveFailed);
+  });
+
+  it("appends the server's wait to a busy or rate-limited sync answer", () => {
+    expect(
+      resolveBackupSyncErrorPresentation("server_busy", "sync", account, 30).syncMessage,
+    ).toBe(`${account.errors.serverBusy} Try again in 30 s.`);
+    expect(
+      resolveBackupSyncErrorPresentation("rate_limited", "sync", account, 5).syncMessage,
+    ).toBe(`${account.errors.rateLimited} Try again in 5 s.`);
+    expect(
+      resolveBackupSyncErrorPresentation("server_busy", "sync", account).syncMessage,
+    ).toBe(account.errors.serverBusy);
+    expect(
+      resolveBackupSyncErrorPresentation("stale_generation", "sync", account, 30).syncMessage,
+    ).toBe(resolveBackupSyncErrorMessage("stale_generation", account));
+  });
+
+  it("shows field-level length errors under their fields", () => {
+    expect(
+      resolveBackupSyncErrorPresentation("device_label_invalid_length", "account", account)
+        .deviceLabelMessage,
+    ).toBe(account.errors.deviceLabelInvalidLength);
+    expect(
+      resolveBackupSyncErrorPresentation("login_invalid_length", "account", account)
+        .loginMessage,
+    ).toBe(account.errors.loginInvalidLength);
+  });
+
+  it("names a rate limit in device management", () => {
+    const copy = getDeviceCopy("en");
+    expect(resolveBackupSyncDeviceErrorMessage("rate_limited", copy)).toBe(copy.errors.rateLimited);
+  });
+});

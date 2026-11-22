@@ -106,9 +106,21 @@ describe("runSyncUpload key-before-blob guard (self-hosted)", () => {
 
     const result = await harness.upload(selfHosted({ lastRemoteGeneration: 100 }));
 
-    expect(result).toEqual({ ok: false, errorCode: "invalid_blob" });
+    expect(result).toEqual({ ok: false, errorCode: "backup_too_large" });
     expect(harness.putRecoveryKey).not.toHaveBeenCalled();
     expect(harness.putBlob).not.toHaveBeenCalled();
+  });
+
+  it("passes the server's wait through a rate-limited blob write", async () => {
+    const harness = setup({
+      putBlob: jest
+        .fn()
+        .mockResolvedValue({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 20 }),
+    });
+
+    const result = await harness.upload(selfHosted({ lastRemoteGeneration: 100 }));
+
+    expect(result).toEqual({ ok: false, errorCode: "rate_limited", retryAfterSeconds: 20 });
   });
 
   it("does not rewrite a stored package that matches, whatever its hex case", async () => {

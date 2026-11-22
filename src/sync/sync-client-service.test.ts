@@ -2247,7 +2247,7 @@ describe("sync device management", () => {
     });
   });
 
-  it("keeps device_not_found distinct and collapses rate_limited to generic", async () => {
+  it("keeps device_not_found and rate_limited distinct", async () => {
     const preparedSecrets = createSyncSecretsRecord(
       "Pixel 7",
       new Date("2026-03-20T08:00:00.000Z"),
@@ -2279,7 +2279,7 @@ describe("sync device management", () => {
         "device-9",
         apiClientFactory,
       ),
-    ).resolves.toEqual({ ok: false, errorCode: "generic" });
+    ).resolves.toEqual({ ok: false, errorCode: "rate_limited" });
   });
 
   it("fails with not_connected before any network call when no sync session exists", async () => {
@@ -2751,7 +2751,12 @@ describe("connectSyncAccount error mapping", () => {
     ["unauthorized", "unauthorized"],
     ["too_many_devices", "too_many_devices"],
     ["network_failed", "network_failed"],
-    ["rate_limited", "generic"],
+    ["rate_limited", "rate_limited"],
+    ["registration_disabled", "registration_disabled"],
+    ["sync_disabled", "sync_not_allowed"],
+    ["server_busy", "network_failed"],
+    ["invalid_device", "device_label_invalid_length"],
+    ["internal_error_or_unknown", "generic"],
   ])(
     "maps self-hosted register API error %s to %s",
     async (apiErrorCode, expectedErrorCode) => {
@@ -2796,6 +2801,7 @@ describe("connectSyncAccount error mapping", () => {
     ["network_failed", "network_failed"],
     ["sync_bridge_unavailable", "network_failed"],
     ["totp_not_configured", "generic"],
+    ["rate_limited", "rate_limited"],
   ])(
     "maps managed register API error %s to %s",
     async (apiErrorCode, expectedErrorCode) => {

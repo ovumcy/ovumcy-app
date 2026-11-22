@@ -413,6 +413,20 @@ const settingsCopyEn = {
         "Deletion was stopped safely. The server cannot currently confirm that your synced data would be removed too. Your account and data are unchanged. Please try again later.",
       deleteAccountServerErased:
         "Your Ovumcy Cloud account has been erased, but the data on this device could not be fully cleared. Try again to finish clearing this device.",
+      registrationDisabled:
+        "This sync server does not accept new accounts. Sign in to an existing account instead.",
+      loginInvalidLength:
+        "Use a login of 3 to 254 characters.",
+      passwordTooLong:
+        "Password is too long: use at most 72 characters, fewer with non-Latin letters or emoji.",
+      deviceLabelInvalidLength:
+        "Use a device label of 2 to 64 characters, fewer with non-Latin letters or emoji.",
+      backupTooLarge:
+        "The encrypted backup copy is larger than this sync server accepts. Nothing was uploaded.",
+      serverBusy:
+        "The sync server is busy right now. Nothing was changed. Please try again later.",
+      retryInSeconds:
+        "Try again in %s s.",
     },
   },
   symptoms: {
@@ -1016,6 +1030,20 @@ const settingsCopyDe: SettingsCopy = {
         "Die Löschung wurde sicher gestoppt. Der Server kann gerade nicht bestätigen, dass auch Ihre synchronisierten Daten entfernt würden. Konto und Daten sind unverändert. Bitte versuchen Sie es später erneut.",
       deleteAccountServerErased:
         "Ihr Ovumcy-Cloud-Konto wurde gelöscht, aber die Daten auf diesem Gerät konnten nicht vollständig entfernt werden. Versuchen Sie es erneut, um dieses Gerät fertig zu leeren.",
+      registrationDisabled:
+        "Dieser Sync-Server nimmt keine neuen Konten an. Melden Sie sich stattdessen bei einem bestehenden Konto an.",
+      loginInvalidLength:
+        "Verwenden Sie einen Login mit 3 bis 254 Zeichen.",
+      passwordTooLong:
+        "Das Passwort ist zu lang: höchstens 72 Zeichen, mit nicht-lateinischen Buchstaben oder Emoji weniger.",
+      deviceLabelInvalidLength:
+        "Verwenden Sie eine Gerätebezeichnung mit 2 bis 64 Zeichen, mit nicht-lateinischen Buchstaben oder Emoji weniger.",
+      backupTooLarge:
+        "Die verschlüsselte Sicherung ist größer, als dieser Sync-Server annimmt. Es wurde nichts hochgeladen.",
+      serverBusy:
+        "Der Sync-Server ist gerade ausgelastet. Es wurde nichts geändert. Bitte versuchen Sie es später erneut.",
+      retryInSeconds:
+        "Erneut versuchen in %s s.",
     },
   },
   symptoms: {
@@ -1647,6 +1675,20 @@ const settingsCopyFr: SettingsCopy = {
         "La suppression a été interrompue par sécurité. Le serveur ne peut pas confirmer pour le moment que vos données synchronisées seraient aussi supprimées. Votre compte et vos données restent intacts. Réessayez plus tard.",
       deleteAccountServerErased:
         "Votre compte Ovumcy Cloud a été supprimé, mais les données de cet appareil n'ont pas pu être entièrement effacées. Réessayez pour terminer l'effacement de cet appareil.",
+      registrationDisabled:
+        "Ce serveur de sync n'accepte pas de nouveaux comptes. Connectez-vous plutôt à un compte existant.",
+      loginInvalidLength:
+        "Utilisez un identifiant de 3 à 254 caractères.",
+      passwordTooLong:
+        "Le mot de passe est trop long : 72 caractères au maximum, moins avec des lettres non latines ou des emoji.",
+      deviceLabelInvalidLength:
+        "Utilisez un nom d'appareil de 2 à 64 caractères, moins avec des lettres non latines ou des emoji.",
+      backupTooLarge:
+        "La sauvegarde chiffrée dépasse la taille acceptée par ce serveur de sync. Rien n'a été envoyé.",
+      serverBusy:
+        "Le serveur de sync est occupé pour le moment. Rien n'a été modifié. Veuillez réessayer plus tard.",
+      retryInSeconds:
+        "Réessayez dans %s s.",
     },
   },
   symptoms: {
@@ -2256,6 +2298,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "Удаление безопасно остановлено. Сервер сейчас не может подтвердить, что синхронизированные данные тоже будут удалены. Аккаунт и данные не изменились. Попробуйте позже.",
         deleteAccountServerErased:
           "Аккаунт Ovumcy Cloud удалён, но данные на этом устройстве очищены не полностью. Повторите попытку, чтобы завершить очистку этого устройства.",
+        registrationDisabled:
+          "Этот sync-сервер не принимает новые аккаунты. Войдите в существующий аккаунт.",
+        loginInvalidLength:
+          "Логин должен содержать от 3 до 254 символов.",
+        passwordTooLong:
+          "Пароль слишком длинный: не более 72 латинских символов; кириллица и эмодзи занимают больше места.",
+        deviceLabelInvalidLength:
+          "Название устройства должно содержать от 2 до 64 латинских символов; кириллица и эмодзи занимают больше места.",
+        backupTooLarge:
+          "Зашифрованная резервная копия больше, чем принимает этот sync-сервер. Ничего не отправлено.",
+        serverBusy:
+          "Sync-сервер сейчас перегружен. Ничего не изменено. Повторите попытку позже.",
+        retryInSeconds:
+          "Повторите через %s с.",
       },
     },
     symptoms: {
@@ -2849,6 +2905,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "La eliminación se detuvo de forma segura. El servidor no puede confirmar ahora mismo que tus datos sincronizados también se eliminarían. Tu cuenta y tus datos siguen intactos. Inténtalo de nuevo más tarde.",
         deleteAccountServerErased:
           "Tu cuenta de Ovumcy Cloud se ha eliminado, pero los datos de este dispositivo no se borraron por completo. Inténtalo de nuevo para terminar de borrar este dispositivo.",
+        registrationDisabled:
+          "Este servidor de sync no acepta cuentas nuevas. Inicia sesión en una cuenta existente.",
+        loginInvalidLength:
+          "Usa un login de 3 a 254 caracteres.",
+        passwordTooLong:
+          "La contraseña es demasiado larga: 72 caracteres como máximo, menos con letras no latinas o emoji.",
+        deviceLabelInvalidLength:
+          "Usa una etiqueta del dispositivo de 2 a 64 caracteres, menos con letras no latinas o emoji.",
+        backupTooLarge:
+          "La copia de seguridad cifrada supera el tamaño que acepta este servidor de sync. No se ha subido nada.",
+        serverBusy:
+          "El servidor de sync está ocupado ahora mismo. No se ha cambiado nada. Inténtalo de nuevo más tarde.",
+        retryInSeconds:
+          "Vuelve a intentarlo en %s s.",
       },
     },
     symptoms: {
@@ -3445,6 +3515,20 @@ const settingsCopyCatalog: Record<InterfaceLanguage, SettingsCopy> = {
           "L'eliminazione è stata interrotta per sicurezza. Il server non può confermare in questo momento che anche i tuoi dati sincronizzati verrebbero rimossi. Il tuo account e i tuoi dati restano intatti. Riprova più tardi.",
         deleteAccountServerErased:
           "Il tuo account Ovumcy Cloud è stato eliminato, ma i dati su questo dispositivo non sono stati cancellati del tutto. Riprova per finire di cancellare questo dispositivo.",
+        registrationDisabled:
+          "Questo server di sync non accetta nuovi account. Accedi invece a un account esistente.",
+        loginInvalidLength:
+          "Usa un login da 3 a 254 caratteri.",
+        passwordTooLong:
+          "La password è troppo lunga: al massimo 72 caratteri, meno con lettere non latine o emoji.",
+        deviceLabelInvalidLength:
+          "Usa un'etichetta del dispositivo da 2 a 64 caratteri, meno con lettere non latine o emoji.",
+        backupTooLarge:
+          "Il backup cifrato supera la dimensione accettata da questo server di sync. Non è stato caricato nulla.",
+        serverBusy:
+          "Il server di sync è occupato in questo momento. Non è stato modificato nulla. Riprova più tardi.",
+        retryInSeconds:
+          "Riprova tra %s s.",
       },
     },
     symptoms: {

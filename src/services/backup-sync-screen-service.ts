@@ -201,6 +201,8 @@ export async function connectBackupSyncAccount(
   | {
       ok: false;
       errorCode: SyncConnectScreenErrorCode;
+      // The only copy of a code issued by a register whose later steps failed.
+      recoveryCode?: string;
     }
 > {
   const result = await connectSyncAccount(
@@ -602,6 +604,7 @@ export async function uploadBackupSyncSnapshot(
   | {
       ok: false;
       errorCode: SyncRunScreenErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   const result = await runSyncUpload(
@@ -654,6 +657,7 @@ export async function restoreBackupSyncSnapshot(
   | {
       ok: false;
       errorCode: SyncRunScreenErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   const result = await runSyncRestore(

@@ -200,6 +200,28 @@ describe("useBackupSyncAccountConnection", () => {
         "abcd1234abcd1234abcd1234abcd1234",
       );
     });
+
+    it("still surfaces the recovery code when the register's later steps fail", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "network_failed",
+        recoveryCode: "abcd1234abcd1234abcd1234abcd1234",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("register");
+      });
+
+      expect(core.setGeneratedRecoveryCode).toHaveBeenCalledWith(
+        "abcd1234abcd1234abcd1234abcd1234",
+      );
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "network_failed",
+        scope: "account",
+      });
+    });
   });
 
   describe("handleSubmitTOTPChallenge / handleCancelTOTPChallenge", () => {

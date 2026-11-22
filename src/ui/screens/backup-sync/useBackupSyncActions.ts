@@ -159,6 +159,7 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       setErrorState({
         code: result.errorCode,
         scope: "sync",
+        retryAfterSeconds: result.retryAfterSeconds,
       });
       setIsSyncingNow(false);
       return;
@@ -275,6 +276,7 @@ export function useBackupSyncActions(core: BackupSyncSessionCore) {
       setErrorState({
         code: result.errorCode,
         scope: "sync",
+        retryAfterSeconds: result.retryAfterSeconds,
       });
       setIsRestoringSync(false);
       return;
