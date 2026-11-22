@@ -4480,6 +4480,34 @@ describe("sqlite-app-storage", () => {
       };
     }
 
+    it("migrates only the legacy bootstrap when the stored profile row already authenticates", async () => {
+      const legacy = legacySourceWithData();
+      const inspected = createInspectableFakeDatabase();
+      const first = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+      await first.readProfileRecord();
+      inspected.state.bootstrapRow = null;
+
+      const second = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => inspected.database,
+      });
+
+      await expect(second.readBootstrapState()).resolves.toEqual({
+        hasCompletedOnboarding: true,
+        profileVersion: 3,
+        incompleteOnboardingStep: null,
+      });
+      await expect(second.readProfileRecord()).resolves.toEqual(
+        createDefaultProfileRecord(),
+      );
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
+
     it("migrates the legacy profile when an earlier launch was killed after only the bootstrap row was written", async () => {
       const legacy = legacySourceWithData();
       const storedBootstrap = {
@@ -4553,7 +4581,13 @@ describe("sqlite-app-storage", () => {
     });
 
     it("drops a managed billing cache row that does not authenticate at hydrate and reseeds the default", async () => {
+      const storedBootstrap = {
+        hasCompletedOnboarding: true,
+        profileVersion: 3,
+        incompleteOnboardingStep: null,
+      };
       const inspected = createInspectableFakeDatabase({
+        bootstrapRow: encryptedBootstrapRow(storedBootstrap),
         hasManagedBillingCacheTable: true,
         userVersion: 13,
         managedBillingCacheRow: {
@@ -4574,6 +4608,9 @@ describe("sqlite-app-storage", () => {
         snapshot: null,
         dismissedOfferIDs: [],
       });
+      // The authenticating bootstrap row proves the key, so only the billing
+      // row is dropped rather than every table being reset.
+      await expect(storage.readBootstrapState()).resolves.toEqual(storedBootstrap);
       expect(inspected.state.managedBillingCacheRow?.encrypted_payload).toEqual(
         expect.any(String),
       );
