@@ -1297,7 +1297,7 @@ describe("import-service apply (pregnancy-mode collections, v2)", () => {
     expect(storage.writeContractionSession).not.toHaveBeenCalled();
   });
 
-  it("never overwrites an on-device record that shares an imported record's id", async () => {
+  it("never overwrites a pregnancy record, kick session, or contraction session whose id already exists on-device", async () => {
     const { storage, pregnancies, kickSessions, contractionSessions } =
       createStatefulStorage();
     pregnancies.set(
@@ -1530,7 +1530,7 @@ describe("import-service apply (postpartum + screening collections, v3)", () => 
     expectMintedID(screening.id, "screening", "sc1");
   });
 
-  it("skips a postpartum record or screening response whose content already exists on-device, and never overwrites one that shares its id", async () => {
+  it("never overwrites a postpartum record or screening response whose id already exists on-device", async () => {
     const { storage, postpartumRecords, screeningResponses } =
       createStatefulStorage();
     postpartumRecords.set(
