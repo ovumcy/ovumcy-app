@@ -123,6 +123,26 @@ describe("useBackupSyncAccountConnection", () => {
       expect(result.current.isAuthenticatingSync).toBe(false);
     });
 
+    it("carries the server's Retry-After into a rate-limited connect error", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockConnectBackupSyncAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "rate_limited",
+        retryAfterSeconds: 30,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleConnectSync("login");
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "rate_limited",
+        scope: "account",
+        retryAfterSeconds: 30,
+      });
+    });
+
     it("captures the pending TOTP challenge without persisting the password", async () => {
       const core = createBackupSyncSessionCoreMock();
       mockConnectBackupSyncAccount.mockResolvedValue({
@@ -428,6 +448,26 @@ describe("useBackupSyncAccountConnection", () => {
         scope: "account",
       });
       expect(result.current.isRecoveringSync).toBe(false);
+    });
+
+    it("carries the server's Retry-After into a rate-limited recovery error", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockRecoverBackupSyncAccess.mockResolvedValue({
+        ok: false,
+        errorCode: "rate_limited",
+        retryAfterSeconds: 45,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleRecoverSync();
+      });
+
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "rate_limited",
+        scope: "account",
+        retryAfterSeconds: 45,
+      });
     });
 
     it("recovers successfully and clears the sensitive input fields", async () => {

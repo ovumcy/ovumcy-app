@@ -92,6 +92,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       setErrorState({
         code: result.errorCode,
         scope: "account",
+        retryAfterSeconds: result.retryAfterSeconds,
       });
       setIsAuthenticatingSync(false);
       return;
@@ -261,6 +262,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       setErrorState({
         code: result.errorCode,
         scope: "account",
+        retryAfterSeconds: result.retryAfterSeconds,
       });
       setIsRecoveringSync(false);
       return;
