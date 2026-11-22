@@ -486,12 +486,14 @@ export function useSyncAccountSecurityController({
     }
     // Both servers revoke every session of the account on disable, this
     // device's included, so the local session goes with them.
-    const nextPreferences = await clearLocalSyncSession(
-      storage,
-      syncSecretStore,
-      preferences,
-    );
-    setPreferences(nextPreferences);
+    try {
+      setPreferences(
+        await clearLocalSyncSession(storage, syncSecretStore, preferences),
+      );
+    } catch {
+      // Two-factor is already off on the server; the stale session fails its
+      // next call and is cleared there.
+    }
     setTotpStage("completed");
     setTotpStatus("success");
     setTotpDisablePassword("");
