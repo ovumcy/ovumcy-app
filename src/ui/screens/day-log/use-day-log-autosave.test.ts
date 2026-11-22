@@ -152,6 +152,8 @@ describe("useDayLogAutosave", () => {
   });
 
   it("keeps the save error and does not re-save when the record reloads after a failed save, then retries the failed edit on its own date", async () => {
+    jest.useFakeTimers();
+
     const failedEdit = buildRecord({ mood: 1 });
     const onPersist = jest
       .fn()
@@ -175,7 +177,10 @@ describe("useDayLogAutosave", () => {
       onSaved,
       record: failedEdit,
     });
-    await waitFor(() => expect(result.current.hasSaveError).toBe(true));
+    await act(async () => {
+      jest.advanceTimersByTime(50);
+    });
+    expect(result.current.hasSaveError).toBe(true);
 
     // The civil date moves on: the screen reloads the new day's record under
     // the same draft version.
@@ -188,7 +193,7 @@ describe("useDayLogAutosave", () => {
       record: createEmptyDayLogRecord("2026-03-15"),
     });
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      jest.advanceTimersByTime(500);
     });
 
     expect(onPersist).toHaveBeenCalledTimes(1);
