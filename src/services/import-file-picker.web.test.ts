@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import { createPlatformImportFilePickerClient } from "./import-file-picker.web";
-import { MAX_IMPORT_FILE_BYTES } from "./import-service";
+import { MAX_IMPORT_FILE_BYTES } from "./import-limits";
 
 afterEach(() => {
   // Safety net: every branch under test is expected to remove its own

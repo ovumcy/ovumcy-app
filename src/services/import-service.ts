@@ -1,3 +1,5 @@
+import { getRandomBytes } from "expo-crypto";
+
 import type { ExportBackupEnvelope } from "../models/export";
 import { hasDayLogData, type DayLogRecord } from "../models/day-log";
 import {
@@ -83,18 +85,22 @@ import {
 //     by formatVersion 2 and later exports; the parser reads these
 //     collections under any accepted formatVersion and treats a missing one as
 //     empty): each record is sanitized (an invalid one is
-//     skipped, never fatal) and skipped whenever its id already exists
-//     on-device. Pregnancy records additionally honor the one-active-pregnancy
-//     invariant: an incoming "active" record is skipped whenever the device
-//     (or an earlier record from this same import) already has a DIFFERENT
-//     active record — never overwriting, ending, or throwing past it. A file
-//     without these keys imports exactly as before.
+//     skipped, never fatal) and skipped whenever a record with the same
+//     content already exists on-device. Every written record gets a fresh
+//     random id: the id in the file is an untrusted string and never becomes
+//     a storage key (none of these records reference one another, so there is
+//     nothing to rewrite). Pregnancy records additionally honor the
+//     one-active-pregnancy invariant: an incoming "active" record is skipped
+//     whenever the device (or an earlier record from this same import) already
+//     has an active record — never overwriting, ending, or throwing past it. A
+//     file without these keys imports exactly as before.
 //   - postpartum records / screening responses (written by formatVersion 3
 //     exports; read under any accepted formatVersion like the collections above):
 //     postpartum records mirror the pregnancy path exactly (sanitize-or-skip,
-//     id-dedup, ended-before-active ordering + the one-active-postpartum
-//     invariant). Screening responses mirror the session path (sanitize-or-skip,
-//     id-dedup, no active concept); the sanitizer RECOMPUTES score/selfHarmFlag
+//     content dedup, fresh ids, ended-before-active ordering + the
+//     one-active-postpartum invariant). Screening responses mirror the session
+//     path (sanitize-or-skip, content dedup, fresh ids, no active concept); the
+//     sanitizer RECOMPUTES score/selfHarmFlag
 //     from the validated answer vector, so a drifted or tampered stored score
 //     can never be imported as-is. A file without these keys imports exactly
 //     as before.
@@ -116,10 +122,7 @@ export const MAX_IMPORT_CONTRACTION_SESSIONS = 20000;
 export const MAX_IMPORT_POSTPARTUM_RECORDS = 200;
 export const MAX_IMPORT_SCREENING_RESPONSES = 20000;
 
-// Byte cap enforced by the platform file pickers BEFORE the file content is
-// read into memory. 20k sanitized day logs serialize to well under this bound,
-// so any larger file cannot be a legitimate Ovumcy export.
-export const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
+export { MAX_IMPORT_FILE_BYTES } from "./import-limits";
 
 export type ImportParseErrorCode =
   | "malformed"
@@ -138,7 +141,7 @@ export type ImportOutcome = {
   profileRestored: boolean;
   // Pregnancy-mode collections (v2 only; always 0 for a v1 file). Unlike
   // dayLogs there is no separate "rejected" bucket: a structurally invalid
-  // record, a duplicate id, and an active-invariant conflict are all
+  // record, a duplicate record, and an active-invariant conflict are all
   // additive-merge skips from the user's point of view (nothing changed on
   // device), so they share one "skipped" counter per collection.
   pregnanciesAdded: number;
@@ -149,7 +152,7 @@ export type ImportOutcome = {
   contractionSessionsSkipped: number;
   // Postpartum records / screening responses (v3 only; always 0 for a
   // v1/v2 file). Same one-"skipped"-bucket convention as the pregnancy
-  // collections: a structurally invalid record, a duplicate id, and (for
+  // collections: a structurally invalid record, a duplicate record, and (for
   // postpartum) an active-invariant conflict are all additive-merge skips.
   postpartumRecordsAdded: number;
   postpartumRecordsSkipped: number;
@@ -484,20 +487,20 @@ async function importPregnancyRecords(
   );
 
   const existing = await storage.listPregnancyRecords();
-  const seenIDs = new Set(existing.map((record) => record.id));
-  let activeID =
-    existing.find((record) => record.status === "active")?.id ?? null;
+  const seen = new Set(existing.map(contentFingerprint));
+  let hasActive = existing.some((record) => record.status === "active");
 
   let added = 0;
-  for (const record of sanitized) {
-    if (seenIDs.has(record.id)) {
-      // Additive merge: never overwrite a record already on this device (also
-      // catches a duplicate id repeated within the same import file).
+  for (const sanitizedRecord of sanitized) {
+    const fingerprint = contentFingerprint(sanitizedRecord);
+    if (seen.has(fingerprint)) {
+      // Additive merge: never duplicate a record already on this device (also
+      // catches a record repeated within the same import file).
       skipped += 1;
       continue;
     }
 
-    if (record.status === "active" && activeID !== null && activeID !== record.id) {
+    if (sanitizedRecord.status === "active" && hasActive) {
       // One-active-pregnancy invariant: skip rather than overwrite, end, or
       // let the storage layer's own guard throw past this item.
       skipped += 1;
@@ -505,11 +508,14 @@ async function importPregnancyRecords(
     }
 
     if (apply) {
-      await storage.writePregnancyRecord(record);
+      await storage.writePregnancyRecord({
+        ...sanitizedRecord,
+        id: mintImportedRecordID("pregnancy"),
+      });
     }
-    seenIDs.add(record.id);
-    if (record.status === "active") {
-      activeID = record.id;
+    seen.add(fingerprint);
+    if (sanitizedRecord.status === "active") {
+      hasActive = true;
     }
     added += 1;
   }
@@ -522,12 +528,12 @@ function pregnancyStatusOrder(status: PregnancyStatus): number {
 }
 
 // Additive merge for kick-count sessions: sanitize (invalid → skipped), then
-// skip an id that already exists on-device (also catches a duplicate id
+// skip a session whose content already exists on-device (also catches one
 // repeated within the same import file). No active-invariant concern here,
 // unlike importPregnancyRecords above. storage.listKickSessions() is called
 // with no from/to arguments, which every adapter treats as "unranged" (see
-// isDayInRange), so id-existence is checked against the device's full
-// history, not just the selected export's date window.
+// isDayInRange), so the duplicate check covers the device's full history, not
+// just the selected export's date window.
 async function importKickSessions(
   storage: LocalAppStorage,
   rawSessions: readonly unknown[] | undefined,
@@ -538,21 +544,22 @@ async function importKickSessions(
   }
 
   const existing = await storage.listKickSessions();
-  const seenIDs = new Set(existing.map((session) => session.id));
+  const seen = new Set(existing.map(contentFingerprint));
 
   let added = 0;
   let skipped = 0;
   for (const raw of rawSessions) {
     const session = sanitizeKickCountSession(raw);
-    if (!session || seenIDs.has(session.id)) {
+    const fingerprint = session ? contentFingerprint(session) : null;
+    if (!session || fingerprint === null || seen.has(fingerprint)) {
       skipped += 1;
       continue;
     }
 
     if (apply) {
-      await storage.writeKickSession(session);
+      await storage.writeKickSession({ ...session, id: mintImportedRecordID("kick") });
     }
-    seenIDs.add(session.id);
+    seen.add(fingerprint);
     added += 1;
   }
 
@@ -573,21 +580,25 @@ async function importContractionSessions(
   }
 
   const existing = await storage.listContractionSessions();
-  const seenIDs = new Set(existing.map((session) => session.id));
+  const seen = new Set(existing.map(contentFingerprint));
 
   let added = 0;
   let skipped = 0;
   for (const raw of rawSessions) {
     const session = sanitizeContractionSession(raw);
-    if (!session || seenIDs.has(session.id)) {
+    const fingerprint = session ? contentFingerprint(session) : null;
+    if (!session || fingerprint === null || seen.has(fingerprint)) {
       skipped += 1;
       continue;
     }
 
     if (apply) {
-      await storage.writeContractionSession(session);
+      await storage.writeContractionSession({
+        ...session,
+        id: mintImportedRecordID("contraction"),
+      });
     }
-    seenIDs.add(session.id);
+    seen.add(fingerprint);
     added += 1;
   }
 
@@ -601,8 +612,8 @@ async function importContractionSessions(
 // regardless of incoming array order (ended records can never conflict, so they
 // always apply first; only then are incoming active records tested against
 // whichever record is active at that point — the pre-existing device record or
-// one just added earlier in this same import). A record whose id already exists
-// is skipped; a second concurrent active record is skipped rather than
+// one just added earlier in this same import). A record whose content already
+// exists is skipped; a second concurrent active record is skipped rather than
 // overwriting, ending, or letting the storage guard throw past the item.
 async function importPostpartumRecords(
   storage: LocalAppStorage,
@@ -632,20 +643,20 @@ async function importPostpartumRecords(
   );
 
   const existing = await storage.listPostpartumRecords();
-  const seenIDs = new Set(existing.map((record) => record.id));
-  let activeID =
-    existing.find((record) => record.status === "active")?.id ?? null;
+  const seen = new Set(existing.map(contentFingerprint));
+  let hasActive = existing.some((record) => record.status === "active");
 
   let added = 0;
-  for (const record of sanitized) {
-    if (seenIDs.has(record.id)) {
-      // Additive merge: never overwrite a record already on this device (also
-      // catches a duplicate id repeated within the same import file).
+  for (const sanitizedRecord of sanitized) {
+    const fingerprint = contentFingerprint(sanitizedRecord);
+    if (seen.has(fingerprint)) {
+      // Additive merge: never duplicate a record already on this device (also
+      // catches a record repeated within the same import file).
       skipped += 1;
       continue;
     }
 
-    if (record.status === "active" && activeID !== null && activeID !== record.id) {
+    if (sanitizedRecord.status === "active" && hasActive) {
       // One-active-postpartum invariant: skip rather than overwrite, end, or
       // let the storage layer's own guard throw past this item.
       skipped += 1;
@@ -653,11 +664,14 @@ async function importPostpartumRecords(
     }
 
     if (apply) {
-      await storage.writePostpartumRecord(record);
+      await storage.writePostpartumRecord({
+        ...sanitizedRecord,
+        id: mintImportedRecordID("postpartum"),
+      });
     }
-    seenIDs.add(record.id);
-    if (record.status === "active") {
-      activeID = record.id;
+    seen.add(fingerprint);
+    if (sanitizedRecord.status === "active") {
+      hasActive = true;
     }
     added += 1;
   }
@@ -670,8 +684,8 @@ function postpartumStatusOrder(status: PostpartumStatus): number {
 }
 
 // Additive merge for screening responses: sanitize (invalid → skipped), then
-// skip an id that already exists on-device (also catches a duplicate id within
-// the same file). No active-invariant concern — a screening history is
+// skip a response whose content already exists on-device (also catches one
+// repeated within the same file). No active-invariant concern — a screening history is
 // append-only. sanitizeScreeningResponse RECOMPUTES score/selfHarmFlag from the
 // validated answer vector, so an imported response can never carry a stored
 // score that disagrees with its answers (a falsely-reassuring number is exactly
@@ -687,21 +701,25 @@ async function importScreeningResponses(
   }
 
   const existing = await storage.listScreeningResponses();
-  const seenIDs = new Set(existing.map((response) => response.id));
+  const seen = new Set(existing.map(contentFingerprint));
 
   let added = 0;
   let skipped = 0;
   for (const raw of rawResponses) {
     const response = sanitizeScreeningResponse(raw);
-    if (!response || seenIDs.has(response.id)) {
+    const fingerprint = response ? contentFingerprint(response) : null;
+    if (!response || fingerprint === null || seen.has(fingerprint)) {
       skipped += 1;
       continue;
     }
 
     if (apply) {
-      await storage.writeScreeningResponse(response);
+      await storage.writeScreeningResponse({
+        ...response,
+        id: mintImportedRecordID("screening"),
+      });
     }
-    seenIDs.add(response.id);
+    seen.add(fingerprint);
     added += 1;
   }
 
@@ -958,4 +976,46 @@ function remapImportedSymptomIDs(
   return rawValue
     .filter((value): value is string => typeof value === "string")
     .map((value) => idMap.get(value.trim()) ?? value);
+}
+
+type ImportedRecordKind =
+  | "pregnancy"
+  | "kick"
+  | "contraction"
+  | "postpartum"
+  | "screening";
+
+function mintImportedRecordID(kind: ImportedRecordKind): string {
+  return `${kind}_${createRandomUUIDv4()}`;
+}
+
+function createRandomUUIDv4(): string {
+  const bytes = getRandomBytes(16);
+  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
+  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+// Identity of an imported record for the additive merge: every field except
+// the id, which is re-minted on write and so cannot recognize a repeat import.
+function contentFingerprint(record: { id: string }): string {
+  const fields: Record<string, unknown> = { ...record };
+  delete fields.id;
+  return stableStringify(fields);
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (typeof value === "object" && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+    return `{${entries
+      .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
 }

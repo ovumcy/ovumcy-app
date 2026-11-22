@@ -1,7 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 
 import { createPlatformImportFilePickerClient } from "./import-file-picker.native";
-import { MAX_IMPORT_FILE_BYTES } from "./import-service";
+import { MAX_IMPORT_FILE_BYTES } from "./import-limits";
 
 const mockFileState = {
   exists: false,
@@ -110,6 +110,17 @@ describe("import-file-picker.native", () => {
 
   it("falls back to the cache copy's own size when the picker reports none", async () => {
     mockGetDocumentAsync.mockResolvedValue(pickedAsset());
+    mockFileState.size = MAX_IMPORT_FILE_BYTES + 1;
+
+    const result = await createPlatformImportFilePickerClient().pick();
+
+    expect(result).toEqual({ status: "failed", errorCode: "too_large" });
+    expect(mockFileState.text).not.toHaveBeenCalled();
+    expect(mockFileState.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an oversized cache copy even when the picker reports a small size", async () => {
+    mockGetDocumentAsync.mockResolvedValue(pickedAsset(64));
     mockFileState.size = MAX_IMPORT_FILE_BYTES + 1;
 
     const result = await createPlatformImportFilePickerClient().pick();

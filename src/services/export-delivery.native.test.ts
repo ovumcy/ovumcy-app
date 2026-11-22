@@ -86,6 +86,20 @@ describe("export-delivery.native", () => {
     expect(mockFileState.exists).toBe(false);
   });
 
+  it("reports delivery_unavailable instead of rejecting when the availability probe throws", async () => {
+    jest.mocked(Sharing.isAvailableAsync).mockRejectedValue(new Error("probe failed"));
+    const deliveryClient = createPlatformExportDeliveryClient();
+
+    await expect(
+      deliveryClient.deliver({
+        filename: "ovumcy-export-2026-03-19.pdf",
+        mimeType: "application/pdf",
+        content: "test",
+      }),
+    ).resolves.toEqual({ ok: false, errorCode: "delivery_unavailable" });
+    expect(mockFileState.create).not.toHaveBeenCalled();
+  });
+
   it("deletes the temporary export file after a failed share", async () => {
     jest.mocked(Sharing.isAvailableAsync).mockResolvedValue(true);
     jest.mocked(Sharing.shareAsync).mockRejectedValue(new Error("share failed"));
