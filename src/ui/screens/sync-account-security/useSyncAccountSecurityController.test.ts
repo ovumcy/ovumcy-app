@@ -165,6 +165,31 @@ describe("useSyncAccountSecurityController", () => {
         expect(result.current.totpStatus).toBe("success");
       },
     );
+
+    it("still completes the disable when clearing the local session fails", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(managedPreferences()),
+        writeSyncPreferencesRecord: jest.fn().mockRejectedValue(new Error("disk full")),
+      });
+      const syncSecretStore = createSyncSecretStoreMock(connectedSecrets());
+      jest
+        .spyOn(syncAccountSessionService, "describeSyncAccountTwoFactor")
+        .mockResolvedValue({ twoFactorEnabled: true });
+      jest.spyOn(syncTOTPService, "disableTOTP").mockResolvedValue({ ok: true });
+
+      const { result } = await renderHook(() =>
+        useSyncAccountSecurityController({ storage, syncSecretStore }),
+      );
+      await act(async () => {});
+
+      await act(async () => {
+        await result.current.handleDisableTOTP();
+      });
+
+      expect(result.current.totpStatus).toBe("success");
+      expect(result.current.totpStage).toBe("completed");
+      expect(result.current.twoFactorEnabled).toBe(false);
+    });
   });
 
   // FIX 7.1: a successful reset wipes local session tokens and drops setup back
