@@ -123,6 +123,7 @@ export type SettingsFlowScreenProps = {
   onImportCancel: () => void;
   onImportConfirm: () => void | Promise<void>;
   onImportPickFile: () => void | Promise<void>;
+  onImportRestoreRemindersChange: (value: boolean) => void;
   onInterfaceLanguageSelect: (value: InterfaceLanguage) => void;
   onInterfaceThemeSelect: (value: ThemePreference) => void;
   onInterfaceFirstDayOfWeekSelect: (value: WeekStartDay) => void;
@@ -221,6 +222,7 @@ export function SettingsFlowScreen({
   onImportCancel,
   onImportConfirm,
   onImportPickFile,
+  onImportRestoreRemindersChange,
   onInterfaceLanguageSelect,
   onInterfaceThemeSelect,
   onInterfaceFirstDayOfWeekSelect,
@@ -269,6 +271,7 @@ export function SettingsFlowScreen({
         pendingImportPreview.outcome,
         viewData.import,
         locale,
+        pendingImportPreview.restoreReminders,
       )
     : null;
   const hubNavigation = buildSettingsHubNavigation(viewData);
@@ -510,7 +513,9 @@ export function SettingsFlowScreen({
               onCancel={onImportCancel}
               onConfirm={onImportConfirm}
               onPickFile={onImportPickFile}
+              onRestoreRemindersChange={onImportRestoreRemindersChange}
               preview={importPreview}
+              restoreReminders={pendingImportPreview?.restoreReminders ?? false}
               statusMessage={importStatusMessage}
               viewData={viewData.import}
             />

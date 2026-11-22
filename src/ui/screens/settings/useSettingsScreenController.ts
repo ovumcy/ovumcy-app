@@ -741,6 +741,11 @@ export function useSettingsScreenController({
       onImportPickFile: () => {
         void runPickImportFileAction(importActionContext);
       },
+      onImportRestoreRemindersChange: (value) => {
+        setPendingImportPreview((pending) =>
+          pending ? { ...pending, restoreReminders: value } : pending,
+        );
+      },
       onInterfaceLanguageSelect: (value) => {
         applyInterfaceValues({
           ...readyState.interfaceValues,
