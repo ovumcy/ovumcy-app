@@ -23,6 +23,12 @@ const selfHosted: SyncPreferencesRecord = {
   deviceLabel: "Replacement phone",
 };
 
+const managed: SyncPreferencesRecord = {
+  ...createDefaultSyncPreferencesRecord(),
+  mode: "managed",
+  deviceLabel: "Replacement phone",
+};
+
 const capabilities: SyncCapabilityDocument = {
   mode: "self_hosted",
   syncEnabled: true,
@@ -96,7 +102,11 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
       storage,
       secretStore,
       selfHosted,
-      { sessionToken: "session-after-totp", recoveryPhrase: PHRASE },
+      {
+        sessionToken: "session-after-totp",
+        recoveryPhrase: PHRASE,
+        sessionExpiresAt: "2026-03-21T08:05:00.000Z",
+      },
       NOW,
     );
     expect(result.ok).toBe(true);
@@ -151,6 +161,81 @@ describe("backup-sync screen recovery with a TOTP challenge", () => {
     expect(result).toEqual({
       ok: false,
       errorCode: "recovery_package_not_found",
+      challengeSpent: true,
+    });
+  });
+
+  it("passes the challenge's refresh token through to a managed recovery resume", async () => {
+    jest.spyOn(syncTOTPService, "completeTOTPChallenge").mockResolvedValue({
+      ok: true,
+      auth: {
+        accountID: "managed-account-1",
+        sessionToken: "managed-after-totp",
+        sessionExpiresAt: "2026-03-20T09:05:00.000Z",
+        refreshToken: "refresh-1",
+        refreshTokenExpiresAt: "2026-04-19T08:05:00.000Z",
+      },
+    });
+    const finalizeSpy = jest
+      .spyOn(syncClientService, "finalizeSyncRecoveryAfterTOTP")
+      .mockResolvedValue({
+        ok: true,
+        capabilities: { ...capabilities, mode: "managed" },
+        preferences: { ...managed, setupStatus: "connected" },
+      });
+    const storage = createLocalAppStorageMock();
+    const secretStore = createSyncSecretStoreMock();
+
+    const result = await completeBackupSyncRecoveryTOTPChallenge(
+      storage,
+      secretStore,
+      createLoadedSettingsStateFixture(),
+      managed,
+      { challengeID: "challenge-1", code: "123456", recoveryPhrase: PHRASE },
+      NOW,
+    );
+
+    expect(finalizeSpy).toHaveBeenCalledWith(
+      storage,
+      secretStore,
+      managed,
+      {
+        sessionToken: "managed-after-totp",
+        recoveryPhrase: PHRASE,
+        sessionExpiresAt: "2026-03-20T09:05:00.000Z",
+        refreshToken: "refresh-1",
+        refreshTokenExpiresAt: "2026-04-19T08:05:00.000Z",
+      },
+      NOW,
+    );
+    expect(result.ok).toBe(true);
+  });
+
+  it("marks a failed managed resume as a spent challenge", async () => {
+    jest.spyOn(syncTOTPService, "completeTOTPChallenge").mockResolvedValue({
+      ok: true,
+      auth: {
+        accountID: "managed-account-1",
+        sessionToken: "managed-after-totp",
+        sessionExpiresAt: "2026-03-20T09:05:00.000Z",
+      },
+    });
+    jest
+      .spyOn(syncClientService, "finalizeSyncRecoveryAfterTOTP")
+      .mockResolvedValue({ ok: false, errorCode: "sync_not_allowed" });
+
+    const result = await completeBackupSyncRecoveryTOTPChallenge(
+      createLocalAppStorageMock(),
+      createSyncSecretStoreMock(),
+      createLoadedSettingsStateFixture(),
+      managed,
+      { challengeID: "challenge-1", code: "123456", recoveryPhrase: PHRASE },
+      NOW,
+    );
+
+    expect(result).toEqual({
+      ok: false,
+      errorCode: "sync_not_allowed",
       challengeSpent: true,
     });
   });
