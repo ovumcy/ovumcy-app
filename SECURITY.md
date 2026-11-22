@@ -785,6 +785,7 @@ pregnancy never sets it, so neither signal ever covers the other.
 | Claim | Enforced by |
 | --- | --- |
 | The endpoint policy treats a host as private network only when it parses as a literal IPv4 in a private range, never by prefix-matching the hostname, so an FQDN that begins with private octets gets https by default and an explicit `http://` to it is refused; link-local addresses get no cleartext and an out-of-range octet fails closed | `rejects bare http on private-octet-prefixed FQDN %s`, `rejects explicit http on a private-octet-prefixed FQDN`, `rejects insecure public http for link-local (169.254.0.0/16) addresses`, `fails closed to invalid_endpoint for an out-of-range IPv4 octet` in [src/sync/sync-endpoint-policy.test.ts](src/sync/sync-endpoint-policy.test.ts) |
+| The managed cloud-auth base URL gets the self-hosted scheme rule: https, or plaintext http only to a local-network host; any other base URL sends no request and fails as `network_failed` | `%s sends no request and fails closed`, `sends requests to permitted base URL %j` in [src/sync/managed-cloud-api-client.base-url.test.ts](src/sync/managed-cloud-api-client.base-url.test.ts) |
 
 ### Policy / Planned (human-reviewed, not in the matrix)
 
