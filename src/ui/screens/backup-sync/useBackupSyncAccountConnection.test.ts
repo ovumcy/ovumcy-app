@@ -696,5 +696,71 @@ describe("useBackupSyncAccountConnection", () => {
         core.viewData.account.status.disconnected,
       );
     });
+
+    it("holds the busy flag through the revoke and refuses a second disconnect meanwhile", async () => {
+      const disconnectedState = createLoadedSettingsStateFixture({
+        hasSyncSession: false,
+      });
+      const core = createBackupSyncSessionCoreMock();
+      let finishRevoke: (value: { ok: true; state: typeof disconnectedState }) => void =
+        () => undefined;
+      mockDisconnectBackupSyncAccount.mockReturnValue(
+        new Promise((resolve) => {
+          finishRevoke = resolve;
+        }),
+      );
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      let firstDisconnect: Promise<void> = Promise.resolve();
+      await act(async () => {
+        firstDisconnect = result.current.handleDisconnectSync();
+      });
+      expect(result.current.isDisconnectingSync).toBe(true);
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+      expect(mockRequestSensitiveActionChallenge).toHaveBeenCalledTimes(1);
+      expect(mockDisconnectBackupSyncAccount).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        finishRevoke({ ok: true, state: disconnectedState });
+        await firstDisconnect;
+      });
+      expect(result.current.isDisconnectingSync).toBe(false);
+      expect(core.setState).toHaveBeenCalledWith(disconnectedState);
+    });
+
+    it("never raises the busy flag when the confirm is declined", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockOpenConfirmation.mockResolvedValue(false);
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+
+      expect(result.current.isDisconnectingSync).toBe(false);
+    });
+
+    it("clears the busy flag and accepts a new disconnect after the revoke throws", async () => {
+      const core = createBackupSyncSessionCoreMock();
+      mockDisconnectBackupSyncAccount.mockRejectedValueOnce(new Error("storage"));
+      const { result } = await renderHook(() => useBackupSyncAccountConnection(core));
+
+      await act(async () => {
+        await expect(result.current.handleDisconnectSync()).rejects.toThrow("storage");
+      });
+      expect(result.current.isDisconnectingSync).toBe(false);
+
+      mockDisconnectBackupSyncAccount.mockResolvedValue({
+        ok: true,
+        state: core.state!,
+      });
+      await act(async () => {
+        await result.current.handleDisconnectSync();
+      });
+      expect(mockDisconnectBackupSyncAccount).toHaveBeenCalledTimes(2);
+    });
   });
 });
