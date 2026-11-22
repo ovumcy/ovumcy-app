@@ -352,6 +352,73 @@ async function createAdvancedFertilityStorage() {
   return storage;
 }
 
+// Fakes Date only: timers, promises and the autosave debounce stay real.
+function fakeDateOnly(start: Date) {
+  jest.useFakeTimers({
+    doNotFake: [
+      "hrtime",
+      "nextTick",
+      "performance",
+      "queueMicrotask",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "requestIdleCallback",
+      "cancelIdleCallback",
+      "setImmediate",
+      "clearImmediate",
+      "setInterval",
+      "clearInterval",
+      "setTimeout",
+      "clearTimeout",
+    ],
+  });
+  jest.setSystemTime(start);
+}
+
+function captureAppStateHandlers() {
+  const handlers: ((state: AppStateStatus) => void)[] = [];
+  const spy = jest
+    .spyOn(AppState, "addEventListener")
+    .mockImplementation((_type, handler) => {
+      handlers.push(handler as (state: AppStateStatus) => void);
+      return { remove: jest.fn() } as unknown as ReturnType<
+        typeof AppState.addEventListener
+      >;
+    });
+
+  return {
+    foreground: () =>
+      act(async () => {
+        for (const handler of handlers) {
+          handler("active");
+        }
+      }),
+    restore: () => spy.mockRestore(),
+  };
+}
+
+async function createRolloverStorage() {
+  const storage = createVolatileWebAppStorage();
+  await storage.writeProfileRecord({
+    lastPeriodStart: "2026-05-25",
+    cycleLength: 28,
+    periodLength: 5,
+    autoPeriodFill: false,
+    irregularCycle: false,
+    unpredictableCycle: false,
+    ageGroup: "",
+    usageGoal: "health",
+    trackBBT: false,
+    temperatureUnit: "c",
+    trackCervicalMucus: false,
+    hideSexChip: false,
+    languageOverride: "en",
+    themeOverride: "light",
+    dismissedCalendarPredictionNoticeKey: null,
+  });
+  return storage;
+}
+
 describe("DashboardScreen", () => {
   beforeEach(() => {
     mockOpenConfirmation.mockReset();
@@ -893,56 +960,11 @@ describe("DashboardScreen", () => {
   });
 
   it("saves an open draft on its own date and edits the new day after midnight", async () => {
-    // Only Date is faked: timers, promises and the debounce stay real.
-    jest.useFakeTimers({
-      doNotFake: [
-        "hrtime",
-        "nextTick",
-        "performance",
-        "queueMicrotask",
-        "requestAnimationFrame",
-        "cancelAnimationFrame",
-        "requestIdleCallback",
-        "cancelIdleCallback",
-        "setImmediate",
-        "clearImmediate",
-        "setInterval",
-        "clearInterval",
-        "setTimeout",
-        "clearTimeout",
-      ],
-    });
-    jest.setSystemTime(new Date(2026, 5, 1, 23, 59, 30));
-    const appStateHandlers: ((state: AppStateStatus) => void)[] = [];
-    const addListener = jest
-      .spyOn(AppState, "addEventListener")
-      .mockImplementation((_type, handler) => {
-        appStateHandlers.push(handler as (state: AppStateStatus) => void);
-        return { remove: jest.fn() } as unknown as ReturnType<
-          typeof AppState.addEventListener
-        >;
-      });
+    fakeDateOnly(new Date(2026, 5, 1, 23, 59, 30));
+    const appState = captureAppStateHandlers();
 
     try {
-      const storage = createVolatileWebAppStorage();
-      await storage.writeProfileRecord({
-        lastPeriodStart: "2026-05-25",
-        cycleLength: 28,
-        periodLength: 5,
-        autoPeriodFill: false,
-        irregularCycle: false,
-        unpredictableCycle: false,
-        ageGroup: "",
-        usageGoal: "health",
-        trackBBT: false,
-        temperatureUnit: "c",
-        trackCervicalMucus: false,
-        hideSexChip: false,
-        languageOverride: "en",
-        themeOverride: "light",
-        dismissedCalendarPredictionNoticeKey: null,
-      });
-
+      const storage = await createRolloverStorage();
       const view = await render(
         <AppPreferencesTestProvider languageOverride="en">
           <DashboardScreen autosaveDebounceMs={60_000} storage={storage} />
@@ -952,11 +974,7 @@ describe("DashboardScreen", () => {
       await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
 
       jest.setSystemTime(new Date(2026, 5, 2, 7, 15, 0));
-      await act(async () => {
-        for (const handler of appStateHandlers) {
-          handler("active");
-        }
-      });
+      await appState.foreground();
 
       await screen.findByText("June 2, 2026");
       expect(await storage.readDayLogRecord("2026-06-01")).toEqual(
@@ -973,7 +991,50 @@ describe("DashboardScreen", () => {
         ),
       );
     } finally {
-      addListener.mockRestore();
+      appState.restore();
+    }
+  });
+
+  it("keeps a draft that failed to save at midnight and retries it on its own date", async () => {
+    fakeDateOnly(new Date(2026, 5, 1, 23, 59, 30));
+    const appState = captureAppStateHandlers();
+
+    try {
+      const storage = await createRolloverStorage();
+      const commit = jest
+        .spyOn(storage, "commitDayLogChanges")
+        .mockRejectedValueOnce(new Error("disk full"));
+      await render(
+        <AppPreferencesTestProvider languageOverride="en">
+          <DashboardScreen autosaveDebounceMs={60_000} storage={storage} />
+        </AppPreferencesTestProvider>,
+      );
+      await screen.findByText("June 1, 2026");
+      await fireEvent.press(screen.getByTestId("dashboard-quick-action-period"));
+
+      jest.setSystemTime(new Date(2026, 5, 2, 7, 15, 0));
+      await appState.foreground();
+
+      await screen.findByText("June 2, 2026");
+      // The reloaded new-day record is not an edit: no re-save, error kept.
+      expect(
+        screen.getByText("Unable to save this entry. Please try again."),
+      ).toBeTruthy();
+      expect(commit).toHaveBeenCalledTimes(1);
+      expect((await storage.readDayLogRecord("2026-06-01")).isPeriod).toBe(false);
+      expect((await storage.readDayLogRecord("2026-06-02")).isPeriod).toBe(false);
+
+      await fireEvent.press(screen.getByTestId("day-log-save-button"));
+
+      await waitFor(async () =>
+        expect(await storage.readDayLogRecord("2026-06-01")).toEqual(
+          expect.objectContaining({ date: "2026-06-01", isPeriod: true }),
+        ),
+      );
+      expect((await storage.readDayLogRecord("2026-06-02")).isPeriod).toBe(false);
+      expect(commit).toHaveBeenCalledTimes(2);
+    } finally {
+      appState.restore();
     }
   });
 
