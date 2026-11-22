@@ -26,6 +26,10 @@ import {
   endManagedSessionRefresh,
   settleInFlightManagedRefresh,
 } from "./managed-session-refresh-service";
+import {
+  callWithManagedSession,
+  type ManagedSessionCallFailure,
+} from "./managed-session-call";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
 import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import {
@@ -793,12 +797,17 @@ export async function upgradeGuestPartnerAccount(
   }
 
   const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-  const result = await managedClient.upgradeGuestAccount(
-    secrets.managedAuthSessionToken,
-    { email: input.email.trim(), password: input.password },
+  const credentials = { email: input.email.trim(), password: input.password };
+  const result = await callWithManagedSession(
+    secretStore,
+    (sessionToken) => managedClient.upgradeGuestAccount(sessionToken, credentials),
+    { managedClientFactory },
   );
 
   if (!result.ok) {
+    if (isManagedSessionEnded(result.errorCode)) {
+      return { ok: false, errorCode: "unauthorized", preferences };
+    }
     if (result.errorCode === "account_not_guest") {
       const clearedPreferences: SyncPreferencesRecord = {
         ...preferences,
@@ -815,7 +824,10 @@ export async function upgradeGuestPartnerAccount(
 
     return {
       ok: false,
-      errorCode: mapUpgradeGuestPartnerAccountAPIError(result.errorCode),
+      errorCode: mapManagedSessionCallError(
+        result.errorCode,
+        mapUpgradeGuestPartnerAccountAPIError,
+      ),
       preferences,
     };
   }
@@ -876,31 +888,27 @@ export async function loadConnectedSyncCapabilities(
     }
 
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const sessionResult = await managedClient.getSession(
-      secrets.managedAuthSessionToken,
+    const sessionResult = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => managedClient.getSession(sessionToken),
+      { managedClientFactory },
     );
     if (!sessionResult.ok) {
-      if (sessionResult.errorCode === "unauthorized") {
-        await secretStore.writeSyncSecrets(
-          clearManagedSessionFromSecrets({
-            ...secrets,
-            authSessionToken: null,
-          }),
-        );
+      if (isManagedSessionEnded(sessionResult.errorCode)) {
+        await clearSyncSessionToken(secretStore);
+        return { ok: false, errorCode: "unauthorized" };
       }
       return {
         ok: false,
-        errorCode: mapManagedConnectAPIError(sessionResult.errorCode),
+        errorCode: mapManagedSessionCallError(
+          sessionResult.errorCode,
+          mapManagedConnectAPIError,
+        ),
       };
     }
 
-    if (secrets.authSessionToken) {
-      await secretStore.writeSyncSecrets({
-        ...secrets,
-        authSessionToken: sessionResult.session.entitlement.syncAllowed
-          ? secrets.authSessionToken
-          : null,
-      });
+    if (!sessionResult.session.entitlement.syncAllowed) {
+      await clearSyncSessionToken(secretStore);
     }
 
     return {
@@ -1923,55 +1931,58 @@ async function readPreparedSyncContext(
     }
 
     const managedClient = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
-    const sessionResult = await managedClient.getSession(
-      secrets.managedAuthSessionToken,
+    const sessionResult = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => managedClient.getSession(sessionToken),
+      { managedClientFactory },
     );
     if (!sessionResult.ok) {
-      if (sessionResult.errorCode === "unauthorized") {
-        await secretStore.writeSyncSecrets(
-          clearManagedSessionFromSecrets({
-            ...secrets,
-            authSessionToken: null,
-          }),
-        );
-        return { ok: false, errorCode: "unauthorized" };
-      }
-
       return {
         ok: false,
-        errorCode: mapManagedRunAPIError(sessionResult.errorCode),
+        errorCode: await mapManagedSessionRunFailure(
+          secretStore,
+          sessionResult.errorCode,
+        ),
       };
     }
     if (!sessionResult.session.entitlement.syncAllowed) {
-      await secretStore.writeSyncSecrets({
-        ...secrets,
-        authSessionToken: null,
-      });
+      await clearSyncSessionToken(secretStore);
       return { ok: false, errorCode: "sync_not_allowed" };
     }
 
-    const syncSessionResult = await managedClient.createSyncSession(
-      secrets.managedAuthSessionToken,
+    const syncSessionResult = await callWithManagedSession(
+      secretStore,
+      (sessionToken) => managedClient.createSyncSession(sessionToken),
+      { managedClientFactory },
     );
     if (!syncSessionResult.ok) {
       return {
         ok: false,
-        errorCode: mapManagedRunAPIError(syncSessionResult.errorCode),
+        errorCode: await mapManagedSessionRunFailure(
+          secretStore,
+          syncSessionResult.errorCode,
+        ),
       };
     }
 
-    await secretStore.writeSyncSecrets({
-      ...secrets,
+    // Re-read: a renewal inside either call rotated the managed tokens, and a
+    // write from the record read above would put the spent pair back.
+    const current = await secretStore.readSyncSecrets();
+    if (!current?.managedAuthSessionToken) {
+      return { ok: false, errorCode: "not_connected" };
+    }
+    const nextSecrets = {
+      ...current,
       authSessionToken: syncSessionResult.auth.sessionToken,
-    });
+    };
+    await secretStore.writeSyncSecrets(nextSecrets);
 
     return {
       ok: true,
       baseURL: normalizedEndpoint.endpoint.baseURL,
       secrets: {
-        ...secrets,
-        authSessionToken: syncSessionResult.auth.sessionToken,
-        managedAuthSessionToken: secrets.managedAuthSessionToken,
+        ...nextSecrets,
+        managedAuthSessionToken: current.managedAuthSessionToken,
       },
     };
   }
@@ -1989,6 +2000,46 @@ async function readPreparedSyncContext(
       managedAuthSessionToken: secrets.managedAuthSessionToken,
     },
   };
+}
+
+type ManagedSessionEndedCode = ManagedSessionCallFailure["errorCode"];
+
+function isManagedSessionEnded(
+  errorCode: ManagedCloudAPIErrorCode | ManagedSessionEndedCode,
+): errorCode is ManagedSessionEndedCode {
+  return errorCode === "session_expired" || errorCode === "no_session";
+}
+
+// callWithManagedSession passes a 401 through only with the credentials kept,
+// and callers answer "unauthorized" by ending the local session.
+function mapManagedSessionCallError<C>(
+  errorCode: ManagedCloudAPIErrorCode,
+  mapAPIError: (errorCode: ManagedCloudAPIErrorCode) => C,
+): C | "generic" {
+  return errorCode === "unauthorized" ? "generic" : mapAPIError(errorCode);
+}
+
+async function mapManagedSessionRunFailure(
+  secretStore: SyncSecretStore,
+  errorCode: ManagedCloudAPIErrorCode | ManagedSessionEndedCode,
+): Promise<SyncRunErrorCode> {
+  if (errorCode === "no_session") {
+    return "not_connected";
+  }
+  if (errorCode === "session_expired") {
+    await clearSyncSessionToken(secretStore);
+    return "unauthorized";
+  }
+  return mapManagedSessionCallError(errorCode, mapManagedRunAPIError);
+}
+
+// In managed mode the sync session is minted from the managed session, so it
+// ends with it or with the sync entitlement.
+async function clearSyncSessionToken(secretStore: SyncSecretStore): Promise<void> {
+  const current = await secretStore.readSyncSecrets();
+  if (current?.authSessionToken) {
+    await secretStore.writeSyncSecrets({ ...current, authSessionToken: null });
+  }
 }
 
 function buildSyncedPreferences(
