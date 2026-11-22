@@ -24,7 +24,7 @@
     "ovumcy-sync-community": {
       "role": "Go zero-knowledge sync transport",
       "branch": "main",
-      "commit": "f33d3b9944bb485322eb535e801ed63418590cbe",
+      "commit": "97cecaefe35e57f9caa28c2895750657a3876f51",
       "pin": "exact"
     }
   }

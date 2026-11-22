@@ -4329,7 +4329,7 @@ describe("runSyncUpload additional branches", () => {
             maxBlobBytes: 16 << 20,
           },
         }),
-        putBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "stale_generation" }),
+        putBlob: jest.fn().mockResolvedValue({ ok: false, errorCode: "invalid_blob" }),
       }),
     );
 
@@ -4349,7 +4349,7 @@ describe("runSyncUpload additional branches", () => {
       apiClientFactory,
     );
 
-    expect(result).toEqual({ ok: false, errorCode: "stale_generation" });
+    expect(result).toEqual({ ok: false, errorCode: "invalid_blob" });
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 

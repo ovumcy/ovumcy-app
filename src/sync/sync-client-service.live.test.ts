@@ -19,6 +19,10 @@ import {
 } from "./sync-contract";
 import { prepareSyncSetup } from "./sync-setup-service";
 
+// The suite-wide expo/fetch stub forwards to globalThis.fetch, which jest-expo
+// points back at expo/fetch; a live run needs a fetch that reaches the network.
+jest.mock("expo/fetch", () => ({ fetch: jest.requireActual("node-fetch") }));
+
 const liveBaseURL = process.env.OVUMCY_SYNC_LIVE_BASE_URL ?? "";
 const describeIfLive = liveBaseURL ? describe : describe.skip;
 
@@ -345,5 +349,89 @@ describeIfLive("sync-client-service live transport", () => {
     expect(confirmed.ok).toBe(true);
 
     await disconnectSyncAccount(storage, secretStore, preferences);
+  });
+
+  it("refuses to overwrite a backup another device uploaded since its last sync", async () => {
+    const storage = createVolatileWebAppStorage();
+    const secretStore = createSyncSecretStoreMock();
+    await storage.writeBootstrapState({
+      hasCompletedOnboarding: true,
+      profileVersion: 2,
+      incompleteOnboardingStep: null,
+    });
+
+    const prepareResult = await prepareSyncSetup(
+      storage,
+      secretStore,
+      {
+        ...createDefaultSyncPreferencesRecord(),
+        mode: "self_hosted",
+        endpointInput: liveBaseURL,
+        normalizedEndpoint: liveBaseURL,
+        deviceLabel: "Generation Device",
+      },
+      new Date("2026-03-22T09:00:00.000Z"),
+    );
+    expect(prepareResult.ok).toBe(true);
+    if (!prepareResult.ok) {
+      return;
+    }
+    const connectResult = await connectSyncAccount(
+      storage,
+      secretStore,
+      prepareResult.preferences,
+      {
+        login: `generation-${Date.now()}@ovumcy.test`,
+        password: "CorrectHorseBattery42!",
+      },
+      "register",
+      new Date("2026-03-22T09:00:00.000Z"),
+    );
+    expect(connectResult.ok).toBe(true);
+    if (!connectResult.ok || "totpChallengeRequired" in connectResult) {
+      return;
+    }
+
+    const first = await runSyncUpload(
+      storage,
+      secretStore,
+      connectResult.preferences,
+      new Date("2026-03-22T09:01:00.000Z"),
+    );
+    expect(first.ok).toBe(true);
+    if (!first.ok) {
+      return;
+    }
+    // Another device on the account uploads after this one last synced.
+    const other = await runSyncUpload(
+      storage,
+      secretStore,
+      first.preferences,
+      new Date("2026-03-22T09:02:00.000Z"),
+    );
+    expect(other.ok).toBe(true);
+
+    const stale = await runSyncUpload(
+      storage,
+      secretStore,
+      first.preferences,
+      new Date("2026-03-22T09:03:00.000Z"),
+    );
+    expect(stale).toEqual({ ok: false, errorCode: "remote_backup_changed" });
+
+    const restored = await runSyncRestore(storage, secretStore, first.preferences);
+    expect(restored.ok).toBe(true);
+    if (!restored.ok) {
+      return;
+    }
+    const afterRestore = await runSyncUpload(
+      storage,
+      secretStore,
+      restored.preferences,
+      new Date("2026-03-22T09:04:00.000Z"),
+    );
+    expect(afterRestore.ok).toBe(true);
+
+    await disconnectSyncAccount(storage, secretStore, restored.preferences);
   });
 });

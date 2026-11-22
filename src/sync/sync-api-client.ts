@@ -9,6 +9,11 @@ import type {
   SyncTOTPEnrollmentStart,
   WrappedSyncKeyMetadata,
 } from "./sync-contract";
+import {
+  redirectRefusingFetch,
+  responseLeftRequestOrigin,
+  type RedirectRefusingFetch,
+} from "./redirect-refusing-fetch";
 
 export type SyncAPIErrorCode =
   | "invalid_registration_input"
@@ -37,6 +42,9 @@ export type SyncAPIErrorCode =
   // only Ovumcy Cloud's PUT /account/recovery-key rotates it.
   | "managed_recovery_key_overwrite"
   | "stale_generation"
+  // A request field the server does not know; on a blob PUT this marks a
+  // server that predates `expected_generation`.
+  | "invalid_json"
   | "blob_not_found"
   | "recovery_package_not_found"
   | "origin_not_allowed"
@@ -137,6 +145,9 @@ export type SyncAPIClient = {
       generation: number;
       checksumSHA256: string;
       ciphertextBase64: string;
+      // The generation the caller last saw stored; the write commits only
+      // while it is still the stored one (409 stale_generation otherwise).
+      expectedGeneration?: number;
     },
   ): Promise<{ ok: true; blob: SyncBlobRecord } | SyncAPIFailure>;
   // A package that differs from the stored one needs the step-up on a
@@ -209,7 +220,7 @@ export type SyncAPIClient = {
   >;
 };
 
-type FetchLike = typeof fetch;
+type FetchLike = RedirectRefusingFetch;
 
 type ErrorPayload = {
   error?: string;
@@ -300,7 +311,7 @@ type RawRecoveryKeyPackage = {
 
 export function createSyncAPIClient(
   baseURL: string,
-  fetchImpl: FetchLike = fetch,
+  fetchImpl: FetchLike = redirectRefusingFetch,
 ): SyncAPIClient {
   const normalizedBaseURL = baseURL.replace(/\/+$/, "");
 
@@ -687,6 +698,9 @@ export function createSyncAPIClient(
             generation: input.generation,
             checksum_sha256: input.checksumSHA256,
             ciphertext_base64: input.ciphertextBase64,
+            ...(input.expectedGeneration === undefined
+              ? {}
+              : { expected_generation: input.expectedGeneration }),
           },
         },
         isRawSyncBlobRecord,
@@ -811,27 +825,32 @@ async function performFetch(
     const requestInit: RequestInit = {
       method: options.method,
       headers,
-      // Refuse to follow redirects: this client only talks to the configured
-      // sync origin, and a malicious or misconfigured upstream returning a
-      // 3xx Location could otherwise cause fetch to re-send the bearer
-      // session token to an attacker-controlled host on 307/308 (which
-      // preserve method + headers per HTTP spec). Same-origin invariant
-      // makes any redirect here unambiguously suspicious.
+      // A 307/308 to another host would re-send the bearer token and the JSON
+      // body there. The default fetchImpl enforces this natively; the origin
+      // check below fails closed for any fetch that ignores it.
       redirect: "error",
+      // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
+      credentials: "omit",
     };
     if (options.body !== undefined) {
       requestInit.body = JSON.stringify(options.body);
     }
 
-    return await fetchImpl(url, {
-      ...requestInit,
-    });
+    const response = await fetchImpl(url, requestInit);
+    if (responseLeftRequestOrigin(url, response)) {
+      return networkFailedResponse();
+    }
+    return response;
   } catch {
-    return new Response(JSON.stringify({ error: "network_failed" }), {
-      status: 599,
-      headers: { "Content-Type": "application/json" },
-    });
+    return networkFailedResponse();
   }
+}
+
+function networkFailedResponse(): Response {
+  return new Response(JSON.stringify({ error: "network_failed" }), {
+    status: 599,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 async function readErrorCode(response: Response): Promise<SyncAPIErrorCode> {
@@ -895,6 +914,7 @@ export function mapServerErrorKey(key: unknown, status: number): SyncAPIErrorCod
     case "invalid_recovery_package":
     case "managed_recovery_key_overwrite":
     case "stale_generation":
+    case "invalid_json":
     case "blob_not_found":
     case "recovery_package_not_found":
     case "origin_not_allowed":
@@ -914,8 +934,8 @@ export function mapServerErrorKey(key: unknown, status: number): SyncAPIErrorCod
     // A server-side switch, not load: retrying later cannot succeed.
     case "managed_bridge_disabled":
       return "generic";
-    // Requests this client never sends malformed (invalid_json,
-    // invalid_ciphertext, unsupported_media_type, not_found), managed-bridge
+    // Requests this client never sends malformed (invalid_ciphertext,
+    // unsupported_media_type, not_found), managed-bridge
     // and host checks it never reaches (host_not_allowed, managed_*,
     // recovery_key_conflict, session_device_bound) and internal_error stay
     // generic on purpose.
