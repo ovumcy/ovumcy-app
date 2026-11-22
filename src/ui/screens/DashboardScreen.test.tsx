@@ -468,6 +468,40 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("day-log-lh-peak")).toBeTruthy();
   });
 
+  it("renders the local dashboard before managed premium resolves, then applies the unlock", async () => {
+    let resolvePremium: (features: {
+      advancedFertility: boolean;
+      advancedInsights: boolean;
+      doctorPDF: boolean;
+      extendedReports: boolean;
+      partnerAccess: boolean;
+      reminders: boolean;
+    }) => void = () => {};
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePremium = resolve;
+      }),
+    );
+
+    await renderDashboard(createStorageMock());
+
+    await screen.findByTestId("day-log-period-toggle");
+    expect(screen.queryByTestId("day-log-lh-none")).toBeNull();
+
+    await act(async () => {
+      resolvePremium({
+        advancedFertility: true,
+        advancedInsights: false,
+        doctorPDF: false,
+        extendedReports: false,
+        partnerAccess: false,
+        reminders: false,
+      });
+    });
+
+    expect(await screen.findByTestId("day-log-lh-none")).toBeTruthy();
+  });
+
   it("shows a premium advanced fertility summary when aligned current-cycle signals exist", async () => {
     mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
       advancedFertility: true,
