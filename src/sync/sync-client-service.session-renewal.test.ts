@@ -287,6 +287,43 @@ describe("sync-client-service managed session renewal", () => {
     );
   });
 
+  it("stores no minted sync session once the record has moved to another managed session", async () => {
+    const secretStore = createStore();
+    const cloud = createManagedCloud([]);
+    cloud.client.createSyncSession.mockImplementation(async (token: string) => {
+      const record = await secretStore.readSyncSecrets();
+      await secretStore.writeSyncSecrets({
+        ...(record as SyncSecretsRecord),
+        authSessionToken: null,
+        managedAuthSessionToken: "other-account-access",
+        managedRefreshToken: "other-account-refresh",
+      });
+      return {
+        ok: true as const,
+        auth: {
+          accountID: "sync-account-1",
+          sessionToken: `bridged-for-${token}`,
+          sessionExpiresAt: "2026-03-20T09:00:00.000Z",
+        },
+      };
+    });
+
+    const result = await listSyncDevices(
+      secretStore,
+      managedPreferences,
+      createSyncAPIFactory().apiClientFactory,
+      cloud.managedClientFactory,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "not_connected" });
+    await expect(secretStore.readSyncSecrets()).resolves.toEqual(
+      expect.objectContaining({
+        authSessionToken: null,
+        managedAuthSessionToken: "other-account-access",
+      }),
+    );
+  });
+
   it("keeps the renewed pair when the capabilities read drops a sync session the plan no longer allows", async () => {
     const secretStore = createStore();
     const cloud = createManagedCloud(["getSession"]);
