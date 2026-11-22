@@ -342,7 +342,11 @@ describe("managed phrase recovery with two-factor on", () => {
       createLocalAppStorageMock(),
       secretStore,
       managedPreferences,
-      { sessionToken: "managed-after-totp", recoveryPhrase: account.recoveryPhrase },
+      {
+        sessionToken: "managed-after-totp",
+        recoveryPhrase: account.recoveryPhrase,
+        sessionExpiresAt: "",
+      },
       NOW,
       jest.fn().mockReturnValue(recoveryKeyClient(account)),
       jest.fn().mockReturnValue(managedClient()),
