@@ -56,14 +56,19 @@ export type ManagedCloudAPIErrorCode =
 // The managed API's cap on one partner projection ciphertext (2 MiB).
 export const MANAGED_PARTNER_PROJECTION_MAX_CIPHERTEXT_BYTES = 2 * 1024 * 1024;
 
+// A managed request that has not finished — headers and body — within this
+// window is aborted and reported as `network_failed`.
+export const MANAGED_CLOUD_REQUEST_TIMEOUT_MS = 30_000;
+
 /**
  * True only when a failed managed call says "the server could not be asked"
  * rather than "the server answered no". `network_failed` is the synthetic
- * no-response outcome (thrown fetch, status 599); a 5xx without a recognized
- * error body, including the server's temporary-unavailability answer, is also
- * mapped to `network_failed`. Every other code
- * is an answer (4xx refusals, `unauthorized`, an unparseable 4xx body), so
- * offline-grace readers must treat it as a refusal and fail closed.
+ * no-response outcome (thrown fetch, timeout, refused redirect: status 599);
+ * a 502/503/504 without a recognized error body, including the server's
+ * temporary-unavailability answer, is also mapped to `network_failed`. Every
+ * other code is an answer (4xx refusals, `unauthorized`, a 500
+ * `internal_error`, an unparseable 4xx body), so offline-grace readers must
+ * treat it as a refusal and fail closed.
  */
 export function isManagedCloudTransportFailure(
   errorCode: ManagedCloudAPIErrorCode,
@@ -694,11 +699,19 @@ export function createManagedCloudAPIClient(
     },
 
     async logout({ sessionToken, refreshToken }) {
-      return requestNoPayload(fetchImpl, normalizedBaseURL, "/auth/session", {
-        method: "DELETE",
-        ...(sessionToken ? { sessionToken } : {}),
-        ...(refreshToken ? { body: { refresh_token: refreshToken } } : {}),
-      });
+      // A 5xx logout rolled back and committed nothing; reporting it as a
+      // transport failure lets the caller send it once more.
+      return requestNoPayload(
+        fetchImpl,
+        normalizedBaseURL,
+        "/auth/session",
+        {
+          method: "DELETE",
+          ...(sessionToken ? { sessionToken } : {}),
+          ...(refreshToken ? { body: { refresh_token: refreshToken } } : {}),
+        },
+        true,
+      );
     },
 
     async deleteAccount(sessionToken, stepUp) {
@@ -1252,12 +1265,13 @@ async function requestNoPayload(
     body?: unknown;
     sessionToken?: string;
   },
+  serverFaultIsTransport = false,
 ): Promise<{ ok: true } | { ok: false; errorCode: ManagedCloudAPIErrorCode }> {
   const response = await performFetch(fetchImpl, `${baseURL}${path}`, options);
   if (!response.ok) {
     return {
       ok: false,
-      errorCode: await readErrorCode(response),
+      errorCode: await readErrorCode(response, serverFaultIsTransport),
     };
   }
 
@@ -1323,26 +1337,62 @@ async function performFetch(
     headers.set("Content-Type", "application/json");
   }
 
-  try {
-    const requestInit: RequestInit = {
-      method: options.method,
-      headers,
-      // A 307/308 to another host would re-send the bearer token and the JSON
-      // body there. The default fetchImpl enforces this natively; the origin
-      // check below fails closed for any fetch that ignores it.
-      redirect: "error",
-      // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
-      credentials: "omit",
-    };
-    if (options.body !== undefined) {
-      requestInit.body = JSON.stringify(options.body);
-    }
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<Response>((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve(networkFailedResponse());
+    }, MANAGED_CLOUD_REQUEST_TIMEOUT_MS);
+  });
 
+  const requestInit: RequestInit = {
+    method: options.method,
+    headers,
+    // A 307/308 to another host would re-send the bearer token and the JSON
+    // body there. The default fetchImpl enforces this natively; the origin
+    // check below fails closed for any fetch that ignores it.
+    redirect: "error",
+    // Bearer-only API; expo/fetch would otherwise attach the native cookie jar.
+    credentials: "omit",
+    signal: controller.signal,
+  };
+  if (options.body !== undefined) {
+    requestInit.body = JSON.stringify(options.body);
+  }
+
+  try {
+    // The race settles on the deadline even if a fetch ignores the signal.
+    return await Promise.race([
+      fetchAndBuffer(fetchImpl, url, requestInit),
+      timedOut,
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// The body is read inside the deadline too: a server that sends headers and
+// then stalls must not hold the caller past the timeout.
+async function fetchAndBuffer(
+  fetchImpl: FetchLike,
+  url: string,
+  requestInit: RequestInit,
+): Promise<Response> {
+  try {
     const response = await fetchImpl(url, requestInit);
     if (responseLeftRequestOrigin(url, response)) {
       return networkFailedResponse();
     }
-    return response;
+    const body = await response.text();
+    // Copied pair by pair: the platform Response may not accept another
+    // implementation's Headers object as its init.
+    const headers = new Headers();
+    response.headers.forEach((value, name) => headers.append(name, value));
+    return new Response(body === "" ? null : body, {
+      status: response.status,
+      headers,
+    });
   } catch {
     return networkFailedResponse();
   }
@@ -1355,7 +1405,10 @@ function networkFailedResponse(): Response {
   });
 }
 
-async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCode> {
+async function readErrorCode(
+  response: Response,
+  serverFaultIsTransport = false,
+): Promise<ManagedCloudAPIErrorCode> {
   if (response.status === 599) {
     return "network_failed";
   }
@@ -1403,23 +1456,31 @@ async function readErrorCode(response: Response): Promise<ManagedCloudAPIErrorCo
       case "totp_secret_failed":
         return payload.error;
       default:
-        return unrecognizedErrorCode(response.status);
+        return unrecognizedErrorCode(response.status, serverFaultIsTransport);
     }
   } catch {
-    return unrecognizedErrorCode(response.status);
+    return unrecognizedErrorCode(response.status, serverFaultIsTransport);
   }
 }
 
-// A 5xx without a recognized error body is a server or gateway that could not
-// answer (proxy 502/503/504, crash page), not a refusal: it is reported as a
-// transport failure so offline-grace readers keep the bounded cache. A bare
-// 413 (a proxy rejecting the body before the API sees it) is the same
-// too-large refusal the API itself names.
-function unrecognizedErrorCode(status: number): ManagedCloudAPIErrorCode {
+// A gateway or temporary-unavailability status (502/503/504) without a
+// recognized error body means the API could not be asked, so it is reported as
+// a transport failure and offline-grace readers keep the bounded cache. Any
+// other 5xx — the API's own `internal_error` included — is a server answer and
+// fails closed as `generic`, except where the caller marks every 5xx as
+// retryable (logout, which no offline-grace reader consumes). A bare 413 (a proxy rejecting the body before the
+// API sees it) is the same too-large refusal the API itself names.
+function unrecognizedErrorCode(
+  status: number,
+  serverFaultIsTransport: boolean,
+): ManagedCloudAPIErrorCode {
   if (status === 413) {
     return "payload_too_large";
   }
-  return status >= 500 ? "network_failed" : "generic";
+  if (status === 502 || status === 503 || status === 504) {
+    return "network_failed";
+  }
+  return serverFaultIsTransport && status >= 500 ? "network_failed" : "generic";
 }
 
 // Delta-seconds only; an HTTP-date or junk value yields null and the caller

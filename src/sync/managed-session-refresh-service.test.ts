@@ -5,6 +5,7 @@ import {
   clearManagedSessionFromSecrets,
   endManagedSessionRefresh,
   ensureFreshManagedSession,
+  renewRejectedManagedSession,
   resetManagedSessionRefreshStateForTests,
 } from "./managed-session-refresh-service";
 import type { SyncSecretsRecord } from "./sync-contract";
@@ -520,5 +521,202 @@ describe("managed session secret helpers", () => {
     expect(cleared.managedRefreshToken).toBeNull();
     expect(cleared.managedRefreshTokenExpiresAt).toBeNull();
     expect(cleared.device.deviceID).toBe("device-1");
+  });
+});
+
+describe("a caller whose read predates a refresh that has since landed", () => {
+  beforeEach(() => {
+    resetManagedSessionRefreshStateForTests();
+  });
+
+  it("never spends the rotated-away refresh token", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedAuthSessionExpiresAt: "2026-07-21T12:01:00.000Z" }),
+    );
+    const realRead = secretStore.readSyncSecrets.bind(secretStore);
+    let releaseStaleRead: () => void = () => undefined;
+    const staleReadGate = new Promise<void>((resolve) => {
+      releaseStaleRead = resolve;
+    });
+    // The first read is taken now and handed back only after the other
+    // caller's refresh has completed.
+    let reads = 0;
+    jest.spyOn(secretStore, "readSyncSecrets").mockImplementation(async () => {
+      reads += 1;
+      const isStaleRead = reads === 1;
+      const snapshot = await realRead();
+      if (isStaleRead) {
+        await staleReadGate;
+      }
+      return snapshot;
+    });
+    const refreshSession = okRefresh("access-2", "refresh-2");
+    const factory = createRefreshingClient(refreshSession);
+
+    const stale = ensureFreshManagedSession(secretStore, NOW, factory);
+    await expect(ensureFreshManagedSession(secretStore, NOW, factory)).resolves.toEqual({
+      ok: true,
+      sessionToken: "access-2",
+      refreshed: true,
+    });
+    releaseStaleRead();
+
+    await expect(stale).resolves.toEqual({
+      ok: true,
+      sessionToken: "access-2",
+      refreshed: false,
+    });
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(refreshSession).toHaveBeenCalledWith("refresh-1");
+  });
+});
+
+describe("renewRejectedManagedSession", () => {
+  beforeEach(() => {
+    resetManagedSessionRefreshStateForTests();
+  });
+
+  async function storeWith(overrides: Partial<SyncSecretsRecord> = {}) {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(createSecrets(overrides));
+    return secretStore;
+  }
+
+  it("spends the refresh token on a 401 even when the stored expiry is far off", async () => {
+    const secretStore = await storeWith();
+    const refreshSession = okRefresh("access-2", "refresh-2");
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(refreshSession),
+      ),
+    ).resolves.toEqual({ ok: true, sessionToken: "access-2" });
+    expect(refreshSession).toHaveBeenCalledWith("refresh-1");
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBe("access-2");
+    expect(stored?.managedRefreshToken).toBe("refresh-2");
+  });
+
+  it("hands back the token a concurrent refresh already stored, spending nothing", async () => {
+    const secretStore = await storeWith({ managedAuthSessionToken: "access-2" });
+    const refreshSession = okRefresh("access-3", "refresh-3");
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(refreshSession),
+      ),
+    ).resolves.toEqual({ ok: true, sessionToken: "access-2" });
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+
+  it("shares one exchange between callers rejected on the same token", async () => {
+    const secretStore = await storeWith();
+    const refreshSession = okRefresh("access-2", "refresh-2");
+    const factory = createRefreshingClient(refreshSession);
+
+    const results = await Promise.all([
+      renewRejectedManagedSession(secretStore, "access-1", factory),
+      renewRejectedManagedSession(secretStore, "access-1", factory),
+    ]);
+
+    expect(results).toEqual([
+      { ok: true, sessionToken: "access-2" },
+      { ok: true, sessionToken: "access-2" },
+    ]);
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps every credential when the refresh cannot be completed", async () => {
+    const secretStore = await storeWith();
+    const refreshSession = jest.fn(async () => ({
+      ok: false as const,
+      errorCode: "network_failed" as const,
+    }));
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(refreshSession),
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "refresh_unavailable" });
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBe("access-1");
+    expect(stored?.managedRefreshToken).toBe("refresh-1");
+  });
+
+  it("clears the credentials when the refresh token itself is refused", async () => {
+    const secretStore = await storeWith();
+    const refreshSession = jest.fn(async () => ({
+      ok: false as const,
+      errorCode: "unauthorized" as const,
+    }));
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(refreshSession),
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "session_expired" });
+    const stored = await secretStore.readSyncSecrets();
+    expect(stored?.managedAuthSessionToken).toBeNull();
+    expect(stored?.managedRefreshToken).toBeNull();
+  });
+
+  it("ends a rejected legacy session that has no refresh token to fall back on", async () => {
+    const secretStore = await storeWith({
+      managedRefreshToken: null,
+      managedRefreshTokenExpiresAt: null,
+    });
+    const refreshSession = okRefresh("access-2", "refresh-2");
+
+    await expect(
+      renewRejectedManagedSession(
+        secretStore,
+        "access-1",
+        createRefreshingClient(refreshSession),
+      ),
+    ).resolves.toEqual({ ok: false, errorCode: "session_expired" });
+    expect(refreshSession).not.toHaveBeenCalled();
+    expect((await secretStore.readSyncSecrets())?.managedAuthSessionToken).toBeNull();
+  });
+
+  it("reports no session when the device holds none", async () => {
+    await expect(
+      renewRejectedManagedSession(createSyncSecretStoreMock(), "access-1"),
+    ).resolves.toEqual({ ok: false, errorCode: "no_session" });
+  });
+
+  it("waits out a scheduled refresh in flight and retries with its token", async () => {
+    const secretStore = await storeWith({
+      managedAuthSessionExpiresAt: "2026-07-21T12:01:00.000Z",
+    });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const okResult = okRefresh("access-2", "refresh-2");
+    const refreshSession = jest.fn(async () => {
+      await gate;
+      return okResult();
+    });
+    const factory = createRefreshingClient(refreshSession as never);
+
+    const scheduledPending = ensureFreshManagedSession(secretStore, NOW, factory);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    const renewedPending = renewRejectedManagedSession(secretStore, "access-1", factory);
+    release();
+    const [scheduled, renewed] = await Promise.all([scheduledPending, renewedPending]);
+
+    expect(scheduled).toEqual({ ok: true, sessionToken: "access-2", refreshed: true });
+    expect(renewed).toEqual({ ok: true, sessionToken: "access-2" });
+    expect(refreshSession).toHaveBeenCalledTimes(1);
   });
 });
