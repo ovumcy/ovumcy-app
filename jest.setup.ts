@@ -58,6 +58,12 @@ jest.mock("expo-notifications", () => ({
   setNotificationChannelAsync: jest.fn(async () => undefined),
 }));
 
+// The native fetch module has no Node implementation; tests stub
+// globalThis.fetch, so expo/fetch resolves to it at call time.
+jest.mock("expo/fetch", () => ({
+  fetch: (...args: Parameters<typeof fetch>) => globalThis.fetch(...args),
+}));
+
 jest.mock("react-native-safe-area-context", () => {
   const React = require("react");
   const { View } = require("react-native");
