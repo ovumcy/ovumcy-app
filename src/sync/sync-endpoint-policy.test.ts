@@ -382,3 +382,67 @@ describe("sync-endpoint-policy", () => {
     });
   });
 });
+
+describe("sync-endpoint-policy managed base URL scheme", () => {
+  const originalSyncBaseURL = process.env.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL;
+
+  afterEach(() => {
+    process.env.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL = originalSyncBaseURL;
+    jest.resetModules();
+  });
+
+  function normalizeManagedWithBaseURL(baseURL: string) {
+    process.env.EXPO_PUBLIC_OVUMCY_SYNC_BASE_URL = baseURL;
+    jest.resetModules();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const policy = require("./sync-endpoint-policy") as typeof import("./sync-endpoint-policy");
+    return policy.normalizeSyncEndpoint("managed", "");
+  }
+
+  it("refuses a public plaintext http managed base URL", () => {
+    expect(normalizeManagedWithBaseURL("http://sync.example.com")).toEqual({
+      ok: false,
+      errorCode: "insecure_public_http",
+    });
+  });
+
+  it("allows plaintext http to a local-network managed host and reports it as insecure", () => {
+    expect(normalizeManagedWithBaseURL("http://10.0.2.2:8080")).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        mode: "managed",
+        baseURL: "http://10.0.2.2:8080",
+        host: "10.0.2.2",
+        isLocalNetwork: true,
+        isSecure: false,
+      }),
+    });
+  });
+
+  it("refuses a managed base URL with a non-http scheme", () => {
+    expect(normalizeManagedWithBaseURL("ftp://sync.example.com")).toEqual({
+      ok: false,
+      errorCode: "unsupported_scheme",
+    });
+  });
+
+  it("refuses an unparseable managed base URL", () => {
+    expect(normalizeManagedWithBaseURL("not a url")).toEqual({
+      ok: false,
+      errorCode: "invalid_endpoint",
+    });
+  });
+
+  it("keeps an https managed base URL secure and non-local", () => {
+    expect(normalizeManagedWithBaseURL("https://sync.example.com/")).toEqual({
+      ok: true,
+      endpoint: expect.objectContaining({
+        mode: "managed",
+        baseURL: "https://sync.example.com",
+        host: "sync.example.com",
+        isLocalNetwork: false,
+        isSecure: true,
+      }),
+    });
+  });
+});

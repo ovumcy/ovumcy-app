@@ -33,15 +33,42 @@ export function normalizeSyncEndpoint(
   errorCode: NormalizeSyncEndpointErrorCode;
 } {
   if (mode === "managed") {
-    const managedURL = new URL(MANAGED_SYNC_BASE_URL);
+    // The managed base URL is build-time configuration, so it gets the same
+    // scheme rule as an owner-entered endpoint: https, or plaintext http only
+    // to a local-network host (the `local` EAS profile is a release build
+    // pointed at an emulator-host server). A public http URL fails closed.
+    let managedURL: URL;
+    try {
+      managedURL = new URL(MANAGED_SYNC_BASE_URL);
+    } catch {
+      return {
+        ok: false,
+        errorCode: "invalid_endpoint",
+      };
+    }
+    if (!["http:", "https:"].includes(managedURL.protocol)) {
+      return {
+        ok: false,
+        errorCode: "unsupported_scheme",
+      };
+    }
+    const managedHost = managedURL.hostname.toLowerCase();
+    const managedIsLocalNetwork = isLocalNetworkHost(managedHost);
+    const managedIsSecure = managedURL.protocol === "https:";
+    if (!managedIsSecure && !managedIsLocalNetwork) {
+      return {
+        ok: false,
+        errorCode: "insecure_public_http",
+      };
+    }
     return {
       ok: true,
       endpoint: {
         mode: "managed",
         baseURL: managedURL.toString().replace(/\/$/, ""),
-        host: managedURL.hostname,
-        isLocalNetwork: false,
-        isSecure: true,
+        host: managedHost,
+        isLocalNetwork: managedIsLocalNetwork,
+        isSecure: managedIsSecure,
         // Managed pins come from the build-time constant, not from the
         // caller. Callers passing options for managed are no-ops here:
         // the trust set for ovumcy.cloud is controlled by the ovumcy team
