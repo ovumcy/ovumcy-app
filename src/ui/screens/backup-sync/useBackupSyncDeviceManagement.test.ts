@@ -1,13 +1,20 @@
 import { act, renderHook } from "@testing-library/react-native";
 
 import { getDeviceCopy } from "../../../i18n/device-copy";
+import { buildSignedOutBackupSyncState } from "../../../services/backup-sync-screen-service";
 import {
   buildBackupSyncDeviceListView,
   resolveBackupSyncDeviceErrorMessage,
 } from "../../../services/backup-sync-view-service";
 import * as syncClientService from "../../../sync/sync-client-service";
-import type { SyncDeviceRecord } from "../../../sync/sync-contract";
-import { createBackupSyncSessionCoreMock } from "../../../test/create-backup-sync-session-core-mock";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncDeviceRecord,
+} from "../../../sync/sync-contract";
+import {
+  createBackupSyncSessionCoreMock,
+  createLoadedSettingsStateFixture,
+} from "../../../test/create-backup-sync-session-core-mock";
 import { openConfirmation } from "../../confirm/open-confirmation";
 import type { BackupSyncSessionCore } from "./useBackupSyncSessionCore";
 import { useBackupSyncDeviceManagement } from "./useBackupSyncDeviceManagement";
@@ -297,6 +304,7 @@ describe("useBackupSyncDeviceManagement", () => {
       mockRemoveSyncDevice.mockResolvedValue({
         ok: true,
         removedCurrentDevice: false,
+        preferences: null,
       });
       mockListSyncDevices.mockResolvedValueOnce({
         ok: true,
@@ -309,14 +317,278 @@ describe("useBackupSyncDeviceManagement", () => {
       });
 
       expect(mockRemoveSyncDevice).toHaveBeenCalledWith(
+        core.storage,
         core.syncSecretStore,
         core.state!.savedSyncPreferences,
         "device-b",
+        undefined,
       );
       expect(result.current.deviceStatusMessage).toBe(deviceCopy.statusRemoved);
       expect(result.current.deviceListItems).toEqual(
         buildBackupSyncDeviceListView([DEVICE_A], "device-a", "en", deviceCopy),
       );
+      expect(result.current.isDeviceBusy).toBe(false);
+    });
+  });
+
+  describe("self-hosted removal", () => {
+    const SELF_HOSTED = {
+      ...createDefaultSyncPreferencesRecord(),
+      mode: "self_hosted" as const,
+      endpointInput: "192.168.1.20:8080",
+      normalizedEndpoint: "http://192.168.1.20:8080",
+      setupStatus: "connected" as const,
+    };
+    const PASSWORD = "very secure password 12345";
+
+    function createSelfHostedCore() {
+      return createBackupSyncSessionCoreMock({
+        state: createLoadedSettingsStateFixture({
+          savedSyncPreferences: SELF_HOSTED,
+        }),
+      });
+    }
+
+    async function removeWithStepUp(core: BackupSyncSessionCore) {
+      const rendered = await renderHookWithLoadedDevices(
+        core,
+        [DEVICE_A, DEVICE_B],
+        "device-a",
+      );
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "device_step_up_required",
+      });
+      await act(async () => {
+        await rendered.result.current.handleRemoveDevice("device-b");
+      });
+      return rendered;
+    }
+
+    it.each([
+      ["device-a", deviceCopy.removeCurrentSelfHostedDevicePrompt("Pixel 7")],
+      [
+        "device-b",
+        deviceCopy.removeSelfHostedDevicePrompt(deviceCopy.fallbackDeviceLabel),
+      ],
+    ])("says removing %s signs that device out", async (deviceID, prompt) => {
+      const core = createSelfHostedCore();
+      const { result } = await renderHookWithLoadedDevices(
+        core,
+        [DEVICE_A, DEVICE_B],
+        "device-a",
+      );
+      mockOpenConfirmation.mockResolvedValue(false);
+
+      await act(async () => {
+        await result.current.handleRemoveDevice(deviceID);
+      });
+
+      expect(mockOpenConfirmation).toHaveBeenCalledWith(
+        prompt,
+        deviceCopy.removeConfirmAction,
+        core.viewData.common.cancelAction,
+      );
+    });
+
+    it("opens the step-up card with the code field when the server asks for it", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+
+      expect(result.current.deviceRemovalStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: null,
+      });
+      expect(result.current.deviceRemovalStepUpCopy.explanation).toBe(
+        deviceCopy.removeStepUpExplanation,
+      );
+      expect(result.current.deviceErrorMessage).toBe("");
+      expect(result.current.isDeviceBusy).toBe(false);
+    });
+
+    it("retries the same device with the password and trimmed code", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: true,
+        removedCurrentDevice: false,
+        preferences: null,
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitDeviceRemovalStepUp({
+          currentPassword: PASSWORD,
+          code: " 123456 ",
+        });
+      });
+
+      expect(mockRemoveSyncDevice).toHaveBeenLastCalledWith(
+        core.storage,
+        core.syncSecretStore,
+        SELF_HOSTED,
+        "device-b",
+        { currentPassword: PASSWORD, code: "123456" },
+      );
+      expect(result.current.deviceRemovalStepUpPrompt).toBeNull();
+      expect(result.current.deviceStatusMessage).toBe(deviceCopy.statusRemoved);
+    });
+
+    it("drops an empty code and keeps the card after a wrong password", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "invalid_current_password",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitDeviceRemovalStepUp({
+          currentPassword: PASSWORD,
+          code: "  ",
+        });
+      });
+
+      expect(mockRemoveSyncDevice.mock.calls.at(-1)?.[4]).toEqual({
+        currentPassword: PASSWORD,
+      });
+      expect(result.current.deviceRemovalStepUpPrompt).toEqual({
+        codeRequired: true,
+        errorCode: "invalid_current_password",
+      });
+    });
+
+    it.each(["totp_invalid_code", "totp_replayed", "rate_limited"] as const)(
+      "keeps the card with the server's %s answer",
+      async (errorCode) => {
+        const core = createSelfHostedCore();
+        const { result } = await removeWithStepUp(core);
+        mockRemoveSyncDevice.mockResolvedValueOnce({ ok: false, errorCode });
+
+        await act(async () => {
+          await result.current.handleSubmitDeviceRemovalStepUp({
+            currentPassword: PASSWORD,
+            code: "123456",
+          });
+        });
+
+        expect(result.current.deviceRemovalStepUpPrompt).toEqual({
+          codeRequired: true,
+          errorCode,
+        });
+        expect(result.current.deviceErrorMessage).toBe("");
+      },
+    );
+
+    it("closes the card and shows the banner for any other failure", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "network_failed",
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitDeviceRemovalStepUp({
+          currentPassword: PASSWORD,
+          code: "123456",
+        });
+      });
+
+      expect(result.current.deviceRemovalStepUpPrompt).toBeNull();
+      expect(result.current.deviceErrorMessage).toBe(
+        resolveBackupSyncDeviceErrorMessage("network_failed", deviceCopy),
+      );
+    });
+
+    it("cancel closes the card without another removal", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+
+      await act(async () => {
+        result.current.handleCancelDeviceRemovalStepUp();
+      });
+      await act(async () => {
+        await result.current.handleSubmitDeviceRemovalStepUp({
+          currentPassword: PASSWORD,
+        });
+      });
+
+      expect(result.current.deviceRemovalStepUpPrompt).toBeNull();
+      expect(mockRemoveSyncDevice).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends one removal for two submits in the same frame", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await removeWithStepUp(core);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: true,
+        removedCurrentDevice: false,
+        preferences: null,
+      });
+
+      await act(async () => {
+        const submit = result.current.handleSubmitDeviceRemovalStepUp;
+        await Promise.all([
+          submit({ currentPassword: PASSWORD, code: "123456" }),
+          submit({ currentPassword: PASSWORD, code: "123456" }),
+        ]);
+      });
+
+      expect(mockRemoveSyncDevice).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows the banner, not the card, for a rate limit before any step-up", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await renderHookWithLoadedDevices(
+        core,
+        [DEVICE_A, DEVICE_B],
+        "device-a",
+      );
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: false,
+        errorCode: "rate_limited",
+      });
+
+      await act(async () => {
+        await result.current.handleRemoveDevice("device-b");
+      });
+
+      expect(result.current.deviceRemovalStepUpPrompt).toBeNull();
+      expect(result.current.deviceErrorMessage).toBe(
+        resolveBackupSyncDeviceErrorMessage("rate_limited", deviceCopy),
+      );
+    });
+
+    it("signs this install out after removing its own device", async () => {
+      const core = createSelfHostedCore();
+      const { result } = await renderHookWithLoadedDevices(
+        core,
+        [DEVICE_A, DEVICE_B],
+        "device-a",
+      );
+      const signedOut = { ...SELF_HOSTED, setupStatus: "local_ready" as const };
+      mockOpenConfirmation.mockResolvedValue(true);
+      mockRemoveSyncDevice.mockResolvedValueOnce({
+        ok: true,
+        removedCurrentDevice: true,
+        preferences: signedOut,
+      });
+      mockListSyncDevices.mockClear();
+
+      await act(async () => {
+        await result.current.handleRemoveDevice("device-a");
+      });
+
+      expect(core.setState).toHaveBeenCalledWith(
+        buildSignedOutBackupSyncState(core.state!, signedOut),
+      );
+      expect(result.current.deviceStatusMessage).toBe(
+        deviceCopy.statusRemovedSignedOut,
+      );
+      expect(result.current.deviceListItems).toBeNull();
+      expect(mockListSyncDevices).not.toHaveBeenCalled();
       expect(result.current.isDeviceBusy).toBe(false);
     });
   });

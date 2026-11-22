@@ -737,6 +737,13 @@ export async function clearUnauthorizedBackupSyncSession(
     currentState.savedSyncPreferences,
   );
 
+  return buildSignedOutBackupSyncState(currentState, nextPreferences);
+}
+
+export function buildSignedOutBackupSyncState(
+  currentState: LoadedSettingsState,
+  nextPreferences: SyncPreferencesRecord,
+): LoadedSettingsState {
   return createLoadedSettingsState(
     currentState.profile,
     nextPreferences,

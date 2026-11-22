@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 
 import { selectManagedRecoveryRotationCopy } from "../../../i18n/managed-recovery-rotation-copy";
+import { selectRecoveryKeyStepUpCopy } from "../../../i18n/recovery-key-stepup-copy";
 import { clearManagedPartnerInviteToken } from "../../../security/managed-partner-invite-token-buffer";
 import {
   createBackupSyncSessionCoreMock,
@@ -191,11 +192,15 @@ function createDeviceManagementFixture(
 ): ReturnType<typeof useBackupSyncDeviceManagement> {
   return {
     deviceListItems: [],
+    deviceRemovalStepUpCopy: selectRecoveryKeyStepUpCopy("en"),
+    deviceRemovalStepUpPrompt: null,
     isDeviceBusy: false,
     deviceErrorMessage: "",
     deviceStatusMessage: "",
+    handleCancelDeviceRemovalStepUp: jest.fn(),
     handleLoadDevices: jest.fn(),
     handleRemoveDevice: jest.fn(),
+    handleSubmitDeviceRemovalStepUp: jest.fn(),
     ...overrides,
   };
 }
