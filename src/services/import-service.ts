@@ -110,10 +110,12 @@ import {
 
 // Guardrail mirroring web's MaxImportEntries — bounds a hostile/oversized file.
 export const MAX_IMPORT_DAY_LOGS = 20000;
-// The symptom collection has no count cap of its own: an existing catalog over
-// MAX_SYMPTOM_CATALOG_SIZE exports in full and imports with a warning (new
-// symptoms past the limit are counted in symptomsOverLimit), and the byte cap
-// on the file bounds its size.
+// Guardrail against a hostile file, far above any real catalog: an existing
+// catalog over MAX_SYMPTOM_CATALOG_SIZE still exports in full and imports with
+// a warning (new symptoms past the limit are counted in symptomsOverLimit).
+// Each entry is checked against the growing catalog, so the count is bounded
+// here rather than by the byte cap alone.
+export const MAX_IMPORT_SYMPTOMS = 2000;
 // Pregnancy records are a handful per lifetime at most; kick/contraction
 // sessions are daily-at-most like day logs, so they share that bound.
 export const MAX_IMPORT_PREGNANCIES = 200;
@@ -223,6 +225,7 @@ export function parseImportEnvelope(rawJson: string): ImportParseResult {
     : [];
   if (
     dayLogs.length > MAX_IMPORT_DAY_LOGS ||
+    symptoms.length > MAX_IMPORT_SYMPTOMS ||
     pregnancies.length > MAX_IMPORT_PREGNANCIES ||
     kickSessions.length > MAX_IMPORT_KICK_SESSIONS ||
     contractionSessions.length > MAX_IMPORT_CONTRACTION_SESSIONS ||
@@ -393,10 +396,16 @@ async function walkBackupEnvelope(
         ? { symptomIDs: remappedSymptomIDs }
         : {}),
     });
+    let reservedForDay = 0;
     for (const symptomID of sanitizedWithAllSymptoms.symptomIDs) {
-      if (pendingSymptoms.has(symptomID) && catalogSize >= MAX_SYMPTOM_CATALOG_SIZE) {
+      if (!pendingSymptoms.has(symptomID)) {
+        continue;
+      }
+      if (catalogSize + reservedForDay >= MAX_SYMPTOM_CATALOG_SIZE) {
         pendingSymptoms.delete(symptomID);
         symptomsOverLimit.add(symptomID);
+      } else {
+        reservedForDay += 1;
       }
     }
     const sanitized = {
@@ -526,14 +535,17 @@ async function importPregnancyRecords(
 
   const existing = await storage.listPregnancyRecords();
   const seen = new Set(existing.map(contentFingerprint));
+  const seenStarts = new Set(existing.map((record) => record.startedAt));
   let hasActive = existing.some((record) => record.status === "active");
 
   let added = 0;
   for (const sanitizedRecord of sanitized) {
     const fingerprint = contentFingerprint(sanitizedRecord);
-    if (seen.has(fingerprint)) {
+    if (seen.has(fingerprint) || seenStarts.has(sanitizedRecord.startedAt)) {
       // Additive merge: never duplicate a record already on this device (also
-      // catches a record repeated within the same import file).
+      // catches a record repeated within the same import file). The start
+      // date identifies the record across edits made after the backup, so an
+      // ended record never comes back as a second, active copy.
       skipped += 1;
       continue;
     }
@@ -552,6 +564,7 @@ async function importPregnancyRecords(
       });
     }
     seen.add(fingerprint);
+    seenStarts.add(sanitizedRecord.startedAt);
     if (sanitizedRecord.status === "active") {
       hasActive = true;
     }
@@ -619,13 +632,19 @@ async function importContractionSessions(
 
   const existing = await storage.listContractionSessions();
   const seen = new Set(existing.map(contentFingerprint));
+  const seenStarts = new Set(existing.map((session) => session.startedAt));
 
   let added = 0;
   let skipped = 0;
   for (const raw of rawSessions) {
     const session = sanitizeContractionSession(raw);
     const fingerprint = session ? contentFingerprint(session) : null;
-    if (!session || fingerprint === null || seen.has(fingerprint)) {
+    if (
+      !session ||
+      fingerprint === null ||
+      seen.has(fingerprint) ||
+      seenStarts.has(session.startedAt)
+    ) {
       skipped += 1;
       continue;
     }
@@ -637,6 +656,7 @@ async function importContractionSessions(
       });
     }
     seen.add(fingerprint);
+    seenStarts.add(session.startedAt);
     added += 1;
   }
 
@@ -682,14 +702,17 @@ async function importPostpartumRecords(
 
   const existing = await storage.listPostpartumRecords();
   const seen = new Set(existing.map(contentFingerprint));
+  const seenStarts = new Set(existing.map((record) => record.startedAt));
   let hasActive = existing.some((record) => record.status === "active");
 
   let added = 0;
   for (const sanitizedRecord of sanitized) {
     const fingerprint = contentFingerprint(sanitizedRecord);
-    if (seen.has(fingerprint)) {
+    if (seen.has(fingerprint) || seenStarts.has(sanitizedRecord.startedAt)) {
       // Additive merge: never duplicate a record already on this device (also
-      // catches a record repeated within the same import file).
+      // catches a record repeated within the same import file). The start
+      // date identifies the record across edits made after the backup, so an
+      // ended record never comes back as a second, active copy.
       skipped += 1;
       continue;
     }
@@ -708,6 +731,7 @@ async function importPostpartumRecords(
       });
     }
     seen.add(fingerprint);
+    seenStarts.add(sanitizedRecord.startedAt);
     if (sanitizedRecord.status === "active") {
       hasActive = true;
     }

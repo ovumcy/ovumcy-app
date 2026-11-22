@@ -136,7 +136,7 @@ export async function runConfirmImportAction(
     const current = await previewImportBackupEnvelope(storage, pending.envelope);
     if (!areImportOutcomesEqual(current, pending.outcome)) {
       setPendingImportPreview({ ...pending, outcome: current });
-      setImportStatusMessage(viewData.import.previewChanged);
+      setImportErrorMessage(viewData.import.previewChanged);
       return;
     }
 
