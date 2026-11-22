@@ -144,6 +144,12 @@ export type BackupSyncFlowScreenProps = {
     stepUp: SyncRecoveryKeyStepUp,
   ) => void | Promise<void>;
   onCancelManagedRecoveryRotationStepUp: () => void;
+  deviceRemovalStepUpCopy: RecoveryKeyStepUpCopy;
+  deviceRemovalStepUpPrompt: RecoveryKeyStepUpPrompt | null;
+  onSubmitDeviceRemovalStepUp: (
+    stepUp: SyncRecoveryKeyStepUp,
+  ) => void | Promise<void>;
+  onCancelDeviceRemovalStepUp: () => void;
   viewData: SettingsViewData["account"];
   backLabel?: string;
   onBack?: (() => void | Promise<void>) | undefined;
@@ -247,6 +253,10 @@ export function BackupSyncFlowScreen({
   managedRecoveryRotationStepUpPrompt,
   onSubmitManagedRecoveryRotationStepUp,
   onCancelManagedRecoveryRotationStepUp,
+  deviceRemovalStepUpCopy,
+  deviceRemovalStepUpPrompt,
+  onSubmitDeviceRemovalStepUp,
+  onCancelDeviceRemovalStepUp,
   viewData,
   backLabel,
   onBack,
@@ -420,6 +430,18 @@ export function BackupSyncFlowScreen({
               onLoadDevices={onLoadDevices}
               onRemoveDevice={onRemoveDevice}
               statusMessage={deviceStatusMessage}
+              stepUp={
+                deviceRemovalStepUpPrompt ? (
+                  <BackupSyncRecoveryKeyStepUpSection
+                    copy={deviceRemovalStepUpCopy}
+                    isBusy={isDeviceBusy}
+                    onCancel={onCancelDeviceRemovalStepUp}
+                    onSubmit={onSubmitDeviceRemovalStepUp}
+                    prompt={deviceRemovalStepUpPrompt}
+                    testIDPrefix="sync-device-removal-stepup"
+                  />
+                ) : null
+              }
             />
           ) : null}
         </>

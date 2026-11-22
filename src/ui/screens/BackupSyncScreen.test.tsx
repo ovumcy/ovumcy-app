@@ -459,7 +459,9 @@ describe("BackupSyncScreen", () => {
     }
   });
 
-  function createConnectedSelfHostedDeviceFixture() {
+  function createConnectedSelfHostedDeviceFixture(
+    options: { twoFactor?: boolean } = {},
+  ) {
     const storage = createSettingsStorageMock({
       readSyncPreferencesRecord: jest.fn().mockResolvedValue({
         mode: "self_hosted",
@@ -511,6 +513,7 @@ describe("BackupSyncScreen", () => {
       },
     ];
     const deletedDeviceIDs: string[] = [];
+    const removalBodies: Record<string, unknown>[] = [];
     global.fetch = jest.fn(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
@@ -532,6 +535,11 @@ describe("BackupSyncScreen", () => {
         }
         if (method === "DELETE" && url.includes("/sync/devices/")) {
           const deviceID = url.slice(url.lastIndexOf("/") + 1);
+          const body = init?.body ? JSON.parse(String(init.body)) : {};
+          removalBodies.push(body);
+          if (options.twoFactor && body.current_password !== "correct-password") {
+            return createJSONResponse({ error: "invalid_current_password" }, 401);
+          }
           deletedDeviceIDs.push(deviceID);
           remoteDevices = remoteDevices.filter(
             (device) => device.device_id !== deviceID,
@@ -542,8 +550,50 @@ describe("BackupSyncScreen", () => {
       },
     ) as typeof fetch;
 
-    return { storage, syncSecretStore, writeSecrets, deletedDeviceIDs };
+    return { storage, syncSecretStore, writeSecrets, deletedDeviceIDs, removalBodies };
   }
+
+  it("asks a two-factor self-hosted server's password and code before removing a device", async () => {
+    const fixture = createConnectedSelfHostedDeviceFixture({ twoFactor: true });
+    await fixture.writeSecrets;
+    mockOpenConfirmation.mockResolvedValue(true);
+
+    await render(
+      <BackupSyncScreen
+        now={new Date(2026, 2, 20)}
+        storage={fixture.storage}
+        syncSecretStore={fixture.syncSecretStore}
+      />,
+    );
+
+    await screen.findByTestId("settings-sync-section");
+    await fireEvent.press(await screen.findByTestId("backup-sync-advanced-toggle"));
+    await fireEvent.press(
+      await screen.findByTestId("settings-sync-devices-load-button"),
+    );
+    await screen.findByTestId("settings-sync-device-device-2");
+    await fireEvent.press(screen.getByTestId("settings-sync-device-remove-device-2"));
+
+    await fireEvent.changeText(
+      await screen.findByTestId("sync-device-removal-stepup-password"),
+      "correct-password",
+    );
+    await fireEvent.changeText(
+      screen.getByTestId("sync-device-removal-stepup-code"),
+      "123456",
+    );
+    await fireEvent.press(screen.getByTestId("sync-device-removal-stepup-confirm"));
+
+    await waitFor(() => expect(fixture.deletedDeviceIDs).toEqual(["device-2"]));
+    expect(fixture.removalBodies.at(-1)).toEqual({
+      current_password: "correct-password",
+      code: "123456",
+    });
+    await waitFor(() =>
+      expect(screen.queryByTestId("sync-device-removal-stepup-password")).toBeNull(),
+    );
+    await screen.findByTestId("settings-sync-devices-status-banner");
+  });
 
   it("lists sync devices on demand with a this-device badge and last-seen line", async () => {
     const fixture = createConnectedSelfHostedDeviceFixture();

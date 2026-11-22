@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Text } from "react-native";
 
 import { getDeviceCopy } from "../../../i18n/device-copy";
 import { AppPreferencesTestProvider } from "../../../test/AppPreferencesTestProvider";
@@ -111,5 +112,24 @@ describe("SettingsSyncDevicesSection", () => {
       screen.getByTestId("settings-sync-devices-error-banner"),
     ).toBeTruthy();
     expect(screen.getByText(copy.errors.networkFailed)).toBeTruthy();
+  });
+
+  it("renders the step-up card it is given above the list", async () => {
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncDevicesSection
+          copy={copy}
+          devices={[]}
+          errorMessage=""
+          isBusy={false}
+          onLoadDevices={noop}
+          onRemoveDevice={noop}
+          statusMessage=""
+          stepUp={<Text testID="device-step-up-slot">step-up</Text>}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.getByTestId("device-step-up-slot")).toBeTruthy();
   });
 });
