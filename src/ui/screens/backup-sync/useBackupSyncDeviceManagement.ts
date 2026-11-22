@@ -192,7 +192,10 @@ export function useBackupSyncDeviceManagement(core: BackupSyncSessionCore) {
         return;
       }
       setDeviceErrorMessage(
-        resolveBackupSyncDeviceErrorMessage(result.errorCode, deviceCopy),
+        resolveBackupSyncDeviceErrorMessage(result.errorCode, deviceCopy, {
+          retryAfterSeconds: result.retryAfterSeconds,
+          template: viewData.account.errors.retryInSeconds,
+        }),
       );
       if (result.errorCode === "device_not_found") {
         // Another device already removed this entry — the rendered list is
