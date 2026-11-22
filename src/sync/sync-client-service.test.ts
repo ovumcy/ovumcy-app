@@ -2225,20 +2225,33 @@ describe("sync device management", () => {
       .mockReturnValue(createAPIClientMock({ removeDevice }));
 
     const otherResult = await removeSyncDevice(
+      createLocalAppStorageMock(),
       secretStore,
       selfHostedPreferences,
       "device-2",
+      undefined,
       apiClientFactory,
     );
     const currentResult = await removeSyncDevice(
+      createLocalAppStorageMock(),
       secretStore,
       selfHostedPreferences,
       preparedSecrets.record.device.deviceID,
+      undefined,
       apiClientFactory,
     );
 
-    expect(otherResult).toEqual({ ok: true, removedCurrentDevice: false });
-    expect(currentResult).toEqual({ ok: true, removedCurrentDevice: true });
+    expect(otherResult).toEqual({
+      ok: true,
+      removedCurrentDevice: false,
+      preferences: null,
+    });
+    expect(currentResult).toEqual({
+      ok: true,
+      removedCurrentDevice: true,
+      preferences: expect.objectContaining({ setupStatus: "local_ready" }),
+    });
+    expect((await secretStore.readSyncSecrets())?.authSessionToken).toBeNull();
     expect(removeDevice).toHaveBeenNthCalledWith(1, "session-1", {
       deviceID: "device-2",
     });
@@ -2266,17 +2279,21 @@ describe("sync device management", () => {
 
     await expect(
       removeSyncDevice(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences,
         "device-9",
+        undefined,
         apiClientFactory,
       ),
     ).resolves.toEqual({ ok: false, errorCode: "device_not_found" });
     await expect(
       removeSyncDevice(
+        createLocalAppStorageMock(),
         secretStore,
         selfHostedPreferences,
         "device-9",
+        undefined,
         apiClientFactory,
       ),
     ).resolves.toEqual({ ok: false, errorCode: "rate_limited" });
@@ -4816,9 +4833,11 @@ describe("sync device management additional branches", () => {
     const apiClientFactory = jest.fn();
 
     const result = await removeSyncDevice(
+      createLocalAppStorageMock(),
       secretStore,
       selfHostedPreferences,
       "device-2",
+      undefined,
       apiClientFactory,
     );
 
@@ -4842,9 +4861,11 @@ describe("sync device management additional branches", () => {
     );
 
     const result = await removeSyncDevice(
+      createLocalAppStorageMock(),
       secretStore,
       managedPreferences,
       "device-2",
+      undefined,
       jest.fn(),
       managedClientFactory,
     );

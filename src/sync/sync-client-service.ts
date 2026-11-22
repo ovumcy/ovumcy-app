@@ -151,6 +151,12 @@ export type SyncDeviceManagementErrorCode =
   | "sync_not_allowed"
   | "unauthorized"
   | "device_not_found"
+  // Community server with two-factor on: removal needs the password and a
+  // current code; the caller prompts and retries with them.
+  | "device_step_up_required"
+  | "invalid_current_password"
+  | "totp_invalid_code"
+  | "totp_replayed"
   | "rate_limited"
   | "network_failed"
   | "generic";
@@ -1672,26 +1678,36 @@ export async function listSyncDevices(
 
 /**
  * removeSyncDevice detaches one device from the account so its slot is freed.
- * The server allows removing the currently connected device: sessions are not
- * device-bound, so sync on this install keeps working and the device simply
- * re-registers on the next sign-in or recovery. The distinct confirmation for
- * that case is owned by the caller; this function only reports whether the
- * removed id was the current device's.
+ * Once two-factor is on, a community server re-confirms the password and a
+ * current code: a removal sent without them answers
+ * `device_step_up_required`, and the caller prompts and retries. The step-up
+ * is never sent to a managed sync host.
+ *
+ * Removing the device this install registered under revokes the community
+ * session bound to it, so the local session is cleared with it and the
+ * returned `preferences` carry the signed-out state. The distinct
+ * confirmation for that case is owned by the caller.
  */
 export async function removeSyncDevice(
+  storage: LocalAppStorage,
   secretStore: SyncSecretStore,
   preferences: SyncPreferencesRecord,
   deviceID: string,
+  // Held only for this call; never stored or logged.
+  stepUp?: SyncRecoveryKeyStepUp,
   apiClientFactory: SyncAPIClientFactory = createSyncAPIClient,
   managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
 ): Promise<
   | {
       ok: true;
       removedCurrentDevice: boolean;
+      // Set when the removal ended this device's session.
+      preferences: SyncPreferencesRecord | null;
     }
   | {
       ok: false;
       errorCode: SyncDeviceManagementErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   const prepared = await readPreparedSyncContext(
@@ -1707,21 +1723,38 @@ export async function removeSyncDevice(
     };
   }
 
+  const selfHosted = preferences.mode === "self_hosted";
   const client = apiClientFactory(prepared.baseURL);
   const removeResult = await client.removeDevice(
     prepared.secrets.authSessionToken,
     { deviceID },
+    ...(selfHosted && stepUp ? [stepUp] : []),
   );
   if (!removeResult.ok) {
-    return {
-      ok: false,
-      errorCode: mapDeviceManagementAPIError(removeResult.errorCode),
-    };
+    if (
+      selfHosted &&
+      !stepUp &&
+      removeResult.errorCode === "invalid_current_password"
+    ) {
+      return { ok: false, errorCode: "device_step_up_required" };
+    }
+    return withRetryAfter(
+      {
+        ok: false,
+        errorCode: mapDeviceManagementAPIError(removeResult.errorCode, selfHosted),
+      },
+      removeResult,
+    );
   }
 
+  const removedCurrentDevice = deviceID === prepared.secrets.device.deviceID;
   return {
     ok: true,
-    removedCurrentDevice: deviceID === prepared.secrets.device.deviceID,
+    removedCurrentDevice,
+    preferences:
+      removedCurrentDevice && selfHosted
+        ? await clearLocalSyncSession(storage, secretStore, preferences)
+        : null,
   };
 }
 
@@ -1743,6 +1776,7 @@ function mapPreparedContextToDeviceManagementError(
 
 function mapDeviceManagementAPIError(
   errorCode: SyncAPIErrorCode,
+  selfHosted = false,
 ): SyncDeviceManagementErrorCode {
   switch (errorCode) {
     case "unauthorized":
@@ -1750,6 +1784,10 @@ function mapDeviceManagementAPIError(
     case "rate_limited":
     case "network_failed":
       return errorCode;
+    case "invalid_current_password":
+    case "totp_invalid_code":
+    case "totp_replayed":
+      return selfHosted ? errorCode : "generic";
     case "sync_disabled":
       return "sync_not_allowed";
     case "server_busy":
