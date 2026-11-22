@@ -4580,6 +4580,106 @@ describe("sqlite-app-storage", () => {
       expect(legacy.clear).not.toHaveBeenCalled();
     });
 
+    // Models a connection that stays inside a transaction whose ROLLBACK
+    // failed: every later BEGIN fails as nested until a ROLLBACK succeeds.
+    function withStickyTransaction(
+      database: LocalAppDatabase,
+      failRunOnce: (source: string) => Error | null,
+    ) {
+      const statements: string[] = [];
+      let transactionOpen = false;
+      let failNextRollback = false;
+      let runFailed = false;
+      const tracked: LocalAppDatabase = {
+        ...database,
+        execAsync: (source) => {
+          statements.push(source);
+          if (source === "BEGIN IMMEDIATE;") {
+            if (transactionOpen) {
+              return Promise.reject(new Error("cannot start a transaction within a transaction"));
+            }
+            transactionOpen = true;
+          } else if (source === "ROLLBACK;") {
+            if (failNextRollback) {
+              failNextRollback = false;
+              return Promise.reject(new Error("simulated rollback failure"));
+            }
+            if (!transactionOpen) {
+              return Promise.reject(new Error("cannot rollback - no transaction is active"));
+            }
+            transactionOpen = false;
+          } else if (source === "COMMIT;") {
+            transactionOpen = false;
+          }
+          return database.execAsync(source);
+        },
+        getFirstAsync: <T,>(source: string, ...params: unknown[]) =>
+          database.getFirstAsync<T>(source, ...params),
+        getAllAsync: <T,>(source: string, ...params: unknown[]) =>
+          database.getAllAsync<T>(source, ...params),
+        runAsync: (source: string, ...params: unknown[]) => {
+          statements.push(source);
+          const failure = runFailed ? null : failRunOnce(source);
+          if (failure) {
+            runFailed = true;
+            failNextRollback = true;
+            return Promise.reject(failure);
+          }
+          return database.runAsync(source, ...params);
+        },
+      };
+      return { tracked, statements };
+    }
+
+    it("rolls back a legacy migration left open by a failed ROLLBACK before the hydrate retry", async () => {
+      const legacy = legacySourceWithData();
+      const inspected = createInspectableFakeDatabase();
+      const { tracked, statements } = withStickyTransaction(inspected.database, (source) =>
+        source.includes("INSERT INTO profile_settings")
+          ? new Error("NativeDatabase.execAsync has been rejected")
+          : null,
+      );
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: legacy,
+        localDataKeyStore: createFakeLocalDataKeyStore(localDataKey),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(storage.readProfileRecord()).resolves.toEqual(
+        expect.objectContaining({ lastPeriodStart: "2026-03-14", cycleLength: 31 }),
+      );
+      const firstBegin = statements.indexOf("BEGIN IMMEDIATE;");
+      const secondBegin = statements.indexOf("BEGIN IMMEDIATE;", firstBegin + 1);
+      expect(statements.slice(firstBegin, secondBegin).filter((s) => s === "ROLLBACK;")).toEqual([
+        "ROLLBACK;",
+        "ROLLBACK;",
+      ]);
+      expect(legacy.clear).toHaveBeenCalledTimes(1);
+    });
+
+    it("rolls back a key-mismatch wipe left open by a failed ROLLBACK before the next hydrate", async () => {
+      const inspected = createInspectableFakeDatabase({
+        bootstrapRow: encryptedBootstrapRow({
+          hasCompletedOnboarding: true,
+          profileVersion: 3,
+          incompleteOnboardingStep: null,
+        }),
+      });
+      const { tracked } = withStickyTransaction(inspected.database, (source) =>
+        source.startsWith("DELETE FROM") ? new Error("simulated wipe failure") : null,
+      );
+      const storage = createSQLiteAppStorage({
+        legacyStorageSource: createInertLegacySource(),
+        localDataKeyStore: createFakeLocalDataKeyStore("b".repeat(64)),
+        openDatabase: async () => tracked,
+      });
+
+      await expect(storage.readBootstrapState()).rejects.toThrow("simulated wipe failure");
+      await expect(storage.readBootstrapState()).resolves.toEqual(
+        createDefaultBootstrapState(),
+      );
+    });
+
     it("drops a managed billing cache row that does not authenticate at hydrate and reseeds the default", async () => {
       const storedBootstrap = {
         hasCompletedOnboarding: true,
