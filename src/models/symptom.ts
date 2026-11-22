@@ -1,5 +1,9 @@
 export const MAX_CUSTOM_SYMPTOM_NAME_LENGTH = 40;
 export const MAX_CUSTOM_SYMPTOM_ICON_LENGTH = 16;
+// One limit for the whole catalog (built-in, custom and hidden entries alike),
+// enforced when a symptom is created and when a backup is imported. A catalog
+// that already exceeds it still exports in full.
+export const MAX_SYMPTOM_CATALOG_SIZE = 200;
 export const DEFAULT_CUSTOM_SYMPTOM_ICON = "✨";
 export const DEFAULT_CUSTOM_SYMPTOM_COLOR = "#E8799F";
 

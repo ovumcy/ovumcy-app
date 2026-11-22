@@ -13,6 +13,8 @@ export function resolveSettingsSymptomErrorMessage(
       return viewData.symptoms.errors.labelInvalidCharacters;
     case "duplicate_label":
       return viewData.symptoms.errors.duplicateLabel;
+    case "catalog_full":
+      return viewData.symptoms.errors.catalogFull;
     case "not_found":
     case "builtin_edit_forbidden":
       return viewData.symptoms.errors.notFound;

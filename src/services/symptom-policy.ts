@@ -25,6 +25,7 @@ export type SymptomValidationErrorCode =
   | "icon_invalid_characters"
   | "invalid_color"
   | "duplicate_label"
+  | "catalog_full"
   | "builtin_edit_forbidden"
   | "not_found";
 

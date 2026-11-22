@@ -1,6 +1,9 @@
 import { createEmptyDayLogRecord } from "../models/day-log";
 import { createDefaultSyncPreferencesRecord } from "../sync/sync-contract";
-import { createDefaultSymptomRecords } from "../models/symptom";
+import {
+  createDefaultSymptomRecords,
+  MAX_SYMPTOM_CATALOG_SIZE,
+} from "../models/symptom";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import {
@@ -871,6 +874,34 @@ describe("settings services", () => {
         reminderLeadDays: 14,
       }),
     );
+  });
+
+  it("refuses a new symptom once the catalog holds the shared limit", async () => {
+    const storage = createStorageMock();
+    const defaults = createDefaultSymptomRecords();
+    const fullCatalog = [
+      ...defaults,
+      ...Array.from({ length: MAX_SYMPTOM_CATALOG_SIZE - defaults.length }, (_, index) => ({
+        ...defaults[0]!,
+        id: `filler_${index}`,
+        slug: `filler-${index}`,
+        label: `Filler ${index}`,
+        isDefault: false,
+      })),
+    ];
+    const state = createLoadedSettingsState(
+      await storage.readProfileRecord(),
+      createDefaultSyncPreferencesRecord(),
+      false,
+      false,
+      fullCatalog,
+      createExportState(),
+    );
+
+    await expect(
+      createSettingsSymptom(storage, state, { label: "Jaw pain", icon: "🔥" }),
+    ).resolves.toEqual({ ok: false, errorCode: "catalog_full" });
+    expect(storage.writeSymptomRecord).not.toHaveBeenCalled();
   });
 
   it("creates, updates, archives, and restores custom symptoms through the canonical repository", async () => {
