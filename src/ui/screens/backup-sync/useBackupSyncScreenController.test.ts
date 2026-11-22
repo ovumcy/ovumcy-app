@@ -113,6 +113,7 @@ function createAccountConnectionFixture(
     setAccountPasswordValue: jest.fn(),
     isAuthenticatingSync: false,
     isRecoveringSync: false,
+    isDisconnectingSync: false,
     pendingTOTPChallenge: null,
     totpChallengeCode: "",
     setTotpChallengeCode: jest.fn(),
@@ -357,6 +358,23 @@ describe("useBackupSyncScreenController", () => {
       expect(core.saveSyncDraftIfNeeded).toHaveBeenCalledWith("local");
       expect(core.navigation.dispatch).not.toHaveBeenCalled();
     });
+  });
+
+  it("disables the account and sync actions while a disconnect revoke is in flight", async () => {
+    setUpLoadedController();
+    mockUseBackupSyncAccountConnection.mockReturnValue(
+      createAccountConnectionFixture({ isDisconnectingSync: true }),
+    );
+    const { result } = await renderHook(() => useBackupSyncScreenController({}));
+
+    expect(result.current.flowProps!.presentation.accountActionsDisabled).toBe(true);
+  });
+
+  it("leaves the account and sync actions enabled when nothing is in flight", async () => {
+    setUpLoadedController();
+    const { result } = await renderHook(() => useBackupSyncScreenController({}));
+
+    expect(result.current.flowProps!.presentation.accountActionsDisabled).toBe(false);
   });
 
   // ---------------------------------------------------------------------
