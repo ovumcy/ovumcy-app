@@ -161,7 +161,7 @@ export type SyncDeviceManagementErrorCode =
   | "network_failed"
   | "generic";
 
-// Seconds the server asked the caller to wait (429/503 on a blob call).
+// Seconds the server asked the caller to wait (a 429/503 `Retry-After`).
 export type SyncRetryAfter = { retryAfterSeconds?: number };
 
 function withRetryAfter<T extends { ok: false }>(
@@ -250,6 +250,7 @@ export type ConnectSyncAccountResult =
       // Set when register created the account but a later step failed: the
       // only copy of the recovery code, to be shown like a successful one.
       recoveryCode?: string;
+      retryAfterSeconds?: number;
     };
 
 export async function connectSyncAccount(
@@ -386,10 +387,10 @@ export async function connectSyncAccount(
       ? await client.register({ login, password: credentials.password })
       : await client.login({ login, password: credentials.password });
   if (!authResult.ok) {
-    return {
-      ok: false,
-      errorCode: mapConnectAPIError(authResult.errorCode),
-    };
+    return withRetryAfter(
+      { ok: false, errorCode: mapConnectAPIError(authResult.errorCode) },
+      authResult,
+    );
   }
 
   // See managed branch above for the rationale: TOTP-enabled login defers the
@@ -974,6 +975,7 @@ export async function recoverSyncAccess(
   | {
       ok: false;
       errorCode: SyncRecoverErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   const login = credentials.login.trim();
@@ -1131,10 +1133,10 @@ export async function recoverSyncAccess(
     password: credentials.password,
   });
   if (!authResult.ok) {
-    return {
-      ok: false,
-      errorCode: mapRecoverAPIError(authResult.errorCode),
-    };
+    return withRetryAfter(
+      { ok: false, errorCode: mapRecoverAPIError(authResult.errorCode) },
+      authResult,
+    );
   }
 
   // The deferred login carries an empty session token; nothing may run on it.

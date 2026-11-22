@@ -62,7 +62,8 @@ export type SyncAPIErrorCode =
   | "generic";
 
 // Seconds from a 429/503 `Retry-After` header, when the server sent a usable
-// delta-seconds value; carried only by the blob calls, whose callers show it.
+// delta-seconds value; the blob, login, register and device-removal callers
+// show it.
 export type SyncAPIFailure = {
   ok: false;
   errorCode: SyncAPIErrorCode;
@@ -127,10 +128,7 @@ export type SyncAPIClient = {
   >;
   login(
     input: { login: string; password: string },
-  ): Promise<
-    | { ok: true; auth: SyncAuthResult }
-    | { ok: false; errorCode: SyncAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; auth: SyncAuthResult } | SyncAPIFailure>;
   logout(
     sessionToken: string,
   ): Promise<{ ok: true } | { ok: false; errorCode: SyncAPIErrorCode }>;
@@ -165,10 +163,7 @@ export type SyncAPIClient = {
   >;
   register(
     input: { login: string; password: string },
-  ): Promise<
-    | { ok: true; auth: SyncAuthResult }
-    | { ok: false; errorCode: SyncAPIErrorCode }
-  >;
+  ): Promise<{ ok: true; auth: SyncAuthResult } | SyncAPIFailure>;
   // The server rotates the recovery code on success; `recoveryCode` is null
   // only from a server that predates the rotation.
   changePassword(
@@ -744,10 +739,7 @@ async function requestAuthResult(
   baseURL: string,
   path: string,
   input: { login: string; password: string },
-): Promise<
-  | { ok: true; auth: SyncAuthResult }
-  | { ok: false; errorCode: SyncAPIErrorCode }
-> {
+): Promise<{ ok: true; auth: SyncAuthResult } | SyncAPIFailure> {
   const result = await requestJSON<RawSyncAuthResult>(
     fetchImpl,
     baseURL,
@@ -760,9 +752,7 @@ async function requestAuthResult(
     "invalid_response",
   );
 
-  return result.ok
-    ? { ok: true, auth: mapSyncAuthResult(result.payload) }
-    : { ok: false, errorCode: result.errorCode };
+  return result.ok ? { ok: true, auth: mapSyncAuthResult(result.payload) } : result;
 }
 
 async function requestNoPayload(
