@@ -1,4 +1,7 @@
+import { createEmptyDayLogRecord } from "../models/day-log";
 import { createPregnancyRecord } from "../models/pregnancy";
+import { createVolatileWebAppStorage } from "../storage/local/volatile-web-app-storage";
+import { buildLocalReminderPlans } from "./local-reminder-plan-service";
 import { createDefaultProfileRecord } from "../models/profile";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { getReminderCopy } from "../i18n/reminder-copy";
@@ -375,6 +378,51 @@ describe("local-reminder-sync-service", () => {
       ).resolves.toBe("disabled");
 
       expect(scheduler.sync).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe("cycle history window", () => {
+    it("plans from a run straddling the two-year bound as one cycle start", async () => {
+      const now = new Date(2026, 5, 20, 9, 0, 0, 0);
+      const period = (date: string) => ({ ...createEmptyDayLogRecord(date), isPeriod: true });
+      // 2024-06-20 is the two-year bound; the run's first day lies before it.
+      const records = [
+        period("2024-06-19"),
+        period("2024-06-20"),
+        period("2024-07-25"),
+        period("2024-07-26"),
+        period("2026-05-20"),
+        period("2026-05-21"),
+        period("2026-06-15"),
+        period("2026-06-16"),
+      ];
+      const storage = createVolatileWebAppStorage();
+      for (const record of records) {
+        await storage.writeDayLogRecord(record);
+      }
+      const profile = {
+        ...createDefaultProfileRecord(),
+        autoPeriodFill: false,
+        lastPeriodStart: null,
+        upcomingPeriodReminderEnabled: true,
+        fertileWindowReminderEnabled: true,
+      };
+      const scheduler = createScheduler();
+
+      await syncLocalReminderSchedule(storage, scheduler, profile, { now });
+
+      const planned = jest.mocked(scheduler.sync).mock.calls[0]?.[0];
+      expect(planned).toEqual(buildLocalReminderPlans(profile, records, now, "en"));
+      // A window cut at the bound would plan different dates.
+      expect(planned).not.toEqual(
+        buildLocalReminderPlans(
+          profile,
+          records.filter((record) => record.date >= "2024-06-20"),
+          now,
+          "en",
+        ),
+      );
+      expect(planned?.map((plan) => plan.kind)).toEqual(["upcoming_period", "fertile_window"]);
     });
   });
 
