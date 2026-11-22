@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { DeviceCopy } from "../../../i18n/device-copy";
@@ -18,6 +19,8 @@ type SettingsSyncDevicesSectionProps = {
   onLoadDevices: () => void | Promise<void>;
   onRemoveDevice: (deviceID: string) => void | Promise<void>;
   statusMessage: string;
+  // The password + code card a two-factor self-hosted server asks for.
+  stepUp?: ReactNode;
 };
 
 export function SettingsSyncDevicesSection({
@@ -28,6 +31,7 @@ export function SettingsSyncDevicesSection({
   onLoadDevices,
   onRemoveDevice,
   statusMessage,
+  stepUp,
 }: SettingsSyncDevicesSectionProps) {
   const styles = useThemedStyles(createStyles);
 
@@ -53,6 +57,8 @@ export function SettingsSyncDevicesSection({
             tone="error"
           />
         ) : null}
+
+        {stepUp}
 
         {devices !== null ? (
           devices.length === 0 ? (

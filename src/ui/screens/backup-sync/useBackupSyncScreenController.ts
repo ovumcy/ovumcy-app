@@ -422,6 +422,10 @@ export function useBackupSyncScreenController(
         recovery.handleSubmitManagedRecoveryRotationStepUp,
       onCancelManagedRecoveryRotationStepUp:
         recovery.handleCancelManagedRecoveryRotationStepUp,
+      deviceRemovalStepUpCopy: deviceManagement.deviceRemovalStepUpCopy,
+      deviceRemovalStepUpPrompt: deviceManagement.deviceRemovalStepUpPrompt,
+      onSubmitDeviceRemovalStepUp: deviceManagement.handleSubmitDeviceRemovalStepUp,
+      onCancelDeviceRemovalStepUp: deviceManagement.handleCancelDeviceRemovalStepUp,
       viewData: viewData.account,
     },
     loadingDescription: shellCopy.loading.backupSyncDescription,
