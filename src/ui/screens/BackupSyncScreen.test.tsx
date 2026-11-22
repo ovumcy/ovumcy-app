@@ -630,7 +630,7 @@ describe("BackupSyncScreen", () => {
       expect(fixture.deletedDeviceIDs).toEqual(["device-2"]),
     );
     expect(mockOpenConfirmation).toHaveBeenCalledWith(
-      deviceCopy.removeDevicePrompt("Old tablet"),
+      deviceCopy.removeSelfHostedDevicePrompt("Old tablet"),
       deviceCopy.removeConfirmAction,
       expect.any(String),
     );
@@ -667,7 +667,7 @@ describe("BackupSyncScreen", () => {
 
     await waitFor(() =>
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
-        deviceCopy.removeCurrentDevicePrompt("Pixel 7"),
+        deviceCopy.removeCurrentSelfHostedDevicePrompt("Pixel 7"),
         deviceCopy.removeConfirmAction,
         expect.any(String),
       ),
