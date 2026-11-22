@@ -525,6 +525,26 @@ describe("sync-setup-service", () => {
       await expect(secretStore.readSyncSecrets()).resolves.toEqual(result.secrets);
     });
 
+    it("starts without a session when preparing a saved self-hosted setup for the first time", async () => {
+      const storage = createLocalAppStorageMock({
+        readSyncPreferencesRecord: jest.fn().mockResolvedValue(connectedSelfHosted),
+      });
+      const secretStore = createSyncSecretStoreMock();
+
+      const result = await prepareSyncSetup(
+        storage,
+        secretStore,
+        connectedSelfHosted,
+        new Date("2026-03-22T08:15:00.000Z"),
+      );
+
+      expect(result.ok).toBe(true);
+      await expect(secretStore.readSyncSecrets()).resolves.toMatchObject({
+        authSessionToken: null,
+        managedAuthSessionToken: null,
+      });
+    });
+
     it.each([
       [
         "another self-hosted server",
