@@ -9,7 +9,10 @@ import { requestSensitiveActionChallenge } from "../../../security/sensitive-act
 import * as accountDeletionService from "../../../sync/account-deletion-service";
 import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
 import type { SyncRecoveryKeyStepUp } from "../../../sync/sync-api-client";
-import { createDefaultSyncPreferencesRecord } from "../../../sync/sync-contract";
+import {
+  createDefaultSyncPreferencesRecord,
+  type SyncSecretsRecord,
+} from "../../../sync/sync-contract";
 import {
   createBackupSyncSessionCoreMock,
   createLoadedSettingsStateFixture,
@@ -51,6 +54,26 @@ const mockDescribeTwoFactor = jest.mocked(describeSyncAccountTwoFactor);
 
 const PASSWORD = "very secure password 12345";
 
+type SessionTokens = Pick<
+  SyncSecretsRecord,
+  "authSessionToken" | "managedAuthSessionToken"
+>;
+const BOTH_TOKENS: SessionTokens = {
+  authSessionToken: "community-token",
+  managedAuthSessionToken: "managed-token",
+};
+
+function createCore(
+  overrides?: Parameters<typeof createBackupSyncSessionCoreMock>[0],
+  tokens: SessionTokens = BOTH_TOKENS,
+) {
+  const core = createBackupSyncSessionCoreMock(overrides);
+  jest
+    .spyOn(core.syncSecretStore, "readSyncSecrets")
+    .mockResolvedValue(tokens as SyncSecretsRecord);
+  return core;
+}
+
 async function submitStepUp(
   result: { current: ReturnType<typeof useBackupSyncAccountDeletion> },
   stepUp: SyncRecoveryKeyStepUp = { currentPassword: PASSWORD },
@@ -61,7 +84,7 @@ async function submitStepUp(
 }
 
 function createGuestPartnerCore() {
-  return createBackupSyncSessionCoreMock({
+  return createCore({
     state: createLoadedSettingsStateFixture({
       savedSyncPreferences: {
         ...createDefaultSyncPreferencesRecord(),
@@ -86,7 +109,7 @@ describe("useBackupSyncAccountDeletion", () => {
 
   describe("handleDeleteAccount", () => {
     it("does nothing when there is no loaded state", async () => {
-      const core = createBackupSyncSessionCoreMock({ state: null });
+      const core = createCore({ state: null });
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -101,7 +124,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("surfaces deviceAuthUnavailable with delete_account scope when the challenge is unavailable", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({
         ok: false,
         reason: "unavailable",
@@ -121,7 +144,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("surfaces deviceAuthFailed with delete_account scope when the challenge fails", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({
         ok: false,
         reason: "failed",
@@ -141,7 +164,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("stays silent when the device-auth challenge is cancelled by the owner", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({
         ok: false,
         reason: "cancelled",
@@ -159,7 +182,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("requests device auth with the expected prompt before the standard confirm", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(false);
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
@@ -183,7 +206,7 @@ describe("useBackupSyncAccountDeletion", () => {
     // confirm must abort before the deletion view-model is even built --
     // nothing about the account or local data changes.
     it("dismissal of the standard confirm is keep: aborts without deleting anything", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(false);
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
@@ -201,7 +224,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("shows a distinct subscription-warning confirm and proceeds only once both are accepted", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockBuildAccountDeletionViewModel.mockReturnValue({
@@ -246,7 +269,7 @@ describe("useBackupSyncAccountDeletion", () => {
     // (subscription-warning) confirm too -- a dismissal there must not fall
     // through to deleting the account.
     it("dismissal of the subscription-warning confirm is keep: aborts without deleting anything", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation
         .mockResolvedValueOnce(true) // standard confirm accepted
@@ -271,7 +294,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("shows the could-not-confirm warning when billing is unknown and proceeds once it is accepted", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockBuildAccountDeletionViewModel.mockReturnValue({
@@ -304,7 +327,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("dismissal of the could-not-confirm warning is keep: aborts without deleting anything", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation
         .mockResolvedValueOnce(true)
@@ -327,7 +350,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("skips the subscription-warning confirm entirely when not required (pure trial) and deletes after the single confirm", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockBuildAccountDeletionViewModel.mockReturnValue({
@@ -349,7 +372,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("surfaces a delete failure with delete_account scope and resets the busy flag without navigating", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockDeleteOvumcyAccount.mockResolvedValue({
@@ -381,7 +404,7 @@ describe("useBackupSyncAccountDeletion", () => {
     // copy, not the generic failure) and must leave everything untouched —
     // still signed in, no local teardown side effects, no navigation.
     it("surfaces sync_purge_unavailable with delete_account scope and leaves the signed-in state untouched", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockDeleteOvumcyAccount.mockResolvedValue({
@@ -407,7 +430,7 @@ describe("useBackupSyncAccountDeletion", () => {
 
     it("on success clears the pending partner invite, resets interface preferences, and routes to the onboarding reset", async () => {
       stashManagedPartnerInviteToken("pending-invite-token");
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
@@ -449,7 +472,7 @@ describe("useBackupSyncAccountDeletion", () => {
       "asks for the password after the confirms (2FA %j -> code field %s) and deletes nothing yet",
       async (twoFactor, codeRequired) => {
         mockDescribeTwoFactor.mockResolvedValue(twoFactor);
-        const core = createBackupSyncSessionCoreMock();
+        const core = createCore();
         const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
         await act(async () => {
@@ -466,9 +489,32 @@ describe("useBackupSyncAccountDeletion", () => {
       },
     );
 
+    it("a stray community token alone never opens the managed card", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({
+        ok: false,
+        errorCode: "unauthorized",
+      });
+      const core = createCore(undefined, {
+        authSessionToken: "community-token",
+        managedAuthSessionToken: null,
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(core.setErrorState).toHaveBeenCalledWith({
+        code: "unauthorized",
+        scope: "delete_account",
+      });
+    });
+
     it("shows the code field when the two-factor status lookup throws", async () => {
       mockDescribeTwoFactor.mockRejectedValue(new Error("keychain locked"));
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -506,7 +552,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         reason: "cancelled",
       });
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -523,7 +569,7 @@ describe("useBackupSyncAccountDeletion", () => {
         ok: false,
         errorCode: "totp_invalid_code",
       });
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -550,7 +596,7 @@ describe("useBackupSyncAccountDeletion", () => {
       "keeps the card open on %s with its own message and touches nothing else",
       async (errorCode, codeRequired, shown) => {
         mockDeleteOvumcyAccount.mockResolvedValue({ ok: false, errorCode });
-        const core = createBackupSyncSessionCoreMock();
+        const core = createCore();
         const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
         await act(async () => {
@@ -574,7 +620,7 @@ describe("useBackupSyncAccountDeletion", () => {
       "closes the card and shows the delete failure on %s",
       async (errorCode) => {
         mockDeleteOvumcyAccount.mockResolvedValue({ ok: false, errorCode });
-        const core = createBackupSyncSessionCoreMock();
+        const core = createCore();
         const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
         await act(async () => {
@@ -597,7 +643,7 @@ describe("useBackupSyncAccountDeletion", () => {
           settle = resolve;
         }),
       );
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -616,7 +662,7 @@ describe("useBackupSyncAccountDeletion", () => {
 
     it("clears the busy flag and reports a failure when the deletion throws", async () => {
       mockDeleteOvumcyAccount.mockRejectedValue(new Error("keychain locked"));
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -633,7 +679,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("cancel closes the card without deleting", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -694,7 +740,7 @@ describe("useBackupSyncAccountDeletion", () => {
       const consoleSpies = (
         ["log", "warn", "error", "info", "debug"] as const
       ).map((method) => jest.spyOn(console, method).mockImplementation(() => {}));
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
 
       await act(async () => {
@@ -743,7 +789,7 @@ describe("useBackupSyncAccountDeletion", () => {
     }
 
     it("re-runs the gates, then only the local part: no DELETE, no password card", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockFinishLocalAccountDeletion.mockResolvedValue({ ok: true });
@@ -771,7 +817,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("a dismissed device-auth gate still blocks the local-only retry", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
@@ -789,7 +835,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("a dismissed confirm still blocks the local-only retry", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
@@ -804,7 +850,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("keeps the full server flow when a failure did not erase the server account", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       mockDeleteOvumcyAccount.mockResolvedValueOnce({
@@ -826,7 +872,7 @@ describe("useBackupSyncAccountDeletion", () => {
     });
 
     it("a reloaded or switched state takes the full server flow again", async () => {
-      const core = createBackupSyncSessionCoreMock();
+      const core = createCore();
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
       mockOpenConfirmation.mockResolvedValue(true);
       const { result, rerender } = await renderHook(
@@ -835,7 +881,7 @@ describe("useBackupSyncAccountDeletion", () => {
       );
 
       await failAfterServerDelete(result);
-      await rerender({ core: createBackupSyncSessionCoreMock() });
+      await rerender({ core: createCore() });
       await act(async () => {
         await result.current.handleDeleteAccount();
       });
@@ -846,20 +892,59 @@ describe("useBackupSyncAccountDeletion", () => {
   });
 
   describe("self-hosted step-up", () => {
-    function createSelfHostedCore(hasSyncSession = true) {
-      return createBackupSyncSessionCoreMock({
-        state: createLoadedSettingsStateFixture({
-          hasSyncSession,
-          savedSyncPreferences: {
-            ...createDefaultSyncPreferencesRecord(),
-            mode: "self_hosted",
-            endpointInput: "192.168.1.20:8080",
-            normalizedEndpoint: "http://192.168.1.20:8080",
-            setupStatus: "connected",
-          },
-        }),
-      });
+    function createSelfHostedCore(
+      hasSyncSession = true,
+      tokens: SessionTokens = BOTH_TOKENS,
+    ) {
+      return createCore(
+        {
+          state: createLoadedSettingsStateFixture({
+            hasSyncSession,
+            savedSyncPreferences: {
+              ...createDefaultSyncPreferencesRecord(),
+              mode: "self_hosted",
+              endpointInput: "192.168.1.20:8080",
+              normalizedEndpoint: "http://192.168.1.20:8080",
+              setupStatus: "connected",
+            },
+          }),
+        },
+        tokens,
+      );
     }
+
+    it("a stray managed token alone never opens the self-hosted card", async () => {
+      mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
+      const core = createSelfHostedCore(true, {
+        authSessionToken: null,
+        managedAuthSessionToken: "managed-token",
+      });
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(mockDescribeTwoFactor).not.toHaveBeenCalled();
+      expect(result.current.accountDeletionStepUpPrompt).toBeNull();
+      expect(mockDeleteOvumcyAccount).toHaveBeenCalledTimes(1);
+      expect(mockDeleteOvumcyAccount.mock.calls[0]?.[4]).toBeUndefined();
+    });
+
+    it("shows the card when the secret store cannot be read", async () => {
+      const core = createSelfHostedCore();
+      jest
+        .spyOn(core.syncSecretStore, "readSyncSecrets")
+        .mockRejectedValue(new Error("keychain locked"));
+      const { result } = await renderHook(() => useBackupSyncAccountDeletion(core));
+
+      await act(async () => {
+        await result.current.handleDeleteAccount();
+      });
+
+      expect(result.current.accountDeletionStepUpPrompt).not.toBeNull();
+      expect(mockDeleteOvumcyAccount).not.toHaveBeenCalled();
+    });
 
     beforeEach(() => {
       mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
@@ -939,7 +1024,7 @@ describe("useBackupSyncAccountDeletion", () => {
   });
 
   it("tells the deletion a connected session was loaded, so a vanished one aborts", async () => {
-    const core = createBackupSyncSessionCoreMock();
+    const core = createCore();
     mockRequestSensitiveActionChallenge.mockResolvedValue({ ok: true });
     mockOpenConfirmation.mockResolvedValue(true);
     mockDeleteOvumcyAccount.mockResolvedValue({ ok: true });
