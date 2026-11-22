@@ -10,6 +10,7 @@ import { createSyncSecretStoreMock } from "../../../test/create-sync-secret-stor
 import {
   runConfirmImportAction,
   runPickImportFileAction,
+  withRestoreReminders,
   type PendingImportPreview,
 } from "./settings-screen-import-actions";
 
@@ -190,5 +191,24 @@ describe("reminder rebuild after a JSON import", () => {
 
     expect(context.setImportErrorMessage).toHaveBeenCalled();
     expect(context.reminderScheduler.sync).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("withRestoreReminders", () => {
+  it("sets the opt-in on the pending preview and keeps the previewed envelope", () => {
+    const pending = {
+      envelope: {},
+      outcome: {},
+      restoreReminders: false,
+    } as unknown as PendingImportPreview;
+
+    expect(withRestoreReminders(pending, true)).toEqual({
+      ...pending,
+      restoreReminders: true,
+    });
+  });
+
+  it("stays empty when no preview is pending", () => {
+    expect(withRestoreReminders(null, true)).toBeNull();
   });
 });

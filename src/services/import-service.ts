@@ -864,7 +864,7 @@ function applyImportedDeviceSettingRules(
     upcomingPeriodReminderEnabled: defaults.upcomingPeriodReminderEnabled === true,
     fertileWindowReminderEnabled: defaults.fertileWindowReminderEnabled === true,
     kickCountReminderEnabled: defaults.kickCountReminderEnabled === true,
-    cycleDayReminders: defaults.cycleDayReminders ?? [],
+    cycleDayReminders: [],
   };
 }
 
@@ -1068,8 +1068,9 @@ function mintImportedRecordID(kind: ImportedRecordKind): string {
 
 function createRandomUUIDv4(): string {
   const bytes = getRandomBytes(16);
-  bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
-  bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  view.setUint8(6, (view.getUint8(6) & 0x0f) | 0x40);
+  view.setUint8(8, (view.getUint8(8) & 0x3f) | 0x80);
   const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
@@ -1089,10 +1090,13 @@ function stableStringify(value: unknown): string {
   if (typeof value === "object" && value !== null) {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, entry]) => entry !== undefined)
-      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+      // Object keys are unique, so two entries never compare equal.
+      .sort(([left], [right]) => (left < right ? -1 : 1));
     return `{${entries
       .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
       .join(",")}}`;
   }
-  return JSON.stringify(value) ?? "null";
+  // JSON.stringify yields undefined for undefined; String keeps that a stable
+  // token in the fingerprint.
+  return String(JSON.stringify(value));
 }
