@@ -6,6 +6,7 @@ import {
   createDefaultSyncPreferencesRecord,
   type SyncSecretsRecord,
 } from "../sync/sync-contract";
+import { resetManagedSessionRefreshStateForTests } from "../sync/managed-session-refresh-service";
 import { createLocalAppStorageMock } from "../test/create-local-app-storage-mock";
 import { createSyncSecretStoreMock } from "../test/create-sync-secret-store-mock";
 import { normalizeManagedBillingCacheRecord } from "../storage/local/storage-contract";
@@ -203,13 +204,18 @@ describe("loadManagedPremiumFeatures — fallback path (no token gate) is unchan
 describe("loadManagedPremiumFeaturesForCurrentSession — gate built from the live session", () => {
   it("constructs the signed-token gate for the active managed session when none is injected", async () => {
     // No tokenGate argument, so the current managed session must drive gate
-    // construction (buildEntitlementTokenGate). The session-view refresh is
-    // unauthorized here, so the builder returns no gate and premium features
-    // fall back to the billing snapshot (fail-to-snapshot, never crash).
+    // construction (buildEntitlementTokenGate). The session view is refused and
+    // the renewal cannot complete (credentials kept), so the builder returns no
+    // gate and premium features fall back to the billing snapshot
+    // (fail-to-snapshot, never crash).
+    resetManagedSessionRefreshStateForTests();
     global.fetch = jest.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : input.toString();
       if (url.endsWith("/auth/session")) {
         return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      if (url.endsWith("/auth/refresh")) {
+        return jsonResponse({}, 503);
       }
       if (url.endsWith("/account/billing")) {
         return jsonResponse({
@@ -232,7 +238,11 @@ describe("loadManagedPremiumFeaturesForCurrentSession — gate built from the li
       ...createDefaultSyncPreferencesRecord(),
       mode: "managed",
     });
-    const secretStore = createSyncSecretStoreMock(MANAGED_SECRETS);
+    const secretStore = createSyncSecretStoreMock({
+      ...MANAGED_SECRETS,
+      managedRefreshToken: "refresh-1",
+      managedRefreshTokenExpiresAt: "2099-06-18T08:00:00.000Z",
+    });
 
     const features = await loadManagedPremiumFeaturesForCurrentSession(
       storage,
