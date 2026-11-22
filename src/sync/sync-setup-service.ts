@@ -8,6 +8,7 @@ import { createSyncSecretsRecord } from "../security/sync-crypto";
 // check every other guest-aware surface uses. account-deletion-service.ts
 // already imports a pure services-layer helper the same way.
 import { isGuestPartnerAccount } from "../services/backup-sync-view-service";
+import { clearAccountChangeRecoveryPhrase } from "./account-change-recovery-phrase";
 import { isSyncDeviceLabelLengthValid } from "./sync-input-limits";
 import {
   createDefaultManagedBillingCacheRecord,
@@ -160,9 +161,13 @@ export async function prepareSyncSetup(
     await secretStore.writeSyncSecrets(secrets);
     // A new key serves the account of the session it keeps; with no session
     // left it is bound to none yet, so the next sign-in, to any account,
-    // keeps it and the phrase revealed below stays the one that opens it.
+    // keeps it and the phrase revealed below stays the one that opens it. Only
+    // the current mode's session counts: a token of the other mode can outlive
+    // a disconnect.
     const retainsSession =
-      secrets.authSessionToken !== null || secrets.managedAuthSessionToken !== null;
+      nextPreferences.mode === "managed"
+        ? secrets.managedAuthSessionToken !== null
+        : secrets.authSessionToken !== null;
     const preparedPreferences: SyncPreferencesRecord = retainsSession
       ? nextPreferences
       : { ...nextPreferences, accountId: null };
@@ -264,6 +269,7 @@ export async function saveSyncPreferencesDraft(
 
   try {
     if (shouldResetPreparedState) {
+      clearAccountChangeRecoveryPhrase();
       await secretStore.clearSyncSecrets();
       // Clearing sync secrets ends the managed session context (mode switch or
       // endpoint change): purge the billing-snapshot cache alongside, per the

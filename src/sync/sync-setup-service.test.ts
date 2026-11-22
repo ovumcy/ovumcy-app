@@ -621,6 +621,25 @@ describe("sync key and account binding", () => {
     expect(result.ok && result.preferences.accountId).toBe("account-a");
   });
 
+  it("ignores a leftover token of the other mode when deciding the new key's account", async () => {
+    const boundSelfHosted = {
+      ...boundManaged,
+      mode: "self_hosted" as const,
+      endpointInput: "192.168.1.20:8080",
+    };
+    const storage = createLocalAppStorageMock({
+      readSyncPreferencesRecord: jest.fn().mockResolvedValue(boundSelfHosted),
+    });
+    const secretStore = createSyncSecretStoreMock({
+      ...createSyncSecretsRecord("Pixel 7", NOW).record,
+      managedAuthSessionToken: "stale-managed",
+    });
+
+    const result = await prepareSyncSetup(storage, secretStore, boundSelfHosted, NOW);
+
+    expect(result.ok && result.preferences.accountId).toBeNull();
+  });
+
   it("unbinds the account when a material draft change clears the keys, and keeps it on a relabel", async () => {
     const secrets = createSyncSecretsRecord("Pixel 7", NOW).record;
 
