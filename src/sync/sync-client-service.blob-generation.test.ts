@@ -174,12 +174,28 @@ describe("runSyncUpload expected_generation", () => {
     expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
   });
 
-  it("refuses when the stored backup cannot be read after a 409", async () => {
+  it("reports the read failure, not another device, when the stored backup cannot be read after a 409", async () => {
     const putBlob = jest.fn().mockResolvedValue({ ok: false, errorCode: "stale_generation" });
     const getBlob = jest.fn().mockResolvedValue({ ok: false, errorCode: "network_failed" });
+    const { storage, upload } = setup(putBlob, getBlob);
+
+    expect(await upload()).toEqual({ ok: false, errorCode: "network_failed" });
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
+  it("refuses when an older server's field-less retry is stale and the backup is another device's", async () => {
+    const putBlob = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, errorCode: "invalid_json" })
+      .mockResolvedValueOnce({ ok: false, errorCode: "stale_generation" });
+    const getBlob = jest.fn().mockResolvedValue({
+      ok: true,
+      blob: blob({ generation: FLOOR + 5, updatedAt: "2026-03-20T08:05:00Z" }),
+    });
     const { upload } = setup(putBlob, getBlob);
 
     expect(await upload()).toEqual({ ok: false, errorCode: "remote_backup_changed" });
+    expect(putBlob).toHaveBeenCalledTimes(2);
   });
 
   it("refuses a 409 without an expected generation unless the blob is its own", async () => {
