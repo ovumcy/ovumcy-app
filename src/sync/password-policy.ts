@@ -18,3 +18,16 @@ export const SYNC_MIN_PASSWORD_LENGTH = 12;
 export function isPasswordTooShort(password: string): boolean {
   return [...password.trim()].length < SYNC_MIN_PASSWORD_LENGTH;
 }
+
+// bcrypt's input ceiling, counted in UTF-8 bytes of the untrimmed value: both
+// the community server and the managed cloud refuse a longer password (as a
+// weak password on register/change/reset), so the client names the limit.
+export const SYNC_MAX_PASSWORD_BYTES = 72;
+
+export function isPasswordTooLong(password: string): boolean {
+  return utf8ByteLength(password) > SYNC_MAX_PASSWORD_BYTES;
+}
+
+export function utf8ByteLength(value: string): number {
+  return new TextEncoder().encode(value).length;
+}

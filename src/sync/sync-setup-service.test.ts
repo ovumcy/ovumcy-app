@@ -238,6 +238,38 @@ describe("sync-setup-service", () => {
     expect(await secretStore.readSyncSecrets()).toBeNull();
   });
 
+  it.each(["a", "a".repeat(65), "ж".repeat(33)])(
+    "rejects device label %p outside 2-64 bytes before generating any secrets",
+    async (deviceLabel) => {
+      const secretStore = createSyncSecretStoreMock();
+
+      const result = await prepareSyncSetup(
+        createLocalAppStorageMock(),
+        secretStore,
+        { ...createDefaultSyncPreferencesRecord(), mode: "managed", deviceLabel },
+        new Date("2026-03-19T08:15:00.000Z"),
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "device_label_invalid_length" });
+      expect(await secretStore.readSyncSecrets()).toBeNull();
+    },
+  );
+
+  it("refuses to save a draft whose device label is outside 2-64 bytes", async () => {
+    const storage = createLocalAppStorageMock();
+
+    const result = await saveSyncPreferencesDraft(
+      storage,
+      createSyncSecretStoreMock(),
+      createDefaultSyncPreferencesRecord(),
+      { ...createDefaultSyncPreferencesRecord(), mode: "managed", deviceLabel: "a".repeat(65) },
+      false,
+    );
+
+    expect(result).toEqual({ ok: false, errorCode: "device_label_invalid_length" });
+    expect(storage.writeSyncPreferencesRecord).not.toHaveBeenCalled();
+  });
+
   it("saves incomplete self-hosted sync drafts without generating secrets", async () => {
     const storage = createLocalAppStorageMock();
     const secretStore = createSyncSecretStoreMock();

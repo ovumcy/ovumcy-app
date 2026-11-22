@@ -27,7 +27,11 @@ import {
   settleInFlightManagedRefresh,
 } from "./managed-session-refresh-service";
 import { clearPendingManagedRecoveryRotation } from "./managed-recovery-rotation-service";
-import { isPasswordTooShort } from "./password-policy";
+import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
+import {
+  isSyncDeviceLabelLengthValid,
+  isSyncLoginLengthValid,
+} from "./sync-input-limits";
 import type {
   EncryptedSyncEnvelope,
   SyncBlobRecord,
@@ -52,6 +56,7 @@ import {
   createSyncAPIClient,
   type SyncAPIClient,
   type SyncAPIErrorCode,
+  type SyncAPIFailure,
   type SyncRecoveryKeyStepUp,
 } from "./sync-api-client";
 import {
@@ -68,18 +73,24 @@ export type SyncConnectErrorCode =
   | "login_required"
   | "password_required"
   | "password_too_short"
+  | "password_too_long"
+  | "login_invalid_length"
+  | "device_label_invalid_length"
   | "sync_not_allowed"
   | "invalid_registration_input"
   | "registration_failed"
+  | "registration_disabled"
   | "invalid_credentials"
   | "unauthorized"
   | "too_many_devices"
+  | "rate_limited"
   | "network_failed"
   | "generic";
 
 export type SyncRecoverErrorCode =
   | NormalizeSyncEndpointErrorCode
   | "device_label_required"
+  | "device_label_invalid_length"
   | "recovery_phrase_required"
   | "invalid_recovery_phrase"
   | "recovery_not_available"
@@ -120,7 +131,10 @@ export type SyncRunErrorCode =
   // Self-hosted: this device has uploaded under its key before, and the
   // server now stores a different package, so another device replaced it.
   | "recovery_key_changed_elsewhere"
+  // The encrypted snapshot exceeds the server's advertised maxBlobBytes.
+  | "backup_too_large"
   | "rate_limited"
+  | "server_busy"
   | "network_failed"
   | "generic";
 
@@ -130,8 +144,21 @@ export type SyncDeviceManagementErrorCode =
   | "sync_not_allowed"
   | "unauthorized"
   | "device_not_found"
+  | "rate_limited"
   | "network_failed"
   | "generic";
+
+// Seconds the server asked the caller to wait (429/503 on a blob call).
+export type SyncRetryAfter = { retryAfterSeconds?: number };
+
+function withRetryAfter<T extends { ok: false }>(
+  failure: T,
+  source: SyncAPIFailure | { ok: false },
+): T & SyncRetryAfter {
+  return "retryAfterSeconds" in source && source.retryAfterSeconds !== undefined
+    ? { ...failure, retryAfterSeconds: source.retryAfterSeconds }
+    : failure;
+}
 
 /**
  * Data-loss guard policy for `runSyncUpload`: a device that has never
@@ -207,6 +234,9 @@ export type ConnectSyncAccountResult =
   | {
       ok: false;
       errorCode: SyncConnectErrorCode;
+      // Set when register created the account but a later step failed: the
+      // only copy of the recovery code, to be shown like a successful one.
+      recoveryCode?: string;
     };
 
 export async function connectSyncAccount(
@@ -233,6 +263,17 @@ export async function connectSyncAccount(
   // hold a legacy short password, and authenticating it is the server's call.
   if (mode === "register" && isPasswordTooShort(credentials.password)) {
     return { ok: false, errorCode: "password_too_short" };
+  }
+  if (mode === "register" && isPasswordTooLong(credentials.password)) {
+    return { ok: false, errorCode: "password_too_long" };
+  }
+  // The managed cloud registers an email address and validates it itself.
+  if (
+    mode === "register" &&
+    preferences.mode === "self_hosted" &&
+    !isSyncLoginLengthValid(login)
+  ) {
+    return { ok: false, errorCode: "login_invalid_length" };
   }
 
   const normalizedEndpoint = normalizeSyncEndpoint(
@@ -352,12 +393,17 @@ export async function connectSyncAccount(
     };
   }
 
+  // The account exists from here on and the server never reissues its
+  // recovery code, so a later failure still hands the code to the caller.
+  const issuedRecoveryCode = authResult.auth.recoveryCode;
+  const failAfterRegister = (errorCode: SyncConnectErrorCode): ConnectSyncAccountResult =>
+    issuedRecoveryCode
+      ? { ok: false, errorCode, recoveryCode: issuedRecoveryCode }
+      : { ok: false, errorCode };
+
   const capabilitiesResult = await client.getCapabilities(authResult.auth.sessionToken);
   if (!capabilitiesResult.ok) {
-    return {
-      ok: false,
-      errorCode: mapConnectAPIError(capabilitiesResult.errorCode),
-    };
+    return failAfterRegister(mapConnectAPIError(capabilitiesResult.errorCode));
   }
 
   const attachDeviceResult = await client.attachDevice(authResult.auth.sessionToken, {
@@ -365,10 +411,7 @@ export async function connectSyncAccount(
     deviceLabel: secrets.device.deviceLabel,
   });
   if (!attachDeviceResult.ok) {
-    return {
-      ok: false,
-      errorCode: mapConnectAPIError(attachDeviceResult.errorCode),
-    };
+    return failAfterRegister(mapConnectAPIError(attachDeviceResult.errorCode));
   }
 
   // Only a fresh account stores its package here. On login the stored package
@@ -384,10 +427,7 @@ export async function connectSyncAccount(
     );
     // A step-up refusal does not fail the connect: the next upload prompts.
     if (!syncedRecoveryKey.ok && !isRecoveryKeyStepUpCode(syncedRecoveryKey.errorCode)) {
-      return {
-        ok: false,
-        errorCode: mapConnectAPIError(syncedRecoveryKey.errorCode),
-      };
+      return failAfterRegister(mapConnectAPIError(syncedRecoveryKey.errorCode));
     }
   }
 
@@ -929,6 +969,9 @@ export async function recoverSyncAccess(
   if (preferences.deviceLabel.trim().length === 0) {
     return { ok: false, errorCode: "device_label_required" };
   }
+  if (!isSyncDeviceLabelLengthValid(preferences.deviceLabel)) {
+    return { ok: false, errorCode: "device_label_invalid_length" };
+  }
 
   const normalizedRecoveryPhrase = recoveryPhrase.trim();
   if (normalizedRecoveryPhrase.length === 0) {
@@ -1134,6 +1177,9 @@ export async function finalizeSyncRecoveryAfterTOTP(
   if (preferences.deviceLabel.trim().length === 0) {
     return { ok: false, errorCode: "device_label_required" };
   }
+  if (!isSyncDeviceLabelLengthValid(preferences.deviceLabel)) {
+    return { ok: false, errorCode: "device_label_invalid_length" };
+  }
   const normalizedRecoveryPhrase = input.recoveryPhrase.trim();
   if (normalizedRecoveryPhrase.length === 0) {
     return { ok: false, errorCode: "recovery_phrase_required" };
@@ -1289,6 +1335,7 @@ export async function runSyncUpload(
   | {
       ok: false;
       errorCode: SyncRunErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   // A restore that stopped partway left local data incomplete; uploading it
@@ -1321,7 +1368,10 @@ export async function runSyncUpload(
   if (preferences.lastRemoteGeneration === null) {
     const remoteBlobResult = await client.getBlob(prepared.secrets.authSessionToken);
     if (!remoteBlobResult.ok && remoteBlobResult.errorCode !== "blob_not_found") {
-      return { ok: false, errorCode: mapRunAPIError(remoteBlobResult.errorCode) };
+      return withRetryAfter(
+        { ok: false, errorCode: mapRunAPIError(remoteBlobResult.errorCode) },
+        remoteBlobResult,
+      );
     }
     remoteBlob = remoteBlobResult.ok ? remoteBlobResult.blob : null;
 
@@ -1364,7 +1414,7 @@ export async function runSyncUpload(
   const capabilities = capabilitiesResult.capabilities;
   // The server refuses a blob over its limit only after the package write.
   if (capabilities.maxBlobBytes > 0 && ciphertextBytes.length > capabilities.maxBlobBytes) {
-    return { ok: false, errorCode: "invalid_blob" };
+    return { ok: false, errorCode: "backup_too_large" };
   }
 
   // The step-up is a community-server check; a managed sync host is not the
@@ -1410,7 +1460,10 @@ export async function runSyncUpload(
     ciphertextBase64: fromByteArray(ciphertextBytes),
   });
   if (!putBlobResult.ok) {
-    return { ok: false, errorCode: mapRunAPIError(putBlobResult.errorCode) };
+    return withRetryAfter(
+      { ok: false, errorCode: mapRunAPIError(putBlobResult.errorCode) },
+      putBlobResult,
+    );
   }
 
   // The floor is the generation this device sealed, never the server's echo.
@@ -1441,6 +1494,7 @@ export async function runSyncRestore(
   | {
       ok: false;
       errorCode: SyncRunErrorCode;
+      retryAfterSeconds?: number;
     }
 > {
   const prepared = await readPreparedSyncContext(
@@ -1465,7 +1519,10 @@ export async function runSyncRestore(
         });
       }
     }
-    return { ok: false, errorCode: mapRunAPIError(blobResult.errorCode) };
+    return withRetryAfter(
+      { ok: false, errorCode: mapRunAPIError(blobResult.errorCode) },
+      blobResult,
+    );
   }
 
   const reportedGeneration = blobResult.blob.generation;
@@ -1667,11 +1724,15 @@ function mapDeviceManagementAPIError(
   switch (errorCode) {
     case "unauthorized":
     case "device_not_found":
+    case "rate_limited":
     case "network_failed":
       return errorCode;
+    case "sync_disabled":
+      return "sync_not_allowed";
+    case "server_busy":
+      return "network_failed";
     default:
-      // invalid_device (empty id cannot come from the rendered list) and
-      // rate_limited collapse to generic, matching the connect/run mappers.
+      // invalid_device: an empty id cannot come from the rendered list.
       return "generic";
   }
 }
@@ -1998,11 +2059,20 @@ function mapConnectAPIError(errorCode: SyncAPIErrorCode): SyncConnectErrorCode {
   switch (errorCode) {
     case "invalid_registration_input":
     case "registration_failed":
+    case "registration_disabled":
     case "invalid_credentials":
     case "unauthorized":
     case "too_many_devices":
+    case "rate_limited":
     case "network_failed":
       return errorCode;
+    case "sync_disabled":
+      return "sync_not_allowed";
+    // The device id is generated locally, so the label is what failed.
+    case "invalid_device":
+      return "device_label_invalid_length";
+    case "server_busy":
+      return "network_failed";
     default:
       return "generic";
   }
@@ -2017,6 +2087,7 @@ function mapManagedConnectAPIError(
     case "invalid_credentials":
     case "unauthorized":
     case "sync_not_allowed":
+    case "rate_limited":
     case "network_failed":
       return errorCode;
     case "sync_bridge_unavailable":
@@ -2035,6 +2106,12 @@ function mapRecoverAPIError(errorCode: SyncAPIErrorCode): SyncRecoverErrorCode {
     case "network_failed":
     case "recovery_package_not_found":
       return errorCode;
+    case "sync_disabled":
+      return "sync_not_allowed";
+    case "invalid_device":
+      return "device_label_invalid_length";
+    case "server_busy":
+      return "network_failed";
     default:
       return "generic";
   }
@@ -2064,9 +2141,12 @@ function mapRunAPIError(errorCode: SyncAPIErrorCode): SyncRunErrorCode {
     case "stale_generation":
     case "blob_not_found":
     case "rate_limited":
+    case "server_busy":
     case "network_failed":
     case "managed_recovery_key_overwrite":
       return errorCode;
+    case "sync_disabled":
+      return "sync_not_allowed";
     default:
       return "generic";
   }
@@ -2078,6 +2158,7 @@ function mapManagedRunAPIError(
   switch (errorCode) {
     case "unauthorized":
     case "sync_not_allowed":
+    case "rate_limited":
     case "network_failed":
       return errorCode;
     case "sync_bridge_unavailable":

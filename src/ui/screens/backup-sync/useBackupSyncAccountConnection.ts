@@ -81,6 +81,9 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
       effectiveNow,
     );
     if (!result.ok) {
+      if (result.recoveryCode) {
+        core.setGeneratedRecoveryCode(result.recoveryCode);
+      }
       setErrorState({
         code: result.errorCode,
         scope: "account",

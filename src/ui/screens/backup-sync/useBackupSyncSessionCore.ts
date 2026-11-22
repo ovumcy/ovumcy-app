@@ -120,6 +120,7 @@ export function useBackupSyncSessionCore({
   const [errorState, setErrorState] = useState<{
     code: string;
     scope: BackupSyncErrorScope;
+    retryAfterSeconds?: number | undefined;
   } | null>(null);
   const [accountStatusMessage, setAccountStatusMessage] = useState("");
   const [generatedRecoveryPhrase, setGeneratedRecoveryPhrase] = useState("");

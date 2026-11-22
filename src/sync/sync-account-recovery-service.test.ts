@@ -315,6 +315,23 @@ describe("sync-account-recovery-service", () => {
       expect(managedFactory).not.toHaveBeenCalled();
     });
 
+    it("rejects a new password over 72 bytes before any network call", async () => {
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const result = await changeSyncAccountPassword(
+        createSyncSecretStoreMock(connectedSecrets()),
+        selfHostedPreferences(),
+        { currentPassword: "old password 12345", newPassword: "ж".repeat(37) },
+        apiFactory,
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "password_too_long" });
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
     it("reports an empty new password as required, not too short", async () => {
       const secretStore = createSyncSecretStoreMock(connectedSecrets());
 
@@ -707,6 +724,24 @@ describe("sync-account-recovery-service", () => {
 
       expect(result).toEqual({ ok: false, errorCode: "password_too_short" });
       // No client constructed → the single-use reset token was never spent.
+      expect(apiFactory).not.toHaveBeenCalled();
+      expect(managedFactory).not.toHaveBeenCalled();
+    });
+
+    it("rejects a new password over 72 bytes before consuming the reset token", async () => {
+      const apiFactory = jest.fn();
+      const managedFactory = jest.fn();
+
+      const result = await resetSyncAccountPassword(
+        createLocalAppStorageMock(),
+        createSyncSecretStoreMock(connectedSecrets()),
+        selfHostedPreferences(),
+        { resetToken: "reset-token-1", newPassword: "a".repeat(73) },
+        apiFactory,
+        managedFactory,
+      );
+
+      expect(result).toEqual({ ok: false, errorCode: "password_too_long" });
       expect(apiFactory).not.toHaveBeenCalled();
       expect(managedFactory).not.toHaveBeenCalled();
     });

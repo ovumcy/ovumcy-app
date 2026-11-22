@@ -344,6 +344,8 @@ export function resolveBackupSyncDeviceErrorMessage(
       return copy.errors.syncNotAllowed;
     case "device_not_found":
       return copy.errors.deviceNotFound;
+    case "rate_limited":
+      return copy.errors.rateLimited;
     case "network_failed":
       return copy.errors.networkFailed;
     default:
@@ -374,8 +376,20 @@ export function resolveBackupSyncErrorMessage(
       return viewData.errors.passwordRequired;
     case "password_too_short":
       return viewData.errors.passwordTooShort;
+    case "password_too_long":
+      return viewData.errors.passwordTooLong;
+    case "login_invalid_length":
+      return viewData.errors.loginInvalidLength;
     case "device_label_required":
       return viewData.errors.deviceLabelRequired;
+    case "device_label_invalid_length":
+      return viewData.errors.deviceLabelInvalidLength;
+    case "registration_disabled":
+      return viewData.errors.registrationDisabled;
+    case "backup_too_large":
+      return viewData.errors.backupTooLarge;
+    case "server_busy":
+      return viewData.errors.serverBusy;
     case "endpoint_required":
       return viewData.errors.endpointRequired;
     case "invalid_endpoint":
@@ -455,6 +469,7 @@ export function resolveBackupSyncErrorPresentation(
   errorCode: string | null | undefined,
   scope: BackupSyncErrorScope | null | undefined,
   viewData: SettingsViewData["account"],
+  retryAfterSeconds?: number,
 ): BackupSyncErrorPresentation {
   const emptyPresentation: BackupSyncErrorPresentation = {
     accountMessage: "",
@@ -472,7 +487,12 @@ export function resolveBackupSyncErrorPresentation(
     return emptyPresentation;
   }
 
-  const message = resolveBackupSyncErrorMessage(errorCode, viewData);
+  const baseMessage = resolveBackupSyncErrorMessage(errorCode, viewData);
+  const message =
+    retryAfterSeconds !== undefined &&
+    (errorCode === "rate_limited" || errorCode === "server_busy")
+      ? `${baseMessage} ${viewData.errors.retryInSeconds.replace("%s", String(retryAfterSeconds))}`
+      : baseMessage;
 
   // delete_account errors (unauthorized, network_failed, or a rare/unmapped
   // server code) always render in the dedicated delete-account banner, never
@@ -497,6 +517,7 @@ export function resolveBackupSyncErrorPresentation(
 
   switch (errorCode) {
     case "device_label_required":
+    case "device_label_invalid_length":
       return {
         ...emptyPresentation,
         deviceLabelMessage: message,
@@ -510,6 +531,7 @@ export function resolveBackupSyncErrorPresentation(
         endpointMessage: message,
       };
     case "login_required":
+    case "login_invalid_length":
       return {
         ...emptyPresentation,
         loginMessage: message,

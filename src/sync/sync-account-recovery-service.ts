@@ -18,7 +18,7 @@ import {
   normalizeSyncEndpoint,
   type NormalizeSyncEndpointErrorCode,
 } from "./sync-endpoint-policy";
-import { isPasswordTooShort } from "./password-policy";
+import { isPasswordTooLong, isPasswordTooShort } from "./password-policy";
 import { isTOTPCodeFormat } from "./sync-totp-service";
 
 export type ChangeSyncPasswordErrorCode =
@@ -27,6 +27,7 @@ export type ChangeSyncPasswordErrorCode =
   | "current_password_required"
   | "new_password_required"
   | "password_too_short"
+  | "password_too_long"
   | "invalid_current_password"
   | "new_password_must_differ"
   | "weak_new_password"
@@ -53,6 +54,7 @@ export type ResetSyncPasswordErrorCode =
   | "reset_token_required"
   | "new_password_required"
   | "password_too_short"
+  | "password_too_long"
   | "invalid_reset_token"
   | "weak_new_password"
   | "rate_limited"
@@ -111,6 +113,9 @@ export async function changeSyncAccountPassword(
   // field still reads "required", not "too short".
   if (isPasswordTooShort(input.newPassword)) {
     return { ok: false, errorCode: "password_too_short" };
+  }
+  if (isPasswordTooLong(input.newPassword)) {
+    return { ok: false, errorCode: "password_too_long" };
   }
   const code = preferences.mode === "managed" ? undefined : input.code?.trim();
   if (code === "") {
@@ -276,6 +281,9 @@ export async function resetSyncAccountPassword(
   // reject with weak_new_password anyway.
   if (isPasswordTooShort(input.newPassword)) {
     return { ok: false, errorCode: "password_too_short" };
+  }
+  if (isPasswordTooLong(input.newPassword)) {
+    return { ok: false, errorCode: "password_too_long" };
   }
 
   let recoveryCode: string;

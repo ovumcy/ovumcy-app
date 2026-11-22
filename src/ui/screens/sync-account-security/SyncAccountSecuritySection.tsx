@@ -753,6 +753,8 @@ function resolveErrorMessage(
       return copy.errors.newPasswordMustDiffer;
     case "password_too_short":
       return copy.errors.passwordTooShort;
+    case "password_too_long":
+      return copy.errors.passwordTooLong;
     case "weak_new_password":
       return copy.errors.weakNewPassword;
     case "invalid_recovery_credentials":

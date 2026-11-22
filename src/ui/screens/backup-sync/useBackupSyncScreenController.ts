@@ -101,6 +101,7 @@ export function useBackupSyncScreenController(
     errorState?.code,
     errorState?.scope,
     viewData.account,
+    errorState?.retryAfterSeconds,
   );
 
   usePreventRemove(

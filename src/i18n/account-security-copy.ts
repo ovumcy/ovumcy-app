@@ -49,6 +49,7 @@ export type AccountSecurityCopy = {
     currentPasswordRequired: string;
     newPasswordRequired: string;
     passwordTooShort: string;
+    passwordTooLong: string;
     invalidCurrentPassword: string;
     newPasswordMustDiffer: string;
     weakNewPassword: string;
@@ -121,6 +122,8 @@ const accountSecurityCopyEn: AccountSecurityCopy = {
     currentPasswordRequired: "Enter your current password.",
     newPasswordRequired: "Enter a new password.",
     passwordTooShort: "Password must be at least 12 characters.",
+    passwordTooLong:
+      "Password is too long: use at most 72 characters, fewer with non-Latin letters or emoji.",
     invalidCurrentPassword: "Current password is incorrect.",
     newPasswordMustDiffer:
       "New password must be different from the current one.",
@@ -198,6 +201,8 @@ const accountSecurityCopyDe: AccountSecurityCopy = {
     currentPasswordRequired: "Geben Sie Ihr aktuelles Passwort ein.",
     newPasswordRequired: "Geben Sie ein neues Passwort ein.",
     passwordTooShort: "Das Passwort muss mindestens 12 Zeichen lang sein.",
+    passwordTooLong:
+      "Das Passwort ist zu lang: höchstens 72 Zeichen, mit nicht-lateinischen Buchstaben oder Emoji weniger.",
     invalidCurrentPassword: "Aktuelles Passwort ist falsch.",
     newPasswordMustDiffer:
       "Das neue Passwort muss sich vom aktuellen unterscheiden.",
@@ -279,6 +284,8 @@ const accountSecurityCopyFr: AccountSecurityCopy = {
     currentPasswordRequired: "Entrez votre mot de passe actuel.",
     newPasswordRequired: "Entrez un nouveau mot de passe.",
     passwordTooShort: "Le mot de passe doit comporter au moins 12 caractères.",
+    passwordTooLong:
+      "Le mot de passe est trop long : 72 caractères au maximum, moins avec des lettres non latines ou des emoji.",
     invalidCurrentPassword: "Mot de passe actuel incorrect.",
     newPasswordMustDiffer:
       "Le nouveau mot de passe doit être différent de l'actuel.",
@@ -360,6 +367,8 @@ const accountSecurityCopyRu: AccountSecurityCopy = {
     currentPasswordRequired: "Введите текущий пароль.",
     newPasswordRequired: "Введите новый пароль.",
     passwordTooShort: "Пароль должен содержать не менее 12 символов.",
+    passwordTooLong:
+      "Пароль слишком длинный: не более 72 латинских символов; кириллица и эмодзи занимают больше места.",
     invalidCurrentPassword: "Неверный текущий пароль.",
     newPasswordMustDiffer:
       "Новый пароль должен отличаться от текущего.",
@@ -441,6 +450,8 @@ const accountSecurityCopyEs: AccountSecurityCopy = {
     currentPasswordRequired: "Introduce tu contraseña actual.",
     newPasswordRequired: "Introduce una nueva contraseña.",
     passwordTooShort: "La contraseña debe tener al menos 12 caracteres.",
+    passwordTooLong:
+      "La contraseña es demasiado larga: 72 caracteres como máximo, menos con letras no latinas o emoji.",
     invalidCurrentPassword: "La contraseña actual es incorrecta.",
     newPasswordMustDiffer:
       "La nueva contraseña debe ser distinta de la actual.",
@@ -522,6 +533,8 @@ const accountSecurityCopyIt: AccountSecurityCopy = {
     currentPasswordRequired: "Inserisci la tua password corrente.",
     newPasswordRequired: "Inserisci una nuova password.",
     passwordTooShort: "La password deve contenere almeno 12 caratteri.",
+    passwordTooLong:
+      "La password è troppo lunga: al massimo 72 caratteri, meno con lettere non latine o emoji.",
     invalidCurrentPassword: "La password corrente non è corretta.",
     newPasswordMustDiffer:
       "La nuova password deve essere diversa da quella corrente.",

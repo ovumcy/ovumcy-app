@@ -8,6 +8,7 @@ import { createSyncSecretsRecord } from "../security/sync-crypto";
 // check every other guest-aware surface uses. account-deletion-service.ts
 // already imports a pure services-layer helper the same way.
 import { isGuestPartnerAccount } from "../services/backup-sync-view-service";
+import { isSyncDeviceLabelLengthValid } from "./sync-input-limits";
 import {
   createDefaultManagedBillingCacheRecord,
   type LocalAppStorage,
@@ -35,6 +36,7 @@ export type PrepareSyncSetupErrorCode =
   | "unsupported_scheme"
   | "insecure_public_http"
   | "device_label_required"
+  | "device_label_invalid_length"
   // Defense-in-depth: a guest partner session must never receive a real
   // recovery phrase (docs/sync-trust-model.md "Guest Partner Access" —
   // "Guests never see a recovery phrase"). The UI already hides the
@@ -47,6 +49,7 @@ export type PrepareSyncSetupErrorCode =
 
 export type SaveSyncPreferencesDraftErrorCode =
   | NormalizeSyncEndpointErrorCode
+  | "device_label_invalid_length"
   | "generic";
 
 export async function loadSyncSetupState(
@@ -96,6 +99,12 @@ export async function prepareSyncSetup(
     return {
       ok: false,
       errorCode: "device_label_required",
+    };
+  }
+  if (!isSyncDeviceLabelLengthValid(nextLabel)) {
+    return {
+      ok: false,
+      errorCode: "device_label_invalid_length",
     };
   }
 
@@ -174,6 +183,10 @@ export async function saveSyncPreferencesDraft(
   const nextDeviceLabel = currentPreferences.deviceLabel.trim();
   const nextEndpointInput =
     nextMode === "self_hosted" ? currentPreferences.endpointInput.trim() : "";
+  // An empty label may still be saved as a draft; prepare requires one.
+  if (nextDeviceLabel.length > 0 && !isSyncDeviceLabelLengthValid(nextDeviceLabel)) {
+    return { ok: false, errorCode: "device_label_invalid_length" };
+  }
 
   let nextNormalizedEndpoint = MANAGED_SYNC_BASE_URL;
   if (nextMode === "self_hosted") {
