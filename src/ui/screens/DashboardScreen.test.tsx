@@ -502,6 +502,46 @@ describe("DashboardScreen", () => {
     expect(await screen.findByTestId("day-log-lh-none")).toBeTruthy();
   });
 
+  it("keeps an unsaved day-log edit when the premium answer arrives after it", async () => {
+    let resolvePremium: (features: {
+      advancedFertility: boolean;
+      advancedInsights: boolean;
+      doctorPDF: boolean;
+      extendedReports: boolean;
+      partnerAccess: boolean;
+      reminders: boolean;
+    }) => void = () => {};
+    mockLoadManagedPremiumFeaturesForCurrentSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePremium = resolve;
+      }),
+    );
+    const storage = createStorageMock();
+
+    await renderDashboard(storage, new Date(2026, 2, 17), "en", 60_000);
+
+    await fireEvent.press(await screen.findByTestId("day-log-period-toggle"));
+    expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: true }),
+    );
+
+    await act(async () => {
+      resolvePremium({
+        advancedFertility: true,
+        advancedInsights: false,
+        doctorPDF: false,
+        extendedReports: false,
+        partnerAccess: false,
+        reminders: false,
+      });
+    });
+
+    expect(await screen.findByTestId("day-log-lh-none")).toBeTruthy();
+    expect(screen.getByTestId("day-log-period-toggle").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: true }),
+    );
+  });
+
   it("shows a premium advanced fertility summary when aligned current-cycle signals exist", async () => {
     mockLoadManagedPremiumFeaturesForCurrentSession.mockResolvedValue({
       advancedFertility: true,

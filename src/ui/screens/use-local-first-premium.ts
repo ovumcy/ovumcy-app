@@ -6,7 +6,9 @@ import { EMPTY_MANAGED_PREMIUM_FEATURES } from "../../services/managed-premium-f
 export type LocalFirstPremiumPass<S> = {
   loadLocal: (premiumFeatures: ManagedCloudPremiumFeatures) => Promise<S>;
   loadPremium: () => Promise<ManagedCloudPremiumFeatures>;
-  apply: (state: S) => void;
+  // "premium" marks the reload that applies a changed premium answer; it can
+  // land after the user started editing the "local" state.
+  apply: (state: S, phase: "local" | "premium") => void;
 };
 
 function samePremiumFeatures(
@@ -56,7 +58,7 @@ export function useLocalFirstPremium() {
       if (!isCurrent()) {
         return localState;
       }
-      apply(localState);
+      apply(localState, "local");
 
       void (async () => {
         let premium: ManagedCloudPremiumFeatures;
@@ -75,7 +77,7 @@ export function useLocalFirstPremium() {
         try {
           const upgradedState = await loadLocal(premium);
           if (isCurrent()) {
-            apply(upgradedState);
+            apply(upgradedState, "premium");
           }
         } catch {
           // The local render above stands; the next pass retries.

@@ -98,8 +98,16 @@ export function DashboardScreen({
           }),
         loadPremium: () =>
           loadManagedPremiumFeaturesForCurrentSession(storage, syncSecretStore),
-        apply: (loadedState) => {
-          setState(loadedState);
+        apply: (loadedState, phase) => {
+          // The editor draft lives in todayEntry until autosave persists it;
+          // a premium reload read from storage must not replace it.
+          setState((current) =>
+            phase === "premium" &&
+            current &&
+            current.todayEntry.date === loadedState.todayEntry.date
+              ? { ...loadedState, todayEntry: current.todayEntry }
+              : loadedState,
+          );
           setIsLoading(false);
         },
       }),
