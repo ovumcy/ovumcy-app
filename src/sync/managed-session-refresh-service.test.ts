@@ -849,6 +849,22 @@ describe("refresh flights that see a different record than their caller", () => 
     expect(refreshSession).toHaveBeenCalledTimes(1);
   });
 
+  it("leaves a rejected legacy session to the disconnect that ended it meanwhile", async () => {
+    const secretStore = createSyncSecretStoreMock();
+    await secretStore.writeSyncSecrets(
+      createSecrets({ managedRefreshToken: null, managedRefreshTokenExpiresAt: null }),
+    );
+    const release = holdReads(secretStore, [1]);
+
+    const pending = renewRejectedManagedSession(secretStore, "access-1");
+    await flush();
+    endManagedSessionRefresh();
+    release(1);
+
+    await expect(pending).resolves.toEqual({ ok: false, errorCode: "session_expired" });
+    expect((await secretStore.readSyncSecrets())?.managedAuthSessionToken).toBe("access-1");
+  });
+
   it("reports the refresh unavailable when the exchange hands back the rejected token", async () => {
     const secretStore = createSyncSecretStoreMock();
     await secretStore.writeSyncSecrets(createSecrets());
