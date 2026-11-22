@@ -2147,20 +2147,39 @@ async function putBlobComparingGeneration(
     return first;
   }
   if (first.errorCode === "invalid_json" && expectedGeneration !== undefined) {
-    return reconcileAmbiguousPut(
-      client,
-      sessionToken,
-      input,
-      await client.putBlob(sessionToken, input),
-    );
+    const legacy = await client.putBlob(sessionToken, input);
+    if (legacy.ok || legacy.errorCode !== "stale_generation") {
+      return reconcileAmbiguousPut(client, sessionToken, input, legacy);
+    }
+    return reconcileStalePut(client, sessionToken, input, undefined, lastSyncedAt);
   }
   if (first.errorCode !== "stale_generation") {
     return reconcileAmbiguousPut(client, sessionToken, input, first);
   }
+  return reconcileStalePut(
+    client,
+    sessionToken,
+    input,
+    expectedGeneration,
+    lastSyncedAt,
+  );
+}
 
+async function reconcileStalePut(
+  client: SyncAPIClient,
+  sessionToken: string,
+  input: BlobPutInput,
+  expectedGeneration: number | undefined,
+  lastSyncedAt: string | null,
+): Promise<
+  | { ok: true; blob: SyncBlobRecord }
+  | SyncAPIFailure
+  | { ok: false; errorCode: "remote_backup_changed" }
+> {
   const stored = await client.getBlob(sessionToken);
   if (!stored.ok) {
-    return { ok: false, errorCode: "remote_backup_changed" };
+    // The remote state is unknown, not proven to be another device's.
+    return stored;
   }
   if (isSameBlob(stored.blob, input)) {
     return stored;

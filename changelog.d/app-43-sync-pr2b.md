@@ -1,6 +1,6 @@
 ### Fixed
 
-- **An upload no longer overwrites a backup another device made.** If another device uploaded since this one last synced, the upload stops and asks you to restore that backup first. An upload whose reply was lost is recognised on the next try instead of failing.
+- **An upload no longer overwrites a backup another device made.** If another device uploaded since this one last synced, the upload stops and asks you to restore that backup first. When an upload's reply is lost, the app checks whether the backup landed before reporting a failure.
 
 ### Security
 
