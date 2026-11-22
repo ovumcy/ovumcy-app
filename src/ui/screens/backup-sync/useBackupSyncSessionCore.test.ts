@@ -5,6 +5,7 @@ import * as appBootstrapService from "../../../services/app-bootstrap-service";
 import * as backupSyncScreenService from "../../../services/backup-sync-screen-service";
 import * as offersService from "../../../services/offers-service";
 import * as settingsStateService from "../../../services/settings-state-service";
+import * as managedRecoveryRotationService from "../../../sync/managed-recovery-rotation-service";
 import * as syncSetupService from "../../../sync/sync-setup-service";
 import {
   MANAGED_PARTNER_INVITE_TOKEN_TTL_MS,
@@ -719,6 +720,20 @@ describe("useBackupSyncSessionCore", () => {
       expect(result.current.generatedRecoveryPhrase).toBe("");
       expect(result.current.generatedRecoveryCode).toBe("");
       expect(result.current.state).toEqual(savedState);
+    });
+
+    it("shows an unacknowledged managed phrase again on every load until it is acknowledged", async () => {
+      const peekSpy = jest
+        .spyOn(managedRecoveryRotationService, "peekUnacknowledgedManagedRecoveryPhrase")
+        .mockReturnValue("rotated phrase");
+
+      const first = await renderLoadedCore();
+      expect(first.result.current.generatedRecoveryPhrase).toBe("rotated phrase");
+      await first.unmount();
+
+      const second = await renderLoadedCore();
+      expect(second.result.current.generatedRecoveryPhrase).toBe("rotated phrase");
+      expect(peekSpy).toHaveBeenCalledTimes(2);
     });
 
     it("surfaces a failed save as errorState scoped to the caller and leaves the draft state untouched", async () => {
