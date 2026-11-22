@@ -50,7 +50,10 @@ export function useDayLogAutosave({
   const latestDraftVersionRef = useRef(draftVersion);
   const latestLabelsRef = useRef(labels);
   const latestPersistRef = useRef(onPersist);
-  const latestRecordRef = useRef(record);
+  // The last draft handed to the scheduler: a failed save stays here so an
+  // explicit save or a flush retries the edit itself, not a record the
+  // screen reloaded afterwards.
+  const latestDraftRef = useRef<AutosaveDraft | null>(null);
   const latestSavedCallbackRef = useRef(onSaved);
   const pendingDraftRef = useRef<AutosaveDraft | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,10 +73,6 @@ export function useDayLogAutosave({
   useEffect(() => {
     latestSavedCallbackRef.current = onSaved;
   }, [onSaved]);
-
-  useEffect(() => {
-    latestRecordRef.current = record;
-  }, [record]);
 
   const flushDraft = useCallback(async (draft: AutosaveDraft) => {
     const activeLabels = latestLabelsRef.current;
@@ -164,14 +163,23 @@ export function useDayLogAutosave({
       return;
     }
 
-    if (draftVersion <= lastSavedVersionRef.current) {
+    // A new record under an unchanged draft version is a reload (focus
+    // refresh, civil-date rollover, another selected day), not an edit: it
+    // must not replace the pending or failed draft, re-save the loaded data,
+    // or clear a save error.
+    if (
+      draftVersion <= lastSavedVersionRef.current ||
+      latestDraftRef.current?.version === draftVersion
+    ) {
       return;
     }
 
-    scheduleDraft({
+    const draft = {
       record,
       version: draftVersion,
-    });
+    };
+    latestDraftRef.current = draft;
+    scheduleDraft(draft);
   }, [draftVersion, record, scheduleDraft]);
 
   useEffect(() => {
@@ -191,14 +199,15 @@ export function useDayLogAutosave({
       timeoutRef.current = null;
     }
     pendingDraftRef.current = null;
+    latestDraftRef.current = null;
     lastSavedVersionRef.current = version;
     setHasSaveError(false);
     setStatus(null);
   }
 
   const flushPendingDraft = useCallback(async () => {
-    const currentRecord = latestRecordRef.current;
-    if (!currentRecord) {
+    const draft = latestDraftRef.current;
+    if (!draft) {
       return;
     }
 
@@ -208,15 +217,12 @@ export function useDayLogAutosave({
     }
 
     pendingDraftRef.current = null;
-    await flushDraft({
-      record: currentRecord,
-      version: latestDraftVersionRef.current,
-    });
+    await flushDraft(draft);
   }, [flushDraft]);
 
   async function saveNow() {
-    const currentRecord = latestRecordRef.current;
-    if (!currentRecord) {
+    const draft = latestDraftRef.current;
+    if (!draft) {
       return;
     }
 
@@ -225,10 +231,7 @@ export function useDayLogAutosave({
       timeoutRef.current = null;
     }
 
-    await flushDraft({
-      record: currentRecord,
-      version: latestDraftVersionRef.current,
-    });
+    await flushDraft(draft);
   }
 
   return {
