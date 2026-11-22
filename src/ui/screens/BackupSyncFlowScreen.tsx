@@ -62,6 +62,7 @@ export type BackupSyncFlowScreenProps = {
   guestUpgradeNudgeMessage: string;
   guestUpgradePasswordValue: string;
   onAcknowledgeRecoveryCode: () => void;
+  onAcknowledgeRecoveryPhrase: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -176,6 +177,7 @@ export function BackupSyncFlowScreen({
   guestUpgradeNudgeMessage,
   guestUpgradePasswordValue,
   onAcknowledgeRecoveryCode,
+  onAcknowledgeRecoveryPhrase,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -352,6 +354,7 @@ export function BackupSyncFlowScreen({
         isExportingRecoveryPhrase={isExportingRecoveryPhrase}
         isPreparing={isPreparing}
         onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
+        onAcknowledgeRecoveryPhrase={onAcknowledgeRecoveryPhrase}
         onAuthLoginChange={onAuthLoginChange}
         onAuthPasswordChange={onAuthPasswordChange}
         onDisconnect={onDisconnect}

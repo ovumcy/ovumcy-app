@@ -46,21 +46,24 @@ type PendingRotation = {
 // refusal, and every session end or wipe.
 let pendingRotation: PendingRotation | null = null;
 
-// A confirmed phrase the screen has not shown yet (it unmounted or reloaded
-// while the request was in flight); the old phrase is already dead.
-let unrevealedPhrase: string | null = null;
+// A confirmed phrase the user has not acknowledged yet; the old phrase is
+// already dead, so an unmount or reload before the acknowledgement must not
+// lose it, and nothing may show it again after.
+let unacknowledgedPhrase: string | null = null;
 
 const MASTER_KEY_TAG_INFO = "ovumcy-managed-rotation-tag|";
 
 export function clearPendingManagedRecoveryRotation(): void {
   pendingRotation = null;
-  unrevealedPhrase = null;
+  unacknowledgedPhrase = null;
 }
 
-export function takeUnrevealedManagedRecoveryPhrase(): string | null {
-  const phrase = unrevealedPhrase;
-  unrevealedPhrase = null;
-  return phrase;
+export function peekUnacknowledgedManagedRecoveryPhrase(): string | null {
+  return unacknowledgedPhrase;
+}
+
+export function acknowledgeManagedRecoveryPhrase(): void {
+  unacknowledgedPhrase = null;
 }
 
 /**
@@ -144,7 +147,7 @@ export async function rotateManagedRecoveryPhrase(
   }
 
   pendingRotation = null;
-  unrevealedPhrase = pending.recoveryPhrase;
+  unacknowledgedPhrase = pending.recoveryPhrase;
   return { ok: true, recoveryPhrase: pending.recoveryPhrase };
 }
 

@@ -31,6 +31,7 @@ function createBaseProps(viewData: ReturnType<typeof buildSettingsViewData>["acc
     isExportingRecoveryPhrase: false,
     isPreparing: false,
     onAcknowledgeRecoveryCode: () => {},
+    onAcknowledgeRecoveryPhrase: () => {},
     onAuthLoginChange: () => {},
     onAuthPasswordChange: () => {},
     onDisconnect: () => {},
@@ -528,6 +529,34 @@ describe("SettingsSyncSetupSection", () => {
     expect(onAcknowledgeRecoveryCode).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the recovery code modal open on the system back gesture without acknowledging it", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const onAcknowledgeRecoveryCode = jest.fn();
+    const props = createBaseProps(viewData);
+
+    await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryCode="abcd1234abcd1234abcd1234abcd1234"
+          onAcknowledgeRecoveryCode={onAcknowledgeRecoveryCode}
+        />
+      </AppPreferencesTestProvider>,
+    );
+
+    await screen.findByTestId("settings-sync-recovery-code-modal");
+    const codeModal = screen.container
+      .queryAll((node) => node.type === "Modal")
+      .find((modal) => modal.props.visible);
+
+    await act(() => {
+      codeModal?.props.onRequestClose();
+    });
+
+    expect(onAcknowledgeRecoveryCode).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-sync-recovery-code-modal")).toBeTruthy();
+  });
+
   it("keeps the recovery code modal closed when no code is set", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
     const props = createBaseProps(viewData);
@@ -857,8 +886,9 @@ describe("SettingsSyncSetupSection", () => {
     expect(onOfferCTAPress).toHaveBeenCalledWith(screenOffer);
   });
 
-  it("closes the recovery-phrase reveal modal from the confirm button", async () => {
+  it("acknowledges the recovery phrase from the reveal modal's confirm button", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const onAcknowledgeRecoveryPhrase = jest.fn();
     const props = createBaseProps(viewData);
 
     await render(
@@ -866,6 +896,7 @@ describe("SettingsSyncSetupSection", () => {
         <SettingsSyncSetupSection
           {...props}
           generatedRecoveryPhrase="alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+          onAcknowledgeRecoveryPhrase={onAcknowledgeRecoveryPhrase}
         />
       </AppPreferencesTestProvider>,
     );
@@ -875,11 +906,36 @@ describe("SettingsSyncSetupSection", () => {
       screen.getByTestId("settings-sync-recovery-modal-confirm-button"),
     );
 
-    expect(screen.queryByTestId("settings-sync-recovery-modal")).toBeNull();
+    expect(onAcknowledgeRecoveryPhrase).toHaveBeenCalledTimes(1);
   });
 
-  it("closes the recovery-phrase reveal modal when dismissed via the system back gesture", async () => {
+  it("hides the phrase card together with the modal once the phrase is acknowledged", async () => {
     const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const props = createBaseProps(viewData);
+
+    const view = await render(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection
+          {...props}
+          generatedRecoveryPhrase="alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+        />
+      </AppPreferencesTestProvider>,
+    );
+    await screen.findByTestId("settings-sync-recovery-modal");
+
+    await view.rerender(
+      <AppPreferencesTestProvider>
+        <SettingsSyncSetupSection {...props} generatedRecoveryPhrase="" />
+      </AppPreferencesTestProvider>,
+    );
+
+    expect(screen.queryByTestId("settings-sync-recovery-modal")).toBeNull();
+    expect(screen.queryByTestId("settings-sync-recovery-card")).toBeNull();
+  });
+
+  it("keeps the recovery-phrase modal open on the system back gesture without acknowledging it", async () => {
+    const viewData = buildSettingsViewData(new Date(2026, 2, 21), "en").account;
+    const onAcknowledgeRecoveryPhrase = jest.fn();
     const props = createBaseProps(viewData);
 
     await render(
@@ -887,6 +943,7 @@ describe("SettingsSyncSetupSection", () => {
         <SettingsSyncSetupSection
           {...props}
           generatedRecoveryPhrase="alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
+          onAcknowledgeRecoveryPhrase={onAcknowledgeRecoveryPhrase}
         />
       </AppPreferencesTestProvider>,
     );
@@ -900,7 +957,8 @@ describe("SettingsSyncSetupSection", () => {
       phraseModal?.props.onRequestClose();
     });
 
-    expect(screen.queryByTestId("settings-sync-recovery-modal")).toBeNull();
+    expect(onAcknowledgeRecoveryPhrase).not.toHaveBeenCalled();
+    expect(screen.getByTestId("settings-sync-recovery-modal")).toBeTruthy();
   });
 
   it("submits the account form through the native web form element", async () => {

@@ -42,6 +42,7 @@ type SettingsSyncSetupSectionProps = {
   isExportingRecoveryPhrase: boolean;
   isPreparing: boolean;
   onAcknowledgeRecoveryCode: () => void;
+  onAcknowledgeRecoveryPhrase: () => void;
   onAuthLoginChange: (value: string) => void;
   onAuthPasswordChange: (value: string) => void;
   onDisconnect: () => void | Promise<void>;
@@ -71,6 +72,10 @@ type SettingsSyncSetupSectionProps = {
   viewData: SettingsViewData["account"];
 };
 
+// Back must not discard a secret that is shown only once; only the explicit
+// confirm button acknowledges it.
+function ignoreRequestClose() {}
+
 export function SettingsSyncSetupSection({
   authLoginValue,
   authPasswordValue,
@@ -84,6 +89,7 @@ export function SettingsSyncSetupSection({
   isExportingRecoveryPhrase,
   isPreparing,
   onAcknowledgeRecoveryCode,
+  onAcknowledgeRecoveryPhrase,
   onAuthLoginChange,
   onAuthPasswordChange,
   onDisconnect,
@@ -116,19 +122,6 @@ export function SettingsSyncSetupSection({
   const [activeAccountPane, setActiveAccountPane] = useState<"auth" | "restore">(
     "auth",
   );
-  const [isRecoveryPhraseModalVisible, setIsRecoveryPhraseModalVisible] =
-    useState(false);
-  const [isRecoveryCodeModalVisible, setIsRecoveryCodeModalVisible] =
-    useState(false);
-
-  useEffect(() => {
-    setIsRecoveryPhraseModalVisible(generatedRecoveryPhrase.length > 0);
-  }, [generatedRecoveryPhrase]);
-
-  useEffect(() => {
-    setIsRecoveryCodeModalVisible(generatedRecoveryCode.length > 0);
-  }, [generatedRecoveryCode]);
-
   useEffect(() => {
     if (hasStoredSyncSecrets && activeAccountPane === "restore") {
       setActiveAccountPane("auth");
@@ -650,11 +643,9 @@ export function SettingsSyncSetupSection({
 
         <Modal
           animationType="fade"
-          onRequestClose={() => {
-            setIsRecoveryPhraseModalVisible(false);
-          }}
+          onRequestClose={ignoreRequestClose}
           transparent
-          visible={isRecoveryPhraseModalVisible}
+          visible={generatedRecoveryPhrase.length > 0}
         >
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard} testID="settings-sync-recovery-modal">
@@ -682,9 +673,7 @@ export function SettingsSyncSetupSection({
                 />
                 <AppButton
                   label={confirmActionLabel}
-                  onPress={() => {
-                    setIsRecoveryPhraseModalVisible(false);
-                  }}
+                  onPress={onAcknowledgeRecoveryPhrase}
                   testID="settings-sync-recovery-modal-confirm-button"
                 />
               </View>
@@ -694,9 +683,9 @@ export function SettingsSyncSetupSection({
 
         <Modal
           animationType="fade"
-          onRequestClose={onAcknowledgeRecoveryCode}
+          onRequestClose={ignoreRequestClose}
           transparent
-          visible={isRecoveryCodeModalVisible}
+          visible={generatedRecoveryCode.length > 0}
         >
           <View style={styles.modalBackdrop}>
             <View

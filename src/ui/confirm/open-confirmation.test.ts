@@ -10,23 +10,23 @@ describe("openConfirmation", () => {
     __resetConfirmationListenerForTesting();
   });
 
-  it("forwards message and labels, defaulting cancelLabel to 'Cancel'", async () => {
+  it("forwards the message and all three labels, resolving true on accept", async () => {
     const seen: ConfirmationRequest[] = [];
     registerConfirmationListener((request) => {
       seen.push(request);
       request.resolve("accept");
     });
 
-    await expect(openConfirmation("Delete entry?", "Delete")).resolves.toBe(true);
+    await expect(openConfirmation("Eintrag löschen?", "Löschen", "Abbrechen")).resolves.toBe(true);
     expect(seen).toHaveLength(1);
     expect(seen[0]).toMatchObject({
-      message: "Delete entry?",
-      acceptLabel: "Delete",
-      cancelLabel: "Cancel",
+      message: "Eintrag löschen?",
+      acceptLabel: "Löschen",
+      cancelLabel: "Abbrechen",
     });
   });
 
-  it("uses the explicit cancelLabel when provided", async () => {
+  it("resolves false when the cancel label is chosen", async () => {
     const seen: ConfirmationRequest[] = [];
     registerConfirmationListener((request) => {
       seen.push(request);

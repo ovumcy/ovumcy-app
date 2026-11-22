@@ -5,7 +5,10 @@ import { prepareBackupSyncSetup } from "../../../services/backup-sync-screen-ser
 import { shouldRotateManagedRecoveryPhrase } from "../../../services/backup-sync-view-service";
 import { deliverRecoveryPhraseArtifact } from "../../../services/recovery-phrase-delivery-service";
 import { requestSensitiveActionChallenge } from "../../../security/sensitive-action-auth";
-import { rotateManagedRecoveryPhrase } from "../../../sync/managed-recovery-rotation-service";
+import {
+  acknowledgeManagedRecoveryPhrase,
+  rotateManagedRecoveryPhrase,
+} from "../../../sync/managed-recovery-rotation-service";
 import { describeSyncAccountTwoFactor } from "../../../sync/sync-account-session-service";
 import type { SyncRecoveryKeyStepUp } from "../../../sync/sync-api-client";
 import { openConfirmation } from "../../confirm/open-confirmation";
@@ -70,10 +73,15 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
 
     if (state.hasStoredSyncSecrets) {
       const confirmed = rotates
-        ? await openConfirmation(rotationCopy.confirmPrompt, rotationCopy.confirmAccept)
+        ? await openConfirmation(
+            rotationCopy.confirmPrompt,
+            rotationCopy.confirmAccept,
+            viewData.common.cancelAction,
+          )
         : await openConfirmation(
             viewData.account.regeneratePrompt,
             viewData.account.regenerateAccept,
+            viewData.common.cancelAction,
           );
       if (!confirmed) {
         return;
@@ -167,8 +175,8 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
       }
 
       if (result.ok) {
-        // The service also stashes the phrase: the screen's next load shows
-        // it again, so an unmount or a focus reload cannot lose it.
+        // The service also keeps the phrase until it is acknowledged, so an
+        // unmount or a focus reload before that cannot lose it.
         setPendingRotationStepUp(null);
         setErrorState(null);
         setGeneratedRecoveryPhrase(result.recoveryPhrase);
@@ -222,6 +230,11 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     core.setGeneratedRecoveryCode("");
   }
 
+  function handleAcknowledgeRecoveryPhrase() {
+    setGeneratedRecoveryPhrase("");
+    acknowledgeManagedRecoveryPhrase();
+  }
+
   async function handleExportRecoveryPhrase() {
     if (!generatedRecoveryPhrase) {
       return;
@@ -259,6 +272,7 @@ export function useBackupSyncRecoveryMaterials(core: BackupSyncSessionCore) {
     handleSubmitManagedRecoveryRotationStepUp,
     handleCancelManagedRecoveryRotationStepUp,
     handleAcknowledgeRecoveryCode,
+    handleAcknowledgeRecoveryPhrase,
     handleExportRecoveryPhrase,
   };
 }

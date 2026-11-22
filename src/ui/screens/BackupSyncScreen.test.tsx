@@ -2498,11 +2498,13 @@ describe("BackupSyncScreen", () => {
       1,
       settingsCopy.account.deleteAccountPrompt,
       settingsCopy.account.deleteAccountAccept,
+      settingsCopy.common.cancelAction,
     );
     expect(mockOpenConfirmation).toHaveBeenNthCalledWith(
       2,
       `${settingsCopy.account.deleteAccountSubscriptionWarningTitle}\n\n${settingsCopy.account.deleteAccountSubscriptionWarningMessage}`,
       settingsCopy.account.deleteAccountSubscriptionWarningAccept,
+      settingsCopy.common.cancelAction,
     );
 
     // A dismissal is the safe answer, exactly like every other destructive
@@ -2613,6 +2615,7 @@ describe("BackupSyncScreen", () => {
     expect(mockOpenConfirmation).toHaveBeenCalledWith(
       settingsCopy.account.deleteAccountPrompt,
       settingsCopy.account.deleteAccountAccept,
+      settingsCopy.common.cancelAction,
     );
     expect(mockReplace).toHaveBeenCalledWith(
       expect.stringContaining("/onboarding?reset="),
@@ -2837,7 +2840,7 @@ describe("BackupSyncScreen", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it("on success shows the one-time recovery code, hides it on acknowledgement, and the CTA disappears", async () => {
+    it("on success shows the one-time recovery code, keeps it through a system back, hides it on acknowledgement, and the CTA disappears", async () => {
       await renderGuestScreen({ guestSessionExpiresAt: "2026-05-05T08:00:00.000Z" });
       await fireEvent.press(screen.getByTestId("backup-sync-guest-upgrade-cta"));
       await screen.findByTestId("backup-sync-guest-upgrade-form-modal");
@@ -2877,6 +2880,17 @@ describe("BackupSyncScreen", () => {
       expect((upgradeCall[1]?.headers as Headers).get("Authorization")).toBe(
         "Bearer guest-session-1",
       );
+
+      // The system back gesture is not an acknowledgement: the only copy stays.
+      const codeModal = screen.container
+        .queryAll((node) => node.type === "Modal")
+        .find((modal) => modal.props.visible);
+      await act(() => {
+        codeModal?.props.onRequestClose();
+      });
+      expect(
+        screen.getByTestId("backup-sync-guest-upgrade-recovery-code-modal"),
+      ).toBeTruthy();
 
       await fireEvent.press(
         screen.getByTestId("backup-sync-guest-upgrade-recovery-code-confirm-button"),
@@ -3119,6 +3133,7 @@ describe("BackupSyncScreen", () => {
         expect(mockOpenConfirmation).toHaveBeenCalledWith(
           rotationCopy.confirmPrompt,
           rotationCopy.confirmAccept,
+          getSettingsCopy("en").common.cancelAction,
         ),
       );
       await waitFor(() =>

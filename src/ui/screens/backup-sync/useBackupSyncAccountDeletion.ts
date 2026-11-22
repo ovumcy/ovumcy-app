@@ -97,6 +97,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
     const confirmed = await openConfirmation(
       viewData.account.deleteAccountPrompt,
       viewData.account.deleteAccountAccept,
+      viewData.common.cancelAction,
     );
     if (!confirmed) {
       return;
@@ -118,6 +119,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       const acknowledgedUnknownBilling = await openConfirmation(
         `${viewData.account.deleteAccountBillingUnknownWarningTitle}\n\n${viewData.account.deleteAccountBillingUnknownWarningMessage}`,
         viewData.account.deleteAccountSubscriptionWarningAccept,
+        viewData.common.cancelAction,
       );
       if (!acknowledgedUnknownBilling) {
         return;
@@ -132,6 +134,7 @@ export function useBackupSyncAccountDeletion(core: BackupSyncSessionCore) {
       const acknowledgedSubscriptionWarning = await openConfirmation(
         `${viewData.account.deleteAccountSubscriptionWarningTitle}\n\n${viewData.account.deleteAccountSubscriptionWarningMessage}`,
         viewData.account.deleteAccountSubscriptionWarningAccept,
+        viewData.common.cancelAction,
       );
       if (!acknowledgedSubscriptionWarning) {
         return;

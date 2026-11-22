@@ -39,6 +39,10 @@ type GuestUpgradeSectionProps = {
  * populates `generatedRecoveryCode` — gating the modal too would make the
  * reveal disappear before the owner ever saw it.
  */
+// Back must not discard a recovery code that is shown only once; only the
+// explicit confirm button acknowledges it.
+function ignoreRequestClose() {}
+
 export function GuestUpgradeSection({
   copy,
   emailValue,
@@ -161,7 +165,7 @@ export function GuestUpgradeSection({
 
       <Modal
         animationType="fade"
-        onRequestClose={onAcknowledgeRecoveryCode}
+        onRequestClose={ignoreRequestClose}
         transparent
         visible={generatedRecoveryCode.length > 0}
       >

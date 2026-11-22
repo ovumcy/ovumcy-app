@@ -272,6 +272,7 @@ export function useBackupSyncScreenController(
         );
       },
       onAcknowledgeRecoveryCode: recovery.handleAcknowledgeRecoveryCode,
+      onAcknowledgeRecoveryPhrase: recovery.handleAcknowledgeRecoveryPhrase,
       onExportRecoveryPhrase: () => {
         void recovery.handleExportRecoveryPhrase();
       },

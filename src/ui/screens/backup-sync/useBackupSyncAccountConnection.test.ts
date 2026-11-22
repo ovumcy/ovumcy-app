@@ -650,6 +650,7 @@ describe("useBackupSyncAccountConnection", () => {
       expect(mockOpenConfirmation).toHaveBeenCalledWith(
         core.viewData.account.disconnectPrompt,
         core.viewData.account.disconnectLabel,
+        core.viewData.common.cancelAction,
       );
     });
 

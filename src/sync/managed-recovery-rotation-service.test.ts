@@ -10,10 +10,24 @@ import type {
 } from "./managed-cloud-api-client";
 import {
   clearPendingManagedRecoveryRotation,
+  acknowledgeManagedRecoveryPhrase,
+  peekUnacknowledgedManagedRecoveryPhrase,
   rotateManagedRecoveryPhrase,
-  takeUnrevealedManagedRecoveryPhrase,
 } from "./managed-recovery-rotation-service";
 import type { SyncSecretsRecord, WrappedSyncKeyMetadata } from "./sync-contract";
+
+function collectStrings(value: unknown): string[] {
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(collectStrings);
+  }
+  if (value !== null && typeof value === "object") {
+    return Object.values(value).flatMap(collectStrings);
+  }
+  return [];
+}
 
 const NOW = new Date("2026-11-19T12:00:00.000Z");
 const PASSWORD = "correct horse battery staple 9000";
@@ -177,7 +191,7 @@ describe("rotateManagedRecoveryPhrase", () => {
     );
   });
 
-  it("stashes a confirmed phrase until the screen takes it, and a session end clears it", async () => {
+  it("keeps a confirmed phrase across reads until it is acknowledged, and a session end clears it", async () => {
     const { secrets } = createConnectedSecrets();
     const store = createSyncSecretStoreMock(secrets);
     const { factory } = createClient([{ ok: true }, { ok: true }]);
@@ -189,14 +203,15 @@ describe("rotateManagedRecoveryPhrase", () => {
       factory,
     );
     expect(result.ok).toBe(true);
-    expect(takeUnrevealedManagedRecoveryPhrase()).toBe(
-      result.ok ? result.recoveryPhrase : "",
-    );
-    expect(takeUnrevealedManagedRecoveryPhrase()).toBeNull();
+    const phrase = result.ok ? result.recoveryPhrase : "";
+    expect(peekUnacknowledgedManagedRecoveryPhrase()).toBe(phrase);
+    expect(peekUnacknowledgedManagedRecoveryPhrase()).toBe(phrase);
+    acknowledgeManagedRecoveryPhrase();
+    expect(peekUnacknowledgedManagedRecoveryPhrase()).toBeNull();
 
     await rotateManagedRecoveryPhrase(store, { currentPassword: PASSWORD }, NOW, factory);
     clearPendingManagedRecoveryRotation();
-    expect(takeUnrevealedManagedRecoveryPhrase()).toBeNull();
+    expect(peekUnacknowledgedManagedRecoveryPhrase()).toBeNull();
   });
 
   it("starts a fresh package after a confirmed rotation", async () => {
@@ -454,12 +469,15 @@ describe("rotateManagedRecoveryPhrase", () => {
         expect(logged).not.toContain(secret);
         expect(failureText).not.toContain(secret);
       }
-      // Whole-word match: a mnemonic word such as "error" is a substring of
-      // the `errorCode` key without being a leak.
+      // Whole-word match over string values only: a mnemonic word may equal a
+      // JSON key ("error" in `errorCode`) or literal ("false" in `"ok":false`)
+      // without being a leak.
+      const loggedValues = collectStrings(spies.flatMap((spy) => spy.mock.calls));
+      const failureValues = collectStrings(failures);
       for (const word of phrase.split(" ").slice(0, 3)) {
         const asWord = new RegExp(`\\b${word}\\b`);
-        expect(logged).not.toMatch(asWord);
-        expect(failureText).not.toMatch(asWord);
+        expect(loggedValues.filter((value) => asWord.test(value))).toEqual([]);
+        expect(failureValues.filter((value) => asWord.test(value))).toEqual([]);
       }
       const storedText = JSON.stringify(await store.readSyncSecrets());
       expect(storedText).not.toContain(PASSWORD);

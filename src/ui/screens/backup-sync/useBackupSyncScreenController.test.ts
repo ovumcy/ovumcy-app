@@ -97,6 +97,7 @@ function createRecoveryMaterialsFixture(
     handleSubmitManagedRecoveryRotationStepUp: jest.fn(),
     handleCancelManagedRecoveryRotationStepUp: jest.fn(),
     handleAcknowledgeRecoveryCode: jest.fn(),
+    handleAcknowledgeRecoveryPhrase: jest.fn(),
     handleExportRecoveryPhrase: jest.fn(),
     ...overrides,
   };

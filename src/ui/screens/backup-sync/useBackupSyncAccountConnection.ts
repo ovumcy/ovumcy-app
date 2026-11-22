@@ -311,6 +311,7 @@ export function useBackupSyncAccountConnection(core: BackupSyncSessionCore) {
     const confirmed = await openConfirmation(
       viewData.account.disconnectPrompt,
       viewData.account.disconnectLabel,
+      viewData.common.cancelAction,
     );
     if (!confirmed) {
       return;
