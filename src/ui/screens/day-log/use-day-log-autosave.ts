@@ -21,6 +21,8 @@ type PersistDayLogDraft = (
 
 type UseDayLogAutosaveOptions = {
   debounceMs?: number;
+  // Bumped once per edit, in the same render as the edited `record`; a record
+  // change without a bump is treated as a reload, not an edit.
   draftVersion: number;
   labels: AutosaveLabels | null;
   onPersist: PersistDayLogDraft;
