@@ -1031,6 +1031,12 @@ describe("DashboardScreen", () => {
           expect.objectContaining({ date: "2026-06-01", isPeriod: true }),
         ),
       );
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Unable to save this entry. Please try again."),
+        ).toBeNull(),
+      );
+      expect(screen.queryByTestId("day-log-save-button")).toBeNull();
       expect((await storage.readDayLogRecord("2026-06-02")).isPeriod).toBe(false);
       expect(commit).toHaveBeenCalledTimes(2);
     } finally {
