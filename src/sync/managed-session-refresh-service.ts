@@ -9,7 +9,7 @@ import {
   type SyncSecretsRecord,
 } from "./sync-contract";
 
-type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
+export type ManagedCloudAPIClientFactory = (baseURL: string) => ManagedCloudAPIClient;
 
 /**
  * How close to its expiry an access session may get before it is renewed. The
@@ -40,12 +40,40 @@ export type EnsureFreshManagedSessionResult =
       errorCode: "session_expired";
     };
 
+export type RenewRejectedManagedSessionResult =
+  | {
+      ok: true;
+      /** A session token other than the rejected one, safe to retry with. */
+      sessionToken: string;
+    }
+  | { ok: false; errorCode: "no_session" }
+  /** The session is gone and its credentials have been cleared. */
+  | { ok: false; errorCode: "session_expired" }
+  /**
+   * The refresh could not be completed (network, rate limit, server fault).
+   * The stored credentials are untouched: the refresh token may still be good.
+   */
+  | { ok: false; errorCode: "refresh_unavailable" };
+
+type RefreshFlightOutcome =
+  | { kind: "session"; sessionToken: string; refreshed: boolean }
+  | { kind: "unavailable"; sessionToken: string }
+  | { kind: "no_session" }
+  | { kind: "expired" };
+
+type RefreshFlightTrigger =
+  | { kind: "due"; now: Date }
+  | { kind: "rejected"; sessionToken: string };
+
 // A single in-flight refresh, shared by every concurrent caller. Refresh
 // tokens are single-use and the server treats a second use of the same token
 // as a leak — it revokes the whole family — so two parallel refreshes would
 // sign the owner out of their own device. One device holds at most one managed
 // session, so a single module-level slot is the whole coordination needed.
-let inFlightRefresh: Promise<EnsureFreshManagedSessionResult> | null = null;
+// The flight reads the stored record itself, after taking the slot: a caller's
+// earlier read may predate a refresh that has since landed, and exchanging the
+// refresh token from that read would spend a token the server already rotated.
+let inFlightRefresh: Promise<RefreshFlightOutcome> | null = null;
 
 // Advanced when the managed session ends on this device: a refresh begun under
 // an earlier epoch must not write its tokens back over the wipe.
@@ -81,30 +109,76 @@ export async function ensureFreshManagedSession(
   }
 
   const sessionToken = secrets.managedAuthSessionToken;
-  if (!secrets.managedRefreshToken) {
-    // Legacy session, or a managed deployment without refresh tokens: the
-    // session is long-lived by construction, so there is nothing to renew.
+  if (
+    !secrets.managedRefreshToken ||
+    !isDueForRefresh(secrets.managedAuthSessionExpiresAt, now)
+  ) {
+    // No refresh token: a legacy session, or a managed deployment without
+    // refresh tokens, long-lived by construction — nothing to renew.
     return { ok: true, sessionToken, refreshed: false };
   }
 
-  if (!isDueForRefresh(secrets.managedAuthSessionExpiresAt, now)) {
-    return { ok: true, sessionToken, refreshed: false };
+  const outcome = await (inFlightRefresh ??
+    startRefreshFlight(secretStore, { kind: "due", now }, managedClientFactory));
+  switch (outcome.kind) {
+    case "session":
+      return { ok: true, sessionToken: outcome.sessionToken, refreshed: outcome.refreshed };
+    case "unavailable":
+      return { ok: true, sessionToken: outcome.sessionToken, refreshed: false };
+    case "no_session":
+      return { ok: false, errorCode: "no_session" };
+    case "expired":
+      return { ok: false, errorCode: "session_expired" };
   }
+}
 
-  if (inFlightRefresh) {
-    return inFlightRefresh;
+/**
+ * renewRejectedManagedSession answers a 401 on `rejectedSessionToken`: it
+ * yields a different token to retry with — one a concurrent refresh already
+ * stored, or one this call obtains by spending the refresh token — whatever
+ * the stored expiry says.
+ *
+ * A rejected access token alone never clears a refresh token. Credentials are
+ * cleared only when the server refuses the refresh token itself, or when the
+ * rejected session has no refresh token to fall back on (a legacy session the
+ * 401 has already ended).
+ */
+export async function renewRejectedManagedSession(
+  secretStore: SyncSecretStore,
+  rejectedSessionToken: string,
+  managedClientFactory: ManagedCloudAPIClientFactory = createManagedCloudAPIClient,
+): Promise<RenewRejectedManagedSessionResult> {
+  for (;;) {
+    const joined = inFlightRefresh;
+    const outcome = await (joined ??
+      startRefreshFlight(
+        secretStore,
+        { kind: "rejected", sessionToken: rejectedSessionToken },
+        managedClientFactory,
+      ));
+    switch (outcome.kind) {
+      case "session":
+        if (outcome.sessionToken !== rejectedSessionToken) {
+          return { ok: true, sessionToken: outcome.sessionToken };
+        }
+        if (!joined) {
+          // Unreachable: a rejected-trigger flight never answers with the
+          // rejected token. Treated as unavailable rather than looping.
+          return { ok: false, errorCode: "refresh_unavailable" };
+        }
+        // A scheduled refresh that found nothing due; this 401 needs its own.
+        continue;
+      case "unavailable":
+        if (joined && outcome.sessionToken !== rejectedSessionToken) {
+          continue;
+        }
+        return { ok: false, errorCode: "refresh_unavailable" };
+      case "no_session":
+        return { ok: false, errorCode: "no_session" };
+      case "expired":
+        return { ok: false, errorCode: "session_expired" };
+    }
   }
-
-  const refreshToken = secrets.managedRefreshToken;
-  inFlightRefresh = exchangeRefreshToken(
-    secretStore,
-    { refreshToken, currentSessionToken: sessionToken },
-    managedClientFactory,
-  ).finally(() => {
-    inFlightRefresh = null;
-  });
-
-  return inFlightRefresh;
 }
 
 /**
@@ -149,20 +223,78 @@ export function resetManagedSessionRefreshStateForTests(): void {
   inFlightRefresh = null;
 }
 
+// Must be called with the slot empty and with no await between that check and
+// this call, so two flights can never exchange at once.
+function startRefreshFlight(
+  secretStore: SyncSecretStore,
+  trigger: RefreshFlightTrigger,
+  managedClientFactory: ManagedCloudAPIClientFactory,
+): Promise<RefreshFlightOutcome> {
+  const flight = runRefreshFlight(secretStore, trigger, managedClientFactory).finally(
+    () => {
+      if (inFlightRefresh === flight) {
+        inFlightRefresh = null;
+      }
+    },
+  );
+  inFlightRefresh = flight;
+  return flight;
+}
+
+async function runRefreshFlight(
+  secretStore: SyncSecretStore,
+  trigger: RefreshFlightTrigger,
+  managedClientFactory: ManagedCloudAPIClientFactory,
+): Promise<RefreshFlightOutcome> {
+  const epoch = sessionEpoch;
+  const secrets = await secretStore.readSyncSecrets();
+  const sessionToken = secrets?.managedAuthSessionToken;
+  if (!secrets || !sessionToken) {
+    return { kind: "no_session" };
+  }
+
+  if (trigger.kind === "rejected" && sessionToken !== trigger.sessionToken) {
+    // Another refresh already replaced the rejected token.
+    return { kind: "session", sessionToken, refreshed: false };
+  }
+
+  const refreshToken = secrets.managedRefreshToken;
+  if (!refreshToken) {
+    if (trigger.kind === "due") {
+      return { kind: "session", sessionToken, refreshed: false };
+    }
+    if (epoch === sessionEpoch) {
+      await secretStore.writeSyncSecrets(clearManagedSessionFromSecrets(secrets));
+    }
+    return { kind: "expired" };
+  }
+
+  if (
+    trigger.kind === "due" &&
+    !isDueForRefresh(secrets.managedAuthSessionExpiresAt, trigger.now)
+  ) {
+    return { kind: "session", sessionToken, refreshed: false };
+  }
+
+  return exchangeRefreshToken(
+    secretStore,
+    { refreshToken, currentSessionToken: sessionToken },
+    epoch,
+    managedClientFactory,
+  );
+}
+
 async function exchangeRefreshToken(
   secretStore: SyncSecretStore,
-  // The caller has already established that a session token exists, so it is
-  // handed over rather than re-derived here — re-reading it from the record
-  // would need a defensive fallback for a case that cannot happen.
   tokens: { refreshToken: string; currentSessionToken: string },
+  epoch: number,
   managedClientFactory: ManagedCloudAPIClientFactory,
-): Promise<EnsureFreshManagedSessionResult> {
-  const epoch = sessionEpoch;
+): Promise<RefreshFlightOutcome> {
   const client = managedClientFactory(MANAGED_CLOUD_AUTH_BASE_URL);
   const result = await client.refreshSession(tokens.refreshToken);
 
   if (epoch !== sessionEpoch) {
-    return { ok: false, errorCode: "session_expired" };
+    return { kind: "expired" };
   }
 
   if (result.ok) {
@@ -170,16 +302,12 @@ async function exchangeRefreshToken(
     // the meantime (a recovery package, a sync session) must survive.
     const fresh = await readRecordStillOnSession(secretStore, tokens.currentSessionToken);
     if (!fresh) {
-      return { ok: false, errorCode: "session_expired" };
+      return { kind: "expired" };
     }
     await secretStore.writeSyncSecrets(
       applyManagedAuthResultToSecrets(fresh, result.auth),
     );
-    return {
-      ok: true,
-      sessionToken: result.auth.sessionToken,
-      refreshed: true,
-    };
+    return { kind: "session", sessionToken: result.auth.sessionToken, refreshed: true };
   }
 
   if (result.errorCode === "unauthorized") {
@@ -189,16 +317,12 @@ async function exchangeRefreshToken(
     if (fresh) {
       await secretStore.writeSyncSecrets(clearManagedSessionFromSecrets(fresh));
     }
-    return { ok: false, errorCode: "session_expired" };
+    return { kind: "expired" };
   }
 
   // Network trouble, rate limiting, or a server error. The session may well
   // still be valid — hand back what we have and let the actual request decide.
-  return {
-    ok: true,
-    sessionToken: tokens.currentSessionToken,
-    refreshed: false,
-  };
+  return { kind: "unavailable", sessionToken: tokens.currentSessionToken };
 }
 
 // The stored record, only while it still holds the managed session the refresh

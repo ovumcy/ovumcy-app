@@ -255,7 +255,9 @@ are in [`SECURITY.md`](../SECURITY.md) and
   doctor PDF, extended reports, partner access) read the managed
   billing snapshot through `src/services/managed-premium-features-service.ts`.
   The snapshot requires a managed sync mode and a present managed session. When
-  the live fetch fails at the transport level (no response, or a 5xx), a
+  the live fetch fails at the transport level (no response, a request past the
+  30-second timeout, or a 502/503/504 gateway answer — a 500 server fault is
+  an answer, not a transport failure), a
   persisted last-known-good copy is served to display surfaces — never to
   server-checked paths, and never after an explicit refusal — for a bounded
   window (`MANAGED_BILLING_CACHE_TTL_MS`, 72 hours), stored encrypted in

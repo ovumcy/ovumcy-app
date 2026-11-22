@@ -347,6 +347,8 @@ describe("loadManagedBillingSnapshot — verified-token overlay", () => {
   it.each([
     ["a plan-lapse refusal", jsonResponse({ error: "sync_not_allowed" }, 403), true],
     ["an absent endpoint", jsonResponse({ error: "not_found" }, 404), true],
+    // A server fault is a live answer, not an offline failure.
+    ["a 500 internal_error server fault", jsonResponse({ error: "internal_error" }, 500), true],
     // A 401 may only mean the bearer rotated mid-request: no cached token is
     // served, but it is not deleted either.
     ["an unauthorized session", jsonResponse({ error: "unauthorized" }, 401), false],
@@ -647,6 +649,8 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
       "a 403 claiming temporary unavailability",
       jsonResponse({ error: "entitlements_unavailable" }, 403),
     ],
+    ["a 500 internal_error server fault", jsonResponse({ error: "internal_error" }, 500)],
+    ["a 500 with an unknown error code", jsonResponse({ error: "boom" }, 500)],
   ])(
     "yields no cached premium but keeps the cached snapshot when the billing fetch is answered with %s",
     async (_label, response) => {
@@ -695,7 +699,7 @@ describe("loadManagedBillingSnapshot — bounded offline grace cache", () => {
   it.each([
     ["an unparseable 502 gateway page", new Response("<html>", { status: 502 })],
     ["a 503 with no body", new Response(null, { status: 503 })],
-    ["a 500 with an unknown error code", jsonResponse({ error: "boom" }, 500)],
+    ["a 504 gateway timeout page", new Response("<html>", { status: 504 })],
   ])(
     "serves the fresh cache when the billing server could not answer: %s",
     async (_label, response) => {
