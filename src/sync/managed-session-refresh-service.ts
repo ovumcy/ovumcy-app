@@ -230,15 +230,14 @@ function startRefreshFlight(
   trigger: RefreshFlightTrigger,
   managedClientFactory: ManagedCloudAPIClientFactory,
 ): Promise<RefreshFlightOutcome> {
-  const flight = runRefreshFlight(secretStore, trigger, managedClientFactory).finally(
+  // The slot cannot hold another flight while this one runs, so clearing it
+  // unconditionally releases only this flight.
+  inFlightRefresh = runRefreshFlight(secretStore, trigger, managedClientFactory).finally(
     () => {
-      if (inFlightRefresh === flight) {
-        inFlightRefresh = null;
-      }
+      inFlightRefresh = null;
     },
   );
-  inFlightRefresh = flight;
-  return flight;
+  return inFlightRefresh;
 }
 
 async function runRefreshFlight(
